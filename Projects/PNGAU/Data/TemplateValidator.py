@@ -1,0 +1,17 @@
+# -*- coding: utf-8 -*-
+
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from KPIUtils.Utils.Validators.Template.TemplateValidator import TemplateValidator
+
+def templateValidator():
+    # pay attention if there any number column in template like product en please put string in the last column
+    project_name = 'pngau'
+    helper_path = '~/dev/trax_ace_factory/Projects/PNGAU/Data/helper.xlsx'
+    file_path = '~/dev/trax_ace_factory/Projects/PNGAU/Data/Template.xlsx'
+    validate_file_path = '/home/Israel/Desktop/validate_pngau.xlsx'
+    validation_object = TemplateValidator(project_name, helper_path, file_path, validate_file_path)
+    validation_object.run()
+
+# if __name__ == '__main__':
+#     LoggerInitializer.init('start template validate')
+#     templateValidator()
