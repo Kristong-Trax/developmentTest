@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+
+pip install -r ~/dev/kpi_factory/DeveloperTools/requirements.txt
+
+echo installed requirements
+
+pip install Trax -I --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
+
+echo installed Trx
+
+pip install KPIUtils-v2 -I --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils-v2/index.html
+
+echo installed KPIUtils

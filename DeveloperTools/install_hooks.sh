@@ -15,6 +15,7 @@ fi
 cp ./data/.pylintrc $ACE_HOME
 cp ./data/pre-push $ACE_HOME/.git/hooks/pre-push
 
+
 chmod +x $ACE_HOME/.git/hooks/pre-push
 
 export message='"message"'
