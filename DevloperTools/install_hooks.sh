@@ -16,7 +16,7 @@ cp ./data/.pylintrc $ACE_HOME
 cp ./data/pre-push $ACE_HOME/.git/hooks/pre-push
 
 cp ./data/.pylintrc $ACE_HOME
-cp ./data/pre-push $ACE_HOME/.git/hooks/post-merge
+cp ./data/post-merge $ACE_HOME/.git/hooks/post-merge
 
 chmod +x $ACE_HOME/.git/hooks/pre-push
 chmod +x $ACE_HOME/.git/hooks/post-merge
