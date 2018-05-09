@@ -12,6 +12,6 @@
 
 
 
-cd .. && python -m cProfile -o 1.stats ~/dev/trax_ace_factory/Projects/$1/Calculations.py -e prod -c ~/dev/theGarageForPS/Trax/Apps/Services/KEngine/k-engine-prod.config
+cd .. && python -m cProfile -o 1.stats ~/dev/kpi_factory/Projects/$1/Calculations.py -e prod -c ~/dev/theGarageForPS/Trax/Apps/Services/KEngine/k-engine-prod.config
 gprof2dot -f pstats 1.stats -o 1.dot
 dot -Tsvg -Gdpi=70 -o $1_profiling.svg 1.dot
