@@ -12,7 +12,7 @@
 
 
 
-cd .. && python -B -m cProfile -o $1.Prof ~/dev/trax_ace_factory/Projects/$1/Calculations.py -e prod -c ~/dev/theGarageForPS/Trax/Apps/Services/KEngine/k-engine-prod.config
+cd .. && python -B -m cProfile -o $1.Prof ~/dev/kpi_factory/Projects/$1/Calculations.py -e prod -c ~/dev/theGarageForPS/Trax/Apps/Services/KEngine/k-engine-prod.config
 snakeviz $1.Prof
 
 
