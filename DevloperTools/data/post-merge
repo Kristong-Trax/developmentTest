@@ -7,7 +7,7 @@ check_and_run() {
        echo "$changed_files" | grep --quiet "$1" && eval "$2"
 }
 
-check_and_run requirements.txt  "pip install -r ~/dev/kpi_factory/DeveloperTools/requirements.txt"
+check_and_run requirements.txt  "pip install -r ~/dev/kpi_factory/DevloperTools/requirements.txt"
 
 echo installed requirements
 
