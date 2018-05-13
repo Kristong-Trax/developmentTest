@@ -19,4 +19,4 @@ echo "installed Trax"
 
 pip install KPIUtils-v2 -I --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils-v2/index.html
 
-echo "installed KPIUtils"
+echo installed KPIUtils
