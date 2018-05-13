@@ -11,12 +11,12 @@
 
 pip install -r ~/dev/kpi_factory/DevloperTools/requirements.txt
 
-echo installed requirements
+echo "installed requirements"
 
 pip install Trax -I --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
 
-echo installed Trax
+echo "installed Trax"
 
 pip install KPIUtils-v2 -I --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils-v2/index.html
 
-echo installed KPIUtils
+echo "installed KPIUtils"
