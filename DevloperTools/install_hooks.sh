@@ -5,21 +5,21 @@ pip install -r requirements.txt
 conda install graphviz
 
 # remove pre-commit
-ACE_HOME="$(dirname "$PWD")"
+FACTORY_HOME="$(dirname "$PWD")"
 
-if [ -f  $ACE_HOME/.git/hooks/pre-commit ]; then
-    mv $ACE_HOME/.git/hooks/pre-commit $ACE_HOME/.git/hooks/pre-commit.old
+if [ -f  $FACTORY_HOME/.git/hooks/pre-commit ]; then
+    mv $FACTORY_HOME/.git/hooks/pre-commit $FACTORY_HOME/.git/hooks/pre-commit.old
 fi
 
 
-cp ./data/.pylintrc $ACE_HOME
-cp ./data/pre-push $ACE_HOME/.git/hooks/pre-push
+cp ./data/.pylintrc $FACTORY_HOME
+cp ./data/pre-push $FACTORY_HOME/.git/hooks/pre-push
 
-cp ./data/.pylintrc $ACE_HOME
-cp ./data/post-merge $ACE_HOME/.git/hooks/post-merge
+cp ./data/.pylintrc $FACTORY_HOME
+cp ./data/post-merge $FACTORY_HOME/.git/hooks/post-merge
 
-chmod +x $ACE_HOME/.git/hooks/pre-push
-chmod +x $ACE_HOME/.git/hooks/post-merge
+chmod +x $FACTORY_HOME/.git/hooks/pre-push
+chmod +x $FACTORY_HOME/.git/hooks/post-merge
 
 export message='"message"'
 export severity='"severity"'
