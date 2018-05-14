@@ -98,4 +98,3 @@ class AMERICASToolBox:
         self.write_result_to_db(self.FIRST_KPI, self.calculate_first_kpi())
         self.write_result_to_db(self.SECOND_KPI, self.calculate_second_kpi())
         self.common.commit_results_data()
-
