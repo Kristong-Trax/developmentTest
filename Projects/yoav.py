@@ -1,4 +1,5 @@
 __author__ = 'yoava'
 
 
-change = 'this is change from kpi_factory'
+change = 'this is change from kpigit_factory'
+change2 = ''
