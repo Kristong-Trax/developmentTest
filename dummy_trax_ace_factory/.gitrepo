@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = /home/yoava/dev/dummy_trax_ace_factory
+	branch = master
+	commit = 28adea4e767149da901642a8343e882a2488c2b3
+	parent = f541f61e6f278be363b6d5033eea511d71d4dfae
+	cmdver = 0.3.1
