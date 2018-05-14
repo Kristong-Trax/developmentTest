@@ -6,6 +6,6 @@
 [subrepo]
 	remote = /home/yoava/dev/dummy_trax_ace_factory
 	branch = master
-	commit = 28adea4e767149da901642a8343e882a2488c2b3
-	parent = f541f61e6f278be363b6d5033eea511d71d4dfae
+	commit = d12e8bdae8b2c372067d2fd9e202d5e56a5144b5
+	parent = c9a493a6ba3e06cb410d0c282121adff9c79b902
 	cmdver = 0.3.1
