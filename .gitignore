@@ -18,3 +18,4 @@ playground/*
 .cache/v/cache/lastfailed
 version.txt
 _ignored/*
+*.xml
