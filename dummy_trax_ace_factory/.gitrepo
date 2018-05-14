@@ -7,5 +7,5 @@
 	remote = /home/yoava/dev/dummy_trax_ace_factory
 	branch = master
 	commit = d12e8bdae8b2c372067d2fd9e202d5e56a5144b5
-	parent = d5eea77a0dfb860fd1bf9c0d71d2870f52d0cc29
+	parent = 82b2825a26128b0137d170eb0c3c6776ced03813
 	cmdver = 0.3.1
