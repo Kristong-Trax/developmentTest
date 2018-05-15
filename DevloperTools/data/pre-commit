@@ -1,0 +1,4 @@
+#!/bin/bash
+git diff --cached --name-only | egrep '\.py$' | xargs --no-run-if-empty ~/miniconda/envs/garage/bin/autopep8 -iv --max-line-length 120
+~/miniconda/envs/garage/bin/git-pylint-commit-hook --pylint ~/miniconda/envs/garage/bin/pylint --pylintrc ~/dev/trax_ace_factory/.pylintrc --limit 6.5 --pylint-params='--disable=missing-docstring,too-few-public-methods'
+
