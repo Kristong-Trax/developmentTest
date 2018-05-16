@@ -11,3 +11,4 @@ change6 = ''
 'test1.2'
 
 'test'
+'testtest'
