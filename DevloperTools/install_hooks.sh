@@ -5,19 +5,23 @@ conda install graphviz
 
 # remove pre-commit
 KPI_HOME="$(dirname "$PWD")"
+parentdir="$(dirname "$KPI_HOME")"
 
 if [ -f  $KPI_HOME/.git/hooks/pre-commit ]; then
     mv $KPI_HOME/.git/hooks/pre-commit $KPI_HOME/.git/hooks/pre-commit.old
 fi
 
-cp ./data/.pylintrc $KPI_HOME
-cp ./data/post-merge $KPI_HOME/.git/hooks/post-merge
+echo $KPI_HOME
+echo $parentdir
 
 cp ./data/.pylintrc $KPI_HOME
-cp ./data/pre-push $KPI_HOME/.git/hooks/pre-push
+cp ./data/post-merge $parentdir/.git/hooks/post-merge
 
-chmod +x $KPI_HOME/.git/hooks/post-merge
-chmod +x $KPI_HOME/.git/hooks/pre-push
+cp ./data/.pylintrc $KPI_HOME
+cp ./data/pre-push $parentdir/.git/hooks/pre-push
+
+chmod +x $parentdir/.git/hooks/post-merge
+chmod +x $parentdir/.git/hooks/pre-push
 
 export message='"message"'
 export severity='"severity"'
