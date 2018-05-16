@@ -12,3 +12,4 @@ change6 = ''
 
 'test'
 'testtest'
+'post-merge'
