@@ -9,10 +9,10 @@ echo ==========================
 
 pip install -r requirements.txt
 
-pip install -I Trax --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
+pip install -U Trax --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
 
-pip install -I KPIUtils --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils/index.html
+pip install -U KPIUtils --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils/index.html
 
-pip install -I KPIUtils-v2 --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils-v2/index.html
+pip install -U KPIUtils-v2 --find-links https://s3.amazonaws.com/trax-pypi/KPIUtils-v2/index.html
 
 echo "installed all necessary packages"
