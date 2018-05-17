@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Author: Yoav Amir
+# git hook to run a command after `git pull/merge`
+echo ""
+echo ==========================
+echo "PS GIT post-merge hook"
+echo ==========================
+
 pip install -r requirements.txt
 
 pip install -I Trax --find-links https://s3.amazonaws.com/trax-pypi/Trax/index.html
