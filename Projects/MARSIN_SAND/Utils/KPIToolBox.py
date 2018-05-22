@@ -20,6 +20,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 THRESHOLD = 0.5
+NewScore =['Availability','SOS Facings']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
@@ -204,7 +205,11 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 if kpi_score is not None:
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
-                    self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
+                    if kpi_type in NewScore:
+                        self.write_to_db_result(kpi_fk, (kpi_score*100, number_of_passed_atomics, number_of_atomics),
+                                                level=self.LEVEL2)
+                    else:
+                        self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
                                             level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
@@ -389,8 +394,9 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                                                **denominator_filters)
         result = 0 if denominator_result == 0 else round(numerator_result / float(denominator_result),2)
         threshold = float(kpi_data[self.template_id])
-        score = result if result >= (threshold * THRESHOLD) else 0
-        self.write_to_db_result(atomic_fk, (score, round(result * 100, 1), threshold * 100), level=self.LEVEL3)
+        result = round(result/float(threshold),2)
+        score = 0 if result < THRESHOLD*threshold else 1 if result >= 1 else result
+        self.write_to_db_result(atomic_fk, (score, round(score * 100, 1), threshold * 100), level=self.LEVEL3)
         return score
 
     def calculate_availability(self, params, atomics):

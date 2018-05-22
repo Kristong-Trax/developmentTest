@@ -4,7 +4,7 @@ import os
 import sys
 
 import pandas as pd
-from Trax.Utils.Logging.Logger import Log
+
 
 sys.path.append('.')
 
@@ -64,12 +64,3 @@ class JsonGenerator:
                 if json_data[i][key] is None:
                     json_data[i].pop(key)
         return json_data
-
-
-
-
-
-
-
-
-

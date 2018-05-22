@@ -5,17 +5,6 @@ __author__ = 'uri'
 class BATRUQueries(object):
 
     @staticmethod
-    def get_all_kpi_data_old():
-        return """
-            select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
-                   kpi.display_text as kpi_name, kpi.pk as kpi_fk,
-                   kps.name as kpi_set_name, kps.pk as kpi_set_fk, api.model_id as section
-            from static.atomic_kpi api
-            left join static.kpi kpi on kpi.pk = api.kpi_fk
-            join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-        """
-
-    @staticmethod
     def get_all_kpi_data():
         return """
             select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
@@ -32,20 +21,6 @@ class BATRUQueries(object):
                 "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
 
-    @staticmethod
-    def update_atomic_kpi_query(product_fk,atomic_fk):
-        return ("update "
-                "static.atomic_kpi"
-                " set model_id = {} "
-                "where pk= {};".format(product_fk, atomic_fk))
-
-    @staticmethod
-    def get_current_cycle(visit_date):
-        return """
-                SELECT pd.start_date, pd.end_date
-                FROM static.plan_details pd
-                WHERE '{}' BETWEEN pd.start_date AND pd.end_date
-        """
     @staticmethod
     def get_store_data(store_fk):
         return """

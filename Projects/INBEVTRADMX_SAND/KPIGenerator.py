@@ -28,6 +28,5 @@ class Generator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-            Log.warning('Exiting calculation - nothing to calculate')
         else:
             self.tool_box.main_calculation()

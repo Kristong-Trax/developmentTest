@@ -2,6 +2,7 @@
 import datetime
 
 import pandas as pd
+import numpy as np
 import ast
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
@@ -28,6 +29,7 @@ EMPTY = 'Empty'
 OTHER = 'Other'
 ALLOWED_EMPTIES_RATIO = 0.2
 ALLOWED_DEVIATION = 2
+ALLOWED_DEVIATION_2018 = 3
 NEGATIVE_ADJACENCY_RANGE = (2, 1000)
 POSITIVE_ADJACENCY_RANGE = (0, 1)
 
@@ -39,6 +41,7 @@ SCENE_FK = 'scene_fk'
 
 EXCLUDE_EMPTY = False
 INCLUDE_EMPTY = True
+
 
 class MARSRU_PRODMARSRUKPIToolBox:
 
@@ -55,6 +58,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.ALL_PRODUCTS]
+        self.products['sub_brand'] = self.products['Sub Brand']#the sub_brand column is empty
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -63,6 +67,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['sub_brand'] = self.scif['Sub Brand']#the sub_brand column is empty
         self.set_name = set_name
         self.kpi_fetcher = MARSRU_PRODMARSRUKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                        self.set_name, self.products, self.session_uid)
@@ -165,19 +170,96 @@ class MARSRU_PRODMARSRUKPIToolBox:
     #     kpi_level_3_results = self.data_provider.add_session_fields_old_tables(kpi_level_3_results)
     #     return kpi_level_3_results
 
+    def check_for_specific_display(self, params):
+        """
+        This function checks if a specific display( = scene type) exists in a store
+        """
+        formula_type = 'check_specific_display'
+        for p in params.values()[0]:
+            if p.get('Formula') != formula_type:
+                continue
+            result = 'TRUE'
+            scene_param = p.get('Values')
+            filtered_scif = self.scif.loc[self.scif['template_name'] == scene_param]
+            if filtered_scif.empty:
+                result = 'FALSE'
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
+            self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+            # Saving to old tables
+            attributes_for_table2 = self.create_attributes_for_level2_df(p, 100, kpi_fk)
+            self.write_to_db_result(attributes_for_table2, 'level2', kpi_fk)
+            attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
+            self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
+
+    def get_product_fk(self, sku_list):
+        """
+        This function gets a list of SKU and returns a list of the product fk of those SKU list
+        """
+        product_fk_list = []
+        for sku in sku_list:
+            temp_df = self.products.loc[self.products['product_ean_code'] == sku]['product_fk']
+            product_fk_list.append((int)(temp_df.values[0]))
+        return product_fk_list
+
+    def insert_to_level_2_and_level_3(self, p, score):
+        """
+        This function handles writing to DB level 2 & 3
+        """
+        kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
+        attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+        self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
+        attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+        self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
+
+    def check_availability_on_golden_shelves(self, params):
+        """
+        This function is used to calculate availability for given SKU on golden shelves (#3,4 from bottom)
+        """
+        formula_type = 'availability_on_golden_shelves'
+        for p in params.values()[0]:
+            if p.get('Formula') != formula_type:
+                continue
+            result = 'TRUE'
+            relevant_shelves = [3, 4]
+            golden_shelves_filtered_df = self.match_product_in_scene.loc[
+                (self.match_product_in_scene['shelf_number_from_bottom'].isin(relevant_shelves))]
+            if golden_shelves_filtered_df.empty:
+                Log.info("In the session {} there are not shelves that stands in the "
+                         "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
+                self.insert_to_level_2_and_level_3(p, result)    # failed
+                continue
+            sku_list = p.get('Values').split()
+            product_fk_list = self.get_product_fk(sku_list)
+            bays = golden_shelves_filtered_df['bay_number'].unique().tolist()
+            for bay in bays:
+                current_bay_filter = golden_shelves_filtered_df.loc[golden_shelves_filtered_df['bay_number'] == bay]
+                shelves = current_bay_filter['shelf_number'].unique().tolist()
+                for shelf in shelves:
+                    shelf_filter = current_bay_filter.loc[current_bay_filter['shelf_number'] == shelf]
+                    filtered_shelf_by_products = shelf_filter.loc[(shelf_filter['product_fk'].isin(product_fk_list))]
+                    if len(filtered_shelf_by_products['product_fk'].unique()) != len(product_fk_list):
+                        result = 'FALSE'
+                        break
+                if result == 'FALSE':
+                    break
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
+            self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+            # Saving to old tables
+            attributes_for_table2 = self.create_attributes_for_level2_df(p, 100, kpi_fk)
+            self.write_to_db_result(attributes_for_table2, 'level2', kpi_fk)
+            attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
+            self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
+
     def get_store_Att5(self):
         store_att5 = self.kpi_fetcher.get_store_att5(self.store_id)
-
         return store_att5
 
     def get_store_Att6(self):
         store_att6 = self.kpi_fetcher.get_store_att6(self.store_id)
-
         return store_att6
 
     def get_store_number_1_attribute(self):
         store_number_1 = self.kpi_fetcher.get_store_number_1(self.store_id)
-
         return store_number_1
 
     def get_assortment_for_attribute(self):
@@ -943,11 +1025,18 @@ class MARSRU_PRODMARSRUKPIToolBox:
             if p.get('Stacking'):
                 if p.get('Stacking') == -1:
                     form_factor_filter = {"WET": 'gross_len_ign_stack', "DRY": 'gross_len_split_stack'}
-                    linear_size = self.calculate_layout_size_by_form_factor(scenes, p.get('Type'), values_list, form_factor_filter)
+                    linear_size, products = self.calculate_layout_size_by_form_factor(scenes, p.get('Type'),
+                                                                                      values_list, form_factor_filter)
                 else:
-                    linear_size = self.calculate_layout_size(scenes, p.get('Type'), values_list, include_stacking=True)
+                    linear_size, products = self.calculate_layout_size(scenes, p.get('Type'), values_list,
+                                                                       include_stacking=True)
             else:
-                linear_size = self.calculate_layout_size(scenes, p.get('Type'), values_list)
+                linear_size, products = self.calculate_layout_size(scenes, p.get('Type'), values_list)
+            if p.get('additional_attribute_for_specials'):
+                allowed_linear_size = self.calculate_allowed_products(scenes, products,
+                                                                      p.get('additional_attribute_for_specials'),
+                                                                      p.get('Stacking'))
+                linear_size += allowed_linear_size
             is_atomic = False
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
 
@@ -964,6 +1053,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     def calculate_layout_size(self, scenes, object_type, values, include_stacking=False):
         object_field = self.object_type_conversion[object_type]
         final_linear_size = 0
+        products = []
         for scene in scenes:
             if object_type == 'MAN in CAT':
                 filtered_scif = self.scif.loc[
@@ -971,12 +1061,59 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         self.scif['manufacturer_name'] == MARS)]
             else:
                 filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) & (self.scif[object_field].isin(values))]
+            products.extend(filtered_scif['product_fk'].unique().tolist())
             if not include_stacking:
                 final_linear_size += filtered_scif['gross_len_ign_stack'].sum()
             else:
                 final_linear_size += filtered_scif['gross_len_split_stack'].sum()
+        return float(final_linear_size / 1000), products
 
-        return float(final_linear_size / 1000)
+    def calculate_allowed_products(self, scenes, products, allowed_brands, include_stacking=False):
+        allowed_brands = allowed_brands.split(', ')
+        statuses = [1]
+        if include_stacking:
+            statuses.append(3)
+        match_product_with_details = pd.merge(self.match_product_in_scene, self.products, on='product_fk')
+        matches_to_include = []
+        original_products_matches = match_product_with_details[match_product_with_details[
+            'product_fk'].isin(products)]['scene_match_fk'].tolist()
+        final_linear_size = 0
+        for scene in scenes:
+            match_product_current_scene = match_product_with_details[match_product_with_details['scene_fk'] == scene]
+            for bay in match_product_current_scene['bay_number'].unique().tolist():
+                match_product_current_bay = match_product_current_scene[
+                    match_product_current_scene['bay_number'] == bay]
+                for shelf in match_product_current_bay['shelf_number'].unique().tolist():
+                    match_product_current_shelf = match_product_current_bay[
+                        match_product_current_bay['shelf_number'] == shelf]
+                    allowed_shelf_products = []
+                    while True:
+                        first_length = len(allowed_shelf_products)
+                        for product in match_product_current_shelf[
+                                    (match_product_current_shelf['brand_name'].isin(allowed_brands)) &
+                                    (match_product_current_shelf['status'].isin(statuses))]['scene_match_fk'].tolist():
+                            if self.neighbor(product, match_product_current_shelf, original_products_matches,
+                                             allowed_shelf_products):
+                                allowed_shelf_products.append(product)
+                        if len(allowed_shelf_products) == first_length:
+                            break
+                    matches_to_include.extend(allowed_shelf_products)
+            final_linear_size += match_product_current_scene[
+                match_product_current_scene['scene_match_fk'].isin(matches_to_include)]['width_mm_advance'].sum()
+        return float(final_linear_size) / 1000
+
+    @staticmethod
+    def neighbor(scene_match_fk, match_product_current_shelf, original_products, allowed_products):
+        if scene_match_fk in allowed_products or scene_match_fk in original_products:
+            return False
+        filtered_good_sequences = match_product_current_shelf[
+            (match_product_current_shelf['scene_match_fk'].isin(original_products + allowed_products))][
+            'sku_sequence_number'].tolist()
+        current_product = match_product_current_shelf[match_product_current_shelf['scene_match_fk'] == scene_match_fk]
+        current_sequence = current_product['sku_sequence_number'].iloc[0]
+        if (current_sequence + 1) in filtered_good_sequences or (current_sequence - 1) in filtered_good_sequences:
+            return True
+        return False
 
     def calculate_layout_size_by_filters(self, filters):
         filtered_scif = self.scif[filters]
@@ -986,6 +1123,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     def calculate_layout_size_by_form_factor(self, scenes, object_type, values, form_factor_filter):
         object_field = self.object_type_conversion[object_type]
         final_linear_size = 0
+        products = []
         for scene in scenes:
             if object_type == 'MAN in CAT':
                 filtered_scif = self.scif.loc[
@@ -994,8 +1132,11 @@ class MARSRU_PRODMARSRUKPIToolBox:
             else:
                 filtered_scif = self.scif.loc[(self.scif['scene_id'] == scene) & (self.scif[object_field].isin(values))]
             for form_factor in form_factor_filter:
-                final_linear_size += filtered_scif[filtered_scif['form_factor'] == form_factor][form_factor_filter[form_factor]].sum()
-        return float(final_linear_size / 1000)
+                final_linear_size += filtered_scif[filtered_scif['form_factor'] == form_factor][form_factor_filter[
+                    form_factor]].sum()
+                products.extend(filtered_scif[filtered_scif['form_factor'] == form_factor][
+                                    'product_fk'].unique().tolist())
+        return float(final_linear_size / 1000), products
 
     def custom_marsru_1(self, params):
         """
@@ -1052,7 +1193,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018': #todo: insert it back after testing
-            # if p.get('Formula') != 'custom_mars_2_2018':
                 continue
             brands_results_dict = {}
             values_list = str(p.get('Values')).split(', ')
@@ -1066,21 +1206,26 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 matches = self.kpi_fetcher.get_filtered_matches(include_stacking=False)
             sub_brands = [str(sub_brand) for sub_brand in p.get('Sub brand to exclude').split(", ")]
             form_factors = [str(form_factor) for form_factor in p.get("Form Factor to include").split(", ")]
-            # self.initial_mapping_of_square(scenes, matches, object_field, value, form_factor=form_factors,
-            #                                sub_brand_to_exclude=sub_brands)
             for value in values_list:
-                self.potential_products = {}
-                self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
-                                               sub_brand_to_exclude=sub_brands)
                 if p.get('Formula') == 'custom_mars_2' and self.visit_date.year != 2018:
+                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
+                                                   sub_brand_to_exclude=sub_brands)
                     brand_result = self.check_brand_block(object_field, [value])
                 else:
-                    brand_result = self.check_brand_block_2018(object_field, [value], sub_brands, form_factors)
+                    sub_brands_to_exclude_by_sub_cats = {'WET': [], 'DRY': sub_brands}
+                    self.initial_mapping_of_square(scenes, matches, object_field, [value], p, form_factor=form_factors,
+                                                   sub_brand_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
+                    brand_result = self.check_brand_block_2018(object_field, [value], sub_brands, form_factors,
+                                                               sub_brand_by_sub_cat=sub_brands_to_exclude_by_sub_cats)
+                    # if brand_result == 'FALSE':
+                    #     self.initial_mapping_of_square(scenes, matches, object_field, [value], p,
+                    #                                    form_factor=form_factors, sub_brand_to_exclude=[])
+                    #     brand_result = self.check_brand_block_2018(object_field, [value],
+                    #                                                [], form_factors)
                 if brand_result == 'TRUE':
                     brands_results_dict[value] = 1
                 else:
                     brands_results_dict[value] = 0
-
             if sum(brands_results_dict.values()) == len(values_list):
                 result = 'TRUE'
             else:
@@ -1255,12 +1400,13 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return result
 
-    def check_brand_block_2018(self, object_field, values_list, sub_brands_to_exclude, form_factors):
+    def check_brand_block_2018(self, object_field, values_list, sub_brands_to_exclude, form_factors,
+                               sub_brand_by_sub_cat={}):
         if not self.potential_products:
             result = 'FALSE'
         else:
             scenes_results_dict = {}
-            self.shelf_square_boundaries={}
+            self.shelf_square_boundaries = {}
             sum_left = 0
             sum_right = 0
             potential_products_df = pd.DataFrame.from_dict(self.potential_products, orient='index')
@@ -1269,13 +1415,22 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 shelves = potential_products_df.loc[potential_products_df['scene_fk'] == scene][
                     'shelf'].unique().tolist()
                 min_facings_on_shelf = 0
-                relevant_shelf_counter=0
+                relevant_shelf_counter = 0
                 for shelf in shelves:
                     temp = potential_products_df.loc[
                         (potential_products_df['scene_fk'] == scene) & (potential_products_df['shelf'] == shelf)]
+                    shelf_sub_category = temp['sub_category'].unique().tolist()
+                    for category in shelf_sub_category:
+                        if type(category) == str:
+                            shelf_sub_category = category.upper()
+                            break
+                    if shelf_sub_category in sub_brand_by_sub_cat.keys() and not sub_brands_to_exclude:
+                        sub_brands_to_exclude = sub_brand_by_sub_cat[shelf_sub_category]
                     # count facings on shelf:
-                    facings_on_shelf = temp.loc[(temp['brand_name'].isin(values_list)) & (temp['stacking_layer'] == 1) &
-                                                (temp['form_factor'].isin(form_factors)) & (~temp['sub_brand'].isin(sub_brands_to_exclude))]['brand_name'].count()
+                    facings_on_shelf = temp.loc[(temp['brand_name'].isin(values_list)) &
+                                                (temp['stacking_layer'] == 1) &
+                                                (temp['form_factor'].isin(form_factors)) &
+                                                (~temp['sub_brand'].isin(sub_brands_to_exclude))]['brand_name'].count()
                     if facings_on_shelf:
                         relevant_shelf_counter += 1
                         if not min_facings_on_shelf:
@@ -1287,12 +1442,15 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                 min_shelf = shelf
                         # left side
                         temp.sort_values(by=['left'], inplace=True)
-                        most_left_df = temp.loc[(temp[object_field].isin(values_list)) & ((temp['form_factor'].isin(form_factors)) | (temp['product_type'].isin([OTHER])))
-                                                & (~temp['sub_brand'].isin(sub_brands_to_exclude))]
+                        most_left_df = temp.loc[(temp[object_field].isin(values_list)) &
+                                                ((temp['form_factor'].isin(form_factors)) |
+                                                 (temp['product_type'].isin([OTHER]))) &
+                                                (~temp['sub_brand'].isin(sub_brands_to_exclude))]
                         most_left_bay = min(most_left_df['bay_number'].unique().tolist())
-                        most_left_value = most_left_df.loc[most_left_df['bay_number'] == most_left_bay]['left'].values[0]
-                        left_most_candidates = most_left_df.loc[
-                            (most_left_df['bay_number'] == most_left_bay) & (most_left_df['left'] <= most_left_value)]
+                        most_left_value = most_left_df.loc[most_left_df['bay_number'] == most_left_bay][
+                            'left'].values[0]
+                        left_most_candidates = most_left_df.loc[(most_left_df['bay_number'] == most_left_bay) &
+                                                                (most_left_df['left'] <= most_left_value)]
                         if not left_most_candidates.loc[left_most_candidates['product_type'].isin([EMPTY])].empty:
                             for i in reversed(left_most_candidates.index):
                                 match = left_most_candidates.loc[[i]]
@@ -1304,13 +1462,16 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         self.shelf_square_boundaries[shelf] = {'left_boundary': most_left_value}
                         # right side
                         temp.sort_values(by=['right'], inplace=True)
-                        most_right_df = temp.loc[(temp[object_field].isin(values_list)) & ((temp['form_factor'].isin(form_factors)) | (temp['product_type'].isin([OTHER])))
-                                                 & (~temp['sub_brand'].isin(sub_brands_to_exclude))]
+                        most_right_df = temp.loc[(temp[object_field].isin(values_list)) &
+                                                 ((temp['form_factor'].isin(form_factors)) |
+                                                  (temp['product_type'].isin([OTHER]))) &
+                                                 (~temp['sub_brand'].isin(sub_brands_to_exclude))]
                         most_right_bay = max(most_right_df['bay_number'].unique().tolist())
-                        most_right_value = most_right_df.loc[most_right_df['bay_number'] == most_right_bay]['right'].values[
-                            -1]
+                        most_right_value = most_right_df.loc[most_right_df['bay_number'] == most_right_bay][
+                            'right'].values[-1]
                         right_most_candidates = most_right_df.loc[
-                            (most_right_df['bay_number'] == most_right_bay) & (most_right_df['right'] >= most_right_value)]
+                            (most_right_df['bay_number'] == most_right_bay) &
+                            (most_right_df['right'] >= most_right_value)]
                         if not right_most_candidates.loc[right_most_candidates['product_type'].isin([EMPTY])].empty:
                             for i in right_most_candidates.index:
                                 match = right_most_candidates.loc[[i]]
@@ -1321,7 +1482,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         sum_right += most_right_value
                         self.shelf_square_boundaries[shelf]['right_boundary'] = most_right_value
                 if relevant_shelf_counter == 1:
-                    if min_facings_on_shelf>4:
+                    if min_facings_on_shelf > 4:
                         result = 'FALSE'
                         return result
                 empties_ratio = 1  # Start condition: Rectangle should not be checked
@@ -1333,54 +1494,56 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 if shelves:
                     min_shelf_left = self.shelf_square_boundaries[min_shelf]['left_boundary']
                     min_shelf_right = self.shelf_square_boundaries[min_shelf]['right_boundary']
-                    boundaries_list =  list(self.shelf_square_boundaries.items())
+                    boundaries_list = list(self.shelf_square_boundaries.items())
                     boundaries_df = pd.DataFrame(boundaries_list, columns=['shelf','left_right_boundaries'])
                     boundaries_df['left_right_boundaries'] = boundaries_df['left_right_boundaries'].astype(str)
                     potential_products_df = pd.merge(potential_products_df, boundaries_df, on='shelf')
-                    left_right_boundaries_df=pd.DataFrame([ast.literal_eval(i) for i in potential_products_df.left_right_boundaries.values])
-                    potential_products_df=potential_products_df.drop('left_right_boundaries',axis=1)
-                    final_potential_products_df = pd.concat([potential_products_df,left_right_boundaries_df],axis=1)
-                    initial_square_df = final_potential_products_df.loc[(final_potential_products_df['left'] >=
-                                                                         final_potential_products_df['left_boundary']) &
-                                                                  (final_potential_products_df['right'] <= final_potential_products_df['right_boundary'])]  # todo: why this is the calculation?
+                    left_right_boundaries_df = pd.DataFrame(
+                        [ast.literal_eval(i) for i in potential_products_df.left_right_boundaries.values])
+                    potential_products_df = potential_products_df.drop('left_right_boundaries',axis=1)
+                    final_potential_products_df = pd.concat([potential_products_df, left_right_boundaries_df], axis=1)
+                    initial_square_df = final_potential_products_df.loc[
+                        (final_potential_products_df['left'] >= final_potential_products_df['left_boundary']) &
+                        (final_potential_products_df['right'] <= final_potential_products_df['right_boundary'])]
                     if not initial_square_df.empty:
                         total_products_in_square = len(initial_square_df.index)
                         total_empties_in_square = \
                             len(initial_square_df.loc[(initial_square_df['product_type'].isin([EMPTY])) |
-                                                      ((initial_square_df['product_type'].isin([OTHER])) & (~initial_square_df['brand_name'].isin(values_list))) &
+                                                      ((initial_square_df['product_type'].isin([OTHER])) &
+                                                       (~initial_square_df['brand_name'].isin(values_list))) &
                                                       (initial_square_df['stacking_layer'] == 1)].index)
                         empties_ratio = total_empties_in_square / float(total_products_in_square)
                 non_rect_conditions = (not initial_square_df.loc[
-                    ~((initial_square_df[object_field].isin(values_list)) & ((initial_square_df['form_factor'].isin(form_factors)) | (initial_square_df['product_type'].isin([OTHER])))
-                                             & (~initial_square_df['sub_brand'].isin(sub_brands_to_exclude)))].empty) \
+                    ~((initial_square_df[object_field].isin(values_list)) &
+                      ((initial_square_df['form_factor'].isin(form_factors)) |
+                       (initial_square_df['product_type'].isin([OTHER]))) &
+                      (~initial_square_df['sub_brand'].isin(sub_brands_to_exclude)))].empty) \
                                       or empties_ratio > ALLOWED_EMPTIES_RATIO or not shelves
                 if non_rect_conditions:
                     # scene_result = 'FALSE'
                     scenes_results_dict[scene] = 0
                 else:
                     average_width = initial_square_df['width'].mean()
-                    max_dev = ALLOWED_DEVIATION * average_width
+                    max_dev = ALLOWED_DEVIATION_2018 * average_width
                     square_shelves_counter = 0
                     relevant_shelves = self.shelf_square_boundaries.keys()
                     for shelf in relevant_shelves:
                         if (abs(self.shelf_square_boundaries[shelf].get('left_boundary') - min_shelf_left)
-                                    + abs(self.shelf_square_boundaries[shelf].get('right_boundary') - min_shelf_right)) < max_dev:
+                                    + abs(self.shelf_square_boundaries[shelf].get(
+                                'right_boundary') - min_shelf_right)) < max_dev:
                             square_shelves_counter += 1
                     if square_shelves_counter != len(shelves):
                         scenes_results_dict[scene] = 0
-                        # result = 'FALSE'
-                        # return result
                     else:
                         scenes_results_dict[scene] = 1
             if sum(scenes_results_dict.values()) == len(scenes_to_check):
                 result = 'TRUE'
             else:
                 result = 'FALSE'
-
         return result
 
     def initial_mapping_of_square(self, scenes, matches, object_field, values_list, p, form_factor=None,
-                                  sub_brand_to_exclude=None):
+                                  sub_brand_to_exclude=None, sub_brand_by_sub_cat={}):
         self.potential_products = {}
         if not scenes:
             return
@@ -1390,10 +1553,17 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 brands_presence_indicator = True
                 scene_data = matches.loc[matches['scene_fk'] == scene]
                 if p.get('Formula') != 'custom_mars_2_2018':
-                    if sub_brand_to_exclude:
-                        scene_data = scene_data.loc[~scene_data['sub_brand'].isin(sub_brand_to_exclude)]
                     if form_factor:
                         scene_data = scene_data.loc[scene_data['form_factor'].isin(form_factor)]
+                    scene_sub_category = scene_data['sub_category'].unique().tolist()
+                    if scene_sub_category and scene_sub_category[0] is None:
+                        scene_sub_category.remove(None)
+                    if scene_sub_category:
+                        scene_sub_category = scene_sub_category[0].upper()
+                    if scene_sub_category in sub_brand_by_sub_cat.keys() and not sub_brand_to_exclude:
+                        sub_brand_to_exclude = sub_brand_by_sub_cat[scene_sub_category]
+                    if sub_brand_to_exclude:
+                        scene_data = scene_data.loc[~scene_data['sub_brand'].isin(sub_brand_to_exclude)]
                 shelves = scene_data['shelf_number'].unique().tolist()
                 # unified_scene_set = set(scene_data[object_field]) & set(values_list)
                 unified_scene_set = scene_data.loc[scene_data[object_field].isin(values_list)]
@@ -1436,7 +1606,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                             match[self.kpi_fetcher.RIGHT]),
                                         object_field: match[object_field].values[0],
                                         'product_type': match['product_type'].values[0],
-                                        'product_name': match['product_name'].values[0],
+                                        'product_name': match['product_name'].values[0].encode('utf-8'),
                                         'shelf': shelf_number,
                                         'width': match['width_mm'].values[0],
                                         'bay_number': match['bay_number'].values[0],
@@ -1444,7 +1614,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                         'form_factor': match['form_factor'].values[0],
                                         'sub_brand': match['sub_brand'].values[0],
                                         'stacking_layer': match['stacking_layer'].values[0],
-                                        'shelf_px_total': int(match['shelf_px_total'].values[0])}
+                                        'shelf_px_total': int(match['shelf_px_total'].values[0]),
+                                        'sub_category': match['sub_category'].values[0]}
                                 else:
                                     sum_of_px_to_add = \
                                         temp_shelf_data.loc[
@@ -1460,7 +1631,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                             match[self.kpi_fetcher.RIGHT]) + int(sum_of_px_to_add),
                                         object_field: match[object_field].values[0],
                                         'product_type': match['product_type'].values[0],
-                                        'product_name': match['product_name'].values[0],
+                                        'product_name': match['product_name'].values[0].encode('utf-8'),
                                         'shelf': shelf_number,
                                         'width': match['width_mm'].values[0],
                                         'bay_number': match['bay_number'].values[0],
@@ -1580,7 +1751,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
     def facings_by_brand(self, params):
         for p in params.values()[0]:
-            if p.get('Formula') != 'custom_mars_3':
+            if p.get('Formula') != 'custom_mars_3' and p.get('Formula') != 'custom_mars_3_linear':
                 continue
             brand_facings_dict = {}
             values_list = str(p.get('Values')).split(', ')
@@ -1593,20 +1764,28 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 include_stacking = True
             else:
                 include_stacking = False
+            linear = False
+            if p.get('Formula') == 'custom_mars_3_linear':
+                linear = True
+            brand_category = p.get('Brand Category value')
+            if brand_category and ', ' in brand_category:
+                brand_category = brand_category.split(', ')
             object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, p.get('Type'),
                                                                  formula='number of facings',
                                                                  form_factor=form_factors,
-                                                                 brand_category=p.get('Brand Category value'),
-                                                                 include_stacking=include_stacking)
-            brands_to_check = \
-                self.scif.loc[self.scif['scene_id'].isin(scenes) & ~(self.scif['brand_name'].isin(values_list))][
+                                                                 brand_category=brand_category,
+                                                                 include_stacking=include_stacking,
+                                                                 linear=linear)
+            brands_to_check = self.scif.loc[self.scif['scene_id'].isin(scenes) &
+                                            ~(self.scif['brand_name'].isin(values_list))][
                     'brand_name'].unique().tolist()
             for brand in brands_to_check:
                 brand_facings = self.kpi_fetcher.get_object_facings(scenes, [brand], p.get('Type'),
                                                                     formula='number of facings',
                                                                     form_factor=form_factors,
-                                                                    brand_category=p.get('Brand Category value'),
-                                                                    include_stacking=include_stacking)
+                                                                    brand_category=brand_category,
+                                                                    include_stacking=include_stacking,
+                                                                    linear=linear)
                 brand_facings_dict[brand] = brand_facings
             if brand_facings_dict.values():
                 max_brand_facings = max(brand_facings_dict.values())
@@ -1661,7 +1840,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 elif p.get('#Mars KPI NAME') == 2254:
                     type_value = str(p.get('Type'))
                     values = str(p.get('Values')).split(', ')
-                    total_shelf_linear_size = self.calculate_layout_size(scenes, type_value, values)
+                    total_shelf_linear_size = self.calculate_layout_size(scenes, type_value, values)[0]
                     average_number_of_shelves_with_mars = self.calculate_linear_sos(scenes, type_value, values)
                     if average_number_of_shelves_with_mars:
                         mars_shelf_size2 = total_shelf_linear_size / average_number_of_shelves_with_mars

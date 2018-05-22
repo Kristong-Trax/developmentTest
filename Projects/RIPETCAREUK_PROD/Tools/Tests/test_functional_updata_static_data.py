@@ -3,7 +3,7 @@ import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Data.Testing.Seed import Seeder
+from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Utils.Testing.Case import TestCase
 from mock import patch
 from Projects.RIPETCAREUK_PROD.Tools.Tests.data_test_functional_marsuk import DataTestStaticUpdate

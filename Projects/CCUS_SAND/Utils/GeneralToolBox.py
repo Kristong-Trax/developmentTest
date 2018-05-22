@@ -5,8 +5,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Utils.PositionGraph import CCUSPositionGraphs
-from Projects.CCUS.Utils.Fetcher import CCUSQueries
+from Projects.CCUS_SAND.Utils.PositionGraph import CCUSPositionGraphs
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 

@@ -6,7 +6,7 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 
 from Projects.CCRU.Utils.TopSKU import CCRUTopSKUAssortment
 
@@ -32,7 +32,7 @@ class CCRUContract:
     @property
     def amz_conn(self):
         if not hasattr(self, '_amz_conn'):
-            self._amz_conn = BucketConnector(BUCKET)
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
         return self._amz_conn
 
     def get_json_file_content(self, file_name):

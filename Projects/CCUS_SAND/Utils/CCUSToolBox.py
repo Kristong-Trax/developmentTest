@@ -6,8 +6,8 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS.Utils.Fetcher import CCUSQueries
-from Projects.CCUS.Utils.ToolBox import ToolBox
+from Projects.CCUS_SAND.Utils.Fetcher import CCUSQueries
+from Projects.CCUS_SAND.Utils.ToolBox import ToolBox
 
 __author__ = 'ortal'
 MAX_PARAMS = 4

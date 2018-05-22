@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 # from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -14,9 +14,9 @@ from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 from Projects.INBEVTRADMX_SAND.Utils import GeoLocation
@@ -52,11 +52,9 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'TEMPLATE V2.5 KPIs TRAD (Change in Scores).xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template.xlsx')
         self.availability = Availability(self.data_provider)
-        self.sos = SOS(self.data_provider, self.output)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.survey = Survey(self.data_provider, self.output)
         self.geo = GeoLocation.Geo(self.rds_conn, self.session_uid, self.data_provider,
                                    self.kpi_static_data, self.common)
 
@@ -83,26 +81,67 @@ class INBEVTRADMXToolBox:
         :param relevant_columns: columns to check in the excel file
         :return: boolean
         """
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        # call the generic method from KPIUtils_v2
+        availability_score = self.availability.calculate_availability(**filters_dict)
+        # check if this score should pass or fail
+        return self.decide_availability_score(row, availability_score)
+
+    def create_availability_filtered_dictionary(self, relevant_columns, row):
+        """
+        this method creates a dictionary with keys according to the specific row in the template
+        :param relevant_columns: columns to create keys by
+        :param row: the specific row in the template
+        :return: dictionary
+        """
         # dictionary to send to the generic method
         filters_dict = {}
+        self.handle_exclude_skus(filters_dict, relevant_columns, row)
+        # fill the dictionary
+        for column_value in relevant_columns:
+            if column_value == 'store Additional Attribute 4' or column_value == 'store_type':
+                continue
+            filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
+        return filters_dict
+
+    def handle_exclude_skus(self, filters_dict, relevant_columns, row):
+        """
+        this method checks if there is value in 'exclude skus' column in the template.
+        if exists, it filters out the relevant skus from the calculation
+        :param filters_dict: filtered dictionary
+        :param relevant_columns: columns to create keys by
+        :param row: specific row to calculate
+        :return: None
+        """
         try:
             exclude_skus = row['exclude skus'].split(',')
         except AttributeError:
             exclude_skus = []
         if exclude_skus:
+            # filter out some product names according to template
             product_names = self.filter_product_names(exclude_skus)
             filters_dict['product_name'] = product_names
             relevant_columns.remove('exclude skus')
-        # fill the dictionary
-        for column_value in relevant_columns:
-            if column_value == 'Store Additional Attribute 4' or column_value == 'store_type':
-                continue
-            filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
-        # call the generic method from KPIUtils_v2
-        if self.availability.calculate_availability(**filters_dict) > 0:
-            return True
-        else:
+
+    @staticmethod
+    def decide_availability_score(row, availability_score):
+        """
+        this method decides if the score should pass or fail according to the template
+        :param row: scpecific row from template
+        :param availability_score: score
+        :return: Boolean
+        """
+        if availability_score == 0:
             return False
+        else:
+            if row['KPI Level 1 Name'] == 'Set Modeloramas' and row['KPI Level 3 Name'] == 'Hay o no hay Pop?':
+                if row['KPI Level 2 Name'] == 'Pop Exterior':
+                    return availability_score > 1
+                elif row['KPI Level 2 Name'] == 'Pop Interior':
+                    return availability_score > 2
+            else:
+                return True
 
     def calculate_sos_score(self, row, relevant_columns):
         """
@@ -111,15 +150,53 @@ class INBEVTRADMXToolBox:
         :param row: data frame to calculate from
         :return: share of shelf score
         """
+        # get df only with the correct template name
+        df = self.scif[self.scif.template_name == row['template_name']]
+
+        # sum of all the facings in df
+        facings = df.facings.values.sum()
+        if facings == 0:
+            return 0
+        # create dictionary for calculating
+        filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
+        # reduce the df only to relevant columns
+        df = df[filters_dict.keys()]
+
+        ratio = self.calculate_sos_ratio(df, filters_dict)
+        return ratio / facings
+
+    def calculate_sos_ratio(self, df, filters_dict):
+        ratio = 0
+        # iterate the data frame
+        for i, df_row in df.iterrows():
+            # initialize the boolean variable
+            bol = True
+            # iterate the filtered dictionary keys
+            for key in filters_dict.keys():
+                # check if the value in df row in in "key" column is in the filtered dictionary we created before
+                bol &= df_row[key] in filters_dict[key]
+            # that means success of the inner loop, that all the values matching for this data frame row
+            if bol:
+                # accumulate ratio
+                ratio = ratio + self.scif.facings.loc[i]
+        return ratio
+
+    def create_sos_filtered_dictionary(self, relevant_columns, row):
+        """
+        this method filters out relevant columns from the template fso we can calculate SOS easily
+        :param relevant_columns: relevant columns from temolates
+        :param row: specific row from template
+        :return: dictionary
+        """
         # dictionary to send to the generic method
         filters_dict = {}
+        self.handle_exclude_skus(filters_dict, relevant_columns, row)
         # fill the dictionary
         for column_value in relevant_columns:
             if column_value == 'Store Additional Attribute 4' or column_value == 'store_type':
                 continue
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
-        # call the generic method from KPIUtils_v2
-        return self.sos.calculate_share_of_shelf(filters_dict)
+        return filters_dict
 
     def calculate_survey_score(self, row):
         """
@@ -127,12 +204,18 @@ class INBEVTRADMXToolBox:
         :param row: data frame to calculate from
         :return: boolean
         """
-        survey_question = row['Survey question']
-        survey_answers = row['Possible Answer'].split(',')
-        # call the generic method from KPIUtils_v2
-        answer = self.survey.get_survey_answer(survey_question)
-        # call the generic method from KPIUtils_v2
-        return self.survey.check_survey_answer(survey_question, answer) in survey_answers
+        question_code = str(int(row['Survey Question Code']))
+        if not self.survey_response.empty and \
+                not self.survey_response[self.survey_response.code == question_code].empty:
+            answer = self.survey_response.selected_option_text[self.survey_response.code == question_code].values[0]
+            if answer == 'Si':
+                return True
+            else:
+                if row['KPI Level 2 Name'] == 'Primer Impacto' and answer == 'No tiene Enfirador':
+                    return True
+            return False
+        else:
+            return False
 
     def check_store_type(self, row, relevant_columns):
         """
@@ -276,6 +359,10 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         set_name = self.choose_correct_set_to_calculate(additional_attribute_4, sets)
+        # wrong value in additional attribute 4 - shouldn't calculate
+        if set_name == '':
+            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+            return -1
         # get only the part of the template that is related to this set
         set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
         # start calculating !
@@ -293,8 +380,10 @@ class INBEVTRADMXToolBox:
             set_name = sets[0]
         elif additional_attribute_4 == 'BA':
             set_name = sets[1]
-        else:
+        elif additional_attribute_4 == 'MODELORAMA':
             set_name = sets[2]
+        else:
+            return ''
         return set_name
 
     def main_calculation(self):

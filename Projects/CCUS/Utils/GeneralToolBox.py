@@ -8,7 +8,6 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCUS.Utils.PositionGraph import CCUSPositionGraphs
-from Projects.CCUS.Utils.Fetcher import CCUSQueries
 
 
 

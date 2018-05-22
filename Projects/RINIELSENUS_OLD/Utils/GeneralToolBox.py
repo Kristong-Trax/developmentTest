@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.RINIELSENUS_OLD.Utils.PositionGraph import PositionGraphs
+from Projects.RINIELSENUS_OLD.Utils.PositionGraph import RINIELSENUSPositionGraphs as PositionGraphs
 
 __author__ = 'Nimrod'
 

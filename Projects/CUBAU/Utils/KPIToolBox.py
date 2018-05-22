@@ -75,7 +75,7 @@ class CUBAUCUBAUToolBox:
         """
         if self.store_type == self.ON_PREMISE:
             sos_types = ['TAP', 'TRAX']
-        else:
+        elif self.store_type == self.OFF_PREMISE:
             sos_types = ['CUB', 'TRAX']
         self.update_custom_scif()
 

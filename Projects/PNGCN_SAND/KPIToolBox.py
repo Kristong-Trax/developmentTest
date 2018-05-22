@@ -128,6 +128,17 @@ class PNGCN_SANDPNGToolBox:
     def calculate_share_of_display(self):
         calculate_share_of_display(self.rds_conn, self.session_uid, self.data_provider)
 
+    def handle_db_total_number_of_display(self, display_counter):
+        """
+        This function handles writing to DB for KPI_SET TOTAL_DISPLAY_COUNT.
+        """
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['kpi_set_fk'].iloc[0]
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['kpi_fk'].iloc[0]
+        atomic_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['atomic_kpi_fk'].iloc[0]
+        self.write_to_db_result(set_fk, display_counter, self.LEVEL1)
+        self.write_to_db_result(kpi_fk, display_counter, self.LEVEL2)
+        self.write_to_db_result(atomic_fk, display_counter, self.LEVEL3)
+
     def calculate_total_number_of_display(self):
         """
         This function calculates the total number of display per session.
@@ -144,8 +155,7 @@ class PNGCN_SANDPNGToolBox:
                 display_counter += count*row[i].values[1]
             except IndexError:
                 Log.warning('The display:{} does not exist in the template.'.format(row[i].values[0]))
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['kpi_set_fk'].iloc[0]
-        self.write_to_db_result(set_fk, display_counter, self.LEVEL1)
+        self.handle_db_total_number_of_display(display_counter)
 
     def main_calculation(self):
         self.calculate_total_number_of_display()

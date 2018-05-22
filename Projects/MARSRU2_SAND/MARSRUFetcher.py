@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 
-from Projects.CCRU.Utils.JSON import JsonGenerator
+from KPIUtils.GlobalProjects.MARSRU.Utils.JSON_V2 import Json_V2Generator as JsonGenerator
 
 __author__ = 'urid'
 

@@ -16,37 +16,28 @@ BUCKET = 'traxuscalc'
 
 class Const:
 
-    SAS = "SAS"
-
     # P4 Template Update File:
-    SET_NAME_FIELD = 'L0 - SET'
-    KPI_NAME_FIELD = 'L1 - Equipment (scene type attribute 1)'
-    GROUP_NAME_FIELD = 'L2 - V3 Name'
-    PRODUCT_NAME_FIELD = 'L3 - Display Name POSM'
-    PRODUCT_SR_NAME_FIELD = 'Names of template in SR'
-    STORE_TYPE_FIELD = 'Filter stores by \'attribute 3\''
-    TEMPLATE_GROUP_FIELD = 'Filter scenes by \'template group\''
-    COLUMNS_FOR_STATIC = [SET_NAME_FIELD, KPI_NAME_FIELD, GROUP_NAME_FIELD, PRODUCT_NAME_FIELD]
+    KPI_NAME_FIELD = 'KPI Display Name'
+    GROUP_NAME_FIELD = 'Group Name'
+    PRODUCT_NAME_FIELD = 'Atomic KPI Name'
+    PRODUCT_SR_NAME_FIELD = 'Product Name'
+    COLUMNS_FOR_STATIC = [KPI_NAME_FIELD, GROUP_NAME_FIELD, PRODUCT_NAME_FIELD]
+    GROUP_NAME_P4 = 'Group Name'
 
     # static data
+    SAS_SET_NAME = 'SAS'
     P4_SET_NAME = 'POSM Status'
-    P3_SET_NAME = 'SK'
-    KPI_COUNT_NAME = '{} # {}'
+    SK_SET_NAME = 'SK'
+    P4_COUNT_FIXTURE = '{} # {}'
+    P3_COUNT_FIXTURE = '{} - {}'
     MAX_KPI_COUNT = 10
     GROUP_RELATIVE_SCORE = 1
     PRODUCT_RELATIVE_SCORE = 0
 
-    # P4 Template used in KPI:
-    GROUP_NAME_P4 = 'Group Name'
-    PRODUCT_SR_NAME_P4 = 'Product Name'
-    STORE_TYPE_P4 = 'Filter stores by \'attribute 3\''
-    TEMPLATE_GROUP_P4 = 'Template Group'
-
-    # kpi update
-    P4_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'p4_template.xlsx')
-    TMP_CACHE_SRC_FOLDER = '/home/{}/Desktop/'.format(getpass.getuser())
-    TMP_CATCH = os.path.join(TMP_CACHE_SRC_FOLDER, 'batru_old_p4_template.xlsx')
-
+    # sheets:
+    SAS_ZONE_SHEET = 'SAS Zone Compliance'
+    SK_SHEET = 'Sections'
+    POSM_SHEET = 'Availability'
 
     # generic names for DB and dicts:
     SET_NAME = "kpi_set_name"
@@ -55,6 +46,7 @@ class Const:
     SET_FK = "kpi_set_fk"
     KPI_FK = "kpi_fk"
     ATOMIC_FK = "atomic_kpi_fk"
+
     # p3 Template columns and adress:
     WEIGHT = 'Weight'
     MODEL_ID = 'model_id'
@@ -69,15 +61,15 @@ class Const:
         SKU_SEQUENCE: u'Порядок по master plano',
         SKU_REPEATING: u'Корректность удвоений'
     }
+
+    P4_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'p4_template.xlsx')
     P3_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'P3_template.xlsx')
-    P3_CONVERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'convert names.xlsx')
 
 
 class NewTemplate:
 
-    def __init__(self, set_name, path=None):
-        self.project = 'batru'
-        self.path = path
+    def __init__(self, project_name, set_name):
+        self.project = project_name
         self.log_suffix = '{}: '.format(self.project)
         self.queries = []
         self.kpi = set_name
@@ -86,25 +78,27 @@ class NewTemplate:
         self.kpi_counter = {'set': 0, 'kpi': 0, 'atomic': 0}
         self.data = pd.DataFrame()
         self.set_fk = self.get_set_fk(set_name)
-        if set_name == Const.P3_SET_NAME:
+        if set_name == Const.SK_SET_NAME:
             self.delete_static_DB()
             self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
-            self.kpi_static_data = self.get_kpi_static_data_p3()
+            self.kpi_static_data = self.get_kpi_data()
             self.get_kpis_from_template()
-        elif set_name == Const.SAS:
+        elif set_name == Const.SAS_SET_NAME:
             self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
-            self.kpi_static_data = self.get_kpi_data_sas()
+            self.kpi_static_data = self.get_kpi_data()
             self.get_kpis_from_template_sas()
         elif set_name == Const.P4_SET_NAME:
             self.delete_static_DB()
-            self.kpi_static_data = self.get_kpi_data_sas()
-            self.p4_template = pd.read_excel(self.path)
+            self.kpi_static_data = self.get_kpi_data()
+            self.p4_template = parse_template(Const.P4_PATH, Const.POSM_SHEET)
+            for column in self.p4_template.columns:
+                self.p4_template[column] = self.encode_column_in_df(self.p4_template, column)
             self.alreadyAddedAtomics = pd.DataFrame(columns=[Const.SET_NAME, Const.KPI_NAME, Const.GROUP_NAME_P4,
                                                              Const.ATOMIC_NAME])
 
     def get_kpis_from_template_sas(self):
         list_of_dicts = []
-        sections_template = parse_template(Const.P3_PATH, 'SAS Zone Compliance')
+        sections_template = parse_template(Const.P3_PATH, Const.SAS_ZONE_SHEET)
         fixtures = sections_template['Equipment'].unique()
         display_names = list(sections_template['display_name'].unique())
         display_names.append("No competitors in SAS Zone")
@@ -113,20 +107,21 @@ class NewTemplate:
                 if i == 0:
                     level_2_name = fixture
                 else:
-                    level_2_name = fixture + " - {}".format(i)
+                    level_2_name = Const.P3_COUNT_FIXTURE.format(fixture, i)
                 for level_3_name in display_names:
-                    kpi_dictionary = {Const.SET_NAME: "SAS",
+                    kpi_dictionary = {Const.SET_NAME: Const.SAS_SET_NAME,
                                       Const.KPI_NAME: level_2_name,
                                       Const.ATOMIC_NAME: level_3_name}
                     list_of_dicts.append(kpi_dictionary)
         self.data = pd.DataFrame(list_of_dicts)
 
+    @staticmethod
+    def encode_column_in_df(df, column_name):
+        return df[column_name].str.encode('utf-8')
+
     def get_kpis_from_template(self):
         list_of_dicts = []
-
-        # convert_names = parse_template(Const.P3_CONVERT_PATH, 'KPIs')
-
-        sections_template = parse_template(Const.P3_PATH, 'Sections')
+        sections_template = parse_template(Const.P3_PATH, Const.SK_SHEET)
         fixtures = sections_template['fixture'].unique()
         sections = sections_template['section_name'].unique()
         for fixture in fixtures:
@@ -144,8 +139,8 @@ class NewTemplate:
                         else:
                             level_3_name = name
                             relativ_score = 0
-                            display_text = Const.convert_names[name].encode('utf-8')
-                        kpi_dictionary = {Const.SET_NAME: "SK",
+                            display_text = self.encode_string(Const.convert_names[name])
+                        kpi_dictionary = {Const.SET_NAME: Const.SK_SET_NAME,
                                           Const.KPI_NAME: level_2_name,
                                           Const.ATOMIC_NAME: level_3_name,
                                           Const.MODEL_ID: model_id,
@@ -153,6 +148,14 @@ class NewTemplate:
                                           Const.DISPLAY_TEXT: display_text}
                         list_of_dicts.append(kpi_dictionary)
         self.data = pd.DataFrame(list_of_dicts)
+
+    @staticmethod
+    def encode_string(str):
+        try:
+            return str.replace("'", "\\'").encode('utf-8')
+        except:
+            Log.debug('The name {} is already coded'.format(str))
+            return str
 
     @property
     def rds_conn(self):
@@ -184,48 +187,33 @@ class NewTemplate:
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data.iloc[0][0]
 
-    def get_kpi_static_data_p3(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = """
-                select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
-                       kpi.display_text as kpi_name, kpi.pk as kpi_fk,
-                       kps.name as kpi_set_name, kps.pk as kpi_set_fk,
-                       api.model_id as section
-                from static.atomic_kpi api
-                left join static.kpi kpi on kpi.pk = api.kpi_fk
-                join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-                """
-        kpi_static_data = pd.read_sql_query(query, self.aws_conn.db)
-        return kpi_static_data
-
-    def get_kpi_data_sas(self):
+    def get_kpi_data(self):
         self.rds_conn.connect_rds()
         query = """
             select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk, api.description,
-                   kpi.display_text as kpi_name, kpi.pk as kpi_fk,
+                   kpi.display_text as kpi_name, kpi.pk as kpi_fk, api.model_id as section,
                    kps.name as kpi_set_name, kps.pk as kpi_set_fk
             from static.kpi_set kps
             left join static.kpi kpi on kps.pk = kpi.kpi_set_fk
             left join static.atomic_kpi api on kpi.pk = api.kpi_fk;
         """
         kpi_data = pd.read_sql_query(query, self.rds_conn.db)
+        str_columns = ['description', 'kpi_name', 'atomic_kpi_name', 'kpi_set_name', 'section']
+        for column in str_columns:
+            kpi_data[column] = self.encode_column_in_df(kpi_data, column)
         return kpi_data
 
     def handle_update(self):
         if self.kpi == Const.P4_SET_NAME:
             self.add_p4_to_static()
             self.commit_to_db()
-            self.update_templates_in_folder()
-        elif self.kpi == Const.P3_SET_NAME:
+        elif self.kpi == Const.SK_SET_NAME:
             self.add_kpis_to_static_p3()
             self.add_atomics_to_static_p3()
             Log.info('{} Sets, {} KPIs and {} Atomics have been added'.format(self.kpi_counter['set'],
                                                                               self.kpi_counter['kpi'],
                                                                               self.kpi_counter['atomic']))
-        elif self.kpi == Const.SAS:
+        elif self.kpi == Const.SAS_SET_NAME:
             self.add_kpis_to_static_sas()
             self.add_atomics_to_static_sas()
             Log.info('{} Sets, {} KPIs and {} Atomics have been added'.format(self.kpi_counter['set'],
@@ -237,10 +225,10 @@ class NewTemplate:
         self.aws_conn.connect_rds()
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
-            set_name = kpis.iloc[i][Const.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = kpis.iloc[i][Const.KPI_NAME].replace("'", "\\'").encode('utf-8')
-            if self.kpi_static_data[(self.kpi_static_data[Const.SET_NAME] == set_name) & (
-                        self.kpi_static_data[Const.KPI_NAME] == kpi_name)].empty:
+            set_name = self.encode_string(kpis.iloc[i][Const.SET_NAME])
+            kpi_name = self.encode_string(kpis.iloc[i][Const.KPI_NAME])
+            if self.kpi_static_data[(self.kpi_static_data[Const.SET_NAME] == set_name) &
+                    (self.kpi_static_data[Const.KPI_NAME] == kpi_name)].empty:
                 set_fk = self.kpi_static_data[self.kpi_static_data[
                                                   Const.SET_NAME] == set_name][Const.SET_FK].values[0]
                 level2_query = """
@@ -261,9 +249,9 @@ class NewTemplate:
         queries = []
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
-            set_name = atomic[Const.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = atomic[Const.KPI_NAME].replace("'", "\\'").encode('utf-8')
-            atomic_name = atomic[Const.ATOMIC_NAME].replace("'", "\\'").encode('utf-8')
+            set_name = self.encode_string(atomic[Const.SET_NAME])
+            kpi_name = self.encode_string(atomic[Const.KPI_NAME])
+            atomic_name = self.encode_string(atomic[Const.ATOMIC_NAME])
             names = [atomic_name]
             for index, name in enumerate(names):
                 if self.kpi_static_data[(self.kpi_static_data[Const.SET_NAME] == set_name) &
@@ -294,8 +282,8 @@ class NewTemplate:
         self.aws_conn.connect_rds()
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
-            set_name = kpis.iloc[i][Const.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = kpis.iloc[i][Const.KPI_NAME].replace("'", "\\'").encode('utf-8')
+            set_name = self.encode_string(kpis.iloc[i][Const.SET_NAME])
+            kpi_name = self.encode_string(kpis.iloc[i][Const.KPI_NAME])
             if self.kpi_static_data[(self.kpi_static_data[Const.SET_NAME] == set_name) &
                     (self.kpi_static_data[Const.KPI_NAME] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
@@ -319,12 +307,12 @@ class NewTemplate:
         queries = []
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
-            set_name = atomic[Const.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = atomic[Const.KPI_NAME].replace("'", "\\'").encode('utf-8')
-            atomic_name = atomic[Const.ATOMIC_NAME].replace("'", "\\'").encode('utf-8')
-            model_id = atomic[Const.MODEL_ID].replace("'", "\\'").encode('utf-8')
+            set_name = self.encode_string(atomic[Const.SET_NAME])
+            kpi_name = self.encode_string(atomic[Const.KPI_NAME])
+            atomic_name = self.encode_string(atomic[Const.ATOMIC_NAME])
+            model_id = self.encode_string(atomic[Const.MODEL_ID])
             relative_score = atomic[Const.RELATIVE_SCORE]
-            display_text = atomic[Const.DISPLAY_TEXT].replace("'", "\\'").encode('utf-8')
+            display_text = self.encode_string(atomic[Const.DISPLAY_TEXT])
             names = [atomic_name]
             for index, name in enumerate(names):
                 if self.kpi_static_data[(self.kpi_static_data[Const.SET_NAME] == set_name) &
@@ -353,10 +341,6 @@ class NewTemplate:
 
     def add_p4_to_static(self):
         template_for_static = self.p4_template[Const.COLUMNS_FOR_STATIC]
-        invalid = template_for_static[template_for_static[Const.SET_NAME_FIELD] != Const.P4_SET_NAME]
-        if not invalid.empty:
-            Log.warning('Set names: \'{}\' was not found'.format((invalid[Const.SET_NAME_FIELD].unique())))
-        template_for_static = template_for_static[template_for_static[Const.SET_NAME_FIELD] == Const.P4_SET_NAME]
         # Saves to static all KPI (equipments) with a counter.
         atomic_queries = []
         kpi_queries = []
@@ -366,34 +350,32 @@ class NewTemplate:
             for kpi_count in kpi_with_count:
                 if self.kpi_static_data[
                             (self.kpi_static_data['kpi_set_name'] == Const.P4_SET_NAME) &
-                            (self.kpi_static_data['kpi_name'].str.encode('utf-8') == kpi_count)].empty:
+                            (self.kpi_static_data['kpi_name'] == kpi_count)].empty:
                     kpi_queries.append(kpi_count)
         self.save_kpi_level(self.set_fk, kpi_queries)
         # We need to re-run query for updated kpis.
-        self.kpi_static_data = self.get_kpi_data_sas()
+        self.kpi_static_data = self.get_kpi_data()
         # This part is not combined with the loop above since it needs all kpis (with count) to be saved first.
         for kpi_name in kpi_names:
             atomics_for_static = template_for_static[template_for_static[Const.KPI_NAME_FIELD] == kpi_name]
             for i in xrange(len(atomics_for_static)):
                 row = atomics_for_static.iloc[i]
-                group = row[Const.GROUP_NAME_FIELD].replace("'", "''").encode('utf-8')
-                product = row[Const.PRODUCT_NAME_FIELD].replace("'", "''").encode('utf-8')
+                group = self.encode_string(row[Const.GROUP_NAME_FIELD])
+                product = self.encode_string(row[Const.PRODUCT_NAME_FIELD])
                 kpi_with_count = self.add_kpi_count(kpi_name)
                 #  This will create group and product atomics
                 for kpi in kpi_with_count:
                     is_exist = self.alreadyAddedAtomics[(self.alreadyAddedAtomics[
                                                              Const.SET_NAME] == Const.P4_SET_NAME) &
-                                                        ((self.alreadyAddedAtomics[Const.KPI_NAME] == kpi) |
-                                                        (self.alreadyAddedAtomics[
-                                                             Const.KPI_NAME] == kpi.decode('utf8'))) &
+                                                        (self.alreadyAddedAtomics[Const.KPI_NAME] == kpi) &
                                                         (self.alreadyAddedAtomics[Const.GROUP_NAME_P4] == group) &
                                                         (self.alreadyAddedAtomics[Const.ATOMIC_NAME] == product)]
                     if is_exist.empty:
                         try:
+
                             kpi_fk = self.kpi_static_data[(self.kpi_static_data[Const.SET_FK] == self.set_fk) &
-                                                          ((self.kpi_static_data[Const.KPI_NAME] == kpi) |
-                                                           (self.kpi_static_data[Const.KPI_NAME] == kpi.decode(
-                                                               'utf8')))][Const.KPI_FK].values[0]
+                                                          (self.kpi_static_data[Const.KPI_NAME] == kpi)][
+                                Const.KPI_FK].values[0]
                             dict_already_added = {Const.SET_NAME: Const.P4_SET_NAME, Const.KPI_NAME: kpi,
                                                   Const.GROUP_NAME_P4: group, Const.ATOMIC_NAME: product}
                             self.alreadyAddedAtomics = self.alreadyAddedAtomics.append(
@@ -420,12 +402,10 @@ class NewTemplate:
         if level == 3:
             existing = self.kpi_static_data[(self.kpi_static_data[Const.SET_FK] == self.set_fk) &
                                             (self.kpi_static_data[Const.KPI_FK] == data[0]) &
-                                            ((self.kpi_static_data[Const.ATOMIC_NAME] == data[1]) |
-                                             (self.kpi_static_data[Const.ATOMIC_NAME] == data[1].decode('utf-8')))]
+                                            (self.kpi_static_data[Const.ATOMIC_NAME] == data[1])]
         elif level == 2:
             existing = self.kpi_static_data[(self.kpi_static_data[Const.SET_FK] == self.set_fk) &
-                                            ((self.kpi_static_data[Const.KPI_NAME] == data[0].decode('utf-8')) |
-                                              (self.kpi_static_data[Const.KPI_NAME] == data[0]))]
+                                            (self.kpi_static_data[Const.KPI_NAME] == data[0])]
         else:
             Log.info('not valid level for checking new KPIs')
             return False
@@ -455,35 +435,13 @@ class NewTemplate:
         self.rds_conn.disconnect_rds()
 
     def add_kpi_count(self, kpi_name):
-        kpi_name = kpi_name.encode('utf-8')
         kpis = [kpi_name]
         i = 2
         while i <= Const.MAX_KPI_COUNT:
-            kpi = Const.KPI_COUNT_NAME.format(kpi_name, i)
+            kpi = Const.P4_COUNT_FIXTURE.format(kpi_name, i)
             kpis.append(kpi)
             i += 1
         return kpis
-
-    def p4_format_new_template(self):
-        self.p4_template = self.p4_template.rename(columns={Const.KPI_NAME_FIELD: Const.KPI_NAME,
-                                                            Const.PRODUCT_NAME_FIELD: Const.ATOMIC_NAME,
-                                                            Const.PRODUCT_SR_NAME_FIELD: Const.PRODUCT_SR_NAME_P4,
-                                                            Const.TEMPLATE_GROUP_FIELD: Const.TEMPLATE_GROUP_P4,
-                                                            Const.STORE_TYPE_FIELD: Const.STORE_TYPE_P4,
-                                                            Const.GROUP_NAME_FIELD: Const.GROUP_NAME_P4})
-
-        self.p4_template = self.p4_template[[Const.KPI_NAME, Const.GROUP_NAME_P4, Const.ATOMIC_NAME,
-                                             Const.PRODUCT_SR_NAME_P4, Const.STORE_TYPE_P4, Const.TEMPLATE_GROUP_P4]]
-
-    def update_templates_in_folder(self):
-        """
-        This will replace the current file to the new template.
-        :return:
-        """
-        self.p4_format_new_template()
-        if os.path.exists(Const.P4_PATH):
-            os.rename(Const.P4_PATH, Const.TMP_CATCH)
-        self.p4_template.to_excel(Const.P4_PATH)
 
     def commit_to_db(self):
         self.rds_conn.connect_rds()
@@ -497,15 +455,20 @@ class NewTemplate:
             count_for_show += 1
             if count_for_show % 10 == 0:
                 print 'There are {} / {}'.format(count_for_show, kpis_sum)
-            # except Err as e:
-            #     print
         self.rds_conn.db.commit()
         self.rds_conn.disconnect_rds()
 
 # if __name__ == '__main__':
 #     Config.init()
 #     LoggerInitializer.init('New Batru Template')
-#     template_path = '/home/Elyashiv/Downloads/P4-POSM-template.xlsx'
-#     kpi_name = Const.P4_SET_NAME
-#     template = NewTemplate(kpi_name, template_path)
-#     template.handle_update()
+#     project_name = 'batru-sand'
+#     kpi_names = [
+#         # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
+#         # the template in Data/StoreAssortment.csv, activate this line and run it.
+#         # Const.P4_SET_NAME,
+#         # Const.SK_SET_NAME,
+#         Const.SAS_SET_NAME,
+#     ]
+#     for kpi_name in kpi_names:
+#         template = NewTemplate(project_name, kpi_name)
+#         template.handle_update()

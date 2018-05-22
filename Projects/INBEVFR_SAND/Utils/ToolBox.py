@@ -4,11 +4,10 @@ from datetime import datetime
 import json
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.INBEVFR_SAND.Utils.PositionGraph import INBEVFR_SAND_PRODINBEVBEPositionGraphs
-from Projects.DIAGEOAU.Utils.GeneralToolBox import DIAGEOAUGENERALToolBox
 from Projects.INBEVFR_SAND.Utils.GeneralToolBox import INBEVFR_SAND_PRODINBEVBEGENERALToolBox
 
 __author__ = 'Nimrod'
@@ -98,7 +97,7 @@ class INBEVFR_SAND_PRODINBEVBEINBEVToolBox:
         self.match_display_in_scene = data.get('match_display_in_scene')
         self.general_tools = INBEVFR_SAND_PRODINBEVBEGENERALToolBox(data_provider, output,
                                                                kpi_static_data=self.kpi_static_data)
-        self.amz_conn = BucketConnector(BUCKET)
+        self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')

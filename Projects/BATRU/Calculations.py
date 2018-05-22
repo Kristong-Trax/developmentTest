@@ -25,12 +25,11 @@ class BATRUCalculations(BaseCalculationsScript):
 #     # data_provider.load_session_data(session)
 #     # output = Output()
 #     # BATRUCalculations(data_provider, output).run_project_calculations()
-#     sessions = ['75a1bacc-d927-46fa-9842-d91bf56dd69f',
-#                 'cf1f9d15-a4a1-4863-8fac-c9b4ed8f45eb',
-#                 '76607522-3199-4844-aab6-8114e78edf25',
-#                 'eb39d72c-b9cc-441d-9e7b-031d1babb313',
-#                 '78a6aaba-c5d6-4dd7-9fbb-8423792af0d1',
-#                 ]
+#     sessions = [
+#         '76607522-3199-4844-aab6-8114e78edf25',
+#         'eb39d72c-b9cc-441d-9e7b-031d1babb313',
+#         '78a6aaba-c5d6-4dd7-9fbb-8423792af0d1',
+#     ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

@@ -1,5 +1,6 @@
 
 import pandas as pd
+import os
 from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -23,7 +24,8 @@ SUB_CATEGORY_SETS_SUFFIX = '_SCat'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-
+DISPLAY_COUNT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'display_to_count.xlsx')
+TOTAL_DISPLAY_COUNT = 'Total_display_count'
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -124,7 +126,38 @@ class PNGToolBox:
     def calculate_share_of_display(self):
         calculate_share_of_display(self.rds_conn, self.session_uid, self.data_provider)
 
+    def handle_db_total_number_of_display(self, display_counter):
+        """
+        This function handles writing to DB for KPI_SET TOTAL_DISPLAY_COUNT.
+        """
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['kpi_set_fk'].iloc[0]
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['kpi_fk'].iloc[0]
+        atomic_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == TOTAL_DISPLAY_COUNT]['atomic_kpi_fk'].iloc[0]
+        self.write_to_db_result(set_fk, display_counter, self.LEVEL1)
+        self.write_to_db_result(kpi_fk, display_counter, self.LEVEL2)
+        self.write_to_db_result(atomic_fk, display_counter, self.LEVEL3)
+
+    def calculate_total_number_of_display(self):
+        """
+        This function calculates the total number of display per session.
+        It checks Data/display_to_count.xlsx and counts according to it each display that defined 'isPhysical'.
+        """
+        display_counter = 0
+        query = PNGQueries.get_display_count_per_name().format(self.session_uid)
+        total_display_count = pd.read_sql_query(query, self.rds_conn.db)
+        display_template = pd.read_excel(DISPLAY_COUNT_PATH)
+        for i in xrange(len(total_display_count)):
+            row = total_display_count.iloc(i)
+            try:
+                count = display_template.loc[display_template['name'] == row[i].values[0]]['count'].values[0]
+                display_counter += count*row[i].values[1]
+            except IndexError:
+                Log.warning('The display:{} does not exist in the template.'.format(row[i].values[0]))
+        self.handle_db_total_number_of_display(display_counter)
+
+
     def main_calculation(self):
+        self.calculate_total_number_of_display()
         self.calculate_empty_spaces()
         relevant_facings = self.scif[(~self.scif['product_type'].isin([self.IRRELEVANT, self.EMPTY])) &
                                      (self.scif['rlv_sos_sc'] == 1) &

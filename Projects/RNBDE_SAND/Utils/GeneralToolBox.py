@@ -3,7 +3,7 @@ import os
 import xlrd
 import json
 import pandas as pd
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from datetime import datetime
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -101,7 +101,7 @@ class RNBDE_SANDGENERALToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.amz_conn = BucketConnector(BUCKET)
+        self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})

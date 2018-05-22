@@ -26,4 +26,4 @@ class SANOFITRCalculations(BaseCalculationsScript):
 #     session = '3D081D8D-D6EF-4944-8926-9BC07D2DB22C'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     SANOFIAUCalculations(data_provider, output).run_project_calculations()
+#     SANOFITRCalculations(data_provider, output).run_project_calculations()

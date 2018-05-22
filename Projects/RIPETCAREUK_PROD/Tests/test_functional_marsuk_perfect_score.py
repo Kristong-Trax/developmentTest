@@ -4,7 +4,7 @@ from MySQLdb.cursors import DictCursor
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Data.Testing.Seed import Seeder
+from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Utils.Testing.Case import TestCase, skip
 from Trax.Utils.Testing.ConfigTest import TempTestConfig
 from mock import patch

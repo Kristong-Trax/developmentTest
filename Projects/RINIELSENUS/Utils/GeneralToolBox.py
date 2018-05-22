@@ -209,10 +209,34 @@ class MarsUsGENERALToolBox:
         denominator_width = self.calculate_share_space_length(**general_filters)
 
         if denominator_width == 0:
-            ratio = 0
+            ratio = None
         else:
             ratio = numerator_width / float(denominator_width)
         return ratio
+
+    def calculate_linear_share_of_shelf_numerator(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The Linear SOS ratio.
+        """
+        if include_empty == self.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+
+        return self.calculate_share_space_length(**dict(sos_filters, **general_filters))
+
+    def calculate_linear_share_of_shelf_denominator(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The Linear SOS ratio.
+        """
+        if include_empty == self.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+
+        return self.calculate_share_space_length(**general_filters)
 
     def calculate_share_space_length(self, include_empty=EXCLUDE_EMPTY, **filters):
         """

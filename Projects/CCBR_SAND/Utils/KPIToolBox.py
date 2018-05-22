@@ -4,6 +4,7 @@
 import time
 import pandas as pd
 import os
+import numpy as np
 
 from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -24,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v2.7 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v3.4 - KENGINE.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -79,7 +80,7 @@ class CCBRToolBox:
     def handle_simon_kpis(self):
         active_products = self.all_products.loc[self.all_products["is_active"] > 0]
         self.calculate_availability(active_products)
-        self.calculate_pricing(active_products)
+        self.calculate_pricing(self.all_products)
 
     def calculate_availability(self, active_products):
         active_products_pks = active_products['product_fk'].unique().tolist()
@@ -95,10 +96,11 @@ class CCBRToolBox:
                 self.write_to_db_result_new_tables(fk=Const.AVAILABILITY_PK, numerator_id=product, score='1',
                                                    denominator_id=template_fk, numerator_result='1', result=sum_facing)
 
-    def calculate_pricing(self, active_products):
-        active_products_fks_size = active_products[['product_fk', 'size']].fillna("")
+    def calculate_pricing(self, all_products):
+        only_sku_type_products = all_products.loc[all_products['product_type'] == 'SKU']
+        all_products_fks_size = only_sku_type_products[['product_fk', 'size']].fillna("")
         product_fks_and_prices = self.prices_per_session
-        merge_size_and_price = pd.merge(active_products_fks_size, product_fks_and_prices, how='left', on='product_fk')
+        merge_size_and_price = pd.merge(all_products_fks_size, product_fks_and_prices, how='left', on='product_fk')
         merge_size_and_price['value'] = merge_size_and_price['value'].fillna('0')
         for row in merge_size_and_price.itertuples():
             product = row[1] # row['product_fk']
@@ -184,6 +186,7 @@ class CCBRToolBox:
 
     def handle_group_count_atomics(self, atomic_name):
         rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME] == atomic_name]
+        scene_ids = []
         group_weight = 0
         group_result = 0
         group_target = 0
@@ -199,15 +202,22 @@ class CCBRToolBox:
             return
 
         for index, row in rows.iterrows():
-            weight = row[Const.WEIGHT]
-            sum_of_count, target, count_result = self.handle_count_row(row)
-            group_sum_of_count += sum_of_count
-            if count_result == 100:
-                group_target += target
-                group_weight += weight
-                if group_weight > 100:
-                    group_result = 1
-                    continue
+            if row[Const.TARGET_OPERATOR] == '+':
+                filtered_df = self.scif.copy()
+                filters = self.get_filters_from_row(row)
+                scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
+                filtered_scenes = scene_data['scene_id'].unique().tolist()
+                scene_ids = np.unique(scene_ids+filtered_scenes).tolist()
+                group_sum_of_count, group_result = len(scene_ids), len(scene_ids)
+            else:
+                weight = row[Const.WEIGHT]
+                sum_of_count, target, count_result = self.handle_count_row(row)
+                group_sum_of_count += sum_of_count
+                if count_result == 1:
+                    group_weight += weight
+                    if group_weight >= 100:
+                        group_result = 1
+                        break
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=group_sum_of_count,
@@ -217,7 +227,6 @@ class CCBRToolBox:
         count_type = row[Const.COUNT_TYPE]
         target = row[Const.TARGET]
         target_operator = row[Const.TARGET_OPERATOR]
-        products_filter = self.products['product_name'].values.tolist()
         product_template = row[Const.PRODUCT]
         store_type_filter = self.store_info['store_type'].values[0]
         store_type_template = row[Const.STORE_TYPE_TEMPLATE]
@@ -231,27 +240,30 @@ class CCBRToolBox:
             if store_type_filter not in store_types:
                 return 0,0,0
 
+        filtered_df = self.scif.copy()
+
         # filter product
         if product_template != "":
-            check = 0
             products_to_check = product_template.split(",")
-            for p in products_to_check:
-                if p in products_filter:
-                    check = 1
-                    continue
-            if check == 0:
+            filtered_df = filtered_df[filtered_df['product_name'].isin(products_to_check)]
+            if filtered_df.empty:
                 return 0,0,0
 
         # filter product size
-        filtered_df = self.scif
         if product_size != "":
             if product_measurement_unit == 'l':
                 product_size *= 1000
-            if product_size_operator == '<': filtered_df = self.scif[self.scif['size'] < product_size]
-            elif product_size_operator == '<=': filtered_df = self.scif[self.scif['size'] <= product_size]
-            elif product_size_operator == '>': filtered_df = self.scif[self.scif['size'] > product_size]
-            elif product_size_operator == '>=': filtered_df = self.scif[self.scif['size'] >= product_size]
-            elif product_size_operator == '=': filtered_df = self.scif[self.scif['size'] == product_size]
+
+            ml_df = filtered_df[filtered_df['size_unit'] == 'ml']
+            l_df = filtered_df[filtered_df['size_unit'] == 'l']
+            l_df['size'] = l_df['size'].apply((lambda x: x * 1000))
+            filtered_df = pd.concat([l_df,ml_df])
+
+            if product_size_operator == '<': filtered_df = filtered_df[filtered_df['size'] < product_size]
+            elif product_size_operator == '<=': filtered_df = filtered_df[filtered_df['size'] <= product_size]
+            elif product_size_operator == '>': filtered_df = filtered_df[filtered_df['size'] > product_size]
+            elif product_size_operator == '>=': filtered_df = filtered_df[filtered_df['size'] >= product_size]
+            elif product_size_operator == '=': filtered_df = filtered_df[filtered_df['size'] == product_size]
 
         filters = self.get_filters_from_row(row)
         count_of_units = 0
@@ -264,8 +276,10 @@ class CCBRToolBox:
         else:
             Log.warning("Couldn't find a correct COUNT variable in template")
 
-        if (target_operator == '<='):
+        if target_operator == '<=':
             count_result = 1 if (target <= count_of_units) else 0
+        elif target_operator == '+':
+            count_result = count_of_units
         else:
             count_result = 1 if (target >= count_of_units) else 0
         return count_of_units, target, count_result
@@ -400,6 +414,7 @@ class CCBRToolBox:
         for query in insert_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+        self.rds_conn.disconnect_rds()
 
     @staticmethod
     def merge_insert_queries(insert_queries):

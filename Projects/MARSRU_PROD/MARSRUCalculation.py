@@ -1,6 +1,6 @@
 import pandas as pd
 # from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-
+#
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
@@ -34,6 +34,8 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         tool_box.negative_neighbors(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.get_total_linear(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.get_placed_near(jg.project_kpi_dict.get('kpi_data')[0])
+        tool_box.check_availability_on_golden_shelves(jg.project_kpi_dict.get('kpi_data')[0])
+        tool_box.check_for_specific_display(jg.project_kpi_dict.get('kpi_data')[0])
         attributes_for_table1 = pd.DataFrame([(tool_box.set_name, tool_box.session_uid,
                                                tool_box.store_id, tool_box.visit_date.isoformat()
                                                , 100, 3)], columns=['kps_name', 'session_uid', 'store_fk',
@@ -44,20 +46,18 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         tool_box.commit_results_data()
         self.timer.stop('MARSRU_PRODMARSRUCalculations.run_project_calculations')
 
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('MARSRU_PROD calculations')
 #     Config.init()
 #     project_name = 'marsru-prod'
-# #     # session_uids = ['e85aad1b-ec24-4c2e-9eae-5cac69445f98']
-# #     # session_uids = ['39150053-177f-44f8-ae66-bcbc5d4b4455']  #sand
-# #     # session_uids = ['536a6ca9-92d4-48cb-89b7-0e2ece07beb9']  #prod
-# #     session_uids = ['9b8c7e73-3450-4b97-9792-42374aa7ef34']
-# #     session_uids = ['3d9d0649-3a21-4f3e-957d-ce13f49eae86']
-# #     session_uids = ['e039311c-d5c7-4cdd-b078-3d008a9da928']
-#     session_uids = ['64e8b300-610d-4f1b-9c64-3f29b871a1cd']
-#     # session_uids = ['64e8b300-610d-4f1b-9c64-3f29b871a1cd', 'e039311c-d5c7-4cdd-b078-3d008a9da928', '3d9d0649-3a21-4f3e-957d-ce13f49eae86',
-#     #                 '9b8c7e73-3450-4b97-9792-42374aa7ef34', '536a6ca9-92d4-48cb-89b7-0e2ece07beb9']
+#     session_uids = [
+#         '18dfa3e9-2301-4622-b3ea-396dbb962a93',
+#         '8a50066e-d94f-4db5-acf0-54cd2f8d71fc',
+#         '3b75a6a3-8776-4c88-8c50-32e229b3fa9a',
+#         'b5c90b60-9790-4919-935e-54eba9628ad2',
+#         'ca6b2fd5-8900-456f-8067-11be6e0f3b90',
+#         'aefb0be2-6557-454e-8bb4-6cc0de20a392',
+#     ]
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()
 #     for session in session_uids:

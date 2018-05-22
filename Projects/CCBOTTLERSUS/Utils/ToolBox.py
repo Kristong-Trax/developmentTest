@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.CCBOTTLERSUS.Utils.PositionGraph import BCIPositionGraphs
@@ -96,7 +96,7 @@ class BCIToolBox:
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
         self.general_tools = BCIGENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
-        self.amz_conn = BucketConnector(BUCKET)
+        self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')

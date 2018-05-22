@@ -1,6 +1,6 @@
 import os
 
-from Trax.Data.Testing.Seed import Seeder
+from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Utils.Testing.Case import TestCase
 from mock import patch, MagicMock
 import pandas as pd

@@ -11,7 +11,10 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     NegativeSequenceCalculation, DoubleAnchorAtomicKpiCalculation, SurveyAtomicKpiCalculation, \
     ShelfLevelPercentAtomicKpiCalculation, ShelfLevelSPTAtomicKpiCalculation, LinearFairShareSPTAtomicKpiCalculation, \
     VerticalSequenceAvgShelfCalculation, VerticalBlockOneSceneAtomicKpiCalculation, \
-    ShelvedTogetherAtomicKpiCalculation, NegativeAdjacencyCalculation
+    ShelvedTogetherAtomicKpiCalculation, NegativeAdjacencyCalculation, LinearFairShareNumeratorAtomicKpiCalculation, \
+    LinearFairShareDenominatorAtomicKpiCalculation, LinearPreferredRangeShareNumeratorAtomicKpiCalculation, \
+    LinearPreferredRangeShareDenominatorAtomicKpiCalculation, ShareOfAssortmentPrNumeratorAtomicKpiCalculation, \
+    SequenceSptCalculation
 from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
 
 
@@ -92,9 +95,14 @@ class Results(object):
             LinearFairShareAtomicKpiCalculation.kpi_type: LinearFairShareAtomicKpiCalculation,
             LinearFairShareSPTAtomicKpiCalculation.kpi_type: LinearFairShareSPTAtomicKpiCalculation,
             LinearPreferredRangeShareAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareAtomicKpiCalculation,
+            LinearFairShareNumeratorAtomicKpiCalculation.kpi_type: LinearFairShareNumeratorAtomicKpiCalculation,
+            LinearPreferredRangeShareNumeratorAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareNumeratorAtomicKpiCalculation,
+            LinearFairShareDenominatorAtomicKpiCalculation.kpi_type: LinearFairShareDenominatorAtomicKpiCalculation,
+            LinearPreferredRangeShareDenominatorAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareDenominatorAtomicKpiCalculation,
             ShareOfAssortmentPrAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrAtomicKpiCalculation,
             DistributionCalculation.kpi_type: DistributionCalculation,
             SequenceCalculation.kpi_type: SequenceCalculation,
+            SequenceSptCalculation.kpi_type: SequenceSptCalculation,
             NegativeSequenceCalculation.kpi_type: NegativeSequenceCalculation,
             ShelfLengthGreaterThenCalculation.kpi_type: ShelfLengthGreaterThenCalculation,
             ShelfLengthSmallerThenCalculation.kpi_type: ShelfLengthSmallerThenCalculation,
@@ -103,6 +111,7 @@ class Results(object):
             VerticalSequenceCalculation.kpi_type: VerticalSequenceCalculation,
             VerticalSequenceAvgShelfCalculation.kpi_type: VerticalSequenceAvgShelfCalculation,
             ShareOfAssortmentAtomicKpiCalculationNotPR.kpi_type: ShareOfAssortmentAtomicKpiCalculationNotPR,
+            ShareOfAssortmentPrNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrNumeratorAtomicKpiCalculation,
             ShelvedTogetherAtomicKpiCalculation.kpi_type: ShelvedTogetherAtomicKpiCalculation
         }
 

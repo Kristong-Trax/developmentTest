@@ -1,6 +1,7 @@
 import os
+
+from Trax.Data.Testing.SeedNew import Seeder
 from pandas.util.testing import assert_frame_equal
-from Trax.Data.Testing.Seed import Seeder
 from Trax.Utils.Testing.Case import TestCase
 from mock import patch
 import pandas as pd

@@ -125,7 +125,7 @@ class CCRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['21618739-3cb7-4ccb-922c-16a41aafc4d4']
+#     session_uids = ['851E8DC4-CC29-4F8E-AFB4-BE3E4C9921B9']
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()

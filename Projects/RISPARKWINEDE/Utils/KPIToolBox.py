@@ -3,15 +3,14 @@ import pandas as pd
 import numpy as np
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-#from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils.Calculations.Assortment import Assortment
-from Projects.RISPARKWINEDE_SAND.Utils.Fetcher import RISPARKWINEDEQueries
-from Projects.RISPARKWINEDE_SAND.Utils.GeneralToolBox import RISPARKWINEDEGENERALToolBox
+from Projects.RISPARKWINEDE.Utils.Fetcher import RISPARKWINEDEQueries
+from Projects.RISPARKWINEDE.Utils.GeneralToolBox import RISPARKWINEDEGENERALToolBox
 __author__ = 'nissand'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'

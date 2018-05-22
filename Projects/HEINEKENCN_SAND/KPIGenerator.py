@@ -1,7 +1,8 @@
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.HEINEKENCN.Utils.KPIToolBox import HEINEKENCNToolBox, log_runtime
-from Projects.HEINEKENCN.Utils.ToolBox import HandleTemplate
+from Projects.HEINEKENCN_SAND.Utils.KPIToolBox import HEINEKENCNToolBox
+from Projects.HEINEKENCN_SAND.Utils.ToolBox import HandleTemplate
 
 __author__ = 'Yasmin'
 

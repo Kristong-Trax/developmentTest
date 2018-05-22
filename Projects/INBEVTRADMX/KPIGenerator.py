@@ -3,14 +3,14 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.INBEVTRADMX.Utils.KPIToolBox import INBEVTRADMXToolBox
 
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-
 from KPIUtils_v2.DB.Common import Common
+
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'yoava'
 
 
-class Generator:
+class INBEVTRADMXGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -20,7 +20,7 @@ class Generator:
         self.tool_box = INBEVTRADMXToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
-    @log_runtime('Total Calculations', log_start=True)
+    @log_runtime('Total INBEVTRADMXCalculations', log_start=True)
     def main_function(self):
         """
         This is the main KPI calculation function.
@@ -28,4 +28,5 @@ class Generator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        self.tool_box.main_calculation()
+        else:
+            self.tool_box.main_calculation()

@@ -1,8 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
+#from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.MARSIN_SAND.KPIGenerator import MARSIN_SANDGenerator
 
@@ -17,11 +18,11 @@ class MARSIN_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('marsin calculations')
+#     Log.init('marsin calculations')
 #     Config.init()
 #     project_name = 'marsin-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '951e9ee9-8c20-4dc6-8bc3-84dcdac79988'
+#     session = 'ffe89476-315a-47be-ba6d-f7bc29a2c75d'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     MARSIN_SANDCalculations(data_provider, output).run_project_calculations()

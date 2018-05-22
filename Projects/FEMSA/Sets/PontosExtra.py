@@ -581,10 +581,10 @@ class PontosExtraCalculations(FEMSACalculationsGroup):
                                       (scif[Fd.MAN_FK] == Ma.M_FEMSA)),
                           target=4)
 
-if __name__ == '__main__':
-    members = [attr for attr in dir(Ca()) if not callable(attr) and not attr.startswith("__")]
-    d = Ca.__dict__
-    for member in members:
-        print ("Name: " + member)
-        print ("Value: " + str(d[member]))
-        pass
+# if __name__ == '__main__':
+#     members = [attr for attr in dir(Ca()) if not callable(attr) and not attr.startswith("__")]
+#     d = Ca.__dict__
+#     for member in members:
+#         print ("Name: " + member)
+#         print ("Value: " + str(d[member]))
+#         pass

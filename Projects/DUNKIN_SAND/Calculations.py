@@ -2,10 +2,9 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
 from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from mock import MagicMock
 
-from Projects.DIAGEOAU.KPIGenerator import DIAGEOAUGenerator
 from Projects.DUNKIN_SAND.KPIGenerator import CCUSGenerator
 
 __author__ = 'ortal'

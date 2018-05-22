@@ -427,8 +427,10 @@ class INBEVCIToolBox:
             if numerator_key == 'manufacturer':
                 numerator_key += '_local_name'
             numerator = self.scif[(self.scif[numerator_key].str.upper() == numerator_val.upper()) &
-                                  (self.scif[denominator_key].str.upper() == denominator_val.upper())]['facings'].sum()
-            denominator = self.scif[self.scif[denominator_key].str.upper() == denominator_val.upper()]['facings'].sum()
+                                  (self.scif[denominator_key].str.upper() == denominator_val.upper())][
+                'gross_len_ign_stack'].sum()
+            denominator = self.scif[self.scif[denominator_key].str.upper() == denominator_val.upper()][
+                'gross_len_ign_stack'].sum()
             if self.all_products[
                         self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty and \
                             numerator_val.upper() == "CCC":
@@ -479,6 +481,9 @@ class INBEVCIToolBox:
         """
         self.validate_groups_exist()
         scores = []
+        if not self.district_name:
+            Log.error("The session has no district, please define a district")
+            return
         parameters_df = self.template_sheet[set_name]
         product_groups = parameters_df[Const.ATOMIC_NAME].unique().tolist()
         level1_fk = self.get_kpi_fk_by_kpi_name(Const.TOP_BRAND_BLOCK)
@@ -518,7 +523,10 @@ class INBEVCIToolBox:
         """
             This function extracts the static new KPI data (new tables) and saves it into one global data frame.
         """
-        query = INBEVCIQueries.get_district_name(self.store_info.get('district_fk')[0])
+        district_fk = self.store_info.get('district_fk')[0]
+        if not district_fk:
+            return None
+        query = INBEVCIQueries.get_district_name(district_fk)
         district_name = pd.read_sql_query(query, self.rds_conn.db)
         return district_name.values[0][0]
 

@@ -240,7 +240,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             self.category_calculation(category)
 
         # for kpi_set in self.template_data[self.SET_NAME].unique().tolist():
-        for kpi_set in self.kpi_static_data['kpi_set_name'].unique():
+        for kpi_set in ['Golden Zone', 'Block', 'Adjacency', 'Perfect Execution', 'Anchor']:
             self.write_to_db_result(score=None, level=self.LEVEL1, kpi_set_name=kpi_set)
             kpi_set_fk = self.kpi_static_data.loc[self.kpi_static_data[
                                                       'kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
@@ -601,8 +601,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     # a = self.scif[self.scif['product_fk'].isin(a)]['product_name'].drop_duplicates()
                     # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
 
-                    edges_a = self.block.calculate_block_edges(a_target, **dict(group_a, **{'scene_fk': scene}))
-                    edges_b = self.block.calculate_block_edges(b_target, **dict(group_b, **{'scene_fk': scene}))
+                    edges_a = self.block.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
+                    edges_b = self.block.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':

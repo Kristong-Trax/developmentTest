@@ -4,7 +4,7 @@ import pandas as pd
 import json
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 
 from Projects.INTEG7.Utils.GeneralToolBox import GENERALToolBox
@@ -91,7 +91,7 @@ class DIAGEOToolBox:
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
         self.general_tools = GENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
-        self.amz_conn = BucketConnector(BUCKET)
+        self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
 
     def check_survey_answer(self, survey_text, target_answer):

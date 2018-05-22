@@ -10,7 +10,7 @@
 #     Config.init()
 #     project_name = 'inbevtradmx-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '032ed290-b23e-4e14-bacc-13c084aacf6a'
+#     session = '10aee05a-0d9a-4f93-ba8e-90efd4d5c1dc'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()

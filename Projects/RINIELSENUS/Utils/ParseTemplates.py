@@ -74,7 +74,11 @@ class ParseMarsUsTemplates(object):
         return data
 
     def get_mars_sales_data(self):
-        return pd.read_csv(os.path.join(TEMPLATE_PATH, 'Sales.csv'))
+        # return pd.read_csv(os.path.join(TEMPLATE_PATH, 'Sales.csv'))
+        template_file = pd.ExcelFile(self._get_template_path('sales', 1))
+        return self.parse_sheet(template_file, 'sales')
 
     def get_mars_spt_sales_data(self):
-        return pd.read_csv(os.path.join(TEMPLATE_PATH, 'Sales_spt.csv'))
+        template_file = pd.ExcelFile(self._get_template_path('sales', 0))
+        return self.parse_sheet(template_file, 'sales')
+        # return pd.read_csv(os.path.join(TEMPLATE_PATH, 'Sales_spt.csv'))

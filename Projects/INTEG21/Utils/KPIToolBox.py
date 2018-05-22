@@ -2,15 +2,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-
-from Projects.DIAGEOAU.Utils.Fetcher import DIAGEOAUQueries
-from Projects.DIAGEOAU.Utils.ToolBox import DIAGEOAUDIAGEOToolBox
 from Projects.INTEG21.Utils.Fetcher import INTEG21INBEVBEQueries
 from Projects.INTEG21.Utils.INBEVBEJSON import INTEG21INBEVBEJsonGenerator
 from Projects.INTEG21.Utils.ToolBox import INTEG21INBEVBEINBEVToolBox

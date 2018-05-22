@@ -7,8 +7,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCBOTTLERSUS.Utils.PositionGraph import BCIPositionGraphs
-
 __author__ = 'Nimrod'
 
 

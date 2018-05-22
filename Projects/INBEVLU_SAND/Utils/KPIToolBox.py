@@ -3,15 +3,11 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-
-from Projects.DIAGEOAU.Utils.Fetcher import DIAGEOAUQueries
-from Projects.DIAGEOAU.Utils.ToolBox import DIAGEOAUDIAGEOToolBox
 from Projects.INBEVLU_SAND.Utils.Fetcher import INBEVLU_SANDINBEVBEQueries
 from Projects.INBEVLU_SAND.Utils.INBEVBEJSON import INBEVLU_SANDINBEVBEJsonGenerator
 from Projects.INBEVLU_SAND.Utils.ToolBox import INBEVLU_SANDINBEVBEINBEVToolBox

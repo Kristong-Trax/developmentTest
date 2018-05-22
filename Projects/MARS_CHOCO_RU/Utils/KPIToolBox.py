@@ -1,7 +1,4 @@
-from _mysql import result
-
 import pandas as pd
-import math
 from datetime import datetime
 import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -10,9 +7,6 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 # from serial.tools.list_ports_osx import location_to_string
-from boto.sdb.db.sequence import fib
-from numpy.core.test_rational import numerator
-
 from Projects.MARS_CHOCO_RU.Utils.ParseTemplates import parse_template
 from Projects.MARS_CHOCO_RU.Utils.Fetcher import MARS_CHOCO_RUMARSQueries
 from Projects.MARS_CHOCO_RU.Utils.GeneralToolBox import MARS_CHOCO_RUMARSGENERALToolBox

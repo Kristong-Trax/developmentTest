@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 #from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.CCBR_SAND.KPIGenerator import CCBRGenerator
+from Projects.CCBR_PROD.KPIGenerator import CCBRGenerator
 
 __author__ = 'ilays'
 

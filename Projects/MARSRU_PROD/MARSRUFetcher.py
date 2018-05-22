@@ -33,7 +33,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
                            brand_category=None, sub_brands=[], sub_brands_to_exclude=[], include_stacking=False,
-                           form_factor_to_exclude=[]):
+                           form_factor_to_exclude=[], linear=False):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'BRAND in CAT': 'brand_name',
@@ -42,29 +42,29 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                   'MAN': 'manufacturer_name'}
         object_field = object_type_conversion[object_type]
         if object_type == 'MAN in CAT':
-            initial_result = \
-                self.scif.loc[
-                    (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
-                        self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (
-                        self.scif['manufacturer_name'] == MARS) & (~self.scif['product_type'].isin([OTHER]))]
+            initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
+                                           (self.scif[object_field].isin(objects)) &
+                                           (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
+                                           (self.scif['manufacturer_name'] == MARS) &
+                                           (~self.scif['product_type'].isin([OTHER]))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset='product_fk')
         elif object_type == 'BRAND in CAT':
-            initial_result = \
-                self.scif.loc[
-                    (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
-                        self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (
-                        self.scif['category'] == brand_category)]
+            if type(brand_category) is not list:
+                brand_category = [brand_category]
+            initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
+                                           (self.scif[object_field].isin(objects)) &
+                                           (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
+                                           (self.scif['category'].isin(brand_category))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset='product_fk')
         else:
-            initial_result = \
-                self.scif.loc[
-                    (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
-                        self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (
-                        ~self.scif['product_type'].isin([OTHER]))]
+            initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
+                                           (self.scif[object_field].isin(objects)) &
+                                           (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
+                                           (~self.scif['product_type'].isin([OTHER]))]
             merged_dfs = initial_result.merge(self.matches, how='left', on=['product_fk', 'scene_fk'],
                                               suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
@@ -93,6 +93,11 @@ class MARSRU_PRODMARSRUKPIFetcher:
         try:
             if "number of SKUs" in formula:
                 object_facings = len(final_result['product_ean_code'].unique())
+            elif linear:
+                if not include_stacking:
+                    object_facings = final_result['gross_len_ign_stack'].sum()
+                else:
+                    object_facings = final_result['gross_len_split_stack'].sum()
             else:
                 if not include_stacking:
                     object_facings = final_result['facings_ign_stack'].sum()

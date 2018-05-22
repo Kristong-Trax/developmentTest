@@ -3,7 +3,7 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
+from Projects.KCUS_SAND.Utils.KCUS_SANDJSON_2 import KCUS_SANDJson_2Generator
 
 __author__ = 'ortalk'
 
@@ -353,7 +353,7 @@ class KCUS_SANDFetcher:
         return df
 
     def get_golden_shelves(self, shelves_num):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
+        jg = KCUS_SANDJson_2Generator('marsru')
         jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
         targets = jg.project_kpi_dict['golden_shelves']
         final_shelves = []
@@ -367,7 +367,7 @@ class KCUS_SANDFetcher:
         return final_shelves
 
     def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
+        jg = KCUS_SANDJson_2Generator('marsru')
         jg.create_targets_json('answers_translation.xlsx', 'survey_answers_translation')
         targets = jg.project_kpi_dict['survey_answers_translation']
         answers_list = []
@@ -382,7 +382,7 @@ class KCUS_SANDFetcher:
         return final_answers
 
     def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
+        jg = KCUS_SANDJson_2Generator('marsru')
         jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
         targets = jg.project_kpi_dict['must_range_skus']
         skus_list = []

@@ -381,7 +381,8 @@ class PNGAUToolBox(PNGAUConsts):
                 elif kpi_type == self.COUNT_OF_SCENES:
                     brand_aggregation = 0
                     for group in self.template_groups.keys():
-                        result = int(self.tools.calculate_number_of_scenes(brand_fk=entity['brand_fk'],
+                        result = int(self.tools.calculate_number_of_scenes(category_fk=entity['category_fk'],
+                                                                           brand_fk=entity['brand_fk'],
                                                                            template_name=self.template_groups[group]))
                         brand_aggregation += result
                         kpi_name = params[self.KPI_NAME].format(category=entity['category'],

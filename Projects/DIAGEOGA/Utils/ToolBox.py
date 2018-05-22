@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
@@ -120,7 +120,7 @@ class DIAGEOGADIAGEOToolBox(DIAGEOGADIAGEOConsts):
     @property
     def amz_conn(self):
         if not hasattr(self, '_amz_conn'):
-            self._amz_conn = BucketConnector(BUCKET)
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
         return self._amz_conn
 
     def check_survey_answer(self, survey_text, target_answer):

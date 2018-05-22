@@ -1,41 +1,23 @@
 from Trax.Utils.Logging.Logger import Log
-# from haversine import haversine
+from haversine import haversine
 import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-
-from KPIUtils_v2.DB.Common import Common
-
-from math import radians, cos, sin, asin, sqrt
 
 __author__ = 'yoava'
 
 
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6272.8
+class INBEVTRADMXGeo:
 
-    dLat = radians(lat2 - lat1)
-    dLon = radians(lon2 - lon1)
-    lat1 = radians(lat1)
-    lat2 = radians(lat2)
-
-    a = sin(dLat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dLon / 2) ** 2
-    c = 2 * asin(sqrt(a))
-
-    return R * c * 1000
-
-
-class Geo:
-
-    GEO_THRESHOLD = 500
+    GEO_THRESHOLD = 100
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data):
+    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data, common):
         self.rds_conn = rds_conn
         self.session_uid = session_uid
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = common
         self.kpi_static_data = kpi_static_data
 
     @staticmethod
@@ -46,9 +28,20 @@ class Geo:
         :param first_point: first point
         :param second_point: second point
         :return: haversine distance
-        """
-        result = haversine(first_point.pos_lat, first_point.pos_long, second_point.pos_lat, second_point.pos_long)
+        # """
+        # result = haversine(first_point.pos_lat, first_point.pos_long, second_point.pos_lat, second_point.pos_long)
+        result = haversine((first_point.pos_lat, first_point.pos_long),
+                           (second_point.pos_lat, second_point.pos_long)) * 1000
         return "%.1f" % round(result, 1)
+
+    @staticmethod
+    def is_probes_location_none(probes_location):
+        return (probes_location.store_uid.values[0] is None) and (probes_location.pos_lat.values[0] is None) and \
+               (probes_location.pos_long.values[0] is None)
+
+    @staticmethod
+    def is_store_location_none(store_location):
+        return (store_location.pos_lat.values[0] is None) and (store_location.pos_long.values[0] is None)
 
     def calculate_geo_location(self):
         """"
@@ -64,14 +57,14 @@ class Geo:
                    AND (pos_lat <> 0 OR pos_long <> 0)
                    AND session_uid = '""" + str(session_uid) + "';"
         probes_location = pd.read_sql_query(probes_query, self.rds_conn.db)
-        if not probes_location.empty:
+        if not probes_location.empty and not self.is_probes_location_none(probes_location):
             store_uid = probes_location.store_uid.values[0]
             # get store location
             stores_query = """SELECT latitude as pos_lat , longitude as pos_long FROM static.stores s WHERE
                        s.delete_date IS NULL AND (s.test_store = 'N' OR s.test_store IS NULL) and
                        store_uid = '""" + str(store_uid) + "';"
             store_location = pd.read_sql_query(stores_query, self.rds_conn.db)
-            if not store_location.empty:
+            if not store_location.empty and not self.is_store_location_none(store_location):
                 distance = self.calculate_distance_between_two_points(store_location, probes_location)
                 Log.info("distance in session {} is {}".format(session_uid, distance))
                 return distance
@@ -99,7 +92,7 @@ class Geo:
     def write_atomic_kpi(self, kpi_name, geo_result):
         """
         this method prepares insert query to kpi_results table
-        :param kpi_name: Geo location
+        :param kpi_name: INBEVTRADMXGeo location
         :param geo_result: result of GEO location KPI
         :return: None
         """
@@ -151,4 +144,3 @@ class Geo:
         self.write_atomic_kpi(kpi_name, geo_result)
         self.write_kpi(kpi_name, geo_result)
         self.write_kpi_set(kpi_name, geo_result)
-        self.common.commit_results_data()

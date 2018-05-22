@@ -46,3 +46,12 @@ class PNGQueries(object):
             INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text, presentation_order, display)
             VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');""".format(kpi_fk, name, name, name, 1, 'Y'))
         return queries
+
+    @staticmethod
+    def get_display_count_per_name():
+        return """
+            select d.display_name, count(*) AS 'display_count'
+            from probedata.match_display_in_scene m
+            join probedata.scene s on s.pk = m.scene_fk
+            join static.display d on d.pk = m.display_fk
+            where s.session_uid = '{}' AND d.is_physical = 1 GROUP BY display_name;"""

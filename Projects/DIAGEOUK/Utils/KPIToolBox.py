@@ -8,7 +8,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Projects.DIAGEOUK_SAND.Utils.ParseTemplates import parse_template
+from Projects.DIAGEOUK.Utils.ParseTemplates import parse_template
 from Projects.DIAGEOUK.Utils.Fetcher import DIAGEOUKQueries
 from Projects.DIAGEOUK.Utils.ToolBox import DIAGEOUKDIAGEOToolBox
 

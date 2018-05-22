@@ -5,7 +5,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOAU.Utils.KPIToolBox import DIAGEOAUToolBox, log_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.INTEG21.Utils.KPIToolBox import INTEG21INBEVBEToolBox
 
 __author__ = 'urid'

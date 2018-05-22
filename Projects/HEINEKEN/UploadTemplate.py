@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Aws.S3Connector import BucketConnector
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
@@ -61,7 +61,7 @@ class NewTemplate:
     @property
     def amz_conn(self):
         if not hasattr(self, '_amz_conn'):
-            self._amz_conn = BucketConnector(BUCKET)
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
         return self._amz_conn
 
     @property

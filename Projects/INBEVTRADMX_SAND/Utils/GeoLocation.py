@@ -1,26 +1,26 @@
 from Trax.Utils.Logging.Logger import Log
-# from haversine import haversine
+from haversine import haversine
 import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 
-from math import radians, cos, sin, asin, sqrt
+# from math import radians, cos, sin, asin, sqrt
 
 __author__ = 'yoava'
 
 
-def haversine(lat1, lon1, lat2, lon2):
-    r = 6272.8
-
-    d_lat = radians(lat2 - lat1)
-    d_lon = radians(lon2 - lon1)
-    lat1 = radians(lat1)
-    lat2 = radians(lat2)
-
-    a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
-    c = 2 * asin(sqrt(a))
-
-    return r * c * 1000
+# def haversine2(lat1, lon1, lat2, lon2):
+#     r = 6272.8
+#
+#     d_lat = radians(lat2 - lat1)
+#     d_lon = radians(lon2 - lon1)
+#     lat1 = radians(lat1)
+#     lat2 = radians(lat2)
+#
+#     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+#     c = 2 * asin(sqrt(a))
+#
+#     return r * c * 1000
 
 
 class Geo:
@@ -46,7 +46,9 @@ class Geo:
         :param second_point: second point
         :return: haversine distance
         """
-        result = haversine(first_point.pos_lat, first_point.pos_long, second_point.pos_lat, second_point.pos_long)
+        # result = haversine(first_point.pos_lat, first_point.pos_long, second_point.pos_lat, second_point.pos_long)
+        result = haversine((first_point.pos_lat, first_point.pos_long),
+                           (second_point.pos_lat, second_point.pos_long)) * 1000
         return "%.1f" % round(result, 1)
 
     @staticmethod

@@ -8,6 +8,7 @@ from Projects.RINIELSENUS.Utils.Const import TEMPLATE_NAME, DENOMINATOR_FILTER_F
 from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Utils.DesignPatterns.Decorators import classproperty
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 __author__ = 'nethanel'
 
@@ -19,6 +20,7 @@ class KpiAtomicKpisCalculator(object):
         self._preferred_range = preferred_range
         self._sales_data = None
         self.survey_response = self._data_provider['survey_responses']
+        self.block = Block(data_provider=data_provider)
 
     @abc.abstractproperty
     def kpi_type(self):
@@ -105,6 +107,9 @@ class KpiAtomicKpisCalculator(object):
             if key == 'Private Label':
                 section_sub_section_products = self._get_allowed_filters(filters)
                 allowed_bulk.intersection_update(section_sub_section_products)
+            if key == 'Segment_SPT' and value == ['None']:
+                allowed_bulk = set(products[products['Segment_SPT'].isin([None])]['product_fk'].tolist())
+
             allowed_products.update(allowed_bulk)
 
         return {'product_fk': list(allowed_products)}
@@ -288,6 +293,10 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
         allowed_filter = self._get_allowed_products(allowed, filters)
+
+        if atomic_kpi_data['atomic'] == 'Are Meaty Cat Treats blocked?':
+            allowed_filter = None
+
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
@@ -857,14 +866,56 @@ class LinearFairShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters, **denominator_filters)
-        result = round(((sos * 100) / sales) * 100, 2)
-        if result == 0:
+        if sos == None:
             return np.nan
+        elif sos == 0:
+            return 0
+        result = round(((sos * 100) / sales) * 100, 2)
         return result
 
     @classproperty
     def kpi_type(self):
         return 'Share of Shelf Linear / Share of Sales'
+
+
+class LinearFairShareNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_sales_ratio(atomic_kpi_data['set'], **filters)
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        if atomic_kpi_data['atomic'] == 'MARS Space goal':
+            sales = 20
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+        denominator_filters = self.get_denominator_filters(filters)
+        return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Share of Shelf Linear / Share of Sales - numerator'
+
+
+class LinearFairShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_sales_ratio(atomic_kpi_data['set'], **filters)
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        if atomic_kpi_data['atomic'] == 'MARS Space goal':
+            sales = 20
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+        denominator_filters = self.get_denominator_filters(filters)
+        return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Share of Shelf Linear / Share of Sales - denominator'
 
 
 class LinearFairShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
@@ -879,9 +930,11 @@ class LinearFairShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
         filters.update(scene_type_filter)
         denominator_filters = self.get_denominator_filters(filters)
         sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters, **denominator_filters)
-        result = round(((sos * 100) / sales) * 100, 2)
-        if result == 0:
+        if sos == None:
             return np.nan
+        elif sos == 0:
+            return 0
+        result = round(((sos * 100) / sales) * 100, 2)
         return result
 
     @classproperty
@@ -903,14 +956,56 @@ class LinearPreferredRangeShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
         denominator_filters = self.get_denominator_filters(numerator_filters)
         denominator_filters.update(self._get_preferred_range_filter())
         sos = self._tools.calculate_linear_share_of_shelf(sos_filters=numerator_filters, **denominator_filters)
-        result = round(((sos * 100) / sales) * 100, 2)
-        if result == 0:
+        if sos == None:
             return np.nan
+        elif sos == 0:
+            return 0
+        result = round(((sos * 100) / sales) * 100, 2)
         return result
 
     @classproperty
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales'
+
+
+class LinearPreferredRangeShareNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        sales = self.get_sales_ratio(atomic_kpi_data['set'])
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        numerator_filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        numerator_filters.update(scene_type_filter)
+        numerator_filters.update(self._get_preferred_range_filter())
+        denominator_filters = self.get_denominator_filters(numerator_filters)
+        denominator_filters.update(self._get_preferred_range_filter())
+        return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=numerator_filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Linear Share of shelf in Preferred Range / Share of Sales - numerator'
+
+
+class LinearPreferredRangeShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        sales = self.get_sales_ratio(atomic_kpi_data['set'])
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        numerator_filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        numerator_filters.update(scene_type_filter)
+        numerator_filters.update(self._get_preferred_range_filter())
+        denominator_filters = self.get_denominator_filters(numerator_filters)
+        denominator_filters.update(self._get_preferred_range_filter())
+        return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=numerator_filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Linear Share of shelf in Preferred Range / Share of Sales - denominator'
 
 
 class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
@@ -958,6 +1053,45 @@ class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
     @classproperty
     def kpi_type(self):
         return 'NBIL SOA'
+
+
+class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        result = np.nan
+        nbil_products = atomic_kpi_data['nbil_products']
+        if not nbil_products.empty:
+            products = self._data_provider.all_products[['product_ean_code']].copy()
+            products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            if not relevant_ean_codes.empty:
+                relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
+                relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
+
+                scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
+                                                             value=atomic_kpi_data['scene_types'])
+                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                shelves_filter = self._get_preferred_range_filter()
+                filters = {}
+                filters.update(scene_type_filter)
+                filters.update(ean_code_filter)
+                filters.update(shelves_filter)
+                num_of_assorted_products = self._tools.calculate_assortment(**filters)
+
+                if not relevant_ean_codes_either.empty:
+                    for either_number in relevant_ean_codes_either['either'].unique().tolist():
+                        relevant_eans = relevant_ean_codes_either[relevant_ean_codes_either['either'] == either_number]
+                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        filters.update(ean_code_filter)
+                        result = self._tools.calculate_assortment(**filters)
+                        if result:
+                            num_of_assorted_products += 1
+
+                result = num_of_assorted_products
+        return result
+
+    @classproperty
+    def kpi_type(self):
+        return 'NBIL SOA - numerator'
 
 
 class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
@@ -1099,6 +1233,11 @@ class NegativeAdjacencyCalculation(BaseSSequenceCalculation):
         if scif_matches == 0:
             return 0
 
+        # a = self._data_provider.scene_item_facts
+        # a = a[a['scene_id'].isin(scenes_list)]
+        # b = a[a['Customer_Brand'].isin(['MILK-BONE', 'BLUE'])]
+        # b['scene_id'].unique().tolist()
+
         for scene in scenes_list:
             general_filters.update({'scene_id': scene})
             score = self._tools.calculate_non_proximity(tested_filters=filters['A'],
@@ -1181,6 +1320,96 @@ class SequenceCalculation(BaseSSequenceCalculation):
     @staticmethod
     def _both_sides_false(seq_dict):
         return all(not seq for seq in seq_dict.values())
+
+
+class SequenceSptCalculation(BaseSSequenceCalculation):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        result = 0
+        directions = ['left_to_right', 'right_to_left']
+        order_by, order_sequence = self._get_order_sequence(atomic_kpi_data)
+        filters = atomic_kpi_data['filters'].copy()
+        target = atomic_kpi_data['target']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+
+        scenes_list = self._get_scene_list(filters)
+
+        for scene in scenes_list:
+            scene_filter = filters.copy()
+            scene_filter.update({'scene_fk': scene})
+            scene_filter.pop('template_name')
+            edges_blocks = {}
+
+            scene_sequence_values = self._get_scene_sequence_values(scene_filter, order_by)
+
+            sequence_filters = []
+            for value in order_sequence:
+                if value in scene_sequence_values:
+                    organ_filter = filters.copy()
+                    organ_filter.pop('template_name')
+                    organ_filter.update({order_by: value})
+                    organ_filter.update({'scene_fk': scene})
+                    sequence_filters.append(organ_filter)
+
+            filters_length = len(sequence_filters)
+
+            if filters_length == 0:
+                continue
+            if filters_length == 1 and not target:
+                result = 100
+                continue
+            elif filters_length == 1 and target:
+                continue
+
+            scene_sequence = dict((direction, True) for direction in directions)
+            at_least_one = dict((direction, False) for direction in directions)
+
+            edges_blocks = self._edges_blocks(sequence_filters)
+
+            for i in range(0, filters_length - 1):
+                anchor = sequence_filters[i]
+                tested = sequence_filters[i + 1]
+                anchor_edge_block = edges_blocks[i]
+                tested_edge_block = edges_blocks[i + 1]
+                for direction in directions:
+                    seq = self.calculate_relative_block_position(anchor_edge_block, tested_edge_block, direction)
+                    at_least_one[direction] = seq or at_least_one[direction]
+                    scene_sequence[direction] = seq and at_least_one[direction]
+                    if self._both_sides_true(at_least_one) or self._both_sides_false(scene_sequence):
+                        return 0
+            result = 100
+        return result
+
+    @staticmethod
+    def _both_sides_true(seq_dict):
+        return all(seq for seq in seq_dict.values())
+
+    @staticmethod
+    def _both_sides_false(seq_dict):
+        return all(not seq for seq in seq_dict.values())
+
+    def _edges_blocks(self, sequence_filters):
+        result_block_edges = {}
+        for i in xrange(len(sequence_filters)):
+            filters = sequence_filters[i]
+            result = self.block.calculate_block_edges(biggest_block=True, **filters)
+            result_block_edges[i] = result['visual']
+        return result_block_edges
+
+    @staticmethod
+    def calculate_relative_block_position(edges_a, edges_b, direction):
+        if edges_a and edges_b:
+            if direction == 'left_to_right':
+                if edges_a['right'] <= edges_b['left']:
+                    return True
+            elif direction == 'right_to_left':
+                if edges_b['right'] <= edges_a['left']:
+                    return True
+        return False
+
+    @classproperty
+    def kpi_type(self):
+        return 'sequence spt'
 
 
 class VerticalSequenceCalculation(BaseSSequenceCalculation):
@@ -1380,7 +1609,7 @@ class MiddleShelfCalculation(KpiAtomicKpisCalculator):
             filters['A'].update(scene_shelf_filter)
             filters['B'].update(scene_shelf_filter)
             sos = self._tools.calculate_linear_share_of_shelf(sos_filters=filters['B'], **filters['A'])
-            if sos >= atomic_kpi_data['target']:
+            if sos and sos >= atomic_kpi_data['target']:
                 return 100
         return 0
 

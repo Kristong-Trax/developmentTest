@@ -144,6 +144,76 @@ class MARSRU_SANDMARSRUKPIToolBox:
     #     kpi_level_3_results = self.data_provider.add_session_fields_old_tables(kpi_level_3_results)
     #     return kpi_level_3_results
 
+
+    def check_for_specific_display(self, params):
+        """
+        This function checks if a specific display( = scene type) exists in a store
+        """
+        formula_type = 'check_specific_display'
+        for p in params.values()[0]:
+            if p.get('Formula') != formula_type:
+                continue
+            result = 1
+            scene_param = p.get('Values')
+            filtered_scif = self.scif.loc[self.scif['template_name'] == scene_param]
+            if filtered_scif.empty:
+                result = 0
+            self.insert_to_level_2_and_level_3(p, result)
+        return
+
+    def get_product_fk(self, sku_list):
+        """
+        This function gets a list of SKU and returns a list of the product fk of those SKU list
+        """
+        product_fk_list = []
+        for sku in sku_list:
+            temp_df = self.products.loc[self.products['product_ean_code'] == sku]['product_fk']
+            product_fk_list.append((int)(temp_df.values[0]))
+        return product_fk_list
+
+    def insert_to_level_2_and_level_3(self, p, score):
+        """
+        This function handles writing to DB level 2 & 3
+        """
+        kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
+        attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+        self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
+        attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+        self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
+
+    def check_availability_on_golden_shelves(self, params):
+        """
+        This function is used to calculate availability for given SKU on golden shelves (#3,4 from bottom)
+        """
+        formula_type = 'availability_on_golden_shelves'
+        for p in params.values()[0]:
+            if p.get('Formula') != formula_type:
+                continue
+            result = 1
+            relevant_shelves = [3, 4]
+            golden_shelves_filtered_df = self.match_product_in_scene.loc[
+                (self.match_product_in_scene['shelf_number_from_bottom'].isin(relevant_shelves))]
+            if golden_shelves_filtered_df.empty:
+                Log.info("In the session {} there are not shelves that stands in the "
+                         "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
+                self.insert_to_level_2_and_level_3(p, result)    # failed
+                continue
+            sku_list = p.get('Values').split()
+            product_fk_list = self.get_product_fk(sku_list)
+            bays = golden_shelves_filtered_df['bay_number'].unique().tolist()
+            for bay in bays:
+                current_bay_filter = golden_shelves_filtered_df.loc[golden_shelves_filtered_df['bay_number'] == bay]
+                shelves = current_bay_filter['shelf_number'].unique().tolist()
+                for shelf in shelves:
+                    shelf_filter = current_bay_filter.loc[current_bay_filter['shelf_number'] == shelf]
+                    filtered_shelf_by_products = shelf_filter.loc[(shelf_filter['product_fk'].isin(product_fk_list))]
+                    if len(filtered_shelf_by_products['product_fk'].unique()) != len(product_fk_list):
+                        result = 0
+                        break
+                if result == 0:
+                    break
+            self.insert_to_level_2_and_level_3(p, result)
+
     def get_store_Att5(self):
         store_att5 = self.kpi_fetcher.get_store_att5(self.store_id)
 
