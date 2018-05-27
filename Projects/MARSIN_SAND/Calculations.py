@@ -22,7 +22,7 @@ class MARSIN_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'marsin-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'ffe89476-315a-47be-ba6d-f7bc29a2c75d'
+#     session = 'faca16aa-cf53-4e7c-a4a1-9b9ad5b77ad6'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     MARSIN_SANDCalculations(data_provider, output).run_project_calculations()

@@ -161,20 +161,26 @@ class INBEVTRADMXToolBox:
         filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
         # reduce the df only to relevant columns
         df = df[filters_dict.keys()]
-
-        ratio = self.calculate_sos_ratio(df, filters_dict)
+        # check if it's invasion KPI for the special case
+        inv = row['KPI Level 3 Name'][:3] == 'Inv'
+        ratio = self.calculate_sos_ratio(df, filters_dict, inv)
         return ratio / facings
 
-    def calculate_sos_ratio(self, df, filters_dict):
+    def calculate_sos_ratio(self, df, filters_dict, inv):
         ratio = 0
         # iterate the data frame
         for i, df_row in df.iterrows():
             # initialize the boolean variable
             bol = True
+            # special case that the customer asked
+            if inv and df_row.product_type == 'Empty':
+                ratio = ratio + self.scif.facings.loc[i]
+                continue
             # iterate the filtered dictionary keys
-            for key in filters_dict.keys():
-                # check if the value in df row in in "key" column is in the filtered dictionary we created before
-                bol &= df_row[key] in filters_dict[key]
+            else:
+                for key in filters_dict.keys():
+                    # check if the value in df row in in "key" column is in the filtered dictionary we created before
+                    bol &= df_row[key] in filters_dict[key]
             # that means success of the inner loop, that all the values matching for this data frame row
             if bol:
                 # accumulate ratio
@@ -394,4 +400,3 @@ class INBEVTRADMXToolBox:
         # calculate from template
         self.calculate_kpi_set_from_template()
         self.common.commit_results_data()
-

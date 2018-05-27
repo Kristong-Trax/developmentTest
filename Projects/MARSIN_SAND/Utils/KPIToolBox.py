@@ -213,7 +213,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                                             level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
-                    group_scores[kpi_group][0] += kpi_score
+                    group_scores[kpi_group][0] += (1 if kpi_score > 0 and kpi_type in NewScore else kpi_score)
                     group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
@@ -395,7 +395,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         result = 0 if denominator_result == 0 else round(numerator_result / float(denominator_result),2)
         threshold = float(kpi_data[self.template_id])
         result = round(result/float(threshold),2)
-        score = 0 if result < THRESHOLD*threshold else 1 if result >= 1 else result
+        score = 0 if result < threshold else 1 if result >= 1 else result
         self.write_to_db_result(atomic_fk, (score, round(score * 100, 1), threshold * 100), level=self.LEVEL3)
         return score
 
@@ -421,11 +421,11 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 for sub_product in product.split(self.SEPARATOR3):
                     sub_product_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                            product_ean_code=sub_product)
-                    #sub_product_score = 1 if sub_product_result >= 1 else 0
+                    sub_product_score = 1 if sub_product_result >= 1 else 0
                     if sub_product_result >= 1:
                         product_result = 1
-                    value = None
-                    s = self.save_result_for_product(params, sub_product, (value, sub_product_result,1))
+                    #value = None
+                    s = self.save_result_for_product(params, sub_product, (sub_product_score, sub_product_result,1))
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
                 result += product_result

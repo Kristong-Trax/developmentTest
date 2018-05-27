@@ -12,6 +12,7 @@ __author__ = 'urid'
 
 class MARSRU2_SANDMARSRUCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
+        return
         self.timer.start()  # use log.time_message
         tool_box = MARSRU2_SANDMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
         jg = MARSRU2_SANDMARSRUJsonGenerator('marsru-sand')

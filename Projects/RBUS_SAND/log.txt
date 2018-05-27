@@ -733,3 +733,385 @@ KeyboardInterrupt[0m
 [43m[30m2018-05-17 11:32:36,446 - rbus-sand calculations - 26801 - WARNING - {"message": "get_credentials: Failed to retrieve credentials from vault: exception is :Login to vault failed 1 tiems. last login resulted errors: [u'entry for role yoava@TraxRetail.com not found']", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "92a0ca6", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 393}[0m
 [43m[30m2018-05-17 11:32:36,449 - rbus-sand calculations - 26801 - WARNING - {"message": "Traceback (most recent call last):\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/Factory.py\", line 87, in get_credentials\n    token = cls.cloud_adapter.get_vault_token(force)\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 92, in get_vault_token\n    self._login_vault_request()\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 68, in _login_vault_request\n    self._check_for_errors(result, retries)\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 82, in _check_for_errors\n    return self._login_vault_request(retries - 1)\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 68, in _login_vault_request\n    self._check_for_errors(result, retries)\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 83, in _check_for_errors\n    raise Exception(VaultRequest.LOGIN_FAILED_ERR.format(VaultResource.RETRY_AMOUNT, errors))\nException: Login to vault failed 1 tiems. last login resulted errors: [u'entry for role yoava@TraxRetail.com not found']\n", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a2d05a8", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 1398}[0m
 [34m2018-05-17 11:32:39,609 - rbus-sand calculations - 26801 - INFO - {"message": "get_credentials: get request returned errors: [u'entry for role yoava@TraxRetail.com not found']", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "fc56a0b", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 306}[0m
+[34m2018-05-23 10:22:14,137 - rbus-sand calculations - 10572 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "DEV", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 273}[0m
+[34m2018-05-23 10:22:14,142 - rbus-sand calculations - 10572 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "DEV", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 253}[0m
+[34m2018-05-23 10:22:14,142 - rbus-sand calculations - 10572 - INFO - {"message": "Log level set to \"INFO\"", "environment": "DEV", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 223}[0m
+[34m2018-05-23 10:22:14,143 - rbus-sand calculations - 10572 - INFO - {"message": "Environment set to \"Dev\"", "environment": "DEV", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 224}[0m
+[34m2018-05-23 10:22:14,144 - rbus-sand calculations - 10572 - INFO - {"message": "Process PID is 10572", "environment": "DEV", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 218}[0m
+[43m[30m2018-05-23 10:22:14,145 - rbus-sand calculations - 10572 - WARNING - {"message": "Unable to access vault while running in dev environment.", "environment": "DEV", "application": "rbus-sand calculations", "id": "9ea9e69", "process": "10.0.0.87:Local", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 254}[0m
+[34m2018-05-23 10:22:14,243 - rbus-sand calculations - 10572 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "DEV", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 255}[0m
+[43m[30m2018-05-23 10:22:14,243 - rbus-sand calculations - 10572 - WARNING - {"message": "Unable to access vault while running in dev environment.", "environment": "DEV", "application": "rbus-sand calculations", "id": "9ea9e69", "process": "10.0.0.87:Local", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 254}[0m
+[34m2018-05-23 10:22:37,067 - rbus-sand calculations - 10617 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:22:38,111 - rbus-sand calculations - 10617 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:22:38,112 - rbus-sand calculations - 10617 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:22:38,114 - rbus-sand calculations - 10617 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:22:38,117 - rbus-sand calculations - 10617 - INFO - {"message": "Process PID is 10617", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[34m2018-05-23 10:22:41,665 - rbus-sand calculations - 10617 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[31m[1m2018-05-23 10:22:44,385 - rbus-sand calculations - 10572 - ERROR - {
+    "message": "Could not load projects data into memory.\n10.4.4.3:27017: [Errno 113] No route to host",
+    "environment": "DEV",
+    "application": "rbus-sand calculations",
+    "id": "b62e1f9",
+    "process": "10.0.0.87:Local",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py\", line 63, in _load_data",
+        "    for project in projects_cursor:",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py\", line 1046, in next",
+        "    if len(self.__data) or self._refresh():",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py\", line 970, in _refresh",
+        "    self.__batch_size))",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py\", line 819, in __send_message",
+        "    **kwargs)",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/mongo_client.py\", line 749, in _send_message_with_response",
+        "    server = topology.select_server(selector)",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py\", line 141, in select_server",
+        "    address))",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py\", line 117, in select_servers",
+        "    self._error_message(selector))",
+        "ServerSelectionTimeoutError: 10.4.4.3:27017: [Errno 113] No route to host"
+    ],
+    "size": 1658
+}[0m
+[34m2018-05-23 10:22:44,403 - rbus-sand calculations - 10572 - INFO - {"message": "Trying to reconnect in 5 seconds. Trial 1 out of 3", "environment": "DEV", "application": "rbus-sand calculations", "id": "8e7df18", "process": "10.0.0.87:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 248}[0m
+[43m[30m2018-05-23 10:22:49,412 - rbus-sand calculations - 10572 - WARNING - {"message": "Unable to access vault while running in dev environment.", "environment": "DEV", "application": "rbus-sand calculations", "id": "9ea9e69", "process": "10.0.0.87:Local", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 254}[0m
+[45m[1m[30m2018-05-23 10:22:49,594 - rbus-sand calculations - 10617 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "fb54f8d", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 23, in <module>
+    data_provider = KEngineDataProvider(project_name)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 152, in __init__
+    self.orm_session = orm_session if orm_session is not None else OrmSession(project_name, writable=True)
+  File "/home/yoava/dev/theGarage/Trax/Data/Orm/OrmCore.py", line 58, in __call__
+    project_instances = ProjectStore.get_project(project)
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 322, in get_project
+    cls._check_invalidation_condition(use_cache)
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 99, in _check_invalidation_condition
+    cls._load_data()
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 63, in _load_data
+    for project in projects_cursor:
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 1046, in next
+    if len(self.__data) or self._refresh():
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 988, in _refresh
+    self.__max_time_ms))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 819, in __send_message
+    **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/mongo_client.py", line 766, in _send_message_with_response
+    exhaust)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/mongo_client.py", line 777, in _reset_on_error
+    return func(*args, **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/server.py", line 107, in send_message_with_response
+    response_data = sock_info.receive_message(1, request_id)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/pool.py", line 233, in receive_message
+    self._raise_connection_failure(error)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/pool.py", line 333, in _raise_connection_failure
+    raise error
+KeyboardInterrupt[0m
+[34m2018-05-23 10:22:56,298 - rbus-sand calculations - 10675 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:22:57,358 - rbus-sand calculations - 10675 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:22:57,359 - rbus-sand calculations - 10675 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:22:57,361 - rbus-sand calculations - 10675 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:22:57,364 - rbus-sand calculations - 10675 - INFO - {"message": "Process PID is 10675", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[34m2018-05-23 10:23:00,990 - rbus-sand calculations - 10675 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[34m2018-05-23 10:23:09,665 - rbus-sand calculations - 10675 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "id": "07865dd", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[45m[1m[30m2018-05-23 10:23:11,682 - rbus-sand calculations - 10572 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "DEV", "application": "rbus-sand calculations", "id": "922bf98", "process": "10.0.0.87:Local", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 229}
+Traceback (most recent call last):
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 23, in <module>
+    data_provider = KEngineDataProvider(project_name)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 152, in __init__
+    self.orm_session = orm_session if orm_session is not None else OrmSession(project_name, writable=True)
+  File "/home/yoava/dev/theGarage/Trax/Data/Orm/OrmCore.py", line 58, in __call__
+    project_instances = ProjectStore.get_project(project)
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 322, in get_project
+    cls._check_invalidation_condition(use_cache)
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 99, in _check_invalidation_condition
+    cls._load_data()
+  File "/home/yoava/dev/theGarage/Trax/Data/Projects/Store.py", line 63, in _load_data
+    for project in projects_cursor:
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 1046, in next
+    if len(self.__data) or self._refresh():
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 970, in _refresh
+    self.__batch_size))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 819, in __send_message
+    **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/mongo_client.py", line 749, in _send_message_with_response
+    server = topology.select_server(selector)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py", line 141, in select_server
+    address))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py", line 126, in select_servers
+    self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/threading.py", line 358, in wait
+    _sleep(delay)
+KeyboardInterrupt[0m
+[45m[1m[30m2018-05-23 10:23:13,514 - rbus-sand calculations - 10675 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "ffab1c2", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 26, in <module>
+    data_provider.load_session_data(session)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 242, in load_session_data
+    self._init_session_info(session_uid)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 407, in _init_session_info
+    self._data[Data.SESSION_INFO] = session_gateway.get_session_info(session_uid)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/AceOrmDBGateway.py", line 550, in get_session_info
+    return self.perform_query(query)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/AceOrmDBGateway.py", line 348, in perform_query
+    query_results = self._session.execute(query.replace('\n', ''), kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/orm/session.py", line 1176, in execute
+    bind, close_with_result=True).execute(clause, params or {})
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/orm/session.py", line 1042, in _connection_for_bind
+    conn = engine.contextual_connect(**kw)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/base.py", line 2123, in contextual_connect
+    self._wrap_pool_connect(self.pool.connect, None),
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/base.py", line 2158, in _wrap_pool_connect
+    return fn()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 403, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 782, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 532, in checkout
+    rec = pool._do_get()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 1277, in _do_get
+    return self._create_connection()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 350, in _create_connection
+    return _ConnectionRecord(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 477, in __init__
+    self.__connect(first_connect_check=True)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 667, in __connect
+    connection = pool._invoke_creator(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/strategies.py", line 105, in connect
+    return dialect.connect(*cargs, **cparams)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/default.py", line 410, in connect
+    return self.dbapi.connect(*cargs, **cparams)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/__init__.py", line 81, in Connect
+    return Connection(*args, **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/connections.py", line 221, in __init__
+    self.set_character_set(charset)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/connections.py", line 312, in set_character_set
+    super(Connection, self).set_character_set(charset)
+KeyboardInterrupt[0m
+[43m[30m2018-05-23 10:23:13,575 - rbus-sand calculations - 10675 - WARNING - {"message": "Destructor disconnected from project rbus-sand since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "id": "73e97dd", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 281}[0m
+[34m2018-05-23 10:23:17,328 - rbus-sand calculations - 10731 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:23:18,381 - rbus-sand calculations - 10731 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:23:18,382 - rbus-sand calculations - 10731 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:23:18,384 - rbus-sand calculations - 10731 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:23:18,386 - rbus-sand calculations - 10731 - INFO - {"message": "Process PID is 10731", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[34m2018-05-23 10:23:21,879 - rbus-sand calculations - 10731 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[34m2018-05-23 10:23:31,309 - rbus-sand calculations - 10731 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "id": "07865dd", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-05-23 10:23:37,970 - rbus-sand calculations - 10731 - INFO - {"message": "Initialize the data_provider with session data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 3.876, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 343}[0m
+[34m2018-05-23 10:23:59,672 - rbus-sand calculations - 10731 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 21.69, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 314}[0m
+[43m[30m2018-05-23 10:24:01,338 - rbus-sand calculations - 10731 - WARNING - {"message": "Scenes in DB [181, 182, 183] are different from scenes received from barrier [] for project rbus-sand session b6ce555b-763d-404a-b1d7-b514f3bb9bae", "environment": "PROD", "application": "rbus-sand calculations", "id": "f027b84", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 340}[0m
+[34m2018-05-23 10:24:14,143 - rbus-sand calculations - 10731 - INFO - {"message": "_init_session_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 14.463, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 316}[0m
+[34m2018-05-23 10:24:18,436 - rbus-sand calculations - 10731 - INFO - {"message": "_init_report_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.291, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 314}[0m
+[34m2018-05-23 10:24:23,046 - rbus-sand calculations - 10731 - INFO - {"message": "_init_reporting_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.609, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 317}[0m
+[34m2018-05-23 10:24:29,147 - rbus-sand calculations - 10731 - INFO - {"message": "_init_store_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 6.099, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 313}[0m
+[34m2018-05-23 10:24:35,620 - rbus-sand calculations - 10731 - INFO - {"message": "_init_decision_unit_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 6.464, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 321}[0m
+[45m[1m[30m2018-05-23 10:25:27,967 - rbus-sand calculations - 10731 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "a33a93f", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 28, in <module>
+    RBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 15, in run_project_calculations
+    RBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/KPIGenerator.py", line 16, in __init__
+    self.tool_box = RBUSToolBox(self.data_provider, self.output)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 122, in __init__
+    self.kpi_static_data = self.get_kpi_static_data()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 122, in __init__
+    self.kpi_static_data = self.get_kpi_static_data()
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 880, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:18564)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 843, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:17925)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[34m2018-05-23 10:25:36,390 - rbus-sand calculations - 10869 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:25:37,449 - rbus-sand calculations - 10869 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:25:37,453 - rbus-sand calculations - 10869 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:25:37,457 - rbus-sand calculations - 10869 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:25:37,460 - rbus-sand calculations - 10869 - INFO - {"message": "Process PID is 10869", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[34m2018-05-23 10:25:41,319 - rbus-sand calculations - 10869 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[34m2018-05-23 10:25:50,271 - rbus-sand calculations - 10869 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "id": "07865dd", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-05-23 10:25:57,083 - rbus-sand calculations - 10869 - INFO - {"message": "Initialize the data_provider with session data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.073, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 343}[0m
+[45m[1m[30m2018-05-23 10:26:03,662 - rbus-sand calculations - 10869 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "c126409", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 26, in <module>
+    data_provider.load_session_data(session)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 244, in load_session_data
+    self._init_static_data()
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/DataProvider.py", line 426, in _init_static_data
+    self._data[Data.VISIT_DATE], self.timer)
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/StaticProvider.py", line 107, in init_data
+    static_gateway.get_all_excluded_products()
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/AceOrmDBGateway.py", line 1021, in get_all_excluded_products
+    return self.perform_query(query_excluded_templates), \
+  File "/home/yoava/dev/theGarage/Trax/Algo/Calculations/Core/AceOrmDBGateway.py", line 348, in perform_query
+    query_results = self._session.execute(query.replace('\n', ''), kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/orm/session.py", line 1176, in execute
+    bind, close_with_result=True).execute(clause, params or {})
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/orm/session.py", line 1042, in _connection_for_bind
+    conn = engine.contextual_connect(**kw)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/base.py", line 2123, in contextual_connect
+    self._wrap_pool_connect(self.pool.connect, None),
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/base.py", line 2158, in _wrap_pool_connect
+    return fn()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 403, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 782, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 532, in checkout
+    rec = pool._do_get()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 1277, in _do_get
+    return self._create_connection()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 350, in _create_connection
+    return _ConnectionRecord(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 477, in __init__
+    self.__connect(first_connect_check=True)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/pool.py", line 667, in __connect
+    connection = pool._invoke_creator(self)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/strategies.py", line 105, in connect
+    return dialect.connect(*cargs, **cparams)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/sqlalchemy/engine/default.py", line 410, in connect
+    return self.dbapi.connect(*cargs, **cparams)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/__init__.py", line 81, in Connect
+    return Connection(*args, **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/connections.py", line 221, in __init__
+    self.set_character_set(charset)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/connections.py", line 312, in set_character_set
+    super(Connection, self).set_character_set(charset)
+KeyboardInterrupt[0m
+[43m[30m2018-05-23 10:26:03,746 - rbus-sand calculations - 10869 - WARNING - {"message": "Destructor disconnected from project rbus-sand since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "id": "73e97dd", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 281}[0m
+[34m2018-05-23 10:31:53,286 - rbus-sand calculations - 11387 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:31:54,337 - rbus-sand calculations - 11387 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:31:54,339 - rbus-sand calculations - 11387 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:31:54,341 - rbus-sand calculations - 11387 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:31:54,344 - rbus-sand calculations - 11387 - INFO - {"message": "Process PID is 11387", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[34m2018-05-23 10:31:58,579 - rbus-sand calculations - 11387 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[34m2018-05-23 10:32:06,729 - rbus-sand calculations - 11387 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "id": "07865dd", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-05-23 10:32:17,789 - rbus-sand calculations - 11387 - INFO - {"message": "Initialize the data_provider with session data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 3.179, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 343}[0m
+[34m2018-05-23 10:32:34,690 - rbus-sand calculations - 11387 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 16.887, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 315}[0m
+[43m[30m2018-05-23 10:32:36,870 - rbus-sand calculations - 11387 - WARNING - {"message": "Scenes in DB [181, 182, 183] are different from scenes received from barrier [] for project rbus-sand session b6ce555b-763d-404a-b1d7-b514f3bb9bae", "environment": "PROD", "application": "rbus-sand calculations", "id": "f027b84", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 340}[0m
+[34m2018-05-23 10:32:55,471 - rbus-sand calculations - 11387 - INFO - {"message": "_init_session_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 20.774, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 316}[0m
+[34m2018-05-23 10:32:59,761 - rbus-sand calculations - 11387 - INFO - {"message": "_init_report_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.287, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 314}[0m
+[34m2018-05-23 10:33:04,116 - rbus-sand calculations - 11387 - INFO - {"message": "_init_reporting_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.354, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 317}[0m
+[34m2018-05-23 10:33:14,197 - rbus-sand calculations - 11387 - INFO - {"message": "_init_store_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 10.079, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 314}[0m
+[34m2018-05-23 10:33:23,960 - rbus-sand calculations - 11387 - INFO - {"message": "_init_decision_unit_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 9.76, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 320}[0m
+[34m2018-05-23 10:33:27,568 - rbus-sand calculations - 11387 - INFO - {"message": "Total Calculations started at 2018-05-23 07:33:27.568183", "environment": "PROD", "application": "rbus-sand calculations", "id": "ff8941b", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 250}[0m
+[45m[1m[30m2018-05-23 10:34:01,647 - rbus-sand calculations - 11387 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "27ee7c5", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 28, in <module>
+    RBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 15, in run_project_calculations
+    RBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 447, in main_calculation
+    self.calculate_placement_count()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 151, in calculate_placement_count
+    value = self.get_scene_count(df, template_name)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 138, in get_scene_count
+    return len(df['scene_fk'][df.template_name == template_name].unique())
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 138, in get_scene_count
+    return len(df['scene_fk'][df.template_name == template_name].unique())
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 758, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:16066)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 749, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:15912)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[43m[30m2018-05-23 10:34:01,967 - rbus-sand calculations - 11387 - WARNING - {"message": "Destructor disconnected from project rbus-sand since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "id": "73e97dd", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 281}[0m
+[34m2018-05-23 10:34:09,261 - rbus-sand calculations - 11565 - INFO - {"message": "Log is saved to /home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "id": "e4f45c9", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 269}[0m
+[34m2018-05-23 10:34:10,287 - rbus-sand calculations - 11565 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "id": "5a0218e", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-05-23 10:34:10,288 - rbus-sand calculations - 11565 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "91be4f6", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 219}[0m
+[34m2018-05-23 10:34:10,289 - rbus-sand calculations - 11565 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "id": "fff274d", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 221}[0m
+[34m2018-05-23 10:34:10,291 - rbus-sand calculations - 11565 - INFO - {"message": "Process PID is 11565", "environment": "PROD", "application": "rbus-sand calculations", "id": "b12bfbf", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 214}[0m
+[43m[30m2018-05-23 10:34:41,329 - rbus-sand calculations - 11565 - WARNING - {"message": "get_credentials: Failed to retrieve credentials from vault: exception is :HTTPSConnectionPool(host='vault.trax-cloud.com', port=443): Max retries exceeded with url: /v1/auth/aws/login (Caused by ConnectTimeoutError(<urllib3.connection.VerifiedHTTPSConnection object at 0x6b4f0d0>, 'Connection to vault.trax-cloud.com timed out. (connect timeout=5)'))", "environment": "PROD", "application": "rbus-sand calculations", "id": "92a0ca6", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 544}[0m
+[43m[30m2018-05-23 10:34:41,342 - rbus-sand calculations - 11565 - WARNING - {"message": "Traceback (most recent call last):\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/Factory.py\", line 87, in get_credentials\n    token = cls.cloud_adapter.get_vault_token(force)\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 92, in get_vault_token\n    self._login_vault_request()\n  File \"/home/yoava/dev/theGarage/Trax/Cloud/Services/Connector/ConnectorAdapter.py\", line 67, in _login_vault_request\n    result = json.loads(requests.post(url=self.login_vault_url, data=data, timeout=VAULT_TOKEN_REQUEST_TIMEOUT).text)\n  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/requests/api.py\", line 112, in post\n    return request('post', url, data=data, json=json, **kwargs)\n  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/requests/api.py\", line 58, in request\n    return session.request(method=method, url=url, **kwargs)\n  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/requests/sessions.py\", line 502, in request\n    resp = self.send(prep, **send_kwargs)\n  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/requests/sessions.py\", line 612, in send\n    r = adapter.send(request, **kwargs)\n  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/requests/adapters.py\", line 496, in send\n    raise ConnectTimeout(e, request=request)\nConnectTimeout: HTTPSConnectionPool(host='vault.trax-cloud.com', port=443): Max retries exceeded with url: /v1/auth/aws/login (Caused by ConnectTimeoutError(<urllib3.connection.VerifiedHTTPSConnection object at 0x6b4f0d0>, 'Connection to vault.trax-cloud.com timed out. (connect timeout=5)'))\n", "environment": "PROD", "application": "rbus-sand calculations", "id": "a2d05a8", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 1899}[0m
+[34m2018-05-23 10:34:48,980 - rbus-sand calculations - 11565 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "id": "e08ec6a", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 251}[0m
+[34m2018-05-23 10:35:11,411 - rbus-sand calculations - 11565 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "id": "07865dd", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-05-23 10:35:18,358 - rbus-sand calculations - 11565 - INFO - {"message": "Initialize the data_provider with session data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 3.487, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 343}[0m
+[34m2018-05-23 10:35:38,319 - rbus-sand calculations - 11565 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 19.955, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 315}[0m
+[43m[30m2018-05-23 10:35:39,817 - rbus-sand calculations - 11565 - WARNING - {"message": "Scenes in DB [181, 182, 183] are different from scenes received from barrier [] for project rbus-sand session b6ce555b-763d-404a-b1d7-b514f3bb9bae", "environment": "PROD", "application": "rbus-sand calculations", "id": "f027b84", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 340}[0m
+[34m2018-05-23 10:35:49,005 - rbus-sand calculations - 11565 - INFO - {"message": "_init_session_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 10.684, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 316}[0m
+[34m2018-05-23 10:35:52,168 - rbus-sand calculations - 11565 - INFO - {"message": "_init_report_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 3.16, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 313}[0m
+[34m2018-05-23 10:36:00,538 - rbus-sand calculations - 11565 - INFO - {"message": "_init_reporting_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 8.368, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 317}[0m
+[34m2018-05-23 10:36:05,381 - rbus-sand calculations - 11565 - INFO - {"message": "_init_store_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 4.841, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 313}[0m
+[34m2018-05-23 10:36:10,632 - rbus-sand calculations - 11565 - INFO - {"message": "_init_decision_unit_data", "environment": "PROD", "application": "rbus-sand calculations", "session_uid": "b6ce555b-763d-404a-b1d7-b514f3bb9bae", "duration": 5.248, "project_name": "rbus-sand", "id": "de0e220", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 321}[0m
+[34m2018-05-23 10:36:12,910 - rbus-sand calculations - 11565 - INFO - {"message": "Total Calculations started at 2018-05-23 07:36:12.910770", "environment": "PROD", "application": "rbus-sand calculations", "id": "ff8941b", "process": "10.0.0.87:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 250}[0m
+[45m[1m[30m2018-05-23 10:37:42,922 - rbus-sand calculations - 11565 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "id": "27ee7c5", "process": "10.0.0.87:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 225}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 28, in <module>
+    RBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Calculations.py", line 15, in run_project_calculations
+    RBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 447, in main_calculation
+    self.calculate_placement_count()
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 151, in calculate_placement_count
+    value = self.get_scene_count(df, template_name)
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 138, in get_scene_count
+    return len(df['scene_fk'][df.template_name == template_name].unique())
+  File "/home/yoava/dev/trax_ace_factory/Projects/RBUS_SAND/Utils/KPIToolBox.py", line 138, in get_scene_count
+    return len(df['scene_fk'][df.template_name == template_name].unique())
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 758, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:16066)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 749, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:15912)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[43m[30m2018-05-23 10:37:43,240 - rbus-sand calculations - 11565 - WARNING - {"message": "Destructor disconnected from project rbus-sand since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "id": "73e97dd", "process": "10.0.0.87:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 281}[0m

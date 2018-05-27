@@ -2,15 +2,15 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import pandas as pd
-import Projects.RBUS_SAND.Tests.test_data as Data
-from Projects.RBUS_SAND.Utils.KPIToolBox import RBUSToolBox
+import Projects.RBUS.Tests.test_data as Data
+from Projects.RBUS.Utils.KPIToolBox import RBUSRBUSToolBox
 
 __author__ = 'yoava'
 
 
 class TestRbusSand(TestCase):
 
-    @mock.patch('Projects.RBUS_SAND.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.RBUS.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
@@ -22,7 +22,7 @@ class TestRbusSand(TestCase):
         # self.generator = RBUSGenerator(self.data_provider_mock, self.output)
         # self.tool = RBUSToolBox(self.data_provider_mock, self.output)
         self.data = Data
-        self.tool_box = RBUSToolBox(self.data_provider_mock, self.output)
+        self.tool_box = RBUSRBUSToolBox(self.data_provider_mock, self.output)
         # self.checks = Checks(self.data_provider_mock)
 
 
