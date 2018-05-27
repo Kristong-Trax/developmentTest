@@ -70,9 +70,9 @@ class CCRUPetrol2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
-        # jg.create_gaps_json('gaps_guide.xlsx', sheet_name=PETROL_2018)
-        # self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
-        # self.tool_box.write_gaps()
+        jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=PETROL_2018)
+        self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
+        self.tool_box.write_gaps()
 
         extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018'), (MARKETING, 'Marketing')]
         for extra_set_name, template_name in extra_sets_to_calculate:
