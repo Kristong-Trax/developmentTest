@@ -17,6 +17,7 @@ from Trax.Utils.Logging.Logger import Log
 __author__ = 'urid'
 
 HRCRESTAURANT2018 = 'Pos 2018 - HoReCa (Restaurant/Cafe)'
+HRCRESTAURANT2018_GAPS = 'Pos 2018 - Horeca cafe'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
 
@@ -66,9 +67,9 @@ class CCRUHRCRestaurant2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HRCRESTAURANT2018)
-        # jg.create_gaps_json('gaps_guide.xlsx', sheet_name=FT2018)# We are waiting for new gap sheets TODO
-        # self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
-        # self.tool_box.write_gaps()
+        jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HRCRESTAURANT2018_GAPS)
+        self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
+        self.tool_box.write_gaps()
 
         extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018'), (MARKETING, 'Marketing')]
         for extra_set_name, template_name in extra_sets_to_calculate:
