@@ -47,13 +47,19 @@ class PERFETTICNToolBox:
 
     def main_calculation(self, *args, **kwargs):
 
-        self.display_brand()
+        self.display_count()
 
         score = 0
         return score
 
 
 
-    def display_brand (self):
+    def display_count (self):
+        num_brands = {}
+        display_info = self.scif['template_name']
+        display_names = display_info.unique()
+        for value in display_names:
+            num_brands[value]= display_info[display_info == value].count()
+
 
         return 0
