@@ -25,7 +25,6 @@ KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.0 - KENGINE.xlsx')
 
-
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
