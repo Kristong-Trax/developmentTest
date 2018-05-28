@@ -1287,6 +1287,7 @@ class INBEVNLINBEVBEToolBox:
                 self.kpi_results_queries.append(query)
 
     def save_linear_length_results(self):
+        product_list_to_write = []
         scenes_to_check = self.scif['scene_fk'].unique().tolist()
         session_products = self.scif['product_fk'].unique().tolist()
         products_to_check = self.all_products.loc[
@@ -1315,13 +1316,15 @@ class INBEVNLINBEVBEToolBox:
             try:
                 product_ean_code = \
                     self.all_products.loc[self.all_products['product_fk']
-                                          == product]['product_ean_code'].values[0]
+                                          == product_bundle_lead]['product_ean_code'].values[0]
             except IndexError as e:
-                Log.info('Product {} is not defined'.format(product))
+                Log.info('Product {} is not defined'.format(product_bundle_lead))
                 continue
             if product_ean_code:
-                self.save_level2_and_level3('Linear Share of Shelf',
-                                            product_ean_code, aggregated_linear_length)
+                if product_ean_code not in product_list_to_write:
+                    self.save_level2_and_level3('Linear Share of Shelf',
+                                                product_ean_code, aggregated_linear_length)
+                    product_list_to_write.append(product_ean_code)
 
     def calculate_block_together_sets(self, set_name):
         """
