@@ -15,14 +15,18 @@ class JNJUKCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         common = Common(self.data_provider)
-        TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'JNJUK_SAND', 'Data', 'SurveyTemplate.xlsx')
-        survey_template = pd.read_excel(TEMPLATE_PATH, sheetname='Sheet1')
+        survey_template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'JNJUK_SAND', 'Data', 'SurveyTemplate.xlsx')
+        eye_hand_lvl_template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'JNJUK',
+                                                  'Data',
+                                                  'eye_level_jnjuk.xlsx')
+        survey_template = pd.read_excel(survey_template_path, sheetname='Sheet1')
+        eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.secondary_placement_location_quality(survey_template)
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
-        jnj_generator.calculate_auto_assortment()
+        jnj_generator.calculate_auto_assortment(in_balde=False)
         jnj_generator.promo_calc()
-        jnj_generator.eye_hand_level_sos_calculation()
+        jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
