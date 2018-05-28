@@ -17,12 +17,12 @@ class MARSIN_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     Log.init('marsin calculations')
-#     Config.init()
-#     project_name = 'marsin-sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'faca16aa-cf53-4e7c-a4a1-9b9ad5b77ad6'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     MARSIN_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    Log.init('marsin calculations')
+    Config.init()
+    project_name = 'marsin-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'fc47f80f-a114-4514-b653-649b0870f081'
+    data_provider.load_session_data(session)
+    output = Output()
+    MARSIN_SANDCalculations(data_provider, output).run_project_calculations()
