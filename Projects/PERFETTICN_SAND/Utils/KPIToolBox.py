@@ -12,7 +12,7 @@ from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
+import pandas as pd
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'limorc'
@@ -44,6 +44,7 @@ class PERFETTICNToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.store_info = self.data_provider[Data.STORE_INFO]
 
     def main_calculation(self, *args, **kwargs):
 
@@ -59,7 +60,42 @@ class PERFETTICNToolBox:
         display_info = self.scif['template_name']
         display_names = display_info.unique()
         for value in display_names:
-            num_brands[value]= display_info[display_info == value].count()
-
+            num_brands[value] = display_info[display_info == value].count()
+        # data=self.get_match_display(self.session_uid)
+        # self.store_info['store_number_1'] // store num
 
         return 0
+
+
+
+
+    # def get_match_display(self,session_uid):
+    #
+    #     get_query = """
+    #                 SELECT st.store_number_1,display_name, COUNT(*) as cnt
+    #                 FROM probedata.match_display_in_scene
+    #                 JOIN static.display ON static.display.pk = probedata.match_display_in_scene.display_fk
+    #                 JOIN  (SELECT  pk AS scene_pk, store_fk
+    #                 FROM probedata.scene
+    #                 WHERE session_uid = '{}') scene_detail ON scene_pk = scene_fk
+    #                 JOIN  static.stores st ON st.pk = store_fk
+    #                 GROUP BY display_name , st.store_number_1;
+    #             """.format(session_uid)
+    #     data = pd.read_sql(get_query, self.rds_conn.db)
+    #     return data
+
+    # def get_match_display(self,session_uid):
+    #
+    #     get_query="""
+    #                 SELECT display_name, COUNT(*)
+    #                 FROM  probedata.match_display_in_scene
+    #                 JOIN static.display ON static.display.pk = probedata.match_display_in_scene.display_fk
+    #                 WHERE
+    #                 scene_fk IN (SELECT pk
+    #                 FROM  probedata.scene
+    #                 WHERE session_uid = '{}')
+    #                 GROUP BY display_name;
+    #             """.format(session_uid)
+    #     data = pd.read_sql(get_query, self.rds_conn.db)
+    #     return data
+
