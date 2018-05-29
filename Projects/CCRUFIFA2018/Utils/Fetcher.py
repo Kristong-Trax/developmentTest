@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 
-from Projects.CCRUFIFA2018.Utils.JSON import JsonGenerator
+from Projects.CCRUFIFA.Utils.JSON import JsonGenerator
 
 __author__ = 'urid'
 
@@ -13,7 +13,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 
-class CCRUFIFAQueries:
+class CCRUFIFA2018Queries:
     TCCC = ['TCCC', 'BF']
 
     def __init__(self, project_name, scif, matches, set_name):
@@ -46,7 +46,10 @@ class CCRUFIFAQueries:
             final_result = final_result[final_result['size'].isin(size)]
         if shelves:
             merged_dfs = pd.merge(final_result, self.matches, on=['product_fk', 'product_fk'])
-            shelves_list = [int(shelf) for shelf in shelves.split(',')]
+            if ',' in [shelves]:
+                shelves_list = [int(shelf) for shelf in shelves.split(',')]
+            else:
+                shelves_list = [int(shelves)]
             merged_filter = merged_dfs.loc[merged_dfs['shelf_number'].isin(shelves_list)]
             final_result = merged_filter
 
