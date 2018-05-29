@@ -79,9 +79,9 @@ class INBEVBRToolBox:
         # self.commit_results_data()
 
     def handle_atomic(self, row):
-        atomic_id = row[Const.KPI_ID].strip()
+        atomic_id = row[Const.KPI_ID]
         atomic_name = row[Const.ENGLISH_KPI_NAME].strip()
-        store_type_template = row[Const.STORE_TYPE_TEMPLATE].values[0].strip()
+        store_type_template = row[Const.STORE_TYPE_TEMPLATE].strip()
 
         # if cell in template is not empty
         if store_type_template != "":
@@ -117,22 +117,23 @@ class INBEVBRToolBox:
             row = -1
 
         # enter only if there is a matching store, region and state
-        if row != -1:
-            target = row[Const.TARGET]
-            target_operator = row[Const.TARGET_OPERATOR].strip()
-            weight = row[Const.WEIGHT]
-            count_type = row[Const.COUNT_TYPE].strip()
+        if isinstance(row, pd.DataFrame):
+            target = row[Const.TARGET].values[0]
+            weight = row[Const.WEIGHT].values[0]
+            target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
+            count_type = row[Const.COUNT_TYPE].values[0].strip()
 
             # get the filters
-            filters = self.get_filters_from_row(row)
+            filters = self.get_filters_from_row(row.squeeze())
 
             if count_type == Const.FACING:
                 numerator_number_of_facings = self.count_of_facings(self.scif, filters)
-                del filters['manufacturer_name']
-                denominator_number_of_total_facings = self.count_of_facings(self.scif, filters)
-                if target_operator == '%':
-                    percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-                    count_result = weight if percentage >= target else 0
+                if numerator_number_of_facings != 0:
+                    del filters['manufacturer_name']
+                    denominator_number_of_total_facings = self.count_of_facings(self.scif, filters)
+                    if target_operator == '%':
+                        percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
+                        count_result = weight if percentage >= target else 0
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -158,14 +159,14 @@ class INBEVBRToolBox:
 
         if len(row) != 1:
             Log.warning("Dataframe is not correct, wrong number of lines: " + str(len(row)))
-            row = -1
+            return
 
         # enter only if there is a matching store, region and state
-        if row != -1:
-            target = row[Const.TARGET]
-            weight = row[Const.WEIGHT]
-            count_type = row[Const.COUNT_TYPE].strip()
-            container_type = row[Const.CONTAINER_TYPE].strip()
+        if isinstance(row, pd.DataFrame):
+            target = row[Const.TARGET].values[0]
+            weight = row[Const.WEIGHT].values[0]
+            count_type = row[Const.COUNT_TYPE].values[0].strip()
+            container_type = row[Const.CONTAINER_TYPE].values[0].strip()
 
             if container_type != "":
                 df = self.scif[self.scif['att1'] == container_type]
@@ -173,7 +174,7 @@ class INBEVBRToolBox:
                 df = self.scif.copy()
 
             # get the filters
-            filters = self.get_filters_from_row(row)
+            filters = self.get_filters_from_row(row.squeeze())
 
             if count_type == Const.FACING:
                 number_of_facings = self.count_of_facings(df, filters)
@@ -184,7 +185,6 @@ class INBEVBRToolBox:
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
-
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
@@ -212,6 +212,8 @@ class INBEVBRToolBox:
             # get the filters
             del row[Const.GROUP_KPI_NAME]
             del row[Const.SCORE]
+
+            # get the filters
             filters = self.get_filters_from_row(row)
 
             if count_type == Const.FACING:
@@ -260,11 +262,11 @@ class INBEVBRToolBox:
 
         else:
             temp = rows[Const.STORE_TYPE_TEMPLATE]
-            rows_stores_filter = rows[temp == self.store_type_filter or temp == ""]
+            rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
             temp = rows_stores_filter[Const.REGION_TEMPLATE]
-            rows_regions_filter = rows_stores_filter[temp == self.region_name_filter or temp == ""]
+            rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
             temp = rows_regions_filter[Const.STATE_TEMPLATE]
-            row = rows_regions_filter[temp == self.state_name_filter or temp == ""]
+            row = rows_regions_filter[(temp == self.state_name_filter) | (temp == "")]
 
         return row
 
@@ -306,7 +308,7 @@ class INBEVBRToolBox:
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
 
-    def handle_survey_atomics(self, atomic_id, atomic_name, store_type_template):
+    def handle_survey_atomics(self, atomic_id, atomic_name):
         rows = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
 
         # get a single row

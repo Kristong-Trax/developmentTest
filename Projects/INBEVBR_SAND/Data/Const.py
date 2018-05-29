@@ -24,7 +24,6 @@ class Const(object):
     TARGET = 'Target'
     TEMPLATE_GROUP = 'Template Group'
     COUNT_TYPE = 'Count Type'
-    RESULT_TYPE = 'Result type'
     WEIGHT = 'Weight'
     SCORE = 'Score'
     BRAND = 'Brand'
@@ -61,7 +60,7 @@ class Const(object):
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
-                                                            CONTAINER_TYPE, STORE_TYPE_TEMPLATE, WEIGHT, RESULT_TYPE]
+                                                            CONTAINER_TYPE, STORE_TYPE_TEMPLATE, WEIGHT]
 
     # DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,
     #                  PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT, MULTIPACK]
