@@ -57,138 +57,6 @@ class CCRUFIFAKPIToolBox:
         self.set_name = set_name
         self.kpi_fetcher = CCRUFIFA2018Queries(self.project_name, self.scif, self.match_product_in_scene, self.set_name)
 
-
-    def get_static_list(self, type):
-        object_static_list = []
-        if type == 'SKUs':
-            object_static_list = self.products['product_ean_code'].values.tolist()
-        elif type == 'CAT' or type == 'MAN in CAT':
-            object_static_list = self.products['category'].values.tolist()
-        elif type == 'BRAND':
-            object_static_list = self.products['brand_name'].values.tolist()
-        elif type == 'MAN':
-            object_static_list = self.products['manufacturer_name'].values.tolist()
-        else:
-            Log.warning('The type {} does not exist in the data base'.format(type))
-
-        return object_static_list
-
-    def insert_new_kpis_old(self, project, kpi_list=None):
-        """
-        This function inserts KPI metadata to static tables
-        """
-        session = OrmSession(project, writable=True)
-        try:
-            voting_process_pk_dic = {}
-            with session.begin(subtransactions=True):
-                for kpi in kpi_list.values()[0]:
-                    if kpi.get('To include in first calculation?') == 4:
-                        Log.info('Trying to write KPI {}'.format(kpi.get('KPI name Eng')))
-                        #         # kpi_level_1_hierarchy = pd.DataFrame(data=[('Canteen', None, None, 'WEIGHTED_AVERAGE',
-                        #         #                                             1, '2016-11-28', None, None)],
-                        #         #                                      columns=['name', 'short_name', 'eng_name', 'operator',
-                        #         #                                               'version', 'valid_from', 'valid_until', 'delete_date'])
-                        #         # self.output.add_kpi_hierarchy(Keys.KPI_LEVEL_1, kpi_level_1_hierarchy)
-                        #         if kpi.get('level') == 2:
-                        #             kpi_level_2_hierarchy = pd.DataFrame(data=[
-                        #                 (1, kpi.get('KPI Name ENG'), None, None, None, None, kpi.get('weight'), 1, '2016-12-25', None, None)],
-                        #                                          columns=['kpi_level_1_fk', 'name', 'short_name', 'eng_name', 'operator',
-                        #                                                   'score_func', 'original_weight', 'version', 'valid_from', 'valid_until',
-                        #                                                   'delete_date'])
-                        #             self.output.add_kpi_hierarchy(Keys.KPI_LEVEL_2, kpi_level_2_hierarchy)
-                        #         elif kpi.get('level') == 3:
-                        #             kpi_level_3_hierarchy = pd.DataFrame(data=[(1, kpi.get('KPI Name ENG'), None, None, None,
-                        #                                                        None, kpi.get('weight'), 1, '2016-12-25', None, None)],
-                        #                                                  columns=['kpi_level_2_fk', 'name', 'short_name', 'eng_name', 'operator',
-                        #                                                           'score_func', 'original_weight', 'version', 'valid_from',
-                        #                                                           'valid_until', 'delete_date'])
-                        #             self.output.add_kpi_hierarchy(Keys.KPI_LEVEL_3, kpi_level_3_hierarchy)
-                        #     else:
-                        #         Log.info('No KPIs to insert')
-                        #     self.data_provider.export_kpis_hierarchy(self.output)
-
-                        # insert_trans = """
-                        #                 INSERT INTO static.kpi_level_1 (name,
-                        #                operator, version, valid_from)
-                        #                VALUES ('{0}', '{1}', '{2}', '{3}');""".format('test',  'WEIGHTED_AVERAGE', 1,
-                        #                                                         '2016-11-28')
-                        # insert_trans_level1 = """
-                        #             INSERT INTO static.kpi_set (name,
-                        #            missing_kpi_score, enable, normalize_weight, expose_to_api, is_in_weekly_report)
-                        #            VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');""".format('Hypermarket', 'Bad',
-                        #                                                          'Y', 'N', 'N', 'N')
-                        # Log.get_logger().debug(insert_trans_level1)
-                        # result = session.execute(insert_trans_level1)
-                        insert_trans_level2 = """
-                                        INSERT INTO static.kpi (kpi_set_fk,
-                                       logical_operator, weight, display_text)
-                                       VALUES ('{0}', '{1}', '{2}', '{3}');""".format(34, kpi.get('Logical Operator'),
-                                                                                      kpi.get('KPI Weight'),
-                                                                                kpi.get('KPI name Eng'))
-                        # # #
-                        # # # #     # insert_trans = """
-                        # # # #     #                 UPDATE static.kpi_level_1 SET short_name=null, eng_name=null, valid_until=null, delete_date=null
-                        # # # #     #                 WHERE pk=1;"""
-                        # Log.get_logger().debug(insert_trans_level2)
-                        result = session.execute(insert_trans_level2)
-                        kpi_fk = result.lastrowid
-                        insert_trans_level3 = """
-                                        INSERT INTO static.atomic_kpi (kpi_fk,
-                                       name, description, display_text, presentation_order, display)
-                                       VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');""".format(kpi_fk, kpi.get(
-                            'KPI name Eng'),
-                                                                                                    kpi.get(
-                                                                                                        'KPI name Eng'),
-                                                                                                    kpi.get(
-                                                                                                        'KPI name Eng'),
-                                                                                                    1, 'Y')
-                        Log.get_logger().debug(insert_trans_level3)
-                        result = session.execute(insert_trans_level3)
-                        # voting_process_pk = result.lastrowid
-                        # voting_process_pk_dic[kpi] = voting_process_pk
-                        # Log.info('KPI level 1 was inserted to the DB')
-                        # Log.info('Inserted voting process {} in project {} SQL DB'.format(voting_process_pk, project))
-                        # voting_session_fk = self.insert_production_session(voting_process_pk, kpi, session)
-                        # self.insert_production_tag(voting_process_pk, voting_session_fk, kpi, session)
-
-            session.close()
-            # return voting_process_pk_dic
-            return
-        except Exception as e:
-            Log.error('Caught exception while inserting new voting process to SQL: {}'.
-                      format(str(e)))
-            return -1
-
-    def insert_new_kpis(self, project, kpi_list):
-        """
-        This function is used to insert KPI metadata to the new tables, and currently not used
-
-        """
-        for kpi in kpi_list.values()[0]:
-            if kpi.get('To include in first calculation?') == 7:
-                if kpi.get('level') == 2:
-                    kpi_level_2_hierarchy = pd.DataFrame(data=[
-                        (3, kpi.get('KPI name Eng'), None, None, None, kpi.get('score_func'), kpi.get('KPI Weight'), 1,
-                         '2016-12-01', None,
-                         None)],
-                        columns=['kpi_level_1_fk', 'name', 'short_name', 'eng_name', 'operator',
-                                 'score_func', 'original_weight', 'version', 'valid_from', 'valid_until',
-                                 'delete_date'])
-                    self.output.add_kpi_hierarchy(Keys.KPI_LEVEL_2, kpi_level_2_hierarchy)
-                elif kpi.get('level') == 3:
-                    kpi_level_3_hierarchy = pd.DataFrame(
-                        data=[(82, kpi.get('KPI Name'), None, None, 'PRODUCT AVAILABILITY',
-                               None, kpi.get('KPI Weight'), 1, '2016-12-25', None, None)],
-                        columns=['kpi_level_2_fk', 'name', 'short_name', 'eng_name',
-                                 'operator',
-                                 'score_func', 'original_weight', 'version',
-                                 'valid_from',
-                                 'valid_until', 'delete_date'])
-                    self.output.add_kpi_hierarchy(Keys.KPI_LEVEL_3, kpi_level_3_hierarchy)
-                self.data_provider.export_kpis_hierarchy(self.output)
-            else:
-                Log.info('No KPIs to insert')
-
     def check_number_of_facings_given_answer_to_survey(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -446,82 +314,6 @@ class CCRUFIFAKPIToolBox:
                 relevant_scenes.append(scene)
         return relevant_scenes
 
-    def check_number_of_scenes(self, params):
-        """
-        This function is used to calculate number of scenes
-
-        """
-        set_total_res = 0
-        for p in params.values()[0]:
-            if p.get('Formula') != 'number of scenes':
-                continue
-            kpi_total_res = 0
-            scenes = self.get_relevant_scenes(p)
-
-            if p.get('Type') == 'SCENES':
-                values_list = [str(s) for s in p.get('Values').split(', ')]
-                for scene in scenes:
-                    try:
-                        scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
-                        if scene_type in values_list:
-                            res = 1
-                        else:
-                            res = 0
-                        kpi_total_res += res
-                    except IndexError as e:
-                        continue
-
-            else: # checking for number of scenes with a complex condition (only certain products/brands/etc)
-                p_copy = p.copy()
-                p_copy["Formula"] = "number of facings"
-                for scene in scenes:
-                    if self.calculate_availability(p_copy, scenes=[scene]) > 0:
-                        res = 1
-                    else:
-                        res = 0
-                    kpi_total_res += res
-
-            score = self.calculate_score(kpi_total_res, p)
-            set_total_res += score * p.get('KPI Weight')
-
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if p.get('level') == 2:
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
-            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-            self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
-
-        return set_total_res
-
-    # def check_number_of_doors(self, params):
-    #     set_total_res = 0
-    #     for p in params.values()[0]:
-    #         if p.get('Type') != 'DOORS' or p.get('Formula') != 'number of doors':
-    #             continue
-    #         kpi_total_res = self.calculate_number_of_doors(p)
-    #         score = self.calculate_score(kpi_total_res, p)
-    #         set_total_res += score * p.get('KPI Weight')
-    #         # writing to DB
-    #         kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-    #         attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
-    #         if p.get('level') == 2:
-    #             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-    #             self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
-    #     return set_total_res
-
-    # def calculate_number_of_doors(self, params):
-    #     total_res = 0
-    #     relevant_scenes = self.get_relevant_scenes(params)
-    #     for scene in relevant_scenes:
-    #         res = 0
-    #         scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
-    #         num_of_doors = self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0]
-    #         if num_of_doors is not None:
-    #             res = float(num_of_doors)
-    #         total_res += res
-    #     return total_res
-
     def check_survey_answer(self, params):
         """
         This function is used to calculate survey answer according to given target
@@ -554,18 +346,10 @@ class CCRUFIFAKPIToolBox:
             set_total_res += score*p.get('KPI Weight')
             # score = self.calculate_score(kpi_total_res, p)
             if p.get('level') == 3:  # todo should be a separate generic function
-                # level3_output = {'result': d.get(result), 'score': score,
-                #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-                #                  'kpi_name': p.get('KPI name Eng')}
-                # self.output.add_kpi_results(Keys.KPI_LEVEL_3_RESULTS, self.convert_kpi_level_3(level3_output))
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level3, 'level3')
             elif p.get('level') == 2:
-                # level2_output = {'result': d.get(result), 'score': score,
-                #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-                #                  'kpi_name': p.get('KPI name Eng')}
-                # self.output.add_kpi_results(Keys.KPI_LEVEL_2_RESULTS, self.convert_kpi_level_2(level2_output))
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level3, 'level3')
