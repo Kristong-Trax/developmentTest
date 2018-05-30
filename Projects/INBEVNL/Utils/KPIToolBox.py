@@ -99,6 +99,13 @@ class INBEVNLINBEVBEToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
+        try:
+            self.inbev_template = NewTemplate(self.project_name)
+            for set_name in ['Linear Share of Shelf', 'OSA']:
+                self.get_missing_products_to_api_set(set_name)
+        except Exception as e:
+            Log.info('Updating API sets failed')
+        self.kpi_static_data = self.get_kpi_static_data()
         self.tools = INBEVNLINBEVBEINBEVToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
@@ -128,12 +135,6 @@ class INBEVNLINBEVBEToolBox:
         # self.rect_values = self.get_rect_values()
         self.extra_bundle_leads = []
         self.current_date = datetime.date
-        try:
-            self.inbev_template = NewTemplate(self.project_name)
-            for set_name in ['Linear Share of Shelf', 'OSA']:
-                self.get_missing_products_to_api_set(set_name)
-        except Exception as e:
-            Log.info('Updating API sets failed')
 
     @staticmethod
     def inrange(x, min, max):
@@ -165,6 +166,7 @@ class INBEVNLINBEVBEToolBox:
         This function returns the session's business unit (equal to store type for some KPIs)
         """
         query = INBEVNLINBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -177,6 +179,7 @@ class INBEVNLINBEVBEToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = INBEVNLINBEVBEQueries.get_all_kpi_data()
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -186,22 +189,26 @@ class INBEVNLINBEVBEToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = INBEVNLINBEVBEQueries.get_match_display(self.session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
         query = INBEVNLINBEVBEQueries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
         query = INBEVNLINBEVBEQueries.get_oos_messages(self.session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
 
     def get_store_number_1(self):
         query = INBEVNLINBEVBEQueries.get_store_number_1(self.store_id)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
@@ -1427,8 +1434,8 @@ class INBEVNLINBEVBEToolBox:
         return rect_values
 
     def get_missing_products_to_api_set(self, set_name):
-        existing_skus = self.all_products[self.all_products['product_type']
-                                          == 'SKU']['product_ean_code'].unique().tolist()
+        existing_skus = self.all_products[~self.all_products['product_ean_code'].isin(['746', '747', '748'])
+                                          ]['product_ean_code'].unique().tolist()
         set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                         == set_name]['atomic_kpi_name'].unique().tolist()
         if set_name == 'OSA':
