@@ -66,7 +66,8 @@ class INBEVBRToolBox:
         self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
-
+        self.prod_seq_sheet = pd.read_excel(PATH, Const.PROD_SEQ).fillna("")
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
     def main_calculation(self):
         """
@@ -93,12 +94,15 @@ class INBEVBRToolBox:
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SOS:
             self.handle_sos_atomics(atomic_id, atomic_name)
-        if kpi_type == Const.COUNT:
+        elif kpi_type == Const.COUNT:
             self.handle_count_atomics(atomic_id, atomic_name)
-        if kpi_type == Const.GROUP_COUNT:
+        elif kpi_type == Const.GROUP_COUNT:
             self.handle_group_count_atomics(atomic_id, atomic_name)
-        if kpi_type == Const.SURVEY:
+        elif kpi_type == Const.SURVEY:
             self.handle_survey_atomics(atomic_id, atomic_name)
+        elif kpi_type == Const.PROD_SEQ:
+            self.handle_prod_seq_atomics(atomic_id, atomic_name)
+
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
@@ -106,7 +110,7 @@ class INBEVBRToolBox:
         count_result = 0
         numerator_number_of_facings = 0
 
-        # bring the kpi rows in the sos sheet
+        # bring the kpi rows from the sos sheet
         rows = self.sos_sheet.loc[self.sos_sheet[Const.KPI_ID] == atomic_id]
 
         # get a single row
@@ -151,7 +155,7 @@ class INBEVBRToolBox:
         count_result = 0
         numerator_number_of_facings = 0
 
-        # bring the kpi rows in the sos sheet
+        # bring the kpi rows from the count sheet
         rows = self.count_sheet.loc[self.count_sheet[Const.KPI_ID] == atomic_id]
 
         # get a single row
@@ -197,7 +201,7 @@ class INBEVBRToolBox:
         numerator_number_of_facings = 0
         group_score = 0
 
-        # bring the kpi rows in the sos sheet
+        # bring the kpi rows from the group_count sheet
         rows = self.group_count_sheet.loc[self.group_count_sheet[Const.KPI_ID] == atomic_id]
 
         # get a single row
@@ -309,9 +313,11 @@ class INBEVBRToolBox:
         return number_of_facings
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
+
+        # bring the kpi rows from the survey sheet
         rows = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
 
-        # get a single row
+        # get a the correct rows
         row = self.find_row(rows)
 
         if row == -1:
@@ -341,6 +347,78 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=survey_result,
                                            result=survey_result)
+
+    def handle_prod_seq_atomics(self, atomic_id, atomic_name):
+
+        target = 0
+        count_result = 0
+        numerator_number_of_facings = 0
+        group_score = 0
+        rows_filter_stores = pd.DataFrame
+
+        # bring the kpi rows in the PROD_SEQ sheet
+        rows = self.prod_seq_sheet.loc[self.prod_seq_sheet[Const.KPI_ID] == atomic_id]
+
+        # filter the relevant store lines
+        for index, row in rows.iterrows():
+            store_type_template = row[Const.STORE_TYPE_TEMPLATE].strip()
+            store_types = store_type_template.split(",")
+            store_types = [item.strip() for item in store_types]
+            if self.store_type_filter in store_types:
+                temp = rows[Const.STORE_TYPE_TEMPLATE]
+                rows_filter_stores = rows[(temp == store_type_template)]
+                break
+
+        # for i in xrange(len(self.relative_positioning)):
+        #     params = self.relative_positioning.iloc[i]
+        #     tested_filters = {'brand_name': params.get('Tested Brand Name')}
+        #     anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
+        #     direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
+        #                       'bottom': self._get_direction_for_relative_position(
+        #                           params.get(self.BOTTOM_DISTANCE)),
+        #                       'left': self._get_direction_for_relative_position(
+        #                           params.get(self.LEFT_DISTANCE)),
+        #                       'right': self._get_direction_for_relative_position(
+        #                           params.get(self.RIGHT_DISTANCE))}
+        #     general_filters = {'template_display_name': params.get(self.LOCATION)}
+        #     result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+        #                                                     **general_filters)
+        #     score = 1 if result else 0
+
+
+
+        #
+        #
+        # for index, row in rows_filter_stores.iterrows():
+        #     target = row[Const.TARGET]
+        #     weight = row[Const.WEIGHT]
+        #     score = row[Const.SCORE]
+        #     count_type = row[Const.COUNT_TYPE].strip()
+        #
+        #     # get the filters
+        #     del row[Const.GROUP_KPI_NAME]
+        #     del row[Const.SCORE]
+        #
+        #     # get the filters
+        #     filters = self.get_filters_from_row(row)
+        #
+        #     if count_type == Const.FACING:
+        #         number_of_facings = self.count_of_facings(self.scif, filters)
+        #         if number_of_facings >= target:
+        #             group_score += score
+        #             if group_score >= 100:
+        #                 count_result = weight
+        #                 break
+
+        try:
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
+
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_number_of_facings,
+                                           denominator_result=target, result=count_result)
 
     def get_new_kpi_static_data(self):
         """
@@ -405,113 +483,6 @@ class INBEVBRToolBox:
             merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
         return merged_queries
 
-
-
-
-
-    #
-    # def handle_count_atomics(self, atomic_name):
-    #     sum_of_count = 0
-    #     target = 0
-    #     count_result = 0
-    #     row = self.count_sheet.loc[self.count_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
-    #     if row.empty:
-    #         Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
-    #         return
-    #
-    #     try:
-    #         atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
-    #     except IndexError:
-    #         Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-    #         return
-    #     for index, row in row.iterrows():
-    #         sum_of_count, target, count_result = self.handle_count_row(row)
-    #     if not isinstance(sum_of_count,(int, float, long)):
-    #         sum_of_count = count_result
-    #
-    #     self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-    #                                        numerator_result=sum_of_count,
-    #                                        denominator_result=target, result=count_result)
-    #
-
-    # def handle_group_count_atomics(self, atomic_name):
-    #
-    #     rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME] == atomic_name]
-    #     group_weight = 0
-    #     group_result = 0
-    #     group_target = 0
-    #     group_sum_of_count = 0
-    #     sum_of_count_df = pd.DataFrame()
-    #     target_operator = ""
-    #     if rows.empty:
-    #         Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
-    #         return
-    #
-    #     try:
-    #         atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
-    #     except IndexError:
-    #         Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-    #         return
-    #
-    #     for index, row in rows.iterrows():
-    #         target_operator = row[Const.TARGET_OPERATOR].strip()
-    #         weight = row[Const.WEIGHT]
-    #         sum_of_count, target, count_result = self.handle_count_row(row)
-    #         if count_result >= 1:
-    #             group_weight += weight
-    #             if group_weight >= 100:
-    #                 if (target_operator == '+'):
-    #                     sum_of_count_df = pd.concat([sum_of_count_df,sum_of_count])
-    #
-    #                 else:
-    #                     group_result = 1
-    #                     break
-    #         elif count_result == -1000:
-    #             group_result = 0
-    #             break
-    #     if (target_operator == '+'):
-    #         if sum_of_count_df.empty:
-    #             group_sum_of_count = 0
-    #         else:
-    #             group_sum_of_count = len(sum_of_count_df.groupby('scene_id'))
-    #         group_result = group_sum_of_count
-    #
-    #     self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-    #                                        numerator_result=group_sum_of_count,
-    #                                        denominator_result=group_target, result=group_result)
-
-    # def count_of_scenes(self, filtered_df, filters, target_operator, target):
-    #     scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
-    #     if target_operator == '+':
-    #
-    #         # filter by scene_id and by template_name (scene type)
-    #         scene_types_groupby = scene_data.groupby(['template_name','scene_id'])['facings'].sum().reset_index()
-    #         number_of_scenes = scene_types_groupby[scene_types_groupby['facings'] >= target]
-    #     else:
-    #         number_of_scenes = len(scene_data['scene_id'].unique())
-    #     return number_of_scenes
-    #
-    # def count_of_sos(self, filtered_df, filters):
-    #     scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
-    #     scene_data = scene_data.rename(columns={"facings": "facings_nom"})
-    #
-    #     # filter by scene_id and by template_name (scene type)
-    #     scene_types_groupby = scene_data.groupby(['template_name','scene_id'])['facings_nom'].sum()
-    #
-    #     all_products_groupby = self.scif.groupby(['template_name', 'scene_id'])['facings'].sum()
-    #     merge_result = pd.concat((scene_types_groupby, all_products_groupby), axis=1, join='inner').reset_index()
-    #     return len(merge_result[merge_result['facings_nom'] >= merge_result['facings'] * 0.5])
-    #
-    # def count_of_unique_skus(self, filtered_df, filters):
-    #
-    #     unique_skus_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
-    #     number_of_unique_skus = len(unique_skus_data['product_ean_code'].unique())
-    #     return number_of_unique_skus
-
-    # def handle_simon_kpis(self):
-    #     active_products = self.all_products.loc[self.all_products["is_active"] > 0]
-    #     self.calculate_availability(active_products)
-    #     self.calculate_pricing(self.all_products)
     #
     # def calculate_availability(self, active_products):
     #     active_products_pks = active_products['product_fk'].unique().tolist()
