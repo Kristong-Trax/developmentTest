@@ -15,6 +15,7 @@ from Projects.INBEVBR_SAND.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR_SAND.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR_SAND.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from Projects.INBEVBR_SAND.Utils.PositionGraph import INBEVBR_SANDPositionGraphs
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
@@ -51,6 +52,7 @@ class INBEVBRToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = INBEVBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type_filter = self.store_info['store_type'].values[0].strip()
         self.region_name_filter = self.store_info['region_name'].values[0].strip()
@@ -68,6 +70,12 @@ class INBEVBRToolBox:
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
         self.prod_seq_sheet = pd.read_excel(PATH, Const.PROD_SEQ).fillna("")
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+
+    @property
+    def position_graphs(self):
+        if not hasattr(self, '_position_graphs'):
+            self._position_graphs = INBEVBR_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+        return self._position_graphs
 
     def main_calculation(self):
         """
@@ -368,6 +376,17 @@ class INBEVBRToolBox:
                 temp = rows[Const.STORE_TYPE_TEMPLATE]
                 rows_filter_stores = rows[(temp == store_type_template)]
                 break
+
+        row_example = rows_filter_stores.iloc[0]
+        row_example[Const.CATEGORY] = row_example[Const.SUB_CATEGORY] = row_example[Const.BRAND] = row_example[Const.SUB_BRAND] = ""
+        del row_example['Left or Right']
+        del row_example['Exclude Brand']
+        del row_example['Left Brand']
+        del row_example['Right Brand']
+        del row_example['Score']
+        filters = self.get_filters_from_row(row_example)
+
+        scenes = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_id'].drop_duplicates().tolist()
 
         # for i in xrange(len(self.relative_positioning)):
         #     params = self.relative_positioning.iloc[i]

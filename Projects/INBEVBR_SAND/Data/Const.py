@@ -43,7 +43,7 @@ class Const(object):
     SURVEY_QUESTION_ID = 'Survey Question Id'
     TARGET_ANSWER = 'Target Answer'
     TARGET_TYPE = 'Target Type'
-    TEMPLATE_NAME = 'Template Name'
+    TEMPLATE_NAME = 'Template name'
     EXCLUDE_CATEGORY = 'Exclude category'
     MANUFACTURER = 'Manufacturer'
     PRODUCT_TYPE = 'Product Type'
