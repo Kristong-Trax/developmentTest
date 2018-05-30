@@ -8,8 +8,8 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.JNJUK.Utils.Fetcher import JNJUKQueries
-from Projects.JNJUK.Utils.GeneralToolBox import JNJUKGENERALToolBox
+from Projects.JNJIT.Utils.Fetcher import JNJITQueries
+from Projects.JNJIT.Utils.GeneralToolBox import JNJITGENERALToolBox
 
 __author__ = 'nissand'
 
@@ -32,7 +32,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class JNJUKToolBox:
+class JNJITToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -51,7 +51,7 @@ class JNJUKToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = JNJUKGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.tools = JNJITGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -60,7 +60,7 @@ class JNJUKToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = JNJUKQueries.get_all_kpi_data()
+        query = JNJITQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -125,7 +125,7 @@ class JNJUKToolBox:
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
-        delete_queries = JNJUKQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = JNJITQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:

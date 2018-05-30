@@ -2,7 +2,7 @@
 __author__ = 'nissand'
 
 
-class JNJUKQueries(object):
+class JNJITQueries(object):
 
     @staticmethod
     def get_all_kpi_data():
