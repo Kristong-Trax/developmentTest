@@ -3,9 +3,9 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
-
+import numpy as np
 from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -45,13 +45,13 @@ class PERFETTICNToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.assortment = Assortment(self.data_provider, self.output)
 
     def main_calculation(self, *args, **kwargs):
 
         self.display_count()
-
-        score = 0
-        return score
+        self.assortment_calculation()
+        return
 
 
 
@@ -66,8 +66,31 @@ class PERFETTICNToolBox:
 
         return 0
 
+    def assortment_calculation(self):
+        """
+        This function calculates the KPI results.
+        """
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
 
+        for result in lvl3_result.itertuples():
+            score = result.in_store * 100
+            self.common.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
+                                                      score, result.assortment_group_fk, 1, score)
+        if not lvl3_result.empty:
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and result.group_target_date <= self.current_date:
+                    denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk, result.passes,
+                                                          res, result.assortment_super_group_fk, denominator_res, score)
 
+        return
 
     # def get_match_display(self,session_uid):
     #
