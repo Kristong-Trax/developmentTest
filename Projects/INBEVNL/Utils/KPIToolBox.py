@@ -99,6 +99,13 @@ class INBEVNLINBEVBEToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
+        try:
+            self.inbev_template = NewTemplate(self.project_name)
+            for set_name in ['Linear Share of Shelf', 'OSA']:
+                self.get_missing_products_to_api_set(set_name)
+        except Exception as e:
+            Log.info('Updating API sets failed')
+        self.kpi_static_data = self.get_kpi_static_data()
         self.tools = INBEVNLINBEVBEINBEVToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
@@ -128,12 +135,6 @@ class INBEVNLINBEVBEToolBox:
         # self.rect_values = self.get_rect_values()
         self.extra_bundle_leads = []
         self.current_date = datetime.date
-        try:
-            self.inbev_template = NewTemplate(self.project_name)
-            for set_name in ['Linear Share of Shelf', 'OSA']:
-                self.get_missing_products_to_api_set(set_name)
-        except Exception as e:
-            Log.info('Updating API sets failed')
 
     @staticmethod
     def inrange(x, min, max):
@@ -1427,8 +1428,8 @@ class INBEVNLINBEVBEToolBox:
         return rect_values
 
     def get_missing_products_to_api_set(self, set_name):
-        existing_skus = self.all_products[self.all_products['product_type']
-                                          == 'SKU']['product_ean_code'].unique().tolist()
+        existing_skus = self.all_products[~self.all_products['product_ean_code'].isin(['746', '747', '748'])
+                                          ]['product_ean_code'].unique().tolist()
         set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                         == set_name]['atomic_kpi_name'].unique().tolist()
         if set_name == 'OSA':
