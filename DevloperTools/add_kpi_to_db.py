@@ -109,7 +109,7 @@ class AddKPIs(Consts, CustomConfigurations):
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
             set_name = kpis.iloc[i][self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = kpis.iloc[i][self.KPI_NAME].replace("'", "\\'").encode('utf-8')
+            kpi_name = str(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
             if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                     (self.kpi_static_data['kpi_name'] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
@@ -136,8 +136,8 @@ class AddKPIs(Consts, CustomConfigurations):
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
             set_name = atomic[self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = atomic[self.KPI_NAME].replace("'", "\\'").encode('utf-8')
-            atomic_name = atomic[self.ATOMIC_KPI_NAME].replace("'", "\\'").encode('utf-8')
+            kpi_name = str(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            atomic_name = str(atomic[self.ATOMIC_KPI_NAME]).replace("'", "\\'").encode('utf-8')
 
             if self.custom_mode:
                 names = []
@@ -184,5 +184,5 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('ccru', '/home/Shani/Desktop/CCRU/target execution kpis.xlsx')
+    kpi = AddKPIs('inbevnl', '/home/Israel/Desktop/US/inbevnl/KPIs for DB.xlsx')
     kpi.add_kpis_from_template()
