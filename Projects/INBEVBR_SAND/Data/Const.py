@@ -6,16 +6,14 @@ class Const(object):
 
     # sheet names
     KPIS = 'KPIS'
-    COUNT = 'COUNT'
-    SURVEY = 'SURVEY'
     SOS = 'SOS'
+    COUNT = 'COUNT'
     GROUP_COUNT = 'GROUP_COUNT'
+    SURVEY = 'SURVEY'
+    PROD_SEQ = 'PROD_SEQ'
 
     # count types
-    SCENE = 'scene'
-    UNIQUE_SKU = 'unique sku'
     FACING = 'facings'
-    SCENE_SOS = 'scene_sos'
 
     # const
     KPI_TYPE = 'KPI Type'
@@ -57,6 +55,7 @@ class Const(object):
     EXCLUDE_MANUFACTURER = 'Exclude manufacturer'
     MULTIPACK= 'Multipack'
     CONSIDER_FEW = 'Consider few brands'
+
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,

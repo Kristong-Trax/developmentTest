@@ -20,7 +20,7 @@ if __name__ == '__main__':
     project_name = 'inbevbr-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    list_sessions = ['9ffad16b-a600-4d54-8069-767bc3f08d58',
+    list_sessions = ['41a0ff56-4cea-421b-8d2e-34984b439d7d',
                     'c1190c08-4db0-4d85-b795-3512cabedc1a',
                     '0bbadf52-d621-4859-ae94-466a6ecafcb4',
                     'b02fb67f-63d8-42c0-9a7d-673aff37c248']
