@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class PNGAMERICAPositionGraphs:
+class JNJITPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -25,10 +25,7 @@ class PNGAMERICAPositionGraphs:
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
                           'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          TOP, BOTTOM, LEFT, RIGHT, 'NATURALS', 'shelf_number', 'Sub Brand', 'bay_number', 'SEGMENT',
-                          'PRICE SEGMENT', 'DIAPER SIZE', 'SUPER CATEGORY', 'P&G BRAND', 'PRIVATE LABEL',
-                          'PRIVATE_LABEL', 'GENDER', 'PACK GROUP', 'HEAD SIZE', 'PG SIZE', 'CUSTOM SUBBRAND',
-                          'SHEET SIZE', 'scene_match_fk', 'FORM']
+                          TOP, BOTTOM, LEFT, RIGHT, 'shelf_number','bay_number']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
@@ -65,8 +62,7 @@ class PNGAMERICAPositionGraphs:
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
         scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
-        scene_template = scene_template.merge(self.data_provider.templates[['template_name',
-                                                                            'template_fk', 'location_type']],
+        scene_template = scene_template.merge(self.data_provider.templates[['template_fk', 'location_type']],
                                               how='left', on='template_fk')
         scene_template['scene_id'] = scene_template['scene_fk']
         matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
