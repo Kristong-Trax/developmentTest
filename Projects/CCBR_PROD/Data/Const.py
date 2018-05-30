@@ -15,6 +15,7 @@ class Const(object):
     SCENE = 'scene'
     UNIQUE_SKU = 'unique sku'
     FACING = 'facing'
+    SCENE_SOS = 'scene_sos'
 
     # const
     KPI_GROUP = 'Tested KPI Group'
@@ -34,6 +35,7 @@ class Const(object):
     TEMPLATE_NAME = 'Template Name'
     BRAND = 'Brand'
     CATEGORY = 'Category'
+    EXCLUDE_CATEGORY = 'Exclude category'
     MANUFACTURER = 'Manufacturer'
     PRODUCT_TYPE = 'Product Type'
     PRODUCT_SIZE = 'Product Size'
@@ -45,10 +47,11 @@ class Const(object):
     WEIGHT = 'Weight'
     EXCLUDE_MANUFACTURER = 'Exclude manufacturer'
     MULTIPACK= 'Multipack'
+    CONSIDER_FEW = 'Consider few brands'
 
     # delete fields
-    DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR,
-                     PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT,  MULTIPACK]#, EXCLUDE_MANUFACTURER]
+    DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,
+                     PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT, MULTIPACK]
 
     # include exclude filters
     EXCLUDE_FILTER = 0
