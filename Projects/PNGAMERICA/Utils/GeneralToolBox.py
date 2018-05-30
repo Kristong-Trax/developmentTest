@@ -1203,7 +1203,8 @@ class PNGAMERICAGENERALToolBox:
                                  minimum_block_ratio=1, result_by_scene=False, vertical=False, horizontal=False,
                                  orphan=False, group=False, block_of_blocks=False, block_products1=None, block_products2=None,
                                  block_products=None, group_products=None, include_private_label=False,
-                                 availability_param=None, availability_value=None, color_wheel=False,**filters):
+                                 availability_param=None, availability_value=None, color_wheel=False,
+                                 checkerboard=False, **filters):
         """
         :param group_products: if we searching for group in block - this is the filter of the group inside the big block
         :param block_products: if we searching for group in block - this is the filter of the big block
@@ -1327,25 +1328,25 @@ class PNGAMERICAGENERALToolBox:
                             result = self.calculate_relative_in_block_per_graph(scene_graph=block_graph,
                                                                                 direction_data=direction_data)
                             results['horizontally block'] = result
-                        if orphan:
-                            orphan_clusters = clusters
-                            orphan_clusters.remove(cluster)
-                            direction_data = {'top': (3, 1000), 'bottom': (3, 1000), 'left': (3, 1000),
-                                              'right': (3, 1000)}
-                            results['Orphan products'] = False
-                            for orphan in orphan_clusters:
-                                non_orphan = all_vertices.difference(cluster)
-                                non_orphan_cluster_vertices = non_orphan.difference(orphan)
-                                orphan_graph = self.position_graphs.get(scene).copy()
-                                orphan_graph.delete_vertices(non_orphan_cluster_vertices)
-                                if set(orphan) & set(new_relevant_vertices):
-                                    result = self.calculate_relative_in_block_per_graph(scene_graph=orphan_graph,
-                                                                                        direction_data=direction_data,
-                                                                                        sent_tested_vertices=cluster,
-                                                                                        sent_anchor_vertices=orphan)
-                                    if result:
-                                        results['Orphan products'] = result
-                                        break
+                        # if orphan:
+                        #     orphan_clusters = clusters
+                        #     orphan_clusters.remove(cluster)
+                        #     direction_data = {'top': (3, 1000), 'bottom': (3, 1000), 'left': (3, 1000),
+                        #                       'right': (3, 1000)}
+                        #     results['Orphan products'] = False
+                        #     for orphan in orphan_clusters:
+                        #         non_orphan = all_vertices.difference(cluster)
+                        #         non_orphan_cluster_vertices = non_orphan.difference(orphan)
+                        #         orphan_graph = self.position_graphs.get(scene).copy()
+                        #         orphan_graph.delete_vertices(non_orphan_cluster_vertices)
+                        #         if set(orphan) & set(new_relevant_vertices):
+                        #             result = self.calculate_relative_in_block_per_graph(scene_graph=orphan_graph,
+                        #                                                                 direction_data=direction_data,
+                        #                                                                 sent_tested_vertices=cluster,
+                        #                                                                 sent_anchor_vertices=orphan)
+                        #             if result:
+                        #                 results['Orphan products'] = result
+                        #                 break
                         if group:
                             results['group'] = False
                             group_vertex = self.filter_vertices_from_graph(block_graph, **group_products)
@@ -1358,15 +1359,18 @@ class PNGAMERICAGENERALToolBox:
                                                                                     group_cluster, group_cluster)
                                 results['group'] = result
                         if include_private_label:
-                            results['checkerboarded'] = False
-                            p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
-                            if set(p_l_new_vertices) & set(cluster):
-                                cluster_graph = block_graph
-                                non_cluster = set(new_relevant_vertices).difference(cluster)
-                                cluster_graph.delete_vertices(non_cluster)
-                                brands_list = {v['brand_name'] for v in block_graph.vs}
-                                results['checkerboarded'] = True
-                                results['brand_list'] = brands_list
+                            if checkerboard:
+                                results['checkerboarded'] = False
+                                p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
+                                if set(p_l_new_vertices) & set(cluster):
+                                    cluster_graph = block_graph
+                                    non_cluster = set(new_relevant_vertices).difference(cluster)
+                                    cluster_graph.delete_vertices(non_cluster)
+                                    brands_list = {v['brand_name'] for v in block_graph.vs}
+                                    results['checkerboarded'] = True
+                                    results['brand_list'] = brands_list
+                            else:
+                                results['block_ign_plabel'] = True
                         if availability_param:
                             results['availability'] = False
                             attributes_list = {v[availability_param] for v in block_graph.vs}
