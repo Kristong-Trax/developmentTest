@@ -62,7 +62,7 @@ class PERFETTICNToolBox:
         for value in display_names:
             num_brands[value] = display_info[display_info == value].count()
         # data=self.get_match_display(self.session_uid)
-        # self.store_info['store_number_1'] // store num
+        store_num= self.store_info['store_number_1'][0]
 
         return 0
 
