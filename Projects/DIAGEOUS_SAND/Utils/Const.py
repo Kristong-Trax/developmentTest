@@ -63,20 +63,13 @@ class Const(object):
     SHELF_GROUP = "shelf groups"
 
     # sets:
-    ASSORTMENT = "Assortment"
+    POD = "POD"
     DISPLAY_BRAND = "Display Brand"
     DISPLAY_SHARE = "Display Share"
     SHELF_FACINGS = "Shelf Facings"
     SHELF_PLACEMENT = "Shelf Placement"
     MSRP = "MSRP"
-    SETS = [
-        ASSORTMENT,
-        DISPLAY_BRAND,
-        DISPLAY_SHARE,
-        SHELF_FACINGS,
-        SHELF_PLACEMENT,
-        MSRP
-    ]
+    STORE_SCORE = "Store Score"
 
     PERCENT_FOR_EYE_LEVEL = 0
     TARGET_FOR_DISPLAY_SHARE = 0.25
@@ -143,4 +136,17 @@ class Const(object):
     PRODUCT_FK = "product_fk"
     STANDARD_TYPE = "standard_type"
     PASSED = "passed"
+    MANUFACTURER = "manufacturer"
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED]
+    COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
+
+# assortments:
+
+    EXTRA = "EXTRA"
+    AS_BRAND = "brand"
+    AS_SUB = "sub_brand"
+    COLUMNS_FOR_AS = [PRODUCT_FK, AS_BRAND, AS_SUB, PASSED, STANDARD_TYPE]
+    AS_SEGMENT = "segment"
+    AS_NATIONAL = "national"
+    AS_TOTAL = "total"
+    AS_SKU = "sku"
