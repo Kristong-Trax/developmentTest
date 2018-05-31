@@ -21,6 +21,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 THRESHOLD = 0.5
 NewScore =['Availability','SOS Facings']
+AVAILABILITY ='Availability'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
@@ -215,7 +216,10 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
                     if number_of_atomics != 0 or number_of_passed_atomics != 0:
-                        group_scores[kpi_group][0] += new_atomic
+                        if kpi_type == AVAILABILITY:
+                            group_scores[kpi_group][0] += kpi_score
+                        else:
+                            group_scores[kpi_group][0] += new_atomic
                         group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
@@ -433,7 +437,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 result += product_result
             result = round(float(result)/float(target), 2)
 
-            score = 0 if result < THRESHOLD else 1 if result >=1 else result
+            score = 1 if result >= THRESHOLD else result
 
 
         else:
