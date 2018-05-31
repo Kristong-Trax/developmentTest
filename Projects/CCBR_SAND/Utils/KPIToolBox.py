@@ -25,7 +25,6 @@ KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.0 - KENGINE.xlsx')
 
-
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -80,7 +79,9 @@ class CCBRToolBox:
         self.calculate_pricing(self.all_products)
 
     def calculate_availability(self, active_products):
-        active_products_pks = active_products['product_fk'].unique().tolist()
+        active_products_sku_and_other = active_products[(active_products['product_type'] == 'SKU')
+                                                                    | (active_products['product_type'] == 'Other')]
+        active_products_pks = active_products_sku_and_other['product_fk'].unique().tolist()
         filters = {'product_fk': active_products_pks}
         filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
         facing_filtered = filtered_df.loc[filtered_df['facings'] > 0][['template_fk','product_fk', 'facings']]
