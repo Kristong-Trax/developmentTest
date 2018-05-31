@@ -15,7 +15,7 @@ from Projects.INBEVBR_SAND.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR_SAND.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR_SAND.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Projects.INBEVBR_SAND.Utils.PositionGraph import INBEVBR_SANDPositionGraphs
+from KPIUtils.PositionGraph import PositionGraphs
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
@@ -74,7 +74,7 @@ class INBEVBRToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = INBEVBR_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     def main_calculation(self):
