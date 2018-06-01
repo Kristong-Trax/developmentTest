@@ -360,7 +360,7 @@ class INBEVBRToolBox:
 
         container_type = row[Const.CONTAINER_TYPE].values[0].strip()
         if container_type != "":
-            df = df[df['container_type'] == container_type]
+            df = df[df['form_factor'] == container_type]
 
         beer_type = row[Const.BEER_TYPE].values[0].strip()
         if beer_type != "":
