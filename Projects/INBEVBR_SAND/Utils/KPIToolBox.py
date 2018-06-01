@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v1.0 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.0 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -142,6 +142,8 @@ class INBEVBRToolBox:
             target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
             count_type = row[Const.COUNT_TYPE].values[0].strip()
 
+            df = self.get_non_scif_filters(row)
+
             # get the filters
             filters = self.get_filters_from_row(row.squeeze())
 
@@ -185,12 +187,8 @@ class INBEVBRToolBox:
             target = row[Const.TARGET].values[0]
             weight = row[Const.WEIGHT].values[0]
             count_type = row[Const.COUNT_TYPE].values[0].strip()
-            container_type = row[Const.CONTAINER_TYPE].values[0].strip()
 
-            if container_type != "":
-                df = self.scif[self.scif['att1'] == container_type]
-            else:
-                df = self.scif.copy()
+            df = self.get_non_scif_filters(row)
 
             # get the filters
             filters = self.get_filters_from_row(row.squeeze())
@@ -198,6 +196,10 @@ class INBEVBRToolBox:
             if count_type == Const.FACING:
                 number_of_facings = self.count_of_facings(df, filters)
                 count_result = weight if number_of_facings >= target else 0
+            elif count_type == Const.SCENES:
+                secondary_target = row[Const.SECONDARY_TARGET].values[0]
+                number_of_scenes = self.count_of_scenes(df, filters, target)
+                count_result = weight if number_of_scenes >= secondary_target else 0
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -229,8 +231,10 @@ class INBEVBRToolBox:
             count_type = row[Const.COUNT_TYPE].strip()
 
             # get the filters
-            del row[Const.GROUP_KPI_NAME]
-            del row[Const.SCORE]
+            # del row[Const.GROUP_KPI_NAME]
+            # del row[Const.SCORE]
+
+            df = self.get_non_scif_filters(row)
 
             # get the filters
             filters = self.get_filters_from_row(row)
@@ -256,8 +260,8 @@ class INBEVBRToolBox:
 
     def find_row(self, rows):
 
+        row = rows.copy()
         if len(rows) == 1:
-            row = rows.copy()
             store_type_template = row[Const.STORE_TYPE_TEMPLATE].values[0].strip()
             if store_type_template != "":
                 store_types = store_type_template.split(",")
@@ -284,17 +288,46 @@ class INBEVBRToolBox:
             rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
             temp = rows_stores_filter[Const.REGION_TEMPLATE]
             rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
-            temp = rows_regions_filter[Const.STATE_TEMPLATE]
-            row = rows_regions_filter[(temp == self.state_name_filter) | (temp == "")]
+            # temp = rows_regions_filter[Const.STATE_TEMPLATE]
+            # row = rows_regions_filter[(temp == self.state_name_filter) | (temp == "")]
+
+            # filter the relevant state lines
+            for index, row in rows_regions_filter.iterrows():
+                state_template = row[Const.STATE_TEMPLATE].strip()
+                states = state_template.split(",")
+                states = [item.strip() for item in states]
+                if self.store_type_filter in states:
+                    temp = rows[Const.STATE_TEMPLATE]
+                    row = rows[(temp == state_template)]
+                    break
 
         return row
+
+    def get_non_scif_filters(self, row):
+        df = self.scif.copy()
+
+        att1 = row[Const.ATT1].values[0].strip()
+        if att1 != "":
+            df = df[df['att1'] == att1]
+
+        container_type = row[Const.CONTAINER_TYPE].values[0].strip()
+        if container_type != "":
+            df = df[df['container_type'] == container_type]
+
+        beer_type = row[Const.BEER_TYPE].values[0].strip()
+        if beer_type != "":
+            df = df[df['att2'] == beer_type]
+
+        return df
+
 
     def get_filters_from_row(self, row):
         filters = dict(row)
 
         # no need to be accounted for
         for field in Const.DELETE_FIELDS:
-            del filters[field]
+            if field in filters:
+                del filters[field]
 
         # filter all the empty cells
         for key in filters.keys():
@@ -326,6 +359,16 @@ class INBEVBRToolBox:
         facing_data = df[self.tools.get_filter_condition(df, **filters)]
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
+
+    def count_of_scenes(self, df, filters, target):
+
+        facing_data = df[self.tools.get_filter_condition(df, **filters)]
+
+        # filter by scene_id and by template_name (scene type)
+        scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
+        number_of_scenes = scene_types_groupby[scene_types_groupby['facings'] >= target]
+
+        return number_of_scenes
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
