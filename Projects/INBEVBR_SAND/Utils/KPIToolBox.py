@@ -15,7 +15,8 @@ from Projects.INBEVBR_SAND.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR_SAND.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR_SAND.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils.PositionGraph import PositionGraphs
+from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
@@ -76,6 +77,12 @@ class INBEVBRToolBox:
         if not hasattr(self, '_position_graphs'):
             self._position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
+
+    @property
+    def Sequence_calculations(self):
+        if not hasattr(self, '_position_graphs'):
+            self._sequence = Sequence(self.data_provider, rds_conn=self.rds_conn)
+        return self._sequence
 
     def main_calculation(self):
         """
@@ -321,7 +328,6 @@ class INBEVBRToolBox:
         return number_of_facings
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
-
         # bring the kpi rows from the survey sheet
         rows = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
 
@@ -386,7 +392,7 @@ class INBEVBRToolBox:
         del row_example['Score']
         filters = self.get_filters_from_row(row_example)
 
-        scenes = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_id'].drop_duplicates().tolist()
+        scenes = self.get_scene_list(filters)
 
         # for i in xrange(len(self.relative_positioning)):
         #     params = self.relative_positioning.iloc[i]
@@ -438,6 +444,11 @@ class INBEVBRToolBox:
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
                                            denominator_result=target, result=count_result)
+
+    def get_scene_list(self, filters):
+        matches = self.match_product_in_scene.copy()
+        scenes_list = matches[self.tools.get_filter_condition(matches, **filters)]['scene_fk'].unique()
+        return scenes_list
 
     def get_new_kpi_static_data(self):
         """
