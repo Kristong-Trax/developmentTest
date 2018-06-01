@@ -14,6 +14,7 @@ class Const(object):
 
     # count types
     FACING = 'facings'
+    SCENES = 'scenes'
 
     # const
     KPI_TYPE = 'KPI Type'
@@ -34,7 +35,11 @@ class Const(object):
     TARGET_OPERATOR = 'Target operator'
     NUMERIC = "Numeric"
     PERCENTAGE = '%'
-    CONTAINER_TYPE = 'Container type'
+    ATT1 = 'att1'
+    CONTAINER_TYPE = 'Container Type'
+    BEER_TYPE = 'Beer Type'
+    SECONDARY_TARGET = 'Secondary Target'
+
 
 
     KPI_GROUP = 'Tested KPI Group'
@@ -59,7 +64,8 @@ class Const(object):
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
-                                                            CONTAINER_TYPE, STORE_TYPE_TEMPLATE, WEIGHT]
+                                                            ATT1, STORE_TYPE_TEMPLATE, WEIGHT,
+                                                            GROUP_KPI_NAME,SCORE,BEER_TYPE,ATT1,CONTAINER_TYPE]
 
     # DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,
     #                  PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT, MULTIPACK]
