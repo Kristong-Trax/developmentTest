@@ -11,10 +11,11 @@ class Const(object):
     GROUP_COUNT = 'GROUP_COUNT'
     SURVEY = 'SURVEY'
     PROD_SEQ = 'PROD_SEQ'
+    PROD_WEIGHT = 'PROD_WEIGHT'
 
     # count types
-    FACING = 'facings'
-    SCENES = 'scenes'
+    FACING = 'facing'
+    SCENES = 'scene'
 
     # const
     KPI_TYPE = 'KPI Type'
@@ -64,7 +65,7 @@ class Const(object):
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
-                                                            ATT1, STORE_TYPE_TEMPLATE, WEIGHT,
+                                                            ATT1, STORE_TYPE_TEMPLATE, WEIGHT, STATE_TEMPLATE,
                                                             GROUP_KPI_NAME,SCORE,BEER_TYPE,ATT1,CONTAINER_TYPE]
 
     # DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,

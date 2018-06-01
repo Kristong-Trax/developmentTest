@@ -117,6 +117,8 @@ class INBEVBRToolBox:
             self.handle_survey_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_SEQ:
             self.handle_prod_seq_atomics(atomic_id, atomic_name)
+        elif kpi_type == Const.PROD_WEIGHT:
+            self.handle_prod_weight_atomics(atomic_id, atomic_name)
 
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
@@ -131,12 +133,13 @@ class INBEVBRToolBox:
         # get a single row
         row = self.find_row(rows)
 
-        if len(row) != 1:
-            Log.warning("Dataframe is not correct, wrong number of lines: " + str(len(row)))
-            row = -1
+        if isinstance(row, pd.Series):
+            row = row.to_frame()
+            if row.empty:
+                return
 
         # enter only if there is a matching store, region and state
-        if isinstance(row, pd.DataFrame):
+        if isinstance(row, pd.DataFrame) and not row.empty:
             target = row[Const.TARGET].values[0]
             weight = row[Const.WEIGHT].values[0]
             target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
@@ -148,10 +151,10 @@ class INBEVBRToolBox:
             filters = self.get_filters_from_row(row.squeeze())
 
             if count_type == Const.FACING:
-                numerator_number_of_facings = self.count_of_facings(self.scif, filters)
+                numerator_number_of_facings = self.count_of_facings(df, filters)
                 if numerator_number_of_facings != 0:
                     del filters['manufacturer_name']
-                    denominator_number_of_total_facings = self.count_of_facings(self.scif, filters)
+                    denominator_number_of_total_facings = self.count_of_facings(df, filters)
                     if target_operator == '%':
                         percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                         count_result = weight if percentage >= target else 0
@@ -166,6 +169,41 @@ class INBEVBRToolBox:
                                            numerator_result=numerator_number_of_facings,
                                            denominator_result=target, result=count_result)
 
+        # # enter only if there is a matching store, region and state
+        # if isinstance(row, pd.DataFrame) and not row.empty:
+        #     target = row[Const.TARGET].values[0]
+        #     weight = row[Const.WEIGHT].values[0]
+        #     target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
+        #     count_type = row[Const.COUNT_TYPE].values[0].strip()
+        #
+        #     df = self.get_non_scif_filters(row)
+        #
+        #     # get the filters
+        #     filters = self.get_filters_from_row(row.squeeze())
+        #
+        #     if count_type == Const.FACING:
+        #         numerator_number_of_facings = self.count_of_facings(self.scif, filters)
+        #         if numerator_number_of_facings != 0:
+        #             del filters['manufacturer_name']
+        #             denominator_number_of_total_facings = self.count_of_facings(self.scif, filters)
+        #             if target_operator == '%':
+        #                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
+        #                 count_result = weight if percentage >= target else 0
+        #
+        # try:
+        #     atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        # except IndexError:
+        #     Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+        #     return
+        #
+        # self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+        #                                    numerator_result=numerator_number_of_facings,
+        #                                    denominator_result=target, result=count_result)
+        #
+        #
+        #
+
+
     def handle_count_atomics(self, atomic_id, atomic_name):
 
         target = 0
@@ -178,15 +216,21 @@ class INBEVBRToolBox:
         # get a single row
         row = self.find_row(rows)
 
-        if len(row) != 1:
-            Log.warning("Dataframe is not correct, wrong number of lines: " + str(len(row)))
-            return
+        if isinstance(row, pd.Series):
+            row = row.to_frame()
+            if row.empty:
+                return
 
         # enter only if there is a matching store, region and state
         if isinstance(row, pd.DataFrame):
+            # try:
             target = row[Const.TARGET].values[0]
             weight = row[Const.WEIGHT].values[0]
             count_type = row[Const.COUNT_TYPE].values[0].strip()
+            # except:
+            #     target = row[Const.TARGET].values[0]
+            #     weight = row[Const.WEIGHT].values[0]
+            #     count_type = row[Const.COUNT_TYPE].values[0].strip()
 
             df = self.get_non_scif_filters(row)
 
@@ -197,7 +241,10 @@ class INBEVBRToolBox:
                 number_of_facings = self.count_of_facings(df, filters)
                 count_result = weight if number_of_facings >= target else 0
             elif count_type == Const.SCENES:
+                # try:
                 secondary_target = row[Const.SECONDARY_TARGET].values[0]
+                # except:
+                #     secondary_target = row[Const.SECONDARY_TARGET].values[0]
                 number_of_scenes = self.count_of_scenes(df, filters, target)
                 count_result = weight if number_of_scenes >= secondary_target else 0
 
@@ -260,23 +307,23 @@ class INBEVBRToolBox:
 
     def find_row(self, rows):
 
-        row = rows.copy()
+        row_result = rows.copy()
         if len(rows) == 1:
-            store_type_template = row[Const.STORE_TYPE_TEMPLATE].values[0].strip()
+            store_type_template = rows[Const.STORE_TYPE_TEMPLATE].values[0].strip()
             if store_type_template != "":
                 store_types = store_type_template.split(",")
                 store_types = [item.strip() for item in store_types]
                 if self.store_type_filter not in store_types:
                     return -1
 
-            region_template = row[Const.REGION_TEMPLATE].values[0].strip()
+            region_template = rows[Const.REGION_TEMPLATE].values[0].strip()
             if region_template != "":
                 regions = region_template.split(",")
                 regions = [item.strip() for item in regions]
                 if self.region_name_filter not in regions:
                     return -1
 
-            state_template = row[Const.STATE_TEMPLATE].values[0].strip()
+            state_template = rows[Const.STATE_TEMPLATE].values[0].strip()
             if state_template != "":
                 states = state_template.split(",")
                 states = [item.strip() for item in states]
@@ -290,18 +337,19 @@ class INBEVBRToolBox:
             rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
             # temp = rows_regions_filter[Const.STATE_TEMPLATE]
             # row = rows_regions_filter[(temp == self.state_name_filter) | (temp == "")]
+            row_result = rows_regions_filter.copy()
 
             # filter the relevant state lines
             for index, row in rows_regions_filter.iterrows():
                 state_template = row[Const.STATE_TEMPLATE].strip()
                 states = state_template.split(",")
                 states = [item.strip() for item in states]
-                if self.store_type_filter in states:
-                    temp = rows[Const.STATE_TEMPLATE]
-                    row = rows[(temp == state_template)]
+                if self.state_name_filter in states:
+                    temp = rows_regions_filter[Const.STATE_TEMPLATE]
+                    row_result = rows_regions_filter[temp == state_template]
                     break
 
-        return row
+        return row_result
 
     def get_non_scif_filters(self, row):
         df = self.scif.copy()
@@ -408,6 +456,7 @@ class INBEVBRToolBox:
     def handle_prod_seq_atomics(self, atomic_id, atomic_name):
 
         target = 0
+        return
         count_result = 0
         numerator_number_of_facings = 0
         group_score = 0
@@ -492,6 +541,10 @@ class INBEVBRToolBox:
         matches = self.match_product_in_scene.copy()
         scenes_list = matches[self.tools.get_filter_condition(matches, **filters)]['scene_fk'].unique()
         return scenes_list
+
+    def handle_prod_weight_atomics(self, atomic_id, atomic_name):
+        target = 0
+        return
 
     def get_new_kpi_static_data(self):
         """
