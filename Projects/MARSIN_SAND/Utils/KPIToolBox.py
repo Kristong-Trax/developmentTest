@@ -51,7 +51,6 @@ class MARSIN_SANDKPIConsts(object):
     AVAILABILITY_AND_SURVEY = 'Availability & Survey'
 
 
-
 class MARSIN_SANDTemplateConsts(object):
 
     # HEADERS #
