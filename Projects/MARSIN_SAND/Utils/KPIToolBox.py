@@ -206,7 +206,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
                     new_atomic=(1 if kpi_score > 0 and kpi_type in NewScore else kpi_score)
-                    if kpi_type in NewScore:
+                    if kpi_type == 'SOS Facings':
                         self.write_to_db_result(kpi_fk, (kpi_score*100, new_atomic, number_of_atomics),
                                                 level=self.LEVEL2)
                     else:
