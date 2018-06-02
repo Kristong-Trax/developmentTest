@@ -3,7 +3,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Projects.CCBR_PROD.KPIGenerator import CCBRGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 __author__ = 'ilays'
 

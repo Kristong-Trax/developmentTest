@@ -356,7 +356,8 @@ class CCBRToolBox:
 
         # no need to be accounted for, fields that aren't in scif
         for field in Const.DELETE_FIELDS:
-            del filters[field]
+            if field in filters:
+                del filters[field]
 
         if Const.WEIGHT in filters.keys():
             del filters[Const.WEIGHT]
