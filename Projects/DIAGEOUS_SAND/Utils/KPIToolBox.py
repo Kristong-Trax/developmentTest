@@ -48,7 +48,8 @@ class DIAGEOUSToolBox:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.assortment_scores = {Const.DISPLAY_BRAND: {}, Const.POD: {}}
+        assortment_sub_scores = {Const.AS_TOTAL: 0, Const.AS_SEGMENT: 0, Const.AS_NATIONAL: 0}
+        self.assortment_scores = {Const.DISPLAY_BRAND: assortment_sub_scores, Const.POD: assortment_sub_scores}
         self.scenes = self.scif['scene_fk'].unique().tolist()
         self.scenes_with_shelves = {}
         for scene in self.scenes:
@@ -115,6 +116,8 @@ class DIAGEOUSToolBox:
             weight = 1
         return t_score * weight, s_score * weight, n_score * weight
 
+# assortments:
+
     def get_assortment_fks(self):
         """
         Creates dict of dicts that contains all the necessary kpi_fk of the assortments
@@ -175,6 +178,9 @@ class DIAGEOUSToolBox:
                     fk=fks_list[assortment][Const.AS_BRAND], level=3, numerator_id=brand, numerator_result=num_res,
                     denominator_result=den_res, result=self.get_score(num_res, den_res),
                     has_children=True, necessary=False, has_parent=True)
+            if results.empty:
+                Log.info("No {} defined to this session".format(assortment))
+                continue
             num_res = results[Const.PASSED].sum()
             den_res = results[Const.PASSED].count()
             self.common.write_to_db_result_new_tables_with_tree(
@@ -231,9 +237,6 @@ class DIAGEOUSToolBox:
                     fk=pod_sku_fk, level=5, numerator_id=product, numerator_result=None,
                     result=Const.EXTRA, has_children=False, necessary=False, has_parent=False)
 
-
-# assortments:
-
     def get_scores_of_assortments(self, kpi_name):
         """
         :param kpi_name: assortment type
@@ -241,16 +244,6 @@ class DIAGEOUSToolBox:
         """
         scores = self.assortment_scores[kpi_name]
         return scores[Const.AS_TOTAL], scores[Const.AS_SEGMENT], scores[Const.AS_NATIONAL]
-
-    def get_product_details(self, product_fk):
-        """
-        :param product_fk:
-        :return: its details for assortment
-        """
-        brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
-        sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
-        standard_type = self.get_standard_type(product_fk)
-        return brand, sub_brand, standard_type
 
 # display share:
 
@@ -267,8 +260,8 @@ class DIAGEOUSToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif[(self.scif['scene_fk'].isin(relevant_scenes)) &
                                       (self.scif['location_type'] == 'Secondary Shelf')]
-        manufacturers = relevant_products['manufacturer_fk'].unique().tolist()
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
+        manufacturers = relevant_products['manufacturer_fk'].unique().tolist()
         for manufacturer in manufacturers:
             passed_skus = self.calculate_manufacturer_display_share(manufacturer, relevant_products)
             all_results.append(passed_skus)
@@ -858,3 +851,14 @@ class DIAGEOUSToolBox:
         query = "select name from static.state where pk = {};".format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
         state = pd.read_sql_query(query, self.rds_conn.db)
         return state.values[0][0]
+
+    def get_product_details(self, product_fk):
+        """
+        :param product_fk:
+        :return: its details for assortment
+        """
+        brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
+        sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
+        manufacturer = self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
+        standard_type = self.get_standard_type(product_fk)
+        return brand, sub_brand, standard_type, manufacturer
