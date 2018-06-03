@@ -128,8 +128,8 @@ class INBEVEC_SANDToolBox:
         """
         for i in xrange(len(self.relative_positioning)):
             params = self.relative_positioning.iloc[i]
-            tested_filters = {'brand_name': params.get('Tested Brand Name')}
-            anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
+            tested_filters = {'product_name': params.get('Tested SKU EAN')}
+            anchor_filters = {'product_name': params.get('Anchor SKU EAN')}
             direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
                               'bottom': self._get_direction_for_relative_position(
                                   params.get(self.BOTTOM_DISTANCE)),
