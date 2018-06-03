@@ -10,7 +10,6 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.DIAGEORU_SAND.Utils.Fetcher import DIAGEORUQueries
 from Projects.DIAGEORU_SAND.Utils.ToolBox import DIAGEORUDIAGEOToolBox
 
-
 __author__ = 'Yasmin'
 
 KPI_RESULT = 'report.kpi_results'

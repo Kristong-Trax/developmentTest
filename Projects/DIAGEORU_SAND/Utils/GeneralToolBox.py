@@ -7,6 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
+from Projects.DIAGEORU_SAND.Utils.PositionGraph import DIAGEORUPositionGraphs
 
 __author__ = 'Nimrod'
 
