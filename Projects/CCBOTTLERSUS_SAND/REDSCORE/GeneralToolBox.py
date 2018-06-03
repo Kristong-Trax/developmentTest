@@ -12,7 +12,6 @@ from KPIUtils.PositionGraph import PositionGraphs
 
 __author__ = 'Nimrod'
 
-
 class CCBOTTLERSUS_SANDREDGENERALToolBox:
 
     EXCLUDE_FILTER = 0
