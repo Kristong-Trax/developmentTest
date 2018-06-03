@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
 # from Projects.RED_SCORE.Utils.PositionGraph import PositionGraphs
-from KPIUtils.Calculations.PositionGraph import PositionGraphs
+from KPIUtils.PositionGraph import PositionGraphs
 
 __author__ = 'Nimrod'
 
