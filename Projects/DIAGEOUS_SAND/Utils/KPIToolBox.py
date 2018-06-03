@@ -40,10 +40,9 @@ class DIAGEOUSToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.state_fk = self.data_provider[Data.STORE_INFO]['state_fk']
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.state = self.get_state()
         self.kpi_static_data = self.common.get_new_kpi_static_data()
-        self.state = "AAA"#TODO
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         self.templates = {}
@@ -325,10 +324,10 @@ class DIAGEOUSToolBox:
         n_kpi_fk = self.common.get_kpi_fk_by_kpi_name_new_table(Const.DB_SHELF_FACING_NATIONAL)
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_competitions = self.templates[Const.SHELF_FACING_SHEET]
-        relevant_competitions = relevant_competitions[relevant_competitions[Const.STATE] == self.state]
-        if relevant_competitions.empty:
+        if self.state in relevant_competitions[Const.STATE].unique().tolist():
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.STATE] == self.state]
+        else:
             Log.warning("There are no shelf facing competitions for state {}".format(self.state))
-            return
         products_ean = relevant_competitions[Const.OUR_EAN_CODE].unique().tolist()
         relevant_products = self.all_products[self.all_products[Const.PRODUCT_EAN_CODE_DB].isin(products_ean)]
         brands = relevant_products['brand_fk'].unique().tolist()
@@ -637,6 +636,10 @@ class DIAGEOUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name_new_table(Const.DB_MSRP_TOTAL)
         relevant_scenes = self.get_relevant_scenes(scene_types)
         all_products_table = self.templates[Const.PRICING_SHEET]
+        if self.state in all_products_table[Const.STATE].unique().tolist():
+            all_products_table = all_products_table[all_products_table[Const.STATE] == self.state]
+        else:
+            Log.warning("There are no pricing competitions for state {}".format(self.state))
         products_ean = all_products_table[Const.PRODUCT_EAN_CODE].unique().tolist()
         relevant_products = self.all_products[self.all_products[Const.PRODUCT_EAN_CODE_DB].isin(products_ean)]
         brands = relevant_products['brand_fk'].unique().tolist()
@@ -851,3 +854,7 @@ class DIAGEOUSToolBox:
                 "scene_id"].unique().tolist()
         return self.scif["scene_id"].unique().tolist()
 
+    def get_state(self):
+        query = "select name from static.state where pk = {};".format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
+        state = pd.read_sql_query(query, self.rds_conn.db)
+        return state.values[0][0]
