@@ -6,9 +6,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from datetime import datetime
 
-from Projects.DIAGEOIE.Utils.PositionGraph import DIAGEOIEPositionGraphs
 
 __author__ = 'Nimrod'
 
