@@ -137,16 +137,17 @@ class Const(object):
     STANDARD_TYPE = "standard_type"
     PASSED = "passed"
     MANUFACTURER = "manufacturer"
-    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED]
+    BRAND = "brand"
+    SUB_BRAND = "sub_brand"
+    COLUMNS_FOR_PRODUCT_OLD = [PRODUCT_FK, STANDARD_TYPE, PASSED]
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
+    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
 
 # assortments:
 
     EXTRA = "EXTRA"
-    AS_BRAND = "brand"
-    AS_SUB = "sub_brand"
-    COLUMNS_FOR_AS = [PRODUCT_FK, AS_BRAND, AS_SUB, PASSED, STANDARD_TYPE]
-    AS_SEGMENT = "segment"
-    AS_NATIONAL = "national"
-    AS_TOTAL = "total"
-    AS_SKU = "sku"
+    SEGMENT = "segment"
+    NATIONAL = "national"
+    TOTAL = "total"
+    SKU = "sku"
+    KPI = "kpi"
