@@ -66,7 +66,7 @@ class PERFETTICNToolBox:
 
 
         # data=self.get_match_display(self.session_uid)
-        # store_num= self.store_info['store_number_1'][0] ??  what about the store_id? 
+        # store_num= self.store_info['store_number_1'][0] ??  what about the store_id?
         self.common.write_to_db_result_new_tables('??', self.scif['template_name'], score,
                                                   None, None, score, score) #from where to bring the kpi_fk??
         # kpi_fk, self.session_id, numerator_id, numerator_result, denominator_id,
