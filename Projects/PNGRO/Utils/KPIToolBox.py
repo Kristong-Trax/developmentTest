@@ -347,42 +347,69 @@ class PNGRO_PRODToolBox:
         value2 = params['Param (2) Values']
         type3 = params['Param (3)']
         value3 = params['Param (3) Values']
-
         if type3.strip():
             filters = {type1: value1, type2: value2, type3: value3}
         else:
             filters = {type1: value1, type2: value2}
-
+        target = params['Target Policy']
+        target = map(int, target.split(','))
         product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
                                                                      **dict(filters, **general_filters))][
-                                                                    'product_fk'].unique().tolist()
-        bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
-            self.match_product_in_scene,
-            **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
-            [['shelf_number', 'bay_number', 'scene_fk']]
-
-        bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
-        bay_shelf_count['count'] = 0
-        bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
-
-        for scene in general_filters['scene_id']:
-            for bay in bay_shelf_list['bay_number'].unique().tolist():
-                shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
-                target = self.eye_level_target.copy()
-                number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
-                                                    (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
-                try:
-                    target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
-                except IndexError:
-                    target = '3,4,5'
-                target = map(lambda x: int(x), target.split(','))
-                score = len(set(shelf_list) - set(target))
-                if score > 0:
-                    return False
-        if not bay_shelf_list.empty:
-            return True
-        else:
+            'product_fk'].unique().tolist()
+        shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                                 **dict({'product_fk': product_fk_codes,
+                                                                                         'scene_fk': general_filters[
+                                                                                             'scene_id']}))][
+            'shelf_number'].unique()
+        score = len(set(shelf_list) - set(target))
+        if score > 0:
             return False
+        else:
+            return True
+
+    # def calculate_shelf_position(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = params['Param (1) Values']
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = params['Param (2) Values']
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #
+    #     if type3.strip():
+    #         filters = {type1: value1, type2: value2, type3: value3}
+    #     else:
+    #         filters = {type1: value1, type2: value2}
+    #
+    #     product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
+    #                                                                  **dict(filters, **general_filters))][
+    #                                                                 'product_fk'].unique().tolist()
+    #     bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
+    #         self.match_product_in_scene,
+    #         **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
+    #         [['shelf_number', 'bay_number', 'scene_fk']]
+    #
+    #     bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
+    #     bay_shelf_count['count'] = 0
+    #     bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
+    #
+    #     for scene in general_filters['scene_id']:
+    #         for bay in bay_shelf_list['bay_number'].unique().tolist():
+    #             shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
+    #             target = self.eye_level_target.copy()
+    #             number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
+    #                                                 (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
+    #             try:
+    #                 target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
+    #             except IndexError:
+    #                 target = '3,4,5'
+    #             target = map(lambda x: int(x), target.split(','))
+    #             score = len(set(shelf_list) - set(target))
+    #             if score > 0:
+    #                 return False
+    #     if not bay_shelf_list.empty:
+    #         return True
+    #     else:
+    #         return False
 
     def calculate_linear_share_of_shelf_per_product_display(self):
         display_agg = self.get_display_agg()
