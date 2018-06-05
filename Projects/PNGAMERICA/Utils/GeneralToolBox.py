@@ -265,6 +265,26 @@ class PNGAMERICAGENERALToolBox:
             space_length = 0
         return space_length
 
+    def calculate_category_space_per_bay(self, bay_matches, testes_attributes, threshold=0.5, **filters):
+        """
+        :param threshold: The ratio for a bay to be counted as part of a category.
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+
+        bay_total_linear = bay_matches.loc[(bay_matches['stacking_layer'] == 1) &
+                                             (bay_matches['status'] == 1)]['width_mm_advance'].sum()
+        bay_matches['bay_number'] = bay_matches['bay_number'].values[0]
+        for tested_attribute in testes_attributes:
+            tested_group_linear = self.calculate_share_space_length(**filters)
+            if tested_group_linear:
+                bay_ratio = bay_total_linear / float(tested_group_linear)
+            else:
+                bay_ratio = 0
+            if bay_ratio >= threshold:
+                return tested_attribute
+        return None
+
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1,list_result=False, category=None,
                                    position=None, **filters):
         """
@@ -334,7 +354,8 @@ class PNGAMERICAGENERALToolBox:
         return assortment
 
     def calculate_eye_level_assortment(self, eye_level_configurations=DEFAULT, min_number_of_products=ALL,
-                                       percentage_result=False, requested_attribute=None, products_list=False, **filters):
+                                       percentage_result=False, requested_attribute=None, products_list=False,
+                                        sub_category=False, **filters):
         """
         :param eye_level_configurations: A data frame containing information about shelves to ignore (==not eye level)
                                          for every number of shelves in each bay.
@@ -367,6 +388,15 @@ class PNGAMERICAGENERALToolBox:
                 if bay >= 0:
                     try:
                         bay_matches = matches[matches['bay_number'] == bay]
+                        if sub_category:
+                            tested_attributes = eye_level_configurations['sub_category'].unique().tolist()
+                            bay_sub_category = self.calculate_category_space_per_bay(bay_matches, tested_attributes,
+                                                                                     **filters)
+                            if bay_sub_category is not None:
+                                eye_level_configurations = eye_level_configurations.loc[
+                                    eye_level_configurations['sub_category'] == bay_sub_category]
+                            else:
+                                continue
                         number_of_shelves = bay_matches['shelf_number'].max()
                         configuration = eye_level_configurations[(eye_level_configurations[min_shelf] <= number_of_shelves) &
                                                                  (eye_level_configurations[max_shelf] >= number_of_shelves)]
@@ -378,8 +408,12 @@ class PNGAMERICAGENERALToolBox:
                         max_include = number_of_shelves - configuration[max_ignore]
                         eye_level_shelves = bay_matches[bay_matches['shelf_number'].between(min_include, max_include)]
                         eye_level_facings = eye_level_facings.append(eye_level_shelves)
-                        if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
-                            products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
+                        # if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
+                        #     products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
+                        if any(eye_level_facings[
+                                               self.get_filter_condition(eye_level_shelves, **filters)]['product_ean_code']):
+                            products_on_eye_level.append(eye_level_shelves[self.get_filter_condition(
+                                eye_level_shelves, **filters)]['product_name'].unique().tolist())
                     except Exception as e:
                         Log.info('Adding Eye Level products failed for bay {} in scene {}'.format(bay, scene))
             eye_level_assortment = len(eye_level_facings[
