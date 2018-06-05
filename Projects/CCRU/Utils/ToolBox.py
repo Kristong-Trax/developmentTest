@@ -2118,7 +2118,7 @@ class CCRUKPIToolBox:
         """
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula') not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
+            if p.get('Formula').strip() not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, p.get("Children").split("\n"))

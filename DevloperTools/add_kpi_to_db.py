@@ -184,5 +184,5 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('inbevnl', '/home/Israel/Desktop/US/inbevnl/KPIs for DB.xlsx')
+    kpi = AddKPIs('ccza', '/home/natalyak/Desktop/CCZA/KPIs for DB.xlsx')
     kpi.add_kpis_from_template()
