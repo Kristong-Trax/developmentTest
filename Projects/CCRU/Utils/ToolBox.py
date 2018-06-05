@@ -2551,6 +2551,9 @@ class CCRUKPIToolBox:
                         result = self.execution_results[kpi_name].get('result')
                         score_func = self.execution_results[kpi_name].get('score_func')
                         try:
+                            if type(target) is unicode and '%' in target:
+                                target = target.replace('%', '')
+                                target = float(target) / 100
                             target = float(target)
                             if int(target) == target:
                                 target = int(target)
