@@ -109,9 +109,9 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                 self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 3:
             brands = self.scif['brand_name'].unique().tolist()
-            category_groups = self.scif['category_group'].unique().tolist()
+            category_groups = self.scif['category_group_x'].unique().tolist()
             for category_group in category_groups:
-                filtered_scif = self.scif[self.scif['category_group'] == category_group]
+                filtered_scif = self.scif[self.scif['category_group_x'] == category_group]
                 num_of_products_in_cat = sum(filtered_scif['facings'])
                 for brand in brands:
                     brand_filter = filtered_scif.copy()
@@ -119,7 +119,6 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                     num_of_products_in_brand = sum(brand_filter['facings'])
                     result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
                     atomic_name = 'sos for category_group_{} and brand_{}'.format(category_group, brand)
-                    print atomic_name + 'score: ' + str(result)
                     self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
             shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]
