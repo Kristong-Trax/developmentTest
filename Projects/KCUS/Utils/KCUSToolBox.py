@@ -630,9 +630,9 @@ class KCUSToolBox:
         attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id,
                                                self.visit_date.isoformat(), kpi_fk,
                                                params.get('KPI Level 2 Name').encode('utf-8'),
-                                               score)],
+                                               score, score)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk',
-                                                      'kpk_name', 'score'])
+                                                      'kpk_name', 'result', 'score'])
 
         return attributes_for_table2
 
@@ -644,6 +644,8 @@ class KCUSToolBox:
         if self.thresholds_and_results.get(params.get('KPI Level 2 Name')):
             result = self.thresholds_and_results[params.get('KPI Level 2 Name')]['result']
             # threshold = self.thresholds_and_results[params.get('#Mars KPI NAME')]['threshold']
+        elif len(self.thresholds_and_results) == 0:
+            result = score
         else:
             result = threshold = 0
         attributes_for_table3 = pd.DataFrame([(params.get('KPI Level 2 Name').encode('utf-8'),
