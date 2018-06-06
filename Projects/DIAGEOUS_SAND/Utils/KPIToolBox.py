@@ -62,25 +62,25 @@ class DIAGEOUSToolBox:
         """
         This function calculates the KPI results.
         """
-        t_store_score, s_store_score, n_store_score = 0, 0, 0
-        t_score_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_TOTAL)
-        s_score_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_SEGMENT)
-        n_score_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_NATIONAL)
+        total_store_score, segment_store_score, national_store_score = 0, 0, 0
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_TOTAL)
+        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_SEGMENT)
+        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_SCORE_NATIONAL)
         for i, kpi_line in self.templates[Const.KPIS_SHEET].iterrows():
             t_weighted_score, s_weighted_score, n_weighted_score = self.calculate_set(kpi_line)
             if kpi_line[Const.KPI_GROUP]:
-                t_store_score += t_weighted_score
-                s_store_score += s_weighted_score
-                n_store_score += n_weighted_score
+                total_store_score += t_weighted_score
+                segment_store_score += s_weighted_score
+                national_store_score += n_weighted_score
         self.common.write_to_db_result(
-            fk=t_score_fk, numerator_id=self.manufacturer_fk, result=t_store_score, numerator_result=t_store_score,
-            identifier_result=self.common.get_dictionary(name=Const.TOTAL))
+            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score,
+            numerator_result=total_store_score, identifier_result=self.common.get_dictionary(name=Const.TOTAL))
         self.common.write_to_db_result(
-            fk=s_score_fk, numerator_id=self.manufacturer_fk, result=s_store_score, numerator_result=s_store_score,
-            identifier_result=self.common.get_dictionary(name=Const.SEGMENT))
+            fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=segment_store_score,
+            numerator_result=segment_store_score, identifier_result=self.common.get_dictionary(name=Const.SEGMENT))
         self.common.write_to_db_result(
-            fk=n_score_fk, numerator_id=self.manufacturer_fk, result=n_store_score, numerator_result=n_store_score,
-            identifier_result=self.common.get_dictionary(name=Const.NATIONAL))
+            fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=national_store_score,
+            numerator_result=national_store_score, identifier_result=self.common.get_dictionary(name=Const.NATIONAL))
 
     def calculate_set(self, kpi_line):
         """
@@ -134,23 +134,23 @@ class DIAGEOUSToolBox:
             return 0, 0, 0
         total_level_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.TOTAL])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_level_fk]
-        all_competes = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT)
-        for i, competition in relevant_assortment.iterrows():
-            result_dict = calculate_function(competition, relevant_scif)
-            all_competes = all_competes.append(result_dict, ignore_index=True)
-        t_result, s_result, n_result = self.enter_sub_brands_and_brands_to_db(all_competes, kpi_name)
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT)
+        for i, product_line in relevant_assortment.iterrows():
+            result_line = calculate_function(product_line, relevant_scif)
+            all_results = all_results.append(result_line, ignore_index=True)
+        total_result, segment_result, national_result = self.enter_sub_brands_and_brands_to_db(all_results, kpi_name)
         # add extra products to DB:
         if kpi_name == Const.POD:
-            sku_level_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.SKU])
+            sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.SKU])
             all_diageo_products = self.scif[self.scif['manufacturer_fk'] == self.manufacturer_fk][
                 'product_fk'].unique().tolist()
             assortment_products = relevant_assortment['product_fk'].unique().tolist()
             products_not_in_list = set(all_diageo_products) - set(assortment_products)
             for product in products_not_in_list:
                 self.common.write_to_db_result(
-                    fk=sku_level_fk, numerator_id=product, result=self.assortment_results[Const.EXTRA],
+                    fk=sku_kpi_fk, numerator_id=product, result=self.assortment_results[Const.EXTRA],
                     identifier_parent=self.common.get_dictionary(kpi_fk=total_level_fk))
-        return t_result, s_result, n_result
+        return total_result, segment_result, national_result
 
     def calculate_pod_sku(self, competition, relevant_scif):
         """
@@ -657,6 +657,7 @@ class DIAGEOUSToolBox:
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
+        sub_brand = product_fk % 3 # TODO edit to real function
         standard_type = self.get_standard_type(product_fk)
         return brand, sub_brand, standard_type
 
