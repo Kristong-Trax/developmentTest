@@ -10,11 +10,12 @@ __Author__ = 'Dudi_S'
 
 CUBE = 1
 NON_BRANDED_CUBE = 5
+TABLE = 'Table Display'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
 CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
                        17, 18, 19, 20, 21, 22, 23, 24]
 PROMOTION_WALL_DISPLAYS = [25]
-
+TABLE_DISPLAYS = [TABLE]
 
 class PNGCN_SANDPNGShareOfDisplay(object):
     def __init__(self, project_connector, session_uid, data_provider=None):
@@ -141,6 +142,50 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             cube_display_with_id_and_bays = cube_display_with_id.merge(cube_valid_bays, on=['scene_fk'])
             self._calculate_share_of_display(cube_display_with_id_and_bays, all_skus=0)
 
+    def _handle_table_display(self):
+        """
+            Handles table displays. All tags are aggregated to one display per scene with multiple tags.
+            If there are cube/non branded cube tags also -> table tags will be ignored and cube calculation will be applied
+            :return:
+            """
+        Log.debug(self.log_prefix + ' Starting table display')
+        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
+        total_and_cube_tags = \
+            self.match_display_in_scene[(self.match_display_in_scene['display_fk'].isin(CUBE_TOTAL_DISPLAYS)) |
+                                        (self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS))]
+        table_scenes = table_tags.scene_fk.tolist()
+        cube_scenes = total_and_cube_tags.scene_fk.tolist()
+        scenes = list(set(table_scenes)^set(cube_scenes))
+        table_bays = pd.DataFrame({})
+        table_display = pd.DataFrame({})
+        for scene in scenes:
+            table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
+            # if not (total_cube_tags_scene.empty and cube_tags_scene.empty):
+            #     if total_cube_tags_scene.empty:
+            table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()
+            table_display_scene = table_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                # elif cube_tags_scene.empty:
+                #     cube_bays_scene = total_cube_tags_scene[['scene_fk', 'bay_number']].copy()
+                #     cube_display_scene = total_cube_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                # else:
+                #     cube_bays_scene = cube_tags_scene[['scene_fk', 'bay_number']].copy()
+                #     cube_display_scene = total_cube_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                # cube_display_scene['display_fk'] = \
+                #     NON_BRANDED_CUBE if (NON_BRANDED_CUBE in cube_tags_scene['display_fk'].values and
+                #                          CUBE not in cube_tags_scene['display_fk'].values) else CUBE
+            table_display = table_display.append(table_display_scene, ignore_index=True)
+            table_bays = table_bays.append(table_bays_scene, ignore_index=True)
+        if not table_bays.empty:
+            table_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
+        if not table_display.empty:
+            # only valid tags are relevant
+            cube_valid_bays = self._filter_valid_bays(table_bays)
+            cube_display_with_id = self._insert_into_display_surface(table_display)
+            cube_display_with_id_and_bays = cube_display_with_id.merge(cube_valid_bays, on=['scene_fk'])
+            self._calculate_share_of_display(cube_display_with_id_and_bays, all_skus=0)
+
+        return
+
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
         Cross information between display and bays to match_product_in_scene.
@@ -160,9 +205,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                                                                  'template_fk', 'display_fk', 'display_size'],
                                                                 as_index=False).facings.sum()
             # for sos purposes filtering out stacking tags
-            display_visit_stacking = display_visit[display_visit['display_fk'] == 27]
+            display_visit_stacking = display_visit[display_visit['display_name'] == 'Table Display']
             display_visit_stacking.drop(['status', 'stacking_layer'], axis=1)
-            display_visit = display_visit[display_visit['display_fk'] != 27]
+            display_visit = display_visit[display_visit['display_name'] != 'Table Display']
             display_visit = display_visit[(display_visit['stacking_layer'] == 1)]\
                 .drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit.append(display_visit_stacking)
