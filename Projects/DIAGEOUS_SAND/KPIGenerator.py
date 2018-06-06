@@ -1,12 +1,12 @@
 
 from Trax.Utils.Logging.Logger import Log
+from Projects.DIAGEOUS_SAND.Utils.KPIToolBox import DIAGEOUSToolBox
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.DIAGEOUS_SAND.Utils.KPIToolBox import DIAGEOUSToolBox, log_runtime
-
-__author__ = 'uri'
+__author__ = 'Elyashiv'
 
 
-class DIAGEOUSGenerator:
+class Generator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -23,8 +23,5 @@ class DIAGEOUSGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        # for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
-        #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-        #     self.tool_box.write_to_db_result(kpi_set_fk, score, self.tool_box.LEVEL1)
         self.tool_box.main_calculation()
-        self.tool_box.commit_results_data()
+        self.tool_box.common.commit_results_data_to_new_tables()
