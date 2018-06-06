@@ -436,7 +436,7 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 result += product_result
             result = round(float(result)/float(target), 2)
 
-            score = 1 if result >= THRESHOLD else result
+            score = 0 if result < THRESHOLD else result
 
 
         else:
