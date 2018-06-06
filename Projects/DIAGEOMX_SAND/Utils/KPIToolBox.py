@@ -10,10 +10,10 @@ from Trax.Utils.Conf.Keys import DbUsers
 
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Projects.DIAGEOMX.Utils.ParseTemplates import parse_template
+from Projects.DIAGEOMX_SAND.Utils.ParseTemplates import parse_template
 
-from Projects.DIAGEOMX.Utils.Fetcher import DIAGEOMXQueries
-from Projects.DIAGEOMX.Utils.ToolBox import DIAGEOMXDIAGEOToolBox
+from Projects.DIAGEOMX_SAND.Utils.Fetcher import DIAGEOMX_SANDQueries
+from Projects.DIAGEOMX_SAND.Utils.ToolBox import DIAGEOMX_SANDDIAGEOToolBox
 
 __author__ = 'Nimrod'
 
@@ -38,7 +38,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class DIAGEOMXToolBox:
+class DIAGEOMX_SANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -66,7 +66,7 @@ class DIAGEOMXToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOMXDIAGEOToolBox(self.data_provider, output,
+        self.tools = DIAGEOMX_SANDDIAGEOToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
@@ -75,7 +75,7 @@ class DIAGEOMXToolBox:
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = DIAGEOMXQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = DIAGEOMX_SANDQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -87,7 +87,7 @@ class DIAGEOMXToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOMXQueries.get_all_kpi_data()
+        query = DIAGEOMX_SANDQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -96,7 +96,7 @@ class DIAGEOMXToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOMXQueries.get_match_display(self.session_uid)
+        query = DIAGEOMX_SANDQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -236,6 +236,7 @@ class DIAGEOMXToolBox:
                 scores.append(score)
 
                 self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
 
         if not scores:
             return False

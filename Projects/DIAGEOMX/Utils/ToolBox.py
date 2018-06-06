@@ -96,7 +96,7 @@ class DIAGEOMXDIAGEOConsts(object):
     KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
                                       'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA',
                                       'Visible to Consumer %']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer', 'Visible to Consumer %']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer', 'Visible to Consumer %', 'TOUCH POINT']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
 

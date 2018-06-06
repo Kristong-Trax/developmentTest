@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class DIAGEOUSPositionGraphs:
+class DIAGEOMX_SANDPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -24,8 +24,7 @@ class DIAGEOUSPositionGraphs:
     STRICT_MODE = 'Strict Mode'
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          TOP, BOTTOM, LEFT, RIGHT, 'shelf_number','bay_number']
+                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
@@ -57,19 +56,20 @@ class DIAGEOUSPositionGraphs:
             self.create_position_graphs(scene_id)
         return self.position_graphs.get(scene_id)
 
-    def get_filtered_matches(self):
+    def get_filtered_matches(self, include_stacking=False):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
+        matches = matches[matches['status'] == 1]
+        if not include_stacking:
+            matches = matches[matches['stacking_layer'] == 1]
+        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
-        scene_template = scene_template.merge(self.data_provider.templates[['template_fk', 'location_type']],
-                                              how='left', on='template_fk')
-        scene_template['scene_id'] = scene_template['scene_fk']
-        matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
+        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
+                                                                           'scene_id', 'scene_fk']],
+                                how='left', on='scene_fk', suffixes=['', '_4'])
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
-        matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches
 
@@ -106,8 +106,7 @@ class DIAGEOUSPositionGraphs:
         else:
             scenes = self.match_product_in_scene['scene_fk'].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
-                                                  (self.match_product_in_scene['stacking_layer'] == 1)]
+            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
             matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
@@ -232,8 +231,6 @@ class DIAGEOUSPositionGraphs:
             Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
-        if len(graph.es) == 0:
-            return []
         edges_to_remove = graph.es.select(direction_ne='left')
         graph.delete_edges([edge.index for edge in edges_to_remove])
 
