@@ -116,13 +116,13 @@ class PNGAMERICAToolBox:
         self.all_template_data = parse_template(TEMPLATE_PATH, 'main')
         self.block_data = parse_template(TEMPLATE_PATH, 'block new')
         self.anchor_data = parse_template(TEMPLATE_PATH, 'anchor new')
-        # self.orchestrated_data = parse_template(TEMPLATE_PATH, 'orchestrated')
+        self.orchestrated_data = parse_template(TEMPLATE_PATH, 'orchestrated new')
         self.adjacency_data = parse_template(TEMPLATE_PATH, 'adjacency new')
         self.count_of_data = parse_template(TEMPLATE_PATH, 'count')
         self.linear_feet_data = parse_template(TEMPLATE_PATH, 'linear feet new')
         # self.availability_data = parse_template(TEMPLATE_PATH, 'availability')
         # self.flexible_block = parse_template(TEMPLATE_PATH, 'flexible blocks')
-        # self.relative_position = parse_template(TEMPLATE_PATH, 'relative')
+        self.relative_position = parse_template(TEMPLATE_PATH, 'relative')
         self.checkerboarded_template = parse_template(TEMPLATE_PATH, 'checkerboarded new')
         self.eye_level_data = parse_template(TEMPLATE_PATH, 'eye level new')
         self.posm_data = parse_template(TEMPLATE_PATH, 'posm')
@@ -135,8 +135,13 @@ class PNGAMERICAToolBox:
         # self.additional_display_data = self.get_additional_display_per_session_data()
         # self.eye_level_definition = parse_template(GOLDEN_PATH)
         self.category_space_data = parse_template(TEMPLATE_PATH, 'category space')
-        self.eye_level_definition = pd.read_excel(GOLDEN_PATH)
+        self.bookend_data = parse_template(TEMPLATE_PATH, 'bookend')
+        self.eye_level_definition = pd.read_excel(GOLDEN_PATH, 'default')
         self.power_skus = parse_template(POWER_SKUS_PATH)
+        self.eye_level_mapping = {'ORAL CARE': pd.read_excel(GOLDEN_PATH, 'ORAL CARE'),
+                                  'FABRICARE': pd.read_excel(GOLDEN_PATH, 'FABRICARE'),
+                                  'AI': pd.read_excel(GOLDEN_PATH, 'AI'),
+                                  'FEM CARE': pd.read_excel(GOLDEN_PATH, 'FEM CARE')}
         self.related_kpi_results = {}
 
     def get_kpi_static_data(self):
@@ -202,6 +207,7 @@ class PNGAMERICAToolBox:
                 kpi_data = template_data.loc[template_data['KPI name'] == kpi_name]
                 scene_type = [s for s in kpi_data['Scene Types to Include'].values[0].encode().split(', ')]
                 kpi_type = kpi_data['KPI Type'].values[0]
+                category = kpi_data['category'].values[0]
                 if kpi_data['KPI Group type'].values[0]:
                     if kpi_type in BLOCK_TOGETHER:
                         if kpi_data['Tested KPI Group'].values[0] not in block_calc_indication.keys():
@@ -227,25 +233,27 @@ class PNGAMERICAToolBox:
                         category = kpi_data['category'].values[0]
                         self.calculate_eye_level(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type, category,
                                               list_type=True)
+                elif kpi_type in BLOCK_TOGETHER:
+                    self.calculate_block_together_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'availability':
                     self.calculate_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'count of':
-                    self.calculate_count_of_new(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_count_of_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'linear feet':
-                    self.calculate_linear_feet_new(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_linear_feet_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'relative':
                     self.calculate_relative_position(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'checkerboarded':
-                    self.calculate_checkerboarded_new(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_checkerboarded_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'anchor':
                     category = kpi_data['category'].values[0]
                     self.calculate_anchor_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'orchestrated':
-                    self.calculate_orchestrated(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_orchestrated_new(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'adj to':
-                    self.calculate_adjacency_new(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_adjacency_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'eye level':
-                    self.calculate_eye_level_new(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_eye_level_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'block and availability':
                     self.calculate_block_and_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'average shelf':
@@ -259,7 +267,9 @@ class PNGAMERICAToolBox:
                 elif kpi_type == 'H&S':
                     self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'category space':
-                    self.calculate_category_space(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_category_space(kpi_set_fk, kpi_name, scene_type, category)
+                elif kpi_type == 'bookend':
+                    self.calculate_bookend(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'posm':
                     self.calculate_posm_availability(kpi_set_fk, kpi_name, scene_type)
             except Exception as e:
@@ -336,24 +346,40 @@ class PNGAMERICAToolBox:
                     tested_filters[kpi_data['Group 1 param 2']] = kpi_data['Group 1 value 2'].split(', ')
                 else:
                     tested_filters[kpi_data['Group 1 param 2']] = kpi_data['Group 1 value 2']
+            if kpi_data['Group 1 param 3']:
+                if ',' in kpi_data['Group 1 value 3']:
+                    tested_filters[kpi_data['Group 1 param 3']] = kpi_data['Group 1 value 3'].split(', ')
+                else:
+                    tested_filters[kpi_data['Group 1 param 3']] = kpi_data['Group 1 value 3']
             anchor_filters = {kpi_data['Group 2 param']: kpi_data['Group 2 value']}
+            if kpi_data['Group 2 param 2']:
+                if ',' in kpi_data['Group 1 value 2']:
+                    anchor_filters[kpi_data['Group 2 param 2']] = kpi_data['Group 2 value 2'].split(', ')
+                else:
+                    anchor_filters[kpi_data['Group 2 param 2']] = kpi_data['Group 2 value 2']
+            if kpi_data['Group 2 param 3']:
+                if ',' in kpi_data['Group 2 value 3']:
+                    anchor_filters[kpi_data['Group 2 param 3']] = kpi_data['Group 2 value 3'].split(', ')
+                else:
+                    anchor_filters[kpi_data['Group 2 param 3']] = kpi_data['Group 2 value 3']
             direction_data = {
                 'top': self._get_direction_for_relative_position(kpi_data['top']),
                 'bottom': self._get_direction_for_relative_position(kpi_data['bottom']),
                 'left': self._get_direction_for_relative_position(kpi_data['left']),
                 'right': self._get_direction_for_relative_position(kpi_data['right'])}
             general_filters = {'template_name': scene_types}
-            if kpi_data['Sub category']:
-                general_filters['sub_category'] = kpi_data['Sub category']
-            if kpi_data['SEGMENT']:
-                general_filters['SEGMENT'] = kpi_data['SEGMENT'].split(', ')
+            # if kpi_data['Sub category']:
+            #     general_filters['sub_category'] = kpi_data['Sub category']
+            # if kpi_data['SEGMENT']:
+            #     general_filters['SEGMENT'] = kpi_data['SEGMENT'].split(', ')
             result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
                                                             **general_filters)
             if result:
                 score = 1
             if return_result:
                 self.related_kpi_results[kpi_name] = score
-            self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)
+            else:
+                self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)
 
     def calculate_average_shelf(self, kpi_set_fk, kpi_name, scene_types):
         template = self.average_shelf
@@ -539,12 +565,14 @@ class PNGAMERICAToolBox:
                                             score=score)
                 return
 
-    def calculate_anchor_new(self, kpi_set_fk, kpi_name, scene_type, category=None, list_type=False, return_result=False):
+    def calculate_anchor_new(self, kpi_set_fk, kpi_name, scene_type, category=None, list_type=False, return_result=False,
+                             filters=None):
         if any(i in self.scif['template_name'].unique().tolist() for i in scene_type):
             if list_type:
                 kpi_template = self.anchor_data.loc[self.anchor_data['kpi group'] == kpi_name]
             else:
-                kpi_template = self.anchor_data.loc[self.anchor_data['KPI name'] == kpi_name]
+                kpi_template = self.anchor_data.loc[(self.anchor_data['KPI name'] == kpi_name) &
+                                                    (self.anchor_data['category'] == category)]
             if kpi_template.empty:
                 return None
             if kpi_template['list'].values[0] == 'Y':
@@ -629,7 +657,12 @@ class PNGAMERICAToolBox:
                         if kpi_data['secondary_lead']:
                             for result in list(set(list_result_new)):
                                 relevant_sec_atts = self.all_products[self.all_products[kpi_data['lead']] == result][
-                                    kpi_data['secondary_lead']]
+                                    kpi_data['secondary_lead']].unique().tolist()
+                                for sec_att in relevant_sec_atts:
+                                    if sec_att in results[kpi_data['secondary_lead']].values.tolist() and not results.empty:
+                                        score_dict[result + '/' + sec_att] = results.loc[
+                                            (results[kpi_data['lead']] == result) & (results[kpi_data['secondary_lead']]
+                                                                                     == sec_att)].count
                         for result in list(set(list_result_new)):
                             score_dict[result] = list_result_new.count(result)
                         i = 0
@@ -641,28 +674,30 @@ class PNGAMERICAToolBox:
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name+' '+str(i), level=self.LEVEL3, result=result,
                                                     score=score_dict[result])
             else:
-                filters = {}
-                kpi_data = kpi_template.iloc[0]
-                if kpi_data['Brand']:
-                    filters['brand_name'] = kpi_template['Brand'].values[0]
-                if kpi_data['Segment']:
-                    filters['SEGMENT'] = kpi_template['Segment'].values[0]
-                if kpi_data['SUPER CATEGORY']:
-                    filters['SUPER CATEGORY'] = kpi_template['SUPER CATEGORY'].values[0]
-                if kpi_data['NATURALS']:
-                    filters['NATURALS'] = kpi_template['NATURALS'].values[0]
-                if kpi_data['PRIVATE LABEL']:
-                    filters['PRIVATE LABEL'] = kpi_template['PRIVATE LABEL'].values[0]
-                if kpi_data['MANUFACTURER']:
-                    filters['manufacturer_name'] = kpi_template['MANUFACTURER'].values[0]
+                # filters = {}
+                # kpi_data = kpi_template.iloc[0]
+                # if kpi_data['Brand']:
+                #     filters['brand_name'] = kpi_template['Brand'].values[0]
+                # if kpi_data['Segment']:
+                #     filters['SEGMENT'] = kpi_template['Segment'].values[0]
+                # if kpi_data['SUPER CATEGORY']:
+                #     filters['SUPER CATEGORY'] = kpi_template['SUPER CATEGORY'].values[0]
+                # if kpi_data['NATURALS']:
+                #     filters['NATURALS'] = kpi_template['NATURALS'].values[0]
+                # if kpi_data['PRIVATE LABEL']:
+                #     filters['PRIVATE LABEL'] = kpi_template['PRIVATE LABEL'].values[0]
+                # if kpi_data['MANUFACTURER']:
+                #     filters['manufacturer_name'] = kpi_template['MANUFACTURER'].values[0]
+                if filters is None:
+                    filters = {}
                 for s_type in scene_type:
                     if 'LL' in s_type:
                         position = 'left'
-                        if 'reverse' in kpi_name:
+                        if 'rev' in kpi_name:
                             position = 'right'
                     else:
                         position = 'right'
-                        if 'reverse' in kpi_name:
+                        if 'rev' in kpi_name:
                             position = 'left'
                     scif_scenes = self.scif.loc[self.scif['template_name'] == s_type]['scene_id'].unique().tolist()
                     filters['scene_id'] = scif_scenes
@@ -672,7 +707,8 @@ class PNGAMERICAToolBox:
                         score = 1
                     if return_result:
                         self.related_kpi_results[kpi_name] = score
-                    self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score,
+                    else:
+                        self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score,
                                             score=score)
                 return
 
@@ -712,8 +748,9 @@ class PNGAMERICAToolBox:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result,
                                         score=int(result))
 
-    def calculate_count_of_new(self, kpi_set_fk, kpi_name, scene_type):
-        kpi_template = self.count_of_data.loc[self.count_of_data['KPI name'] == kpi_name]
+    def calculate_count_of_new(self, kpi_set_fk, kpi_name, scene_type, category):
+        kpi_template = self.count_of_data.loc[(self.count_of_data['KPI name'] == kpi_name) &
+                                              (self.count_of_data['category'] == category)]
         if kpi_template.empty:
             return None
         kpi_template = kpi_template.iloc[0]
@@ -854,6 +891,63 @@ class PNGAMERICAToolBox:
         except Exception as e:
             Log.info('KPI {} does not exist in the DB'.format(kpi_name))
 
+    def calculate_orchestrated_new(self, kpi_set_fk, kpi_name, scene_types):
+        """
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
+        """
+        kpi_data = self.orchestrated_data.loc[self.orchestrated_data['KPI name'] == kpi_name]
+        score = 0
+        if kpi_data.empty:
+            return None
+        kpi_data = kpi_data.iloc[0]
+        filters = (kpi_data['filter attribute'].encode(), [s for s in kpi_data['attribute'].split(', ')])
+        filter_attributes_index_dict = {}
+        i = 0
+        for attributes in filters[1]:
+            filter_attributes_index_dict[attributes] = i
+            i += 1
+        direction_data = [s for s in kpi_data['directions'].split(', ')]
+        general_filters = {'template_name': scene_types}
+        for direction in direction_data:
+            try:
+                if kpi_data['vertical'] == 'Y':
+                    # result = False
+                    result = self.tools.calculate_vertical_product_sequence_per_bay(sequence_filters=filters,
+                                                                                    direction=direction,
+                                                                                    filter_attributes_index_dict=filter_attributes_index_dict,
+                                                                                    **general_filters)
+                else:
+                    result = self.tools.calculate_product_sequence_per_shelf(sequence_filters=filters,
+                                                                             direction=direction,
+                                                                             filter_attributes_index_dict=filter_attributes_index_dict,
+                                                                             **general_filters)
+            except Exception as e:
+                Log.info('Orchestrated calculation failed due to {}'.format(e))
+                result = False
+            score += 1 if result else 0
+
+        if kpi_data['custom orchestration'] == 'Y':
+            filters_for_anchor = {'PRICE SEGMENT': 'ECONOMY'}
+            self.calculate_anchor_new(kpi_set_fk, kpi_name + ' anchor', scene_types, filters=filters_for_anchor)
+            filters_for_anchor_reverse = {'PRICE SEGMENT': 'PREMIUM'}
+            self.calculate_anchor_new(kpi_set_fk, kpi_name + ' reverse', scene_types,
+                                      filters=filters_for_anchor_reverse)
+            tested_filters = {'PRICE SEGMENT': 'SUPER PREMIUM'}
+            anchor_filters = {'PRICE SEGMENT': ['PREMIUM', 'ECONOMY']}
+            direction_data = {'top', 'bottom'}
+            relative_pos_result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                                         **general_filters)
+            if relative_pos_result and self.related_kpi_results[kpi_name + ' anchor'] \
+                    and self.related_kpi_results[kpi_name + ' reverse']:
+                score = 1
+            else:
+                score = 0
+        scores = 1 if score > 0 else 0
+        try:
+            self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=scores, score=scores)
+        except Exception as e:
+            Log.info('KPI {} does not exist in the DB'.format(kpi_name))
+
     def calculate_adjacency(self, kpi_set_fk, kpi_name, scene_types, list_type=True):
         if list_type:
             kpi_data = self.adjacency_data.loc[self.adjacency_data['kpi group'] == kpi_name]
@@ -888,9 +982,10 @@ class PNGAMERICAToolBox:
                                         score=result[1])
                 i += 1
 
-    def calculate_adjacency_new(self, kpi_set_fk, kpi_name, scene_types, list_type=True):
+    def calculate_adjacency_new(self, kpi_set_fk, kpi_name, scene_types, category,list_type=True):
 
-        kpi_data = self.adjacency_data.loc[self.adjacency_data['KPI name'] == kpi_name]
+        kpi_data = self.adjacency_data.loc[(self.adjacency_data['KPI name'] == kpi_name) &
+                                           (self.adjacency_data['category'] == category)]
         if kpi_data.empty:
             return None
         # kpi_data = kpi_data.iloc[0]
@@ -1035,9 +1130,10 @@ class PNGAMERICAToolBox:
             if return_result:
                 self.related_kpi_results[kpi_name] = res
 
-    def calculate_block_together_new(self, kpi_set_fk, kpi_name, scene_type):
+    def calculate_block_together_new(self, kpi_set_fk, kpi_name, scene_type, category):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
-            block_template = self.block_data.loc[self.block_data['KPI name'] == kpi_name]
+            block_template = self.block_data.loc[(self.block_data['KPI name'] == kpi_name) &
+                                                 (self.block_data['category'] == category)]
             kpi_template = block_template.iloc[0]
             save_list = []
             vertical, horizontal, orphan, group, general, block_of_blocks = False, False, False, False, False, False
@@ -1207,14 +1303,15 @@ class PNGAMERICAToolBox:
                 except IndexError as e:
                     Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
-    def calculate_checkerboarded_new(self, kpi_set_fk, kpi_name, scene_type, list_type=None):
+    def calculate_checkerboarded_new(self, kpi_set_fk, kpi_name, scene_type, category,list_type=None):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             if list_type:
                 checkerboarded_template = self.checkerboarded_template.loc[
                     self.checkerboarded_template['checkerboarded_group'] == kpi_name]
             else:
                 checkerboarded_template = self.checkerboarded_template.loc[
-                    self.checkerboarded_template['KPI name'] == kpi_name]
+                    (self.checkerboarded_template['KPI name'] == kpi_name) &
+                    (self.checkerboarded_template['category'] == category)]
             kpi_template = checkerboarded_template.iloc[0]
             if kpi_template.empty:
                 return
@@ -1315,9 +1412,9 @@ class PNGAMERICAToolBox:
         if return_result:
             self.related_kpi_results[kpi_name] = score
 
-    def calculate_linear_feet_new(self, kpi_set_fk, kpi_name, scene_types):
+    def calculate_linear_feet_new(self, kpi_set_fk, kpi_name, scene_types, category):
         template = self.linear_feet_data.loc[self.linear_feet_data['KPI name'] == kpi_name]
-        kpi_template = template.loc[template['KPI name'] == kpi_name]
+        kpi_template = template.loc[(template['KPI name'] == kpi_name) & (template['category'] == category)]
         if kpi_template.empty:
             return None
         values_to_check = []
@@ -1351,8 +1448,9 @@ class PNGAMERICAToolBox:
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
-    def calculate_category_space(self, kpi_set_fk, kpi_name, scene_types):
-        template = self.category_space_data.loc[self.category_space_data['KPI name'] == kpi_name]
+    def calculate_category_space(self, kpi_set_fk, kpi_name, scene_types, category):
+        template = self.category_space_data.loc[(self.category_space_data['KPI name'] == kpi_name) &
+                                                (self.category_space_data['category'] == category)]
         kpi_template = template.loc[template['KPI name'] == kpi_name]
         if kpi_template.empty:
             return None
@@ -1443,12 +1541,13 @@ class PNGAMERICAToolBox:
                         break
                 return
 
-    def calculate_eye_level_new(self, kpi_set_fk, kpi_name, scene_type, category=None, list_type=False):
+    def calculate_eye_level_new(self, kpi_set_fk, kpi_name, scene_type, category, list_type=False):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             if list_type:
                 kpi_template = self.eye_level_data.loc[self.eye_level_data['kpi group'] == kpi_name]
             else:
-                kpi_template = self.eye_level_data.loc[self.eye_level_data['KPI name'] == kpi_name]
+                kpi_template = self.eye_level_data.loc[(self.eye_level_data['KPI name'] == kpi_name) &
+                                                       (self.eye_level_data['category'] == category)]
             # kpi_template = self.eye_level_data.loc[self.eye_level_data['KPI name'] == kpi_name]
             kpi_template = kpi_template.iloc[0]
             values_to_check = []
@@ -1473,29 +1572,47 @@ class PNGAMERICAToolBox:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                        self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type)
+                        self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
+                                              category=category)
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                    self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type)
+                    self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
+                                          category=category)
 
-    def eye_level_writer(self, kpi_template, kpi_set_fk, kpi_name, filters, list_type):
+    def eye_level_writer(self, kpi_template, kpi_set_fk, kpi_name, filters, list_type, category=None):
             list_result = False
+            retailer = False
+            sub_category = False
+            if category is not None:
+                if category in ['FEM CARE', 'AI']:
+                    retailer = True
+                    if category == 'FEM CARE':
+                        sub_category = True
+                eye_level_definition = self.eye_level_mapping[category]
+                if retailer:
+                    eye_level_definition = eye_level_definition.loc[eye_level_definition['retailer'] == self.retailer]
+            else:
+                eye_level_definition = self.eye_level_definition
+
             if kpi_template['percentage']:
-                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
+                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                    min_number_of_products=1, percentage_result=True,
+                                                                   sub_category=sub_category,
                                                                    requested_attribute='facings', **filters)
                 if result[1]:
                     score = (result[0] / float(result[1])) * 100
                 else:
                     score = 0
             elif list_type:
-                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
+                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
+                                                                   category=category, sub_category=sub_category,
                                                                    min_number_of_products=1, products_list=True,**filters)
                 score = 0
                 if result:
                     list_result = True
             else:
-                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=self.eye_level_definition,
+                result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
+                                                                   category=category, sub_category=sub_category,
                                                                    min_number_of_products=1, products_list=True,**filters)
                 score = 1 if result[0] >= 1 else 0
             if not list_result:
@@ -1775,6 +1892,26 @@ class PNGAMERICAToolBox:
             score = True if result > 0 else False
             self.related_kpi_results[kpi_name] = score
 
+    def calculate_bookend(self, kpi_set_fk, kpi_name, scene_type):
+        kpi_template = self.bookend_data.loc[self.bookend_data['KPI name'] == kpi_name]
+        if kpi_template.empty:
+            return None
+        kpi_template = kpi_template.iloc[0]
+        filters_1 = {kpi_template['filter_1']: kpi_template['filter_1_value']}
+        filters_2 = {kpi_template['filter_2']: kpi_template['filter_2_value']}
+        score_count = 0
+        for filter_option in [filters_1, filters_2]:
+            self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_1_value'] + ' anchor', scene_type, filters=filter_option,
+                                      return_result=True)
+            self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_2_value'] + ' reverse', scene_type,
+                                      filters=filter_option, return_result=True)
+            if self.related_kpi_results[kpi_template['filter_1_value'] + ' anchor'] or self.related_kpi_results[
+                        kpi_template['filter_1_value'] + ' reverse']:
+                score_count += 1
+        result = 1 if score_count >= 2 else 0
+        self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result,
+                                score=result)
+
     def calculate_color_wheel(self, kpi_set_fk, kpi_name, scene_type):
         kpi_template = self.count_of_data.loc[self.count_of_data['KPI name'] == kpi_name] #todo: change this
         if kpi_template.empty:
@@ -2030,7 +2167,6 @@ class PNGAMERICAToolBox:
         #         continue
         queries = self.merge_insert_queries(self.kpi_results_queries)
         for query in queries:
-            print query
             cur.execute(query)
         self.rds_conn.db.commit()
 

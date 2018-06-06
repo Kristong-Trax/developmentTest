@@ -7,12 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOUS_SAND.Utils.PositionGraph import DIAGEOUSPositionGraphs
+from Projects.JNJIT.Utils.PositionGraph import JNJITPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class DIAGEOUSGENERALToolBox:
+class JNJITGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -49,7 +49,7 @@ class DIAGEOUSGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = DIAGEOUSPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = JNJITPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -547,12 +547,9 @@ class DIAGEOUSGENERALToolBox:
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
         """
-        if set(general_filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **general_filters)]
-        else:
-            filtered_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_df[self.get_filter_condition(filtered_df, **tested_filters)]['scene_id'].unique()
-        anchor_scenes = filtered_df[self.get_filter_condition(filtered_df, **anchor_filters)]['scene_id'].unique()
+        filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
+        anchor_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **anchor_filters)]['scene_id'].unique()
         relevant_scenes = set(tested_scenes).intersection(anchor_scenes)
 
         if relevant_scenes:
@@ -582,56 +579,6 @@ class DIAGEOUSGENERALToolBox:
                 return True
             else:
                 return False
-        else:
-            Log.debug('None of the scenes contain both anchor and tested SKUs')
-            return False
-
-    def get_number_of_nodes_with_relative_position(self, tested_filters, anchor_filters, direction_data, min_required_to_pass=1,
-                                    **general_filters):
-        """
-        :param tested_filters: The tested SKUs' filters.
-        :param anchor_filters: The anchor SKUs' filters.
-        :param direction_data: The allowed distance between the tested and anchor SKUs.
-                               In form: {'top': 4, 'bottom: 0, 'left': 100, 'right': 0}
-                               Alternative form: {'top': (0, 1), 'bottom': (1, 1000), ...} - As range.
-        :param min_required_to_pass: The number of appearances needed to be True for relative position in order for KPI
-                                     to pass. If all appearances are required: ==a string or a big number.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
-        """
-        if set(general_filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **general_filters)]
-        else:
-            filtered_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_df[self.get_filter_condition(filtered_df, **tested_filters)]['scene_id'].unique()
-        anchor_scenes = filtered_df[self.get_filter_condition(filtered_df, **anchor_filters)]['scene_id'].unique()
-        relevant_scenes = set(tested_scenes).intersection(anchor_scenes)
-
-        if relevant_scenes:
-            pass_counter = 0
-            reject_counter = 0
-            for scene in relevant_scenes:
-                scene_graph = self.position_graphs.get(scene)
-                tested_vertices = self.filter_vertices_from_graph(scene_graph, **tested_filters)
-                anchor_vertices = self.filter_vertices_from_graph(scene_graph, **anchor_filters)
-                for tested_vertex in tested_vertices:
-                    for anchor_vertex in anchor_vertices:
-                        moves = {'top': 0, 'bottom': 0, 'left': 0, 'right': 0}
-                        path = scene_graph.get_shortest_paths(anchor_vertex, tested_vertex, output='epath')
-                        if path:
-                            path = path[0]
-                            for edge in path:
-                                moves[scene_graph.es[edge]['direction']] += 1
-                            if self.validate_moves(moves, direction_data):
-                                pass_counter += 1
-                            else:
-                                reject_counter += 1
-                        else:
-                            Log.debug('Tested and Anchor have no direct path')
-            if pass_counter:
-                return pass_counter / 2
-            else:
-                return pass_counter
         else:
             Log.debug('None of the scenes contain both anchor and tested SKUs')
             return False
@@ -937,7 +884,7 @@ class DIAGEOUSGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOUSGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUJNJUKGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """

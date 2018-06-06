@@ -9,7 +9,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOUK.Utils.GeneralToolBox import DIAGEOUKGENERALToolBox
+from kpi_factory.Projects.DIAGEOUK.Utils.GeneralToolBox import DIAGEOUKGENERALToolBox
 
 
 __author__ = 'Nimrod'
