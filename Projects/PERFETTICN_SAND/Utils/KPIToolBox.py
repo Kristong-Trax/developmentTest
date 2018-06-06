@@ -42,7 +42,7 @@ class PERFETTICNToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.kpi_static_data = self.common.get_kpi_static_data()
+        self.kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.assortment = Assortment(self.data_provider, self.output)
@@ -60,15 +60,14 @@ class PERFETTICNToolBox:
         num_brands = {}
         display_info = self.scif['template_name']
         display_names = display_info.unique()
+        count_fk = self.kpi_static_data['COUNT OF DISPLAY']
         for value in display_names:
             num_brands[value] = display_info[display_info == value].count()
             score=num_brands[value]
-
-
         # data=self.get_match_display(self.session_uid)
         # store_num= self.store_info['store_number_1'][0] ??  what about the store_id?
-        self.common.write_to_db_result_new_tables('??', self.scif['template_name'], score,
-                                                  None, None, score, score) #from where to bring the kpi_fk??
+        #self.common.write_to_db_result_new_tables(kpi_fk, self.scif['template_name'], score,
+                                                 # None, None, score, score) #from where to bring the kpi_fk??
         # kpi_fk, self.session_id, numerator_id, numerator_result, denominator_id,
         # denominator_result, result, score, score_after_actions,
         # denominator_result_after_actions
