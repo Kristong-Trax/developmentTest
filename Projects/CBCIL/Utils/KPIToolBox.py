@@ -188,9 +188,13 @@ class CBCILCBCIL_ToolBox(object):
             kpi_set = self.template_data[self.KPI_SET].values[0]
             self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]
             kpis = self.template_data[self.template_data[self.KPI_SET] == kpi_set][self.KPI_NAME].unique()
+            kpis_without_score={}
+            all_kpis_in_set=[]
+
             for kpi in kpis:
                 atomics = self.template_data[self.template_data[self.KPI_NAME] == kpi]
                 scores = []
+
                 for i in xrange(len(atomics)):
                     atomic = atomics.iloc[i]
                     kpi_type = atomic[self.KPI_TYPE]
@@ -239,17 +243,53 @@ class CBCILCBCIL_ToolBox(object):
                             self.add_gap(atomic)
 
                     scores.append((score, atomic_weight))
-                # if scores:
-                pass_atomics = filter(lambda x: x[0] is not None, scores)
-                if len(pass_atomics):
-                    add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None, scores))) / len(pass_atomics)
-                else:
-                    add_weights = 0
-                weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
+
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
                 denominator_weight = self.get_kpi_weight(kpi, kpi_set)
 
+                kpi_details = self.combine_kpi_details(kpi_fk, scores, denominator_weight)
+                all_kpis_in_set.append(kpi_details)
+
+                if all(map(lambda x: x[0] is None, scores)):
+                    kpis_without_score[kpi_fk] = float(denominator_weight)
+
+                # # if scores:
+                # pass_atomics = filter(lambda x: x[0] is not None, scores)
+                # if len(pass_atomics):
+                #     add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None, scores))) / len(pass_atomics)
+                # else:
+                #     add_weights = 0
+                # weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
+                # denominator_weight = self.get_kpi_weight(kpi, kpi_set)
+
+                # if weights:
+                #     kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
+                # else:
+                #     if len(pass_atomics):
+                #         score_weight = float(denominator_weight) / len(pass_atomics)
+                #     else:
+                #         score_weight = 0
+                #     kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
+                #
+                # kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
+                # kpi_scores[kpi_fk] = kpi_score
+                # self.write_to_db_result(kpi_fk, self.LEVEL2, kpi_scores[kpi_fk], float(denominator_weight) * 100)
+
+            all_kpis_in_set = self.reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set)
+
+            for kpi in filter(lambda x: x['denominator_weight'] != 0, all_kpis_in_set):
+                pass_atomics = filter(lambda x: x[0] is not None, kpi['atomic_scores_and_weights'])
+                if len(pass_atomics):
+                    add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None,
+                                                                 kpi['atomic_scores_and_weights']))) / len(pass_atomics)
+                else:
+                    add_weights = 0
+
+                weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
+                denominator_weight = kpi['denominator_weight']
+
                 if weights:
-                    kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
+                    kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100 # ask Israel
                 else:
                     if len(pass_atomics):
                         score_weight = float(denominator_weight) / len(pass_atomics)
@@ -257,15 +297,39 @@ class CBCILCBCIL_ToolBox(object):
                         score_weight = 0
                     kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
 
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
-                kpi_scores[kpi_fk] = kpi_score
-                self.write_to_db_result(kpi_fk, self.LEVEL2, kpi_scores[kpi_fk], float(denominator_weight) * 100)
+                kpi_scores[kpi['kpi_fk']] = kpi_score
+                self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']], float(kpi['denominator_weight']) * 100)
 
             final_score = sum([score for score in kpi_scores.values()])
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
-            self.write_gaps_to_db()
-            self.commit_results_data()
+            # self.write_gaps_to_db()
+            # self.commit_results_data()
+
+    def combine_kpi_details(self, kpi_fk, scores, denominator_weight):
+        kpi_details={}
+        kpi_details['kpi_fk'] = kpi_fk
+        kpi_details['atomic_scores_and_weights'] = scores
+        kpi_details['denominator_weight'] = float(denominator_weight)
+        return kpi_details
+
+    def reallocate_weights_to_kpis_with_results(self, kpis_without_score, all_kpis_in_set):
+        if kpis_without_score:
+            total_weight_to_reallocate = sum([weight for weight in kpis_without_score.values()])
+            weight_to_each_kpi = total_weight_to_reallocate / (len(all_kpis_in_set) - len(kpis_without_score.items()))
+            for kpi in all_kpis_in_set:
+                if kpi['kpi_fk'] in kpis_without_score.keys():
+                    kpi['denominator_weight'] = 0
+                    kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
+                else:
+                    kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_each_kpi
+                    atomics_with_weights = filter(lambda x: x[1] is not None,
+                                                  kpi['atomic_scores_and_weights'])  # discuss with israel
+                    if atomics_with_weights:
+                        kpi['atomic_scores_and_weights'] = map(
+                            lambda x: (x[0], x[1] + weight_to_each_kpi / len(atomics_with_weights)),
+                            atomics_with_weights)
+        return all_kpis_in_set
 
     def get_coolers(self, cbc_coller, competitor_cooler):
         cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_coller]['scene_fk'].unique().tolist()
@@ -347,6 +411,8 @@ class CBCILCBCIL_ToolBox(object):
 
             if ratio >= float(general_filters[self.TARGET]):
                 return 100
+            else:
+                return round(ratio, 2)
         return 0
 
     def calculate_sos_cooler(self, competitor_coolers, cbc_coolers, relevant_scenes, **general_filters):
