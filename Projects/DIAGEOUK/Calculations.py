@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.DIAGEOUK.KPIGenerator import DIAGEOUKGenerator
+from kpi_factory.Projects.DIAGEOUK.KPIGenerator import DIAGEOUKGenerator
 
 __author__ = 'Nimrod'
 
