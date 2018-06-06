@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 
 import pandas as pd
@@ -40,6 +42,7 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
     LEVEL3 = 3
 
     def __init__(self, data_provider, output):
+        self.NESTLE = 'Nestlé'
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -94,22 +97,30 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
         #     return
         if kpi_set_fk == 2:
             categories = self.scif['category'].unique().tolist()
-            num_of_all_products = sum(self.scif['facings'])
+            # num_of_all_products = sum(self.scif['facings'])
             for category in categories:
-                category_filter = {'category': category}
-                num_of_products_in_cat = self.tools.calculate_availability(**category_filter)
-                result = 0 if num_of_all_products == 0 else num_of_products_in_cat / float(num_of_all_products)
+                filtered_scif = self.scif[self.scif['category'] == category]
+                num_of_products_in_cat = sum(filtered_scif['facings'])
+                filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].str.encode('utf-8') == self.NESTLE]
+                num_of_products_in_cat_and_manufacturer = sum(filtered_scif['facings'])
+                result = 0 if num_of_products_in_cat == 0 \
+                    else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
                 atomic_name = 'sos for category' + '_' + category
                 self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 3:
             brands = self.scif['brand_name'].unique().tolist()
-            num_of_all_products = sum(self.scif['facings'])
-            for brand in brands:
-                brand_filter = {'brand_name': brand}
-                num_of_products_in_brand = self.tools.calculate_availability(**brand_filter)
-                result = 0 if num_of_all_products == 0 else num_of_products_in_brand / float(num_of_all_products)
-                atomic_name = 'sos for brand' + '_' + brand
-                self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+            category_groups = self.scif['category_group'].unique().tolist()
+            for category_group in category_groups:
+                filtered_scif = self.scif[self.scif['category_group'] == category_group]
+                num_of_products_in_cat = sum(filtered_scif['facings'])
+                for brand in brands:
+                    brand_filter = filtered_scif.copy()
+                    brand_filter = brand_filter[brand_filter['brand_name'] == brand]
+                    num_of_products_in_brand = sum(brand_filter['facings'])
+                    result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
+                    atomic_name = 'sos for category_group_{} and brand_{}'.format(category_group, brand)
+                    print atomic_name + 'score: ' + str(result)
+                    self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
             shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]
             products_list = shorted_df['product_ean_code'].unique().tolist()
