@@ -6,7 +6,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-from kpi_factory.Projects.DIAGEOUK.Utils.KPIToolBox import DIAGEOUKToolBox, log_runtime
+from Projects.DIAGEOUK.Utils.KPIToolBox import DIAGEOUKToolBox, log_runtime
 
 __author__ = 'Nimrod'
 
