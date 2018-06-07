@@ -56,7 +56,13 @@ class DIAGEOUSToolBox:
         self.converted_groups = self.convert_groups_from_template()
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
-# main functions:
+        self.sub_brands_converter = {}
+        i = 0
+        for sub_brand in self.scif['sub_brand'].unique().tolist():
+            self.sub_brands_converter[sub_brand] = i
+            i += 1
+
+    # main functions:
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -105,7 +111,7 @@ class DIAGEOUSToolBox:
         elif kpi_name == Const.STORE_SCORE:
             return 0, 0, 0
         else:
-            Log.warning("Set {} isn't defined in the code yet".format(kpi_name))
+            Log.warning("Set {} is not defined".format(kpi_name))
             return 0, 0, 0
         if self.does_exist(target):
             total_score = 100 * (total_score >= target)
@@ -601,9 +607,9 @@ class DIAGEOUSToolBox:
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
-        sub_brand = product_fk % 3 # TODO edit to real function
+        sub_brand_fk = self.sub_brands_converter[sub_brand]
         standard_type = self.get_standard_type(product_fk)
-        return brand, sub_brand, standard_type
+        return brand, sub_brand_fk, standard_type
 
     def get_manufacturer(self, product_fk):
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
@@ -659,17 +665,15 @@ class DIAGEOUSToolBox:
             segment_result = self.insert_totals_to_db(segment_results, kpi_name, Const.SEGMENT)
         return total_result, segment_result, national_result
 
-    def insert_sub_brands_to_db(self, sub_brand_results, kpi_name, brand, sub_brand, brand_identifier):
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.SUB_BRAND])
-        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
-        results = sub_brand_results[Const.PASSED]
-        num_res, den_res = results.sum(), results.count()
-        self.common.write_to_db_result(
-            fk=sub_brand_kpi_fk, numerator_id=sub_brand, numerator_result=num_res,
-            denominator_result=den_res, result=self.get_score(num_res, den_res),
-            identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
-
     def insert_brand_and_subs_to_db(self, brand_results, kpi_name, brand, total_identifier):
+        """
+        Inserting all brand and sub_brand results
+        :param brand_results: DF from all_results
+        :param kpi_name:
+        :param brand: fk
+        :param total_identifier: for hierarchy
+        :return:
+        """
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
         for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
@@ -683,7 +687,34 @@ class DIAGEOUSToolBox:
             denominator_result=den_res, result=self.get_score(num_res, den_res),
             identifier_parent=total_identifier, identifier_result=brand_dict)
 
+    def insert_sub_brands_to_db(self, sub_brand_results, kpi_name, brand, sub_brand, brand_identifier):
+        """
+        inserting sub_brand results into DB
+        :param sub_brand_results: DF from all_products
+        :param kpi_name:
+        :param brand: fk
+        :param sub_brand: fk
+        :param brand_identifier: for hierarchy
+        :return:
+        """
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][Const.SUB_BRAND])
+        sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
+        results = sub_brand_results[Const.PASSED]
+        num_res, den_res = results.sum(), results.count()
+        self.common.write_to_db_result(
+            fk=sub_brand_kpi_fk, numerator_id=sub_brand, numerator_result=num_res,
+            denominator_result=den_res, result=self.get_score(num_res, den_res),
+            identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
+
     def insert_totals_to_db(self, all_passed_results, kpi_name, total_kind, identifier_result=None):
+        """
+        inserting all total level (includes segment and national) into DB
+        :param all_passed_results: 'passed' column from all_results
+        :param kpi_name:
+        :param total_kind: TOTAL/SEGMENT/NATIONAL
+        :param identifier_result: optional, if has children
+        :return:
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[kpi_name][total_kind])
         num_result, den_result = all_passed_results.sum(), all_passed_results.count()
         result = self.get_score(num_result, den_result)
