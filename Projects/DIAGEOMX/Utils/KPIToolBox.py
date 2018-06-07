@@ -374,9 +374,6 @@ class DIAGEOMXToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOMXQueries.get_delete_session_results_query(self.session_uid)
-        for query in delete_queries:
-            cur.execute(query)
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
