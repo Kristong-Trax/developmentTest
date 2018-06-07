@@ -281,8 +281,8 @@ class CBCILCBCIL_ToolBox(object):
             final_score = sum([score for score in kpi_scores.values()])
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
-            # self.write_gaps_to_db()
-            # self.commit_results_data()
+            self.write_gaps_to_db()
+            self.commit_results_data()
 
     def combine_kpi_details(self, kpi_fk, scores, denominator_weight):
         kpi_details={}
