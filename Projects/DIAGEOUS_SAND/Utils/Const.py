@@ -5,42 +5,24 @@ __author__ = 'Elyashiv'
 class Const(object):
 
     # sheets:
-    KPIS_SHEET = "KPIs"
-    SHELF_FACING_SHEET = "Shelf Facings"
-    PRICING_SHEET = "Pricing"
-    SHELF_PLACMENTS_SHEET = "Shelf Placement"
-    DISPLAY_TARGET_SHEET = "Display_Target"
-    MINIMUM_SHELF_SHEET = "Minimum Shelf"
-    SHELF_GROUPS_SHEET = "convert shelves groups"
+    KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET = "KPIs", "Shelf Facings", "Pricing"
+    SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
+    DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
     SHEETS = [
-        KPIS_SHEET,
-        SHELF_FACING_SHEET,
-        PRICING_SHEET,
-        SHELF_PLACMENTS_SHEET,
-        DISPLAY_TARGET_SHEET,
-        MINIMUM_SHELF_SHEET,
-        SHELF_GROUPS_SHEET,
+        KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
+        DISPLAY_TARGET_SHEET, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET,
     ]
 
     # KPIs columns:
-    KPI_NAME = "KPI Name"
-    KPI_GROUP = "KPI Group"
+    KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
-    TESTED_GROUP = "Tested Group"
-    SCORE = "Score"
-    TARGET = "Target"
-    WEIGHT = "Weight"
 
     # Shelf 1 columns:
-    STATE = "State"
-    OUR_EAN_CODE = "Product EAN Code"
-    COMP_EAN_CODE = "Competitor EAN Code"
-    BENCH_ENTITY = "BENCHMARK Entity"
-    BENCH_VALUE = "BENCHMARK Value"
+    STATE, OUR_EAN_CODE, COMP_EAN_CODE = "State", "Product EAN Code", "Competitor EAN Code"
+    BENCH_ENTITY, BENCH_VALUE = "BENCHMARK Entity", "BENCHMARK Value"
 
     # pricing columns:
-    MIN_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MIN"
-    MAX_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MAX"
+    MIN_MSRP_RELATIVE, MAX_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MIN", "SHELF MSRP RELATIVE GUIDENCE: MAX"
     MIN_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MIN"
     MAX_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MAX"
 
@@ -49,18 +31,14 @@ class Const(object):
     PRODUCT_EAN_CODE = "Product EAN Code"
 
     # display columns:
-    SCENE_TYPE = "Scene Type"
-    MIN_FACINGS = "Minimum # of Facings"
+    SCENE_TYPE, MIN_FACINGS = "Scene Type", "Minimum # of Facings"
 
     # minimum shelf columns:
-    SHELF_NAME = "Shelf Name"
-    NUM_SHLEVES_MIN = "num. of shelves min"
-    NUM_SHLEVES_MAX = "num. of shelves max"
-    SHELVES_FROM_BOTTOM = "shelf number from bottom"
+    SHELF_NAME, SHELVES_FROM_BOTTOM = "Shelf Name", "shelf number from bottom"
+    NUM_SHLEVES_MIN, NUM_SHLEVES_MAX = "num. of shelves min", "num. of shelves max"
 
     # shelf groups
-    NUMBER_GROUP = "number group"
-    SHELF_GROUP = "shelf groups"
+    NUMBER_GROUP, SHELF_GROUP = "number group", "shelf groups"
 
     # sets:
     POD = "POD"
@@ -71,14 +49,9 @@ class Const(object):
     MSRP = "MSRP"
     STORE_SCORE = "Store Score"
 
-    SEGMENT = "segment"
-    NATIONAL = "national"
-    TOTAL = "total"
-    BRAND = "brand"
-    SUB_BRAND = "sub_brand"
-    SKU = "sku"
-    COMPETITION = "competition"
-    MANUFACTURER = "manufacturer"
+    SEGMENT, NATIONAL, TOTAL = "segment", "national", "total"
+    BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
+    COMPETITION, MANUFACTURER = "competition", "manufacturer"
 
     DB_NAMES = {
         POD: {
@@ -107,12 +80,6 @@ class Const(object):
     PERCENT_FOR_EYE_LEVEL = 0
     TARGET_FOR_DISPLAY_SHARE = 0.25
 
-    # columns of db:
-    PRODUCT_EAN_CODE_DB = "product_ean_code"
-    PRODUCT_FK_DB = "product_fk"
-    BRAND_FK_DB = "brand_fk"
-    SUB_BRAND_FK_DB = "sub_brand"
-
     # names in DB:
     DB_SCORE_TOTAL = 'score_total_offpremis'
     DB_SCORE_NATIONAL = 'score_national_offpremis'
@@ -127,10 +94,7 @@ class Const(object):
     DB_BACK_BAR_SUB_BRAND = 'Back_Bar_Sub_Brand_%'
     DB_BACK_BAR_SKU = 'Back_Bar_SKU_status'
 
-    PRODUCT_FK = "product_fk"
-    STANDARD_TYPE = "standard_type"
-    PASSED = "passed"
-    MANUFACTURER = "manufacturer"
+    PRODUCT_FK, STANDARD_TYPE, PASSED = "product_fk", "standard_type", "passed"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
 
