@@ -215,6 +215,8 @@ class INBEVBRToolBox:
 
         # get a single row
         row = self.find_row(rows)
+        if row.empty:
+            return
 
         if isinstance(row, pd.Series):
             row = row.to_frame()
@@ -241,12 +243,10 @@ class INBEVBRToolBox:
                 number_of_facings = self.count_of_facings(df, filters)
                 count_result = weight if number_of_facings >= target else 0
             elif count_type == Const.SCENES:
-                # try:
                 secondary_target = row[Const.SECONDARY_TARGET].values[0]
-                # except:
-                #     secondary_target = row[Const.SECONDARY_TARGET].values[0]
                 number_of_scenes = self.count_of_scenes(df, filters, target)
-                count_result = weight if number_of_scenes >= secondary_target else 0
+                count_result = weight if (number_of_scenes >= secondary_target) else 0
+                numerator_number_of_facings = number_of_scenes
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -335,20 +335,9 @@ class INBEVBRToolBox:
             rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
             temp = rows_stores_filter[Const.REGION_TEMPLATE]
             rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
-            # temp = rows_regions_filter[Const.STATE_TEMPLATE]
-            # row = rows_regions_filter[(temp == self.state_name_filter) | (temp == "")]
-            row_result = rows_regions_filter.copy()
-
-            # filter the relevant state lines
-            for index, row in rows_regions_filter.iterrows():
-                state_template = row[Const.STATE_TEMPLATE].strip()
-                states = state_template.split(",")
-                states = [item.strip() for item in states]
-                if self.state_name_filter in states:
-                    temp = rows_regions_filter[Const.STATE_TEMPLATE]
-                    row_result = rows_regions_filter[temp == state_template]
-                    break
-
+            temp = rows_regions_filter[Const.STATE_TEMPLATE]
+            row_result = rows_regions_filter[(temp.apply(lambda r: self.state_name_filter in r.split(",")))
+                                                                                               | (temp == "")]
         return row_result
 
     def get_non_scif_filters(self, row):
@@ -414,7 +403,7 @@ class INBEVBRToolBox:
 
         # filter by scene_id and by template_name (scene type)
         scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
-        number_of_scenes = scene_types_groupby[scene_types_groupby['facings'] >= target]
+        number_of_scenes = len(scene_types_groupby[scene_types_groupby['facings'] >= target])
 
         return number_of_scenes
 
