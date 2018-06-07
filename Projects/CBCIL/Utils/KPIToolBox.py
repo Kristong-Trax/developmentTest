@@ -253,28 +253,6 @@ class CBCILCBCIL_ToolBox(object):
                 if all(map(lambda x: x[0] is None, scores)):
                     kpis_without_score[kpi_fk] = float(denominator_weight)
 
-                # # if scores:
-                # pass_atomics = filter(lambda x: x[0] is not None, scores)
-                # if len(pass_atomics):
-                #     add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None, scores))) / len(pass_atomics)
-                # else:
-                #     add_weights = 0
-                # weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
-                # denominator_weight = self.get_kpi_weight(kpi, kpi_set)
-
-                # if weights:
-                #     kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
-                # else:
-                #     if len(pass_atomics):
-                #         score_weight = float(denominator_weight) / len(pass_atomics)
-                #     else:
-                #         score_weight = 0
-                #     kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
-                #
-                # kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
-                # kpi_scores[kpi_fk] = kpi_score
-                # self.write_to_db_result(kpi_fk, self.LEVEL2, kpi_scores[kpi_fk], float(denominator_weight) * 100)
-
             all_kpis_in_set = self.reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set)
 
             for kpi in filter(lambda x: x['denominator_weight'] != 0, all_kpis_in_set):
@@ -289,7 +267,7 @@ class CBCILCBCIL_ToolBox(object):
                 denominator_weight = kpi['denominator_weight']
 
                 if weights:
-                    kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100 # ask Israel
+                    kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
                 else:
                     if len(pass_atomics):
                         score_weight = float(denominator_weight) / len(pass_atomics)
