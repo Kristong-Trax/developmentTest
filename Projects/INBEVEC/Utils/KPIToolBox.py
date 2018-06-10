@@ -128,8 +128,20 @@ class INBEVECToolBox:
         """
         for i in xrange(len(self.relative_positioning)):
             params = self.relative_positioning.iloc[i]
-            tested_filters = {'product_name': params.get('Tested SKU EAN')}
-            anchor_filters = {'product_name': params.get('Anchor SKU EAN')}
+            if params.get('Tested SKU EAN'):
+                tested_filters = {'product_ean_code': params.get('Tested SKU EAN')}
+            elif params.get('Tested Brand Name'):
+                tested_filters = {'brand_name': params.get('Tested Brand Name')}
+            else:
+                Log.warning("No tested input for atomic `{}`".format(params.get('Atomic Name')))
+                continue
+            if params.get('Anchor SKU EAN'):
+                anchor_filters = {'product_ean_code': params.get('Anchor SKU EAN')}
+            elif params.get('Anchor Brand Name'):
+                anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
+            else:
+                Log.warning("No anchor input for atomic `{}`".format(params.get('Atomic Name')))
+                continue
             direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
                               'bottom': self._get_direction_for_relative_position(
                                   params.get(self.BOTTOM_DISTANCE)),
