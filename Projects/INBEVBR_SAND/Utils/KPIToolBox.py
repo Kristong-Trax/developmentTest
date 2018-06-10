@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.0 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.1 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -70,19 +70,20 @@ class INBEVBRToolBox:
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
         self.prod_seq_sheet = pd.read_excel(PATH, Const.PROD_SEQ).fillna("")
+        self.prod_seq_2_sheet = pd.read_excel(PATH, Const.PROD_SEQ_2).fillna("")
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
-    @property
-    def position_graphs(self):
-        if not hasattr(self, '_position_graphs'):
-            self._position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
-        return self._position_graphs
-
-    @property
-    def Sequence_calculations(self):
-        if not hasattr(self, '_position_graphs'):
-            self._sequence = Sequence(self.data_provider, rds_conn=self.rds_conn)
-        return self._sequence
+    # @property
+    # def position_graphs(self):
+    #     if not hasattr(self, '_position_graphs'):
+    #         self._position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+    #     return self._position_graphs
+    #
+    # @property
+    # def Sequence_calculations(self):
+    #     if not hasattr(self, '_position_graphs'):
+    #         self._sequence = Sequence(self.data_provider, rds_conn=self.rds_conn)
+    #     return self._sequence
 
     def main_calculation(self):
         """
@@ -104,7 +105,7 @@ class INBEVBRToolBox:
             store_types = store_type_template.split(",")
             store_types = [item.strip() for item in store_types]
             if self.store_type_filter not in store_types:
-                return 0
+                return
 
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SOS:
@@ -118,6 +119,8 @@ class INBEVBRToolBox:
         #     self.handle_survey_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_SEQ:
             self.handle_prod_seq_atomics(atomic_id, atomic_name)
+        elif kpi_type == Const.PROD_SEQ_2:
+            self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_WEIGHT:
             self.handle_prod_weight_atomics(atomic_id, atomic_name)
 
@@ -420,22 +423,35 @@ class INBEVBRToolBox:
 
         scenes = self.get_scene_list(filters)
 
-        for i in xrange(len(self.relative_positioning)):
-            params = self.relative_positioning.iloc[i]
-            tested_filters = {'brand_name': params.get('Tested Brand Name')}
-            anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
-            direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
-                              'bottom': self._get_direction_for_relative_position(
-                                  params.get(self.BOTTOM_DISTANCE)),
-                              'left': self._get_direction_for_relative_position(
-                                  params.get(self.LEFT_DISTANCE)),
-                              'right': self._get_direction_for_relative_position(
-                                  params.get(self.RIGHT_DISTANCE))}
-            general_filters = {'template_display_name': params.get(self.LOCATION)}
-            result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
-                                                            **general_filters)
-            score = 1 if result else 0
+        for scene in scenes:
+            matches = self.match_product_in_scene.copy()
+            matches = matches[matches['scene_fk'] == scene]
+            for bay in matches['bay_number'].unique().tolist():
+                matches_bay = matches[matches['bay_number']==bay]
 
+                for shelf in matches_bay['shelf_number'].unique().tolist():
+                    matches_shelf = matches_bay[matches_bay['shelf_number']==shelf]
+                    for sequence in matches_shelf['squ_sequence_number'].unique().tolist():
+                        return
+
+
+        #
+        # for i in xrange(len(self.relative_positioning)):
+        #     params = self.relative_positioning.iloc[i]
+        #     tested_filters = {'brand_name': params.get('Tested Brand Name')}
+        #     anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
+        #     direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
+        #                       'bottom': self._get_direction_for_relative_position(
+        #                           params.get(self.BOTTOM_DISTANCE)),
+        #                       'left': self._get_direction_for_relative_position(
+        #                           params.get(self.LEFT_DISTANCE)),
+        #                       'right': self._get_direction_for_relative_position(
+        #                           params.get(self.RIGHT_DISTANCE))}
+        #     general_filters = {'template_display_name': params.get(self.LOCATION)}
+        #     result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+        #                                                     **general_filters)
+        #     score = 1 if result else 0
+        #
 
 
         #
@@ -471,9 +487,55 @@ class INBEVBRToolBox:
                                            numerator_result=numerator_number_of_facings,
                                            denominator_result=target, result=count_result)
 
+    def handle_prod_seq_2_atomics(self, atomic_id, atomic_name):
+
+        target = 0
+        count_result = 0
+        numerator_number_of_facings = 0
+        group_score = 0
+        rows_filter_stores = pd.DataFrame
+
+        # bring the kpi rows in the PROD_SEQ sheet
+        rows = self.prod_seq_2_sheet.loc[self.prod_seq_2_sheet[Const.KPI_ID] == atomic_id]
+
+        # get a the correct rows
+        temp = rows[Const.STORE_TYPE_TEMPLATE]
+        row = rows[(temp.apply(lambda r: self.store_type_filter in r.split(","))) | (temp == "")]
+
+        row_example = row.copy()
+
+        row_example[Const.CATEGORY] = row_example[Const.SUB_BRAND] = ""
+        del row_example['Brand group outside']
+        del row_example['Brand group inside']
+        filters = self.get_filters_from_row(row_example.squeeze())
+
+        scenes = self.get_scene_list(filters)
+
+        for scene in scenes:
+            matches = self.match_product_in_scene.copy()
+            matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
+            matches_merged = matches_merged[matches_merged['scene_fk'] == scene]
+            for bay in matches_merged['bay_number'].unique().tolist():
+                matches_bay = matches_merged[matches_merged['bay_number'] == bay]
+                for shelf in matches_bay['shelf_number'].unique().tolist():
+                    matches_shelf = matches_bay[matches_bay['shelf_number'] == shelf]
+                    matches_shelf_no_stacking = matches_shelf[matches_shelf['stacking_layer'] == 1]
+                    for sequence in matches_shelf_no_stacking['facing_sequence_number'].unique().tolist():
+                        return
+
+
+        try:
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
+
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_number_of_facings,
+                                           denominator_result=target, result=count_result)
+
     def get_scene_list(self, filters):
-        matches = self.match_product_in_scene.copy()
-        scenes_list = matches[self.tools.get_filter_condition(matches, **filters)]['scene_fk'].unique()
+        scenes_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_fk'].unique().tolist()
         return scenes_list
 
     def handle_prod_weight_atomics(self, atomic_id, atomic_name):

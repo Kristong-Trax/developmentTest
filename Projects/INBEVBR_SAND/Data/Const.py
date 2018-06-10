@@ -11,6 +11,7 @@ class Const(object):
     GROUP_COUNT = 'GROUP_COUNT'
     SURVEY = 'SURVEY'
     PROD_SEQ = 'PROD_SEQ'
+    PROD_SEQ_2 = 'PROD_SEQ_2'
     PROD_WEIGHT = 'PROD_WEIGHT'
 
     # count types
