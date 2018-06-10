@@ -69,6 +69,8 @@ class PERFETTICNToolBox:
 
         return
 
+
+#figure out what the score should be should rpresent ?
     def assortment_calculation(self):
         """
         This function calculates the KPI results.
