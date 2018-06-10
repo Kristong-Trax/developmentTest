@@ -65,7 +65,7 @@ class Const(object):
             TOTAL: 'Shelf_facing_VS_Competition_score_total_%',
             NATIONAL: 'Shelf_facing_VS_Competition_score_national_%',
             SEGMENT: 'Shelf_facing_VS_Competition_score_segment_%', BRAND: 'Shelf_facing_Compliance_Brand_%',
-            SUB_BRAND: 'Shelf_facings_SKU_VS_Competition', COMPETITION: 'Shelf_facings_SKU_VS_Competition',
+            SUB_BRAND: 'Shelf_facing_VS_Competition_Sub_Brand%', COMPETITION: 'Shelf_facings_SKU_VS_Competition',
             SKU: 'Shelf_facings_SKU'},
         SHELF_PLACEMENT: {
             TOTAL: 'Display_Shelf_Placements_score_total_%', NATIONAL: 'Display_Shelf_Placements_score_national_%',
@@ -99,3 +99,5 @@ class Const(object):
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
 
     EXTRA = "EXTRA"
+    OOS = "OOS"
+    DISTRIBUTED = "DISTRIBUTED"
