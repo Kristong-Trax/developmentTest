@@ -41,6 +41,8 @@ class Const(object):
     CONTAINER_TYPE = 'Container Type'
     BEER_TYPE = 'Beer Type'
     SECONDARY_TARGET = 'Secondary Target'
+    BRAND_GROUP_OUTSIDE = 'Brand group outside'
+    BRAND_GROUP_INSIDE = 'Brand group inside'
 
 
 

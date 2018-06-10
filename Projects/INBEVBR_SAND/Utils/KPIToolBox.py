@@ -501,12 +501,13 @@ class INBEVBRToolBox:
         # get a the correct rows
         temp = rows[Const.STORE_TYPE_TEMPLATE]
         row = rows[(temp.apply(lambda r: self.store_type_filter in r.split(","))) | (temp == "")]
+        groups_outside = row[Const.BRAND_GROUP_OUTSIDE].values[0].split(',')
+        groups_inside = row[Const.BRAND_GROUP_INSIDE].values[0].split(',')
 
         row_example = row.copy()
+        del row_example[Const.BRAND_GROUP_OUTSIDE]
+        del row_example[Const.BRAND_GROUP_INSIDE]
 
-        row_example[Const.CATEGORY] = row_example[Const.SUB_BRAND] = ""
-        del row_example['Brand group outside']
-        del row_example['Brand group inside']
         filters = self.get_filters_from_row(row_example.squeeze())
 
         scenes = self.get_scene_list(filters)
@@ -520,8 +521,13 @@ class INBEVBRToolBox:
                 for shelf in matches_bay['shelf_number'].unique().tolist():
                     matches_shelf = matches_bay[matches_bay['shelf_number'] == shelf]
                     matches_shelf_no_stacking = matches_shelf[matches_shelf['stacking_layer'] == 1]
-                    for sequence in matches_shelf_no_stacking['facing_sequence_number'].unique().tolist():
-                        return
+                    df = matches_shelf_no_stacking.sort_values('facing_sequence_number')
+                    for sequence in df['facing_sequence_number'].unique().tolist():
+                        temp = df['brand_name']
+                        if len(temp[temp.isin(groups_inside)]) == 0:
+                            return
+                        elif len(temp[temp.isin(groups_outside)]) == 0:
+                            result = 0
 
 
         try:
