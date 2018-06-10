@@ -87,7 +87,7 @@ class PERFETTICNToolBox:
                 denominator_res = result.total
                 res = np.divide(float(result.passes), float(denominator_res))
                 if result.passes >= 1:
-                    score = 1
+                    score = 100
                 else:
                     score = 0
                 self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk, result.passes,
@@ -99,7 +99,7 @@ class PERFETTICNToolBox:
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
                     if res >= 0:
-                        score = 1
+                        score = 100
                     else:
                         score = 0
                     self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl1,
