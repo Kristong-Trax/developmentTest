@@ -630,9 +630,9 @@ class KCUSToolBox:
         attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id,
                                                self.visit_date.isoformat(), kpi_fk,
                                                params.get('KPI Level 2 Name').encode('utf-8'),
-                                               score, score)],
+                                               score)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk',
-                                                      'kpk_name', 'result', 'score'])
+                                                      'kpk_name', 'score'])
 
         return attributes_for_table2
 
