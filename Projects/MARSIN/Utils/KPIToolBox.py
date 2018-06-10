@@ -19,6 +19,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
@@ -46,7 +47,8 @@ class MARSINKPIConsts(object):
     SEQUENCE_WITHIN_BLOCK = 'Blocked Together in Sequence'
     BLOCKS_IN_SEQUENCE = 'Product Group Adjacency'
     AVAILABILITY_AND_SURVEY = 'Availability & Survey'
-
+    THRESHOLD = 0.5
+    NewScore =['Availability','SOS Facings']
 
 class MARSINTemplateConsts(object):
 
@@ -202,12 +204,21 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                 if kpi_score is not None:
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
-                    self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
-                                            level=self.LEVEL2)
+                    new_atomic = (1 if kpi_score > 0 and kpi_type in self.NewScore else kpi_score)
+                    if kpi_type == self.SHARE_OF_SHELF:
+                        self.write_to_db_result(kpi_fk, (kpi_score * 100, new_atomic, number_of_atomics),
+                                                level=self.LEVEL2)
+                    else:
+                        self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
+                                                level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
-                    group_scores[kpi_group][0] += kpi_score
-                    group_scores[kpi_group][1] += 1
+                    if number_of_atomics != 0 or number_of_passed_atomics != 0:
+                        if kpi_type == self.AVAILABILITY:
+                            group_scores[kpi_group][0] += kpi_score
+                        else:
+                            group_scores[kpi_group][0] += new_atomic
+                        group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
             actual_points, max_points = group_scores[group_name]
@@ -385,10 +396,11 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         denominator_filters = self.get_filters(kpi_data, (self.ENTITY, self.DENOMINATOR))
         denominator_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                **denominator_filters)
-        result = 0 if denominator_result == 0 else numerator_result / float(denominator_result)
+        result = 0 if denominator_result == 0 else round(numerator_result / float(denominator_result),2)
         threshold = float(kpi_data[self.template_id])
-        score = 1 if result >= threshold else 0
-        self.write_to_db_result(atomic_fk, (score, round(result * 100, 1), threshold * 100), level=self.LEVEL3)
+        result = round(result/float(threshold),2)
+        score = 0 if result < threshold else 1 if result >= 1 else result
+        self.write_to_db_result(atomic_fk, (score, round(score * 100, 1), threshold * 100), level=self.LEVEL3)
         return score
 
     def calculate_availability(self, params, atomics):
@@ -420,7 +432,8 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
                 result += product_result
-            score = 1 if result >= target else 0
+            result = round(float(result) / float(target), 2)
+            score = 0 if result < self.THRESHOLD else 1 if result >= 1 else result
 
         else:
             scores = []

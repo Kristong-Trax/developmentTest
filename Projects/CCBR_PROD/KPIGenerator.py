@@ -1,9 +1,8 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCBR_PROD.Utils.KPIToolBox import CCBRToolBox
+from Projects.CCBR_PROD.Utils.KPIToolBox import CCBRToolBox, log_runtime
 
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'ilays'
 
 

@@ -1,8 +1,8 @@
 
-__author__ = 'uri'
+__author__ = 'nissand'
 
 
-class DIAGEOUSQueries(object):
+class JNJITQueries(object):
 
     @staticmethod
     def get_all_kpi_data():

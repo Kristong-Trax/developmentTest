@@ -686,16 +686,29 @@ class BATRUToolBox:
             bundled_products = self.get_bundles_by_definitions(
                         product_fk, convert=LEAD2BUNDLE, input_type='product_fk', output_type='product_ean_code')
             for bundle_product in bundled_products:
-                extra_df = extra_df.append(
-                    {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
-                    ignore_index=True)
+                if self.is_relevant_bundle(sku, bundle_product):
+                    extra_df = extra_df.append(
+                        {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
+                        ignore_index=True)
+                    break
                 # prod_atts_dict_list = list(prod_atts_dict)
                 # prod_atts_dict = [state, bundle_product, 1]
                 # extra_df.append(prod_atts_dict)
 
-        monitored_skus.append(extra_df)
-
+        monitored_skus=monitored_skus.append(extra_df)
         return monitored_skus['ean_code']
+
+    def is_relevant_bundle(self, product_sku, bundle_sku):
+        """
+        This function checks if the bundle product needs to be added to the monitored_sku Data Frame.
+        Logic: If the product doesn't exist in the store and the bundle product does, add it.
+        :return: 1 in case of we need to add the bundle.
+        """
+        filtered_scif = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME)]
+        if filtered_scif.loc[filtered_scif['product_ean_code'] == product_sku].empty:
+            if not filtered_scif.loc[filtered_scif['product_ean_code'] == bundle_sku].empty:
+                return 1
+        return 0
 
     def calculate_fulfilment(self, monitored_products):
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_FULFILMENT]['kpi_fk'].iloc[0]
@@ -727,7 +740,7 @@ class BATRUToolBox:
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
         num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code'].isin(monitored_skus))]['facings'].sum()
+                                              (self.scif['product_ean_code'].isin(monitored_skus))]['facings'].count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
