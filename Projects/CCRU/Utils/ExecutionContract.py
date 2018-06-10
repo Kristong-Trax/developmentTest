@@ -89,9 +89,9 @@ class CCRUContract:
         return conversion
 
 
-# if __name__ == '__main__':
-#     # LoggerInitializer.init('ccru')
-#     Log.init('ccru','Execution Contract')
-#     Config.init()
-#     path = '/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Contact_Execution_pros4822.xlsx'
-#     CCRUContract().parse_and_upload_file(path)
+if __name__ == '__main__':
+    # LoggerInitializer.init('ccru')
+    Log.init('ccru', 'Execution Contract')
+    Config.init()
+    path = '/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Contract execution targets June 2018.xlsx'
+    CCRUContract().parse_and_upload_file(path)

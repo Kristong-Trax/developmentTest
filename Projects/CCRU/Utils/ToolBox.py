@@ -2118,7 +2118,7 @@ class CCRUKPIToolBox:
         """
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula') not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
+            if p.get('Formula').strip() not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, p.get("Children").split("\n"))
@@ -2551,6 +2551,9 @@ class CCRUKPIToolBox:
                         result = self.execution_results[kpi_name].get('result')
                         score_func = self.execution_results[kpi_name].get('score_func')
                         try:
+                            if type(target) is unicode and '%' in target:
+                                target = target.replace('%', '')
+                                target = float(target) / 100
                             target = float(target)
                             if int(target) == target:
                                 target = int(target)
