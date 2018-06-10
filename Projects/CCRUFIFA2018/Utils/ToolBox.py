@@ -649,80 +649,6 @@ class CCRUFIFAKPIToolBox:
         self.thresholds_and_results[kpi_name] = {'result': ratio, 'threshold': 0}
         return ratio
 
-    # def check_atomic_weighted_average(self, params):
-    #     set_total_res = 0
-    #     for p in params.values()[0]:
-    #         if p.get('Formula') != ("Atomic Weighted Average"):
-    #             continue
-    #         kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-    #         children = map(int, p.get("Children").split("\n"))
-    #         info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
-    #         kpi_total = 0
-    #         kpi_total_weight = 0
-    #         for child in children:
-    #             c = info_by_kpi_id.get(child)
-    #             atomic_score = self.calculate_weighted_sub_atomics(params, c, p)
-    #             number_relevant_scenes = len(self.get_relevant_scenes(c))
-    #             kpi_total += (atomic_score * number_relevant_scenes)
-    #             kpi_total_weight += number_relevant_scenes
-    #         if kpi_total_weight:
-    #             kpi_total /= kpi_total_weight
-    #         else:
-    #             kpi_total = 0
-    #         kpi_score = self.calculate_score(kpi_total, p)
-    #         if 'KPI Weight' in p.keys():
-    #             set_total_res += round(kpi_score) * p.get('KPI Weight')
-    #         else:
-    #             set_total_res += round(kpi_score) * kpi_total_weight
-    #         # saving to DB
-    #         if kpi_fk:
-    #             attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-    #             self.write_to_db_result(attributes_for_level2, 'level2')
-    #     return set_total_res
-    #
-    # def calculate_weighted_sub_atomics(self, params, p, kpi_parent):
-    #     """
-    #
-    #     :param params:
-    #     :return:
-    #     """
-    #     atomic_total_res = 0
-    #     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
-    #     children = map(int, p.get("Children").split("\n"))
-    #     info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
-    #     kpi_total = 0
-    #     kpi_total_weight = 0
-    #     kpi_fk = self.kpi_fetcher.get_kpi_fk(kpi_parent.get('KPI name Eng'))
-    #     for child in children:
-    #         c = info_by_kpi_id.get(child)
-    #         sub_atomic_res = self.calculate_availability(c)
-    #         sub_atomic_score = self.calculate_score(sub_atomic_res, c)
-    #         if p.get('Formula') == 'Sub Atomic Weighted Average':
-    #             kpi_total += sub_atomic_score * c.get('KPI Weight')
-    #             kpi_total_weight += c.get('KPI Weight')
-    #         else:
-    #             kpi_total += sub_atomic_score
-    #             kpi_total_weight += 1
-    #         # write to DB
-    #         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
-    #         # kpi_fk =
-    #         attributes_for_level3 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_level3, 'level3')
-    #     if kpi_total_weight:
-    #         kpi_total /= kpi_total_weight
-    #     else:
-    #         kpi_total = 0
-    #     kpi_score = self.calculate_score(kpi_total, p)
-    #     if 'KPI Weight' in p.keys():
-    #         atomic_total_res += round(kpi_score) * p.get('KPI Weight')
-    #     else:
-    #         atomic_total_res += round(kpi_score) * kpi_total_weight
-    #     # saving to DB
-    #     if atomic_kpi_fk:
-    #         attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_level3, 'level3')
-    #     return atomic_total_res
-
     def build_dict(self, seq, key):
         return dict((d[key], dict(d, index=index)) for (index, d) in enumerate(seq))
 
@@ -730,9 +656,6 @@ class CCRUFIFAKPIToolBox:
         set_total_res = 0
         if p.get('level') == 2:
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-        else:
-            kpi_fk = kpi_fk
-            # atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
         children = map(int, p.get("Children").split("\n"))
         info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
         kpi_total_weight = 0
@@ -767,15 +690,10 @@ class CCRUFIFAKPIToolBox:
             kpi_score = (float(numerator) / denominator) * 100
         else:
             kpi_score = 0
-        # saving to DB
-        if kpi_fk:
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-            self.write_to_db_result(attributes_for_level2, 'level2')
-            set_total_res += round(kpi_score) * kpi_total_weight
-        else:
+        if p.get('level') != 2:
             attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk)
             self.write_to_db_result(attributes_for_level3, 'level3')
-            set_total_res += kpi_score
+        set_total_res += kpi_score
         return set_total_res
 
     def weighted_cooler_standard(self, params):
@@ -793,16 +711,18 @@ class CCRUFIFAKPIToolBox:
             denominator = 0
             for child in children:
                 c = info_by_kpi_id.get(child)
-                atomic_score = self.calculate_coller_standard(c, params, kpi_fk)
+                atomic_score = self.calculate_coller_standard(c, params, kpi_fk=kpi_fk)
                 num_relevant_scenes = len(self.get_relevant_scenes(c))
                 atomic_weight = c.get('KPI Weight')
                 kpi_total_weight += atomic_weight
                 numerator += atomic_score * num_relevant_scenes
                 denominator += num_relevant_scenes
             kpi_score = float(numerator)/denominator
-            if p.get('KPI ID') != '*': # * means internal KPI, not for presenting
-                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            if p.get('KPI ID') == '*': # * means internal KPI, not for presenting, only child which is level2 KPI
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(c.get('KPI name Eng')) # takes
+                attributes_for_level2 = self.create_attributes_for_level2_df(c, kpi_score, kpi_fk)
+            else:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-                self.write_to_db_result(attributes_for_level2, 'level2')
+            self.write_to_db_result(attributes_for_level2, 'level2')
             set_total_res += round(kpi_score) * kpi_total_weight
         return set_total_res
