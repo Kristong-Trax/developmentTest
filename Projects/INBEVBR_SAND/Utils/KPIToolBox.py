@@ -108,13 +108,14 @@ class INBEVBRToolBox:
 
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SOS:
-            self.handle_sos_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.COUNT:
-            self.handle_count_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.GROUP_COUNT:
-            self.handle_group_count_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.SURVEY:
-            self.handle_survey_atomics(atomic_id, atomic_name)
+            return
+        #     self.handle_sos_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.COUNT:
+        #     self.handle_count_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.GROUP_COUNT:
+        #     self.handle_group_count_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.SURVEY:
+        #     self.handle_survey_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_SEQ:
             self.handle_prod_seq_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_WEIGHT:
@@ -132,32 +133,30 @@ class INBEVBRToolBox:
 
         # get a single row
         row = self.find_row(rows)
+        if row.empty:
+            return
 
-        if isinstance(row, pd.Series):
-            row = row.to_frame()
-            if row.empty:
-                return
+        #
+        # # enter only if there is a matching store, region and state
+        # if isinstance(row, pd.DataFrame) and not row.empty:
+        target = row[Const.TARGET].values[0]
+        weight = row[Const.WEIGHT].values[0]
+        target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
+        count_type = row[Const.COUNT_TYPE].values[0].strip()
 
-        # enter only if there is a matching store, region and state
-        if isinstance(row, pd.DataFrame) and not row.empty:
-            target = row[Const.TARGET].values[0]
-            weight = row[Const.WEIGHT].values[0]
-            target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
-            count_type = row[Const.COUNT_TYPE].values[0].strip()
+        df = self.get_non_scif_filters(row)
 
-            df = self.get_non_scif_filters(row)
+        # get the filters
+        filters = self.get_filters_from_row(row.squeeze())
 
-            # get the filters
-            filters = self.get_filters_from_row(row.squeeze())
-
-            if count_type == Const.FACING:
-                numerator_number_of_facings = self.count_of_facings(df, filters)
-                if numerator_number_of_facings != 0:
-                    del filters['manufacturer_name']
-                    denominator_number_of_total_facings = self.count_of_facings(df, filters)
-                    if target_operator == '%':
-                        percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-                        count_result = weight if percentage >= target else 0
+        if count_type == Const.FACING:
+            numerator_number_of_facings = self.count_of_facings(df, filters)
+            if numerator_number_of_facings != 0:
+                del filters['manufacturer_name']
+                denominator_number_of_total_facings = self.count_of_facings(df, filters)
+                if target_operator == '%':
+                    percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
+                    count_result = weight if percentage >= target else 0
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -168,41 +167,6 @@ class INBEVBRToolBox:
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
                                            denominator_result=target, result=count_result)
-
-        # # enter only if there is a matching store, region and state
-        # if isinstance(row, pd.DataFrame) and not row.empty:
-        #     target = row[Const.TARGET].values[0]
-        #     weight = row[Const.WEIGHT].values[0]
-        #     target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
-        #     count_type = row[Const.COUNT_TYPE].values[0].strip()
-        #
-        #     df = self.get_non_scif_filters(row)
-        #
-        #     # get the filters
-        #     filters = self.get_filters_from_row(row.squeeze())
-        #
-        #     if count_type == Const.FACING:
-        #         numerator_number_of_facings = self.count_of_facings(self.scif, filters)
-        #         if numerator_number_of_facings != 0:
-        #             del filters['manufacturer_name']
-        #             denominator_number_of_total_facings = self.count_of_facings(self.scif, filters)
-        #             if target_operator == '%':
-        #                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-        #                 count_result = weight if percentage >= target else 0
-        #
-        # try:
-        #     atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
-        # except IndexError:
-        #     Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-        #     return
-        #
-        # self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-        #                                    numerator_result=numerator_number_of_facings,
-        #                                    denominator_result=target, result=count_result)
-        #
-        #
-        #
-
 
     def handle_count_atomics(self, atomic_id, atomic_name):
 
@@ -218,35 +182,22 @@ class INBEVBRToolBox:
         if row.empty:
             return
 
-        if isinstance(row, pd.Series):
-            row = row.to_frame()
-            if row.empty:
-                return
+        target = row[Const.TARGET].values[0]
+        weight = row[Const.WEIGHT].values[0]
+        count_type = row[Const.COUNT_TYPE].values[0].strip()
+        df = self.get_non_scif_filters(row)
 
-        # enter only if there is a matching store, region and state
-        if isinstance(row, pd.DataFrame):
-            # try:
-            target = row[Const.TARGET].values[0]
-            weight = row[Const.WEIGHT].values[0]
-            count_type = row[Const.COUNT_TYPE].values[0].strip()
-            # except:
-            #     target = row[Const.TARGET].values[0]
-            #     weight = row[Const.WEIGHT].values[0]
-            #     count_type = row[Const.COUNT_TYPE].values[0].strip()
+        # get the filters
+        filters = self.get_filters_from_row(row.squeeze())
 
-            df = self.get_non_scif_filters(row)
-
-            # get the filters
-            filters = self.get_filters_from_row(row.squeeze())
-
-            if count_type == Const.FACING:
-                number_of_facings = self.count_of_facings(df, filters)
-                count_result = weight if number_of_facings >= target else 0
-            elif count_type == Const.SCENES:
-                secondary_target = row[Const.SECONDARY_TARGET].values[0]
-                number_of_scenes = self.count_of_scenes(df, filters, target)
-                count_result = weight if (number_of_scenes >= secondary_target) else 0
-                numerator_number_of_facings = number_of_scenes
+        if count_type == Const.FACING:
+            number_of_facings = self.count_of_facings(df, filters)
+            count_result = weight if number_of_facings >= target else 0
+        elif count_type == Const.SCENES:
+            secondary_target = row[Const.SECONDARY_TARGET].values[0]
+            number_of_scenes = self.count_of_scenes(df, filters, target)
+            count_result = weight if (number_of_scenes >= secondary_target) else 0
+            numerator_number_of_facings = number_of_scenes
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -276,12 +227,6 @@ class INBEVBRToolBox:
             weight = row[Const.WEIGHT]
             score = row[Const.SCORE]
             count_type = row[Const.COUNT_TYPE].strip()
-
-            # get the filters
-            # del row[Const.GROUP_KPI_NAME]
-            # del row[Const.SCORE]
-
-            df = self.get_non_scif_filters(row)
 
             # get the filters
             filters = self.get_filters_from_row(row)
@@ -475,21 +420,21 @@ class INBEVBRToolBox:
 
         scenes = self.get_scene_list(filters)
 
-        # for i in xrange(len(self.relative_positioning)):
-        #     params = self.relative_positioning.iloc[i]
-        #     tested_filters = {'brand_name': params.get('Tested Brand Name')}
-        #     anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
-        #     direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
-        #                       'bottom': self._get_direction_for_relative_position(
-        #                           params.get(self.BOTTOM_DISTANCE)),
-        #                       'left': self._get_direction_for_relative_position(
-        #                           params.get(self.LEFT_DISTANCE)),
-        #                       'right': self._get_direction_for_relative_position(
-        #                           params.get(self.RIGHT_DISTANCE))}
-        #     general_filters = {'template_display_name': params.get(self.LOCATION)}
-        #     result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
-        #                                                     **general_filters)
-        #     score = 1 if result else 0
+        for i in xrange(len(self.relative_positioning)):
+            params = self.relative_positioning.iloc[i]
+            tested_filters = {'brand_name': params.get('Tested Brand Name')}
+            anchor_filters = {'brand_name': params.get('Anchor Brand Name')}
+            direction_data = {'top': self._get_direction_for_relative_position(params.get(self.TOP_DISTANCE)),
+                              'bottom': self._get_direction_for_relative_position(
+                                  params.get(self.BOTTOM_DISTANCE)),
+                              'left': self._get_direction_for_relative_position(
+                                  params.get(self.LEFT_DISTANCE)),
+                              'right': self._get_direction_for_relative_position(
+                                  params.get(self.RIGHT_DISTANCE))}
+            general_filters = {'template_display_name': params.get(self.LOCATION)}
+            result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                            **general_filters)
+            score = 1 if result else 0
 
 
 

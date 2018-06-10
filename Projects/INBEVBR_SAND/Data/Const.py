@@ -65,8 +65,8 @@ class Const(object):
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
-                                                            ATT1, STORE_TYPE_TEMPLATE, WEIGHT, STATE_TEMPLATE,
-                                                            GROUP_KPI_NAME,SCORE,BEER_TYPE,ATT1,CONTAINER_TYPE]
+                                                ATT1, STORE_TYPE_TEMPLATE, WEIGHT, STATE_TEMPLATE, SECONDARY_TARGET,
+                                                            GROUP_KPI_NAME,SCORE,BEER_TYPE, CONTAINER_TYPE]
 
     # DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,
     #                  PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT, MULTIPACK]
