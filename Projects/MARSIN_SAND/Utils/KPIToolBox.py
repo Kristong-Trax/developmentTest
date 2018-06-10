@@ -21,6 +21,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 THRESHOLD = 0.5
 NewScore =['Availability','SOS Facings']
+AVAILABILITY ='Availability'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
@@ -48,7 +49,6 @@ class MARSIN_SANDKPIConsts(object):
     SEQUENCE_WITHIN_BLOCK = 'Blocked Together in Sequence'
     BLOCKS_IN_SEQUENCE = 'Product Group Adjacency'
     AVAILABILITY_AND_SURVEY = 'Availability & Survey'
-
 
 
 class MARSIN_SANDTemplateConsts(object):
@@ -205,8 +205,9 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                 if kpi_score is not None:
                     number_of_atomics = len(self.results.get(kpi_fk, []))
                     number_of_passed_atomics = self.results.get(kpi_fk, []).count(1)
-                    if kpi_type in NewScore:
-                        self.write_to_db_result(kpi_fk, (kpi_score*100, number_of_passed_atomics, number_of_atomics),
+                    new_atomic=(1 if kpi_score > 0 and kpi_type in NewScore else kpi_score)
+                    if kpi_type == 'SOS Facings':
+                        self.write_to_db_result(kpi_fk, (kpi_score*100, new_atomic, number_of_atomics),
                                                 level=self.LEVEL2)
                     else:
                         self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
@@ -214,7 +215,10 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
                     if number_of_atomics != 0 or number_of_passed_atomics != 0:
-                        group_scores[kpi_group][0] += (1 if kpi_score > 0 and kpi_type in NewScore else kpi_score)
+                        if kpi_type == AVAILABILITY:
+                            group_scores[kpi_group][0] += kpi_score
+                        else:
+                            group_scores[kpi_group][0] += new_atomic
                         group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
@@ -431,8 +435,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                         product_result += 1
                 result += product_result
             result = round(float(result)/float(target), 2)
+            score = 0 if result < THRESHOLD else 1 if result >= 1 else result
 
-            score = 0 if result < THRESHOLD else 1 if result >=1 else result
 
 
         else:

@@ -21,7 +21,7 @@ class CCRUFIFACalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccrufifa2018'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'B284DB41-84E1-4D72-9338-A12396D41B1A' # AA795EDE-9327-4DDA-93E5-14D180578405, B284DB41-84E1-4D72-9338-A12396D41B1A
+#     session = 'D3E3EAAD-B7AD-4466-B341-31390FAA3A79' # AA795EDE-9327-4DDA-93E5-14D180578405, B284DB41-84E1-4D72-9338-A12396D41B1A
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     CCRUFIFACalculations(data_provider, output).run_project_calculations()
