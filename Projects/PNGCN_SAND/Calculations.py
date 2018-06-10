@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.PNGCN_SAND.KPIToolBox import PNGCN_SANDPNGToolBox, log_runtime
@@ -26,12 +26,12 @@ class PNGCN_SANDPngCNEmptyCalculations(BaseCalculationsScript):
         tool_box.commit_results_data()
         self.timer.stop('PNGCN_SANDPngCNEmptyCalculations.run_project_calculations')
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('Png-cn calculations')
-#     Config.init()
-#     project_name = 'pngcn-sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = '4016530C-BF45-42CD-8C6D-A71AF16C9218'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     PNGCN_SANDPngCNEmptyCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('Png-cn calculations')
+    Config.init()
+    project_name = 'pngcn-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session = '17d31431-1165-4f9d-b111-221d66b70976'
+    data_provider.load_session_data(session)
+    output = Output()
+    PNGCN_SANDPngCNEmptyCalculations(data_provider, output).run_project_calculations()

@@ -10,7 +10,7 @@ __Author__ = 'Dudi_S'
 
 CUBE = 1
 NON_BRANDED_CUBE = 5
-TABLE = 'Table Display'
+TABLE = 'Table'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
 CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
                        17, 18, 19, 20, 21, 22, 23, 24]
@@ -52,6 +52,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 self._handle_non_cube_non_promotion_display()
                 self._handle_promotion_wall_display()
                 self._handle_cube_display()
+                self._handle_table_display()
                 if self.on_ace:
                     Log.debug(self.log_prefix + ' Committing share of display calculations')
                     self.project_connector.db.commit()
@@ -152,7 +153,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
         total_and_cube_tags = \
             self.match_display_in_scene[(self.match_display_in_scene['display_fk'].isin(CUBE_TOTAL_DISPLAYS)) |
-                                        (self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS))]
+                                        (self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS))] # todo: add tags of all other displays but table display
         table_scenes = table_tags.scene_fk.tolist()
         cube_scenes = total_and_cube_tags.scene_fk.tolist()
         scenes = list(set(table_scenes)^set(cube_scenes))
@@ -205,9 +206,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                                                                  'template_fk', 'display_fk', 'display_size'],
                                                                 as_index=False).facings.sum()
             # for sos purposes filtering out stacking tags
-            display_visit_stacking = display_visit[display_visit['display_name'] == 'Table Display']
+            display_visit_stacking = display_visit[display_visit['display_name'] == TABLE]
             display_visit_stacking.drop(['status', 'stacking_layer'], axis=1)
-            display_visit = display_visit[display_visit['display_name'] != 'Table Display']
+            display_visit = display_visit[display_visit['display_name'] != TABLE]
             display_visit = display_visit[(display_visit['stacking_layer'] == 1)]\
                 .drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit.append(display_visit_stacking)
@@ -414,6 +415,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
     def _get_match_display_in_scene_data(self):
         query = ''' select
                         mds.display_fk
+                        ,ds.display_name
                         ,mds.scene_fk
                         ,ds.size as display_size
                         ,mds.bay_number
