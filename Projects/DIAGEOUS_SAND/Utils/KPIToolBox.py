@@ -57,7 +57,7 @@ class DIAGEOUSToolBox:
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
         self.sub_brands_converter = {}
-        i = 0
+        i = 1
         for sub_brand in self.scif['sub_brand'].unique().tolist():
             self.sub_brands_converter[sub_brand] = i
             i += 1
@@ -505,6 +505,8 @@ class DIAGEOUSToolBox:
                            comp_price + competition[Const.MAX_MSRP_RELATIVE])
         else:
             range_price = (competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE])
+        if not self.does_exist(range_price[0]) or not self.does_exist(range_price[1]):
+            return None
         if our_price < range_price[0]:
             result = range_price[0] - our_price
         elif our_price > range_price[1]:
@@ -624,6 +626,9 @@ class DIAGEOUSToolBox:
         return self.scif["scene_id"].unique().tolist()
 
     def get_state(self):
+        if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
+            Log.error("session '{}' does not have a state".format(self.session_uid))
+            return "OTHER"
         query = "select name from static.state where pk = {};".format(
             self.data_provider[Data.STORE_INFO]['state_fk'][0])
         state = pd.read_sql_query(query, self.rds_conn.db)
@@ -636,7 +641,10 @@ class DIAGEOUSToolBox:
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
-        sub_brand_fk = self.sub_brands_converter[sub_brand]
+        if not sub_brand:
+            sub_brand_fk = 0
+        else:
+            sub_brand_fk = self.sub_brands_converter[sub_brand]
         standard_type = self.get_standard_type(product_fk)
         return brand, sub_brand_fk, standard_type
 
