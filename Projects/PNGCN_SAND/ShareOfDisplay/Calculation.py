@@ -8,13 +8,20 @@ from Trax.Utils.Logging.Logger import Log
 
 __Author__ = 'Dudi_S'
 
-CUBE = 1
-NON_BRANDED_CUBE = 5
+CUBE = 'Cube'
+NON_BRANDED_CUBE = 'Non branded cube'
+FOUR_SIDED = '4 Sided Display'
 TABLE = 'Table'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
-CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
-                       17, 18, 19, 20, 21, 22, 23, 24]
-PROMOTION_WALL_DISPLAYS = [25]
+# CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
+#                        17, 18, 19, 20, 21, 22, 23, 24]
+# PROMOTION_WALL_DISPLAYS = [25]
+CUBE_TOTAL_DISPLAYS = ['Total 1 cube', 'Total 2 cubes', 'Total 3 cubes', 'Total 4 cubes', 'Total 5 cubes',
+                       'Total 6 cubes', 'Total 7 cubes', 'Total 8 cubes', 'Total 9 cubes', 'Total 10 cubes',
+                       'Total 11 cubes', 'Total 12 cubes', 'Total 13 cubes', 'Total 14 cubes', 'Total 15 cubes']
+FOUR_SIDED_TOTAL_DISPLAYS = ['Total 1 4-sided display', 'Total 2 4-sided display', 'Total 3 4-sided display',
+                             'Total 4 4-sided display', 'Total 5 4-sided display']
+PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = [TABLE]
 
 class PNGCN_SANDPNGShareOfDisplay(object):
@@ -70,7 +77,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         Log.debug(self.log_prefix + ' Starting non cube non promotion display')
         # filtering all promotion wall and cube tags
         display_non_cube_non_promotion_wall_with_bays = \
-            self.match_display_in_scene[~self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS +
+            self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS +
                                                                                         CUBE_TOTAL_DISPLAYS +
                                                                                         PROMOTION_WALL_DISPLAYS)]
         if not display_non_cube_non_promotion_wall_with_bays.empty:
@@ -88,7 +95,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         """
         Log.debug(self.log_prefix + ' Starting promotion display')
         promotion_tags = \
-            self.match_display_in_scene[self.match_display_in_scene['display_fk'].isin(PROMOTION_WALL_DISPLAYS)]
+            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(PROMOTION_WALL_DISPLAYS)]
         if not promotion_tags.empty:
             display_promotion_wall = promotion_tags.groupby(['display_fk', 'scene_fk'],
                                                             as_index=False).display_size.sum()
@@ -101,7 +108,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 display_promotion_wall_with_id.merge(promotion_wall_valid_bays, on='scene_fk')
             self._calculate_share_of_display(display_promotion_wall_with_id_and_bays)
 
-    def _handle_cube_display(self):
+    def _handle_cube_or_4_sided_display(self):
         """
         Handles cube displays. All tags are aggregated to one display per scene with multiple tags.
         If there are cube/non branded cube tags the bays will be taken from them, otherwise from the 'total' tags.
@@ -109,39 +116,39 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         :return:
         """
         Log.debug(self.log_prefix + ' Starting cube display')
-        cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS)]
-        total_cube_tags = \
-            self.match_display_in_scene[self.match_display_in_scene['display_fk'].isin(CUBE_TOTAL_DISPLAYS)]
-        scenes = cube_tags.scene_fk.tolist() + total_cube_tags.scene_fk.tolist()
+        tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS + FOUR_SIDED)]
+        total_tags = \
+            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS + FOUR_SIDED_TOTAL_DISPLAYS)]
+        scenes = tags.scene_fk.tolist() + total_tags.scene_fk.tolist()
         scenes = list(set(scenes))
-        cube_bays = pd.DataFrame({})
-        cube_display = pd.DataFrame({})
+        bays = pd.DataFrame({})
+        display = pd.DataFrame({})
         for scene in scenes:
-            cube_tags_scene = cube_tags[cube_tags['scene_fk'] == scene]
-            total_cube_tags_scene = total_cube_tags[total_cube_tags['scene_fk'] == scene]
-            if not (total_cube_tags_scene.empty and cube_tags_scene.empty):
-                if total_cube_tags_scene.empty:
-                    cube_bays_scene = cube_tags_scene[['scene_fk', 'bay_number']].copy()
-                    cube_display_scene = cube_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
-                elif cube_tags_scene.empty:
-                    cube_bays_scene = total_cube_tags_scene[['scene_fk', 'bay_number']].copy()
-                    cube_display_scene = total_cube_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+            tags_scene = tags[tags['scene_fk'] == scene]
+            total_tags_scene = total_tags[total_tags['scene_fk'] == scene]
+            if not (total_tags_scene.empty and tags_scene.empty):
+                if total_tags_scene.empty:
+                    bays_scene = tags_scene[['scene_fk', 'bay_number']].copy()
+                    display_scene = tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                elif tags_scene.empty:
+                    bays_scene = total_tags_scene[['scene_fk', 'bay_number']].copy()
+                    display_scene = total_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
                 else:
-                    cube_bays_scene = cube_tags_scene[['scene_fk', 'bay_number']].copy()
-                    cube_display_scene = total_cube_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
-                cube_display_scene['display_fk'] = \
-                    NON_BRANDED_CUBE if (NON_BRANDED_CUBE in cube_tags_scene['display_fk'].values and
-                                         CUBE not in cube_tags_scene['display_fk'].values) else CUBE
-                cube_display = cube_display.append(cube_display_scene, ignore_index=True)
-                cube_bays = cube_bays.append(cube_bays_scene, ignore_index=True)
-        if not cube_bays.empty:
-            cube_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
-        if not cube_display.empty:
+                    bays_scene = tags_scene[['scene_fk', 'bay_number']].copy()
+                    display_scene = total_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                display_scene['display_fk'] = \
+                    NON_BRANDED_CUBE if (NON_BRANDED_CUBE in tags_scene['display_fk'].values and
+                                         CUBE not in tags_scene['display_fk'].values) else CUBE
+                display = display.append(display_scene, ignore_index=True)
+                bays = bays.append(bays_scene, ignore_index=True)
+        if not bays.empty:
+            bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
+        if not display.empty:
             # only valid tags are relevant
-            cube_valid_bays = self._filter_valid_bays(cube_bays)
-            cube_display_with_id = self._insert_into_display_surface(cube_display)
-            cube_display_with_id_and_bays = cube_display_with_id.merge(cube_valid_bays, on=['scene_fk'])
-            self._calculate_share_of_display(cube_display_with_id_and_bays, all_skus=0)
+            valid_bays = self._filter_valid_bays(bays)
+            display_with_id = self._insert_into_display_surface(display)
+            display_with_id_and_bays = display_with_id.merge(valid_bays, on=['scene_fk'])
+            self._calculate_share_of_display(display_with_id_and_bays, all_skus=0)
 
     def _handle_table_display(self):
         """
@@ -152,8 +159,8 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         Log.debug(self.log_prefix + ' Starting table display')
         table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
         total_and_cube_tags = \
-            self.match_display_in_scene[(self.match_display_in_scene['display_fk'].isin(CUBE_TOTAL_DISPLAYS)) |
-                                        (self.match_display_in_scene['display_fk'].isin(CUBE_DISPLAYS))] # todo: add tags of all other displays but table display
+            self.match_display_in_scene[(self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)) |
+                                        (self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS))] # todo: add tags of all other displays but table display
         table_scenes = table_tags.scene_fk.tolist()
         cube_scenes = total_and_cube_tags.scene_fk.tolist()
         scenes = list(set(table_scenes)^set(cube_scenes))
@@ -180,10 +187,10 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             table_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
         if not table_display.empty:
             # only valid tags are relevant
-            cube_valid_bays = self._filter_valid_bays(table_bays)
-            cube_display_with_id = self._insert_into_display_surface(table_display)
-            cube_display_with_id_and_bays = cube_display_with_id.merge(cube_valid_bays, on=['scene_fk'])
-            self._calculate_share_of_display(cube_display_with_id_and_bays, all_skus=0)
+            table_valid_bays = self._filter_valid_bays(table_bays)
+            table_display_with_id = self._insert_into_display_surface(table_display)
+            table_display_with_id_and_bays = table_display_with_id.merge(table_valid_bays, on=['scene_fk'])
+            self._calculate_share_of_display(table_display_with_id_and_bays, all_skus=0)
 
         return
 
