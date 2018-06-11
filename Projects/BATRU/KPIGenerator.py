@@ -14,6 +14,9 @@ class BATRUGenerator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.tool_box = BATRUToolBox(self.data_provider, self.output)
+        # # # upload assortment for p1
+        # # assortment_file_path = '/home/idanr/Desktop/StoreAssortment.csv'
+        # self.tool_box.upload_store_assortment_file_for_p1(assortment_file_path)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
