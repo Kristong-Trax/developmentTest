@@ -8,10 +8,10 @@ from Projects.DIAGEOUS_SAND.Calculations import Calculations
 if __name__ == '__main__':
     LoggerInitializer.init('diageous-sand calculations')
     Config.init()
-    project_name = 'diageous-sand'
-    sessions = ['0B663792-9E0B-4DC0-A604-8437CFD118D0',
-                "D084B4B8-5C98-4A2A-863C-EBFA1CF5E87D",
-                "A1A30A52-A79F-42A5-B7BD-0FFE53B579DB"]
+    project_name = 'diageous'
+    sessions = ['004F1CF3-7135-44FD-9651-5F1E9E4C0BB6',
+                "013C844D-63A4-4A67-A8C2-7CB26F875E64",
+                "2307C486-FB2F-4163-B0F9-F32ECE64A169"]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

@@ -40,6 +40,8 @@ class DIAGEOUSToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.get_state()
+        # self.sub_brands = self.get_sub_brands()
+        # self.refresh_sub_brands()
         self.result_values = self.get_result_values()
         self.products_with_prices = self.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
@@ -57,8 +59,8 @@ class DIAGEOUSToolBox:
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
         self.sub_brands_converter = {}
-        i = 0
-        for sub_brand in self.scif['sub_brand'].unique().tolist():
+        i = 1
+        for sub_brand in self.all_products['sub_brand'].unique().tolist():
             self.sub_brands_converter[sub_brand] = i
             i += 1
 
@@ -80,13 +82,13 @@ class DIAGEOUSToolBox:
                 national_store_score += n_weighted_score
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score,
-            numerator_result=total_store_score, identifier_result=self.common.get_dictionary(name=Const.TOTAL))
+            identifier_result=self.common.get_dictionary(name=Const.TOTAL))
         self.common.write_to_db_result(
             fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=segment_store_score,
-            numerator_result=segment_store_score, identifier_result=self.common.get_dictionary(name=Const.SEGMENT))
+            identifier_result=self.common.get_dictionary(name=Const.SEGMENT))
         self.common.write_to_db_result(
             fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=national_store_score,
-            numerator_result=national_store_score, identifier_result=self.common.get_dictionary(name=Const.NATIONAL))
+            identifier_result=self.common.get_dictionary(name=Const.NATIONAL))
 
     def calculate_set(self, kpi_line):
         """
@@ -179,7 +181,7 @@ class DIAGEOUSToolBox:
             result, passed = Const.OOS, 0
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=facings,
+            fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -195,7 +197,7 @@ class DIAGEOUSToolBox:
             result, passed = Const.OOS, 0
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=facings,
+            fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -207,6 +209,11 @@ class DIAGEOUSToolBox:
 
     def get_result_values(self):
         query = "SELECT * FROM static.kpi_result_value;"
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
+    def get_sub_brands(self):
+        query = "SELECT * FROM static.custom_entity where entity_type_fk = 1002;"
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
@@ -327,7 +334,7 @@ class DIAGEOUSToolBox:
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=our_facings, denominator_result=all_facings,
+            fk=kpi_fk, numerator_id=product_fk,
             result=result, score=comparison, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison / 100,
@@ -352,7 +359,7 @@ class DIAGEOUSToolBox:
                 product_facing = 0
             amount_of_facings += product_facing
             self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=product_fk, numerator_result=product_facing, result=product_facing,
+                fk=kpi_fk, numerator_id=product_fk, result=product_facing,
                 should_enter=True, identifier_parent=parent_identifier)
         return amount_of_facings
 
@@ -421,7 +428,7 @@ class DIAGEOUSToolBox:
         result = 100 * (eye_level_product_facings > all_facings * Const.PERCENT_FOR_EYE_LEVEL)
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=eye_level_product_facings, result=result,
+            fk=kpi_fk, numerator_id=product_fk, result=result,
             denominator_result=all_facings, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: result / 100,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -505,6 +512,8 @@ class DIAGEOUSToolBox:
                            comp_price + competition[Const.MAX_MSRP_RELATIVE])
         else:
             range_price = (competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE])
+        if not self.does_exist(range_price[0]) or not self.does_exist(range_price[1]):
+            return None
         if our_price < range_price[0]:
             result = range_price[0] - our_price
         elif our_price > range_price[1]:
@@ -513,7 +522,7 @@ class DIAGEOUSToolBox:
             result = 0
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=(result == 0) * 100, result=result,
+            fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -535,7 +544,7 @@ class DIAGEOUSToolBox:
             return None
         result = round(price.iloc[0], 2)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, numerator_result=result, result=result,
+            fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=parent_dict, should_enter=True)
         return result
 
@@ -558,6 +567,19 @@ class DIAGEOUSToolBox:
         return products_with_prices[~products_with_prices['price_value'].isnull()]
 
     # help functions:
+
+    def refresh_sub_brands(self):
+        all_sub_brands = self.all_products['sub_brand'].unique().tolist()
+        current_sub_brand = self.sub_brands['name'].unique().tolist()
+        subs_not_in_db = set(current_sub_brand) - set(all_sub_brands)
+        if subs_not_in_db:
+            self.insert_new_subs(subs_not_in_db)
+
+    def insert_new_subs(self, new_subs):
+        queries = []
+        for sub_brand in new_subs:
+            query = "Aaa"
+            print sub_brand
 
     def calculate_passed_display(self, product_fk, relevant_products):
         """
@@ -624,6 +646,9 @@ class DIAGEOUSToolBox:
         return self.scif["scene_id"].unique().tolist()
 
     def get_state(self):
+        if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
+            Log.error("session '{}' does not have a state".format(self.session_uid))
+            return "OTHER"
         query = "select name from static.state where pk = {};".format(
             self.data_provider[Data.STORE_INFO]['state_fk'][0])
         state = pd.read_sql_query(query, self.rds_conn.db)
@@ -636,7 +661,10 @@ class DIAGEOUSToolBox:
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
-        sub_brand_fk = self.sub_brands_converter[sub_brand]
+        if not sub_brand:
+            sub_brand_fk = 0
+        else:
+            sub_brand_fk = self.sub_brands_converter[sub_brand]
         standard_type = self.get_standard_type(product_fk)
         return brand, sub_brand_fk, standard_type
 
