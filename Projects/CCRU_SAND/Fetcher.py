@@ -43,7 +43,7 @@ class CCRU_SANDCCHKPIFetcher:
 
     def get_object_facings(self, scenes, objects, object_type, formula, size=[], form_factor=[],
                            shelves=None, products_to_exclude=[], form_factors_to_exclude=[], product_categories=[],
-                           product_sub_categories=[], product_brands=[], product_manufacturers=[]):
+                           product_sub_categories=[], product_brands = [], product_manufacturers = []):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'CAT': 'category',
@@ -161,8 +161,7 @@ class CCRU_SANDCCHKPIFetcher:
             kpi_name = kpi_name.decode('utf-8')
         except UnicodeEncodeError:
             pass
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
-                                      == kpi_name.replace("\\'", "'")]['kpi_fk']
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name.replace("\\'", "'")]['kpi_fk']
         if not kpi_fk.empty:
             return kpi_fk.values[0]
         else:
