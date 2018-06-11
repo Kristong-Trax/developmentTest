@@ -325,7 +325,7 @@ class DIAGEOUSToolBox:
             comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
             all_facings += comp_facings
             bench_value = competition[Const.BENCH_VALUE]
-            bench_value = float(bench_value.replace("%", ""))
+            # bench_value = float(bench_value.replace("%", ""))/100
             target = comp_facings * bench_value
         else:
             target = competition[Const.BENCH_VALUE]
