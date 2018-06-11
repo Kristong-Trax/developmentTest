@@ -41,7 +41,7 @@ class DIAGEOUKToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -63,6 +63,7 @@ class DIAGEOUKToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
+        self.common = common
         self.tools = DIAGEOUKDIAGEOToolBox(self.data_provider, output, kpi_static_data=self.kpi_static_data,
                                            match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
@@ -116,7 +117,7 @@ class DIAGEOUKToolBox:
             return
 
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+        self.common.write_to_db_result(set_fk, self.LEVEL1, set_score)
         return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
@@ -127,8 +128,8 @@ class DIAGEOUKToolBox:
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
         kpi_fk = kpi_data['kpi_fk'].values[0]
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        self.write_to_db_result(kpi_fk, score, self.LEVEL2)
-        self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
+        self.common.write_to_db_result(kpi_fk, self.LEVEL2, score)
+        self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, score)
 
     def calculate_posm_sets(self, set_name):
         """
@@ -185,17 +186,17 @@ class DIAGEOUKToolBox:
                         except Exception as e:
                             Log.warning('Product {} is not defined in the DB'.format(product_name))
                             continue
-                        self.write_to_db_result(atomic_fk, product_score, level=self.LEVEL3)
+                        self.common.write_to_db_result(atomic_fk, self.LEVEL3, product_score)
                     score = 1 if result >= target else 0
                 else:
                     result = self.tools.calculate_assortment(product_ean_code=products)
                     atomic_fk = kpi_static_data['atomic_kpi_fk'].values[0]
                     score = 1 if result >= target else 0
-                    self.write_to_db_result(atomic_fk, score, level=self.LEVEL3)
+                    self.common.write_to_db_result(atomic_fk, self.LEVEL3, score)
 
                 scores.append(score)
                 kpi_fk = kpi_static_data['kpi_fk'].values[0]
-                self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
+                self.common.write_to_db_result(kpi_fk, self.LEVEL2, score)
 
         if not scores:
             return False
