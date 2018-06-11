@@ -223,7 +223,7 @@ class PNGAMERICAGENERALToolBox:
                 filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
                 space_length = filtered_df['gross_len_ign_stack'].sum()
         except Exception as e:
-            Log.debug('Linear Feet calculation failed due to {}'.format(e))
+            Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
         return space_length
 
@@ -261,7 +261,7 @@ class PNGAMERICAGENERALToolBox:
                             bay_final_linear_value = 0
                         space_length += bay_final_linear_value
         except Exception as e:
-            Log.debug('Linear Feet calculation failed due to {}'.format(e))
+            Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
         return space_length
 
@@ -410,12 +410,12 @@ class PNGAMERICAGENERALToolBox:
                         eye_level_facings = eye_level_facings.append(eye_level_shelves)
                         # if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
                         #     products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
-                        if any(eye_level_facings[
+                        if any(eye_level_shelves[
                                                self.get_filter_condition(eye_level_shelves, **filters)]['product_ean_code']):
                             products_on_eye_level.append(eye_level_shelves[self.get_filter_condition(
                                 eye_level_shelves, **filters)]['product_name'].unique().tolist())
                     except Exception as e:
-                        Log.debug('Adding Eye Level products failed for bay {} in scene {}'.format(bay, scene))
+                        Log.info('Adding Eye Level products failed for bay {} in scene {}'.format(bay, scene))
             eye_level_assortment = len(eye_level_facings[
                                                self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
             if percentage_result:
@@ -591,7 +591,7 @@ class PNGAMERICAGENERALToolBox:
                 #     return False
                 if not scene_for_filters:
                     filters_presence_dict[filters.values()[0]] = 0
-                    Log.debug('Filter {} does not exist in the visit'.format(filters))
+                    Log.info('Filter {} does not exist in the visit'.format(filters))
                     # return False
                 else:
                     filters_presence_dict[filters.values()[0]] = 1
@@ -768,7 +768,7 @@ class PNGAMERICAGENERALToolBox:
             #     return False
             if not scene_for_filters:
                 filters_presence_dict[filters.values()[0]] = 0
-                Log.debug('Filter {} does not exist in the visit'.format(filters))
+                Log.info('Filter {} does not exist in the visit'.format(filters))
                 # return False
             else:
                 filters_presence_dict[filters.values()[0]] = 1
@@ -886,7 +886,7 @@ class PNGAMERICAGENERALToolBox:
             #     return False
             if not scene_for_filters:
                 filters_presence_dict[filters.values()[0]] = 0
-                Log.debug('Filter {} does not exist in the visit'.format(filters))
+                Log.info('Filter {} does not exist in the visit'.format(filters))
                 # return False
             else:
                 filters_presence_dict[filters.values()[0]] = 1
@@ -1701,7 +1701,7 @@ class PNGAMERICAGENERALToolBox:
         if not include_empty:
             filters['product_type'] = ('Empty', self.EXCLUDE_FILTER)
         if filters and shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
-            Log.debug("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
+            Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
             return None
         shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
         shelf_matches = shelf_matches.drop_duplicates(subset=['product_ean_code'])
