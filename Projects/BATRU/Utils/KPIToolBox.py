@@ -57,6 +57,8 @@ EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
 ATTRIBUTE_3 = 'Filter stores by \'attribute 3\''
 BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
+OUTLET_ID = 'Outlet ID'
+EAN_CODE = 'product_ean_code'
 
 
 def log_runtime(description, log_start=False):
@@ -183,6 +185,16 @@ class BATRUToolBox:
         query = BATRUQueries.get_state(self.store_id)
         match_state = pd.read_sql_query(query, self.rds_conn.db)
         return 'No State' if match_state.empty else match_state['state'].values[0]
+
+    def upload_store_assortment_file_for_p1(self, file_path):
+        """
+        This function validates the template and uploads store assortments to pservice.custom_osa
+        It printS the stores and products that don't exist in the DB
+        :param file_path: the assortment file (suppose to have 2 columns: Outlet ID and product_ean_code
+        """
+        result_dict = self.tools.upload_store_assortment_file(file_path)
+        print "Invalid store_number_1: " + str(result_dict[OUTLET_ID])
+        print "Invalid product_ean_code_1: " + str(result_dict[EAN_CODE])
 
     def main_calculation(self):
         """
