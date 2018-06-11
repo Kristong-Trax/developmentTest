@@ -3,7 +3,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.CBCIL.KPIGenerator import CBCILCBCIL_PRODGenerator
 
@@ -22,7 +22,17 @@ class CBCILCalculations(BaseCalculationsScript):
 #     project_name = 'cbcil'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#                 '2629c373-438e-45e3-bef5-35f4d8ae292d',
+#         'fd334fd5-5d8d-449d-989b-0a69f92b829a'
+#         # '95513285-4c78-4c91-85dd-cae2ff83bbf5' #tested and changed
+#        # 'a0ba8c7d-7dec-40c4-9730-eaea3edcfc95' # tested
+#        #  '4bc4c803-c1cb-4a0f-a753-3da1b7f94216' # tested
+#        #  '9a8f1598-ca3b-4cf6-a952-c7d025d5c517'# tested
+#        #  'd12393f4-0a76-4959-9d10-40453ead32d0' # tested
+#        #  '5059e40d-19ed-4ade-ae0d-92ef9c9b0ff7' #tested
+#         # '7e752f99-a079-41d2-bcef-850c634656ea',
+#         # '9a8f1598-ca3b-4cf6-a952-c7d025d5c517',
+#
+#                 # '2629c373-438e-45e3-bef5-35f4d8ae292d',
 #     #             'A6897C11-57AE-49D8-B5FC-A20857724F5E',
 #     #             '3E2F7A4F-201E-46BA-A2EB-049711D24CFD',
 #     #             '60A89D1E-9153-4C8D-B7AF-3302E87C3090',
