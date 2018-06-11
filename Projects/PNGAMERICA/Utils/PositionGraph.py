@@ -134,7 +134,7 @@ class PNGAMERICAPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
+        Log.debug('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):
         """
