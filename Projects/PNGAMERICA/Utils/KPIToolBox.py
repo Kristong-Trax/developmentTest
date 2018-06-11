@@ -76,10 +76,10 @@ def log_runtime(description, log_start=False):
         def wrapper(*args, **kwargs):
             calc_start_time = datetime.utcnow()
             if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
+                Log.debug('{} started at {}'.format(description, calc_start_time))
             result = func(*args, **kwargs)
             calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
+            Log.debug('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
 
         return wrapper
@@ -198,10 +198,10 @@ class PNGAMERICAToolBox:
             if set_name and not template_data['category'].values[0] in self.scif['category'].unique().tolist()\
                     or not set(template_data['Scene Types to Include'].values[0].encode().split(', ')) & set(
                         self.scif['template_name'].unique().tolist()):
-                Log.info('Category {} was not captured'.format(template_data['category'].values[0]))
+                Log.debug('Category {} was not captured'.format(template_data['category'].values[0]))
                 return
         except Exception as e:
-            Log.info('KPI Set {} is not defined in the template'.format(set_name))
+            Log.debug('KPI Set {} is not defined in the template'.format(set_name))
         for kpi_name in kpi_list:
             try:
                 kpi_data = template_data.loc[template_data['KPI name'] == kpi_name]
@@ -273,7 +273,7 @@ class PNGAMERICAToolBox:
                 elif kpi_type == 'posm':
                     self.calculate_posm_availability(kpi_set_fk, kpi_name, scene_type)
             except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                Log.debug('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
         return
 
@@ -426,7 +426,7 @@ class PNGAMERICAToolBox:
             try:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=score)
             except Exception as e:
-                Log.info('KPI {} is not defined in the DB'.format(kpi_name))
+                Log.debug('KPI {} is not defined in the DB'.format(kpi_name))
 
     def calculate_related_kpi(self, kpi_set_fk, kpi_name, related_results):
         if self.related_kpi_results[kpi_name] > 0:
@@ -882,14 +882,14 @@ class PNGAMERICAToolBox:
                                                                              filter_attributes_index_dict=filter_attributes_index_dict,
                                                                              **general_filters)
             except Exception as e:
-                Log.info('Orchestrated calculation failed due to {}'.format(e))
+                Log.debug('Orchestrated calculation failed due to {}'.format(e))
                 result = False
             score += 1 if result else 0
         scores = 1 if score > 0 else 0
         try:
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=scores, score=scores)
         except Exception as e:
-            Log.info('KPI {} does not exist in the DB'.format(kpi_name))
+            Log.debug('KPI {} does not exist in the DB'.format(kpi_name))
 
     def calculate_orchestrated_new(self, kpi_set_fk, kpi_name, scene_types):
         """
@@ -922,7 +922,7 @@ class PNGAMERICAToolBox:
                                                                              filter_attributes_index_dict=filter_attributes_index_dict,
                                                                              **general_filters)
             except Exception as e:
-                Log.info('Orchestrated calculation failed due to {}'.format(e))
+                Log.debug('Orchestrated calculation failed due to {}'.format(e))
                 result = False
             score += 1 if result else 0
 
@@ -946,7 +946,7 @@ class PNGAMERICAToolBox:
         try:
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=scores, score=scores)
         except Exception as e:
-            Log.info('KPI {} does not exist in the DB'.format(kpi_name))
+            Log.debug('KPI {} does not exist in the DB'.format(kpi_name))
 
     def calculate_adjacency(self, kpi_set_fk, kpi_name, scene_types, list_type=True):
         if list_type:
@@ -1118,7 +1118,7 @@ class PNGAMERICAToolBox:
                                                 result=1 if res[kpi] else 0,
                                                 score=1 if res[kpi] else 0)
                     except IndexError as e:
-                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                        Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
             else:
                 for kpi in save_list:
@@ -1126,7 +1126,7 @@ class PNGAMERICAToolBox:
                     try:
                         self.write_to_db_result(kpi_set_fk, kpi_name=name, level=self.LEVEL3, result=0, score=0)
                     except IndexError as e:
-                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                        Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
             if return_result:
                 self.related_kpi_results[kpi_name] = res
 
@@ -1215,14 +1215,14 @@ class PNGAMERICAToolBox:
                                                         result=result,
                                                         score=score)
                             except IndexError as e:
-                                Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                                Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
                         else:
                             try:
                                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
                                                         result=0, score=0)
                             except IndexError as e:
-                                Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                                Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
                 else:
                     res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                               vertical=vertical,
@@ -1245,14 +1245,14 @@ class PNGAMERICAToolBox:
                                                     result=result,
                                                     score=score)
                         except IndexError as e:
-                            Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                            Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
                     else:
                         try:
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
                                                     result=0, score=0)
                         except IndexError as e:
-                            Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                            Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
     def calculate_checkerboarded(self, kpi_set_fk, kpi_name, scene_type, list_type=None):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
@@ -1303,7 +1303,7 @@ class PNGAMERICAToolBox:
                                                     result=1 if res[kpi] else 0,
                                                     score=1 if res[kpi] else 0)
                         except IndexError as e:
-                            Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                            Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
             else:
                 try:
@@ -1311,7 +1311,7 @@ class PNGAMERICAToolBox:
                         kpi_name = kpi_template['checkerboarded_group']
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
                 except IndexError as e:
-                    Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                    Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
     def calculate_checkerboarded_new(self, kpi_set_fk, kpi_name, scene_type, category,list_type=None):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
@@ -1377,14 +1377,14 @@ class PNGAMERICAToolBox:
                                                 result=1 if res[kpi] else 0,
                                                 score=1 if res[kpi] else 0)
                     except IndexError as e:
-                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                        Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
         else:
             try:
                 if kpi_template['brand_list']:
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
             except IndexError as e:
-                Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                Log.debug('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
     def calculate_linear_feet(self, kpi_set_fk, kpi_name, scene_types, return_result = False):
         template = self.linear_feet_data.loc[self.linear_feet_data['KPI name'] == kpi_name]
@@ -1861,7 +1861,7 @@ class PNGAMERICAToolBox:
             #     if kpi_name is not None:
             #         self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, result=oos_result, threshold=1,
             #                                 level=self.LEVEL3)
-            #     Log.info('Product pk {} has no EAN code'.format(product))
+            #     Log.debug('Product pk {} has no EAN code'.format(product))
             #     continue
             if product in dist_prod_list:
                 oos_result = 0
@@ -1879,7 +1879,7 @@ class PNGAMERICAToolBox:
                 if kpi_name is not None:
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, result=oos_result, threshold=1,
                                             level=self.LEVEL3)
-                Log.info('Product pk {} has no EAN code'.format(product))
+                Log.debug('Product pk {} has no EAN code'.format(product))
                 continue
 
     def check_products_on_top_shelf(self, kpi_set_fk, kpi_name, scene_type):
@@ -2173,7 +2173,7 @@ class PNGAMERICAToolBox:
         #     try:
         #         cur.execute(query)
         #     except Exception as e:
-        #         Log.info('Query {} failed due to {}'.format(query, e))
+        #         Log.debug('Query {} failed due to {}'.format(query, e))
         #         continue
         queries = self.merge_insert_queries(self.kpi_results_queries)
         for query in queries:

@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 
 from Projects.CCBR_SAND.KPIGenerator import CCBRGenerator

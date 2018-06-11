@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.0 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.4 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -74,12 +74,21 @@ class CCBRToolBox:
         self.commit_results_data()
 
     def handle_simon_kpis(self):
+        """
+        activate the availability and pricing functions
+        """
         active_products = self.all_products.loc[self.all_products["is_active"] > 0]
         self.calculate_availability(active_products)
         self.calculate_pricing(self.all_products)
 
     def calculate_availability(self, active_products):
-        active_products_pks = active_products['product_fk'].unique().tolist()
+        """
+        calculates the availability for all products per session, used is sovi and sovi vertical reports
+        :param active_products: a df containing only active products
+        """
+        active_products_sku_and_other = active_products[(active_products['product_type'] == 'SKU')
+                                                                    | (active_products['product_type'] == 'Other')]
+        active_products_pks = active_products_sku_and_other['product_fk'].unique().tolist()
         filters = {'product_fk': active_products_pks}
         filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
         facing_filtered = filtered_df.loc[filtered_df['facings'] > 0][['template_fk','product_fk', 'facings']]
@@ -93,6 +102,11 @@ class CCBRToolBox:
                                                    denominator_id=template_fk, numerator_result='1', result=sum_facing)
 
     def calculate_pricing(self, all_products):
+        """
+        inserting the db the pricing of all active and inactive skus.
+        used in preco and preco vertical reports
+        :param all_products: df containing all products
+        """
         only_sku_type_products = all_products.loc[all_products['product_type'] == 'SKU']
         all_products_fks_size = only_sku_type_products[['product_fk', 'size']].fillna("")
         product_fks_and_prices = self.prices_per_session
@@ -109,6 +123,10 @@ class CCBRToolBox:
                                                numerator_result=size, result=price)
 
     def handle_atomic(self, row):
+        """
+        run the correct kpi for a specific row in the template
+        :param row: a row from the template
+        """
         atomic_name = row[Const.ENGLISH_KPI_NAME].strip()
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SURVEY:
@@ -119,6 +137,11 @@ class CCBRToolBox:
             self.handle_group_count_atomics(atomic_name)
 
     def handle_survey_atomics(self, atomic_name):
+        """
+        handle survey questions
+        :param atomic_name: the name of the kpi
+        :return: only if the survey filters aren't satisfied
+        """
         row = self.survey_sheet.loc[self.survey_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
@@ -158,8 +181,11 @@ class CCBRToolBox:
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=survey_result,
                                            result=survey_result)
 
-
     def handle_count_atomics(self, atomic_name):
+        """
+        handle count kpis, used in consolidada report
+        :param atomic_name: the name of the kpi to calculate
+        """
         sum_of_count = 0
         target = 0
         count_result = 0
@@ -183,7 +209,10 @@ class CCBRToolBox:
                                            denominator_result=target, result=count_result)
 
     def handle_group_count_atomics(self, atomic_name):
-
+        """
+        handle group count kpis (different from count in or and and conditions), used in consolidada report
+        :param atomic_name: the name of the kpi to calculate
+        """
         rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME] == atomic_name]
         group_weight = 0
         group_result = 0
@@ -208,15 +237,19 @@ class CCBRToolBox:
             if count_result >= 1:
                 group_weight += weight
                 if group_weight >= 100:
+                    # use for getting numeric results instead of 1 and 0
                     if (target_operator == '+'):
                         sum_of_count_df = pd.concat([sum_of_count_df,sum_of_count])
-
                     else:
                         group_result = 1
                         break
+
+            # conditional, if given -1000 kpi must fail
             elif count_result == -1000:
                 group_result = 0
                 break
+
+        # use for getting numeric results instead of 1 and 0
         if (target_operator == '+'):
             if sum_of_count_df.empty:
                 group_sum_of_count = 0
@@ -229,6 +262,11 @@ class CCBRToolBox:
                                            denominator_result=group_target, result=group_result)
 
     def handle_count_row(self, row):
+        """
+        filters qall params in aspecific row and send it to the correct count calculation
+        :param row:
+        :return:
+        """
         count_type = row[Const.COUNT_TYPE].strip()
         target = row[Const.TARGET]
         target_operator = row[Const.TARGET_OPERATOR].strip()
@@ -288,8 +326,6 @@ class CCBRToolBox:
         count_of_units = 0
         if count_type == Const.SCENE:
             count_of_units = self.count_of_scenes(filtered_df, filters, target_operator, target)
-        elif count_type == Const.UNIQUE_SKU:
-            count_of_units = self.count_of_unique_skus(filtered_df, filters)
         elif count_type == Const.FACING:
             count_of_units = self.count_of_facings(filtered_df, filters, consider_few, target)
         elif count_type == Const.SCENE_SOS:
@@ -299,6 +335,8 @@ class CCBRToolBox:
 
         if target_operator == '<=':
             count_result = 1 if (target <= count_of_units) else 0
+
+        # use for getting numeric results instead of 1 and 0
         elif target_operator == '+':
             if isinstance(count_of_units,(int, float, long)):
                 count_result = count_of_units
@@ -309,11 +347,17 @@ class CCBRToolBox:
         return count_of_units, target, count_result
 
     def get_filters_from_row(self, row):
+        """
+        handle filters appering in scif
+        :param row: row containing all filters
+        :return: a dictionary of the filters
+        """
         filters = dict(row)
 
-        # no need to be accounted for
+        # no need to be accounted for, fields that aren't in scif
         for field in Const.DELETE_FIELDS:
-            del filters[field]
+            if field in filters:
+                del filters[field]
 
         if Const.WEIGHT in filters.keys():
             del filters[Const.WEIGHT]
@@ -343,6 +387,11 @@ class CCBRToolBox:
         return self.create_filters_according_to_scif(filters)
 
     def create_filters_according_to_scif(self, filters):
+        """
+        adjusting the template names to scif names
+        :param filters: only the scif filters in the template shape
+        :return: the filters dictionary
+        """
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
                                 Const.TEMPLATE_NAME: 'template_name',
                                 Const.BRAND: 'brand_name',
@@ -355,6 +404,14 @@ class CCBRToolBox:
         return filters
 
     def count_of_scenes(self, filtered_df, filters, target_operator, target):
+        """
+        calculate the count of scene types
+        :param filtered_df: the first filtered (no scif filters) dataframe
+        :param filters: the scif filters
+        :param target_operator: the operation to do, + for returning a dataframe (used in group count)
+        :param target: the target
+        :return: dataframe for group counts +, number of scenes for all other functions
+        """
         scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
         if target_operator == '+':
 
@@ -366,24 +423,30 @@ class CCBRToolBox:
         return number_of_scenes
 
     def count_of_sos(self, filtered_df, filters):
+        """
+        calculating the share of shelf
+        :param filtered_df: the first filtered (no scif filters) dataframe
+        :param filters: the scif filters
+        :return: the number of different scenes answered the condition  (hard coded 50%)
+        """
         scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
         scene_data = scene_data.rename(columns={"facings": "facings_nom"})
 
         # filter by scene_id and by template_name (scene type)
         scene_types_groupby = scene_data.groupby(['template_name','scene_id'])['facings_nom'].sum()
-
         all_products_groupby = self.scif.groupby(['template_name', 'scene_id'])['facings'].sum()
         merge_result = pd.concat((scene_types_groupby, all_products_groupby), axis=1, join='inner').reset_index()
         return len(merge_result[merge_result['facings_nom'] >= merge_result['facings'] * 0.5])
 
-    def count_of_unique_skus(self, filtered_df, filters):
-
-        unique_skus_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
-        number_of_unique_skus = len(unique_skus_data['product_ean_code'].unique())
-        return number_of_unique_skus
-
     def count_of_facings(self, filtered_df, filters, consider_few, target):
-
+        '''
+        calculate the count of facings
+        :param filtered_df: the first filtered (no scif filters) dataframe
+        :param filters: the scif filters
+        :param consider_few: in case there is a need to consider more then one brand
+        :param target: the target to pass
+        :return:
+        '''
         facing_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
         if consider_few != "":
             facing_data_groupby = facing_data.groupby(['brand_name'])['facings'].sum()
@@ -397,9 +460,9 @@ class CCBRToolBox:
 
     def get_new_kpi_static_data(self):
         """
-            This function extracts the static new KPI data (new tables) and saves it into one global data frame.
-            The data is taken from static.kpi_level_2.
-            """
+        This function extracts the static new KPI data (new tables) and saves it into one global data frame.
+        The data is taken from static.kpi_level_2.
+        """
         query = CCBRQueries.get_new_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
@@ -407,9 +470,9 @@ class CCBRToolBox:
     def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,
                                       denominator_result=None, score=None):
         """
-            This function creates the result data frame of new rables KPI,
-            and appends the insert SQL query into the queries' list, later to be written to the DB.
-            """
+        This function creates the result data frame of new rables KPI,
+        and appends the insert SQL query into the queries' list, later to be written to the DB.
+        """
         table = KPI_NEW_TABLE
         attributes = self.create_attributes_dict_new_tables(fk, numerator_id, numerator_result, denominator_id,
                                                             denominator_result, result, score)
