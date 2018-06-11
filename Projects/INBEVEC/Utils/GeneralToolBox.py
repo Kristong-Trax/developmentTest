@@ -1,32 +1,17 @@
-
 import xlrd
 import json
 import pandas as pd
-from datetime import datetime, timedelta
-
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.BATRU.Utils.Fetcher import BATRUQueries
-from openpyxl.utils import column_index_from_string, coordinate_from_string
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
+from Projects.INBEVEC.Utils.PositionGraph import INBEVECPositionGraphs
 
 __author__ = 'Nimrod'
 
-STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
-OUTLET_ID = 'Outlet ID'
-EAN_CODE = 'product_ean_code'
 
-class BATRUGENERALToolBox:
-
-    STORE_NUMBER = 'Store Number'
-    PRODUCT_EAN_CODE = 'Product EAN'
-
+class INBEVECGENERALToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -39,12 +24,10 @@ class BATRUGENERALToolBox:
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
-    KPI_SETS_WITH_PERCENT_AS_SCORE = []
 
     def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
-        if rds_conn is not None:
-            self._rds_conn = rds_conn
+        self.rds_conn = rds_conn
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -60,26 +43,11 @@ class BATRUGENERALToolBox:
             setattr(self, data, kwargs[data])
         if self.front_facing:
             self.scif = self.scif[self.scif['front_face_count'] == 1]
-        self.stores = {}
-        self.products = {}
-        self.all_queries = []
-        self.update_queries = []
-
-    @property
-    def rds_conn(self):
-        if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        try:
-            pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
-        except:
-            self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        return self._rds_conn
 
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = BATRUPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = INBEVECPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -87,9 +55,11 @@ class BATRUGENERALToolBox:
         if not hasattr(self, '_match_product_in_scene'):
             self._match_product_in_scene = self.position_graphs.match_product_in_scene
             if self.front_facing:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['front_facing'] == 'Y']
             if self.ignore_stacking:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['stacking_layer'] == 1]
         return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
@@ -168,38 +138,6 @@ class BATRUGENERALToolBox:
             availability = len(filtered_df)
         return availability
 
-    def calculate_posm_availability(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
-        """
-        match_display_in_scene = self.get_match_display()
-        posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
-                                    right_on='scene_fk')
-        if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
-            return 0
-        filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
-        availability = len(filtered_df)
-        return availability
-
-    def get_posm_availability(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
-        """
-        match_display_in_scene = self.get_match_display()
-        posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
-                                    right_on='scene_fk')
-        if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
-            return 0
-        if filters:
-            filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
-        else:
-            filtered_df = posm_scif
-        return filtered_df
-
     def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1, **filters):
         """
         :param assortment_entity: This is the entity on which the assortment is calculated.
@@ -271,11 +209,13 @@ class BATRUGENERALToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The total shelf width (in mm) the relevant facings occupy.
         """
-        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        filtered_matches = self.match_product_in_scene[
+            self.get_filter_condition(self.match_product_in_scene, **filters)]
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
 
-    def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, **filters):
+    def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, category=None,
+                                   exclude_filter=None, **filters):
         """
         :param min_number_of_facings: Minimum number of edge facings for KPI to pass.
         :param min_number_of_shelves: Minimum number of different shelves with edge facings for KPI to pass.
@@ -289,6 +229,12 @@ class BATRUGENERALToolBox:
         for scene in relevant_scenes:
             edge_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
             matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            if category:
+                matches = self.match_product_in_scene[self.match_product_in_scene['category'] == category]
+            if exclude_filter:
+                for exclude_item in exclude_filter.keys():
+                    matches = self.match_product_in_scene[self.match_product_in_scene[exclude_item] ==
+                                                          exclude_filter[exclude_item]]
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
@@ -335,7 +281,8 @@ class BATRUGENERALToolBox:
             else:
                 Log.error('Eye-level configurations are not set up')
                 return False
-        number_of_products = len(self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
+        number_of_products = len(
+            self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
         min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
         number_of_eye_level_scenes = 0
         for scene in relevant_scenes:
@@ -362,7 +309,7 @@ class BATRUGENERALToolBox:
                 number_of_eye_level_scenes += 1
         return number_of_eye_level_scenes, len(relevant_scenes)
 
-    def shelf_level_assortment(self, min_number_of_products ,shelf_target, strict=True, **filters):
+    def shelf_level_assortment(self, min_number_of_products, shelf_target, strict=True, **filters):
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             relevant_scenes = self.scif['scene_fk'].unique().tolist()
@@ -412,7 +359,8 @@ class BATRUGENERALToolBox:
             filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
             scenes = set(filtered_scif['scene_id'].unique())
             for filters in sequence_filters:
-                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
+                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)][
+                    'scene_id'].unique()
                 scenes = scenes.intersection(scene_for_filters)
                 if not scenes:
                     Log.debug('None of the scenes include products from all types relevant for sequence')
@@ -420,7 +368,8 @@ class BATRUGENERALToolBox:
 
             for scene in scenes:
                 scene_graph = self.position_graphs.get(scene)
-                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters, direction,
+                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters,
+                                                                                direction,
                                                                                 empties_allowed, irrelevant_allowed)
                 pass_counter += scene_passes
                 reject_counter += scene_rejects
@@ -450,6 +399,8 @@ class BATRUGENERALToolBox:
 
         # removing unnecessary edges
         filtered_scene_graph = graph.copy()
+        if len(filtered_scene_graph.es) == 0:
+            return pass_counter, reject_counter
         edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
         filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
@@ -645,8 +596,11 @@ class BATRUGENERALToolBox:
             field_vertices = set()
             values = filters[field] if isinstance(filters[field], (list, tuple)) else [filters[field]]
             for value in values:
-                vertices = [v.index for v in graph.vs.select(**{field: value})]
-                field_vertices = field_vertices.union(vertices)
+                try:
+                    vertices = [v.index for v in graph.vs.select(**{field: value})]
+                    field_vertices = field_vertices.union(vertices)
+                except:
+                    pass
             if vertices_indexes is None:
                 vertices_indexes = field_vertices
             else:
@@ -677,8 +631,31 @@ class BATRUGENERALToolBox:
                 break
         return validated
 
+    def get_scene_blocks(self, graph, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
+        """
+        This function is a sub-function for Block Together. It receives a graph and filters and returns a list of
+        clusters.
+        """
+        relevant_vertices = set(self.filter_vertices_from_graph(graph, **filters))
+        if allowed_products_filters:
+            allowed_vertices = self.filter_vertices_from_graph(graph, **allowed_products_filters)
+        else:
+            allowed_vertices = set()
+
+        if include_empty == self.EXCLUDE_EMPTY:
+            empty_vertices = {v.index for v in graph.vs.select(product_type='Empty')}
+            allowed_vertices = set(allowed_vertices).union(empty_vertices)
+
+        all_vertices = {v.index for v in graph.vs}
+        vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
+        graph.delete_vertices(vertices_to_remove)
+        # removing clusters including 'allowed' SKUs only
+        blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
+        return blocks, graph
+
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, result_by_scene=False, **filters):
+
         """
         :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
@@ -695,7 +672,7 @@ class BATRUGENERALToolBox:
                 return 0, 0
             else:
                 Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return True
+                return False
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
@@ -708,8 +685,11 @@ class BATRUGENERALToolBox:
                 allowed_vertices = set()
 
             if include_empty == self.EXCLUDE_EMPTY:
-                empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
-                allowed_vertices = set(allowed_vertices).union(empty_vertices)
+                try:
+                    empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
+                    allowed_vertices = set(allowed_vertices).union(empty_vertices)
+                except:
+                    pass
 
             all_vertices = {v.index for v in scene_graph.vs}
             vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
@@ -729,22 +709,159 @@ class BATRUGENERALToolBox:
                         number_of_blocked_scenes += 1
                         break
                     else:
-                        if minimum_block_ratio == 1:
-                            return True
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(cluster)
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            return cluster_ratio, scene_graph
+                        return True if minimum_block_ratio == 1 else cluster_ratio
         if result_by_scene:
             return number_of_blocked_scenes, len(relevant_scenes)
         else:
-            if minimum_block_ratio == 1:
-                return False
-            elif cluster_ratios:
-                return max(cluster_ratios)
-            else:
-                return None
+            return False if minimum_block_ratio == 1 else max(cluster_ratios)
+
+    def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
+        """
+        :param conditions: A dictionary which contains assortment/availability conditions for filtering the blocks,
+                           in the form of: {entity_type: (0 for assortment or 1 for availability,
+                                                          a list of values =or None=,
+                                                          minimum number of assortment/availability)}.
+                           For example: {'product_ean_code': ('44545345434', 3)}
+        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+        :param min_number_of_blocks: The number of blocks needed in order for the KPI to pass.
+                                     If all appearances are required: == self.ALL.
+        :param filters: These are the parameters which the blocks are checked for.
+        :return: The number of blocks (from all scenes) which match the filters and conditions.
+        """
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+            return False
+
+        number_of_blocks = 0
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            blocks, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=None,
+                                                        include_empty=include_empty, **filters)
+            for block in blocks:
+                entities_data = {entity: [] for entity in conditions.keys()}
+                for vertex in block:
+                    vertex_attributes = scene_graph.vs[vertex].attributes()
+                    for entity in conditions.keys():
+                        entities_data[entity].append(vertex_attributes[entity])
+
+                block_successful = True
+                for entity in conditions.keys():
+                    assortment_or_availability, values, minimum_result = conditions[entity]
+                    if assortment_or_availability == 0:
+                        if values:
+                            result = len(set(entities_data[entity]).intersection(values))
+                        else:
+                            result = len(set(entities_data[entity]))
+                    elif assortment_or_availability == 1:
+                        if values:
+                            result = len([facing for facing in entities_data if facing in values])
+                        else:
+                            result = len(entities_data[entity])
+                    else:
+                        continue
+                    if result < minimum_result:
+                        block_successful = False
+                        break
+                if block_successful:
+                    number_of_blocks += 1
+                    if number_of_blocks >= min_number_of_blocks:
+                        return True
+                else:
+                    if min_number_of_blocks == self.ALL:
+                        return False
+
+        if number_of_blocks >= min_number_of_blocks or min_number_of_blocks == self.ALL:
+            return True
+        return False
+
+    def calculate_flexible_blocks(self, number_of_allowed_others=2, **filters):
+        """
+        :param number_of_allowed_others: Number of allowed irrelevant facings between two cluster of relevant facings.
+        :param filters: The relevant facings of the block.
+        :return: This function calculates the number of 'flexible blocks' per scene, meaning, blocks which are allowed
+                 to have a given number of irrelevant facings between actual chunks of relevant facings.
+        """
+        results = {}
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+            return results
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            blocks, scene_graph = self.get_scene_blocks(scene_graph, **filters)
+            blocks.sort(key=lambda x: len(x), reverse=True)
+            blocks = [(0, self.get_block_edges(scene_graph.copy().vs[block])) for block in blocks]
+            new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, list(blocks))
+            while len(blocks) != len(new_blocks):
+                blocks = list(new_blocks)
+                new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, blocks)
+            results[scene] = len(new_blocks)
+        return results
+
+    def merge_blocks_into_flexible_blocks(self, filters, scene_id, number_of_allowed_others, blocks):
+        """
+        This function receives blocks' ranges and tries to merge them based on an allowed number of irrelevant facings
+        between them. If it manages to merge two blocks, it removes the original blocks and adds the merged block,
+        and returns the new list immediately (merges at most one pair of blocks in one run).
+        """
+        for block1 in blocks:
+            previous1, range1 = block1
+            for block2 in blocks:
+                previous2, range2 = block2
+
+                if block1 != block2:
+                    top = min(range1[0], range2[0])
+                    right = max(range1[1], range2[1])
+                    bottom = max(range1[2], range2[2])
+                    left = min(range1[3], range2[3])
+
+                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom,
+                                                                                left)
+                    previous_others = previous1 + previous2
+
+                    if number_of_others <= number_of_allowed_others + previous_others:
+                        blocks.insert(0, (previous_others + number_of_others, (top, right, bottom, left)))
+                        blocks.remove(block1)
+                        blocks.remove(block2)
+                        return blocks
+        return blocks
+
+    def get_block_edges(self, *block_graphs):
+        """
+        This function receives one or more vertex data of a block's graph, and returns the range of its edges -
+        The far most top, bottom, left and right pixels of its facings.
+        """
+        top = right = bottom = left = None
+        for graph in block_graphs:
+            max_top = min(graph.get_attribute_values(self.position_graphs.TOP))
+            max_right = max(graph.get_attribute_values(self.position_graphs.RIGHT))
+            max_bottom = max(graph.get_attribute_values(self.position_graphs.BOTTOM))
+            max_left = min(graph.get_attribute_values(self.position_graphs.LEFT))
+            if top is None or max_top < top:
+                top = max_top
+            if right is None or max_right > right:
+                right = max_right
+            if bottom is None or max_bottom > bottom:
+                bottom = max_bottom
+            if left is None or max_left < left:
+                left = max_left
+        return top, right, bottom, left
+
+    def get_number_of_others_in_block_range(self, filters, scene_id, top, right, bottom, left):
+        """
+        This function gets a scene, a range (in pixels) and filters, and checks how many facings are in that range
+         and are not part of the filters.
+        """
+        matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
+                                              (~self.match_product_in_scene['product_type'].isin(['Empty']))]
+        facings_in_range = matches[((matches[self.position_graphs.TOP].between(top, bottom - 1)) |
+                                    (matches[self.position_graphs.BOTTOM].between(top + 1, bottom))) &
+                                   ((matches[self.position_graphs.LEFT].between(left, right - 1)) |
+                                    (matches[self.position_graphs.RIGHT].between(left + 1, right)))]
+        relevant_facings_in_range = facings_in_range[self.get_filter_condition(facings_in_range, **filters)]
+        other_facings_in_range = len(facings_in_range) - len(relevant_facings_in_range)
+        return other_facings_in_range
 
     def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
         """
@@ -777,8 +894,8 @@ class BATRUGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUBATRUGENERALToolBox.INCLUDE_FILTER)
-                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+                       INPUT EXAMPLE (1):   manufacturer_name = ('AB-INBEV', INBEVECGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'AB-INBEV'
         :return: a filtered Scene Item Facts data frame.
         """
         if not filters:
@@ -821,11 +938,11 @@ class BATRUGENERALToolBox:
         This function gets scene-item-facts filters of all kinds, extracts the relevant scenes by the location filters,
         and returns them along with the product filters only.
         """
+        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **filters)]['scene_id'].unique()
         location_filters = {}
         for field in filters.keys():
             if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
 
     @staticmethod
@@ -857,213 +974,3 @@ class BATRUGENERALToolBox:
         elif len(data.keys()) == 1:
             data = data[data.keys()[0]]
         return data
-
-    def get_match_display(self):
-        """
-        This function extracts the display matches data and saves it into one global data frame.
-        The data is taken from probedata.match_display_in_scene.
-        """
-        query = BATRUQueries.get_match_display(self.session_uid)
-        match_display = pd.read_sql_query(query, self.rds_conn.db)
-        return match_display
-
-    def upload_store_assortment_file(self, file_path):
-        # raw_data = pd.read_excel(file_path)
-        raw_data = pd.read_csv(file_path, sep='\t')
-        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
-        raw_data = raw_data.fillna('')
-        data = []
-        invalid_data = {OUTLET_ID: [], EAN_CODE: []}
-        stores = self.store_data
-        for store in raw_data[OUTLET_ID].unique().tolist():
-            if stores.loc[stores['store_number'] == store].empty:
-                invalid_data[OUTLET_ID].append(store)
-                continue
-            store_data = {}
-            store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
-            for product in store_products:
-                if self.all_products.loc[self.all_products[EAN_CODE] == product].empty:
-                    invalid_data[EAN_CODE].append(product)
-                    store_products.remove(product)
-            store_data[raw_data.loc[raw_data[OUTLET_ID] == store][OUTLET_ID].values[0]] = store_products
-            data.append(store_data)
-        for store_data in data:
-            self.update_db_from_json(store_data, immediate_change=True)
-        queries = self.merge_insert_queries(self.all_queries)
-        self.commit_results(queries)
-        return invalid_data
-
-    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
-        products = set()
-        missing_products = set()
-        store_number = data.keys()[0]
-        if store_number is None:
-            Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
-            return
-        store_fk = self.get_store_fk(store_number)
-        if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
-            return
-        for key in data[store_number]:
-            validation = False
-            if isinstance(key, (float, int)):
-                validation = True
-            elif isinstance(key, (str, unicode)):
-                validation = True
-            if validation:
-                product_ean_code = str(key).split(',')[-1]
-                product_fk = self.get_product_fk(product_ean_code)
-                if product_fk is None:
-                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
-                    missing_products.add(product_ean_code)
-                    continue
-                products.add(product_fk)
-        if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
-            return
-        if products:
-            current_date = datetime.now().date()
-            if immediate_change:
-                deactivate_date = current_date - timedelta(1)
-                activate_date = current_date
-            else:
-                deactivate_date = current_date
-                activate_date = current_date + timedelta(1)
-            queries = []
-            current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
-            products_to_deactivate = set(current_skus).difference(products)
-            products_to_activate = set(products).difference(current_skus)
-            for product_fk in products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, product_fk, deactivate_date))
-            for product_fk in products_to_activate:
-                queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
-            self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
-                store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
-        else:
-            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
-
-    @property
-    def current_top_skus(self):
-        if not hasattr(self, '_current_top_skus'):
-            self._current_top_skus = self.get_current_top_skus()
-        return self._current_top_skus
-
-    def get_current_top_skus(self):
-        query = """select store_fk, product_fk
-                   from pservice.custom_osa
-                   where end_date is null"""
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        return data
-
-    @property
-    def store_data(self):
-        if not hasattr(self, '_store_data'):
-            query = "select pk as store_fk, store_number_1 as store_number from static.stores"
-            self._store_data = pd.read_sql_query(query, self.rds_conn.db)
-        return self._store_data
-
-    @property
-    def product_data(self):
-        if not hasattr(self, '_product_data'):
-            query = "select pk as product_fk, product_ean_code from static.product " \
-                    "where delete_date is null"
-            self._product_data = pd.read_sql_query(query, self.rds_conn.db)
-        return self._product_data
-
-    def get_store_fk(self, store_number):
-        store_number = str(store_number)
-        if store_number in self.stores:
-            store_fk = self.stores[store_number]
-        else:
-            store_fk = self.store_data[self.store_data['store_number'] == store_number]
-            if not store_fk.empty:
-                store_fk = store_fk['store_fk'].values[0]
-                self.stores[store_number] = store_fk
-            else:
-                store_fk = None
-        return store_fk
-
-    def get_product_fk(self, product_ean_code):
-        product_ean_code = str(product_ean_code).strip()
-        if product_ean_code in self.products:
-            product_fk = self.products[product_ean_code]
-        else:
-            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
-            if not product_fk.empty:
-                product_fk = product_fk['product_fk'].values[0]
-                self.products[product_ean_code] = product_fk
-            else:
-                product_fk = None
-        return product_fk
-
-    @staticmethod
-    def get_deactivation_query(store_fk, product_fk, date):
-        query = """update {} set end_date = '{}', is_current = '0'
-                   where store_fk = {} and product_fk = {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
-                                                                                          store_fk, product_fk)
-        return query
-
-    @staticmethod
-    def get_activation_query(store_fk, product_fk, date):
-        attributes = pd.DataFrame([(store_fk, product_fk, str(date), 1)],
-                                  columns=['store_fk', 'product_fk', 'start_date', 'is_current'])
-        query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
-        return query
-
-    def merge_insert_queries(self, insert_queries):
-        query_groups = {}
-        for query in insert_queries:
-            if 'update' in query:
-                self.update_queries.append(query)
-                continue
-            static_data, inserted_data = query.split('VALUES ')
-            if static_data not in query_groups:
-                query_groups[static_data] = []
-            query_groups[static_data].append(inserted_data)
-        merged_queries = []
-        for group in query_groups:
-            for group_index in xrange(0, len(query_groups[group]), 10**4):
-                merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
-                                                                                [group_index:group_index+10**4])))
-        return merged_queries
-
-    def commit_results(self, queries):
-        self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        for query in self.update_queries:
-            try:
-                cur.execute(query)
-                print query
-            except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
-                continue
-        rds_conn.db.commit()
-        rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        for query in queries:
-            try:
-                cur.execute(query)
-                print query
-            except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
-                continue
-        rds_conn.db.commit()
-
-    def get_store_assortment_for_store(self, store_fk):
-        query = """
-                select ts.product_fk, p.product_ean_code
-                from {} ts
-                join static.product p on p.pk = ts.product_fk
-                where ts.store_fk = {} and ts.end_date is null
-                """.format(STORE_ASSORTMENT_TABLE, store_fk)
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        return data.groupby('product_fk')['product_ean_code'].first().to_dict()
