@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.CCRUFIFA2018.Utils.ToolBox import CCRUFIFAKPIToolBox
 from Projects.CCRUFIFA2018.Utils.JSON import JsonGenerator
 
-__author__ = 'urid'
+__author__ = 'shani'
 
 # FIFAKPIS = 'FIFA'
 
@@ -43,7 +43,7 @@ class CCRUFIFA2018Generator:
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.calculate_share_of_cch_collers(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
-        score += self.tool_box.check_atomic_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
+        score += self.tool_box.weighted_cooler_standard(jg.project_kpi_dict.get('kpi_data')[0])
         attributes_for_table1 = pd.DataFrame([(kpi_set_name, self.session_uid,
                                                self.store_id, self.visit_date.isoformat()
                                                , format(score, '.2f'), None)], columns=['kps_name',
