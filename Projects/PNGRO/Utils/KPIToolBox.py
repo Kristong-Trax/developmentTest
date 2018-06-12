@@ -273,7 +273,7 @@ class PNGRO_PRODToolBox:
         """
         This function calculates Survey-Question typed Atomics, and writes the result to the DB.
         """
-        survey_name = int(params['Param (1) Values'])
+        survey_name = params['Param (1) Values']
         target_answers = params['Param (2) Values'].split(',')
         survey_answer = self.tools.get_survey_answer(('question_fk', survey_name))
         score = 100 if survey_answer in target_answers else 0
