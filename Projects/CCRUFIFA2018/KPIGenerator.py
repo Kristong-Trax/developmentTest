@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.CCRUFIFA2018.Utils.ToolBox import CCRUFIFAKPIToolBox
 from Projects.CCRUFIFA2018.Utils.JSON import JsonGenerator
 
-__author__ = 'urid'
+__author__ = 'shani'
 
 # FIFAKPIS = 'FIFA'
 
