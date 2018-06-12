@@ -65,7 +65,7 @@ class PERFETTICNToolBox:
         for value in display_fks:
             num_brands[value] = display_info[display_info == value].count()
             score = num_brands[value]
-            self.common.write_to_db_result_new_tables(count_fk,value , score,None, None, score, score)
+            self.common.write_to_db_result_new_tables(count_fk,value , score,None, score, score, score)
 
         return
 
