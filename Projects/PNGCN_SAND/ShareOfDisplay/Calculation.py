@@ -44,55 +44,29 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.displays = pd.DataFrame({})
 
     def process_session(self):
-        # try:
-        #     Log.debug(self.log_prefix + ' Retrieving data')
-        #     self.project_connector.db.close()
-        #     local_con = self.project_connector.db
-        #     self.match_display_in_scene = self._get_match_display_in_scene_data()
-        #     # self.project_connector.db.close()
-        #     # if there are no display tags there's no need to retrieve the rest of the data.
-        #     if self.match_display_in_scene.empty:
-        #         Log.debug(self.log_prefix + ' No display tags')
-        #         self._delete_previous_data()
-        #
-        #     else:
-        #         self.displays = self._get_displays_data()
-        #         self.match_product_in_scene = self._get_match_product_in_scene_data()
-        #         self._delete_previous_data()
-        #         self._handle_non_cube_non_promotion_display()
-        #         self._handle_promotion_wall_display()
-        #         self._handle_cube_display()
-        #         self._handle_table_display()
-        #         if self.on_ace:
-        #             Log.debug(self.log_prefix + ' Committing share of display calculations')
-        #             self.project_connector.db.commit()
-        #         Log.info(self.log_prefix + ' Finished calculation')
-        # except Exception as e:
-        #     Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
-        #     raise e
+        try:
+            Log.debug(self.log_prefix + ' Retrieving data')
+            self.match_display_in_scene = self._get_match_display_in_scene_data()
+            # if there are no display tags there's no need to retrieve the rest of the data.
+            if self.match_display_in_scene.empty:
+                Log.debug(self.log_prefix + ' No display tags')
+                self._delete_previous_data()
 
-        Log.debug(self.log_prefix + ' Retrieving data')
-        # self.project_connector.db.close()
-        # local_con = self.project_connector.db
-        self.match_display_in_scene = self._get_match_display_in_scene_data()
-        # self.project_connector.db.close()
-        # if there are no display tags there's no need to retrieve the rest of the data.
-        if self.match_display_in_scene.empty:
-            Log.debug(self.log_prefix + ' No display tags')
-            self._delete_previous_data()
-
-        else:
-            self.displays = self._get_displays_data()
-            self.match_product_in_scene = self._get_match_product_in_scene_data()
-            self._delete_previous_data()
-            self._handle_promotion_wall_display()
-            self._handle_cube_or_4_sided_display()
-            self._handle_table_display()
-            self._handle_rest_display()
-            if self.on_ace:
-                Log.debug(self.log_prefix + ' Committing share of display calculations')
-                self.project_connector.db.commit()
-            Log.info(self.log_prefix + ' Finished calculation')
+            else:
+                self.displays = self._get_displays_data()
+                self.match_product_in_scene = self._get_match_product_in_scene_data()
+                self._delete_previous_data()
+                self._handle_promotion_wall_display()
+                self._handle_cube_or_4_sided_display()
+                self._handle_table_display()
+                self._handle_rest_display()
+                if self.on_ace:
+                    Log.debug(self.log_prefix + ' Committing share of display calculations')
+                    self.project_connector.db.commit()
+                Log.info(self.log_prefix + ' Finished calculation')
+        except Exception as e:
+            Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
+            raise e
 
     def _handle_rest_display(self):
         """
@@ -101,7 +75,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         :return:
         """
         Log.debug(self.log_prefix + ' Starting non cube non promotion display')
-        # filtering all promotion wall and cube tags
+        # filtering all rest displays tags
         display_non_cube_non_promotion_wall_with_bays = \
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS +
                                                                                         CUBE_TOTAL_DISPLAYS +
@@ -127,8 +101,10 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         promotion_tags = \
             self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(PROMOTION_WALL_DISPLAYS)]
         if not promotion_tags.empty:
+            promotion_display_name = promotion_tags['display_name'].values[0]
             display_promotion_wall = promotion_tags.groupby(['display_fk', 'scene_fk'],
                                                             as_index=False).display_size.sum()
+            display_promotion_wall['display_name'] = promotion_display_name
             display_promotion_wall_with_id = self._insert_into_display_surface(display_promotion_wall)
             promotion_wall_bays = promotion_tags[['scene_fk', 'bay_number']].copy()
             promotion_wall_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
@@ -212,10 +188,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         table_display_name = table_tags['display_name'].values[0]
         for scene in scenes:
             table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
-            # if not (total_cube_tags_scene.empty and cube_tags_scene.empty):
-            #     if total_cube_tags_scene.empty:
             table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()
-            # table_display_scene = table_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
             number_of_captured_sides = len(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
             if number_of_captured_sides ==1:
                 size = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
@@ -301,7 +274,6 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                     display_visit_by_display_product_enrich_sos_type['linear'] / \
                     display_visit_by_display_product_enrich_sos_type['tot_linear'] * \
                     display_visit_by_display_product_enrich_sos_type['display_size']
-
                 # irrlevant products, should be counted in total facings/ linear of display for product size value,
                 #  but should be removed from display size share %
                 irrelvant_products = self.data_provider.all_products.loc[self.data_provider.all_products['product_type'] == 'Irrelevant'][
