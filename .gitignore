@@ -18,4 +18,5 @@ playground/*
 .cache/v/cache/lastfailed
 version.txt
 _ignored/*
+kpi_factory/.pylintrc
 *.xml
