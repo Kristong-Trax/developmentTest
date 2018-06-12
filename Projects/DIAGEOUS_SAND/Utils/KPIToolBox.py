@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -8,6 +7,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.DIAGEOUS_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -22,7 +22,6 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 
 
 class DIAGEOUSToolBox:
-
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -120,12 +119,12 @@ class DIAGEOUSToolBox:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0, 0, 0
         if self.does_exist(target):
-            total_score = 100 * (total_score >= target)
-            segment_score = 100 * (segment_score >= target)
-            national_score = 100 * (national_score >= target)
+            total_score = 100 if (total_score >= target) else 0
+            segment_score = 100 if (segment_score >= target) else 0
+            national_score = 100 if (national_score >= target) else 0
         return total_score * weight, segment_score * weight, national_score * weight
 
-# assortments:
+    # assortments:
 
     def calculate_assortment(self, scene_types, kpi_name, weight):
         """
@@ -217,7 +216,7 @@ class DIAGEOUSToolBox:
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
-# display share:
+    # display share:
 
     def calculate_total_display_share(self, scene_types, weight):
         """
@@ -247,7 +246,7 @@ class DIAGEOUSToolBox:
                 fk=manufaturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
         diageo_results = all_results[all_results[Const.MANUFACTURER] == self.manufacturer_fk][Const.PASSED].sum()
-        result = 100 * (diageo_results >= Const.TARGET_FOR_DISPLAY_SHARE * den_res)
+        result = 100 if (diageo_results >= Const.TARGET_FOR_DISPLAY_SHARE * den_res) else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results,
             denominator_result=den_res, result=result, should_enter=True, weight=weight,
@@ -273,7 +272,7 @@ class DIAGEOUSToolBox:
                           Const.MANUFACTURER: manufacturer}
         return product_result
 
-# shelf facings:
+    # shelf facings:
 
     def calculate_total_shelf_facings(self, scene_types, kpi_name, weight):
         """
@@ -329,13 +328,13 @@ class DIAGEOUSToolBox:
             target = comp_facings * bench_value
         else:
             target = competition[Const.BENCH_VALUE]
-        comparison = 100 * (our_facings >= target)
+        comparison = 1 if our_facings >= target else 0
         result = self.get_score(our_facings, all_facings)
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
-            result=result, score=comparison, identifier_result=result_identifier,
+            result=result, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison / 100,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -363,7 +362,7 @@ class DIAGEOUSToolBox:
                 should_enter=True, identifier_parent=parent_identifier)
         return amount_of_facings
 
-# shelf placement:
+    # shelf placement:
 
     def convert_groups_from_template(self):
         """
@@ -425,11 +424,11 @@ class DIAGEOUSToolBox:
             eye_level_product_facings += self.calculate_specific_product_eye_level(product, relevant_groups,
                                                                                    calculate_all)
         all_facings = len(relevant_products)
-        result = 100 * (eye_level_product_facings > all_facings * Const.PERCENT_FOR_EYE_LEVEL)
+        result = 100 if eye_level_product_facings > (all_facings * Const.PERCENT_FOR_EYE_LEVEL) else 0
         brand, sub_brand, standard_type = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
-            denominator_result=all_facings, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+            identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: result / 100,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
@@ -456,7 +455,7 @@ class DIAGEOUSToolBox:
             return 1
         return 0
 
-# msrp:
+    # msrp:
 
     def calculate_total_msrp(self, scene_types, kpi_name, weight):
         """
@@ -602,7 +601,7 @@ class DIAGEOUSToolBox:
                 minimum_products = template[template[Const.SCENE_TYPE] == "OTHER"]
             minimum_products = minimum_products[Const.MIN_FACINGS].iloc[0]
             facings = scene_product['facings'].iloc[0]
-            sum_scenes_passed += 1 * (facings >= minimum_products)
+            sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
         return sum_scenes_passed
 
     def get_templates(self):
@@ -627,7 +626,7 @@ class DIAGEOUSToolBox:
         :param product_fk:
         :return: standard_type of the given product
         """
-        #TODO
+        # TODO
         if product_fk % 3 == 0:
             return "segment"
         else:
