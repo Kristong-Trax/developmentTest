@@ -1,18 +1,19 @@
-import pandas as pd
-
 # from Trax.Analytics.Calculation.PNGCN_PROD.EmptySpacesKpi import EmptySpaceKpiGenerator
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import PNGCN_SANDShareOfDisplayDataProvider, PNGCN_SANDFields
 from Trax.Utils.Logging.Logger import Log
+import pandas as pd
+import numpy as np
 
 
 __Author__ = 'Dudi_S'
 
 CUBE = 'Cube'
 NON_BRANDED_CUBE = 'Non branded cube'
-FOUR_SIDED = '4 Sided Display'
-TABLE = 'Table'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
+FOUR_SIDED_FK = 31
+CUBE_FK = 1
+NON_BRANDED_CUBE_FK = 5
 # CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
 #                        17, 18, 19, 20, 21, 22, 23, 24]
 # PROMOTION_WALL_DISPLAYS = [25]
@@ -21,8 +22,9 @@ CUBE_TOTAL_DISPLAYS = ['Total 1 cube', 'Total 2 cubes', 'Total 3 cubes', 'Total 
                        'Total 11 cubes', 'Total 12 cubes', 'Total 13 cubes', 'Total 14 cubes', 'Total 15 cubes']
 FOUR_SIDED_TOTAL_DISPLAYS = ['Total 1 4-sided display', 'Total 2 4-sided display', 'Total 3 4-sided display',
                              'Total 4 4-sided display', 'Total 5 4-sided display']
+FOUR_SIDED = ['4 Sided Display']
 PROMOTION_WALL_DISPLAYS = ['Product Strip']
-TABLE_DISPLAYS = [TABLE]
+TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = []
 
 class PNGCN_SANDPNGShareOfDisplay(object):
@@ -88,7 +90,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self._delete_previous_data()
             self._handle_non_cube_non_promotion_display()
             self._handle_promotion_wall_display()
-            # self._handle_cube_or_4_sided_display()
+            self._handle_cube_or_4_sided_display()
             self._handle_table_display()
             if self.on_ace:
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
@@ -164,9 +166,14 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 else:
                     bays_scene = tags_scene[['scene_fk', 'bay_number']].copy()
                     display_scene = total_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
-                display_scene['display_fk'] = \
-                    NON_BRANDED_CUBE if (NON_BRANDED_CUBE in tags_scene['display_fk'].values and
-                                         CUBE not in tags_scene['display_fk'].values) else CUBE
+                # if there is even 1 cube tag in the scene, all display tags will be considered as cube
+                if not (tags_scene[tags_scene['display_name'].isin(CUBE_DISPLAYS + CUBE_TOTAL_DISPLAYS)]).empty:
+                    display_scene['display_fk'] = \
+                        NON_BRANDED_CUBE_FK if (NON_BRANDED_CUBE in tags_scene['display_name'].values and
+                                             CUBE not in tags_scene['display_name'].values) else CUBE_FK
+                else:
+                    display_scene['display_fk'] = FOUR_SIDED_FK
+
                 display = display.append(display_scene, ignore_index=True)
                 bays = bays.append(bays_scene, ignore_index=True)
         if not bays.empty:
@@ -244,9 +251,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                                                                  'template_fk', 'display_fk', 'display_size'],
                                                                 as_index=False).facings.sum()
             # for sos purposes filtering out stacking tags
-            display_visit_stacking = display_visit[display_visit['display_name'] == TABLE]
+            display_visit_stacking = display_visit[display_visit['display_name'].isin(TABLE_DISPLAYS)]
             display_visit_stacking.drop(['status', 'stacking_layer'], axis=1)
-            display_visit = display_visit[display_visit['display_name'] != TABLE]
+            display_visit = display_visit[~display_visit['display_name'].isin(TABLE_DISPLAYS)]
             display_visit = display_visit[(display_visit['stacking_layer'] == 1)]\
                 .drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit.append(display_visit_stacking)
