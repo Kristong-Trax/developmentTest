@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.1 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.2 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -109,20 +109,19 @@ class INBEVBRToolBox:
 
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SOS:
-            return
-        #     self.handle_sos_atomics(atomic_id, atomic_name)
+            self.handle_sos_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.COUNT:
         #     self.handle_count_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.GROUP_COUNT:
         #     self.handle_group_count_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.SURVEY:
         #     self.handle_survey_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.PROD_SEQ:
-            self.handle_prod_seq_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.PROD_SEQ_2:
-            self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.PROD_WEIGHT:
-            self.handle_prod_weight_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.PROD_SEQ:
+        #     self.handle_prod_seq_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.PROD_SEQ_2:
+        #     self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.PROD_WEIGHT:
+        #     self.handle_prod_weight_atomics(atomic_id, atomic_name)
 
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
@@ -256,35 +255,35 @@ class INBEVBRToolBox:
     def find_row(self, rows):
 
         row_result = rows.copy()
-        if len(rows) == 1:
-            store_type_template = rows[Const.STORE_TYPE_TEMPLATE].values[0].strip()
-            if store_type_template != "":
-                store_types = store_type_template.split(",")
-                store_types = [item.strip() for item in store_types]
-                if self.store_type_filter not in store_types:
-                    return -1
-
-            region_template = rows[Const.REGION_TEMPLATE].values[0].strip()
-            if region_template != "":
-                regions = region_template.split(",")
-                regions = [item.strip() for item in regions]
-                if self.region_name_filter not in regions:
-                    return -1
-
-            state_template = rows[Const.STATE_TEMPLATE].values[0].strip()
-            if state_template != "":
-                states = state_template.split(",")
-                states = [item.strip() for item in states]
-                if self.state_name_filter not in states:
-                    return -1
-
-        else:
-            temp = rows[Const.STORE_TYPE_TEMPLATE]
-            rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
-            temp = rows_stores_filter[Const.REGION_TEMPLATE]
-            rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
-            temp = rows_regions_filter[Const.STATE_TEMPLATE]
-            row_result = rows_regions_filter[(temp.apply(lambda r: self.state_name_filter in r.split(",")))
+        # if len(rows) == 1:
+        #     store_type_template = rows[Const.STORE_TYPE_TEMPLATE].values[0].strip()
+        #     if store_type_template != "":
+        #         store_types = store_type_template.split(",")
+        #         store_types = [item.strip() for item in store_types]
+        #         if self.store_type_filter not in store_types:
+        #             return -1
+        #
+        #     region_template = rows[Const.REGION_TEMPLATE].values[0].strip()
+        #     if region_template != "":
+        #         regions = region_template.split(",")
+        #         regions = [item.strip() for item in regions]
+        #         if self.region_name_filter not in regions:
+        #             return -1
+        #
+        #     state_template = rows[Const.STATE_TEMPLATE].values[0].strip()
+        #     if state_template != "":
+        #         states = state_template.split(",")
+        #         states = [item.strip() for item in states]
+        #         if self.state_name_filter not in states:
+        #             return -1
+        #
+        # else:
+        temp = rows[Const.STORE_TYPE_TEMPLATE]
+        rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
+        temp = rows_stores_filter[Const.REGION_TEMPLATE]
+        rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
+        temp = rows_regions_filter[Const.STATE_TEMPLATE]
+        row_result = rows_regions_filter[(temp.apply(lambda r: self.state_name_filter in r.split(",")))
                                                                                                | (temp == "")]
         return row_result
 
