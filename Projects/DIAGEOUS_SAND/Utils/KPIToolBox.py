@@ -5,6 +5,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.DIAGEOUS_SAND.Utils.Const import Const
+from Projects.DIAGEOUS_SAND.Utils.Fetcher import DIAGEOUSQueries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
@@ -27,6 +28,7 @@ class DIAGEOUSToolBox:
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
         self.assortment = Assortment(self.data_provider, self.output)
+        self.fetcher = DIAGEOUSQueries
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -39,8 +41,10 @@ class DIAGEOUSToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.get_state()
-        # self.sub_brands = self.get_sub_brands()
-        # self.refresh_sub_brands()
+        # these 2 functions are temporary
+        self.sub_brands = self.get_sub_brands()
+        self.refresh_sub_brands()
+        #
         self.result_values = self.get_result_values()
         self.products_with_prices = self.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
@@ -56,12 +60,6 @@ class DIAGEOUSToolBox:
             self.scenes_with_shelves[scene] = shelf
         self.converted_groups = self.convert_groups_from_template()
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
-
-        self.sub_brands_converter = {}
-        i = 1
-        for sub_brand in self.all_products['sub_brand'].unique().tolist():
-            self.sub_brands_converter[sub_brand] = i
-            i += 1
 
     # main functions:
 
@@ -178,10 +176,11 @@ class DIAGEOUSToolBox:
             result, passed = Const.DISTRIBUTED, 1
         else:
             result, passed = Const.OOS, 0
-        brand, sub_brand, standard_type = self.get_product_details(product_fk)
+        brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+        standard_type = "s"
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
@@ -194,10 +193,11 @@ class DIAGEOUSToolBox:
             result, passed = Const.DISTRIBUTED, 1
         else:
             result, passed = Const.OOS, 0
-        brand, sub_brand, standard_type = self.get_product_details(product_fk)
+        brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+        standard_type = "s"
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
@@ -207,12 +207,12 @@ class DIAGEOUSToolBox:
         return pk
 
     def get_result_values(self):
-        query = "SELECT * FROM static.kpi_result_value;"
+        query = self.fetcher.get_result_values()
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
     def get_sub_brands(self):
-        query = "SELECT * FROM static.custom_entity where entity_type_fk = 1002;"
+        query = self.fetcher.get_sub_brands()
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
@@ -286,12 +286,10 @@ class DIAGEOUSToolBox:
         if self.state in relevant_competitions[Const.STATE].unique().tolist():
             relevant_competitions = relevant_competitions[relevant_competitions[Const.STATE] == self.state]
         else:
-            Log.warning("There are no shelf facing competitions for state {}".format(self.state))
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.STATE] == Const.OTHER]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT)
         for i, competition in relevant_competitions.iterrows():
             result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes)
-            if not result_dict:
-                continue
             all_results = all_results.append(result_dict, ignore_index=True)
         total_result, segment_result, national_result = self.insert_all_levels_to_db(all_results, kpi_name, weight)
         return total_result, segment_result, national_result
@@ -330,14 +328,14 @@ class DIAGEOUSToolBox:
             target = competition[Const.BENCH_VALUE]
         comparison = 1 if our_facings >= target else 0
         result = self.get_score(our_facings, all_facings)
-        brand, sub_brand, standard_type = self.get_product_details(product_fk)
+        brand, sub_brand = self.get_product_details(product_fk)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
             result=result, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison / 100,
-                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
 
     def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier):
@@ -425,12 +423,12 @@ class DIAGEOUSToolBox:
                                                                                    calculate_all)
         all_facings = len(relevant_products)
         result = 100 if eye_level_product_facings > (all_facings * Const.PERCENT_FOR_EYE_LEVEL) else 0
-        brand, sub_brand, standard_type = self.get_product_details(product_fk)
+        brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: result / 100,
-                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
 
     def calculate_specific_product_eye_level(self, match_product_line, relevant_groups, calculate_all):
@@ -445,7 +443,6 @@ class DIAGEOUSToolBox:
             (relevant_groups[Const.NUM_SHLEVES_MIN] <= self.scenes_with_shelves[scene]) &
             (relevant_groups[Const.NUM_SHLEVES_MAX] >= self.scenes_with_shelves[scene])]
         if relevant_groups_for_scene.empty:
-            Log.info("Scene {} has {} shelves, not in the template".format(scene, self.scenes_with_shelves[scene]))
             return 0
         relevant_shelves = map(int, str(relevant_groups_for_scene[Const.SHELVES_FROM_BOTTOM].iloc[0]).split(', '))
         if calculate_all:
@@ -469,7 +466,7 @@ class DIAGEOUSToolBox:
         if self.state in all_products_table[Const.STATE].unique().tolist():
             all_products_table = all_products_table[all_products_table[Const.STATE] == self.state]
         else:
-            Log.warning("There are no pricing competitions for state {}".format(self.state))
+            all_products_table = all_products_table[all_products_table[Const.STATE] == Const.OTHER]
         all_competes = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT)
         for i, competition in all_products_table.iterrows():
             compete_result_dict = self.calculate_msrp_of_competition(competition, relevant_scenes)
@@ -501,7 +498,7 @@ class DIAGEOUSToolBox:
             comp_ean = competition[Const.COMP_EAN_CODE]
             comp_line = self.all_products[self.all_products['product_ean_code'] == comp_ean]
             if comp_line.empty:
-                Log.warning("The products {} in shelf facings don't exist in DB".format(our_ean))
+                Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
                 return None
             comp_fk = comp_line['product_fk'].iloc[0]
             comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
@@ -519,12 +516,12 @@ class DIAGEOUSToolBox:
             result = our_price - range_price[1]
         else:
             result = 0
-        brand, sub_brand, standard_type = self.get_product_details(product_fk)
+        brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
-                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
 
     def calculate_sku_price(self, product_fk, scenes, parent_dict):
@@ -539,7 +536,6 @@ class DIAGEOUSToolBox:
         price = self.products_with_prices[(self.products_with_prices['product_fk'] == product_fk) &
                                           (self.products_with_prices['scene_fk'].isin(scenes))]['price_value']
         if price.empty:
-            Log.warning("Product {} has no price in scenes {}".format(product_fk, scenes))
             return None
         result = round(price.iloc[0], 2)
         self.common.write_to_db_result(
@@ -570,15 +566,21 @@ class DIAGEOUSToolBox:
     def refresh_sub_brands(self):
         all_sub_brands = self.all_products['sub_brand'].unique().tolist()
         current_sub_brand = self.sub_brands['name'].unique().tolist()
-        subs_not_in_db = set(current_sub_brand) - set(all_sub_brands)
+        subs_not_in_db = set(all_sub_brands) - set(current_sub_brand)
         if subs_not_in_db:
             self.insert_new_subs(subs_not_in_db)
 
     def insert_new_subs(self, new_subs):
         queries = []
         for sub_brand in new_subs:
-            query = "Aaa"
-            print sub_brand
+            if sub_brand:
+                queries.append(self.fetcher.insert_new_sub_brands().format(sub_brand))
+        merge_queries = self.common.merge_insert_queries(queries)
+        cur = self.rds_conn.db.cursor()
+        for query in merge_queries:
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.sub_brands = self.get_sub_brands()
 
     def calculate_passed_display(self, product_fk, relevant_products):
         """
@@ -597,8 +599,7 @@ class DIAGEOUSToolBox:
             scene_type = scene_product['template_name'].iloc[0]
             minimum_products = template[template[Const.SCENE_TYPE] == scene_type]
             if minimum_products.empty:
-                Log.info("scene type {} doesn't exist in the template".format(scene_type))
-                minimum_products = template[template[Const.SCENE_TYPE] == "OTHER"]
+                minimum_products = template[template[Const.SCENE_TYPE] == Const.OTHER]
             minimum_products = minimum_products[Const.MIN_FACINGS].iloc[0]
             facings = scene_product['facings'].iloc[0]
             sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
@@ -647,9 +648,8 @@ class DIAGEOUSToolBox:
     def get_state(self):
         if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
             Log.error("session '{}' does not have a state".format(self.session_uid))
-            return "OTHER"
-        query = "select name from static.state where pk = {};".format(
-            self.data_provider[Data.STORE_INFO]['state_fk'][0])
+            return Const.OTHER
+        query = self.fetcher.get_state().format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
         state = pd.read_sql_query(query, self.rds_conn.db)
         return state.values[0][0]
 
@@ -661,11 +661,17 @@ class DIAGEOUSToolBox:
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
         if not sub_brand:
-            sub_brand_fk = 0
+            sub_brand_fk = None
         else:
-            sub_brand_fk = self.sub_brands_converter[sub_brand]
-        standard_type = self.get_standard_type(product_fk)
-        return brand, sub_brand_fk, standard_type
+            sub_brand_fk = self.get_sub_brand_fk(sub_brand)
+        return brand, sub_brand_fk
+
+    def get_sub_brand_fk(self, sub_brand):
+        sub_brand_line = self.sub_brands[self.sub_brands['name'] == sub_brand]
+        if sub_brand_line.empty:
+            return None
+        else:
+            return sub_brand_line.iloc[0]['pk']
 
     def get_manufacturer(self, product_fk):
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
@@ -696,13 +702,12 @@ class DIAGEOUSToolBox:
         :return: the percent of the num/den
         """
         if den == 0:
-            Log.error("Zero cannot be divided")
             return 0
         return round((float(num) * 100) / den, 2)
 
     # main insert to DB functions:
 
-    def insert_all_levels_to_db(self, all_results, kpi_name, weight):
+    def insert_all_levels_to_db(self, all_results, kpi_name, weight, with_standard_type=False):
         """
         This function gets all the sku results (with details) and puts in DB all the way up (sub_brand, brand, total,
         and segment-national if exist).
@@ -718,7 +723,7 @@ class DIAGEOUSToolBox:
         all_passed_results = all_results[Const.PASSED]
         total_result = self.insert_totals_to_db(all_passed_results, kpi_name, Const.TOTAL, weight, total_identifier)
         segment_result, national_result = 0, 0
-        if Const.SEGMENT in Const.DB_NAMES[kpi_name].keys() and Const.NATIONAL in Const.DB_NAMES[kpi_name].keys():
+        if with_standard_type:
             national_results = all_results[all_results[Const.STANDARD_TYPE] == Const.NATIONAL][Const.PASSED]
             national_result = self.insert_totals_to_db(national_results, kpi_name, Const.NATIONAL, weight)
             segment_results = all_results[all_results[Const.STANDARD_TYPE] == Const.SEGMENT][Const.PASSED]
