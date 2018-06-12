@@ -68,6 +68,9 @@ class PNGRO_PRODToolBox:
     RELATIVE_POSITION = 'Relative Position'
     AVAILABILITY = 'Availability'
     SHELF_POSITION = 'Shelf Position'
+    SURVEY = 'Survey'
+    SHELF_NUMBERS = 'Shelf number for the eye level counting from the bottom'
+    NUMBER_OF_SHELVES = 'Number of shelves'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -85,14 +88,15 @@ class PNGRO_PRODToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.retailer = \
+        self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
-
-        # self.kpis_data = parse_template(TEMPLATE_PATH, 'KPI display')
         self.display_data = parse_template(TEMPLATE_PATH, 'display weight')
+        self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
         self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -102,8 +106,8 @@ class PNGRO_PRODToolBox:
     @property
     def matches(self):
         if not hasattr(self, '_matches'):
-            self._matches = self.data_provider.match_product_in_scene
-            self._matches = self.match_product_in_scene.merge(self.scif, on='product_fk')
+            self._matches = self.match_product_in_scene
+            self._matches = self._matches.merge(self.scif, on='product_fk')
         return self._matches
 
     @property
@@ -179,18 +183,18 @@ class PNGRO_PRODToolBox:
                 if general_filters:
                     score = 0
                     kpi_type = params[self.KPI_FAMILY]
-
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        score = self.sos(params, **general_filters)
+                        score = self.calculate_sos(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
-                        score = self.relative_position(params, **general_filters)
+                        score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
-                        score = self.availability(params, **general_filters)
+                        score = self.calculate_availability(params, **general_filters)
                     elif kpi_type == self.SHELF_POSITION:
-                        score = self.shelf_position(params, **general_filters)
-
+                        score = self.calculate_shelf_position(params, **general_filters)
+                    elif kpi_type == self.SURVEY:
+                        score = self.calculate_survey(params)
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
                         self.write_to_db_result(score=int(score), result=int(score), level=self.LEVEL3,
@@ -209,26 +213,28 @@ class PNGRO_PRODToolBox:
             return False
 
     def get_general_filters(self, params):
-        template_name = params['Template Name']
-        category = params['Scene Category']
+        # template_name = params['Template Name']
+        # category = params['Scene Category']
         location_type = params['Location Type']
-        retailer = params['by Retailer']
+        # retailer = params['by Retailer']
 
-        if template_name.strip():
-            relative_scenes = self.scif[
-                (self.scif['template_name'] == template_name) & (self.scif['location_type'] == location_type)]
-        elif category.strip():
-            template_fk = self.match_template_fk_by_category_fk['pk'][
-                self.match_template_fk_by_category_fk['product_category_fk'] == int(float(category))].unique().tolist()
-            relative_scenes = self.scif[
-                (self.scif['template_fk'].isin(template_fk)) & (self.scif['location_type'] == location_type)]
-        else:
-            relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
+        relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
 
-        if retailer.strip():
-            stores = self.match_stores_by_retailer['pk'][
-                self.match_stores_by_retailer['name'] == retailer].unique().tolist()
-            relative_scenes = relative_scenes[(relative_scenes['store_id'].isin(stores))]
+        # if template_name.strip():
+        #     relative_scenes = self.scif[
+        #         (self.scif['template_name'] == template_name) & (self.scif['location_type'] == location_type)]
+        # elif category.strip():
+        #     template_fk = self.match_template_fk_by_category_fk['pk'][
+        #         self.match_template_fk_by_category_fk['product_category_fk'] == int(float(category))].unique().tolist()
+        #     relative_scenes = self.scif[
+        #         (self.scif['template_fk'].isin(template_fk)) & (self.scif['location_type'] == location_type)]
+        # else:
+        #     relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
+        #
+        # if retailer.strip():
+        #     stores = self.match_stores_by_retailer['pk'][
+        #         self.match_stores_by_retailer['name'] == retailer].unique().tolist()
+        #     relative_scenes = relative_scenes[(relative_scenes['store_id'].isin(stores))]
 
         general_filters = {}
         if not relative_scenes.empty:
@@ -263,7 +269,17 @@ class PNGRO_PRODToolBox:
                 return False
         return score_pass
 
-    def sos(self, params, **general_filters):
+    def calculate_survey(self, params):
+        """
+        This function calculates Survey-Question typed Atomics, and writes the result to the DB.
+        """
+        survey_name = params['Param (1) Values']
+        target_answers = params['Param (2) Values'].split(',')
+        survey_answer = self.tools.get_survey_answer(('question_fk', survey_name))
+        score = 100 if survey_answer in target_answers else 0
+        return score
+
+    def calculate_sos(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = map(unicode.strip, params['Param (1) Values'].split(','))
         type2 = params['Param Type (2)/ Denominator']
@@ -291,7 +307,7 @@ class PNGRO_PRODToolBox:
         else:
             return False
 
-    def relative_position(self, params, **general_filters):
+    def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = params['Param (1) Values']
         type2 = params['Param Type (2)/ Denominator']
@@ -312,7 +328,7 @@ class PNGRO_PRODToolBox:
                                                     **dict(filters, **general_filters))
         return score
 
-    def availability(self, params, **general_filters):
+    def calculate_availability(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         type2 = params['Param Type (2)/ Denominator']
         value2 = params['Param (2) Values']
@@ -324,7 +340,7 @@ class PNGRO_PRODToolBox:
             if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0: return True
         return False
 
-    def shelf_position(self, params, **general_filters):
+    def calculate_shelf_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = params['Param (1) Values']
         type2 = params['Param Type (2)/ Denominator']
@@ -351,6 +367,50 @@ class PNGRO_PRODToolBox:
         else:
             return True
 
+    # def calculate_shelf_position(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = params['Param (1) Values']
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = params['Param (2) Values']
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #
+    #     if type3.strip():
+    #         filters = {type1: value1, type2: value2, type3: value3}
+    #     else:
+    #         filters = {type1: value1, type2: value2}
+    #
+    #     product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
+    #                                                                  **dict(filters, **general_filters))][
+    #                                                                 'product_fk'].unique().tolist()
+    #     bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
+    #         self.match_product_in_scene,
+    #         **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
+    #         [['shelf_number', 'bay_number', 'scene_fk']]
+    #
+    #     bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
+    #     bay_shelf_count['count'] = 0
+    #     bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
+    #
+    #     for scene in general_filters['scene_id']:
+    #         for bay in bay_shelf_list['bay_number'].unique().tolist():
+    #             shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
+    #             target = self.eye_level_target.copy()
+    #             number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
+    #                                                 (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
+    #             try:
+    #                 target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
+    #             except IndexError:
+    #                 target = '3,4,5'
+    #             target = map(lambda x: int(x), target.split(','))
+    #             score = len(set(shelf_list) - set(target))
+    #             if score > 0:
+    #                 return False
+    #     if not bay_shelf_list.empty:
+    #         return True
+    #     else:
+    #         return False
+
     def calculate_linear_share_of_shelf_per_product_display(self):
         display_agg = self.get_display_agg()
         for display in display_agg['display_name'].unique().tolist():
@@ -361,14 +421,16 @@ class PNGRO_PRODToolBox:
             display_width = self.tools.calculate_share_space_length(**general_filters) * display_weight * display_count
             for product in self.matches['item_id'].unique().tolist():
                 general_filters.update({'item_id': product})
-                product_width = self.tools.calculate_share_space_length(**general_filters) * display_weight * display_count
+                product_width = self.tools.calculate_share_space_length(
+                    **general_filters) * display_weight * display_count
                 if product_width and display_width:
                     score = product_width / float(display_width)
                     level_fk = self.get_new_kpi_fk_by_kpi_name('display count')
                     self.common.write_to_db_result_new_tables(fk=level_fk, score=score, result=score,
                                                               numerator_result=product_width,
                                                               denominator_result=display_width,
-                                                              numerator_id=product, denominator_id=display_pd['pk'].values[0])
+                                                              numerator_id=product,
+                                                              denominator_id=display_pd['pk'].values[0])
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name
@@ -510,5 +572,10 @@ class PNGRO_PRODToolBox:
         display_filter_from_scif['count'] = 0
         return \
             display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
+
+    def get_shelf_level_target(self):
+        eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
+        return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
+                                                                                self.NUMBER_OF_SHELVES]]
 
 

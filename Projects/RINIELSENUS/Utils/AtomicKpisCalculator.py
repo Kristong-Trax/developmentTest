@@ -1392,7 +1392,7 @@ class SequenceSptCalculation(BaseSSequenceCalculation):
         result_block_edges = {}
         for i in xrange(len(sequence_filters)):
             filters = sequence_filters[i]
-            result = self.block.calculate_block_edges(biggest_block=True, **filters)
+            result = self.block.calculate_block_edges(biggest_block=True, include_empty=True, **filters)
             result_block_edges[i] = result['visual']
         return result_block_edges
 

@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from kpi_factory.Projects.DIAGEOUK.Utils.PositionGraph import DIAGEOUKPositionGraphs
+from Projects.DIAGEOUK.Utils.PositionGraph import DIAGEOUKPositionGraphs
 
 __author__ = 'Nimrod'
 

@@ -3,6 +3,8 @@
 # update packages
 conda install graphviz
 
+pip install -r requirements.txt
+
 # remove pre-commit
 KPI_HOME="$(dirname "$PWD")"
 
