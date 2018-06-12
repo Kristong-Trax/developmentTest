@@ -176,11 +176,10 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             """
         Log.debug(self.log_prefix + ' Starting table display')
         table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
-        total_and_cube_tags = \
-            self.match_display_in_scene[(self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)) |
-                                        (self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS))] # todo: add tags of all other displays but table display
+        other_tags = \
+            self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS + TABLE_TOTAL_DISPLAYS)]
         table_scenes = table_tags.scene_fk.tolist()
-        cube_scenes = total_and_cube_tags.scene_fk.tolist()
+        cube_scenes = other_tags.scene_fk.tolist()
         scenes = list(set(table_scenes)-set(cube_scenes))
         table_bays = pd.DataFrame({})
         table_display = pd.DataFrame({})
