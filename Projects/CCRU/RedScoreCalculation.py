@@ -130,3 +130,12 @@ class CCRUCalculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         CCRUCalculations(data_provider, output).run_project_calculations()
+#
+# sessions in 2018 per store type:
+# 'e3d4817b-3654-40a5-9d0a-3fed8f19bcba' --> Pos 2018 - MT - Convenience Big
+# 'a9175991-91b5-4bd6-9b12-78ede2a6a578' --> 'Pos 2018 - MT - Convenience Small'
+# '366e19c9-338d-49ad-b902-f680520f5862' --> Pos 2018 - FT
+# 'C0A94463-627A-48AB-8B7C-B1FE7712F35B' --> Pos 2018 - MT - Hypermarket
+# '38503654-2c64-436f-9064-aeac06d4c966' --> Pos 2018 - MT - Supermarket
+# '5dbdb69e-257b-4dfe-9b42-c07675703167' -->Pos 2018 - Petroleum
+# '95423BDE-F038-488B-A8D4-C7267528785D' --> Pos 2018 - QSR

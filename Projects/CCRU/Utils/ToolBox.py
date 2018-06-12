@@ -2138,7 +2138,7 @@ class CCRUKPIToolBox:
                     if atomic_res == -1:
                         continue
                     atomic_score = self.calculate_score(atomic_res, c)
-                    if p.get('Formula') == "Weighted Average":
+                    if p.get('Formula').strip() == "Weighted Average":
                         kpi_total += atomic_score * c.get('KPI Weight')
                         kpi_total_weight += c.get('KPI Weight')
                     else:
