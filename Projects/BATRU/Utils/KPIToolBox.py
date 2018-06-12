@@ -685,7 +685,7 @@ class BATRUToolBox:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(
                 lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'] == 'ALL']
+            monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
         # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
         extra_df = pd.DataFrame(columns=monitored_skus.columns)
         for sku in monitored_skus['ean_code'].unique().tolist():
@@ -1313,7 +1313,7 @@ class BATRUToolBox:
         #     return True
         # else:
         #     return False
-        if end_seq == "All":
+        if end_seq.upper() == 'ALL':
             end_seq = bay_data['sequence'].max()
         else:
             end_seq = int(end_seq)
@@ -1501,7 +1501,7 @@ class BATRUToolBox:
         posm_filters = {}
         for current_filter in filters:
             value = row[current_filter]
-            if value and value != 'ALL':
+            if value and value.upper() != 'ALL':
                 if current_filter in self.filters_params:
                     posm_filters[self.filters_params[current_filter]] = value
                 else:
