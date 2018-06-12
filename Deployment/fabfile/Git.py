@@ -164,9 +164,12 @@ def copy_to_ace_live(sdk_factory_folder, ace_live_folder, kpi_factory_folder=Non
     shutil.copytree(os.path.join(sdk_factory_folder, KPI_UTILS), os.path.join(ace_live_folder, KPI_UTILS))
     shutil.copytree(os.path.join(sdk_factory_folder, KPI_UTILS_V2), os.path.join(ace_live_folder, KPI_UTILS_V2))
     if project_name is not None:
-        shutil.rmtree(os.path.join(ace_live_folder, PROJECT_FOLDER, project_name))
+        # if it's a new project we won't have it in ace live
+        if os.path.exists(os.path.join(ace_live_folder, PROJECT_FOLDER, project_name)):
+            shutil.rmtree(os.path.join(ace_live_folder, PROJECT_FOLDER, project_name))
         shutil.copytree(os.path.join(kpi_factory_folder, PROJECT_FOLDER, project_name),
                         os.path.join(ace_live_folder, PROJECT_FOLDER, project_name))
+
 
 def pull_from_repository(repo, origin):
     try:
