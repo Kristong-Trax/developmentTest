@@ -281,44 +281,25 @@ class CBCILCBCIL_ToolBox(object):
             final_score = sum([score for score in kpi_scores.values()])
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
-            self.write_gaps_to_db() #Natalya - to comment out before debug
-            self.commit_results_data() #Natalya - to comment out before debug
+            self.write_gaps_to_db() #Natalya - to remove comment before push
+            self.commit_results_data() #Natalya - to remove comment before push
 
-    def combine_kpi_details(self, kpi_fk, scores, denominator_weight):
-        kpi_details={}
-        kpi_details['kpi_fk'] = kpi_fk
-        kpi_details['atomic_scores_and_weights'] = scores
-        kpi_details['denominator_weight'] = float(denominator_weight)
-        return kpi_details
-
-    # @staticmethod
-    # def combine_kpi_details(kpi_fk, scores, denominator_weight):
-    #     kpi_details = {}
+    # def combine_kpi_details(self, kpi_fk, scores, denominator_weight):
+    #     kpi_details={}
     #     kpi_details['kpi_fk'] = kpi_fk
     #     kpi_details['atomic_scores_and_weights'] = scores
     #     kpi_details['denominator_weight'] = float(denominator_weight)
     #     return kpi_details
 
-    def reallocate_weights_to_kpis_with_results(self, kpis_without_score, all_kpis_in_set):
-        if kpis_without_score:
-            total_weight_to_reallocate = sum([weight for weight in kpis_without_score.values()])
-            weight_to_each_kpi = total_weight_to_reallocate / (len(all_kpis_in_set) - len(kpis_without_score.items()))
-            for kpi in all_kpis_in_set:
-                if kpi['kpi_fk'] in kpis_without_score.keys():
-                    kpi['denominator_weight'] = 0
-                    kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
-                else:
-                    kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_each_kpi
-                    atomics_with_weights = filter(lambda x: x[1] is not None,
-                                                  kpi['atomic_scores_and_weights'])
-                    if atomics_with_weights:
-                        kpi['atomic_scores_and_weights'] = map(
-                            lambda x: (x[0], x[1] + weight_to_each_kpi / len(atomics_with_weights)),
-                            atomics_with_weights)
-        return all_kpis_in_set
+    @staticmethod
+    def combine_kpi_details(kpi_fk, scores, denominator_weight):
+        kpi_details = {}
+        kpi_details['kpi_fk'] = kpi_fk
+        kpi_details['atomic_scores_and_weights'] = scores
+        kpi_details['denominator_weight'] = float(denominator_weight)
+        return kpi_details
 
-    # @staticmethod
-    # def reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set):
+    # def reallocate_weights_to_kpis_with_results(self, kpis_without_score, all_kpis_in_set):
     #     if kpis_without_score:
     #         total_weight_to_reallocate = sum([weight for weight in kpis_without_score.values()])
     #         weight_to_each_kpi = total_weight_to_reallocate / (len(all_kpis_in_set) - len(kpis_without_score.items()))
@@ -335,6 +316,29 @@ class CBCILCBCIL_ToolBox(object):
     #                         lambda x: (x[0], x[1] + weight_to_each_kpi / len(atomics_with_weights)),
     #                         atomics_with_weights)
     #     return all_kpis_in_set
+
+    @staticmethod
+    def reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set):
+        if kpis_without_score:
+            total_weight_to_reallocate = sum([weight for weight in kpis_without_score.values()])
+            weight_of_all_kpis_with_scores = sum([kpi['denominator_weight'] for kpi in
+                                                 filter(lambda x: x['kpi_fk'] not in kpis_without_score.keys(),
+                                                        all_kpis_in_set)])
+            # weight_to_each_kpi = total_weight_to_reallocate / (len(all_kpis_in_set) - len(kpis_without_score.items()))
+            for kpi in all_kpis_in_set:
+                if kpi['kpi_fk'] in kpis_without_score.keys():
+                    kpi['denominator_weight'] = 0
+                    kpi['atomic_scores_and_weights'] = [(score[0], 0) for score in kpi['atomic_scores_and_weights']]
+                else:
+                    weight_to_kpi = total_weight_to_reallocate * float(kpi['denominator_weight'])/weight_of_all_kpis_with_scores
+                    kpi['denominator_weight'] = kpi['denominator_weight'] + weight_to_kpi
+                    atomics_with_weights = filter(lambda x: x[1] is not None,
+                                                  kpi['atomic_scores_and_weights'])
+                    if atomics_with_weights:
+                        kpi['atomic_scores_and_weights'] = map(
+                            lambda x: (x[0], x[1] + weight_to_kpi / len(atomics_with_weights)),
+                            atomics_with_weights)
+        return all_kpis_in_set
 
     def get_coolers(self, cbc_coller, competitor_cooler):
         cbc = self.scif[self.scif['template_name'].str.encode('utf-8') == cbc_coller]['scene_fk'].unique().tolist()
@@ -434,25 +438,25 @@ class CBCILCBCIL_ToolBox(object):
                 set_scores.append(ratio)
                 set_scores.sort()
 
-            if competitor_coolers > 0 and 0 < cbc_coolers == set_scores.count(1.0):
-                return 100
-            elif cbc_coolers > 1 and set_scores.count(1.0) >= (cbc_coolers - 1):
-                if set_scores[0] >= 0.8:
-                    return 100
-            elif cbc_coolers == 1 and set_scores[0] > 0.8:
-                return 100
+            # if competitor_coolers > 0 and 0 < cbc_coolers == set_scores.count(1.0):
+            #     return 100
+            # elif cbc_coolers > 1 and set_scores.count(1.0) >= (cbc_coolers - 1):
+            #     if set_scores[0] >= 0.8:
+            #         return 100
+            # elif cbc_coolers == 1 and set_scores[0] > 0.8:
+            #     return 100
 
             # #alternative - Natalya:
-            # if competitor_coolers > 0:
-            #     return 100 if 0 < cbc_coolers == set_scores.count(1.0) else sum(set_scores)/len(set_scores)*100
-            # elif cbc_coolers > 1:
-            #     set_scores.sort(reverse=True)
-            #     if set_scores[0] < 0.8:
-            #         return (set_scores[0]/0.8+sum(set_scores[1:]))/len(set_scores)*100
-            #     elif all(score > 0.8 for score in set_scores):
-            #         pass
-            # elif cbc_coolers == 1:
-            #     return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
+            if competitor_coolers > 0:
+                return 100 if 0 < cbc_coolers == set_scores.count(1.0) else sum(set_scores)/len(set_scores)*100
+            elif cbc_coolers > 1:
+                set_scores.sort(reverse=True)
+                if set_scores[0] < 0.8:
+                    return (set_scores[0]/0.8+sum(set_scores[1:]))/len(set_scores)*100
+                elif all(score > 0.8 for score in set_scores):
+                    pass
+            elif cbc_coolers == 1:
+                return set_scores[0]/0.8*100 if set_scores[0] < 0.8 else 100
         return 0
 
     def calculate_availability(self, **general_filters):
