@@ -58,9 +58,5 @@ class Const(object):
     INCLUDE_FILTER = 1
 
     # pk
-    # COUNT_OF_SCENES_PK = 1
-    # COUNT_OF_UNIQUE_SKUS_PK = 2
-    # COUNT_OF_FACINGS_PK = 3
-    # SURVEY_PK = 4
     AVAILABILITY_PK = 5
     PRICING_PK = 6
