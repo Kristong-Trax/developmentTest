@@ -11,21 +11,18 @@ __Author__ = 'Dudi_S'
 CUBE = 'Cube'
 NON_BRANDED_CUBE = 'Non branded cube'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
-FOUR_SIDED_FK = 31
 CUBE_FK = 1
 NON_BRANDED_CUBE_FK = 5
-# CUBE_TOTAL_DISPLAYS = [10, 11, 12, 13, 14, 15, 16,
-#                        17, 18, 19, 20, 21, 22, 23, 24]
-# PROMOTION_WALL_DISPLAYS = [25]
 CUBE_TOTAL_DISPLAYS = ['Total 1 cube', 'Total 2 cubes', 'Total 3 cubes', 'Total 4 cubes', 'Total 5 cubes',
                        'Total 6 cubes', 'Total 7 cubes', 'Total 8 cubes', 'Total 9 cubes', 'Total 10 cubes',
                        'Total 11 cubes', 'Total 12 cubes', 'Total 13 cubes', 'Total 14 cubes', 'Total 15 cubes']
+FOUR_SIDED = ['4 Sided Display']
+FOUR_SIDED_FK = 31
 FOUR_SIDED_TOTAL_DISPLAYS = ['Total 1 4-sided display', 'Total 2 4-sided display', 'Total 3 4-sided display',
                              'Total 4 4-sided display', 'Total 5 4-sided display']
-FOUR_SIDED = ['4 Sided Display']
 PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
-TABLE_TOTAL_DISPLAYS = []
+TABLE_TOTAL_DISPLAYS = ['Table Display']
 
 class PNGCN_SANDPNGShareOfDisplay(object):
     def __init__(self, project_connector, session_uid, data_provider=None):
@@ -88,16 +85,16 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self.displays = self._get_displays_data()
             self.match_product_in_scene = self._get_match_product_in_scene_data()
             self._delete_previous_data()
-            self._handle_non_cube_non_promotion_display()
             self._handle_promotion_wall_display()
             self._handle_cube_or_4_sided_display()
             self._handle_table_display()
+            self._handle_rest_display()
             if self.on_ace:
                 Log.debug(self.log_prefix + ' Committing share of display calculations')
                 self.project_connector.db.commit()
             Log.info(self.log_prefix + ' Finished calculation')
 
-    def _handle_non_cube_non_promotion_display(self):
+    def _handle_rest_display(self):
         """
         Handling all display tags which are not cubes and not promotion wall.
         Each tag in a scene is a display with a single bay.
@@ -109,7 +106,10 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS +
                                                                                         CUBE_TOTAL_DISPLAYS +
                                                                                         PROMOTION_WALL_DISPLAYS +
-                                                                                          TABLE_DISPLAYS)]
+                                                                                          TABLE_DISPLAYS +
+                                                                                          TABLE_TOTAL_DISPLAYS +
+                                                                                          FOUR_SIDED +
+                                                                                          FOUR_SIDED_TOTAL_DISPLAYS)]
         if not display_non_cube_non_promotion_wall_with_bays.empty:
             display_non_cube_non_promotion_wall_with_id_and_bays = \
                 self._insert_into_display_surface(display_non_cube_non_promotion_wall_with_bays)
@@ -176,6 +176,13 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
                 display = display.append(display_scene, ignore_index=True)
                 bays = bays.append(bays_scene, ignore_index=True)
+                if display['display_fk'].values[0] == CUBE_FK:
+                    display['display_name'] = CUBE
+                elif display['display_fk'].values[0] == NON_BRANDED_CUBE_FK:
+                    display['display_name'] = NON_BRANDED_CUBE
+                else:
+                    display['display_name'] = TABLE_DISPLAYS[0]
+
         if not bays.empty:
             bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
         if not display.empty:
@@ -295,7 +302,12 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                     display_visit_by_display_product_enrich_sos_type['tot_linear'] * \
                     display_visit_by_display_product_enrich_sos_type['display_size']
 
-                not_in_sos_condition = display_visit_by_display_product_enrich_sos_type['in_sos'] == 0
+                # irrlevant products, should be counted in total facings/ linear of display for product size value,
+                #  but should be removed from display size share %
+                irrelvant_products = self.data_provider.all_products.loc[self.data_provider.all_products['product_type'] == 'Irrelevant'][
+                    'product_fk'].tolist()
+                not_in_sos_condition = ((display_visit_by_display_product_enrich_sos_type['in_sos'] == 0) |
+                (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(irrelvant_products)))
                 display_visit_by_display_product_enrich_sos_type.loc[not_in_sos_condition, 'product_size'] = 0
 
                 display_visit_summary = \
@@ -340,6 +352,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
         df.loc[condition, 'in_sos'] = 0
         df.loc[~condition, 'in_sos'] = 1
+
         return df
 
     def _insert_into_display_visit_summary(self, display_visit_summary_list_of_dict):
