@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.1 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.4 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -356,7 +356,8 @@ class CCBRToolBox:
 
         # no need to be accounted for, fields that aren't in scif
         for field in Const.DELETE_FIELDS:
-            del filters[field]
+            if field in filters:
+                del filters[field]
 
         if Const.WEIGHT in filters.keys():
             del filters[Const.WEIGHT]

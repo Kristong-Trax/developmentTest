@@ -63,7 +63,7 @@ BLOCK_PARAMS = ['SEGMENT', 'sub_category', 'brand_name', 'SUPER CATEGORY', 'manu
 ADJACENCY_PARAMS = ['sub_category', 'brand_name', 'NATURALS', 'Sub Brand',
                     'P&G BRAND', 'BENEFIT', 'AUDIENCE', 'PRICE SEGMENT', 'FORM', 'HEAD SIZE']
 BLOCK_TOGETHER = ['Regular Block', 'horizontally blocked', 'vertically blocked', 'Orphan products', 'group in block',
-                  'regular block', 'block in block']
+                  'regular block', 'block in block', 'hor_vs_vertical']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.xlsx')
 POWER_SKUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PowerSKUs_3.xlsx')
 
@@ -1146,6 +1146,8 @@ class PNGAMERICAToolBox:
             if kpi_template['kpi type'] == 'Regular Block':
                 general = True
                 save_list.append('regular block')
+            if kpi_template['kpi type'] == 'hor_vs_vertical':
+                vertical = horizontal = True
             # if kpi_template['Vertical Block']:
             #     vertical = True
             #     save_list.append('Vertical Block')
@@ -1194,7 +1196,7 @@ class PNGAMERICAToolBox:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                        res = self.tools.calculate_block_together(include_empty=include_empty, minimum_block_ratio=0.75,
+                        res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                                   vertical=vertical,
                                                                   horizontal=horizontal, orphan=orphan, group=group,
                                                                   block_products=block_products,
@@ -1204,10 +1206,14 @@ class PNGAMERICAToolBox:
                         if type(res) == str and res == 'no_products':
                             return
                         if res:
+                            result = 1 if res['regular block'] else 0
+                            score = 1 if res['regular block'] else 0
+                            if kpi_template['kpi type'] == 'hor_vs_vertical':
+                                result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
                             try:
                                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
-                                                        result=1 if res['regular block'] else 0,
-                                                        score=1 if res['regular block'] else 0)
+                                                        result=result,
+                                                        score=score)
                             except IndexError as e:
                                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
@@ -1218,7 +1224,7 @@ class PNGAMERICAToolBox:
                             except IndexError as e:
                                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
                 else:
-                    res = self.tools.calculate_block_together(include_empty=include_empty, minimum_block_ratio=0.75,
+                    res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                               vertical=vertical,
                                                               horizontal=horizontal, orphan=orphan, group=group,
                                                               block_products=block_products,
@@ -1230,10 +1236,14 @@ class PNGAMERICAToolBox:
                         return
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if res:
+                        result = 1 if res['regular block'] else 0
+                        score = 1 if res['regular block'] else 0
+                        if kpi_template['kpi type'] == 'hor_vs_vertical':
+                            result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
                         try:
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
-                                                    result=1 if res['regular block'] else 0,
-                                                    score=1 if res['regular block'] else 0)
+                                                    result=result,
+                                                    score=score)
                         except IndexError as e:
                             Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
@@ -1613,7 +1623,7 @@ class PNGAMERICAToolBox:
             else:
                 result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                    category=category, sub_category=sub_category,
-                                                                   min_number_of_products=1, products_list=True,**filters)
+                                                                   min_number_of_products=1, products_list=False,**filters)
                 score = 1 if result[0] >= 1 else 0
             if not list_result:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)

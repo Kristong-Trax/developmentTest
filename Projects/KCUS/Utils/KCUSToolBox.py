@@ -644,6 +644,8 @@ class KCUSToolBox:
         if self.thresholds_and_results.get(params.get('KPI Level 2 Name')):
             result = self.thresholds_and_results[params.get('KPI Level 2 Name')]['result']
             # threshold = self.thresholds_and_results[params.get('#Mars KPI NAME')]['threshold']
+        elif len(self.thresholds_and_results) == 0:
+            result = score
         else:
             result = threshold = 0
         attributes_for_table3 = pd.DataFrame([(params.get('KPI Level 2 Name').encode('utf-8'),

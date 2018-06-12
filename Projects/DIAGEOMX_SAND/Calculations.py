@@ -33,7 +33,7 @@ class DIAGEOMX_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageomx-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '314f03d1-9150-400a-b0d5-760046b3206a' # d0924ace-7589-43e2-b666-1249bf4eb664, 314f03d1-9150-400a-b0d5-760046b3206a, 9e558522-3149-4f30-92da-20021c574610 , 7f8f5642-80b1-4181-9dea-db06cf9805a5, 524397a0-b88b-42b4-a7c4-44cc50307fa2
+#     session = '524397a0-b88b-42b4-a7c4-44cc50307fa2' # d0924ace-7589-43e2-b666-1249bf4eb664, 314f03d1-9150-400a-b0d5-760046b3206a, 9e558522-3149-4f30-92da-20021c574610 , 7f8f5642-80b1-4181-9dea-db06cf9805a5, 524397a0-b88b-42b4-a7c4-44cc50307fa2
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOMX_SANDCalculations(data_provider, output).run_project_calculations()
