@@ -192,9 +192,11 @@ class BATRUToolBox:
         It printS the stores and products that don't exist in the DB
         :param file_path: the assortment file (suppose to have 2 columns: Outlet ID and product_ean_code
         """
-        result_dict = self.tools.upload_store_assortment_file(file_path)
-        print "Invalid store_number_1: " + str(result_dict[OUTLET_ID])
-        print "Invalid product_ean_code_1: " + str(result_dict[EAN_CODE])
+        if self.tools.p1_assortment_validator(file_path):
+            self.tools.upload_store_assortment_file(file_path)
+        else:
+            Log.warning("Error in P1 store assortment template")
+            print "Please fix the issues and try again"
 
     def main_calculation(self):
         """

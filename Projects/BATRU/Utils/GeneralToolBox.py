@@ -867,31 +867,47 @@ class BATRUGENERALToolBox:
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
+    def p1_assortment_validator(self, file_path):
+        """
+        This function validates the store assortment template.
+        It compares the OUTLET_ID (= store_number_1) and the products ean_code to the stores and products from the DB
+        :param file_path: Store assortment template
+        :return: False in case of an error and True in case of a valid template
+        """
+        raw_data = pd.read_csv(file_path, sep='\t')
+        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
+        raw_data = raw_data.fillna('')
+        stores = self.store_data
+        valid_stores = stores.loc[stores['store_number'].isin(raw_data[OUTLET_ID])]
+        if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
+            print "Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
+                                                                         set(valid_stores['store_number'])))
+            return False
+
+        valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
+        if len(valid_product) != len(raw_data[EAN_CODE].unique()):
+            print "Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
+                                                                           set(valid_product[EAN_CODE])))
+            return False
+
+        return True
+
     def upload_store_assortment_file(self, file_path):
         # raw_data = pd.read_excel(file_path)
         raw_data = pd.read_csv(file_path, sep='\t')
         raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
         raw_data = raw_data.fillna('')
         data = []
-        invalid_data = {OUTLET_ID: [], EAN_CODE: []}
-        stores = self.store_data
         for store in raw_data[OUTLET_ID].unique().tolist():
-            if stores.loc[stores['store_number'] == store].empty:
-                invalid_data[OUTLET_ID].append(store)
-                continue
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
-            for product in store_products:
-                if self.all_products.loc[self.all_products[EAN_CODE] == product].empty:
-                    invalid_data[EAN_CODE].append(product)
-                    store_products.remove(product)
-            store_data[raw_data.loc[raw_data[OUTLET_ID] == store][OUTLET_ID].values[0]] = store_products
+            store_data[store] = store_products
             data.append(store_data)
         for store_data in data:
             self.update_db_from_json(store_data, immediate_change=True)
         queries = self.merge_insert_queries(self.all_queries)
         self.commit_results(queries)
-        return invalid_data
+        return data
 
     def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()
@@ -933,8 +949,9 @@ class BATRUGENERALToolBox:
             current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
-            for product_fk in products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, product_fk, deactivate_date))
+            # for product_fk in products_to_deactivate:
+            if products_to_deactivate:
+                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             self.all_queries.extend(queries)
@@ -1000,8 +1017,8 @@ class BATRUGENERALToolBox:
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
         query = """update {} set end_date = '{}', is_current = '0'
-                   where store_fk = {} and product_fk = {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
-                                                                                          store_fk, product_fk)
+                   where store_fk = {} and product_fk in {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
+                                                                                           store_fk, product_fk)
         return query
 
     @staticmethod
