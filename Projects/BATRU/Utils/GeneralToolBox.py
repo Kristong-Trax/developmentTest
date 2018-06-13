@@ -867,23 +867,31 @@ class BATRUGENERALToolBox:
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def upload_store_assortment_file(self, file_path, data_first_cell=None, ean_row_index=None, store_number_column_index=None,
-                            update_correlations=False):
+    def upload_store_assortment_file(self, file_path):
         # raw_data = pd.read_excel(file_path)
         raw_data = pd.read_csv(file_path, sep='\t')
         raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
         raw_data = raw_data.fillna('')
         data = []
+        invalid_data = {OUTLET_ID: [], EAN_CODE: []}
+        stores = self.store_data
         for store in raw_data[OUTLET_ID].unique().tolist():
+            if stores.loc[stores['store_number'] == store].empty:
+                invalid_data[OUTLET_ID].append(store)
+                continue
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
+            for product in store_products:
+                if self.all_products.loc[self.all_products[EAN_CODE] == product].empty:
+                    invalid_data[EAN_CODE].append(product)
+                    store_products.remove(product)
             store_data[raw_data.loc[raw_data[OUTLET_ID] == store][OUTLET_ID].values[0]] = store_products
             data.append(store_data)
         for store_data in data:
             self.update_db_from_json(store_data, immediate_change=True)
         queries = self.merge_insert_queries(self.all_queries)
         self.commit_results(queries)
-        return data
+        return invalid_data
 
     def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()

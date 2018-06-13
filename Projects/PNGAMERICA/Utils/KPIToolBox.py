@@ -1623,7 +1623,7 @@ class PNGAMERICAToolBox:
             else:
                 result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                    category=category, sub_category=sub_category,
-                                                                   min_number_of_products=1, products_list=True,**filters)
+                                                                   min_number_of_products=1, products_list=False,**filters)
                 score = 1 if result[0] >= 1 else 0
             if not list_result:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)

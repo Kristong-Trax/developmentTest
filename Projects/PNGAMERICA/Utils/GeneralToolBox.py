@@ -410,7 +410,7 @@ class PNGAMERICAGENERALToolBox:
                         eye_level_facings = eye_level_facings.append(eye_level_shelves)
                         # if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
                         #     products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
-                        if any(eye_level_facings[
+                        if any(eye_level_shelves[
                                                self.get_filter_condition(eye_level_shelves, **filters)]['product_ean_code']):
                             products_on_eye_level.append(eye_level_shelves[self.get_filter_condition(
                                 eye_level_shelves, **filters)]['product_name'].unique().tolist())

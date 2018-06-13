@@ -29,7 +29,7 @@ class JNJITCalculations(BaseCalculationsScript):
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.secondary_placement_location_quality(survey_template)
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
-        jnj_generator.calculate_auto_assortment(in_balde=True)
+        jnj_generator.calculate_auto_assortment()
         # jnj_generator.promo_calc()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data_to_new_tables()
@@ -44,4 +44,4 @@ class JNJITCalculations(BaseCalculationsScript):
 #     session = 'b5693138-cf2b-407f-a3ec-95195e62d082'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     JNJUKCalculations(data_provider, output).run_project_calculations()
+#     JNJITCalculations(data_provider, output).run_project_calculations()

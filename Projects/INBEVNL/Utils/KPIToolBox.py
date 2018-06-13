@@ -288,7 +288,8 @@ class INBEVNLINBEVBEToolBox:
         set_score = 0
         self.check_on_shelf_availability_on_scene_level(OSA)
         if set_name == OSA:
-            self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store, object_type,
+            products_list = list(set(ass_prod_list) - set(delisted_products['product_fk']))
+            self.calculate_osa_assortment_and_oos(products_list, ass_prod_present_in_store, object_type,
                                                   falsely_recognized_prods=falsely_recognized_products_list)
 
             updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
@@ -457,17 +458,17 @@ class INBEVNLINBEVBEToolBox:
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
 
-            try:
-                product_ean_code = \
-                    self.all_products.loc[self.all_products['product_fk']
-                                          == product]['product_ean_code'].values[0]
-            except IndexError as e:
-                Log.info('Product fk {} is not defined in the DB'.format(product))
-                continue
-            assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
-            oos_kpi_name = str(product_ean_code) + ' - OOS'
-            self.save_level2_and_level3(OSA, assortment_kpi_name, 0)
-            self.save_level2_and_level3(OSA, oos_kpi_name, 0)
+            # try:
+            #     product_ean_code = \
+            #         self.all_products.loc[self.all_products['product_fk']
+            #                               == product]['product_ean_code'].values[0]
+            # except IndexError as e:
+            #     Log.info('Product fk {} is not defined in the DB'.format(product))
+            #     continue
+            # assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
+            # oos_kpi_name = str(product_ean_code) + ' - OOS'
+            # self.save_level2_and_level3(OSA, assortment_kpi_name, 0)
+            # self.save_level2_and_level3(OSA, oos_kpi_name, 0)
 
         return
 
