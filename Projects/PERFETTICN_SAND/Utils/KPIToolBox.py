@@ -54,23 +54,23 @@ class PERFETTICNToolBox:
         self.assortment_calculation()
         self.common.commit_results_data_to_new_tables()
 
-    def display_count (self):
+    def display_count(self):
 
         num_brands = {}
         display_info = self.scif['template_fk']
         display_fks = display_info.unique()
         template_seco = self.template[self.template['included_in_secondary_shelf_report'] == 'Y']['template_fk']
-        display_fks = list(filter(lambda x : x  in template_seco.values, display_fks))
+        display_fks = list(filter(lambda x: x in template_seco.values, display_fks))
         count_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'COUNT OF DISPLAY']['pk'].iloc[0]
         for value in display_fks:
             num_brands[value] = display_info[display_info == value].count()
             score = num_brands[value]
-            self.common.write_to_db_result_new_tables(count_fk,value , score,None, score, score, score)
+            self.common.write_to_db_result_new_tables(count_fk,value , None,score, score, score, score)
 
         return
 
 
-#figure out what the score should be should rpresent ?
+#
     def assortment_calculation(self):
         """
         This function calculates the KPI results.
@@ -108,34 +108,4 @@ class PERFETTICNToolBox:
                                                               denominator_result=denominator_res,
                                                               result=res, score=score)
         return
-
-    # def get_match_display(self,session_uid):
-    #
-    #     get_query = """
-    #                 SELECT st.store_number_1,display_name, COUNT(*) as cnt
-    #                 FROM probedata.match_display_in_scene
-    #                 JOIN static.display ON static.display.pk = probedata.match_display_in_scene.display_fk
-    #                 JOIN  (SELECT  pk AS scene_pk, store_fk
-    #                 FROM probedata.scene
-    #                 WHERE session_uid = '{}') scene_detail ON scene_pk = scene_fk
-    #                 JOIN  static.stores st ON st.pk = store_fk
-    #                 GROUP BY display_name , st.store_number_1;
-    #             """.format(session_uid)
-    #     data = pd.read_sql(get_query, self.rds_conn.db)
-    #     return data
-
-    # def get_match_display(self,session_uid):
-    #
-    #     get_query="""
-    #                 SELECT display_name, COUNT(*)
-    #                 FROM  probedata.match_display_in_scene
-    #                 JOIN static.display ON static.display.pk = probedata.match_display_in_scene.display_fk
-    #                 WHERE
-    #                 scene_fk IN (SELECT pk
-    #                 FROM  probedata.scene
-    #                 WHERE session_uid = '{}')
-    #                 GROUP BY display_name;
-    #             """.format(session_uid)
-    #     data = pd.read_sql(get_query, self.rds_conn.db)
-    #     return data
 
