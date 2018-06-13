@@ -11,6 +11,7 @@ GENERATOR_FILE_NAME = 'KPIGenerator'
 FETCHER_FILE_NAME = 'Fetcher'
 TOOL_BOX_FILE_NAME = 'KPIToolBox'
 LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
+PROFILING_SCRIPT_NAME = 'gen_profiling'
 
 LOCAL_FILE = """
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -140,6 +141,37 @@ class %(generator_class_name)s:
         self.common.commit_results_data()
 """
 
+PROFILING_SCRIPT = """
+#!/usr/bin/env bash
+
+# Author: Ilan P
+
+# this scripts gen an .svg file to see clearly the code flow execution for profiling
+# between imports
+
+# HOW TO USE
+# ============
+# just provide the project name which you want to create a execution graph . example " ./gen_profiling.sh CCBR_SAND"
+# the svg file will be in the folder project folder DO NOT PUSH IT TO THE GIT
+
+
+dir=$PWD
+
+parentdir="$(dirname "$dir")"
+
+PROJECT=${parentdir##*/}
+
+
+cd .. && cd .. && cd .. && python -m cProfile -o 1.stats ~/dev/kpi_factory/Projects/$PROJECT/Calculations.py -e prod -c ~/dev/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config
+gprof2dot -f pstats 1.stats -o 1.dot
+dot -Tsvg -Gdpi=70 -o ${PROJECT}_profiling.svg 1.dot
+
+mv ~/dev/kpi_factory/1.dot $dir/1.dot
+mv ~/dev/kpi_factory/1.stats $dir/1.stats
+mv ~/dev/kpi_factory/${PROJECT}_profiling.svg $dir/${PROJECT}_profiling.svg
+
+"""
+
 
 class CreateKPIProject:
 
@@ -164,7 +196,8 @@ class CreateKPIProject:
                                 (LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE),
                                 (GENERATOR_FILE_NAME, GENERATOR)],
                            'Utils': [(TOOL_BOX_FILE_NAME, TOOL_BOX),
-                                     ]}
+                                     ],
+                           'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT)]}
 
         formatting_dict = {'author': self.author,
                            'project': self.project,
@@ -174,7 +207,8 @@ class CreateKPIProject:
                            'tool_box_file_name': TOOL_BOX_FILE_NAME,
                            'tool_box_class_name': '{}ToolBox'.format(self.project_short),
                            'main_file_name': MAIN_FILE_NAME,
-                           'main_class_name': '{}Calculations'.format(self.project_short)}
+                           'main_class_name': '{}Calculations'.format(self.project_short)
+                           }
         for directory in files_to_create.keys():
             if directory:
                 directory_path = self.project_path + directory + '/'
@@ -184,8 +218,13 @@ class CreateKPIProject:
             else:
                 directory_path = self.project_path
             for file_name, file_content in files_to_create[directory]:
-                with open(directory_path + file_name + '.py', 'wb') as f:
-                    f.write(file_content % formatting_dict)
+                if directory == 'Profiling':
+                    with open(directory_path + file_name + '.sh', 'wb') as f:
+                        f.write(file_content)
+                else:
+                    with open(directory_path + file_name + '.py', 'wb') as f:
+                        f.write(file_content % formatting_dict)
+
         data_directory = os.path.join(self.project_path, 'Data')
         if not os.path.exists(data_directory):
             os.makedirs(data_directory)
