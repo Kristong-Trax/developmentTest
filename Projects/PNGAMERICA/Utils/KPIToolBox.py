@@ -126,7 +126,7 @@ class PNGAMERICAToolBox:
         self.checkerboarded_template = parse_template(TEMPLATE_PATH, 'checkerboarded new')
         self.eye_level_data = parse_template(TEMPLATE_PATH, 'eye level new')
         self.posm_data = parse_template(TEMPLATE_PATH, 'posm')
-        # self.block_and_availability_data = parse_template(TEMPLATE_PATH, 'block and availability')
+        self.block_and_availability_data = parse_template(TEMPLATE_PATH, 'block and availability')
         # self.average_shelf = parse_template(TEMPLATE_PATH, 'average shelf')
         # self.sos_template = parse_template(TEMPLATE_PATH, 'sos')
         # self.pantene_template = parse_template(TEMPLATE_PATH, 'pantene')
@@ -1911,16 +1911,43 @@ class PNGAMERICAToolBox:
         filters_2 = {kpi_template['filter_2']: kpi_template['filter_2_value']}
         score_count = 0
         for filter_option in [filters_1, filters_2]:
-            self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_1_value'] + ' anchor', scene_type, filters=filter_option,
-                                      return_result=True)
-            self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_2_value'] + ' reverse', scene_type,
-                                      filters=filter_option, return_result=True)
-            if self.related_kpi_results[kpi_template['filter_1_value'] + ' anchor'] or self.related_kpi_results[
-                        kpi_template['filter_1_value'] + ' reverse']:
-                score_count += 1
+            # self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_1_value'] + ' anchor', scene_type, filters=filter_option,
+            #                           return_result=True)
+            #
+            # self.calculate_anchor_new(kpi_set_fk, kpi_template['filter_2_value'] + ' reverse', scene_type,
+            #                           filters=filter_option, return_result=True)
+            # if self.related_kpi_results[kpi_template['filter_1_value'] + ' anchor'] or self.related_kpi_results[
+            #             kpi_template['filter_1_value'] + ' reverse']:
+            #     score_count += 1
+            anchor_result = self.calculate_anchor_stand_alone(scene_type, kpi_template['filter_1_value'] + ' anchor',
+                                                              kpi_template['category'], filters=filter_option)
+            rev_result = self.calculate_anchor_stand_alone(scene_type, kpi_template['filter_1_value'] + ' reverse',
+                                                              kpi_template['category'], filters=filter_option)
+            if anchor_result or rev_result:
+                score_count +=1
         result = 1 if score_count >= 2 else 0
         self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result,
                                 score=result)
+
+    def calculate_anchor_stand_alone(self, scene_type, kpi_name, category, filters):
+        list_type = False
+        score = 0
+        for s_type in scene_type:
+            if 'LL' in s_type:
+                position = 'left'
+                if 'rev' in kpi_name:
+                    position = 'right'
+            else:
+                position = 'right'
+                if 'rev' in kpi_name:
+                    position = 'left'
+            scif_scenes = self.scif.loc[self.scif['template_name'] == s_type]['scene_id'].unique().tolist()
+            filters['scene_id'] = scif_scenes
+            results = self.tools.calculate_products_on_edge(list_result=list_type, position=position,
+                                                            category=category, **filters)
+            if results[0] >= 1:
+                score = 1
+        return score
 
     def calculate_color_wheel(self, kpi_set_fk, kpi_name, scene_type):
         kpi_template = self.count_of_data.loc[self.count_of_data['KPI name'] == kpi_name] #todo: change this

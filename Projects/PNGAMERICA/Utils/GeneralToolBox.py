@@ -379,7 +379,9 @@ class PNGAMERICAGENERALToolBox:
         number_of_eye_level_entities = 0
         total_filtered_attributes = 0
         if percentage_result:
+            filters['stacking_layer'] = 1
             total_filtered_attributes = self.calculate_availability(**filters)
+            del filters['stacking_layer']
         products_on_eye_level = []
         for scene in relevant_scenes:
             eye_level_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
