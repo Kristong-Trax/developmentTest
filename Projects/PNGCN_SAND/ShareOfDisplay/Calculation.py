@@ -201,7 +201,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                                                   'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
         if not table_bays.empty:
-            table_bays.drop_duplicates(['scene_fk'], inplace=True)
+            table_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
         if not table_display.empty:
             # only valid tags are relevant
             table_valid_bays = self._filter_valid_bays(table_bays)
