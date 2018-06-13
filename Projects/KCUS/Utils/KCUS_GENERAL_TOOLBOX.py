@@ -492,6 +492,8 @@ class KCUSGENERALToolBox:
             reject_counter = 0
             for scene in relevant_scenes:
                 scene_graph = self.position_graph.get(scene)
+                if not scene_graph:
+                    continue
                 tested_vertices = self.filter_vertices_from_graph(scene_graph, **tested_filters)
                 anchor_vertices = self.filter_vertices_from_graph(scene_graph, **anchor_filters)
                 for tested_vertex in tested_vertices:
