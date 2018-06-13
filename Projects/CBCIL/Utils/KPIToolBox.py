@@ -299,7 +299,6 @@ class CBCILCBCIL_ToolBox(object):
             weight_of_all_kpis_with_scores = sum([kpi['denominator_weight'] for kpi in
                                                  filter(lambda x: x['kpi_fk'] not in kpis_without_score.keys(),
                                                         all_kpis_in_set)])
-            # weight_to_each_kpi = total_weight_to_reallocate / (len(all_kpis_in_set) - len(kpis_without_score.items()))
             for kpi in all_kpis_in_set:
                 if kpi['kpi_fk'] in kpis_without_score.keys():
                     kpi['denominator_weight'] = 0
@@ -410,15 +409,7 @@ class CBCILCBCIL_ToolBox(object):
                 filters = {'scene_fk': scene}
                 ratio = self.tools.calculate_linear_share_of_display(numerator_filters, **filters)
                 set_scores.append(ratio)
-                # set_scores.sort()
             set_scores.sort()
-            # if competitor_coolers > 0 and 0 < cbc_coolers == set_scores.count(1.0):
-            #     return 100
-            # elif cbc_coolers > 1 and set_scores.count(1.0) >= (cbc_coolers - 1):
-            #     if set_scores[0] >= 0.8:
-            #         return 100
-            # elif cbc_coolers == 1 and set_scores[0] > 0.8:
-            #     return 100
 
             if competitor_coolers > 0 and 0 < cbc_coolers:
                 return sum(set_scores)/len(set_scores)*100
