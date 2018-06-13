@@ -255,19 +255,15 @@ class DIAGEOUSToolBox:
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
         diageo_results = all_results[all_results[Const.MANUFACTURER] == self.manufacturer_fk][Const.PASSED].sum()
-
-        # rifka staff:
-        # result = self.get_score(diageo_results, den_res)
-        # score = 100 if (diageo_results >= target * den_res) else 0
-        # we need to return confluence score
-
-        result = 100 if (diageo_results >= target * den_res) else 0
-        score = result * weight
+        result = self.get_score(diageo_results, den_res)
+        score = 100 if (diageo_results >= target * den_res) else 0
+        # result = 100 if (diageo_results >= target * den_res) else 0
+        # score = result * weight
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results,
             denominator_result=den_res, result=result, should_enter=True, weight=weight, score=score,
             identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
-        return score, 0, 0
+        return score * weight, 0, 0
 
     def calculate_display_share_of_sku(self, product_fk, relevant_products, manufacturer_kpi_fk):
         """
