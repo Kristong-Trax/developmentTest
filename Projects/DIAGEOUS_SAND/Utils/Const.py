@@ -63,13 +63,13 @@ class Const(object):
             SUB_BRAND: 'Diageo_Dispaly_Compliance_Sub_Brand_%', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
             TOTAL: 'Shelf Facings - Total Score',
-            NATIONAL: 'Shelf Facings - National Score',
-            SEGMENT: 'Shelf Facings - Segment Score', BRAND: 'Diageo_Shelf_facing_Compliance_Brand_%',
+            # NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
+            BRAND: 'Diageo_Shelf_facing_Compliance_Brand_%',
             SUB_BRAND: 'Diageo_Shelf_facing_VS_Competition_Sub_Brand%',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
-            TOTAL: 'Display Placement - Total Score', NATIONAL: 'Shelf Placement - National Score',
-            SEGMENT: 'Shelf Placement - Segment Score', BRAND: 'Dispaly_Shelf_Placements_Brand_%',
+            TOTAL: 'Display Placement - Total Score', BRAND: 'Dispaly_Shelf_Placements_Brand_%',
+            # NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
             SUB_BRAND: 'Dispaly_Shelf_Placements_Sub_brand_%', SKU: 'Shelf Placement - Brand Variant Size'},
         MSRP: {TOTAL: 'Diageo_Msrp_score_total', BRAND: 'Diageo_Msrp_Brand', SUB_BRAND: 'Diageo_Msrp_Sub_Brand',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
@@ -78,7 +78,6 @@ class Const(object):
     }
 
     PERCENT_FOR_EYE_LEVEL = 0
-    TARGET_FOR_DISPLAY_SHARE = 0.25
 
     # names in DB:
     DB_SCORE_TOTAL = 'Diageo_score_total_offpremis'
@@ -96,8 +95,11 @@ class Const(object):
 
     PRODUCT_FK, STANDARD_TYPE, PASSED = "product_fk", "standard_type", "passed"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
-    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT2 = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
 
     EXTRA = "EXTRA"
     OOS = "OOS"
     DISTRIBUTED = "DISTRIBUTED"
+    OTHER = "OTHER"
+
