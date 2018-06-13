@@ -78,7 +78,6 @@ class Const(object):
     }
 
     PERCENT_FOR_EYE_LEVEL = 0
-    TARGET_FOR_DISPLAY_SHARE = 0.25
 
     # names in DB:
     DB_SCORE_TOTAL = 'Diageo_score_total_offpremis'
