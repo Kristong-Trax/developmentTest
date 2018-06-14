@@ -64,7 +64,7 @@ class CCRUFIFAKPIToolBox:
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             first_atomic_score = 0
-            children = map(int, p.get("children").split(", "))
+            children = map(int, str(p.get("children")).strip().split(", "))
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula") == "atomic answer to survey":
                     first_atomic_score = self.check_answer_to_survey_level3(c)
@@ -562,7 +562,7 @@ class CCRUFIFAKPIToolBox:
             if p.get('Formula') not in ('Weighted Average'):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).strip().split("\n"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
             kpi_total = 0
             kpi_total_weight = 0
@@ -656,7 +656,7 @@ class CCRUFIFAKPIToolBox:
         set_total_res = 0
         if p.get('level') == 2:
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-        children = map(int, p.get("Children").split("\n"))
+        children = map(int, str(p.get("Children")).strip().split("\n"))
         info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
         kpi_total_weight = 0
         numerator = 0
@@ -704,7 +704,7 @@ class CCRUFIFAKPIToolBox:
                 continue
             if p.get('KPI ID') != '*':
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).strip().split("\n"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
             kpi_total_weight = 0
             numerator = 0
