@@ -54,21 +54,21 @@ class DIAGEOUSToolBox:
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         if self.data_provider[Data.STORE_INFO]['store_type'].iloc[0] in ('Dining', 'Bar/Nightclub'):
-            #"F2F1026C-6603-4A08-8537-1FEE2BFF4971"
             self.on_premise = True
         else:
             self.on_premise = False
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
-        self.scenes_with_shelves = {}
-        for scene in self.scenes:
-            shelf = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['shelf_number'].max()
-            self.scenes_with_shelves[scene] = shelf
-        self.converted_groups = self.convert_groups_from_template()
+        if not self.on_premise:
+            self.scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
+            self.scenes_with_shelves = {}
+            for scene in self.scenes:
+                shelf = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['shelf_number'].max()
+                self.scenes_with_shelves[scene] = shelf
+            self.converted_groups = self.convert_groups_from_template()
+            self.calculated_price, self.calculated_shelf_facings = [], []
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
-        self.calculated_price, self.calculated_shelf_facings = [], []
 
     # main functions:
 
@@ -81,11 +81,11 @@ class DIAGEOUSToolBox:
         segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_SCORE_SEGMENT)
         national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_SCORE_NATIONAL)
         for i, kpi_line in self.templates[Const.KPIS_SHEET].iterrows():
-            t_weighted_score, s_weighted_score, n_weighted_score = self.calculate_set(kpi_line)
+            total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(kpi_line)
             if kpi_line[Const.KPI_GROUP]:
-                total_store_score += t_weighted_score
-                segment_store_score += s_weighted_score
-                national_store_score += n_weighted_score
+                total_store_score += total_weighted_score
+                segment_store_score += segment_weighted_score
+                national_store_score += national_weighted_score
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score,
             identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=total_store_score)
@@ -109,20 +109,18 @@ class DIAGEOUSToolBox:
         if not self.does_exist(weight):
             weight = 1
         if kpi_name == Const.SHELF_PLACEMENT:
-            total_score, segment_score, national_score = self.calculate_total_shelf_placement(scene_types, kpi_name,
-                                                                                              weight)
+            total_score, segment_score, national_score = self.calculate_total_shelf_placement(
+                scene_types, kpi_name, weight)
         elif kpi_name == Const.SHELF_FACINGS:
-            total_score, segment_score, national_score = self.calculate_total_shelf_facings(scene_types, kpi_name,
-                                                                                            weight)
+            total_score, segment_score, national_score = self.calculate_total_shelf_facings(
+                scene_types, kpi_name, weight)
         elif kpi_name == Const.MSRP:
             total_score, segment_score, national_score = self.calculate_total_msrp(scene_types, kpi_name, weight)
         elif kpi_name == Const.DISPLAY_SHARE:
-            total_score, segment_score, national_score = self.calculate_total_display_share(scene_types, weight,
-                                                                                            target)
+            total_score, segment_score, national_score = self.calculate_total_display_share(
+                scene_types, weight, target)
         elif kpi_name in (Const.POD, Const.DISPLAY_BRAND):
             total_score, segment_score, national_score = self.calculate_assortment(scene_types, kpi_name, weight)
-        elif kpi_name == Const.STORE_SCORE:
-            return 0, 0, 0
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0, 0, 0
@@ -135,6 +133,7 @@ class DIAGEOUSToolBox:
         Gets assortment type, and calculates it with the match function
         :param scene_types: string from template
         :param kpi_name:
+        :param weight
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -252,24 +251,26 @@ class DIAGEOUSToolBox:
             product_result = self.calculate_display_share_of_sku(product_fk, relevant_products, manufacturer_kpi_fk)
             all_results = all_results.append(product_result, ignore_index=True)
         den_res = all_results[Const.PASSED].sum()
+        diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
             num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
+            # if manufacturer == self.manufacturer_fk:
+            #     result = target
+            # else:
+            result = self.get_score(num_res, den_res)
             if manufacturer == self.manufacturer_fk:
-                result = target
-            else:
-                result = self.get_score(num_res, den_res)
+                diageo_result = result
+                diageo_results = num_res
             result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
-        diageo_results = all_results[all_results[Const.MANUFACTURER] == self.manufacturer_fk][Const.PASSED].sum()
-        result = self.get_score(diageo_results, den_res)
         score = 100 if (diageo_results >= target * den_res) else 0
         # result = 100 if (diageo_results >= target * den_res) else 0
         # score = result * weight
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results,
-            denominator_result=den_res, result=result, should_enter=True, weight=weight, score=score,
+            denominator_result=den_res, result=diageo_result, should_enter=True, weight=weight, score=score,
             identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
         return score * weight, 0, 0
 
@@ -299,6 +300,7 @@ class DIAGEOUSToolBox:
         Calculates if facings of Diageo products are more than targets (competitors products or objective target)
         :param scene_types:
         :param kpi_name:
+        :param weight:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -403,6 +405,7 @@ class DIAGEOUSToolBox:
         Takes list of products and their shelf groups, and calculate if the're pass the target.
         :param scene_types:
         :param kpi_name:
+        :param weight
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -635,18 +638,24 @@ class DIAGEOUSToolBox:
         """
         Reads the template (and makes the EANs be Strings)
         """
-        for sheet in Const.SHEETS:
-            if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
-                converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
-                              Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                      converters=converters, keep_default_na=False)
-            elif sheet == Const.SHELF_PLACMENTS_SHEET:
-                converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                      converters=converters, keep_default_na=False)
-            else:
-                self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2, keep_default_na=False)
+        if self.on_premise:
+            for sheet in Const.ON_SHEETS:
+                self.templates[sheet] = pd.read_excel(ON_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                      keep_default_na=False)
+        else:
+            for sheet in Const.OFF_SHEETS:
+                if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
+                    converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
+                                  Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          converters=converters, keep_default_na=False)
+                elif sheet == Const.SHELF_PLACMENTS_SHEET:
+                    converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          converters=converters, keep_default_na=False)
+                else:
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          keep_default_na=False)
 
     def get_relevant_scenes(self, scene_types):
         """
