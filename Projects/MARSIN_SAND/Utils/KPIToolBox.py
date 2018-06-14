@@ -419,8 +419,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
         if params[self.KPI_GROUP] == self.AVAILABILITY:
             kpi_data = kpi_data.iloc[0]
             products = kpi_data[self.VALUES].split(self.SEPARATOR)
-            target = len(products) if not str(kpi_data[self.template_id]).isdigit() else int(kpi_data[self.template_id])
             result = 0
+            target = 0
             for product in products:
                 product_result = 0
                 for sub_product in product.split(self.SEPARATOR3):
