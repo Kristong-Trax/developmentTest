@@ -424,6 +424,11 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
             for product in products:
                 product_result = 0
                 for sub_product in product.split(self.SEPARATOR3):
+                    if self.all_products[self.all_products['product_ean_code'].isin([sub_product])].product_ean_code.count() > 0:
+                        target += 1
+                    else :
+                        Log.error('product_ean_code does not exists {}'.format(sub_product))
+                        break
                     sub_product_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                            product_ean_code=sub_product)
                     sub_product_score = 1 if sub_product_result >= 1 else 0
@@ -434,6 +439,8 @@ class MARSIN_SANDToolBox(MARSIN_SANDTemplateConsts, MARSIN_SANDKPIConsts):
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
                 result += product_result
+            if target > 0 :
+                result = round(float(result) / float(target), 2)
             result = round(float(result)/float(target), 2)
             score = 0 if result < THRESHOLD else 1 if result >= 1 else result
 
