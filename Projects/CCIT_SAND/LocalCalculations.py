@@ -14,5 +14,5 @@ if __name__ == '__main__':
     session = 'FA35EE7B-1012-4EFD-9B88-0A5BD3CBFBCD'
     data_provider.load_session_data(session)
     output = Output()
-    # Calculations(data_provider, output).run_project_calculations()
-    SceneCalculations(data_provider).calculate_kpis()
+    Calculations(data_provider, output).run_project_calculations()
+    # SceneCalculations(data_provider).calculate_kpis()

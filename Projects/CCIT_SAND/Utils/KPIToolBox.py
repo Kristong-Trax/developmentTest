@@ -57,9 +57,10 @@ class CCITToolBox:
         This function calculates the KPI results.
         """
         numerator_filters = {
-            'manufacturer_name': self.CCIT_MANU
+            'manufacturer_name': self.CCIT_MANU,
+            'template_fk': self.scif['template_fk'].drop_duplicates().values[0]
         }
-        result = SOS(self.data_provider,self.output).calculate_share_of_shelf(sos_filters=numerator_filters,
-                                                                              include_empty=True)
+        result = SOS(self.data_provider, self.output).calculate_sos_facing_by_scene(sos_filters=numerator_filters,
+                                                                                    include_empty=True)
         target = self.occupancy_template['target']
         return result

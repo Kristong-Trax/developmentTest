@@ -8,7 +8,7 @@ __author__ = 'nissand'
 class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        Generator(self.data_provider, self.output).main_function()
+        Generator(self.data_provider, self.output).occupancy_calculation()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
