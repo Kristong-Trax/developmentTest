@@ -3,6 +3,7 @@ import os
 import shutil
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
+import stat
 
 __author__ = 'yoava'
 
@@ -12,6 +13,7 @@ FETCHER_FILE_NAME = 'Fetcher'
 TOOL_BOX_FILE_NAME = 'KPIToolBox'
 LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
 PROFILING_SCRIPT_NAME = 'gen_profiling'
+DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
 
 LOCAL_FILE = """
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -142,33 +144,73 @@ class %(generator_class_name)s:
 """
 
 PROFILING_SCRIPT = """
+
 #!/usr/bin/env bash
 
-# Author: Ilan P
+# Author: Ilan P & yoava
 
 # this scripts gen an .svg file to see clearly the code flow execution for profiling
 # between imports
 
 # HOW TO USE
 # ============
-# just provide the project name which you want to create a execution graph . example " ./gen_profiling.sh CCBR_SAND"
-# the svg file will be in the folder project folder DO NOT PUSH IT TO THE GIT
+# cd to kpi_factory/Projects/<your project>/Profiling
+# in terminal : ./gen_profiling.sh
+# may the force be with you
 
 
-dir=$PWD
+PROJECT_DIR=$PWD
 
-parentdir="$(dirname "$dir")"
+PARENT_DIR="$(dirname "$PROJECT_DIR")"
 
-PROJECT=${parentdir##*/}
+PROJECT=${PARENT_DIR##*/}
 
 
 cd .. && cd .. && cd .. && python -m cProfile -o 1.stats ~/dev/kpi_factory/Projects/$PROJECT/Calculations.py -e prod -c ~/dev/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config
 gprof2dot -f pstats 1.stats -o 1.dot
 dot -Tsvg -Gdpi=70 -o ${PROJECT}_profiling.svg 1.dot
 
-mv ~/dev/kpi_factory/1.dot $dir/1.dot
-mv ~/dev/kpi_factory/1.stats $dir/1.stats
-mv ~/dev/kpi_factory/${PROJECT}_profiling.svg $dir/${PROJECT}_profiling.svg
+mv ~/dev/kpi_factory/1.dot ${PROJECT_DIR}/1.dot
+mv ~/dev/kpi_factory/1.stats ${PROJECT_DIR}/1.stats
+mv ~/dev/kpi_factory/${PROJECT}_profiling.svg ${PROJECT_DIR}/${PROJECT}_profiling.svg
+
+"""
+
+
+GEN_DEPENDENCY_SCRIPT = """
+
+#!/usr/bin/env bash
+
+# Author: ilan p & yoava
+
+# this scripts gen an .svg file to see clearly the dependencies
+# between imports
+
+# HOW TO USE
+# ============
+# cd to kpi_factory/Projects/<your project>/Profiling
+# in terminal : ./gen_dependency_graph.sh
+# may the force be with you
+
+PROJECT_DIR=$PWD
+
+
+PARENT_DIR="$(dirname "$PROJECT_DIR")"
+
+
+
+~/miniconda/envs/garage/bin/sfood ${PARENT_DIR}/ | ~/miniconda/envs/garage/bin/sfood-graph > /tmp/d.dot
+dot -Tsvg -Gdpi=70 /tmp/d.dot -o ${PROJECT_DIR}/graph1.svg
+
+
+
+export message='"message"'
+export severity='"severity"'
+export application='"application"'
+export environment='"environment"'
+export my_user=$(whoami)
+
+curl -X POST https://logs-01.loggly.com/inputs/2cce0ddd-ce82-4f1f-af5d-f72be7fc67ae/tag/python,PS,Install_hooks/ -d "{action: gen dependency graph, $severity: 'info', $application: 'PS_dev_tools' , $environment: 'dev', user:$my_user}"
 
 """
 
@@ -197,7 +239,8 @@ class CreateKPIProject:
                                 (GENERATOR_FILE_NAME, GENERATOR)],
                            'Utils': [(TOOL_BOX_FILE_NAME, TOOL_BOX),
                                      ],
-                           'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT)]}
+                           'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
+                                         (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)]}
 
         formatting_dict = {'author': self.author,
                            'project': self.project,
@@ -221,6 +264,8 @@ class CreateKPIProject:
                 if directory == 'Profiling':
                     with open(directory_path + file_name + '.sh', 'wb') as f:
                         f.write(file_content)
+                        st = os.stat(os.path.join(directory_path, file_name + '.sh'))
+                        os.chmod(os.path.join(directory_path, file_name + '.sh'), st.st_mode | stat.S_IEXEC)
                 else:
                     with open(directory_path + file_name + '.py', 'wb') as f:
                         f.write(file_content % formatting_dict)
