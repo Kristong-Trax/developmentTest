@@ -156,7 +156,6 @@ PROFILING_SCRIPT = """
 # ============
 # cd to kpi_factory/Projects/<your project>/Profiling
 # in terminal : ./gen_profiling.sh
-# may the force be with you
 
 
 PROJECT_DIR=$PWD
@@ -190,7 +189,6 @@ GEN_DEPENDENCY_SCRIPT = """
 # ============
 # cd to kpi_factory/Projects/<your project>/Profiling
 # in terminal : ./gen_dependency_graph.sh
-# may the force be with you
 
 PROJECT_DIR=$PWD
 
