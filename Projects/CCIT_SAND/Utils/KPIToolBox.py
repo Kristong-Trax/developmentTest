@@ -1,4 +1,5 @@
-
+import os
+import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -9,7 +10,7 @@ from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
@@ -26,6 +27,11 @@ class CCITToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                 'KPI_Templates.xlsx')
+    CCIT_MANU = 'HBC Italia'
+    OCCUPANCY_SHEET = 'occupancy_target'
+
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -44,10 +50,16 @@ class CCITToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.occupancy_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.OCCUPANCY_SHEET)
 
-    def main_calculation(self, *args, **kwargs):
+    def occupancy_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        score = 0
-        return score
+        numerator_filters = {
+            'manufacturer_name': self.CCIT_MANU
+        }
+        result = SOS(self.data_provider,self.output).calculate_share_of_shelf(sos_filters=numerator_filters,
+                                                                              include_empty=True)
+        target = self.occupancy_template['target']
+        return result
