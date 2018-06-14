@@ -418,11 +418,17 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
         if params[self.KPI_GROUP] == self.AVAILABILITY:
             kpi_data = kpi_data.iloc[0]
             products = kpi_data[self.VALUES].split(self.SEPARATOR)
-            target = len(products) if not str(kpi_data[self.template_id]).isdigit() else int(kpi_data[self.template_id])
+
             result = 0
+            target = 0
             for product in products:
                 product_result = 0
                 for sub_product in product.split(self.SEPARATOR3):
+                    if self.all_products[self.all_products['product_ean_code'].isin([sub_product])].product_ean_code.count() > 0:
+                        target += 1
+                    else :
+                        Log.error('product_ean_code does not exists {}'.format(sub_product))
+                        break
                     sub_product_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                            product_ean_code=sub_product)
                     sub_product_score = 1 if sub_product_result >= 1 else 0
@@ -431,8 +437,11 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     s = self.save_result_for_product(params, sub_product, (sub_product_score, sub_product_result, 1))
                     if s is None and len(product.split(self.SEPARATOR3)) == 1:
                         product_result += 1
+
+
                 result += product_result
-            result = round(float(result) / float(target), 2)
+            if target > 0 :
+                result = round(float(result) / float(target), 2)
             score = 0 if result < self.THRESHOLD else 1 if result >= 1 else result
 
         else:
