@@ -40,7 +40,7 @@ class Const(object):
     # shelf groups
     NUMBER_GROUP, SHELF_GROUP = "number group", "shelf groups"
 
-    # sets:
+    # sets in off-premise:
     POD = "POD"
     DISPLAY_BRAND = "Display Brand"
     DISPLAY_SHARE = "Display Share"
@@ -49,55 +49,64 @@ class Const(object):
     MSRP = "MSRP"
     STORE_SCORE = "Store Score"
 
+    # sets in on-premise:
+    BACK_BAR = "Back Bar"
+    MENU = "Menu"
+
     SEGMENT, NATIONAL, TOTAL = "segment", "national", "total"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
 
-    DB_NAMES = {
+    # names in DB:
+
+    DB_OFF_SCORE_TOTAL = 'Diageo_score_total_offpremis'
+    DB_OFF_SCORE_NATIONAL = 'score_national_offpremis'
+    DB_OFF_SCORE_SEGMENT = 'score_segment_offpremis'
+    DB_ON_TOTAL = 'Diageo_score_total_onpremis'
+    DB_OFF_NAMES = {
         POD: {
-            TOTAL: 'POD', NATIONAL: 'POD_score_national_%', SEGMENT: 'POD_score_segment_%',
-            BRAND: 'POD_Brand_%', SUB_BRAND: 'POD_Sub_brand_%', SKU: 'POD - SKU'},
+            TOTAL: 'POD - Total Score', NATIONAL: 'POD - Natianal Score', SEGMENT: 'POD - Segment Score',
+            BRAND: 'Diageo_POD_Brand_%', SUB_BRAND: 'Diageo_POD_Sub_brand_%', SKU: 'POD - Brand Variant Size Level'},
         DISPLAY_BRAND: {
-            TOTAL: 'DISPLAY', NATIONAL: 'Display_Compliance_score_national_%',
-            SEGMENT: 'Display_Compliance_score_segment_%', BRAND: 'Display_Compliance_Brand_%',
-            SUB_BRAND: 'Display_Compliance_Sub_Brand_%', SKU: 'DISPLAY - SKU'},
+            TOTAL: 'Display Brand - Total Score', NATIONAL: 'Brand Display - National Score',
+            SEGMENT: 'Brand Display - Segment Score', BRAND: 'Diageo_Dispaly_Compliance_Brand_%',
+            SUB_BRAND: 'Diageo_Dispaly_Compliance_Sub_Brand_%', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
-            TOTAL: 'Shelf_facing_VS_Competition_score_total_%',
-            NATIONAL: 'Shelf_facing_VS_Competition_score_national_%',
-            SEGMENT: 'Shelf_facing_VS_Competition_score_segment_%', BRAND: 'Shelf_facing_Compliance_Brand_%',
-            SUB_BRAND: 'Shelf_facing_VS_Competition_Sub_Brand%', COMPETITION: 'Shelf_facings_SKU_VS_Competition',
-            SKU: 'Shelf_facings_SKU'},
+            TOTAL: 'Shelf Facings - Total Score',
+            # NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
+            BRAND: 'Diageo_Shelf_facing_Compliance_Brand_%',
+            SUB_BRAND: 'Diageo_Shelf_facing_VS_Competition_Sub_Brand%',
+            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
-            TOTAL: 'Display_Shelf_Placements_score_total_%', NATIONAL: 'Display_Shelf_Placements_score_national_%',
-            SEGMENT: 'Display_Shelf_Placements_score_segment_%', BRAND: 'Display_Shelf_Placements_Brand_%',
-            SUB_BRAND: 'Display_Shelf_Placements_Sub_brand_%', SKU: 'Display_Shelf_Placements_SKU_status'},
-        MSRP: {TOTAL: 'Msrp_score_total', BRAND: 'Msrp_Brand', SUB_BRAND: 'Msrp_Sub_Brand', COMPETITION: 'Msrp_sku',
-               SKU: 'SKU_Price'},
-        DISPLAY_SHARE: {TOTAL: 'Display_Share_score_total_%', MANUFACTURER: 'Display_Share_Manufacturer_%',
-                        SKU: 'Display_Share_SKU'}
-    }
+            TOTAL: 'Display Placement - Total Score', BRAND: 'Dispaly_Shelf_Placements_Brand_%',
+            # NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
+            SUB_BRAND: 'Dispaly_Shelf_Placements_Sub_brand_%', SKU: 'Shelf Placement - Brand Variant Size'},
+        MSRP: {TOTAL: 'Diageo_Msrp_score_total', BRAND: 'Diageo_Msrp_Brand', SUB_BRAND: 'Diageo_Msrp_Sub_Brand',
+               COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
+        DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Dispaly_Share_Manufacturer_%',
+                        SKU: 'Display Share - Brand Variant Size'}}
+    DB_ON_NAMES = {
+        POD: {
+            TOTAL: 'Diageo_POD_on_premis_%',
+            BRAND: 'Diageo_POD_on_premis_Brand_%', SUB_BRAND: 'Diageo_POD_on_premis_Sub_Brand_%',
+            SKU: 'Diageo_POD_on_premis_SKU'},
+        BACK_BAR: {
+            TOTAL: 'Diageo_Back_Bar_total_onpremis',
+            BRAND: 'Diageo_Back_Bar_Brand_%', SUB_BRAND: 'Diageo_Back_Bar_Sub_Brand_%',
+            SKU: 'Diageo_Back_Bar_presence_SKU_%'},
+        MENU: {
+            TOTAL: 'Diageo_Menu_total_onpremis', MANUFACTURER: 'Digeo_Menu_Manufacturer_onpremis',
+            BRAND: 'Digeo_Menu_Brand_onpremis'}}
 
     PERCENT_FOR_EYE_LEVEL = 0
-    TARGET_FOR_DISPLAY_SHARE = 0.25
-
-    # names in DB:
-    DB_SCORE_TOTAL = 'score_total_offpremis'
-    DB_SCORE_NATIONAL = 'score_national_offpremis'
-    DB_SCORE_SEGMENT = 'score_segment_offpremis'
-
-    DB_TOTAL_ONPREMIS = 'score_total_onpremis'
-    DB_TOTAL_ONPREMIS_MENU = 'Menu_total_onpremis'
-    DB_BACK_BAR_TOTAL = 'Back_Bar_total_onpremis'
-    DB_MENU_SHARE_MANUFATURER = 'Menu_share_Manufacturer_%'
-    DB_MENU_SHARE_BRAND = 'Menu_share_Brand_%'
-    DB_BACK_BAR_BRAND = 'Back_Bar_Brand_%'
-    DB_BACK_BAR_SUB_BRAND = 'Back_Bar_Sub_Brand_%'
-    DB_BACK_BAR_SKU = 'Back_Bar_SKU_status'
 
     PRODUCT_FK, STANDARD_TYPE, PASSED = "product_fk", "standard_type", "passed"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
-    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT2 = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
 
     EXTRA = "EXTRA"
     OOS = "OOS"
     DISTRIBUTED = "DISTRIBUTED"
+    OTHER = "OTHER"
+
