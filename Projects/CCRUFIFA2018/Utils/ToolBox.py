@@ -717,7 +717,9 @@ class CCRUFIFAKPIToolBox:
                 kpi_total_weight += atomic_weight
                 numerator += atomic_score * num_relevant_scenes
                 denominator += num_relevant_scenes
-            kpi_score = float(numerator)/denominator
+            kpi_score = 0
+            if denominator != 0:
+                kpi_score = float(numerator)/denominator
             if p.get('KPI ID') == '*': # * means internal KPI, not for presenting, only child which is level2 KPI
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(c.get('KPI name Eng')) # takes
                 attributes_for_level2 = self.create_attributes_for_level2_df(c, kpi_score, kpi_fk)
