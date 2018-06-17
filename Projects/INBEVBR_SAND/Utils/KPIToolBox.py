@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.2 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.3 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -66,6 +66,7 @@ class INBEVBRToolBox:
         self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price(self.session_id)
         self.common_db = Common(self.data_provider)
         self.sos_sheet = pd.read_excel(PATH, Const.SOS).fillna("")
+        self.sos_packs_sheet = pd.read_excel(PATH, Const.SOS_PACKS).fillna("")
         self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
@@ -108,8 +109,10 @@ class INBEVBRToolBox:
                 return
 
         kpi_type = row[Const.KPI_TYPE].strip()
-        if kpi_type == Const.SOS:
-            self.handle_sos_atomics(atomic_id, atomic_name)
+        # if kpi_type == Const.SOS:
+        #     self.handle_sos_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.SOS_PACKS:
+        #     self.handle_sos_packs_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.COUNT:
         #     self.handle_count_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.GROUP_COUNT:
@@ -118,17 +121,15 @@ class INBEVBRToolBox:
         #     self.handle_survey_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.PROD_SEQ:
         #     self.handle_prod_seq_atomics(atomic_id, atomic_name)
-        # elif kpi_type == Const.PROD_SEQ_2:
-        #     self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
+        if kpi_type == Const.PROD_SEQ_2:
+            self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.PROD_WEIGHT:
         #     self.handle_prod_weight_atomics(atomic_id, atomic_name)
 
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
-        target = 0
         count_result = 0
-        numerator_number_of_facings = 0
 
         # bring the kpi rows from the sos sheet
         rows = self.sos_sheet.loc[self.sos_sheet[Const.KPI_ID] == atomic_id]
@@ -138,27 +139,82 @@ class INBEVBRToolBox:
         if row.empty:
             return
 
-        #
-        # # enter only if there is a matching store, region and state
-        # if isinstance(row, pd.DataFrame) and not row.empty:
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
-        target_operator = row[Const.TARGET_OPERATOR].values[0].strip()
-        count_type = row[Const.COUNT_TYPE].values[0].strip()
+        target_secondary = row[Const.SECONDARY_TARGET].values[0]
 
-        df = self.get_non_scif_filters(row)
+        df = self.scif
+        # df = self.get_non_scif_filters(row)
+
+        product_size = row[Const.PRODUCT_SIZE].values[0]
+        if product_size != "":
+            df = self.filter_product_size(df, product_size)
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
 
-        if count_type == Const.FACING:
-            numerator_number_of_facings = self.count_of_facings(df, filters)
-            if numerator_number_of_facings != 0:
-                del filters['manufacturer_name']
-                denominator_number_of_total_facings = self.count_of_facings(df, filters)
-                if target_operator == '%':
-                    percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-                    count_result = weight if percentage >= target else 0
+        # if count_type == Const.FACING:
+        numerator_number_of_facings = self.count_of_facings(df, filters)
+        if target_secondary != "":
+            if numerator_number_of_facings > target_secondary:
+                count_result = weight
+        if numerator_number_of_facings != 0 and count_result == 0:
+            del filters['manufacturer_name']
+            denominator_number_of_total_facings = self.count_of_facings(df, filters)
+            percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
+            count_result = weight if percentage >= target else 0
+
+        try:
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
+
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_number_of_facings,
+                                           denominator_result=target, result=count_result)
+
+    def handle_sos_packs_atomics(self,atomic_id, atomic_name):
+
+        count_result = 0
+
+        # bring the kpi rows from the sos sheet
+        rows = self.sos_packs_sheet.loc[self.sos_packs_sheet[Const.KPI_ID] == atomic_id]
+
+        # get a single row
+        row = self.find_row(rows)
+        if row.empty:
+            return
+
+        # enter only if there is a matching store, region and state
+        target = row[Const.TARGET].values[0]
+        target_secondary = row[Const.SECONDARY_TARGET].values[0]
+        target_packs = row[Const.PACKS_TARGET].values[0]
+        weight = row[Const.WEIGHT].values[0]
+
+        # get the filters
+        filters = self.get_filters_from_row(row.squeeze())
+
+        df = self.scif.copy()
+        product_size = row[Const.PRODUCT_SIZE].values[0]
+        if product_size != "":
+            df = self.filter_product_size(df, product_size)
+
+        df_nominator = self.count_of_scenes(df, filters)
+        numerator_number_of_facings = df_nominator['facings'].sum()
+        if (numerator_number_of_facings >= target_packs):
+            count_result = weight
+        else:
+            df_nominator = df_nominator.rename(columns={'facings': 'facings_nomi'})
+            del filters['manufacturer_name']
+            df_denominator = self.count_of_scenes(df, filters)
+            scene_types_groupby = pd.merge(df_nominator, df_denominator, how='left', on='scene_id')
+            df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
+                                                                    scene_types_groupby['facings']) * 100 >= target]
+            if target_secondary == "":
+                target_secondary = 1
+            if len(df_target_filtered) >= target_secondary:
+                count_result = weight
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -172,7 +228,6 @@ class INBEVBRToolBox:
 
     def handle_count_atomics(self, atomic_id, atomic_name):
 
-        target = 0
         count_result = 0
         numerator_number_of_facings = 0
 
@@ -187,7 +242,9 @@ class INBEVBRToolBox:
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
         count_type = row[Const.COUNT_TYPE].values[0].strip()
-        df = self.get_non_scif_filters(row)
+
+        df = self.scif
+        # df = self.get_non_scif_filters(row)
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
@@ -197,7 +254,8 @@ class INBEVBRToolBox:
             count_result = weight if number_of_facings >= target else 0
         elif count_type == Const.SCENES:
             secondary_target = row[Const.SECONDARY_TARGET].values[0]
-            number_of_scenes = self.count_of_scenes(df, filters, target)
+            scene_types_groupby = self.count_of_scenes(df, filters)
+            number_of_scenes = len(scene_types_groupby[scene_types_groupby['facings'] >= target])
             count_result = weight if (number_of_scenes >= secondary_target) else 0
             numerator_number_of_facings = number_of_scenes
 
@@ -254,7 +312,7 @@ class INBEVBRToolBox:
 
     def find_row(self, rows):
 
-        row_result = rows.copy()
+        # row_result = rows.copy()
         # if len(rows) == 1:
         #     store_type_template = rows[Const.STORE_TYPE_TEMPLATE].values[0].strip()
         #     if store_type_template != "":
@@ -287,22 +345,46 @@ class INBEVBRToolBox:
                                                                                                | (temp == "")]
         return row_result
 
-    def get_non_scif_filters(self, row):
-        df = self.scif.copy()
+    # def get_non_scif_filters(self, row):
+    #     df = self.scif.copy()
+    #
+    #     # att1 = row[Const.ATT1].values[0].strip()
+    #     # if att1 != "":
+    #     #     att1 = att1.split(",")
+    #     #     att1 = [item.strip() for item in att1]
+    #     #     df = df[df['att1'].isin(att1)]
+    #     #
+    #     # container_type = row[Const.CONTAINER_TYPE].values[0].strip()
+    #     # if container_type != "":
+    #     #     container_type = container_type.split(",")
+    #     #     container_type = [item.strip() for item in container_type]
+    #     #     df = df[df['form_factor'].isin(container_type)]
+    #     #
+    #     # beer_type = row[Const.BEER_TYPE].values[0].strip()
+    #     # if beer_type != "":
+    #     #     beer_type = beer_type.split(",")
+    #     #     beer_type = [item.strip() for item in beer_type]
+    #     #     df = df[df['att2'].isin(beer_type)]
+    #
+    #     return df
 
-        att1 = row[Const.ATT1].values[0].strip()
-        if att1 != "":
-            df = df[df['att1'] == att1]
+    def filter_product_size(self, df, product_size):
 
-        container_type = row[Const.CONTAINER_TYPE].values[0].strip()
-        if container_type != "":
-            df = df[df['form_factor'] == container_type]
 
-        beer_type = row[Const.BEER_TYPE].values[0].strip()
-        if beer_type != "":
-            df = df[df['att2'] == beer_type]
+        ml_df = df[df['size_unit'] == 'ml']
+        l_df = df[df['size_unit'] == 'l']
 
-        return df
+        temp_df = l_df.copy()
+        temp_df['size'] = l_df['size'].apply((lambda x: x * 1000))
+        filtered_df = pd.concat([temp_df,ml_df])
+
+        # if product_size_operator == '<': filtered_df = filtered_df[filtered_df['size'] < product_size]
+        # elif product_size_operator == '<=': filtered_df = filtered_df[filtered_df['size'] <= product_size]
+        # elif product_size_operator == '>': filtered_df = filtered_df[filtered_df['size'] > product_size]
+        # elif product_size_operator == '>=': filtered_df = filtered_df[filtered_df['size'] >= product_size]
+        filtered_df = filtered_df[filtered_df['size'] == product_size]
+        return filtered_df
+
 
 
     def get_filters_from_row(self, row):
@@ -332,7 +414,10 @@ class INBEVBRToolBox:
                                 Const.CATEGORY: 'category',
                                 Const.SUB_CATEGORY: 'sub_category',
                                 Const.TEMPLATE_NAME: 'template_name',
-                                Const.MANUFACTURER: 'manufacturer_name'}
+                                Const.MANUFACTURER: 'manufacturer_name',
+                                Const.CONTAINER_TYPE: 'form_factor',
+                                Const.BEER_TYPE: 'att2'}
+
 
         for key in filters.keys():
             filters[convert_from_scif[key]] = filters.pop(key)
@@ -344,15 +429,31 @@ class INBEVBRToolBox:
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
 
-    def count_of_scenes(self, df, filters, target):
+    def count_of_scenes(self, df, filters):
 
         facing_data = df[self.tools.get_filter_condition(df, **filters)]
 
         # filter by scene_id and by template_name (scene type)
         scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
-        number_of_scenes = len(scene_types_groupby[scene_types_groupby['facings'] >= target])
 
-        return number_of_scenes
+        return scene_types_groupby
+
+    # def count_of_facings_per_scene(self, df, filters, target):
+    #
+    #
+    #     facing_data = df[self.tools.get_filter_condition(df, **filters)]
+    #     # filter by scene_id and by template_name (scene type)
+    #     scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
+    #     return scene_types_groupby
+    #
+    #
+    #     del filters['manufacturer_name']
+    #     facing_data = df[self.tools.get_filter_condition(df, **filters)]
+    #     # filter by scene_id and by template_name (scene type)
+    #     scene_types_denominator = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
+    #     scene_types_groupby = pd.merge(scene_types_nominator, scene_types_denominator, how='left', on='scene_id')
+    #
+    #     return scene_types_groupby[(scene_types_groupby['facings_nom'] / scene_types_groupby['facings'])*100 >= target]
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
@@ -511,22 +612,60 @@ class INBEVBRToolBox:
 
         scenes = self.get_scene_list(filters)
 
-        for scene in scenes:
-            matches = self.match_product_in_scene.copy()
-            matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
-            matches_merged = matches_merged[matches_merged['scene_fk'] == scene]
-            for bay in matches_merged['bay_number'].unique().tolist():
-                matches_bay = matches_merged[matches_merged['bay_number'] == bay]
-                for shelf in matches_bay['shelf_number'].unique().tolist():
-                    matches_shelf = matches_bay[matches_bay['shelf_number'] == shelf]
-                    matches_shelf_no_stacking = matches_shelf[matches_shelf['stacking_layer'] == 1]
-                    df = matches_shelf_no_stacking.sort_values('facing_sequence_number')
-                    for sequence in df['facing_sequence_number'].unique().tolist():
-                        temp = df['brand_name']
-                        if len(temp[temp.isin(groups_inside)]) == 0:
-                            return
-                        elif len(temp[temp.isin(groups_outside)]) == 0:
-                            result = 0
+        matches = self.match_product_in_scene.copy()
+        matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
+        matches_merged_ns = matches_merged[matches_merged['stacking_layer'] == 1]
+        filtered_shelfs = matches_merged_ns[matches_merged_ns['brand_name'].isin(groups_inside)][['scene_fk',
+                                                                    'bay_number', 'shelf_number']].drop_duplicates()
+        denominator_shelfs = len(filtered_shelfs)
+        nominator_shelfs = 0
+        for i,row in filtered_shelfs.iterrows():
+            working_shelf = matches_merged_ns[(matches_merged_ns['scene_fk'] == row['scene_fk']) & (matches_merged_ns[
+                      'bay_number'] == row['bay_number']) & (matches_merged_ns['shelf_number'] == row['shelf_number'])]
+            if len(groups_inside) == 1:
+                check = True
+                for g in groups_outside:
+                    if len(working_shelf[working_shelf['brand_name'] == g]) == 0:
+                        check = False
+                if check == False:
+                    continue
+            else:
+                if len(working_shelf[working_shelf['brand_name'].isin(groups_outside)]) == 0:
+                    continue
+
+            result = self.check_order_prod_seq_2(working_shelf, groups_outside , groups_inside)
+            if result == 1:
+                nominator_shelfs += 1
+
+
+
+        # for scene in scenes:
+        #     matches_merged = matches_merged[matches_merged['scene_fk'] == scene]
+        #     for bay in matches_merged['bay_number'].unique().tolist():
+        #         matches_bay = matches_merged[matches_merged['bay_number'] == bay]
+        #         for shelf in matches_bay['shelf_number'].unique().tolist():
+        #             matches_shelf = matches_bay[matches_bay['shelf_number'] == shelf]
+        #             matches_shelf_no_stacking = matches_shelf[matches_shelf['stacking_layer'] == 1]
+        #             df = matches_shelf_no_stacking.sort_values('facing_sequence_number')
+        #             temp = df['brand_name']
+        #             if len(temp[temp.isin(groups_inside)]) == 0:
+        #                 return
+        # for scene in scenes:
+        #     matches = self.match_product_in_scene.copy()
+        #     matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
+        #     matches_merged = matches_merged[matches_merged['scene_fk'] == scene]
+        #     for bay in matches_merged['bay_number'].unique().tolist():
+        #         matches_bay = matches_merged[matches_merged['bay_number'] == bay]
+        #         for shelf in matches_bay['shelf_number'].unique().tolist():
+        #             matches_shelf = matches_bay[matches_bay['shelf_number'] == shelf]
+        #             matches_shelf_no_stacking = matches_shelf[matches_shelf['stacking_layer'] == 1]
+        #             df = matches_shelf_no_stacking.sort_values('facing_sequence_number')
+        #             temp = df['brand_name']
+        #             if len(temp[temp.isin(groups_inside)]) == 0:
+        #                 return
+        #             elif len(temp[temp.isin(groups_outside)]) == 0:
+        #                 result = 0
+        #             for sequence in df['facing_sequence_number'].unique().tolist():
 
 
         try:
@@ -538,6 +677,14 @@ class INBEVBRToolBox:
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
                                            denominator_result=target, result=count_result)
+
+    def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
+        df = working_shelf.sort_values('facing_sequence_number')['brand_name']
+        # drop adjacent brand duplicates
+        df = df.loc[df.shift(-1) != df]
+        result = 0
+        # for i,row in df.iterrows():
+        #     if
 
     def get_scene_list(self, filters):
         scenes_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_fk'].unique().tolist()
