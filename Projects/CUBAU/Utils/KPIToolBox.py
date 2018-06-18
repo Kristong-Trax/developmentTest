@@ -113,7 +113,7 @@ class CUBAUCUBAUToolBox:
         kpi_fk = self.common.New_kpi_static_data[self.common.New_kpi_static_data['type'] == kpi_type]['pk'].values[0]
         subset_filters = {'manufacturer_name': self.OwnMan}
         pop_filters = {'template_display_name': (exclude_scene, 0), 'product_type': product_type}
-        self.calculate_sos(sos_type, kpi_fk, self.OwnManFK, '999', subset_filters, pop_filters)
+        self.calculate_sos(sos_type, kpi_fk, self.OwnManFK, self.store_id, subset_filters, pop_filters)
         return
 
     def all_param_out_category(self, param_1, param_2, sos_type, product_type, exclude_scene=None, context=None):
