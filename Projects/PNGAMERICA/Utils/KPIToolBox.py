@@ -258,8 +258,6 @@ class PNGAMERICAToolBox:
                     self.calculate_block_and_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'average shelf':
                     self.calculate_average_shelf(kpi_set_fk, kpi_name, scene_type)
-                elif kpi_type in BLOCK_TOGETHER:
-                    self.calculate_block_together_new(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'pantene':
                     self.pantene_golden_strategy(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'HE':
@@ -400,6 +398,9 @@ class PNGAMERICAToolBox:
                 return None
             result = 0
             kpi_template = kpi_template.iloc[0]
+
+            filters_1 = {kpi_template['filter_1']: kpi_template['filter_1_value']}
+            filters_2 = {kpi_template['filter_2']: kpi_template['filter_2_value']}
             if kpi_template['tow groups']:
                 filters1 = {kpi_template['entity group 1']: [s for s in kpi_template['value group 1'].split(',')],
                             'template_name': scene_type}
@@ -1162,13 +1163,11 @@ class PNGAMERICAToolBox:
             #     save_list.append('group in block')
             #     block_products = {'template_name': scene_type, kpi_template['attribute']: kpi_template['block']}
             #     group_products = {'template_name': scene_type, kpi_template['attribute']: kpi_template['group']}
-            # if kpi_template['block in block']:
-            #     block_of_blocks = True
-            #     save_list.append('block in block')
-            #     # block_products1 = {'template_name': scene_type, kpi_template['attribute']: kpi_template['value']}
-            #     # block_products2 = {'template_name': scene_type, kpi_template['attribute1']: kpi_template['value1']}
-            #     block_products1 = {kpi_template['attribute']: kpi_template['value']}
-            #     block_products2 = {kpi_template['attribute1']: kpi_template['value1']}
+            if kpi_template['kpi type'] == 'block in block':
+                block_of_blocks = True
+                save_list.append('block in block')
+                block_products1 = {kpi_template['attribute']: kpi_template['value']}
+                block_products2 = {kpi_template['attribute1']: kpi_template['value1']}
             segment = False
             include_empty = False
             values_to_check = []
@@ -1195,7 +1194,10 @@ class PNGAMERICAToolBox:
                                     (self.all_products[kpi_template['filter_2']] == secondary_filter)].empty:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
-                        new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                        if not block_of_blocks:
+                            new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                        else:
+                            new_kpi_name = kpi_name
                         res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                                   vertical=vertical,
                                                                   horizontal=horizontal, orphan=orphan, group=group,
@@ -1210,6 +1212,8 @@ class PNGAMERICAToolBox:
                             score = 1 if res['regular block'] else 0
                             if kpi_template['kpi type'] == 'hor_vs_vertical':
                                 result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
+                            if kpi_template['kpi type'] == 'block in block':
+                                result = 1 if res['block_of_blocks'] else 0
                             try:
                                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
                                                         result=result,
@@ -1234,12 +1238,17 @@ class PNGAMERICAToolBox:
                                                               block_products2=block_products2, **filters)
                     if type(res) == str and res == 'no_products':
                         return
-                    new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    if not block_of_blocks:
+                        new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    else:
+                        new_kpi_name = kpi_name
                     if res:
                         result = 1 if res['regular block'] else 0
                         score = 1 if res['regular block'] else 0
                         if kpi_template['kpi type'] == 'hor_vs_vertical':
                             result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
+                        if kpi_template['kpi type'] == 'block in block':
+                            result = 1 if res['block_of_blocks'] else 0
                         try:
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
                                                     result=result,
@@ -1253,6 +1262,41 @@ class PNGAMERICAToolBox:
                                                     result=0, score=0)
                         except IndexError as e:
                             Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+            if not values_to_check:
+                res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
+                                                          vertical=vertical,
+                                                          horizontal=horizontal, orphan=orphan, group=group,
+                                                          block_products=block_products,
+                                                          group_products=group_products,
+                                                          block_of_blocks=block_of_blocks,
+                                                          block_products1=block_products1,
+                                                          block_products2=block_products2, **filters)
+                if type(res) == str and res == 'no_products':
+                    return
+                if not block_of_blocks:
+                    new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                else:
+                    new_kpi_name = kpi_name
+                if res:
+                    result = 1 if res['regular block'] else 0
+                    score = 1 if res['regular block'] else 0
+                    if kpi_template['kpi type'] == 'hor_vs_vertical':
+                        result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
+                    if kpi_template['kpi type'] == 'block in block':
+                        result = 1 if res['block_of_blocks'] else 0
+                    try:
+                        self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
+                                                result=result,
+                                                score=score)
+                    except IndexError as e:
+                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+
+                else:
+                    try:
+                        self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3,
+                                                result=0, score=0)
+                    except IndexError as e:
+                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
     def calculate_checkerboarded(self, kpi_set_fk, kpi_name, scene_type, list_type=None):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
@@ -1644,6 +1688,9 @@ class PNGAMERICAToolBox:
                     if i > 50:
                         break
                 return
+
+    def calculate_naturals_adjacency(self, kpi_set_fk, scene_type, kpi_name):
+        pass
 
     def calculate_auto_assortment_compliance(self):
         auto_assortment = AutoAssortmentHandler()
