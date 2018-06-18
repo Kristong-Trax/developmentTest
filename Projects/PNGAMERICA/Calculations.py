@@ -12,7 +12,7 @@ __author__ = 'Ortal'
 class PNGAMERICACalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        PNGAMERICAGenerator(self.data_provider, self.output).main_function()
+        # PNGAMERICAGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 # if __name__ == '__main__':
