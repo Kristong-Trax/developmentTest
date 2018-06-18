@@ -427,7 +427,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                     if self.all_products[self.all_products['product_ean_code'].isin([sub_product])].product_ean_code.count() > 0:
                         target += 1
                     else :
-                        Log.error('product_ean_code does not exists {}'.format(sub_product))
+                        Log.debug('product_ean_code does not exists {}'.format(sub_product))
                         break
                     sub_product_result = self.tools.calculate_availability(front_facing='Y', template_name=scene_types,
                                                                            product_ean_code=sub_product)

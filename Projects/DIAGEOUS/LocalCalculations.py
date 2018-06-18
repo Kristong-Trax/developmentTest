@@ -2,13 +2,13 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.DIAGEOUS_SAND.Calculations import Calculations
+from Projects.DIAGEOUS.Calculations import DIAGEOUSCalculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('diageous-sand calculations')
+    LoggerInitializer.init('diageous calculations')
     Config.init()
-    project_name = 'diageous-sand'
+    project_name = 'diageous'
     sessions = [
         # "004F1CF3-7135-44FD-9651-5F1E9E4C0BB6",
         # "039CA55C-2629-4055-BF3B-6ABBB7FCCC27",
@@ -39,4 +39,4 @@ if __name__ == '__main__':
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
-        Calculations(data_provider, output).run_project_calculations()
+        DIAGEOUSCalculations(data_provider, output).run_project_calculations()
