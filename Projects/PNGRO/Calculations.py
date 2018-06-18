@@ -21,7 +21,12 @@ class PNGRO_PRODCalculations(BaseCalculationsScript):
 #     project_name = 'pngro'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         '5CC7FBE2-BD55-41B3-862C-ED5DD103E50F'
+#         # '0722a029-e4c6-4eeb-a5cf-e190b42ed8df',
+#         '42FF3F61-87AF-45FE-8389-CF8E5FA600BB',
+#         '43061462-282C-47D4-BDB2-AE15C9413171',
+#         '659cbb3d-5e2f-44a2-81ed-7dd68dfb8d7d',
+#         'a8fa4858-4f62-49a5-9b88-d4947d6da0b0',
+#         'aaa45f15-27c4-4860-ac4f-fb2a83647b21'
 #         ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)
