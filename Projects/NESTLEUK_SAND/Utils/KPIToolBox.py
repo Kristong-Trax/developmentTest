@@ -55,6 +55,12 @@ class NESTLEUK_SANDConsts(object):
     SURVEY_AND_AVAILABILITY = BPPC
 
 
+    VISIBLE = 'Visible'
+    DIAMOND = 'Diamond'
+    BOTTOM_SHELF = 'Bottom shelf'
+    ADJACENT = 'Adjacent'
+
+
 class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
     LEVEL1 = 1
     LEVEL2 = 2
@@ -82,7 +88,14 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         self.store_type = self.store_info['store_type'].iloc[0]
         self.store_type = '' if self.store_type is None else self.store_type
         self.templates_class = NESTLEUK_SANDParseTemplates('Nestle_UK_v3.0')
+        self.template_ava_class = NESTLEUK_SANDParseTemplates('Template')
         self.templates_data = self.templates_class.parse_template(sheet_name='KPIs')
+        self.template_ava_data = self.template_ava_class.parse_template(sheet_name='Hierarchy')
+        self.template_ava_visible = self.template_ava_class.parse_template(sheet_name='Visible')
+        self.template_ava_bottom_shelf = self.template_ava_class.parse_template(sheet_name='Bottom shelf')
+        self.template_ava_adjacent = self.template_ava_class.parse_template(sheet_name='Adjacent')
+        self.template_ava_diamond = self.template_ava_class.parse_template(sheet_name='Diamond')
+
         # self.templates_data = self.template.parse_kpi()
 
     def get_kpi_static_data(self):
@@ -183,6 +196,134 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         set_score = round(sum([score[0] * score[1] for score in set_scores.values()]), 2)
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
+
+    def calculate_ava(self):
+        """
+        This function calculates the KPI results.
+        """
+        set_scores = {}
+        for set_name in self.template_ava_data['Set Name'].unique().tolist():
+            kpk = self.template_ava_data[self.template_ava_data['Set Name'] == set_name]['KPI Group'].unique().tolist()
+            for main_kpi in kpk:
+                atomics = self.template_ava_data[self.template_ava_data['KPI_GROUP'] == main_kpi]
+                scores = pd.DataFrame(columns=['ean_code', 'visible', 'ava'])
+                for i in xrange(len(atomics)):
+                    atomic = atomics.iloc[i]
+                    kpi_type = atomic[self.templates_class.KPI_TYPE]
+                    if not self.store_type in atomic[self.templates_class.STORE_TYPE]:
+                        continue
+                    if not set(atomic[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)) & set(
+                            self.scif['template_name'].unique().tolist()):
+                        continue
+                    if kpi_type == self.VISIBLE:
+                        score = self.calculate_visible(atomic)
+                    elif kpi_type == self.BOTTOM_SHELF:
+                        score = self.calculate_bottom_shelf(atomic)
+                    elif kpi_type == self.ADJACENT:
+                        score = self.calculate_adjacent(atomic)
+                    elif kpi_type == self.DIAMOND:
+                        score = self.calculate_diamond(atomic)
+                    else:
+                        Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                        continue
+                    if score is not None:
+                        child_score_weight = atomic[self.templates_class.WEIGHT]
+                        atomic_fk = self.get_atomic_fk(atomic)
+                        self.write_to_db_result(atomic_fk, score, level=self.LEVEL3)
+                        if isinstance(score, tuple):
+                            score = score[0]
+                        weighted_score = score * float(child_score_weight)
+                        scores.append(weighted_score)
+
+                if not scores:
+                    scores = [0]
+                if scores:
+                    score_type = main_kpi[self.templates_class.SCORE]
+                    score_weight = float(main_kpi[self.templates_class.WEIGHT])
+                    if score_type == self.templates_class.SUM_OF_SCORES:
+                        score = sum(scores)
+                    else:
+                        score = 0
+                    kpi_name = main_kpi[self.templates_class.KPI_NAME]
+                    kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                    # self.write_to_db_result(kpi_fk, score, level=self.LEVEL2)
+                    set_scores[kpi_fk] = (score_weight, score)
+            # total_weight = sum([score[0] for score in set_scores.values()])
+            for kpi_fk in set_scores.keys():
+                self.write_to_db_result(kpi_fk, set_scores[kpi_fk][1], level=self.LEVEL2)
+            # set_score = sum([score[0] * score[1] for score in set_scores.values()]) / total_weight
+            set_score = round(sum([score[0] * score[1] for score in set_scores.values()]), 2)
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
+
+    def calculate_visible(self, kpi):
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        for product in products_for_check:
+            result = self.tools.calculate_availability(product_ean_code=product,
+                                                       scene_fk=scenes_to_check)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
+
+        return score
+
+    def calculate_bottom_shelf(self, kpi):
+        """
+        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
+        """
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        products_for_check = kpi[self.templates_class.SKU]
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                   scene_fk=scenes_to_check,
+                                                   stacking_layer=1)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
+
+        return score
+
+    def calculate_diamond(self, kpi):
+        """
+        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
+        """
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        products_for_check = kpi[self.templates_class.SKU]
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                   scene_fk=scenes_to_check,
+                                                   stacking_layer=1)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
+
+        return score
+
+    def calculate_adjacent(self, kpi):
+        """
+        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
+        """
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        products_for_check = kpi[self.templates_class.SKU]
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                   scene_fk=scenes_to_check,
+                                                   stacking_layer=1)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
+
+        return score
 
     def calculate_block_together_sets(self, kpi):
         """
