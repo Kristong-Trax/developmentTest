@@ -182,11 +182,12 @@ class PNGRO_PRODToolBox:
                 general_filters = self.get_general_filters(params)
                 if general_filters:
                     score = 0
+                    result = threshold = None
                     kpi_type = params[self.KPI_FAMILY]
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        score = self.calculate_sos(params, **general_filters)
+                        score, result, threshold = self.calculate_sos(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
@@ -197,8 +198,11 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_survey(params)
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
-                        self.write_to_db_result(score=int(score), result=int(score), level=self.LEVEL3,
-                                                fk=atomic_kpi_fk)
+                        if result and threshold:
+                            self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
+                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
+                        else:
+                            self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -288,8 +292,8 @@ class PNGRO_PRODToolBox:
         value3 = params['Param (3) Values']
         target = params['Target Policy']
 
-        numerator_filters = {type1: value1, type3: value3}
-        denominator_filters = {type2: value2, type3: value3}
+        numerator_filters = {type1: value1, type2: value2, type3: value3}
+        denominator_filters = {type2: value2}
 
         numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
                                                                        include_empty=True,
@@ -303,9 +307,9 @@ class PNGRO_PRODToolBox:
         else:
             ratio = numerator_width / float(denominator_width)
         if (ratio * 100) >= int(target):
-            return True
+            return True, str(ratio), str(int(target)/100.0)
         else:
-            return False
+            return False, str(ratio), str(int(target)/100.0)
 
     def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
