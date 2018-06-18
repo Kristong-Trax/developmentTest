@@ -19,9 +19,9 @@ class NESTLEUK_SANDCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('nestleuk calculations')
 #     Config.init()
-#     project_name = 'nestleuk-sand'
+#     project_name = 'nestleuk_sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '368269fa-3f4c-4199-b98c-f133e1bf9514'
+#     session = '82b0fb4f-f754-428d-83cb-b39b3c184c4c'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     NESTLEUK_SANDCalculations(data_provider, output).run_project_calculations()

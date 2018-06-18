@@ -638,7 +638,7 @@ class NESTLEUK_SANDGENERALToolBox:
                 return 0, 0
             else:
                 Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return True
+                return False
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:

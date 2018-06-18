@@ -136,6 +136,11 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             for i in xrange(len(children)):
                 child = children.iloc[i]
                 kpi_type = child[self.templates_class.KPI_TYPE]
+                if not self.store_type in child[self.templates_class.STORE_TYPE]:
+                    continue
+                if not set(child[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)) & set(
+                        self.scif['template_name'].unique().tolist()):
+                    continue
                 if kpi_type == self.BLOCK_TOGETHER:
                     score = self.calculate_block_together_sets(child)
                 elif kpi_type == self.FACING_COUNT:
@@ -155,7 +160,7 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
                     self.write_to_db_result(atomic_fk, score, level=self.LEVEL3)
                     if isinstance(score, tuple):
                         score = score[0]
-                    weighted_score = score*float(child_score_weight)
+                    weighted_score = score * float(child_score_weight)
                     scores.append(weighted_score)
 
             if not scores:
@@ -185,13 +190,14 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         brands_for_block_check = kpi[self.templates_class.BRAND].split(self.templates_class.SEPARATOR)
-        if kpi[self.templates_class.CATEGORY] is None:
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        if not kpi[self.templates_class.CATEGORY]:
             result = self.tools.calculate_block_together(brand_name=brands_for_block_check,
-                                                         template_name=templates)
+                                                         scene_fk=scenes_to_check)
         else:
             category = kpi[self.templates_class.CATEGORY]
             result = self.tools.calculate_block_together(brand_name=brands_for_block_check,
-                                                         template_name=templates,
+                                                         scene_fk=scenes_to_check,
                                                          category=category)
         score = 100 if result else 0
 
@@ -203,10 +209,15 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         products_for_check = kpi[self.templates_class.SKU]
-        result = self.tools.calculate_assortment(product_ean_code=products_for_check,
-                                                 template_name=templates)
-
-        score = 100 if result > kpi[self.templates_class.TARGET] else 0
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                   scene_fk=scenes_to_check,
+                                                   stacking_layer=1)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
 
         return score
 
@@ -237,7 +248,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             except Exception as e:
                 products = products_list
             result = self.tools.calculate_availability(product_ean_code=products,
-                                                       template_name=scene_types)
+                                                       template_name=scene_types,
+                                                       stacking_layer=1)
             score = 100 if result > 0 else 0
             scores.append(score)
 
@@ -257,6 +269,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         scores = []
         shelf_position_data = templates_data[(templates_data[self.templates_class.KPI_NAME] == kpi_name)]
         products_for_check = shelf_position_data[self.templates_class.availability_consts.PRODUCT_EAN_CODES].tolist()
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         for products_list in products_for_check:
             try:
                 products = products_list.split(', ')
@@ -265,7 +279,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             shelves = shelf_position_data.loc[
                 shelf_position_data[self.templates_class.availability_consts.PRODUCT_EAN_CODES] == products_list][
                 'Shelf Position'].values[0].split(',')
-            result = self.tools.calculate_shelf_level_assortment(shelves=[int(shelf) for shelf in shelves], product_ean_code=products)
+            result = self.tools.calculate_shelf_level_assortment(shelves=[int(shelf) for shelf in shelves],
+                                                                 product_ean_code=products, scene_fk=scenes_to_check)
             score = 100 if result > 0 else 0
             scores.append(score)
 
@@ -282,16 +297,19 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         manufactruers_for_check = kpi[self.templates_class.MANUFACTURER]
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         if kpi[self.templates_class.CATEGORY] is None:
             sos_filters = {'manufacturer_name': manufactruers_for_check}
             result = self.tools.calculate_share_of_shelf(sos_filters=sos_filters,
-                                                         template_name=templates)
+                                                         scene_fk=scenes_to_check,
+                                                         stacking_layer=1)
         else:
             sos_filters = {'manufacturer_name': manufactruers_for_check}
             category = kpi[self.templates_class.CATEGORY]
             result = self.tools.calculate_share_of_shelf(sos_filters=sos_filters,
-                                                         template_name=templates,
-                                                         category=category)
+                                                         scene_fk=scenes_to_check,
+                                                         category=category,
+                                                         stacking_layer=1)
 
         score = 100 if result > kpi[self.templates_class.TARGET] else 0
 
