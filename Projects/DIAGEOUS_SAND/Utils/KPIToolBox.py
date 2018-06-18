@@ -426,9 +426,12 @@ class DIAGEOUSToolBox:
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.TOTAL])
-        product_fk = self.get_product_fk(product_line[Const.PRODUCT_EAN_CODE])
-        if not product_fk:
+        product_fk = self.all_products[self.all_products['product_ean_code'] == product_line[
+            Const.PRODUCT_EAN_CODE]]['product_fk']
+        if product_fk.empty:
+            Log.warning("Product_ean '{}' does not exist".format(product_line[Const.PRODUCT_EAN_CODE]))
             return None
+        product_fk = product_fk.iloc[0]
         min_shelf_loc = product_line[Const.MIN_SHELF_LOCATION]
         shelf_groups = self.converted_groups[min_shelf_loc]
         min_max_shleves = self.templates[Const.MINIMUM_SHELF_SHEET]
@@ -529,10 +532,10 @@ class DIAGEOUSToolBox:
         our_price = self.calculate_sku_price(product_fk, relevant_scenes, result_dict)
         if our_price is None:
             return None
-        if not (self.does_exist(min_relative) and self.does_exist(max_relative) or
-                self.does_exist(min_absolute) and self.does_exist(max_absolute)):
-            Log.warning("In MSRP product {} does not have clear competitor".format(product_fk))
-        if self.does_exist(competition[Const.COMP_EAN_CODE]):
+        is_competitor = (self.does_exist(competition[Const.COMP_EAN_CODE]) and
+                         self.does_exist(min_relative) and self.does_exist(max_relative))
+        is_absolute = self.does_exist(min_absolute) and self.does_exist(max_absolute)
+        if is_competitor:
             comp_ean = competition[Const.COMP_EAN_CODE]
             comp_line = self.all_products[self.all_products['product_ean_code'] == comp_ean]
             if comp_line.empty:
@@ -544,8 +547,11 @@ class DIAGEOUSToolBox:
                 return None
             range_price = (round(comp_price + competition[Const.MIN_MSRP_RELATIVE], 2),
                            round(comp_price + competition[Const.MAX_MSRP_RELATIVE], 2))
-        else:
+        elif is_absolute:
             range_price = (competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE])
+        else:
+            Log.warning("In MSRP product {} does not have clear competitor".format(product_fk))
+            return None
         if our_price < range_price[0]:
             result = range_price[0] - our_price
         elif our_price > range_price[1]:
@@ -700,13 +706,6 @@ class DIAGEOUSToolBox:
     def get_manufacturer(self, product_fk):
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
 
-    def get_product_fk(self, product_ean_code):
-        product = self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk']
-        if product.empty:
-            Log.warning("Product_ean '{}' does not exist".format(product_ean_code))
-            return None
-        return product.iloc[0]
-
     @staticmethod
     def does_exist(cell):
         """
@@ -748,8 +747,6 @@ class DIAGEOUSToolBox:
             self.insert_brand_and_subs_to_db(brand_results, kpi_name, brand, total_identifier)
         all_passed_results = all_results[Const.PASSED]
         total_result = self.insert_totals_to_db(all_passed_results, kpi_name, Const.TOTAL, weight, total_identifier)
-        if not total_result:
-            total_result = 0
         segment_result, national_result = 0, 0
         if with_standard_type:
             national_results = all_results[all_results[Const.STANDARD_TYPE] == Const.NATIONAL][Const.PASSED]
@@ -812,7 +809,7 @@ class DIAGEOUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[kpi_name][total_kind])
         num_result, den_result = all_passed_results.sum(), all_passed_results.count()
         result = self.get_score(num_result, den_result)
-        score = result * weight if kpi_name != Const.MSRP else None
+        score = result * weight if kpi_name != Const.MSRP else 0
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_result,
             denominator_result=den_result, result=result, identifier_result=identifier_result,
