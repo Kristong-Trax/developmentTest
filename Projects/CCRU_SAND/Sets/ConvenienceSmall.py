@@ -108,7 +108,6 @@ class CCRU_SANDConvenienceSmallCalculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
-        self.tool_box.temp
         calc_finish_time = datetime.datetime.utcnow()
         Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
 

@@ -68,6 +68,9 @@ class CCRU_SANDHRCCoffee2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HRC_COFFEE_2018)
+# Sergey
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HRC_COFFEE_2018_GAPS)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -96,9 +99,6 @@ class CCRU_SANDHRCCoffee2018Calculations:
                                                                                             'score_1',
                                                                                             'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
-# Sergey
-            self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
-# Sergey
 
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()

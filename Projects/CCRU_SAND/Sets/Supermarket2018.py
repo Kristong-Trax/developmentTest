@@ -71,6 +71,9 @@ class CCRU_SANDSupermarket2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', SUPERMARKET_2018)
+# Sergey
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=SUPERMARKET_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -99,9 +102,6 @@ class CCRU_SANDSupermarket2018Calculations:
                                                                                             'score_1',
                                                                                             'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
-# Sergey
-            self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
-# Sergey
 
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
