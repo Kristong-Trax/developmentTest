@@ -1,5 +1,7 @@
 import pandas as pd
 from datetime import datetime
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
@@ -10,6 +12,8 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.NESTLEUK_SAND.Utils.ParseTemplates import NESTLEUK_SANDParseTemplates
 from Projects.NESTLEUK_SAND.Utils.Fetcher import NESTLEUK_SANDQueries
 from Projects.NESTLEUK_SAND.Utils.GeneralToolBox import NESTLEUK_SANDGENERALToolBox
+from KPIUtils_v2.Calculations.GeometricCalculations import Geometric
+
 
 __author__ = 'uri'
 
@@ -59,6 +63,7 @@ class NESTLEUK_SANDConsts(object):
     DIAMOND = 'Diamond'
     BOTTOM_SHELF = 'Bottom shelf'
     ADJACENT = 'Adjacent'
+    PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
 
 
 class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
@@ -95,6 +100,10 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         self.template_ava_bottom_shelf = self.template_ava_class.parse_template(sheet_name='Bottom shelf')
         self.template_ava_adjacent = self.template_ava_class.parse_template(sheet_name='Adjacent')
         self.template_ava_diamond = self.template_ava_class.parse_template(sheet_name='Diamond')
+        self.scores = pd.DataFrame(columns=['ean_code', 'visible', 'ava'])
+        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.custom_scif_queries = []
+        self.geometric = Geometric(data_provider=data_provider)
 
         # self.templates_data = self.template.parse_kpi()
 
@@ -206,7 +215,6 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             kpk = self.template_ava_data[self.template_ava_data['Set Name'] == set_name]['KPI Group'].unique().tolist()
             for main_kpi in kpk:
                 atomics = self.template_ava_data[self.template_ava_data['KPI_GROUP'] == main_kpi]
-                scores = pd.DataFrame(columns=['ean_code', 'visible', 'ava'])
                 for i in xrange(len(atomics)):
                     atomic = atomics.iloc[i]
                     kpi_type = atomic[self.templates_class.KPI_TYPE]
@@ -256,17 +264,26 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+    def get_custom_query(self, scene_fk, product_fk, in_assortment_OSA=None, oos_osa=None, mha_in_assortment=None,
+                         mha_oos=None, length_mm_custom=None):
+        attributes = pd.DataFrame([(
+            self.session_fk, scene_fk, product_fk, in_assortment_OSA, oos_osa, mha_in_assortment,
+            mha_oos, length_mm_custom)],
+            columns=['session_fk', 'scene_fk', 'product_fk', 'in_assortment_OSA', 'oos_osa',
+                     'mha_in_assortment', 'mha_oos', 'length_mm_custom'])
+
+        query = insert(attributes.to_dict(), self.PSERVICE_CUSTOM_SCIF)
+        self.custom_scif_queries.append(query)
+
     def calculate_visible(self, kpi):
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
         scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        target = float(kpi[self.templates_class.TARGET])
         for product in products_for_check:
-            result = self.tools.calculate_availability(product_ean_code=product,
-                                                       scene_fk=scenes_to_check)
-        if kpi[self.templates_class.TARGET]:
-            target = float(kpi[self.templates_class.TARGET])
-        else:
-            target = kpi[self.templates_class.TARGET]
+            result = self.tools.calculate_availability(product_ean_code=product, scene_fk=scenes_to_check)
+            if result >= target:
+                pass
         score = 100 if result >= target else 0
 
         return score
@@ -275,55 +292,73 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
         """
-        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
-        products_for_check = kpi[self.templates_class.SKU]
+        target = int(kpi[self.templates_class.TARGET])
+        shelf_number = map(lambda x: x.strip(), kpi['shelf_number_from_bottom'].split(','))
+        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
         scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
-        result = self.tools.calculate_availability(product_ean_code=products_for_check,
-                                                   scene_fk=scenes_to_check,
-                                                   stacking_layer=1)
-        if kpi[self.templates_class.TARGET]:
-            target = float(kpi[self.templates_class.TARGET])
-        else:
-            target = kpi[self.templates_class.TARGET]
-        score = 100 if result >= target else 0
-
-        return score
+        for scene in scenes_to_check:
+            for product in products_for_check:
+                result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                           scene_fk=scenes_to_check, shelf_number_from_bottom=shelf_number)
+                mha_in_assortment = 100 if result >= target else 0
+                in_assortment_OSA = self.tools.calculate_availability(product_ean_code=product, scene_fk=scenes_to_check)
+                self.get_custom_query(scene, product, in_assortment_OSA, mha_in_assortment)
 
     def calculate_diamond(self, kpi):
-        """
-        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
-        """
-        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
-        products_for_check = kpi[self.templates_class.SKU]
+        target = int(kpi[self.templates_class.TARGET])
+        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
+        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk']
         scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
-        result = self.tools.calculate_availability(product_ean_code=products_for_check,
-                                                   scene_fk=scenes_to_check,
-                                                   stacking_layer=1)
-        if kpi[self.templates_class.TARGET]:
-            target = float(kpi[self.templates_class.TARGET])
-        else:
-            target = kpi[self.templates_class.TARGET]
-        score = 100 if result >= target else 0
+        for scene in scenes_to_check:
+            polygon = self.build_polygon(scene)
+            for product_fk in products_for_check:
+                result = self.calculate_polygon(scene=scene, product_fk=product_fk, polygon=polygon)
+                mha_in_assortment = 100 if result >= target else 0
+                in_assortment_OSA = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                self.get_custom_query(scene, product_fk, in_assortment_OSA, mha_in_assortment)
 
-        return score
+    def build_polygon(self, scene_fk):
+        matches = self.tools.get_filter_condition(self.match_product_in_scene, **{'scene_fk': scene_fk})
+        top = matches[(matches['shelf_number'] == 1) &
+                      (matches['stacking_layer'] == 1)].sort('y_mm', ascending=False).values[0]
+        top = int(top['y_mm']) - (int(top['height_mm_net']) / 2)
+        bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
+                         (matches['stacking_layer'] == 1)].sort('y_mm', ascending=False).values[0]
+        bottom = int(bottom['y_mm']) - (int(bottom['height_mm_net']) / 2)
+        left = matches.sort('x_mm', ascending=False).values[0]
+        left = int(left['x_mm']) - (int(left['width_mm_net']) / 2)
+        right = matches.sort('x_mm', ascending=True).values[0]
+        right = int(right['y_mm']) - (int(right['height_mm_net']) / 2)
+        middle_x = (right + left) / 2
+        middle_y = (top + bottom) / 2
+        polygon = Polygon([(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)])
+        return polygon
+
+    def calculate_polygon(self, scene, product_fk, polygon):
+        matches = self.tools.get_filter_condition(self.match_product_in_scene, **{'scene_fk': scene})
+        self.build_array_of_points(matches, product_fk)
+        point = Point(0.5, 0.5)
+        return polygon.contains(point)
+
+    def build_array_of_points(self, matches, product):
+        points = []
+        for product_show in matches[matches['product_fk']]
+        return points
 
     def calculate_adjacent(self, kpi):
-        """
-        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
-        """
-        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
-        products_for_check = kpi[self.templates_class.SKU]
+        target = int(kpi[self.templates_class.TARGET])
+        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
         scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
-        result = self.tools.calculate_availability(product_ean_code=products_for_check,
-                                                   scene_fk=scenes_to_check,
-                                                   stacking_layer=1)
-        if kpi[self.templates_class.TARGET]:
-            target = float(kpi[self.templates_class.TARGET])
-        else:
-            target = kpi[self.templates_class.TARGET]
-        score = 100 if result >= target else 0
-
-        return score
+        for scene in scenes_to_check:
+            for product in products_for_check:
+                result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                           scene_fk=scenes_to_check)
+                mha_in_assortment = 100 if result >= target else 0
+                in_assortment_OSA = self.tools.calculate_availability(product_ean_code=product, scene_fk=scenes_to_check)
+                self.get_custom_query(scene, product, in_assortment_OSA, mha_in_assortment)
 
     def calculate_block_together_sets(self, kpi):
         """
