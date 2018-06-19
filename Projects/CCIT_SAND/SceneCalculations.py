@@ -1,5 +1,6 @@
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 from Projects.CCIT_SAND.KPIGenerator import Generator
+from Projects.CCIT_SAND.KPISceneGenerator import SceneGenerator
 
 
 class SceneCalculations(SceneBaseClass):
@@ -10,5 +11,5 @@ class SceneCalculations(SceneBaseClass):
 
     def calculate_kpis(self):
         # self.timer.start()
-        Generator(self._data_provider).occupancy_calculation()
+        SceneGenerator(self._data_provider).occupancy_calculation()
         # self.timer.stop('KPIGenerator.run_project_calculations')
