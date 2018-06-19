@@ -1,8 +1,8 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Utils.Logging.Logger import Log
 
@@ -120,13 +120,17 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('CCRU calculations')
-#     Config.init()
-#     project_name = 'ccru_sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['851E8DC4-CC29-4F8E-AFB4-BE3E4C9921B9']
-#     for session in session_uids:
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         CCRU_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('CCRU calculations')
+    Config.init()
+    project_name = 'ccru-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session_uids = ['9499fda2-84ae-45a4-a6cd-cc47067bb7f5',
+                    '13f1bd6d-14c1-4b75-8f0c-bd5d6938c2c0',
+                    '2a798e4a-6457-451f-9e6c-7362a262a4b3',
+                    'dab5494b-bd19-4fbf-bfd4-7bf2e6832bdb',
+                    'f8a4fe58-0333-42ef-934e-ad71a9e964d9']
+    for session in session_uids:
+        data_provider.load_session_data(session)
+        output = Output()
+        CCRU_SANDCalculations(data_provider, output).run_project_calculations()

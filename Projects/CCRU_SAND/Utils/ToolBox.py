@@ -2392,19 +2392,7 @@ class CCRU_SANDKPIToolBox:
 
 # Sergey Begin
     def prepare_hidden_set(self, params):
-        table3 = pd.DataFrame([None,None,None,None,None,None,None,None,None,None,None,None],
-                                             columns=['display_text',
-                                                      'session_uid',
-                                                      'kps_name',
-                                                      'store_fk',
-                                                      'visit_date',
-                                                      'calculation_time',
-                                                      'score',
-                                                      'kpi_fk',
-                                                      'atomic_kpi_fk',
-                                                      'threshold',
-                                                      'result',
-                                                      'name'])
+        table3 = pd.DataFrame([0])
 
         kpi_set_name = kpi_name = "CCH Integration"
         kpi_df = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
