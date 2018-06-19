@@ -517,11 +517,11 @@ class INBEVBRToolBox:
         for i, sub_cat_row in filtered_rows.iterrows():
             filtered_shelfs = shelfs[shelfs['sub_category'] == sub_cat_row[Const.SUB_CATEGORY]]
             for j, row in filtered_shelfs.iterrows():
-                working_shelf = matches_merged_ns[(matches_merged_ns['scene_fk'] == row['scene_fk']) & (matches_merged_ns[
-                                                                                                            'bay_number'] ==
-                                                                                                        row[
-                                                                                                            'bay_number']) & (
-                                                          matches_merged_ns['shelf_number'] == row['shelf_number'])]
+                working_shelf = matches_merged_ns[(matches_merged_ns['scene_fk'] == row['scene_fk'])
+                                                  & (matches_merged_ns['bay_number'] == row['bay_number'])
+                                                  & (matches_merged_ns['shelf_number'] == row['shelf_number'])]
+
+
         #         if len(groups_inside) == 1:
         #             check = True
         #             for g in groups_outside:
