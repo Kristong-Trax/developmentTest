@@ -379,7 +379,9 @@ class PNGAMERICAGENERALToolBox:
         number_of_eye_level_entities = 0
         total_filtered_attributes = 0
         if percentage_result:
+            filters['stacking_layer'] = 1
             total_filtered_attributes = self.calculate_availability(**filters)
+            del filters['stacking_layer']
         products_on_eye_level = []
         for scene in relevant_scenes:
             eye_level_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
@@ -410,7 +412,7 @@ class PNGAMERICAGENERALToolBox:
                         eye_level_facings = eye_level_facings.append(eye_level_shelves)
                         # if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
                         #     products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
-                        if any(eye_level_facings[
+                        if any(eye_level_shelves[
                                                self.get_filter_condition(eye_level_shelves, **filters)]['product_ean_code']):
                             products_on_eye_level.append(eye_level_shelves[self.get_filter_condition(
                                 eye_level_shelves, **filters)]['product_name'].unique().tolist())
