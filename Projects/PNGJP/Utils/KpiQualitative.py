@@ -609,7 +609,10 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
-                            if max(edges_a['shelfs']) <= min(edges_b['shelfs']):
+                            if sorted(set(edges_a['shelfs'])) == sorted(set(edges_b['shelfs'])) and \
+                                    len(set(edges_a['shelfs'])) == 1:
+                                score = result = 0
+                            elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
                         elif direction == 'Horizontal':
