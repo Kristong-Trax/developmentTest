@@ -505,7 +505,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
-            score = 100 if num_of_shelves > 3 else 0
+            score = 100 if num_of_shelves >= 3 else 0
             result = 1 if block_result and num_of_shelves > 3 else 0
 
         else:
