@@ -534,7 +534,7 @@ class PNGRO_PRODToolBox:
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, result, result_2, kpi_fk, fk)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'result', 'result_2', 'kpi_fk',
+                                               'calculation_time', 'score', 'result', 'threshold', 'kpi_fk',
                                                'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
