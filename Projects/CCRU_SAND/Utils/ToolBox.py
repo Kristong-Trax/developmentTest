@@ -2392,7 +2392,7 @@ class CCRU_SANDKPIToolBox:
 
 # Sergey Begin
     def prepare_hidden_set(self, params):
-        table3 = pd.DataFrame([0])
+        table3 = pd.DataFrame([])
 
         kpi_set_name = kpi_name = "CCH Integration"
         kpi_df = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
@@ -2464,12 +2464,13 @@ class CCRU_SANDKPIToolBox:
                                           "format": p.get("Result Format")})
 
             elif p.get("Formula") == "sum of KPI results":  # session level
+                result = 0
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
-                        result = k.get("result")
-                        kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
-                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
-                                          "format": p.get("Result Format")})
+                        result += k.get("result")
+                kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+                                  "format": p.get("Result Format")})
 
             elif p.get("Formula") == "Value":  # scene level
                 scenes = self.get_relevant_scenes(params)
@@ -2512,7 +2513,7 @@ class CCRU_SANDKPIToolBox:
                 if kf.get("format") == "Integer":
                     result_formatted = str(int(kf.get("result")))
                 elif kf.get("format") == "Decimal.2":
-                    result_formatted = format(kf.get("result"), ".2f")
+                    result_formatted = format(float(kf.get("result")), ".2f")
                 else:
                     result_formatted = str(kf.get("result"))
 
@@ -2542,7 +2543,7 @@ class CCRU_SANDKPIToolBox:
                                                               'name'])
                 self.write_to_db_result(attributes_for_table3, 'level3')
 
-                pd.concat(table3, attributes_for_table3)
+                table3 = table3.append(attributes_for_table3)
 
         return
 # Sergey End
