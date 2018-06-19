@@ -119,10 +119,10 @@ class INBEVBRToolBox:
         #     self.handle_group_count_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.SURVEY:
         #     self.handle_survey_atomics(atomic_id, atomic_name)
-        # elif kpi_type == Const.PROD_SEQ:
-        #     self.handle_prod_seq_atomics(atomic_id, atomic_name)
-        if kpi_type == Const.PROD_SEQ_2:
-            self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
+        if kpi_type == Const.PROD_SEQ:
+            self.handle_prod_seq_atomics(atomic_id, atomic_name)
+        # if kpi_type == Const.PROD_SEQ_2:
+        #     self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
         # elif kpi_type == Const.PROD_WEIGHT:
         #     self.handle_prod_weight_atomics(atomic_id, atomic_name)
 
@@ -200,15 +200,15 @@ class INBEVBRToolBox:
         if product_size != "":
             df = self.filter_product_size(df, product_size)
 
-        df_nominator = self.count_of_scenes(df, filters)
-        numerator_number_of_facings = df_nominator['facings'].sum()
+        df_numirator = self.count_of_scenes(df, filters)
+        numerator_number_of_facings = df_numirator['facings'].sum()
         if (numerator_number_of_facings >= target_packs):
             count_result = weight
         else:
-            df_nominator = df_nominator.rename(columns={'facings': 'facings_nomi'})
+            df_numirator = df_numirator.rename(columns={'facings': 'facings_nomi'})
             del filters['manufacturer_name']
             df_denominator = self.count_of_scenes(df, filters)
-            scene_types_groupby = pd.merge(df_nominator, df_denominator, how='left', on='scene_id')
+            scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_id')
             df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
                                                                     scene_types_groupby['facings']) * 100 >= target]
             if target_secondary == "":
@@ -492,48 +492,107 @@ class INBEVBRToolBox:
 
     def handle_prod_seq_atomics(self, atomic_id, atomic_name):
 
-        target = 0
-        return
         count_result = 0
-        numerator_number_of_facings = 0
-        group_score = 0
-        rows_filter_stores = pd.DataFrame
 
         # bring the kpi rows in the PROD_SEQ sheet
         rows = self.prod_seq_sheet.loc[self.prod_seq_sheet[Const.KPI_ID] == atomic_id]
 
-        # filter the relevant store lines
-        for index, row in rows.iterrows():
-            store_type_template = row[Const.STORE_TYPE_TEMPLATE].strip()
-            store_types = store_type_template.split(",")
-            store_types = [item.strip() for item in store_types]
-            if self.store_type_filter in store_types:
-                temp = rows[Const.STORE_TYPE_TEMPLATE]
-                rows_filter_stores = rows[(temp == store_type_template)]
-                break
-
-        row_example = rows_filter_stores.iloc[0]
-        row_example[Const.CATEGORY] = row_example[Const.SUB_CATEGORY] = row_example[Const.BRAND] = row_example[Const.SUB_BRAND] = ""
-        del row_example['Left or Right']
-        del row_example['Exclude Brand']
-        del row_example['Left Brand']
-        del row_example['Right Brand']
-        del row_example['Score']
-        filters = self.get_filters_from_row(row_example)
-
+        # get a the correct rows
+        temp = rows[Const.STORE_TYPE_TEMPLATE]
+        filtered_rows = rows[(temp.apply(lambda r: self.store_type_filter in r.split(","))) | (temp == "")]
+        if filtered_rows.empty:
+            return
+        temp_row = filtered_rows.iloc[0]
+        del temp_row[Const.SUB_CATEGORY]
+        del temp_row[Const.LEFT_RIGHT_SUBCATEGORY]
+        filters = self.get_filters_from_row(temp_row.squeeze())
         scenes = self.get_scene_list(filters)
+        matches = self.match_product_in_scene.copy()
+        matches = matches[matches['scene_fk'].isin(scenes)]
+        matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
+        matches_merged_ns = matches_merged[matches_merged['stacking_layer'] == 1]
+        shelfs = matches_merged_ns[matches_merged_ns['sub_category'].isin(filtered_rows[
+                            Const.SUB_CATEGORY].tolist())][['scene_fk','bay_number','shelf_number','sub_category']].drop_duplicates()
 
-        for scene in scenes:
-            matches = self.match_product_in_scene.copy()
-            matches = matches[matches['scene_fk'] == scene]
-            for bay in matches['bay_number'].unique().tolist():
-                matches_bay = matches[matches['bay_number']==bay]
+        for i, sub_cat_row in filtered_rows.iterrows():
+            filtered_shelfs = shelfs[shelfs['sub_category'] == sub_cat_row[Const.SUB_CATEGORY]]
+            for j, row in filtered_shelfs.iterrows():
+                working_shelf = matches_merged_ns[(matches_merged_ns['scene_fk'] == row['scene_fk']) & (matches_merged_ns[
+                                                                                                            'bay_number'] ==
+                                                                                                        row[
+                                                                                                            'bay_number']) & (
+                                                          matches_merged_ns['shelf_number'] == row['shelf_number'])]
+        #         if len(groups_inside) == 1:
+        #             check = True
+        #             for g in groups_outside:
+        #                 if len(working_shelf[working_shelf['brand_name'] == g]) == 0:
+        #                     check = False
+        #             if check == False:
+        #                 continue
+        #         else:
+        #             if len(working_shelf[working_shelf['brand_name'].isin(groups_outside)]) == 0:
+        #                 continue
+        #
+        #         result = self.check_order_prod_seq_2(working_shelf, groups_outside, groups_inside)
+        #         if result:
+        #             numerator_shelfs += 1
+        #
+        # target = row[Const.TARGET].values[0]
+        # weight = row[Const.WEIGHT].values[0]
+        # if ((numerator_shelfs / denominator_shelfs) * 100 >= target):
+        #     count_result = weight
 
-                for shelf in matches_bay['shelf_number'].unique().tolist():
-                    matches_shelf = matches_bay[matches_bay['shelf_number']==shelf]
-                    for sequence in matches_shelf['squ_sequence_number'].unique().tolist():
-                        return
+        try:
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
 
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_shelfs,
+                                           denominator_result=target, result=count_result)
+
+        # target = 0
+        # return
+        # count_result = 0
+        # numerator_number_of_facings = 0
+        # rows_filter_stores = pd.DataFrame
+        #
+        # # bring the kpi rows in the PROD_SEQ sheet
+        # rows = self.prod_seq_sheet.loc[self.prod_seq_sheet[Const.KPI_ID] == atomic_id]
+        #
+        # # filter the relevant store lines
+        # for index, row in rows.iterrows():
+        #     store_type_template = row[Const.STORE_TYPE_TEMPLATE].strip()
+        #     store_types = store_type_template.split(",")
+        #     store_types = [item.strip() for item in store_types]
+        #     if self.store_type_filter in store_types:
+        #         temp = rows[Const.STORE_TYPE_TEMPLATE]
+        #         rows_filter_stores = rows[(temp == store_type_template)]
+        #         break
+        #
+        # row_example = rows_filter_stores.iloc[0]
+        # row_example[Const.CATEGORY] = row_example[Const.SUB_CATEGORY] = row_example[Const.BRAND] = row_example[Const.SUB_BRAND] = ""
+        # del row_example['Left or Right']
+        # del row_example['Exclude Brand']
+        # del row_example['Left Brand']
+        # del row_example['Right Brand']
+        # del row_example['Score']
+        # filters = self.get_filters_from_row(row_example)
+        #
+        # scenes = self.get_scene_list(filters)
+        #
+        # for scene in scenes:
+        #     matches = self.match_product_in_scene.copy()
+        #     matches = matches[matches['scene_fk'] == scene]
+        #     for bay in matches['bay_number'].unique().tolist():
+        #         matches_bay = matches[matches['bay_number']==bay]
+        #
+        #         for shelf in matches_bay['shelf_number'].unique().tolist():
+        #             matches_shelf = matches_bay[matches_bay['shelf_number']==shelf]
+        #             for sequence in matches_shelf['squ_sequence_number'].unique().tolist():
+        #                 return
+        #
 
         #
         # for i in xrange(len(self.relative_positioning)):
@@ -577,25 +636,12 @@ class INBEVBRToolBox:
         #                 count_result = weight
         #                 break
 
-        try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
-        except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
-
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
 
     def handle_prod_seq_2_atomics(self, atomic_id, atomic_name):
 
-        target = 0
         count_result = 0
-        numerator_number_of_facings = 0
-        group_score = 0
-        rows_filter_stores = pd.DataFrame
 
-        # bring the kpi rows in the PROD_SEQ sheet
+        # bring the kpi rows in the PROD_SEQ_2 sheet
         rows = self.prod_seq_2_sheet.loc[self.prod_seq_2_sheet[Const.KPI_ID] == atomic_id]
 
         # get a the correct rows
@@ -604,21 +650,21 @@ class INBEVBRToolBox:
         groups_outside = row[Const.BRAND_GROUP_OUTSIDE].values[0].split(',')
         groups_inside = row[Const.BRAND_GROUP_INSIDE].values[0].split(',')
 
-        row_example = row.copy()
-        del row_example[Const.BRAND_GROUP_OUTSIDE]
-        del row_example[Const.BRAND_GROUP_INSIDE]
+        del row[Const.BRAND_GROUP_OUTSIDE]
+        del row[Const.BRAND_GROUP_INSIDE]
 
-        filters = self.get_filters_from_row(row_example.squeeze())
+        filters = self.get_filters_from_row(row.squeeze())
 
         scenes = self.get_scene_list(filters)
 
         matches = self.match_product_in_scene.copy()
+        matches = matches[matches['scene_fk'].isin(scenes)]
         matches_merged = pd.merge(matches, self.all_products, how='left', on='product_fk').fillna(0)
         matches_merged_ns = matches_merged[matches_merged['stacking_layer'] == 1]
         filtered_shelfs = matches_merged_ns[matches_merged_ns['brand_name'].isin(groups_inside)][['scene_fk',
                                                                     'bay_number', 'shelf_number']].drop_duplicates()
         denominator_shelfs = len(filtered_shelfs)
-        nominator_shelfs = 0
+        numerator_shelfs = 0
         for i,row in filtered_shelfs.iterrows():
             working_shelf = matches_merged_ns[(matches_merged_ns['scene_fk'] == row['scene_fk']) & (matches_merged_ns[
                       'bay_number'] == row['bay_number']) & (matches_merged_ns['shelf_number'] == row['shelf_number'])]
@@ -633,9 +679,25 @@ class INBEVBRToolBox:
                 if len(working_shelf[working_shelf['brand_name'].isin(groups_outside)]) == 0:
                     continue
 
-            result = self.check_order_prod_seq_2(working_shelf, groups_outside , groups_inside)
-            if result == 1:
-                nominator_shelfs += 1
+            result = self.check_order_prod_seq_2(working_shelf, groups_outside, groups_inside)
+            if result:
+                numerator_shelfs += 1
+
+        target = row[Const.TARGET].values[0]
+        weight = row[Const.WEIGHT].values[0]
+        if ((numerator_shelfs / denominator_shelfs) * 100 >= target):
+            count_result = weight
+
+        try:
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
+
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_shelfs,
+                                           denominator_result=target, result=count_result)
+
 
 
 
@@ -668,45 +730,47 @@ class INBEVBRToolBox:
         #             for sequence in df['facing_sequence_number'].unique().tolist():
 
 
-        try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
-        except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
-
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
 
     def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
+        result = False
         df = working_shelf.sort_values('facing_sequence_number')['brand_name']
         # drop adjacent brand duplicates
         df = df.loc[df.shift(-1) != df]
         list_df = df.tolist()
         str_df = "".join(list_df)
+        constraints = self.calc_constraints(groups_outside, groups_inside, list_df)
+        groups = groups_inside + groups_outside
+        for c in constraints:
+            if c in str_df:
+                result = True
+                str_df = str_df.replace(c,"",1)
+                for i in groups:
+                    result = result and (i in str_df)
+                break
+        return result
 
+    def calc_constraints(self,groups_outside, groups_inside, list_df):
+        a = groups_outside[0]
+        b = groups_outside[1]
+        c = groups_inside[0]
 
+        if (a in list_df and b in list_df):
+            if len(groups_inside) > 1:
+                d = groups_inside[1]
+                constraints = [a+c+d+b,a+d+c+b,b+d+c+a,b+c+d+a] + [a+c+b,a+d+b,b+c+a,b+d+a]
+            else:
+                constraints = [a+c+b,b+c+a]
+        else:
+            if (b in list_df):
+                a = b
+            if len(groups_inside) > 1:
+                d = groups_inside[1]
+                constraints = [a+c+d,a+d+c,d+c+a,c+d+a,c+a+d,d+a+c] + [a+c,a+d,c+a,d+a]
+            else:
+                constraints = [a+c,c+a]
 
+        return constraints
 
-
-        # index = 0
-        # while (list_df[index] not in groups_outside):
-        #     index += 1
-        # index += 1
-        # if(list_df[index] not in groups_inside):
-        #     result = 0
-        # else:
-        #     index += 1
-        #     if(list_df[index] not in groups_inside):
-        #
-        #
-
-
-
-
-        result = 0
-        # for i,row in df.iterrows():
-        #     if
 
     def get_scene_list(self, filters):
         scenes_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_fk'].unique().tolist()

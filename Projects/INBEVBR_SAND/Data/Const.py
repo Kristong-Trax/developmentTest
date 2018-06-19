@@ -52,7 +52,7 @@ class Const(object):
     MEASUREMENT_UNIT = "Measurement Unit"
     PRODUCT_SIZE = 'Product Size'
     SURVEY_QUESTION_ID = 'Survey Question Id'
-
+    LEFT_RIGHT_SUBCATEGORY = 'Left or Right Subcategory'
 
 
     KPI_GROUP = 'Tested KPI Group'
