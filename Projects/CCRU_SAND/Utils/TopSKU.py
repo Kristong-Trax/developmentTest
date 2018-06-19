@@ -310,5 +310,5 @@ if __name__ == '__main__':
     rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
     ts = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
     ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Targets June OSA.xlsx', data_first_cell='D2',
-                           ean_row_index=1, store_number_column_index='A')
+                           ean_row_index=1, store_number_column_index='A', update_correlations=True)
 #     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
