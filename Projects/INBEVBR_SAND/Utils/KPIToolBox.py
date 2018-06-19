@@ -682,6 +682,28 @@ class INBEVBRToolBox:
         df = working_shelf.sort_values('facing_sequence_number')['brand_name']
         # drop adjacent brand duplicates
         df = df.loc[df.shift(-1) != df]
+        list_df = df.tolist()
+        str_df = "".join(list_df)
+
+
+
+
+
+        # index = 0
+        # while (list_df[index] not in groups_outside):
+        #     index += 1
+        # index += 1
+        # if(list_df[index] not in groups_inside):
+        #     result = 0
+        # else:
+        #     index += 1
+        #     if(list_df[index] not in groups_inside):
+        #
+        #
+
+
+
+
         result = 0
         # for i,row in df.iterrows():
         #     if
