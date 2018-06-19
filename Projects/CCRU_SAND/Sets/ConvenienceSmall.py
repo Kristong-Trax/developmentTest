@@ -18,7 +18,7 @@ __author__ = 'shanim'
 CONVENIENCE_SMALL_2018 = 'Pos 2018 - MT - Convenience Small'
 TARGET_EXECUTION = 'Target Execution 2018' # todo: is this should be kept the same?
 MARKETING = 'Marketing 2017' # todo: is this should be kept the same?
-
+CCH_INTEGRATION = 'CCH Integration'
 
 class CCRU_SANDConvenienceSmallCalculations:
     def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
@@ -73,6 +73,9 @@ class CCRU_SANDConvenienceSmallCalculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
+# Sergey
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=CONVENIENCE_SMALL_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -105,6 +108,7 @@ class CCRU_SANDConvenienceSmallCalculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
+        self.tool_box.temp
         calc_finish_time = datetime.datetime.utcnow()
         Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
 

@@ -99,6 +99,9 @@ class CCRU_SANDFT2018Calculations:
                                                                                             'score_1',
                                                                                             'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
+# Sergey
+            self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
 
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
