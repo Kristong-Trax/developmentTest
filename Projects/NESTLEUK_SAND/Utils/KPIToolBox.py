@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+
 from datetime import datetime
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
@@ -327,9 +329,9 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
                          (matches['stacking_layer'] == 1)].sort('y_mm', ascending=False).values[0]
         bottom = int(bottom['y_mm']) - (int(bottom['height_mm_net']) / 2)
-        left = matches.sort('x_mm', ascending=False).values[0]
+        left = matches.copy().sort('x_mm', ascending=False).values[0]
         left = int(left['x_mm']) - (int(left['width_mm_net']) / 2)
-        right = matches.sort('x_mm', ascending=True).values[0]
+        right = matches.copy().sort('x_mm', ascending=True).values[0]
         right = int(right['y_mm']) - (int(right['height_mm_net']) / 2)
         middle_x = (right + left) / 2
         middle_y = (top + bottom) / 2
@@ -338,13 +340,21 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
 
     def calculate_polygon(self, scene, product_fk, polygon):
         matches = self.tools.get_filter_condition(self.match_product_in_scene, **{'scene_fk': scene})
-        self.build_array_of_points(matches, product_fk)
-        point = Point(0.5, 0.5)
-        return polygon.contains(point)
+        points = self.build_array_of_points(matches, product_fk)
+        for point in points:
+            if polygon.contains(point):
+                return True
+        return False
 
     def build_array_of_points(self, matches, product):
         points = []
-        for product_show in matches[matches['product_fk']]
+        for x, product_show in matches[matches['product_fk']==product].itterows():
+            top = int(product_show['y_mm']) - (int(product_show['height_mm_net']) / 2)
+            bottom = int(product_show['y_mm']) - (int(product_show['height_mm_net']) / 2)
+            left = int(product_show['x_mm']) - (int(product_show['width_mm_net']) / 2)
+            right = int(product_show['y_mm']) - (int(product_show['height_mm_net']) / 2)
+            mask_point = [Point(top, left), Point(top, right), Point(bottom, left), Point(bottom, right)]
+            points.append(mask_point)
         return points
 
     def calculate_adjacent(self, kpi):
