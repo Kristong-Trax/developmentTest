@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from datetime import datetime, timedelta
@@ -8,7 +7,7 @@ from openpyxl.utils import column_index_from_string, coordinate_from_string
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-#from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -81,8 +80,7 @@ class CCRU_SANDTopSKUAssortment:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.product_data[self.product_data['product_ean_code']
-                                           == product_ean_code]
+            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk
@@ -125,13 +123,11 @@ class CCRU_SANDTopSKUAssortment:
                     continue
                 products.add(product_fk)
         if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format(
-                '; '.join(missing_products)))
+            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
             # return
 
         if products:
-            # If the product has a custom start_date
-            current_date = datetime(year=2018, month=02, day=24).date()
+            current_date = datetime(year=2018, month=05, day=26).date()  # If the product has a custom start_date
             # current_date = datetime.now().date()  # If the product should be activated from today
             if immediate_change:
                 deactivate_date = current_date - timedelta(1)
@@ -142,8 +138,7 @@ class CCRU_SANDTopSKUAssortment:
 
             queries = []
             # current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
-            current_skus = current_skus_all_stores[current_skus_all_stores['store_fk']
-                                                   == store_fk]['product_fk'].tolist()
+            current_skus = current_skus_all_stores[current_skus_all_stores['store_fk']==store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
             for product_fk in products_to_deactivate:
@@ -207,8 +202,7 @@ class CCRU_SANDTopSKUAssortment:
         if correlations:
             queries = [self.get_delete_correlation_query()]
             for product_ean_code in correlations:
-                queries.append(self.get_correlation_query(
-                    product_ean_code, correlations[product_ean_code]))
+                queries.append(self.get_correlation_query(product_ean_code, correlations[product_ean_code]))
             self.commit_results(queries)
             delattr(self, '_product_data')
 
@@ -228,8 +222,7 @@ class CCRU_SANDTopSKUAssortment:
 
     @staticmethod
     def get_delete_correlation_query():
-        query = 'update static.product set {0} = null where {0} is not null'.format(
-            CORRELATION_FIELD)
+        query = 'update static.product set {0} = null where {0} is not null'.format(CORRELATION_FIELD)
         return query
 
     @staticmethod
@@ -238,8 +231,7 @@ class CCRU_SANDTopSKUAssortment:
             condition = 'pk = {}'.format(correlated_products[0])
         else:
             condition = 'pk in ({})'.format(tuple(correlated_products))
-        query = "update static.product set {} = '{}' where {}".format(
-            CORRELATION_FIELD, anchor_ean_code, condition)
+        query = "update static.product set {} = '{}' where {}".format(CORRELATION_FIELD, anchor_ean_code, condition)
         return query
 
     def commit_results(self, queries):
@@ -313,11 +305,10 @@ class CCRU_SANDTopSKUAssortment:
         # merged_queries.extend(other_queries)
         return merged_queries
 
-
-# if __name__ == '__main__':
-#     LoggerInitializer.init('test')
-#     rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-#     ts = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
-#     ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_shani/Targets March OSA.xlsx', data_first_cell='D2',
-#                            ean_row_index=1, store_number_column_index='A')
+if __name__ == '__main__':
+    LoggerInitializer.init('test')
+    rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+    ts = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
+    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Targets June OSA.xlsx', data_first_cell='D2',
+                           ean_row_index=1, store_number_column_index='A', update_correlations=True)
 #     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
