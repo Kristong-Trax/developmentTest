@@ -2392,7 +2392,7 @@ class CCRU_SANDKPIToolBox:
 
 # Sergey Begin
     def prepare_hidden_set(self, params):
-        table3 = pd.DataFrame([])
+        # table3 = pd.DataFrame([])  # for debugging
 
         kpi_set_name = kpi_name = "CCH Integration"
         kpi_df = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
@@ -2516,6 +2516,8 @@ class CCRU_SANDKPIToolBox:
                     result_formatted = format(float(kf.get("result")), ".2f")
                 else:
                     result_formatted = str(kf.get("result"))
+            # else:
+            #     result_formatted = None
 
                 attributes_for_table3 = pd.DataFrame([(kf.get("display_text"),
                                                        self.session_uid,
@@ -2543,7 +2545,7 @@ class CCRU_SANDKPIToolBox:
                                                               'name'])
                 self.write_to_db_result(attributes_for_table3, 'level3')
 
-                table3 = table3.append(attributes_for_table3)
+                # table3 = table3.append(attributes_for_table3)  # for debugging
 
         return
 # Sergey End
