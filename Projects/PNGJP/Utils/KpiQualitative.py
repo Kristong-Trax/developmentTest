@@ -310,8 +310,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return {'product_fk': list(filtered_products_fk)}
 
     def _get_ean_codes_by_product_group_id(self, column_name=PRODUCT_GROUP_ID, **params):
-        return self.product_groups_data[self.product_groups_data['Group Id'] == params[column_name].values[0]][
-                'Product EAN Code'].values[0].split(self.SEPARATOR)
+        return self.product_groups_data[self.product_groups_data['Group Id'] ==
+                                        params[column_name].values[0].split('.')[0]]['Product EAN Code'].values[0].\
+            split(self.SEPARATOR)
 
     def _get_allowed_products(self, allowed):
         allowed_products = set()
@@ -461,15 +462,14 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     def calculate_golden_zone(self, kpi, kpi_filters):
         shelves = [4, 5]
-        total_group_skus = None
         params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
-        if params[self.BRANDS].values[0] is not None:
+        if params[self.BRANDS].values[0]:
             kpi_filter['brand_local_name'] = params[self.BRANDS].values[0]
             total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
                                                                    **kpi_filter))
-        elif params[self.PRODUCT_GROUP_ID].values[0] is not None:
+        elif params[self.PRODUCT_GROUP_ID].values[0]:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
             kpi_filter[assortment_entity] = product_eans
             total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
@@ -477,6 +477,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         else:
             product_eans = params['Product EAN Code'].values[0].split(self.SEPARATOR)
             kpi_filter[assortment_entity] = product_eans
+            total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
+                                                                   **kpi_filter))
+
         result = int(
             self.tools.calculate_assortment(assortment_entity=assortment_entity,
                                             shelf_number_from_bottom=shelves,
@@ -502,7 +505,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
-            score = 100 if num_of_shelves > 3 else 0
+            score = 100 if num_of_shelves >= 3 else 0
             result = 1 if block_result and num_of_shelves > 3 else 0
 
         else:
@@ -606,7 +609,10 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
-                            if max(edges_a['shelfs']) <= min(edges_b['shelfs']):
+                            if sorted(set(edges_a['shelfs'])) == sorted(set(edges_b['shelfs'])) and \
+                                    len(set(edges_a['shelfs'])) == 1:
+                                score = result = 0
+                            elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
                         elif direction == 'Horizontal':
