@@ -64,7 +64,9 @@ ADJACENCY_PARAMS = ['sub_category', 'brand_name', 'NATURALS', 'Sub Brand',
                     'P&G BRAND', 'BENEFIT', 'AUDIENCE', 'PRICE SEGMENT', 'FORM', 'HEAD SIZE']
 BLOCK_TOGETHER = ['Regular Block', 'horizontally blocked', 'vertically blocked', 'Orphan products', 'group in block',
                   'regular block', 'block in block', 'hor_vs_vertical']
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.xlsx')
+FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
+PG_CATEGORY = 'P&G CATEGORY'
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.1.xlsx')
 POWER_SKUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PowerSKUs_3.xlsx')
 
 GOLDEN_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'golden_shelves.xlsx'
@@ -193,47 +195,57 @@ class PNGAMERICAToolBox:
         block_calc_indication = {}
         set_name = self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
         template_data = self.all_template_data.loc[self.all_template_data['kpi set name'] == set_name]
-        kpi_list = template_data['KPI name'].unique().tolist()
+        kpi_list = template_data['KPI name'].tolist()
         try:
-            if set_name and not template_data['category'].values[0] in self.scif['category'].unique().tolist()\
-                    or not set(template_data['Scene Types to Include'].values[0].encode().split(', ')) & set(
+            if set_name and not set(template_data['Scene Types to Include'].values[0].encode().split(', ')) & set(
                         self.scif['template_name'].unique().tolist()):
                 Log.info('Category {} was not captured'.format(template_data['category'].values[0]))
                 return
         except Exception as e:
             Log.info('KPI Set {} is not defined in the template'.format(set_name))
-        for kpi_name in kpi_list:
+        # for kpi_name in kpi_list:
+        for i, row in template_data.iterrows():
             try:
-                kpi_data = template_data.loc[template_data['KPI name'] == kpi_name]
-                scene_type = [s for s in kpi_data['Scene Types to Include'].values[0].encode().split(', ')]
-                kpi_type = kpi_data['KPI Type'].values[0]
-                category = kpi_data['category'].values[0]
-                if kpi_data['KPI Group type'].values[0]:
-                    if kpi_type in BLOCK_TOGETHER:
-                        if kpi_data['Tested KPI Group'].values[0] not in block_calc_indication.keys():
-                            kpi_data_group = template_data.loc[template_data['Tested KPI Group'] ==
-                                                               kpi_data['Tested KPI Group'].values[0]]
-                            self.calculate_block_together(kpi_set_fk, kpi_data['Tested KPI Group'].values[0],
-                                                          scene_type)
-                            kpis_to_remove = kpi_data_group['KPI name'].unique().tolist()
-                            block_calc_indication[kpi_data['Tested KPI Group'].values[0]] = 1
-                            # for kpi in kpis_to_remove:
-                            #     kpi_list.remove(kpi)
-                    if kpi_type == 'anchor list':
-                        category = kpi_data['category'].values[0]
-                        self.calculate_anchor(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type, category,
-                                              list_type=True)
-                    if kpi_type == 'adj to list':
-                        self.calculate_adjacency(kpi_set_fk, kpi_data['KPI Group type'].values[0], scene_type,
-                                                 list_type=True)
-                    if kpi_type == 'checkerboarded list':
-                        self.calculate_checkerboarded(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type,
-                                                      list_type=True)
-                    if kpi_type == 'eye level list':
-                        category = kpi_data['category'].values[0]
-                        self.calculate_eye_level(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type, category,
-                                              list_type=True)
-                elif kpi_type in BLOCK_TOGETHER:
+                kpi_name = row['KPI name']
+                # kpi_data = template_data.loc[template_data['KPI name'] == kpi_name]
+                # scene_type = [s for s in kpi_data['Scene Types to Include'].values[0].encode().split(', ')]
+                scene_type = [s for s in row['Scene Types to Include'].encode().split(', ')]
+                # kpi_type = kpi_data['KPI Type'].values[0]
+                kpi_type = row['KPI Type']
+
+                # category = kpi_data['category'].values[0]
+                category = row['category']
+
+
+                if kpi_type not in ['category space']:
+                    continue
+
+                # if kpi_data['KPI Group type'].values[0]:
+                #     if kpi_type in BLOCK_TOGETHER:
+                #         if kpi_data['Tested KPI Group'].values[0] not in block_calc_indication.keys():
+                #             kpi_data_group = template_data.loc[template_data['Tested KPI Group'] ==
+                #                                                kpi_data['Tested KPI Group'].values[0]]
+                #             self.calculate_block_together(kpi_set_fk, kpi_data['Tested KPI Group'].values[0],
+                #                                           scene_type)
+                #             kpis_to_remove = kpi_data_group['KPI name'].unique().tolist()
+                #             block_calc_indication[kpi_data['Tested KPI Group'].values[0]] = 1
+                #             # for kpi in kpis_to_remove:
+                #             #     kpi_list.remove(kpi)
+                #     if kpi_type == 'anchor list':
+                #         category = kpi_data['category'].values[0]
+                #         self.calculate_anchor(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type, category,
+                #                               list_type=True)
+                #     if kpi_type == 'adj to list':
+                #         self.calculate_adjacency(kpi_set_fk, kpi_data['KPI Group type'].values[0], scene_type,
+                #                                  list_type=True)
+                #     if kpi_type == 'checkerboarded list':
+                #         self.calculate_checkerboarded(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type,
+                #                                       list_type=True)
+                #     if kpi_type == 'eye level list':
+                #         category = kpi_data['category'].values[0]
+                #         self.calculate_eye_level(kpi_set_fk, kpi_data['Tested KPI Group'].values[0], scene_type, category,
+                #                               list_type=True)
+                if kpi_type in BLOCK_TOGETHER:
                     self.calculate_block_together_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'availability':
                     self.calculate_availability(kpi_set_fk, kpi_name, scene_type)
@@ -246,7 +258,6 @@ class PNGAMERICAToolBox:
                 elif kpi_type == 'checkerboarded':
                     self.calculate_checkerboarded_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'anchor':
-                    category = kpi_data['category'].values[0]
                     self.calculate_anchor_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'orchestrated':
                     self.calculate_orchestrated_new(kpi_set_fk, kpi_name, scene_type)
@@ -1512,11 +1523,15 @@ class PNGAMERICAToolBox:
         values_to_check = []
         secondary_values_to_check = []
         filters = {'template_name': scene_types, 'category': kpi_template['category']}
+        if kpi_template['category'] in FABRICARE_CATEGORIES:
+            category_att = PG_CATEGORY
+        else:
+            category_att = 'category'
         if kpi_template['filter_1']:
-            values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['category']][
+            values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['category']][
                 kpi_template['filter_1']].unique().tolist()
         if kpi_template['filter_2']:
-            secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['category']][
+            secondary_values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['category']][
                 kpi_template['filter_2']].unique().tolist()
         for primary_filter in values_to_check:
             filters[kpi_template['filter_1']] = primary_filter
@@ -1527,11 +1542,17 @@ class PNGAMERICAToolBox:
                         continue
                     filters[kpi_template['filter_2']] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    if kpi_template['category'] in FABRICARE_CATEGORIES:
+                        filters['P&G CATEGORY'] = kpi_template['category']
+                    del filters['category']
                     result = self.tools.calculate_category_space(**filters)
                     score = result * self.MM_TO_FEET_CONVERSION
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                if kpi_template['category'] in FABRICARE_CATEGORIES:
+                    filters['P&G CATEGORY'] = kpi_template['category']
+                del filters['category']
                 result = self.tools.calculate_category_space(**filters)
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
