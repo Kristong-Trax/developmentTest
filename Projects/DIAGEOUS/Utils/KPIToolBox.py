@@ -626,10 +626,12 @@ class DIAGEOUSToolBox:
         if "ALL" in shelf_groups:
             answer_couple = 1, group_names[0]
         else:
-            answer_couple = 0, Const.OTHER
+            answer_couple = 0, group_names[0]
             common_shelves = set(group_names) & set(shelf_groups)
             if common_shelves:
                 answer_couple = 1, common_shelves.pop()
+
+        print answer_couple[1]
         return answer_couple
 
     # msrp:
