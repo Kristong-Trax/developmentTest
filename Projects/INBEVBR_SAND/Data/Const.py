@@ -14,6 +14,8 @@ class Const(object):
     PROD_SEQ = 'PROD_SEQ'
     PROD_SEQ_2 = 'PROD_SEQ_2'
     PROD_WEIGHT = 'PROD_WEIGHT'
+    PROD_WEIGHT_SKU = 'PROD_WEIGHT_SKU'
+    PROD_WEIGHT_SUBBRAND = 'PROD_WEIGHT_SUBBRAND'
 
     # count types
     FACING = 'facing'
@@ -46,32 +48,32 @@ class Const(object):
     PACKS_TARGET = 'Packs Target'
     BRAND_GROUP_OUTSIDE = 'Brand group outside'
     BRAND_GROUP_INSIDE = 'Brand group inside'
-    FLAVOUR = 'Flavour'
     MANUFACTURER = 'Manufacturer'
     EXCLUDE_MANUFACTURER = 'Exclude manufacturer'
     MEASUREMENT_UNIT = "Measurement Unit"
     PRODUCT_SIZE = 'Product Size'
     SURVEY_QUESTION_ID = 'Survey Question Id'
     LEFT_RIGHT_SUBCATEGORY = 'Left or Right Subcategory'
-
+    FLAVOR = 'Flavor'
+    LIMIT_SCORE = 'Limit Score'
+    TARGET_ANSWER = 'Target Answer'
+    TEMPLATE_NAME = 'Template name'
+    EXPECTED_RESULT = "Expected Result"
 
     KPI_GROUP = 'Tested KPI Group'
     KPI_DISPLAY_NAME = 'KPI Display Name'
     GROUP_KPI_NAME = 'Group KPI Name'
-    TARGET_ANSWER = 'Target Answer'
     TARGET_TYPE = 'Target Type'
-    TEMPLATE_NAME = 'Template name'
     PRODUCT_TYPE = 'Product Type'
     PRODUCT_SIZE_OPERATOR = 'Product Size Operator'
     PRODUCT = 'Product'
-    EXPECTED_RESULT = "Expected Result"
     MULTIPACK= 'Multipack'
     CONSIDER_FEW = 'Consider few brands'
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
                      MEASUREMENT_UNIT,PRODUCT,PRODUCT_SIZE, STORE_TYPE_TEMPLATE, WEIGHT, STATE_TEMPLATE,
-                     SECONDARY_TARGET, GROUP_KPI_NAME,SCORE, FLAVOUR, PACKS_TARGET] #,BEER_TYPE, CONTAINER_TYPE,ATT1
+                     SECONDARY_TARGET, GROUP_KPI_NAME,SCORE, PACKS_TARGET]
 
     # include exclude filters
     EXCLUDE_FILTER = 0
