@@ -1899,7 +1899,6 @@ class CCRU_SANDKPIToolBox:
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, p.get("Children").split("\n"))
             kpi_total = 0
-            atomic_result_total = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
                     atomic_score = -1
@@ -1944,12 +1943,6 @@ class CCRU_SANDKPIToolBox:
                     self.write_to_db_result(attributes_for_level3, 'level3')
                     if atomic_score > 0:
                         kpi_total += 1
-# Sergey
-                    atomic_result = attributes_for_level3['result']
-                    if atomic_result.size > 0:
-                        atomic_result_total += atomic_result.values[0]
-# Sergey
-
             score = self.calculate_score(kpi_total, p)
             if 'KPI Weight' in p.keys():
                 set_total_res += round(score) * p.get('KPI Weight')
@@ -1960,7 +1953,7 @@ class CCRU_SANDKPIToolBox:
             self.write_to_db_result(attributes_for_level2, 'level2')
 # Sergey 1 Begin
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
+                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, kpi_total, score)
 # Sergey 1 End
             if p.get('Target Execution 2018'):  # insert the results that needed for target execution set
                 kpi_name = p.get('KPI name Eng')
