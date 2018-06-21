@@ -505,7 +505,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
-            score = 100 if num_of_shelves > 3 else 0
+            score = 100 if num_of_shelves >= 3 else 0
             result = 1 if block_result and num_of_shelves > 3 else 0
 
         else:
@@ -609,7 +609,10 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
-                            if max(edges_a['shelfs']) <= min(edges_b['shelfs']):
+                            if sorted(set(edges_a['shelfs'])) == sorted(set(edges_b['shelfs'])) and \
+                                    len(set(edges_a['shelfs'])) == 1:
+                                score = result = 0
+                            elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
                         elif direction == 'Horizontal':

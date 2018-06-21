@@ -32,7 +32,6 @@ class CCRU_SANDConsts(object):
     ENG_NAME = 'KPI name Eng'
     OPERATOR = 'Logical Operator'
 
-
 class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
     """
     This module writes all levels of KPIs to the DB, given a template.
@@ -43,7 +42,6 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
 
     (Example for template: GILLETTEUS/Data/Template.xlsx)
     """
-
     def __init__(self, set_name, template_path, custom_mode=False):
         self.project = 'ccru_sand'
         self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
@@ -167,8 +165,7 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
                 if set_name in self.sets_added.keys():
                     set_fk = self.sets_added[set_name]
                 else:
-                    set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
-                                                  == set_name]['kpi_set_fk'].values[0]
+                    set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
                 level2_query = """
                        INSERT INTO static.kpi (kpi_set_fk, display_text)
                        VALUES ('{0}', '{1}');""".format(set_fk, kpi_name)
@@ -181,8 +178,7 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
         self.aws_conn.db.commit()
 
     def add_atomics_to_static(self):
-        atomics = self.data.drop_duplicates(
-            subset=[self.KPI_SET_NAME, self.KPI_NAME, self.ATOMIC_KPI_NAME], keep='first')
+        atomics = self.data.drop_duplicates(subset=[self.KPI_SET_NAME, self.KPI_NAME, self.ATOMIC_KPI_NAME], keep='first')
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
@@ -194,8 +190,7 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
                 names = []
                 custom_indicator = atomic.get(self.CUSTOM_FIELD)
                 if custom_indicator not in self.CUSTOM_DATA.keys():
-                    Log.warning(
-                        "Atomic KPI '{}' is not configured in the CUSTOM_DATA dictionary".format(atomic_name))
+                    Log.warning("Atomic KPI '{}' is not configured in the CUSTOM_DATA dictionary".format(atomic_name))
                     custom_data = {'number_of_atomics': 1, 'suffixes': ['']}
                 else:
                     custom_data = self.CUSTOM_DATA.get(custom_indicator)
@@ -243,9 +238,9 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts, CCRU_SANDCustomConfigurations):
 #     #         'Pos 2018 - QSR': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/QSR PoS 2018.xlsx',
 #     #         'Pos 2018 - MT - Supermarket': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/Supermarket PoS 2018.xlsx'}
 #     kpis = {'Pos 2018 - MT - Convenience Big': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/Convenience Big PoS 2018.xlsx'}
-#     # 'Pos 2018 - MT - Convenience Big': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/Convenience Big PoS 2018.xlsx',
-#     # 'Pos 2018 - HoReCa (Cofee /Tea Shops)': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/HoReCa Cofee_Tea Shops PoS 2018.xlsx'
-#     # }
+#             # 'Pos 2018 - MT - Convenience Big': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/Convenience Big PoS 2018.xlsx',
+#             # 'Pos 2018 - HoReCa (Cofee /Tea Shops)': '/home/Shani/dev/trax_ace_factory/Projects/CCRU/Data/with weights/HoReCa Cofee_Tea Shops PoS 2018.xlsx'
+#             # }
 #     for name in kpis.keys():
 #         kpi = CCRU_SANDAddKPIs(name, kpis[name])
 #         kpi.add_fields_to_exist_kpis()

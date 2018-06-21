@@ -3,6 +3,7 @@ import os
 import shutil
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
+import stat
 
 __author__ = 'yoava'
 
@@ -11,6 +12,8 @@ GENERATOR_FILE_NAME = 'KPIGenerator'
 FETCHER_FILE_NAME = 'Fetcher'
 TOOL_BOX_FILE_NAME = 'KPIToolBox'
 LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
+PROFILING_SCRIPT_NAME = 'gen_profiling'
+DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
 
 LOCAL_FILE = """
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -140,6 +143,75 @@ class %(generator_class_name)s:
         self.common.commit_results_data()
 """
 
+PROFILING_SCRIPT = """
+
+#!/usr/bin/env bash
+
+# Author: Ilan P & yoava
+
+# this scripts gen an .svg file to see clearly the code flow execution for profiling
+# between imports
+
+# HOW TO USE
+# ============
+# cd to kpi_factory/Projects/<your project>/Profiling
+# in terminal : ./gen_profiling.sh
+
+
+PROJECT_DIR=$PWD
+
+PARENT_DIR="$(dirname "$PROJECT_DIR")"
+
+PROJECT=${PARENT_DIR##*/}
+
+
+cd .. && cd .. && cd .. && python -m cProfile -o 1.stats ~/dev/kpi_factory/Projects/$PROJECT/Calculations.py -e prod -c ~/dev/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config
+gprof2dot -f pstats 1.stats -o 1.dot
+dot -Tsvg -Gdpi=70 -o ${PROJECT}_profiling.svg 1.dot
+
+mv ~/dev/kpi_factory/1.dot ${PROJECT_DIR}/1.dot
+mv ~/dev/kpi_factory/1.stats ${PROJECT_DIR}/1.stats
+mv ~/dev/kpi_factory/${PROJECT}_profiling.svg ${PROJECT_DIR}/${PROJECT}_profiling.svg
+
+"""
+
+
+GEN_DEPENDENCY_SCRIPT = """
+
+#!/usr/bin/env bash
+
+# Author: ilan p & yoava
+
+# this scripts gen an .svg file to see clearly the dependencies
+# between imports
+
+# HOW TO USE
+# ============
+# cd to kpi_factory/Projects/<your project>/Profiling
+# in terminal : ./gen_dependency_graph.sh
+
+PROJECT_DIR=$PWD
+
+
+PARENT_DIR="$(dirname "$PROJECT_DIR")"
+
+
+
+~/miniconda/envs/garage/bin/sfood ${PARENT_DIR}/ | ~/miniconda/envs/garage/bin/sfood-graph > /tmp/d.dot
+dot -Tsvg -Gdpi=70 /tmp/d.dot -o ${PROJECT_DIR}/graph1.svg
+
+
+
+export message='"message"'
+export severity='"severity"'
+export application='"application"'
+export environment='"environment"'
+export my_user=$(whoami)
+
+curl -X POST https://logs-01.loggly.com/inputs/2cce0ddd-ce82-4f1f-af5d-f72be7fc67ae/tag/python,PS,Install_hooks/ -d "{action: gen dependency graph, $severity: 'info', $application: 'PS_dev_tools' , $environment: 'dev', user:$my_user}"
+
+"""
+
 
 class CreateKPIProject:
 
@@ -164,7 +236,9 @@ class CreateKPIProject:
                                 (LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE),
                                 (GENERATOR_FILE_NAME, GENERATOR)],
                            'Utils': [(TOOL_BOX_FILE_NAME, TOOL_BOX),
-                                     ]}
+                                     ],
+                           'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
+                                         (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)]}
 
         formatting_dict = {'author': self.author,
                            'project': self.project,
@@ -174,7 +248,8 @@ class CreateKPIProject:
                            'tool_box_file_name': TOOL_BOX_FILE_NAME,
                            'tool_box_class_name': '{}ToolBox'.format(self.project_short),
                            'main_file_name': MAIN_FILE_NAME,
-                           'main_class_name': '{}Calculations'.format(self.project_short)}
+                           'main_class_name': '{}Calculations'.format(self.project_short)
+                           }
         for directory in files_to_create.keys():
             if directory:
                 directory_path = self.project_path + directory + '/'
@@ -184,8 +259,15 @@ class CreateKPIProject:
             else:
                 directory_path = self.project_path
             for file_name, file_content in files_to_create[directory]:
-                with open(directory_path + file_name + '.py', 'wb') as f:
-                    f.write(file_content % formatting_dict)
+                if directory == 'Profiling':
+                    with open(directory_path + file_name + '.sh', 'wb') as f:
+                        f.write(file_content)
+                        st = os.stat(os.path.join(directory_path, file_name + '.sh'))
+                        os.chmod(os.path.join(directory_path, file_name + '.sh'), st.st_mode | stat.S_IEXEC)
+                else:
+                    with open(directory_path + file_name + '.py', 'wb') as f:
+                        f.write(file_content % formatting_dict)
+
         data_directory = os.path.join(self.project_path, 'Data')
         if not os.path.exists(data_directory):
             os.makedirs(data_directory)

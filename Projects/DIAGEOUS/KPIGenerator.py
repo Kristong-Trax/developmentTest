@@ -15,7 +15,7 @@ class Generator:
         self.session_uid = self.data_provider.session_uid
         self.tool_box = DIAGEOUSToolBox(self.data_provider, self.output)
 
-    @log_runtime('Total DIAGEOUSCalculations', log_start=True)
+    @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
         This is the main KPI calculation function.
