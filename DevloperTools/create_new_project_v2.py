@@ -14,6 +14,8 @@ TOOL_BOX_FILE_NAME = 'KPIToolBox'
 LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
 PROFILING_SCRIPT_NAME = 'gen_profiling'
 DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
+TESTS_SCRIPT_NAME = 'test_unit'
+
 
 LOCAL_FILE = """
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -147,7 +149,7 @@ PROFILING_SCRIPT = """
 
 #!/usr/bin/env bash
 
-# Author: Ilan P & yoava
+__author__ = '%(author)s'
 
 # this scripts gen an .svg file to see clearly the code flow execution for profiling
 # between imports
@@ -180,7 +182,7 @@ GEN_DEPENDENCY_SCRIPT = """
 
 #!/usr/bin/env bash
 
-# Author: ilan p & yoava
+__author__ = '%(author)s'
 
 # this scripts gen an .svg file to see clearly the dependencies
 # between imports
@@ -212,6 +214,30 @@ curl -X POST https://logs-01.loggly.com/inputs/2cce0ddd-ce82-4f1f-af5d-f72be7fc6
 
 """
 
+TEST_SCRIPT = """
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Testing.Case import TestCase
+from mock import MagicMock, mock
+import pandas as pd
+from Projects.%(project_capital)s.Utils.%(tool_box_file_name)s import %(tool_box_class_name)s
+
+
+__author__ = '%(author)s'
+
+
+class Test%(project_capital)s(TestCase):
+
+    @mock.patch('Projects.%(project_capital)s.Utils.%(tool_box_file_name)s.ProjectConnector')
+    def setUp(self, x):
+        Config.init('')
+        self.data_provider_mock = MagicMock()
+        self.data_provider_mock.project_name = '%(project)s'
+        self.data_provider_mock.rds_conn = MagicMock()
+        self.output = MagicMock()
+        self.tool_box = %(tool_box_class_name)s(self.data_provider_mock, MagicMock())
+
+"""
+
 
 class CreateKPIProject:
 
@@ -238,7 +264,8 @@ class CreateKPIProject:
                            'Utils': [(TOOL_BOX_FILE_NAME, TOOL_BOX),
                                      ],
                            'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
-                                         (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)]}
+                                         (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)],
+                           'Tests': [(TESTS_SCRIPT_NAME+'_{}'.format(self.project), TEST_SCRIPT)]}
 
         formatting_dict = {'author': self.author,
                            'project': self.project,
