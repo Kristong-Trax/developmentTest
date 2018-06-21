@@ -630,8 +630,6 @@ class DIAGEOUSToolBox:
             common_shelves = set(group_names) & set(shelf_groups)
             if common_shelves:
                 answer_couple = 1, common_shelves.pop()
-
-        print answer_couple[1]
         return answer_couple
 
     # msrp:
