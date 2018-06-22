@@ -130,6 +130,9 @@ class INBEVBRToolBox:
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
         df = self.scif
+
+
+
         product_size = row[Const.PRODUCT_SIZE].values[0]
         if product_size != "":
             df = self.filter_product_size(df, product_size)
@@ -355,6 +358,7 @@ class INBEVBRToolBox:
                                 Const.TEMPLATE_NAME: 'template_name',
                                 Const.MANUFACTURER: 'manufacturer_name',
                                 Const.CONTAINER_TYPE: 'form_factor',
+                                Const.ATT1: 'att1',
                                 Const.FLAVOR: 'flavor',
                                 Const.BEER_TYPE: 'att2'}
 
