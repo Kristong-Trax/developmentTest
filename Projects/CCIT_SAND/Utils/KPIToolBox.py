@@ -5,12 +5,14 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
-from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
@@ -30,13 +32,15 @@ class CCITToolBox:
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
                                  'KPI_Templates.xlsx')
     CCIT_MANU = 'HBC Italia'
-    OCCUPANCY_SHEET = 'occupancy_target'
+    MULTIPLIER_SHEET = 'Multiplier'
+    STORE_ATT_1 = 'Store Att1'
+    SCORE_MULTIPLIER = 'Score multiplier'
 
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -46,15 +50,31 @@ class CCITToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.kpi_results_queries = []
-        self.occupancy_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.OCCUPANCY_SHEET)
+        self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
 
     def main_function(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        result = 0
-        return result
+        relevant_kpi_res = self.common.get_kpi_fk_by_kpi_name('scene_score')
+        scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
+        origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()
+        store_att_1 = self.store_info['additional_attribute_1'].values[0]
+        multiplier = self.multiplier_template[self.multiplier_template[self.STORE_ATT_1] == store_att_1][self.SCORE_MULTIPLIER]
+        multi_res = origin_res
+        if not multiplier.empty:
+            multi_res = origin_res * multiplier
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('store_score')
+        # identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+        # identifier_result['session_fk'] = self.session_info['pk'].values[0]
+        # identifier_result['store_fk'] = self.store_id
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, numerator_result=origin_res,
+                                       result=origin_res, score=multi_res, scene_result_fk=scene_kpi_fks)
+        return
