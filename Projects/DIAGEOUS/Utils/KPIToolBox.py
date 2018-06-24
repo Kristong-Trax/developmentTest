@@ -45,8 +45,8 @@ class DIAGEOUSToolBox:
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.get_state()
-        # these 2 functions are temporary
         self.sub_brands = self.get_sub_brands()
+        # this function is temporary
         self.refresh_sub_brands()
         #
         self.result_values = self.get_result_values()
@@ -72,6 +72,107 @@ class DIAGEOUSToolBox:
             self.calculated_price, self.calculated_shelf_facings = [], []
             self.targets_table = self.get_targets_table()
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
+
+    # initialize:
+
+    def get_sub_brands(self):
+        """
+        Gets the DF of the sub_brands
+        :return:
+        """
+        query = self.fetcher.get_sub_brands()
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
+    def refresh_sub_brands(self):
+        """
+        temporary function - checks if there are new sub_brands that don't exist in the DB, and uploads them
+        :return:
+        """
+        all_sub_brands = self.all_products['sub_brand'].unique().tolist()
+        current_sub_brand = self.sub_brands['name'].unique().tolist()
+        subs_not_in_db = set(all_sub_brands) - set(current_sub_brand)
+        if subs_not_in_db:
+            self.insert_new_subs(subs_not_in_db)
+
+    def insert_new_subs(self, new_subs):
+        """
+        Temporary function: Gets a list of all sub_brands not in the DB and inserts them.
+        After that - reloads the local DF.
+        :param new_subs: list
+        :return:
+        """
+        queries = []
+        for sub_brand in new_subs:
+            if sub_brand:
+                queries.append(self.fetcher.insert_new_sub_brands().format(sub_brand))
+        merge_queries = self.common.merge_insert_queries(queries)
+        cur = self.rds_conn.db.cursor()
+        for query in merge_queries:
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.sub_brands = self.get_sub_brands()
+
+    def get_targets_table(self):
+        """
+        Gets the table of the targets from DB.
+        :return: DF
+        """
+        query = self.fetcher.get_targets_template()
+        groups = pd.read_sql_query(query, self.rds_conn.db)
+        return groups
+
+    def get_templates(self):
+        """
+        Reads the template (and makes the EANs be Strings)
+        """
+        if self.on_premise:
+            for sheet in Const.ON_SHEETS:
+                self.templates[sheet] = pd.read_excel(ON_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                      keep_default_na=False)
+        else:
+            for sheet in Const.OFF_SHEETS:
+                if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
+                    converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
+                                  Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          converters=converters, keep_default_na=False)
+                elif sheet == Const.SHELF_PLACMENTS_SHEET:
+                    converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          converters=converters, keep_default_na=False)
+                else:
+                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                                                          keep_default_na=False)
+
+    def get_state(self):
+        """
+        :return: state_fk
+        """
+        if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
+            Log.error("session '{}' does not have a state".format(self.session_uid))
+            return Const.OTHER
+        query = self.fetcher.get_state().format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
+        state = pd.read_sql_query(query, self.rds_conn.db)
+        return state.values[0][0]
+
+    def get_result_values(self):
+        """
+        gets the static.kpi_result_value table from DB
+        :return: DF
+        """
+        query = self.fetcher.get_result_values()
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
+    def get_products_prices(self):
+        """
+        Gets all the session's products and prices from DB
+        :return:
+        """
+        query = self.fetcher.get_prices_dataframe().format(self.session_uid)
+        products_with_prices = pd.read_sql_query(query, self.rds_conn.db)
+        return products_with_prices[~products_with_prices['price_value'].isnull()]
 
     # main functions:
 
@@ -106,7 +207,7 @@ class DIAGEOUSToolBox:
 
     def calculate_set(self, kpi_line):
         """
-        Gets line from the main sheet, and transports it to the match function
+        Gets a line from the main sheet, and transports it to the match function
         :param kpi_line: series - {KPI Name, Template Group/ Scene Type, Target, Weight}
         :return: 3 scores (total, segment, national)
         """
@@ -142,7 +243,8 @@ class DIAGEOUSToolBox:
 
     def calculate_on_assortment(self, scene_types, kpi_name, weight):
         """
-        Gets assortment type, and calculates it with the match function
+        Gets assortment type, and calculates it with the match function.
+        It's working until sub_brand level (without sku)
         :param scene_types: string from template
         :param kpi_name:
         :param weight
@@ -197,8 +299,6 @@ class DIAGEOUSToolBox:
             Log.error("Assortment '{}' is not defined in the code".format(kpi_name))
             return 0, 0, 0
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
-        total_level_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.TOTAL])
-        # relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_level_fk]
         total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.DB_OFF])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_off_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
@@ -218,7 +318,7 @@ class DIAGEOUSToolBox:
 
     def calculate_extras(self, relevant_assortment):
         """
-        add the extra products to DB
+        add the extra products (products not shown in the template) to DB.
         :param relevant_assortment: DF of assortment with all the PODs
         :return:
         """
@@ -234,10 +334,11 @@ class DIAGEOUSToolBox:
 
     def calculate_pod_sku(self, product_fk, relevant_scif, standard_type):
         """
-        :param standard_type:
+        Checks if specific product exists in the filtered scif
+        :param standard_type: S or N
         :param product_fk:
-        :param relevant_scif:
-        :return:
+        :param relevant_scif: filtered scif
+        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
@@ -256,10 +357,11 @@ class DIAGEOUSToolBox:
 
     def calculate_pod_by_sub_brand(self, product_fk, relevant_scif, standard_type):
         """
-        :param standard_type:
+        Checks if specific product's sub_brand exists in the filtered scif
+        :param standard_type: S or N
         :param product_fk:
-        :param relevant_scif:
-        :return:
+        :param relevant_scif: filtered scif
+        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.POD][Const.SUB_BRAND])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.POD][Const.TOTAL])
@@ -280,10 +382,11 @@ class DIAGEOUSToolBox:
 
     def calculate_display_compliance_sku(self, product_fk, relevant_scif, standard_type):
         """
-        :param standard_type:
+        Checks if specific product passes the condition of the display
+        :param standard_type: S or N
         :param product_fk:
-        :param relevant_scif:
-        :return:
+        :param relevant_scif: filtered scif
+        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL])
@@ -299,15 +402,6 @@ class DIAGEOUSToolBox:
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
-
-    def get_pks_of_result(self, result):
-        pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
-        return pk
-
-    def get_result_values(self):
-        query = self.fetcher.get_result_values()
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        return df
 
     # menu
 
@@ -413,11 +507,11 @@ class DIAGEOUSToolBox:
 
     def calculate_display_share_of_sku(self, product_fk, relevant_products, manufacturer_kpi_fk):
         """
-
+        calculates a specific product if it passes the condition of display
         :param product_fk:
         :param relevant_products: DF (scif of the display)
         :param manufacturer_kpi_fk: for write_to_db
-        :return: DF of all the results of the manufacturer's products
+        :return: a line for the results DF
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
         manufacturer = self.get_manufacturer(product_fk)
@@ -435,9 +529,9 @@ class DIAGEOUSToolBox:
     def calculate_total_shelf_facings(self, scene_types, kpi_name, weight):
         """
         Calculates if facings of Diageo products are more than targets (competitors products or objective target)
-        :param scene_types:
-        :param kpi_name:
-        :param weight:
+        :param scene_types: str
+        :param kpi_name: str
+        :param weight: float
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -527,23 +621,12 @@ class DIAGEOUSToolBox:
 
     # shelf placement:
 
-    def convert_groups_from_template(self):
-        """
-        Create dict that contains every number in the template and its shelves
-        :return: dict of lists
-        """
-        shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
-        shelves_groups = {}
-        for i, group in shelf_groups.iterrows():
-            shelves_groups[group[Const.NUMBER_GROUP]] = group[Const.SHELF_GROUP].split(', ')
-        return shelves_groups
-
     def calculate_total_shelf_placement(self, scene_types, kpi_name, weight):
         """
         Takes list of products and their shelf groups, and calculate if the're pass the target.
-        :param scene_types:
-        :param kpi_name:
-        :param weight
+        :param scene_types: str
+        :param kpi_name: str
+        :param weight float
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -556,9 +639,20 @@ class DIAGEOUSToolBox:
         total_result, segment_result, national_result = self.insert_all_levels_to_db(all_results, kpi_db_names, weight)
         return total_result, segment_result, national_result
 
+    def convert_groups_from_template(self):
+        """
+        Creates dict that contains every number in the template and its shelves
+        :return: dict of lists
+        """
+        shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
+        shelves_groups = {}
+        for i, group in shelf_groups.iterrows():
+            shelves_groups[group[Const.NUMBER_GROUP]] = group[Const.SHELF_GROUP].split(', ')
+        return shelves_groups
+
     def calculate_shelf_placement_of_sku(self, product_line, relevant_scenes):
         """
-        Gets product (line from template) and checks if it has more facings than targets in the eye level
+        Gets a product (line from template) and checks if it has more facings than targets in the eye level
         :param product_line: series
         :param relevant_scenes: list
         :return:
@@ -611,6 +705,12 @@ class DIAGEOUSToolBox:
         return product_result
 
     def calculate_specific_product_shelf_placement(self, match_product_line, shelf_groups):
+        """
+        takes a line of match_product and the group shleves it should be on, and returns if it does (and which group)
+        :param match_product_line: series - specific line from match_product_in_scene
+        :param shelf_groups: list of the match group_names (['E', 'T'])
+        :return: couple: if passed or not, and the location ("E")
+        """
         min_max_shleves = self.templates[Const.MINIMUM_SHELF_SHEET]
         shelf_from_bottom = match_product_line['shelf_number_from_bottom']
         scene = match_product_line['scene_fk']
@@ -637,9 +737,9 @@ class DIAGEOUSToolBox:
     def calculate_total_msrp(self, scene_types, kpi_name, weight):
         """
         Compares the prices of Diageo products to the competitors' (or absolute values).
-        :param scene_types:
-        :param kpi_name:
-        :param weight:
+        :param scene_types: str
+        :param kpi_name: str
+        :param weight: float
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -717,8 +817,8 @@ class DIAGEOUSToolBox:
         """
         Takes product, checks its price and writes it in the DB.
         :param product_fk:
-        :param scenes:
-        :param parent_dict:
+        :param scenes: list of fks
+        :param parent_dict: identifier dictionary
         :return: price
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SKU])
@@ -734,47 +834,14 @@ class DIAGEOUSToolBox:
                 identifier_parent=parent_dict, should_enter=True)
         return result
 
-    def get_products_prices(self):
-        """
-        Gets all the session's products and prices from DB
-        :return:
-        """
-        query = self.fetcher.get_prices_dataframe().format(self.session_uid)
-        products_with_prices = pd.read_sql_query(query, self.rds_conn.db)
-        return products_with_prices[~products_with_prices['price_value'].isnull()]
-
     # help functions:
-
-    def get_sub_brands(self):
-        query = self.fetcher.get_sub_brands()
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        return df
-
-    def refresh_sub_brands(self):
-        all_sub_brands = self.all_products['sub_brand'].unique().tolist()
-        current_sub_brand = self.sub_brands['name'].unique().tolist()
-        subs_not_in_db = set(all_sub_brands) - set(current_sub_brand)
-        if subs_not_in_db:
-            self.insert_new_subs(subs_not_in_db)
-
-    def insert_new_subs(self, new_subs):
-        queries = []
-        for sub_brand in new_subs:
-            if sub_brand:
-                queries.append(self.fetcher.insert_new_sub_brands().format(sub_brand))
-        merge_queries = self.common.merge_insert_queries(queries)
-        cur = self.rds_conn.db.cursor()
-        for query in merge_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        self.sub_brands = self.get_sub_brands()
 
     def calculate_passed_display(self, product_fk, relevant_products):
         """
         Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet).
         :param product_fk:
-        :param relevant_products:
-        :return: number of scenes.
+        :param relevant_products: relevant scif?
+        :return: number of scenes. int.
         """
         template = self.templates[Const.DISPLAY_TARGET_SHEET]
         sum_scenes_passed, sum_facings = 0, 0
@@ -792,29 +859,6 @@ class DIAGEOUSToolBox:
             sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
         return sum_scenes_passed
 
-    def get_templates(self):
-        """
-        Reads the template (and makes the EANs be Strings)
-        """
-        if self.on_premise:
-            for sheet in Const.ON_SHEETS:
-                self.templates[sheet] = pd.read_excel(ON_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                      keep_default_na=False)
-        else:
-            for sheet in Const.OFF_SHEETS:
-                if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
-                    converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
-                                  Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                          converters=converters, keep_default_na=False)
-                elif sheet == Const.SHELF_PLACMENTS_SHEET:
-                    converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                          converters=converters, keep_default_na=False)
-                else:
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                          keep_default_na=False)
-
     def get_relevant_scenes(self, scene_types):
         """
         :param scene_types: cell in the template
@@ -827,18 +871,10 @@ class DIAGEOUSToolBox:
                 "scene_id"].unique().tolist()
         return self.scif_without_emptys["scene_id"].unique().tolist()
 
-    def get_state(self):
-        if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
-            Log.error("session '{}' does not have a state".format(self.session_uid))
-            return Const.OTHER
-        query = self.fetcher.get_state().format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
-        state = pd.read_sql_query(query, self.rds_conn.db)
-        return state.values[0][0]
-
     def get_product_details(self, product_fk):
         """
         :param product_fk:
-        :return: its details for assortment (brand, sub_brand, standard_type)
+        :return: its details for assortment (brand, sub_brand)
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
@@ -849,6 +885,11 @@ class DIAGEOUSToolBox:
         return brand, sub_brand_fk
 
     def get_sub_brand_fk(self, sub_brand):
+        """
+        takes sub_brand and returns its pk
+        :param sub_brand: str
+        :return: int
+        """
         sub_brand_line = self.sub_brands[self.sub_brands['name'] == sub_brand]
         if sub_brand_line.empty:
             return None
@@ -856,15 +897,11 @@ class DIAGEOUSToolBox:
             return sub_brand_line.iloc[0]['pk']
 
     def get_manufacturer(self, product_fk):
+        """
+        :param product_fk:
+        :return: manufacturer_fk
+        """
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
-
-    def get_targets_table(self):
-        """
-            This function extracts the static new KPI data (new tables) and saves it into one global data frame.
-        """
-        query = self.fetcher.get_targets_template()
-        groups = pd.read_sql_query(query, self.rds_conn.db)
-        return groups
 
     @staticmethod
     def does_exist(cell):
@@ -880,13 +917,22 @@ class DIAGEOUSToolBox:
     @staticmethod
     def get_score(num, den):
         """
-        :param num:
-        :param den:
+        :param num: number
+        :param den: number
         :return: the percent of the num/den
         """
         if den == 0:
             return 0
         return round((float(num) * 100) / den, 2)
+
+    def get_pks_of_result(self, result):
+        """
+        converts string result to its pk (in static.kpi_result_value)
+        :param result: str
+        :return: int
+        """
+        pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
+        return pk
 
     # main insert to DB functions:
 
@@ -965,7 +1011,7 @@ class DIAGEOUSToolBox:
         inserting all total level (includes segment and national) into DB
         :param all_passed_results: 'passed' column from all_results
         :param kpi_db_names:
-        :param weight:
+        :param weight: float
         :param total_kind: TOTAL/SEGMENT/NATIONAL
         :param identifier_result: optional, if has children
         :return:
