@@ -212,23 +212,26 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         for set_name in self.template_ava_data['Set Name'].unique().tolist():
             kpk = self.template_ava_data[self.template_ava_data['Set Name'] == set_name]['KPI Group'].unique().tolist()
             for main_kpi in kpk:
-                atomics = self.template_ava_data[self.template_ava_data['KPI_GROUP'] == main_kpi]
+                atomics = self.template_ava_data[self.template_ava_data['KPI Group'] == main_kpi]
                 for i in xrange(len(atomics)):
                     atomic = atomics.iloc[i]
-                    kpi_type = atomic[self.templates_class.KPI_TYPE]
-                    if not self.store_type in atomic[self.templates_class.STORE_TYPE]:
-                        continue
                     if not set(atomic[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)) & set(
                             self.scif['template_name'].unique().tolist()):
                         continue
-                    # if kpi_type == self.VISIBLE:
-                    #     score = self.calculate_visible(atomic)
-                    elif kpi_type == self.BOTTOM_SHELF:
-                        self.calculate_bottom_shelf(atomic)
+                    else:
+                        templates = map(lambda x: x.strip(), atomic[self.templates_class.SCENE_TYPE].split(','))
+                        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)][
+                            'scene_fk'].unique().tolist()
+                    kpi_type = atomic[self.templates_class.KPI_TYPE]
+                    if kpi_type == self.BOTTOM_SHELF:
+                        params = self.template_ava_bottom_shelf[self.template_ava_bottom_shelf['KPI Name'] == atomic['KPI Name']]
+                        self.calculate_bottom_shelf(params, scenes_to_check)
                     elif kpi_type == self.ADJACENT:
-                        self.calculate_adjacent(atomic)
+                        params = self.template_ava_adjacent[self.template_ava_adjacent['KPI Name'] == atomic['KPI Name']]
+                        self.calculate_adjacent(params, scenes_to_check)
                     elif kpi_type == self.DIAMOND:
-                        self.calculate_diamond(atomic)
+                        params = self.template_ava_diamond[self.template_ava_diamond['KPI Name'] == atomic['KPI Name']]
+                        self.calculate_diamond(params, scenes_to_check)
                     else:
                         Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                         continue
@@ -257,12 +260,10 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
     #
     #     return score
 
-    def calculate_bottom_shelf(self, kpi):
+    def calculate_bottom_shelf(self, kpi, scenes_to_check):
         target = int(kpi[self.templates_class.TARGET])
         shelf_number = map(lambda x: x.strip(), kpi['shelf_number_from_bottom'].split(','))
-        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
         products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
-        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         for scene in scenes_to_check:
             for product_fk in products_for_check:
                 result = self.tools.calculate_availability(product_ean_code=products_for_check,
@@ -273,12 +274,10 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
                 in_assortment_osa = 1 if result else 0
                 self.get_custom_query(scene, product_fk, in_assortment_osa, mha_in_assortment)
 
-    def calculate_diamond(self, kpi):
+    def calculate_diamond(self, kpi, scenes_to_check):
         target = int(kpi[self.templates_class.TARGET])
-        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
-        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
-        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk']
-        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].values[0].split(','))
+        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
         for scene in scenes_to_check:
             polygon = self.build_diamond_polygon(scene)
             for product_fk in products_for_check:
@@ -289,16 +288,17 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
                 self.get_custom_query(scene, product_fk, in_assortment_osa, mha_in_assortment)
 
     def build_diamond_polygon(self, scene_fk):
-        matches = self.tools.get_filter_condition(self.match_product_in_scene, **{'scene_fk': scene_fk})
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                              **{'scene_fk': scene_fk})]
         top = matches[(matches['shelf_number'] == 1) &
-                      (matches['stacking_layer'] == 1)].sort('y_mm', ascending=False).values[0]
+                      (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
         top = int(top['y_mm']) - (int(top['height_mm_net']) / 2)
         bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
-                         (matches['stacking_layer'] == 1)].sort('y_mm', ascending=False).values[0]
+                         (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
         bottom = int(bottom['y_mm']) - (int(bottom['height_mm_net']) / 2)
-        left = matches.copy().sort('x_mm', ascending=False).values[0]
+        left = matches.copy().sort('x_mm', ascending=True).values[0]
         left = int(left['x_mm']) - (int(left['width_mm_net']) / 2)
-        right = matches.copy().sort('x_mm', ascending=True).values[0]
+        right = matches.copy().sort('x_mm', ascending=False).values[0]
         right = int(right['y_mm']) - (int(right['height_mm_net']) / 2)
         middle_x = (right + left) / 2
         middle_y = (top + bottom) / 2
@@ -324,13 +324,11 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             points.append(mask_point)
         return points
 
-    def calculate_adjacent(self, kpi):
+    def calculate_adjacent(self, kpi, scenes_to_check):
         adjacent_type = kpi['adjacent_type']
         adjacent_value = kpi['adjacent_value']
         anchor_filters = {adjacent_type: adjacent_value}
-        templates = map(lambda x: int(x.strip()), kpi[self.templates_class.SCENE_TYPE].split(','))
         products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
-        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         general_filters = {'scene_fk': scenes_to_check}
         for scene in scenes_to_check:
             for product_fk in products_for_check:
