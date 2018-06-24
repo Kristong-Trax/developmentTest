@@ -4,12 +4,12 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer, Log
 from datetime import datetime, timedelta
+from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-
-STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
 STORE_NUMBER = 'Store Number'
+STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
 
 
 def _parse_arguments():
@@ -21,6 +21,7 @@ def _parse_arguments():
     parser.set_defaults(validator=1)
     return parser.parse_args()
 
+
 class BatruAssortment:
 
     def __init__(self, project_name, file_path, to_validate):
@@ -29,15 +30,18 @@ class BatruAssortment:
         self.use_validator = to_validate
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
+        self.current_top_skus = self.get_current_top_skus
         self.rds_conn = self.rds_connect
         self.stores = {}
+        self.products = {}
+        self.all_queries = []
+        self.update_queries = []
 
     def upload_assortment(self):
         if self.use_validator:
             if self.p1_assortment_validator():
                 print "Please fix the template and try again"
                 return
-
 
     @property
     def rds_connect(self):
@@ -65,36 +69,44 @@ class BatruAssortment:
             self.all_products = pd.read_sql_query(query, self.rds_conn.db)
         return self.all_products
 
+    @property
+    def get_current_top_skus(self):
+        query = """select store_fk, product_fk
+                   from pservice.custom_osa
+                   where end_date is null"""
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
     def p1_assortment_validator(self):
         """
         This function validates the store assortment template.
         It compares the OUTLET_ID (= store_number_1) and the products ean_code to the stores and products from the DB
-        :param file_path: Store assortment template
         :return: False in case of an error and True in case of a valid template
         """
-        raw_data = pd.read_csv(self.file_path, sep='\t')
-        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
-        raw_data = raw_data.fillna('')
-        stores = self.store_data
-        valid_stores = stores.loc[stores['store_number'].isin(raw_data[OUTLET_ID])]
+        raw_data = self.parse_assortment_template()
+        legal_template = True
+        valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
             print "Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
-                                                                         set(valid_stores['store_number'])))
-            return False
+                                                                       set(valid_stores['store_number'])))
+            legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
             print "Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
                                                                          set(valid_product[EAN_CODE])))
-            return False
+            legal_template = False
+        return legal_template
 
-        return True
+    def parse_assortment_template(self):
+        data = pd.read_csv(self.file_path, sep='\t')
+        data = data.drop_duplicates(subset=data.columns, keep='first')
+        data = data.fillna('')
+        return data
 
-    def upload_store_assortment_file(self, file_path):
+    def upload_store_assortment_file(self):
         # raw_data = pd.read_excel(file_path)
-        raw_data = pd.read_csv(file_path, sep='\t')
-        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
-        raw_data = raw_data.fillna('')
+        raw_data = self.parse_assortment_template()
         data = []
         for store in raw_data[OUTLET_ID].unique().tolist():
             store_data = {}
@@ -106,6 +118,23 @@ class BatruAssortment:
         queries = self.merge_insert_queries(self.all_queries)
         self.commit_results(queries)
         return data
+
+    def merge_insert_queries(self, insert_queries):
+        query_groups = {}
+        for query in insert_queries:
+            if 'update' in query:
+                self.update_queries.append(query)
+                continue
+            static_data, inserted_data = query.split('VALUES ')
+            if static_data not in query_groups:
+                query_groups[static_data] = []
+            query_groups[static_data].append(inserted_data)
+        merged_queries = []
+        for group in query_groups:
+            for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
+                merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
+                                                                                [group_index:group_index + 10 ** 4])))
+        return merged_queries
 
     def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()
@@ -170,6 +199,64 @@ class BatruAssortment:
             else:
                 store_fk = None
         return store_fk
+
+    def get_product_fk(self, product_ean_code):
+        product_ean_code = str(product_ean_code).strip()
+        if product_ean_code in self.products:
+            product_fk = self.products[product_ean_code]
+        else:
+            product_fk = self.all_products[self.all_products['product_ean_code'] == product_ean_code]
+            if not product_fk.empty:
+                product_fk = product_fk['product_fk'].values[0]
+                self.products[product_ean_code] = product_fk
+            else:
+                product_fk = None
+        return product_fk
+
+    @staticmethod
+    def get_deactivation_query(store_fk, product_fk, date):
+        query = """update {} set end_date = '{}', is_current = '0'
+                   where store_fk = {} and product_fk in {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
+                                                                                           store_fk, product_fk)
+        return query
+
+    @staticmethod
+    def get_activation_query(store_fk, product_fk, date):
+        attributes = pd.DataFrame([(store_fk, product_fk, str(date), 1)],
+                                  columns=['store_fk', 'product_fk', 'start_date', 'is_current'])
+        query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
+        return query
+
+    def commit_results(self, queries):
+        self.rds_conn.disconnect_rds()
+        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+        cur = rds_conn.db.cursor()
+        for query in self.update_queries:
+            try:
+                cur.execute(query)
+                print query
+            except Exception as e:
+                Log.info('Inserting to DB failed due to: {}'.format(e))
+                rds_conn.disconnect_rds()
+                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+                cur = rds_conn.db.cursor()
+                continue
+        rds_conn.db.commit()
+        rds_conn.disconnect_rds()
+        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+        cur = rds_conn.db.cursor()
+        for query in queries:
+            try:
+                cur.execute(query)
+                print query
+            except Exception as e:
+                Log.info('Inserting to DB failed due to: {}'.format(e))
+                rds_conn.disconnect_rds()
+                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+                cur = rds_conn.db.cursor()
+                continue
+        rds_conn.db.commit()
+
 
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
