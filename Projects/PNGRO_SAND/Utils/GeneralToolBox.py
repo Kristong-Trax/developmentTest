@@ -7,12 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.PNGRO_SAND.Utils.PositionGraph import PNGROPositionGraphs
+from Projects.PNGRO_SAND.Utils.PositionGraph import PNGRO_SAND_PRODPositionGraphs
 
-__author__ = 'Nimrod'
+__author__ = 'Israel'
 
 
-class PNGROGENERALToolBox:
+class PNGRO_SAND_PRODGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -49,7 +49,7 @@ class PNGROGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = PNGROPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = PNGRO_SAND_PRODPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property

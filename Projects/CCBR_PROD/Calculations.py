@@ -20,7 +20,7 @@ class CCBRCalculations(BaseCalculationsScript):
 #     project_name = 'ccbr-prod'
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()
-#     list_sessions = ['14df22e7-5866-4106-bb9a-49fd1d92f7fb',
+#     list_sessions = ['f61ba813-0990-4e6a-a614-3a78a9628626',
 #                     '1b4d4795-90b9-4161-b321-cfba53ba5fc5',
 #                     '233f5fca-8ce7-4398-8e8e-bb248de06b1a',
 #                     '6c66c955-f3af-4688-9463-5441c8cc4c90',

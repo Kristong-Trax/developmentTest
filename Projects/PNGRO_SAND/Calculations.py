@@ -4,26 +4,32 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.PNGRO_SAND.KPIGenerator import PNGROGenerator
+from Projects.PNGRO_SAND.KPIGenerator import PNGRO_SAND_PRODGenerator
 
 __author__ = 'Israel'
 
 
-class PNGROCalculations(BaseCalculationsScript):
+class PNGRO_SAND_PRODCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        PNGROGenerator(self.data_provider, self.output).main_function()
+        PNGRO_SAND_PRODGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('pngro-sand calculations')
+#     LoggerInitializer.init('pngro calculations')
 #     Config.init()
-#     project_name = 'pngro-sand'
+#     project_name = 'pngro_sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '43e837e9-3916-41a5-a4a0-51d31c8ae81f'
-#     # session = '0151e826-dee6-486d-a5f5-220d45360d9c'
-#     # session = 'FB64C4E3-C672-4DBA-AF55-11FE3349D58F'
-#     # session = '31176E9E-AFA2-486A-A9D8-18F6F8AE4BF6'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     PNGROCalculations(data_provider, output).run_project_calculations()
+#     sessions = [
+#         # '0722a029-e4c6-4eeb-a5cf-e190b42ed8df',
+#         '42FF3F61-87AF-45FE-8389-CF8E5FA600BB',
+#         '43061462-282C-47D4-BDB2-AE15C9413171',
+#         '659cbb3d-5e2f-44a2-81ed-7dd68dfb8d7d',
+#         'a8fa4858-4f62-49a5-9b88-d4947d6da0b0',
+#         'aaa45f15-27c4-4860-ac4f-fb2a83647b21'
+#         ]
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         PNGRO_SAND_PRODCalculations(data_provider, output).run_project_calculations()
+
