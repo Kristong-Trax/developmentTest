@@ -53,15 +53,16 @@ class Const(object):
     BACK_BAR = "Back Bar"
     MENU = "Menu"
 
-    SEGMENT, NATIONAL, TOTAL = "segment", "national", "total"
+    SEGMENT, NATIONAL, TOTAL = "S", "N", "total"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
-
+    DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
     # names in DB:
 
-    DB_OFF_SCORE_TOTAL = 'Total Score - Off Premise'
-    DB_OFF_SCORE_NATIONAL = 'National Score - Off Premise'
-    DB_OFF_SCORE_SEGMENT = 'Segment Score - Off Premise'
+    DB_OFF, DB_ON = "off_premise", "on_premise"
+    DB_OFF_TOTAL = 'Total Score - Off Premise'
+    DB_OFF_NATIONAL = 'National Score - Off Premise'
+    DB_OFF_SEGMENT = 'Segment Score - Off Premise'
     DB_OFF_NAMES = {
         POD: {
             TOTAL: 'POD - Total Score', NATIONAL: 'POD - National Score', SEGMENT: 'POD - Segment Score',
@@ -87,9 +88,9 @@ class Const(object):
     DB_ON_TOTAL = 'Total Score - On Premise'
     DB_ON_NAMES = {
         POD: {
-            TOTAL: 'POD - Total Score',
-            BRAND: 'POD - Generic Brand', SUB_BRAND: 'POD -  Brand Variant',
-            SKU: 'POD -  Brand Variant Size'},
+            TOTAL: 'On_POD - Total Score',
+            BRAND: 'On_POD - Generic Brand', SUB_BRAND: 'On_POD -  Brand Variant',
+            SKU: 'On_POD -  Brand Variant Size'},
         BACK_BAR: {
             TOTAL: 'Back Bar - Total Score',
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
@@ -97,13 +98,15 @@ class Const(object):
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
             BRAND: 'Menu Share - Brand Variant Level', SUB_BRAND: 'Menu Share - Brand Variant Level'}}
-
+    DB_ASSORTMENTS_NAMES = {DB_OFF: "Assortment off Trade", DB_ON: "Assortment on Trade"}
     PERCENT_FOR_EYE_LEVEL = 0
 
-    PRODUCT_FK, STANDARD_TYPE, PASSED = "product_fk", "standard_type", "passed"
+    PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
-    COLUMNS_FOR_PRODUCT2 = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
+    COLUMNS_FOR_MENU = [FACINGS, BRAND, MANUFACTURER]
 
     EXTRA = "EXTRA"
     OOS = "OOS"
