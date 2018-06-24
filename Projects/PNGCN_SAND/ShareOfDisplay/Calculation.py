@@ -183,8 +183,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         scenes = list(set(table_scenes)-set(cube_scenes))
         table_bays = pd.DataFrame({})
         table_display = pd.DataFrame({})
-        table_display_fk = table_tags['display_fk'].values[0]
-        table_display_name = table_tags['display_name'].values[0]
+        if not table_tags.empty:
+            table_display_fk = table_tags['display_fk'].values[0]
+            table_display_name = table_tags['display_name'].values[0]
         for scene in scenes:
             table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
             table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()

@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.5 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.6 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -161,12 +161,12 @@ class CCBRToolBox:
         question_answer_template = row[Const.TARGET_ANSWER].values[0]
 
         survey_result = self.survey.get_survey_answer(('question_fk', question_id))
+        if not survey_result:
+            return
         if question_answer_template == Const.NUMERIC:
-            if not survey_result:
-                survey_result = 0
             if not isinstance(survey_result, (int, long, float)):
                 Log.warning("question id " + str(question_id) + " in template is not a number")
-                survey_result = 0
+                return
 
         else:
             answer = self.survey.check_survey_answer(('question_fk', question_id), question_answer_template)
