@@ -63,6 +63,7 @@ class CCBRToolBox:
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
         self.survey_sheet = pd.read_excel(PATH, Const.SURVEY).fillna("")
 
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
