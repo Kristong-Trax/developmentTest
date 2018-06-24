@@ -2,17 +2,19 @@ import pandas as pd
 import argparse
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer, Log
+from datetime import datetime, timedelta
 
 
 STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
+STORE_NUMBER = 'Store Number'
 
 
 def _parse_arguments():
     parser = argparse.ArgumentParser(description='Upload assortment for Batru')
-    parser.add_argument('-e', '--env', type=str, help='The environment - dev/int/prod')
+    parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--project', '-p', type=str, required=True, help='The name of the project')
     parser.add_argument('--file', '-f', type=str, required=True, help='The assortment template')
     parser.add_argument('--validator', '-v', type=int, help='Use the validator: 1=true, 0=false')
@@ -21,17 +23,20 @@ def _parse_arguments():
 
 class BatruAssortment:
 
-    def __init__(self, project_name, file_path):
+    def __init__(self, project_name, file_path, to_validate):
         self.project = project_name
         self.file_path = file_path
+        self.use_validator = to_validate
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.rds_conn = self.rds_connect
+        self.stores = {}
 
     def upload_assortment(self):
-        if self.p1_assortment_validator():
-            print "Please fix the template and try again"
-            return
+        if self.use_validator:
+            if self.p1_assortment_validator():
+                print "Please fix the template and try again"
+                return
 
 
     @property
@@ -85,14 +90,95 @@ class BatruAssortment:
 
         return True
 
+    def upload_store_assortment_file(self, file_path):
+        # raw_data = pd.read_excel(file_path)
+        raw_data = pd.read_csv(file_path, sep='\t')
+        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
+        raw_data = raw_data.fillna('')
+        data = []
+        for store in raw_data[OUTLET_ID].unique().tolist():
+            store_data = {}
+            store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
+            store_data[store] = store_products
+            data.append(store_data)
+        for store_data in data:
+            self.update_db_from_json(store_data, immediate_change=True)
+        queries = self.merge_insert_queries(self.all_queries)
+        self.commit_results(queries)
+        return data
+
+    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
+        products = set()
+        missing_products = set()
+        store_number = data.keys()[0]
+        if store_number is None:
+            Log.warning("'{}' is required in data".format(STORE_NUMBER))
+            return
+        store_fk = self.get_store_fk(store_number)
+        if store_fk is None:
+            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
+            return
+        for key in data[store_number]:
+            validation = False
+            if isinstance(key, (float, int)):
+                validation = True
+            elif isinstance(key, (str, unicode)):
+                validation = True
+            if validation:
+                product_ean_code = str(key).split(',')[-1]
+                product_fk = self.get_product_fk(product_ean_code)
+                if product_fk is None:
+                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
+                    missing_products.add(product_ean_code)
+                    continue
+                products.add(product_fk)
+        if missing_products and not discard_missing_products:
+            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
+            return
+        if products:
+            current_date = datetime.now().date()
+            if immediate_change:
+                deactivate_date = current_date - timedelta(1)
+                activate_date = current_date
+            else:
+                deactivate_date = current_date
+                activate_date = current_date + timedelta(1)
+            queries = []
+            current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
+            products_to_deactivate = set(current_skus).difference(products)
+            products_to_activate = set(products).difference(current_skus)
+            # for product_fk in products_to_deactivate:
+            if products_to_deactivate:
+                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
+            for product_fk in products_to_activate:
+                queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
+            self.all_queries.extend(queries)
+            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
+                store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
+        else:
+            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
+
+    def get_store_fk(self, store_number):
+        store_number = str(store_number)
+        if store_number in self.stores:
+            store_fk = self.stores[store_number]
+        else:
+            store_fk = self.store_data[self.store_data['store_number'] == store_number]
+            if not store_fk.empty:
+                store_fk = store_fk['store_fk'].values[0]
+                self.stores[store_number] = store_fk
+            else:
+                store_fk = None
+        return store_fk
 
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
     # # # Local version # # #
     # project = 'batru'
     # assortment_file_path = '/home/idanr/Desktop/StoreAssortment.csv'
-    # BatruAssortment(project, assortment_file_path).upload_assortment()
+    # use_template_validator = 1
+    # BatruAssortment(project, assortment_file_path, use_template_validator).upload_assortment()
 
     # # # Server's version # # #
     parsed_args = _parse_arguments()
-    BatruAssortment(parsed_args.project, parsed_args.file).upload_assortment()
+    BatruAssortment(parsed_args.project, parsed_args.file, parsed_args.validator).upload_assortment()
