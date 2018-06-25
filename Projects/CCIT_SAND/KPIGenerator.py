@@ -32,4 +32,4 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
         else:
             self.tool_box.main_function()
-            self.common.commit_results_data()
+            self.common.commit_results_data(scene_session_hierarchy=True)

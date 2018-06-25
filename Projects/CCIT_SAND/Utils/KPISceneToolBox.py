@@ -88,14 +88,19 @@ class CCITSceneToolBox:
         numerator_res = len(self.match_product_in_scene[self.match_product_in_scene['product_fk'].isin(filtered_products)])
         denominator_res = len(self.match_product_in_scene)
         result = np.divide(float(numerator_res), float(denominator_res))*100
-        target = self.occupancy_template['target'].values[0]
-        score = self.occupancy_template['points'] if result >= target else 0
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('occupancy_score')
+        target_share = self.occupancy_template['target'].values[0]*100
+        target_score = self.occupancy_template['points'].values[0]
+        score = target_score if result >= target_share else 0
+        kpi_fk_share = self.common.get_kpi_fk_by_kpi_type('occupancy_share')
+        kpi_fk_score = self.common.get_kpi_fk_by_kpi_type('occupancy_score')
         manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=numerator_res, result=result,
-                                       denominator_id=template_fk, denominator_result=denominator_res, score=score,
-                                       identifier_parent=identifier_parent, by_scene=True, should_enter=True)
+        self.common.write_to_db_result(fk=kpi_fk_share, numerator_id=manu_fk, numerator_result=numerator_res,
+                                       result=result, denominator_id=template_fk, denominator_result=denominator_res,
+                                       score=score, target=target_share, identifier_parent=identifier_parent,
+                                       by_scene=True, should_enter=True)
+        self.common.write_to_db_result(fk=kpi_fk_score, numerator_result=score, result=score, score=score,
+                                       target=target_score, by_scene=True)
         return score
 
     def fulfillment_sku_calculation(self):
@@ -106,7 +111,7 @@ class CCITSceneToolBox:
         products_in_scene = pd.to_numeric(self.products['product_ean_code'].dropna()).values
         relevant_store_info['dist'] = 0
         relevant_store_info.loc[relevant_store_info['ean_code'].isin(products_in_scene), 'dist'] = 1
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('fulfillment_SKUs_score')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('fulfillment_SKUs_score')
         identifier_parent = None
         for row in relevant_store_info.itertuples():
             product_fk = self.all_products[self.all_products['product_ean_code'] == str(row.ean_code)]['product_fk'].drop_duplicates()
@@ -117,7 +122,7 @@ class CCITSceneToolBox:
                 product_fk = product_fk.values[0]
             res = row.dist * row.points
             identifier_parent = self.common.get_dictionary(kpi_fk=
-                                                       self.common.get_kpi_fk_by_kpi_name(self.TYPE_KPI_MAP[row.type]))
+                                                       self.common.get_kpi_fk_by_kpi_type(self.TYPE_KPI_MAP[row.type]))
             identifier_parent['scene_fk'] = self.scene_info['scene_fk'].values[0]
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=res, result=res,
                                            score=res, identifier_parent=identifier_parent, by_scene=True, should_enter=True)
@@ -135,10 +140,10 @@ class CCITSceneToolBox:
             type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'sku_point'] = sku_res[sku_res['type'] ==
                                                                         sku_type]['points'].drop_duplicates().values[0]
         identifier_parent = self.common.get_dictionary(
-            kpi_fk=self.common.get_kpi_fk_by_kpi_name('fulfillment_scene_score'),
+            kpi_fk=self.common.get_kpi_fk_by_kpi_type('fulfillment_scene_score'),
             template_fk=self.templates['template_fk'].drop_duplicates().values[0])
         for row in type_aggrigation.itertuples():
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(self.TYPE_KPI_MAP[row.type])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TYPE_KPI_MAP[row.type])
             identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
             identifier_result['scene_fk'] = self.scene_info['scene_fk'].values[0]
             self.common.write_to_db_result(fk=kpi_fk, numerator_result=row.num_of_skus, result=row.num_of_skus,
@@ -159,11 +164,11 @@ class CCITSceneToolBox:
             non_core_diff * type_results[type_results['type'] == 'Non-core']['sku_point'].drop_duplicates().values[0])
         else:
             result = type_results['total_points'].sum()
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('fulfillment_scene_score')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('fulfillment_scene_score')
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
         target = max_unique_skus * type_results[type_results['type'] == 'Core']['sku_point'].drop_duplicates().values[0]
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=template_fk, numerator_result=result, result=result,
-                                       score=result, identifier_parent=identifier_parent,
+                                       score=result, target=target ,identifier_parent=identifier_parent,
                                        identifier_result=identifier_result, by_scene=True, should_enter=True)
         return result
 
@@ -174,14 +179,14 @@ class CCITSceneToolBox:
         return scene_results
 
     def scene_score(self):
-        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_name('scene_score'),
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type('scene_score'),
                                                template_fk=self.templates['template_fk'].drop_duplicates().values[0])
         occupancy_score = self.occupancy_calculation(identifier_result)
         fulfillment_score = self.fulfillment_calculation(identifier_result)
         result = occupancy_score + fulfillment_score
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('scene_score')
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('scene_score')
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
-        identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_name('store_score'))
+        identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type('store_score'))
         identifier_parent['session_fk'] = self.session_info['pk'].values[0]
         identifier_parent['store_fk'] = self.session_info['store_fk'].values[0]
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=template_fk, numerator_result=result, result=result,

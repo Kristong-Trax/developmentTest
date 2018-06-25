@@ -63,18 +63,19 @@ class CCITToolBox:
         """
         This function calculates the KPI results.
         """
-        relevant_kpi_res = self.common.get_kpi_fk_by_kpi_name('scene_score')
+        relevant_kpi_res = self.common.get_kpi_fk_by_kpi_type('scene_score')
         scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
         origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()
         store_att_1 = self.store_info['additional_attribute_1'].values[0]
         multiplier = self.multiplier_template[self.multiplier_template[self.STORE_ATT_1] == store_att_1][self.SCORE_MULTIPLIER]
         multi_res = origin_res
         if not multiplier.empty:
-            multi_res = origin_res * multiplier
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('store_score')
+            multi_res = origin_res * multiplier.values[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type('store_score')
         # identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         # identifier_result['session_fk'] = self.session_info['pk'].values[0]
         # identifier_result['store_fk'] = self.store_id
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, numerator_result=origin_res,
-                                       result=origin_res, score=multi_res, scene_result_fk=scene_kpi_fks)
+                                       result=origin_res, score=multi_res, should_enter=True,
+                                       scene_result_fk=scene_kpi_fks)
         return
