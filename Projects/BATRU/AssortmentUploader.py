@@ -39,14 +39,15 @@ class BatruAssortment:
 
     def upload_assortment(self):
         if self.use_validator:
+            Log.info("Validating the assortment template")
             if self.p1_assortment_validator():
-                print "Please fix the template and try again"
+                Log.warning("Error found while validating the template")
                 return
+        self.upload_store_assortment_file()
 
     @property
     def rds_connect(self):
-        if not hasattr(self, '_rds_conn'):
-            self.rds_conn = ProjectConnector(self.project, DbUsers.CalculationEng)
+        self.rds_conn = ProjectConnector(self.project, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self.rds_conn.db)
         except Exception as e:
@@ -56,17 +57,15 @@ class BatruAssortment:
 
     @property
     def get_store_data(self):
-        if not hasattr(self, '_store_data'):
-            query = "select pk as store_fk, store_number_1 as store_number from static.stores"
-            self.store_data = pd.read_sql_query(query, self.rds_conn.db)
+        query = "select pk as store_fk, store_number_1 as store_number from static.stores"
+        self.store_data = pd.read_sql_query(query, self.rds_conn.db)
         return self.store_data
 
     @property
     def get_product_data(self):
-        if not hasattr(self, '_product_data'):
-            query = "select pk as product_fk, product_ean_code from static.product " \
-                    "where delete_date is null"
-            self.all_products = pd.read_sql_query(query, self.rds_conn.db)
+        query = "select pk as product_fk, product_ean_code from static.product " \
+                "where delete_date is null"
+        self.all_products = pd.read_sql_query(query, self.rds_conn.db)
         return self.all_products
 
     @property
@@ -87,14 +86,14 @@ class BatruAssortment:
         legal_template = True
         valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
-            print "Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
-                                                                       set(valid_stores['store_number'])))
+            Log.warning("Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
+                                                                       set(valid_stores['store_number']))))
             legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
-            print "Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
-                                                                         set(valid_product[EAN_CODE])))
+            Log.warning("Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
+                                                                         set(valid_product[EAN_CODE]))))
             legal_template = False
         return legal_template
 
@@ -116,6 +115,7 @@ class BatruAssortment:
         for store_data in data:
             self.update_db_from_json(store_data, immediate_change=True)
         queries = self.merge_insert_queries(self.all_queries)
+        Log.info("Queries aggregation is over, starting commiting the assortment")
         self.commit_results(queries)
         return data
 
@@ -193,6 +193,11 @@ class BatruAssortment:
             Log.info('{} - No products are configured as Top SKUs'.format(store_number))
 
     def get_store_fk(self, store_number):
+        """
+        This functions returns the store's fk
+        :param store_number: 'store_number_1' attribute of the store
+        :return: store fk
+        """
         store_number = str(store_number)
         if store_number in self.stores:
             store_fk = self.stores[store_number]
