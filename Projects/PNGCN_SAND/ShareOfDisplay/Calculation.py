@@ -176,31 +176,40 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             """
         Log.debug(self.log_prefix + ' Starting table display')
         table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
+        # total_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)]
         other_tags = \
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS + TABLE_TOTAL_DISPLAYS)]
         table_scenes = table_tags.scene_fk.tolist()
         cube_scenes = other_tags.scene_fk.tolist()
+        # total_cube_scenes = total_cube_tags.scene_fk.tolist()
         scenes = list(set(table_scenes)-set(cube_scenes))
+        # mixed_scenes = list(set(table_scenes)*set(total_cube_scenes)) # scenes with total cube tag & table tag
         table_bays = pd.DataFrame({})
         table_display = pd.DataFrame({})
         if not table_tags.empty:
             table_display_fk = table_tags['display_fk'].values[0]
             table_display_name = table_tags['display_name'].values[0]
         for scene in scenes:
+            cube_size = 0
             table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
             table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()
             number_of_captured_sides = len(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
+            # if scene in mixed_scenes:
+            #     total_cube_tags_scene = total_cube_tags[total_cube_tags['scene_fk'] == scene]
+            #     total_cube_bays_scene = total_cube_tags_scene[['scene_fk', 'bay_number']].copy()
+            #     cube_size = total_cube_tags_scene.display_size.sum()
             if number_of_captured_sides ==1:
                 size = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
-                display_size = size
+                display_size = size + cube_size
             else:
                 min_side = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
                 max_side = max(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
                 table_size = table_tags_scene['display_size'].values[0]
-                display_size = min_side * max_side * table_size
+                display_size = (min_side * max_side * table_size) + cube_size
             table_display = table_display.append({'scene_fk': scene, 'display_fk': table_display_fk,
                                                   'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
+            # table_bays = table_bays.append(total_cube_bays_scene, ignore_index=True)
         if not table_bays.empty:
             table_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
         if not table_display.empty:
