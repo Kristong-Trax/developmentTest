@@ -380,7 +380,7 @@ class PNGAMERICAGENERALToolBox:
         total_filtered_attributes = 0
         if percentage_result:
             filters['stacking_layer'] = 1
-            total_filtered_attributes = self.calculate_availability(**filters)
+            total_filtered_attributes = self.calculate_share_space_length(**filters)
             del filters['stacking_layer']
         products_on_eye_level = []
         for scene in relevant_scenes:
@@ -418,8 +418,10 @@ class PNGAMERICAGENERALToolBox:
                                 eye_level_shelves, **filters)]['product_name'].unique().tolist())
                     except Exception as e:
                         Log.info('Adding Eye Level products failed for bay {} in scene {}'.format(bay, scene))
-            eye_level_assortment = len(eye_level_facings[
-                                               self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+            # eye_level_assortment = len(eye_level_facings[
+            #                                    self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+            eye_level_assortment = sum(eye_level_facings[
+                                               self.get_filter_condition(eye_level_facings, **filters)]['width_mm_advance'])
             if percentage_result:
                 number_of_eye_level_entities += eye_level_assortment
             if min_number_of_products == self.ALL:
@@ -1511,6 +1513,7 @@ class PNGAMERICAGENERALToolBox:
                         cluster_ratio2 = 0
                     if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
                         results['block_of_blocks'] = True
+                        results['regular block'] = True
                         return results
                 else:
                     relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
