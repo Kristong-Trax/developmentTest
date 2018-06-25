@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class INTEG41Queries(object):
+class Queries(object):
 
     @staticmethod
     def get_result_values():
@@ -33,3 +33,7 @@ class INTEG41Queries(object):
                     JOIN probedata.probe p ON p.pk = mpip.probe_fk
             WHERE
                     p.session_uid = "{}";"""
+
+    @staticmethod
+    def get_targets_template():
+        return """select * from static.kpi_level_2_target;"""
