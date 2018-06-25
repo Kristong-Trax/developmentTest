@@ -178,7 +178,12 @@ class BatruAssortment:
             products_to_activate = set(products).difference(current_skus)
             # for product_fk in products_to_deactivate:
             if products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
+                if len(products_to_deactivate) != 1:
+                    queries.append(
+                        self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
+                else:
+                    queries.append(self.get_deactivation_query(store_fk, '({})'.format(list(products_to_deactivate)[0]),
+                                                               deactivate_date))
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             self.all_queries.extend(queries)
@@ -215,7 +220,7 @@ class BatruAssortment:
 
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
-        query = """update {} set end_date = '{}', is_current = '0'
+        query = """update {} set end_date = '{}', is_current = NULL
                    where store_fk = {} and product_fk in {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
                                                                                            store_fk, product_fk)
         return query
