@@ -233,6 +233,9 @@ class BatruAssortment:
         return query
 
     def commit_results(self, queries):
+        """
+        This function commits the results into the DB in batches.
+        """
         self.rds_conn.disconnect_rds()
         rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
