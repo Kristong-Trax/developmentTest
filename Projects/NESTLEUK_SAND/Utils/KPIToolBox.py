@@ -286,9 +286,12 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
     def build_diamond_polygon(self, scene_fk):
         matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
                                                                               **{'scene_fk': scene_fk})]
-        top = matches[(matches['shelf_number'] == 1) &
+        try:
+            top = matches[(matches['shelf_number'] == 1) &
                       (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
-        top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
+            top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
+        except:
+            pass
         bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
                          (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
         bottom = int(bottom['y_mm']) - (int(bottom['height_mm']) / 2) # TODO height_mm_net
@@ -316,7 +319,7 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             bottom = int(product_show['y_mm']) - (int(product_show['height_mm']) / 2)  # TODO height_mm_net
             left = int(product_show['x_mm']) - (int(product_show['width_mm']) / 2)  # TODO width_mm_net
             right = int(product_show['x_mm']) + (int(product_show['width_mm']) / 2)  # TODO width_mm_net
-            mask_point = Point(top, left), Point(top, right), Point(bottom, left), Point(bottom, right)
+            mask_point = Point(left, top), Point(right, top), Point(left, bottom), Point(right, bottom)
             points += mask_point
         return points
 
