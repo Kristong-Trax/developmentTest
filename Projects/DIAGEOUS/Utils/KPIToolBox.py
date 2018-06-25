@@ -753,7 +753,8 @@ class DIAGEOUSToolBox:
             compete_result_dict = self.calculate_msrp_of_competition(competition, relevant_scenes, i)
             all_competes = all_competes.append(compete_result_dict, ignore_index=True)
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
-        result, segment_result, national_result = self.insert_all_levels_to_db(all_competes, kpi_db_names, weight)
+        result, segment_result, national_result = self.insert_all_levels_to_db(all_competes, kpi_db_names, weight,
+                                                                               should_enter=False)
         return result, 0, 0
 
     def calculate_msrp_of_competition(self, competition, relevant_scenes, index):
@@ -936,7 +937,8 @@ class DIAGEOUSToolBox:
 
     # main insert to DB functions:
 
-    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, with_standard_type=False, without_subs=False):
+    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, with_standard_type=False, without_subs=False,
+                                should_enter=True):
         """
         This function gets all the sku results (with details) and puts in DB all the way up (sub_brand, brand, total,
         and segment-national if exist).
@@ -954,13 +956,16 @@ class DIAGEOUSToolBox:
             self.insert_brand_and_subs_to_db(brand_results, kpi_db_names, brand, total_identifier,
                                              without_subs=without_subs)
         all_passed_results = all_results[Const.PASSED]
-        total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, Const.TOTAL, weight, total_identifier)
+        total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, Const.TOTAL, weight, total_identifier,
+                                                should_enter=should_enter)
         segment_result, national_result = 0, 0
         if with_standard_type:
             national_results = all_results[all_results[Const.STANDARD_TYPE] == Const.NATIONAL][Const.PASSED]
-            national_result = self.insert_totals_to_db(national_results, kpi_db_names, Const.NATIONAL, weight)
+            national_result = self.insert_totals_to_db(
+                national_results, kpi_db_names, Const.NATIONAL, weight, should_enter=should_enter)
             segment_results = all_results[all_results[Const.STANDARD_TYPE] == Const.SEGMENT][Const.PASSED]
-            segment_result = self.insert_totals_to_db(segment_results, kpi_db_names, Const.SEGMENT, weight)
+            segment_result = self.insert_totals_to_db(
+                segment_results, kpi_db_names, Const.SEGMENT, weight, should_enter=should_enter)
         return total_result, segment_result, national_result
 
     def insert_brand_and_subs_to_db(self, brand_results, kpi_db_names, brand, total_identifier, without_subs=False):
@@ -1006,7 +1011,8 @@ class DIAGEOUSToolBox:
             denominator_result=den_res, result=self.get_score(num_res, den_res),
             identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
 
-    def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None):
+    def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None,
+                            should_enter=True):
         """
         inserting all total level (includes segment and national) into DB
         :param all_passed_results: 'passed' column from all_results
@@ -1021,7 +1027,7 @@ class DIAGEOUSToolBox:
         result = self.get_score(num_result, den_result)
         score = result * weight if kpi_db_names != Const.DB_OFF_NAMES[Const.MSRP] else 0
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_result,
+            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_result, should_enter=should_enter,
             denominator_result=den_result, result=result, identifier_result=identifier_result,
             identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight, score=score)
         return score
