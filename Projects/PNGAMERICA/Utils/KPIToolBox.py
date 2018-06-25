@@ -24,6 +24,7 @@ DENOMINATOR = 'Denominator'
 ENTITY = 'Entity'
 OSA = 'OSA'
 DVOID = 'D-VOID'
+BLOCK_KPI_NAME = 'Blocking:Prod_lvl_Blocking:{category}:BRAND={brand_name}'
 CATEGORY_OSA_MAPPING = {
     'AIR CARE': 'OSA AIR CARE',
     'AP/DO': 'OSA AP/DO',
@@ -65,7 +66,7 @@ ADJACENCY_PARAMS = ['sub_category', 'brand_name', 'NATURALS', 'Sub Brand',
 BLOCK_TOGETHER = ['Regular Block', 'horizontally blocked', 'vertically blocked', 'Orphan products', 'group in block',
                   'regular block', 'block in block', 'hor_vs_vertical']
 FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
-PG_CATEGORY = 'P&G CATEGORY'
+PG_CATEGORY = 'PG_CATEGORY'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.1.xlsx')
 POWER_SKUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PowerSKUs_3.xlsx')
 
@@ -145,6 +146,8 @@ class PNGAMERICAToolBox:
                                   'AI': pd.read_excel(GOLDEN_PATH, 'AI'),
                                   'FEM CARE': pd.read_excel(GOLDEN_PATH, 'FEM CARE')}
         self.related_kpi_results = {}
+        self.block_results = {}
+
 
     def get_kpi_static_data(self):
         """
@@ -193,6 +196,7 @@ class PNGAMERICAToolBox:
         This function calculates the KPI results.
         """
         block_calc_indication = {}
+        self.block_results = {}
         set_name = self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
         template_data = self.all_template_data.loc[self.all_template_data['kpi set name'] == set_name]
         kpi_list = template_data['KPI name'].tolist()
@@ -217,7 +221,7 @@ class PNGAMERICAToolBox:
                 category = row['category']
 
 
-                if kpi_type not in ['category space']:
+                if kpi_type not in ['category space', 'count of', 'linear feet']:
                     continue
 
                 # if kpi_data['KPI Group type'].values[0]:
@@ -1216,8 +1220,10 @@ class PNGAMERICAToolBox:
                                                                   group_products=group_products, block_of_blocks=block_of_blocks,
                                                                   block_products1=block_products1,
                                                                   block_products2=block_products2, **filters)
+
                         if type(res) == str and res == 'no_products':
                             return
+                        self.block_results[new_kpi_name] = res['regular block']
                         if res:
                             result = 1 if res['regular block'] else 0
                             score = 1 if res['regular block'] else 0
@@ -1253,6 +1259,7 @@ class PNGAMERICAToolBox:
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     else:
                         new_kpi_name = kpi_name
+                    self.block_results[new_kpi_name] = res['regular block']
                     if res:
                         result = 1 if res['regular block'] else 0
                         score = 1 if res['regular block'] else 0
@@ -1288,6 +1295,7 @@ class PNGAMERICAToolBox:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                 else:
                     new_kpi_name = kpi_name
+                self.block_results[new_kpi_name] = res['regular block']
                 if res:
                     result = 1 if res['regular block'] else 0
                     score = 1 if res['regular block'] else 0
@@ -1543,7 +1551,7 @@ class PNGAMERICAToolBox:
                     filters[kpi_template['filter_2']] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
-                        filters['P&G CATEGORY'] = kpi_template['category']
+                        filters[PG_CATEGORY] = kpi_template['category']
                     del filters['category']
                     result = self.tools.calculate_category_space(**filters)
                     score = result * self.MM_TO_FEET_CONVERSION
@@ -1551,7 +1559,7 @@ class PNGAMERICAToolBox:
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                 if kpi_template['category'] in FABRICARE_CATEGORIES:
-                    filters['P&G CATEGORY'] = kpi_template['category']
+                    filters[PG_CATEGORY] = kpi_template['category']
                 del filters['category']
                 result = self.tools.calculate_category_space(**filters)
                 score = result * self.MM_TO_FEET_CONVERSION
@@ -1677,7 +1685,7 @@ class PNGAMERICAToolBox:
                 if result[1]:
                     score = (result[0] / float(result[1])) * 100
                 else:
-                    score = 0
+                    score = None
             elif list_type:
                 result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                    category=category, sub_category=sub_category,
@@ -1689,7 +1697,7 @@ class PNGAMERICAToolBox:
                 result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                    category=category, sub_category=sub_category,
                                                                    min_number_of_products=1, products_list=False,**filters)
-                score = 1 if result[0] >= 1 else 0
+                score = 1 if result[0] >= 1 else None
             if not list_result:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)
             else:
@@ -2179,7 +2187,7 @@ class PNGAMERICAToolBox:
         """
         if value == 'Y':
             value = 1000
-        elif value == '1':
+        elif value in ('1', '1.0'):
             value = 1
         else:
             value = 0
