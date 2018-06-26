@@ -96,7 +96,7 @@ class PNGRO_PRODToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.display_data = parse_template(TEMPLATE_PATH, 'display weight')
-        self.eye_level_target = self.get_shelf_level_target()
+        # self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
         self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -577,9 +577,9 @@ class PNGRO_PRODToolBox:
         return \
             display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
 
-    def get_shelf_level_target(self):
-        eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
-        return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
-                                                                                self.NUMBER_OF_SHELVES]]
+    # def get_shelf_level_target(self):
+    #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
+    #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
+    #                                                                             self.NUMBER_OF_SHELVES]]
 
 
