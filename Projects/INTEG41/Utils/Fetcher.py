@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class Queries(object):
+class INTEG41Queries(object):
 
     @staticmethod
     def get_result_values():
@@ -15,6 +15,11 @@ class Queries(object):
     @staticmethod
     def get_sub_brands():
         return "SELECT * FROM static.custom_entity where entity_type_fk = 1002;"
+
+    @staticmethod
+    def get_sales_data(store_fk, visit_date):
+        return """select product_fk from static.sales_data where store_fk = {0} and start_date is not null
+                and start_date <= "{1}" and (end_date is null or end_date >= "{1}");""".format(store_fk, visit_date)
 
     @staticmethod
     def insert_new_sub_brands():
