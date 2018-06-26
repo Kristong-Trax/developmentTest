@@ -1469,6 +1469,15 @@ class CCRU_SANDKPIToolBox:
             self.write_to_db_result(attributes_for_level2, 'level2')
         return set_total_res
 
+        # Natalya
+    def check_number_of_scenes_with_given_target_facings(self, params):
+        """
+        This function calculates number of scenes which have the number of facings equal to or exceeding the target
+        """
+        scenes = self.get_relevant_scenes(params)
+        number_of_scenes = self.calculate_number_of_scenes_given_facings(params, scenes)
+        return number_of_scenes
+
     def calculate_share_of_cch(self, p, scenes, sos = True):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
@@ -1817,7 +1826,8 @@ class CCRU_SANDKPIToolBox:
             if p.get('Formula') != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, map(float, str(p.get("Children")).split("\n")))
+            # children = map(int, p.get("Children").split("\n"))
             kpi_total = 0
             score=0
             atomic_result_total = 0
@@ -1842,6 +1852,7 @@ class CCRU_SANDKPIToolBox:
                         atomic_res = 0
 
                     atomic_score = self.calculate_score(atomic_res, c)
+
                     kpi_total += atomic_res
                     # write to DB
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -1856,7 +1867,8 @@ class CCRU_SANDKPIToolBox:
 
             if p.get('Target'):
                 if p.get('score_func') == 'PROPORTIONAL':
-                        score = (kpi_total/p.get('Target')) * 100
+                        # score = (kpi_total/p.get('Target')) * 100
+                    score = min((float(kpi_total) / p.get('Target')) * 100, 100)
                 else:
                     if kpi_total >= p.get('Target'):
                         score = 100

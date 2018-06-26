@@ -1448,6 +1448,16 @@ class CCRUKPIToolBox:
             self.write_to_db_result(attributes_for_level2, 'level2')
         return set_total_res
 
+
+    #Natalya
+    def check_number_of_scenes_with_given_target_facings(self, params):
+        """
+        This function calculates number of scenes which have the number of facings equal to or exceeding the target
+        """
+        scenes = self.get_relevant_scenes(params)
+        number_of_scenes = self.calculate_number_of_scenes_given_facings(params, scenes)
+        return number_of_scenes
+
     def calculate_share_of_cch(self, p, scenes, sos = True):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
@@ -1792,7 +1802,8 @@ class CCRUKPIToolBox:
             if p.get('Formula') != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            # children = map(int, p.get("Children").split("\n")) #Natalya
+            children = map(int, map(float, str(p.get("Children")).split("\n"))) #Natalya
             kpi_total = 0
             score=0
             for c in params.values()[0]:
@@ -1810,12 +1821,13 @@ class CCRUKPIToolBox:
                     elif c.get("Formula") == "number of coolers with facings target and fullness target":
                         scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                         atomic_res = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
-                                                                                  proportion_param=0.9)
+                                                                               proportion_param=0.9)
                     else:
                         # print "sum of atomic KPI result:", c.get("Formula")
                         atomic_res = 0
 
                     atomic_score = self.calculate_score(atomic_res, c)
+
                     kpi_total += atomic_res
                     # write to DB
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -1825,7 +1837,8 @@ class CCRUKPIToolBox:
 
             if p.get('Target'):
                 if p.get('score_func') == 'PROPORTIONAL':
-                        score = (kpi_total/p.get('Target')) * 100
+                        # score = (kpi_total/p.get('Target')) * 100
+                    score = min((float(kpi_total)/p.get('Target')) * 100, 100)
                 else:
                     if kpi_total >= p.get('Target'):
                         score = 100
