@@ -13,20 +13,22 @@ STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
 INVALID_STORES = 'invalid_stores'
 INVALID_PRODUCTS = 'invalid_products'
 
+
 def _parse_arguments():
     parser = argparse.ArgumentParser(description='Upload assortment for Batru')
     parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--project', '-p', type=str, required=True, help='The name of the project')
-    parser.add_argument('--file', '-f', type=str, required=True, help='The assortment template')
+    parser.add_argument('--file', type=str, required=True, help='The assortment template')
     return parser.parse_args()
 
 
 class BatruAssortment:
 
-    def __init__(self, project_name, file_path):
-        self.project = project_name
+    def __init__(self):
+        self.parsed_args = _parse_arguments()
+        self.project = self.parsed_args.project
         self.rds_conn = self.rds_connect
-        self.file_path = file_path
+        self.file_path = self.parsed_args.file
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.current_top_skus = self.get_current_top_skus
@@ -291,11 +293,6 @@ class BatruAssortment:
 
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
-    # # # Local version # # #
-    # project = 'batru'
-    # assortment_file_path = '/home/idanr/Desktop/StoreAssortment.csv'
-    # BatruAssortment(project, assortment_file_path).upload_assortment()
+    BatruAssortment().upload_assortment()
+    # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration
 
-    # # # Server's version # # #
-    parsed_args = _parse_arguments()
-    BatruAssortment(parsed_args.project, parsed_args.file).upload_assortment()
