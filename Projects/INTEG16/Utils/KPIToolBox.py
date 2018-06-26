@@ -6,7 +6,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
 # from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -60,24 +60,30 @@ class INTEG16ToolBox:
         self.kpi_results_queries = []
         self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
 
-    def main_function(self, *args, **kwargs):
+    def get_manufacturer_fk(self, manu):
+        return self.all_products[self.all_products['manufacturer_name'] ==
+                                 manu]['manufacturer_fk'].drop_duplicates().values[0]
+
+    def main_function(self):
         """
         This function calculates the KPI results.
         """
         relevant_kpi_res = self.common.get_kpi_fk_by_kpi_type('scene_score')
         scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
         origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()
-        store_att_1 = self.store_info['additional_attribute_1'].values[0]
-        multiplier = self.multiplier_template[self.multiplier_template[self.STORE_ATT_1] == store_att_1][self.SCORE_MULTIPLIER]
-        multi_res = origin_res
-        if not multiplier.empty:
-            multi_res = origin_res * multiplier.values[0]
+        # store_att_1 = self.store_info['additional_attribute_1'].values[0]
+        # multiplier = self.multiplier_template[self.multiplier_template[self.STORE_ATT_1] == store_att_1][
+        #     self.SCORE_MULTIPLIER]
+        # multi_res = origin_res
+        # if not multiplier.empty:
+        #     multi_res = origin_res * multiplier.values[0]
+        manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('store_score')
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_result['session_fk'] = self.session_info['pk'].values[0]
         identifier_result['store_fk'] = self.store_id
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, numerator_result=origin_res,
-                                       result=origin_res, score=multi_res, should_enter=False,
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=origin_res,
+                                       result=origin_res, score=origin_res, should_enter=False,
                                        identifier_result=identifier_result)
         for scene in scene_kpi_fks:
             self.common.write_to_db_result(fk=self.NON_KPI, should_enter=True, scene_result_fk=scene,
