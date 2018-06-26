@@ -7,7 +7,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.DIAGEOUS.Utils.Const import Const
-from Projects.DIAGEOUS.Utils.Fetcher import DIAGEOUSDIAGEOUSQueries
+from Projects.DIAGEOUS.Utils.Fetcher import Queries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
@@ -31,7 +31,7 @@ class DIAGEOUSToolBox:
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
         self.assortment = Assortment(self.data_provider, self.output)
-        self.fetcher = DIAGEOUSDIAGEOUSQueries
+        self.fetcher = Queries
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -61,7 +61,9 @@ class DIAGEOUSToolBox:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        if not self.on_premise:
+        if self.on_premise:
+            self.sales_date = self.get_sales_data()
+        else:
             self.scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
             for scene in self.scenes:
@@ -70,14 +72,22 @@ class DIAGEOUSToolBox:
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
             self.calculated_price, self.calculated_shelf_facings = [], []
-            self.targets_table = self.get_targets_table()
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
     # initialize:
 
+    def get_sales_data(self):
+        """
+        returns the DF of the sales_data relevant to this store
+        :return: DF
+        """
+        query = self.fetcher.get_sales_data(self.store_id)
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
     def get_sub_brands(self):
         """
-        Gets the DF of the sub_brands
+        returns the DF of the sub_brands
         :return:
         """
         query = self.fetcher.get_sub_brands()
@@ -113,14 +123,14 @@ class DIAGEOUSToolBox:
         self.rds_conn.db.commit()
         self.sub_brands = self.get_sub_brands()
 
-    def get_targets_table(self):
-        """
-        Gets the table of the targets from DB.
-        :return: DF
-        """
-        query = self.fetcher.get_targets_template()
-        groups = pd.read_sql_query(query, self.rds_conn.db)
-        return groups
+    # def get_targets_table(self):
+    #     """
+    #     Gets the table of the targets from DB.
+    #     :return: DF
+    #     """
+    #     query = self.fetcher.get_targets_template()
+    #     groups = pd.read_sql_query(query, self.rds_conn.db)
+    #     return groups
 
     def get_templates(self):
         """
@@ -238,7 +248,7 @@ class DIAGEOUSToolBox:
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0, 0, 0
-        return total_score * weight, segment_score * weight, national_score * weight
+        return total_score, segment_score, national_score
 
     # assortments:
 
@@ -407,7 +417,7 @@ class DIAGEOUSToolBox:
         """
         calculates the share of all brands and manufacturers in the menu, and
         checks if Diageo result is bigger than target
-        :param scene_types:
+        :param scene_types: str
         :param weight: float
         :param target: float
         :return:
@@ -454,8 +464,7 @@ class DIAGEOUSToolBox:
         Calculates the products that passed the targets of display, their manufacturer and all of them
         :param scene_types: scenes from template (can be empty)
         :param target: for the score
-        :param weight:
-        :param target:
+        :param weight: float
         :return: total_result
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
@@ -473,23 +482,19 @@ class DIAGEOUSToolBox:
         diageo_results, diageo_result = 0, 0
         for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
             num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
-            # if manufacturer == self.manufacturer_fk:
-            #     result = target
-            # else:
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
                 diageo_result, diageo_results = result, num_res
-                target_manufacturer = target
+                target_manufacturer = target * 100
             result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
+                target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
         score = 100 if (diageo_results >= target * den_res) else 0
-        # result = 100 if (diageo_results >= target * den_res) else 0
-        # score = result * weight
         self.common.write_to_db_result(
-            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results,
+            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target * 100,
             denominator_result=den_res, result=diageo_result, should_enter=True, weight=weight * 100, score=score,
             identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
         return score * weight, 0, 0
@@ -683,12 +688,12 @@ class DIAGEOUSToolBox:
             result = all_shelves_placements[Const.SHELF_NAME].iloc[0]
         shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
         target = shelf_groups[shelf_groups[Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
-        target_fk = self.targets_table[self.targets_table['target'] == target]['pk'].iloc[0]
+        target_fk = self.get_pks_of_result(target)
         score = 100 * passed
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
-            identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), kpi_level_2_target_fk=target_fk)
+            identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target_fk)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
@@ -935,6 +940,7 @@ class DIAGEOUSToolBox:
         :param weight:
         :param with_standard_type: in KPIs that include standard_type we need to know for calculation their total
         :param without_subs: when the sub_brand is the lowest level, we already wrote the results in the DB
+        :param should_enter: if the total should enter the hierarchy table
         :return:
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.TOTAL])
@@ -1008,6 +1014,7 @@ class DIAGEOUSToolBox:
         :param weight: float
         :param total_kind: TOTAL/SEGMENT/NATIONAL
         :param identifier_result: optional, if has children
+        :param should_enter: if the total should enter the hierarchy table
         :return:
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[total_kind])
