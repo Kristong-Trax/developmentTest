@@ -6,7 +6,7 @@ from Projects.INTEG41.KPIGenerator import Generator
 __author__ = 'Elyashiv'
 
 
-class INTEG41Calculations(BaseCalculationsScript):
+class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         Generator(self.data_provider, self.output).main_function()

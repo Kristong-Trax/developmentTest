@@ -17,6 +17,10 @@ class Queries(object):
         return "SELECT * FROM static.custom_entity where entity_type_fk = 1002;"
 
     @staticmethod
+    def get_sales_data(store_fk):
+        return "select product_fk, start_date, end_date from static.sales_data where store_fk = {};".format(store_fk)
+
+    @staticmethod
     def insert_new_sub_brands():
         return """INSERT INTO static.custom_entity (name, entity_type_fk, parent_id)
                 VALUES ("{}", "1002", "2")"""
