@@ -10,24 +10,22 @@ OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
 STORE_NUMBER = 'Store Number'
 STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
-
+INVALID_STORES = 'invalid_stores'
+INVALID_PRODUCTS = 'invalid_products'
 
 def _parse_arguments():
     parser = argparse.ArgumentParser(description='Upload assortment for Batru')
     parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--project', '-p', type=str, required=True, help='The name of the project')
     parser.add_argument('--file', '-f', type=str, required=True, help='The assortment template')
-    parser.add_argument('--validator', '-v', type=int, help='Use the validator: 1=true, 0=false')
-    parser.set_defaults(validator=1)
     return parser.parse_args()
 
 
 class BatruAssortment:
 
-    def __init__(self, project_name, file_path, to_validate):
+    def __init__(self, project_name, file_path):
         self.project = project_name
         self.file_path = file_path
-        self.use_validator = to_validate
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.current_top_skus = self.get_current_top_skus
@@ -38,12 +36,16 @@ class BatruAssortment:
         self.update_queries = []
 
     def upload_assortment(self):
-        if self.use_validator:
-            Log.info("Validating the assortment template")
-            if self.p1_assortment_validator():
-                Log.warning("Error found while validating the template")
-                return
+        Log.info("Validating the assortment template")
+        is_valid, invalid_inputs = self.p1_assortment_validator()
         self.upload_store_assortment_file()
+        Log.info('Done uploading assortment for Batru')
+        if not is_valid:
+            Log.warning("Errors were found during the template validation")
+            if invalid_inputs[INVALID_STORES]:
+                Log.warning("The following stores doesn't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
+            if invalid_inputs[INVALID_PRODUCTS]:
+                Log.warning("The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
 
     @property
     def rds_connect(self):
@@ -84,18 +86,19 @@ class BatruAssortment:
         """
         raw_data = self.parse_assortment_template()
         legal_template = True
+        invalid_inputs = {INVALID_STORES: [], INVALID_PRODUCTS: []}
         valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
-            Log.warning("Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
-                                                                       set(valid_stores['store_number']))))
+            invalid_inputs[INVALID_STORES] = list(set(raw_data[OUTLET_ID].unique()) - set(valid_stores['store_number']))
+            Log.warning("Those stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
             legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
-            Log.warning("Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
-                                                                         set(valid_product[EAN_CODE]))))
+            invalid_inputs[INVALID_PRODUCTS] = list(set(raw_data[EAN_CODE].unique()) - set(valid_product[EAN_CODE]))
+            Log.warning("Those products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
             legal_template = False
-        return legal_template
+        return legal_template, invalid_inputs
 
     def parse_assortment_template(self):
         data = pd.read_csv(self.file_path, sep='\t')
@@ -237,36 +240,47 @@ class BatruAssortment:
         query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
         return query
 
-    def commit_results(self, queries):
+    def connection_ritual(self):
         """
-        This function commits the results into the DB in batches.
+        This function connects to the DB and cursor
+        :return: rds connection and cursor connection
         """
         self.rds_conn.disconnect_rds()
         rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
+        return rds_conn, cur
+
+    def commit_results(self, queries):
+        """
+        This function commits the results into the DB in batches.
+        query_num is the number of queires that were executed in the current batch
+        After batch_size is reached, the function re-connects the DB and cursor.
+        """
+        rds_conn, cur = self.connection_ritual()
+        batch_size = 1000
+        query_num = 0
         for query in self.update_queries:
             try:
                 cur.execute(query)
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
+            if query_num > batch_size:
+                query_num = 0
+                rds_conn, cur = self.connection_ritual()
+                rds_conn.db.commit()
+            query_num += 1
         rds_conn.db.commit()
-        rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
+        rds_conn, cur = self.connection_ritual()
         for query in queries:
             try:
                 cur.execute(query)
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
         rds_conn.db.commit()
 
@@ -276,9 +290,8 @@ if __name__ == '__main__':
     # # # Local version # # #
     # project = 'batru'
     # assortment_file_path = '/home/idanr/Desktop/StoreAssortment.csv'
-    # use_template_validator = 1
-    # BatruAssortment(project, assortment_file_path, use_template_validator).upload_assortment()
+    # BatruAssortment(project, assortment_file_path).upload_assortment()
 
     # # # Server's version # # #
     parsed_args = _parse_arguments()
-    BatruAssortment(parsed_args.project, parsed_args.file, parsed_args.validator).upload_assortment()
+    BatruAssortment(parsed_args.project, parsed_args.file).upload_assortment()
