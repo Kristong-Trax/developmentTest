@@ -25,6 +25,7 @@ ENTITY = 'Entity'
 OSA = 'OSA'
 DVOID = 'D-VOID'
 BLOCK_KPI_NAME = 'Blocking:Prod_lvl_Blocking:{category}:BRAND={brand_name}'
+CSPACE_KPI_NAME = 'Spacing:Category_Space:{category}'
 CATEGORY_OSA_MAPPING = {
     'AIR CARE': 'OSA AIR CARE',
     'AP/DO': 'OSA AP/DO',
@@ -130,7 +131,7 @@ class PNGAMERICAToolBox:
         self.eye_level_data = parse_template(TEMPLATE_PATH, 'eye level new')
         self.posm_data = parse_template(TEMPLATE_PATH, 'posm')
         self.block_and_availability_data = parse_template(TEMPLATE_PATH, 'block and availability')
-        # self.average_shelf = parse_template(TEMPLATE_PATH, 'average shelf')
+        self.average_shelf = parse_template(TEMPLATE_PATH, 'average shelf')
         # self.sos_template = parse_template(TEMPLATE_PATH, 'sos')
         # self.pantene_template = parse_template(TEMPLATE_PATH, 'pantene')
         # self.hns_template = parse_template(TEMPLATE_PATH, 'H&S')
@@ -197,6 +198,7 @@ class PNGAMERICAToolBox:
         """
         block_calc_indication = {}
         self.block_results = {}
+        self.tools.average_shelf_values = {}
         set_name = self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
         template_data = self.all_template_data.loc[self.all_template_data['kpi set name'] == set_name]
         kpi_list = template_data['KPI name'].tolist()
@@ -221,7 +223,7 @@ class PNGAMERICAToolBox:
                 category = row['category']
 
 
-                if kpi_type not in ['category space', 'count of', 'linear feet']:
+                if kpi_type not in ['orchestrated']:
                     continue
 
                 # if kpi_data['KPI Group type'].values[0]:
@@ -266,13 +268,13 @@ class PNGAMERICAToolBox:
                 elif kpi_type == 'orchestrated':
                     self.calculate_orchestrated_new(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'adj to':
-                    self.calculate_adjacency_new(kpi_set_fk, kpi_name, scene_type, category)
+                    self.calculate_adjacency_new(kpi_set_fk, kpi_name,  scene_type, category)
                 elif kpi_type == 'eye level':
                     self.calculate_eye_level_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'block and availability':
                     self.calculate_block_and_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'average shelf':
-                    self.calculate_average_shelf(kpi_set_fk, kpi_name, scene_type)
+                    self.calculate_average_shelf_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'pantene':
                     self.pantene_golden_strategy(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'HE':
@@ -405,6 +407,23 @@ class PNGAMERICAToolBox:
         result = self.tools.calculate_average_shelf(**filters)
         score = result if result else 0
         self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=score, score=score)
+
+    def calculate_average_shelf_new(self, kpi_set_fk, kpi_name, scene_types, category):
+        template = self.average_shelf
+        kpi_template = template.loc[(template['KPI name'] == kpi_name) & (template['category'] == category)]
+        if kpi_template.empty:
+            return None
+        kpi_template = kpi_template.iloc[0]
+        filters = {'template_name': scene_types, 'category': kpi_template['category']}
+        new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+        category_space_kpi_name = CSPACE_KPI_NAME.format(category=category)
+        result = 0
+        if category_space_kpi_name in self.tools.average_shelf_values.keys():
+            if self.tools.average_shelf_values[category_space_kpi_name].get('num_of_bays'):
+                result = self.tools.average_shelf_values[category_space_kpi_name].get('num_of_shelves') / \
+                         float(self.tools.average_shelf_values[category_space_kpi_name].get('num_of_bays'))
+        score = result if result else 0
+        self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
     def calculate_availability(self, kpi_set_fk, kpi_name, scene_type, return_result=False):
         if any(i in self.scif['template_name'].unique().tolist() for i in scene_type):
@@ -1418,7 +1437,7 @@ class PNGAMERICAToolBox:
     def checkerboarded_writer(self, kpi_set_fk, kpi_template, kpi_name, filters):
         include_empty = False
         try:
-            res = self.tools.calculate_block_together(include_empty=include_empty, minimum_block_ratio=0.75,
+            res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                       include_private_label=True, checkerboard=True, **filters)
         except Exception as e:
             res = False
@@ -1553,7 +1572,7 @@ class PNGAMERICAToolBox:
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
                         filters[PG_CATEGORY] = kpi_template['category']
                     del filters['category']
-                    result = self.tools.calculate_category_space(**filters)
+                    result = self.tools.calculate_category_space(new_kpi_name, **filters)
                     score = result * self.MM_TO_FEET_CONVERSION
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
             else:
@@ -1561,7 +1580,7 @@ class PNGAMERICAToolBox:
                 if kpi_template['category'] in FABRICARE_CATEGORIES:
                     filters[PG_CATEGORY] = kpi_template['category']
                 del filters['category']
-                result = self.tools.calculate_category_space(**filters)
+                result = self.tools.calculate_category_space(new_kpi_name, **filters)
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
