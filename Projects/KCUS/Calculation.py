@@ -32,8 +32,8 @@ class KCUSCalculations(BaseCalculationsScript):
                 tool_box.calculate_flow(p)
             # if p.get('KPI_Type') == 'Survey':
             #     tool_box.check_survey_answer(p)
-            if p.get('KPI_Type') == 'Flow between':
-                tool_box.calculate_flow_between(p)
+            # if p.get('KPI_Type') == 'Flow between':
+            #     tool_box.calculate_flow_between(p)
         for p in jg.project_kpi_dict['Relative Position']:
             if p.get('KPI_Type') == 'Relative Position':
                 tool_box.calculate_relative_position(p)
