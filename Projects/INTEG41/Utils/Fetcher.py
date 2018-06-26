@@ -22,9 +22,9 @@ class INTEG41Queries(object):
                 and start_date <= "{1}" and (end_date is null or end_date >= "{1}");""".format(store_fk, visit_date)
 
     @staticmethod
-    def insert_new_sub_brands():
+    def insert_new_sub_brands(sub_brand, brand_fk):
         return """INSERT INTO static.custom_entity (name, entity_type_fk, parent_id)
-                VALUES ("{}", "1002", "2")"""
+                VALUES ("{}", "1002", "{}")""".format(sub_brand, brand_fk)
 
     @staticmethod
     def get_prices_dataframe():
