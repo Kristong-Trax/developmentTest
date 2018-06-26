@@ -224,7 +224,7 @@ class PNGAMERICAToolBox:
                 category = row['category']
 
 
-                if kpi_type not in ['orchestrated']:
+                if kpi_type not in ['count of', 'category space', 'average shelf']:
                     continue
 
                 # if kpi_data['KPI Group type'].values[0]:
@@ -816,16 +816,20 @@ class PNGAMERICAToolBox:
             for primary_filter in values_to_check:
                 filters[kpi_template['filter_1']] = primary_filter
                 if secondary_values_to_check:
+                    filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                     for secondary_filter in secondary_values_to_check:
                         if self.all_products[(self.all_products[kpi_template['filter_1']] == primary_filter) &
                                 (self.all_products[kpi_template['filter_2']] == secondary_filter)].empty:
                             continue
+
                         filters[kpi_template['filter_2']] = secondary_filter
+                        filtered_df2 = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                        if kpi_template['count'] == 'facings':
-                            result = self.tools.calculate_availability(**filters)
-                        else:
-                            result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
+                        result = len(filtered_df2['product_ean_code'].unique())
+                        # if kpi_template['count'] == 'facings':
+                        #     result = self.tools.calculate_availability(**filters)
+                        # else:
+                        #     result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
                         if kpi_template['score'] == 'number':
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=result,
                                                     score=int(result))
