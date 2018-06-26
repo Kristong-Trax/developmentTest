@@ -38,6 +38,11 @@ class BatruAssortment:
         self.update_queries = []
 
     def upload_assortment(self):
+        """
+        This is the main function of the assortment.
+        It does the validation and then upload the assortment.
+        :return:
+        """
         Log.info("Validating the assortment template")
         is_valid, invalid_inputs = self.p1_assortment_validator()
         self.upload_store_assortment_file()
@@ -103,6 +108,10 @@ class BatruAssortment:
         return legal_template, invalid_inputs
 
     def parse_assortment_template(self):
+        """
+        This functions turns the csv into DF
+        :return: DF that contains the store_number_1 (Outlet ID) and the product_ean_code of the assortments
+        """
         data = pd.read_csv(self.file_path, sep='\t')
         data = data.drop_duplicates(subset=data.columns, keep='first')
         data = data.fillna('')
@@ -113,7 +122,6 @@ class BatruAssortment:
         return data
 
     def upload_store_assortment_file(self):
-        # raw_data = pd.read_excel(file_path)
         raw_data = self.parse_assortment_template()
         data = []
         for store in raw_data[OUTLET_ID].unique().tolist():
@@ -126,9 +134,14 @@ class BatruAssortment:
         queries = self.merge_insert_queries(self.all_queries)
         Log.info("Queries aggregation is over, starting commiting the assortment")
         self.commit_results(queries)
-        return data
+        Log.info("Done commiting results")
 
     def merge_insert_queries(self, insert_queries):
+        """
+        This function aggregates all of the insert queries
+        :param insert_queries: all of the queries (update and insert) for the assortment
+        :return: The merged insert queries
+        """
         query_groups = {}
         for query in insert_queries:
             if 'update' in query:
