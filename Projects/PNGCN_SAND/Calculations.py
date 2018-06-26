@@ -31,7 +31,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = 'e0226bdf-2bc5-4c3b-9c50-6b7cd04fcb4b'
+    session = 'cd8fd77a-046a-41ba-a826-dc4a1c7bc5c6'
     data_provider.load_session_data(session)
     output = Output()
     PNGCN_SANDPngCNEmptyCalculations(data_provider, output).run_project_calculations()
