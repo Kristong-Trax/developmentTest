@@ -1,5 +1,8 @@
 import pandas as pd
+
 from datetime import datetime
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
@@ -10,6 +13,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.NESTLEUK_SAND.Utils.ParseTemplates import NESTLEUK_SANDParseTemplates
 from Projects.NESTLEUK_SAND.Utils.Fetcher import NESTLEUK_SANDQueries
 from Projects.NESTLEUK_SAND.Utils.GeneralToolBox import NESTLEUK_SANDGENERALToolBox
+
 
 __author__ = 'uri'
 
@@ -54,6 +58,12 @@ class NESTLEUK_SANDConsts(object):
     FACING_SOS = 'Facing SOS'
     SURVEY_AND_AVAILABILITY = BPPC
 
+    VISIBLE = 'Visible'
+    DIAMOND = 'Diamond'
+    BOTTOM_SHELF = 'Bottom shelf'
+    ADJACENT = 'Adjacent'
+    PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
+
 
 class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
     LEVEL1 = 1
@@ -82,7 +92,17 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         self.store_type = self.store_info['store_type'].iloc[0]
         self.store_type = '' if self.store_type is None else self.store_type
         self.templates_class = NESTLEUK_SANDParseTemplates('Nestle_UK_v3.0')
+        self.template_ava_class = NESTLEUK_SANDParseTemplates('Template')
         self.templates_data = self.templates_class.parse_template(sheet_name='KPIs')
+        self.template_ava_data = self.template_ava_class.parse_template(sheet_name='Hierarchy')
+        self.template_ava_visible = self.template_ava_class.parse_template(sheet_name='Visible')
+        self.template_ava_bottom_shelf = self.template_ava_class.parse_template(sheet_name='Bottom shelf')
+        self.template_ava_adjacent = self.template_ava_class.parse_template(sheet_name='Adjacent')
+        self.template_ava_diamond = self.template_ava_class.parse_template(sheet_name='Diamond')
+        self.scores = pd.DataFrame(columns=['ean_code', 'visible', 'ava'])
+        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.custom_scif_queries = []
+
         # self.templates_data = self.template.parse_kpi()
 
     def get_kpi_static_data(self):
@@ -136,6 +156,11 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             for i in xrange(len(children)):
                 child = children.iloc[i]
                 kpi_type = child[self.templates_class.KPI_TYPE]
+                if not self.store_type in child[self.templates_class.STORE_TYPE]:
+                    continue
+                if not set(child[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)) & set(
+                        self.scif['template_name'].unique().tolist()):
+                    continue
                 if kpi_type == self.BLOCK_TOGETHER:
                     score = self.calculate_block_together_sets(child)
                 elif kpi_type == self.FACING_COUNT:
@@ -155,7 +180,7 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
                     self.write_to_db_result(atomic_fk, score, level=self.LEVEL3)
                     if isinstance(score, tuple):
                         score = score[0]
-                    weighted_score = score*float(child_score_weight)
+                    weighted_score = score * float(child_score_weight)
                     scores.append(weighted_score)
 
             if not scores:
@@ -179,19 +204,161 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
 
+    def calculate_ava(self):
+        """
+        This function calculates the KPI results.
+        """
+        set_scores = {}
+        for set_name in self.template_ava_data['Set Name'].unique().tolist():
+            kpk = self.template_ava_data[self.template_ava_data['Set Name'] == set_name]['KPI Group'].unique().tolist()
+            for main_kpi in kpk:
+                atomics = self.template_ava_data[self.template_ava_data['KPI Group'] == main_kpi]
+                for i in xrange(len(atomics)):
+                    atomic = atomics.iloc[i]
+                    if not set(atomic[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)) & set(
+                            self.scif['template_name'].unique().tolist()):
+                        continue
+                    else:
+                        templates = map(lambda x: x.strip(), atomic[self.templates_class.SCENE_TYPE].split(','))
+                        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)][
+                            'scene_fk'].unique().tolist()
+                    kpi_type = atomic[self.templates_class.KPI_TYPE]
+                    if kpi_type == self.BOTTOM_SHELF:
+                        params = self.template_ava_bottom_shelf[self.template_ava_bottom_shelf['KPI Name'] == atomic['KPI Name']].iloc[0]
+                        self.calculate_bottom_shelf(params, scenes_to_check)
+                    elif kpi_type == self.ADJACENT:
+                        params = self.template_ava_adjacent[self.template_ava_adjacent['KPI Name'] == atomic['KPI Name']].iloc[0]
+                        self.calculate_adjacent(params, scenes_to_check)
+                    elif kpi_type == self.DIAMOND:
+                        params = self.template_ava_diamond[self.template_ava_diamond['KPI Name'] == atomic['KPI Name']].iloc[0]
+                        self.calculate_diamond(params, scenes_to_check)
+                    else:
+                        Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                        continue
+
+    def get_custom_query(self, scene_fk, product_fk, in_assortment_OSA=0, oos_osa=0, mha_in_assortment=0,
+                         mha_oos=0, length_mm_custom=0):
+        attributes = pd.DataFrame([(
+            self.session_fk, scene_fk, product_fk, in_assortment_OSA, oos_osa, mha_in_assortment,
+            mha_oos, length_mm_custom)],
+            columns=['session_fk', 'scene_fk', 'product_fk', 'in_assortment_OSA', 'oos_osa',
+                     'mha_in_assortment', 'mha_oos', 'length_mm_custom'])
+
+        query = insert(attributes.to_dict(), self.PSERVICE_CUSTOM_SCIF)
+        self.custom_scif_queries.append(query)
+
+    def calculate_bottom_shelf(self, kpi, scenes_to_check):
+        target = int(kpi[self.templates_class.TARGET])
+        shelf_number = map(lambda x: x.strip(), kpi['shelf_number_from_bottom'].split(','))
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
+        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
+        for scene in scenes_to_check:
+            for product_fk in products_for_check:
+                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                if result:
+                    in_assortment_osa = 1
+                    result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                               scene_fk=scenes_to_check,
+                                                               shelf_number_from_bottom=shelf_number)
+                    mha_in_assortment = 1 if result >= target else 0
+                else:
+                    in_assortment_osa = mha_in_assortment = 0
+                self.get_custom_query(scene_fk=scene, product_fk=product_fk,
+                                      in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+
+    def calculate_diamond(self, kpi, scenes_to_check):
+        target = int(kpi[self.templates_class.TARGET])
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
+        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
+        for scene in scenes_to_check:
+            polygon = self.build_diamond_polygon(scene)
+            for product_fk in products_for_check:
+                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                if result:
+                    in_assortment_osa = 1
+                    result = self.calculate_polygon(scene=scene, product_fk=product_fk, polygon=polygon)
+                    mha_in_assortment = 1 if result >= target else 0
+                else:
+                    in_assortment_osa = mha_in_assortment = 0
+                self.get_custom_query(scene_fk=scene, product_fk=product_fk,
+                                      in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+
+    def build_diamond_polygon(self, scene_fk):
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                              **{'scene_fk': scene_fk})]
+        try:
+            top = matches[(matches['shelf_number'] == 1) &
+                      (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
+            top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
+        except:
+            pass
+        bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
+                         (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
+        bottom = int(bottom['y_mm']) - (int(bottom['height_mm']) / 2) # TODO height_mm_net
+        left = matches.copy().sort_values('x_mm', ascending=True).iloc[0]
+        left = int(left['x_mm']) - (int(left['width_mm']) / 2) # TODO width_mm_net
+        right = matches.copy().sort_values('x_mm', ascending=False).iloc[0]
+        right = int(right['x_mm']) + (int(right['width_mm']) / 2) # TODO width_mm_net
+        middle_x = (right + left) / 2
+        middle_y = (top + bottom) / 2
+        polygon = Polygon([(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)])
+        return polygon
+
+    def calculate_polygon(self, scene, product_fk, polygon):
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene, **{'scene_fk': scene})]
+        points = self.build_array_of_points(matches, product_fk)
+        for point in points:
+            if polygon.contains(point):
+                return True
+        return False
+
+    def build_array_of_points(self, matches, product):
+        points = []
+        for x, product_show in matches[matches['product_fk'] == product].iterrows():
+            top = int(product_show['y_mm']) + (int(product_show['height_mm']) / 2)  # TODO height_mm_net
+            bottom = int(product_show['y_mm']) - (int(product_show['height_mm']) / 2)  # TODO height_mm_net
+            left = int(product_show['x_mm']) - (int(product_show['width_mm']) / 2)  # TODO width_mm_net
+            right = int(product_show['x_mm']) + (int(product_show['width_mm']) / 2)  # TODO width_mm_net
+            mask_point = Point(left, top), Point(right, top), Point(left, bottom), Point(right, bottom)
+            points += mask_point
+        return points
+
+    def calculate_adjacent(self, kpi, scenes_to_check):
+        adjacent_type = kpi['adjacent_type']
+        adjacent_value = kpi['adjacent_value']
+        anchor_filters = {adjacent_type: adjacent_value}
+        products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
+        products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
+        general_filters = {'scene_fk': scenes_to_check}
+        for scene in scenes_to_check:
+            for product_fk in products_for_check:
+                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                if result:
+                    in_assortment_osa = 1
+                    result = not self.tools.calculate_non_proximity(tested_filters={'product_fk': product_fk},
+                                                                    anchor_filters=anchor_filters,
+                                                                    allowed_diagonal=False,
+                                                                    **general_filters)
+                    mha_in_assortment = 1 if result else 0
+                else:
+                    in_assortment_osa = mha_in_assortment = 0
+                self.get_custom_query(scene_fk=scene, product_fk=product_fk,
+                                      in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+
     def calculate_block_together_sets(self, kpi):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         brands_for_block_check = kpi[self.templates_class.BRAND].split(self.templates_class.SEPARATOR)
-        if kpi[self.templates_class.CATEGORY] is None:
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        if not kpi[self.templates_class.CATEGORY]:
             result = self.tools.calculate_block_together(brand_name=brands_for_block_check,
-                                                         template_name=templates)
+                                                         scene_fk=scenes_to_check)
         else:
             category = kpi[self.templates_class.CATEGORY]
             result = self.tools.calculate_block_together(brand_name=brands_for_block_check,
-                                                         template_name=templates,
+                                                         scene_fk=scenes_to_check,
                                                          category=category)
         score = 100 if result else 0
 
@@ -203,10 +370,15 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         products_for_check = kpi[self.templates_class.SKU]
-        result = self.tools.calculate_assortment(product_ean_code=products_for_check,
-                                                 template_name=templates)
-
-        score = 100 if result > kpi[self.templates_class.TARGET] else 0
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
+        result = self.tools.calculate_availability(product_ean_code=products_for_check,
+                                                   scene_fk=scenes_to_check,
+                                                   stacking_layer=1)
+        if kpi[self.templates_class.TARGET]:
+            target = float(kpi[self.templates_class.TARGET])
+        else:
+            target = kpi[self.templates_class.TARGET]
+        score = 100 if result >= target else 0
 
         return score
 
@@ -237,7 +409,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             except Exception as e:
                 products = products_list
             result = self.tools.calculate_availability(product_ean_code=products,
-                                                       template_name=scene_types)
+                                                       template_name=scene_types,
+                                                       stacking_layer=1)
             score = 100 if result > 0 else 0
             scores.append(score)
 
@@ -257,6 +430,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         scores = []
         shelf_position_data = templates_data[(templates_data[self.templates_class.KPI_NAME] == kpi_name)]
         products_for_check = shelf_position_data[self.templates_class.availability_consts.PRODUCT_EAN_CODES].tolist()
+        templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         for products_list in products_for_check:
             try:
                 products = products_list.split(', ')
@@ -265,7 +440,8 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             shelves = shelf_position_data.loc[
                 shelf_position_data[self.templates_class.availability_consts.PRODUCT_EAN_CODES] == products_list][
                 'Shelf Position'].values[0].split(',')
-            result = self.tools.calculate_shelf_level_assortment(shelves=[int(shelf) for shelf in shelves], product_ean_code=products)
+            result = self.tools.calculate_shelf_level_assortment(shelves=[int(shelf) for shelf in shelves],
+                                                                 product_ean_code=products, scene_fk=scenes_to_check)
             score = 100 if result > 0 else 0
             scores.append(score)
 
@@ -282,16 +458,19 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
         """
         templates = kpi[self.templates_class.SCENE_TYPE].split(self.templates_class.SEPARATOR)
         manufactruers_for_check = kpi[self.templates_class.MANUFACTURER]
+        scenes_to_check = self.scif[self.scif['template_name'].isin(templates)]['scene_fk'].unique().tolist()
         if kpi[self.templates_class.CATEGORY] is None:
             sos_filters = {'manufacturer_name': manufactruers_for_check}
             result = self.tools.calculate_share_of_shelf(sos_filters=sos_filters,
-                                                         template_name=templates)
+                                                         scene_fk=scenes_to_check,
+                                                         stacking_layer=1)
         else:
             sos_filters = {'manufacturer_name': manufactruers_for_check}
             category = kpi[self.templates_class.CATEGORY]
             result = self.tools.calculate_share_of_shelf(sos_filters=sos_filters,
-                                                         template_name=templates,
-                                                         category=category)
+                                                         scene_fk=scenes_to_check,
+                                                         category=category,
+                                                         stacking_layer=1)
 
         score = 100 if result > kpi[self.templates_class.TARGET] else 0
 
@@ -356,15 +535,51 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
             attributes = pd.DataFrame()
         return attributes.to_dict()
 
+    def commit_custom_scif(self):
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
+        cur = self.rds_conn.db.cursor()
+        delete_query = NESTLEUK_SANDQueries.get_delete_session_custom_scif(self.session_fk)
+        cur.execute(delete_query)
+        self.rds_conn.db.commit()
+        queries = self.merge_insert_queries(self.custom_scif_queries)
+        for query in queries:
+            try:
+                cur.execute(query)
+            except:
+                print 'could not run query: {}'.format(query)
+        self.rds_conn.db.commit()
+
+    def merge_insert_queries(self, insert_queries):
+        # other_queries = []
+        query_groups = {}
+        for query in insert_queries:
+            if 'update' in query:
+                self.update_queries.append(query)
+            else:
+                static_data, inserted_data = query.split('VALUES ')
+                if static_data not in query_groups:
+                    query_groups[static_data] = []
+                query_groups[static_data].append(inserted_data)
+        merged_queries = []
+        for group in query_groups:
+            for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
+                merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
+                                                                                [group_index:group_index + 10 ** 4])))
+        # merged_queries.extend(other_queries)
+        return merged_queries
+
     @log_runtime('Saving to DB')
     def commit_results_data(self):
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.commit_custom_scif()
         cur = self.rds_conn.db.cursor()
         delete_queries = NESTLEUK_SANDQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
-        for query in self.kpi_results_queries:
+        queries = self.merge_insert_queries(self.kpi_results_queries)
+        for query in queries:
             cur.execute(query)
         self.rds_conn.db.commit()

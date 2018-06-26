@@ -1,5 +1,5 @@
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.INTEG16.KPIGenerator import Generator
+# from Projects.INTEG16.KPIGenerator import Generator
 from Projects.INTEG16.KPISceneGenerator import SceneGenerator
 
 

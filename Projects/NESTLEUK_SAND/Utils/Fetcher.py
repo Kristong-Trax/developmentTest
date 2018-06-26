@@ -20,3 +20,8 @@ class NESTLEUK_SANDQueries(object):
         return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
+
+    @staticmethod
+    def get_delete_session_custom_scif(session_fk):
+        query = "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(session_fk)
+        return query
