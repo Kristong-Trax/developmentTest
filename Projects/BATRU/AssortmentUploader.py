@@ -25,11 +25,11 @@ class BatruAssortment:
 
     def __init__(self, project_name, file_path):
         self.project = project_name
+        self.rds_conn = self.rds_connect
         self.file_path = file_path
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.current_top_skus = self.get_current_top_skus
-        self.rds_conn = self.rds_connect
         self.stores = {}
         self.products = {}
         self.all_queries = []
@@ -104,6 +104,10 @@ class BatruAssortment:
         data = pd.read_csv(self.file_path, sep='\t')
         data = data.drop_duplicates(subset=data.columns, keep='first')
         data = data.fillna('')
+        if len(data.columns) != 2:
+            data = pd.read_csv(self.file_path)
+            data = data.drop_duplicates(subset=data.columns, keep='first')
+            data = data.fillna('')
         return data
 
     def upload_store_assortment_file(self):
