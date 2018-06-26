@@ -5,6 +5,8 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOIE.KPIGenerator import DIAGEOIEGenerator
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
 
 __author__ = 'Yasmin'
 
@@ -12,7 +14,9 @@ __author__ = 'Yasmin'
 class DIAGEOIECalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
+        common = Common(self.data_provider)
         DIAGEOIEGenerator(self.data_provider, self.output).main_function()
+        DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
