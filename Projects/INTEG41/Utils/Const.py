@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class Const(object):
+class INTEG41Const(object):
 
     # sheets:
     KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET = "KPIs", "Shelf Facings", "Pricing"
