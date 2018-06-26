@@ -1,11 +1,12 @@
 
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.INTEG16.Utils.KPISceneToolBox import INTEG16SceneToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common
 
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
 
 __author__ = 'nissand'
 
@@ -31,5 +32,5 @@ class SceneGenerator:
             Log.warning('Match product in scene is empty for this scene')
         else:
             self.scene_tool_box.scene_score()
-            self.common.commit_results_data(by_scene=True)
+            self.common.commit_results_data(result_entity='scene')
 

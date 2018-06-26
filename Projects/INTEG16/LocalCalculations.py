@@ -9,7 +9,7 @@
 # if __name__ == '__main__':
 #     LoggerInitializer.init('integ16 calculations')
 #     Config.init()
-#     project_name = 'ccit-sand'
+#     project_name = 'integ16'
 #     data_provider = KEngineDataProvider(project_name)
 #     session = '96AFB0D3-5D74-43DD-8D80-31F9C5CD3D07'
 #     data_provider.load_session_data(session)
