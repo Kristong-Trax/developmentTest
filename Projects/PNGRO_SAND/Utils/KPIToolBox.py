@@ -88,8 +88,8 @@ class PNGRO_SAND_PRODToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.retailer = \
-        self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
+        # self.retailer = \
+        # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_SAND_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
