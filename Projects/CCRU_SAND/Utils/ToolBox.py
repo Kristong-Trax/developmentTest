@@ -1469,15 +1469,6 @@ class CCRU_SANDKPIToolBox:
             self.write_to_db_result(attributes_for_level2, 'level2')
         return set_total_res
 
-        # Natalya
-    def check_number_of_scenes_with_given_target_facings(self, params):
-        """
-        This function calculates number of scenes which have the number of facings equal to or exceeding the target
-        """
-        scenes = self.get_relevant_scenes(params)
-        number_of_scenes = self.calculate_number_of_scenes_given_facings(params, scenes)
-        return number_of_scenes
-
     def calculate_share_of_cch(self, p, scenes, sos = True):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
