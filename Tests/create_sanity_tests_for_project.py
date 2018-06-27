@@ -70,7 +70,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.%(project)s_test_data_project_sanity import ProjectsSanityData
+from Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
 
 
@@ -130,7 +130,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
                            # 'session_2': self.session_list[2]
                            }
 
-        test_path = ('/home/{0}/dev/kpi_factory/Tests/{1}_sanity_functional_tests'.format(self.user, self.project))
+        test_path = ('/home/{0}/dev/kpi_factory/Tests/test_functional_{1}_sanity'.format(self.user, self.project))
         with open(test_path + '.py', 'wb') as f:
             f.write(SanityTestsCreator.TEST_CLASS % formatting_dict)
 
@@ -164,7 +164,7 @@ class ProjectsSanityData(BaseSeedData):
 """.format(self.user, self.project, seed_data)
 
         data_class_path = \
-            ('/home/{0}/dev/kpi_factory/Tests/Data/{1}_test_data_project_sanity'.format(self.user, self.project))
+            ('/home/{0}/dev/kpi_factory/Tests/Data/test_data_{1}_sanity'.format(self.user, self.project))
 
         with open(data_class_path + '.py', 'wb') as f:
             f.write(data_class_content)
