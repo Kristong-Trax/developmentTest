@@ -2441,6 +2441,14 @@ class CCRU_SANDKPIToolBox:
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                   "format": p.get("Result Format")})
 
+            elif p.get("Formula") == "KPI score":  # session level
+                for k in self.kpi_facts_hidden:
+                    if k.get("KPI ID") in p.get("Children List"):
+                        result = k.get("score")
+                        kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+                                          "format": p.get("Result Format")})
+
             elif p.get("Formula") == "sum of KPI scores":  # session level
                 result = 0
                 for k in self.kpi_facts_hidden:
@@ -2498,7 +2506,7 @@ class CCRU_SANDKPIToolBox:
                             elif len(passed_failed) > 1:
                                 result = passed_failed[1]
                             else:
-                                result = None
+                                result = ""
                             kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
                                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                               "format": p.get("Result Format")})
