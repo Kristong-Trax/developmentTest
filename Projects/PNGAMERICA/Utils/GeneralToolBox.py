@@ -43,6 +43,7 @@ class PNGAMERICAGENERALToolBox:
         self.ignore_stacking = ignore_stacking
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.front_facing = front_facing
+        self.average_shelf_values = {}
         for data in kwargs.keys():
             setattr(self, data, kwargs[data])
         if self.front_facing:
@@ -227,7 +228,7 @@ class PNGAMERICAGENERALToolBox:
             space_length = 0
         return space_length
 
-    def calculate_category_space(self, threshold=0.5, **filters):
+    def calculate_category_space(self, kpi_name, threshold=0.5, **filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -255,6 +256,12 @@ class PNGAMERICAGENERALToolBox:
                         bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1)][
                                                      'shelf_number'].unique().tolist())
+                        if kpi_name not in self.average_shelf_values.keys():
+                            self.average_shelf_values[kpi_name] = {'num_of_shelves': bay_num_of_shelves,
+                                                                   'num_of_bays': 1}
+                        else:
+                            self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
+                            self.average_shelf_values[kpi_name]['num_of_bays'] += 1
                         if bay_num_of_shelves:
                             bay_final_linear_value = tested_group_linear / float(bay_num_of_shelves)
                         else:
@@ -1541,18 +1548,27 @@ class PNGAMERICAGENERALToolBox:
                             results['vertical'] = vertical_flag
                             results['horizontal'] = horizontal_flag
                         if include_private_label:
+                            p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
                             if checkerboard:
                                 results['checkerboarded'] = False
-                                p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
+                                direction_data = {'top': (1, 1000), 'bottom': (1, 1000), 'left': (1, 1000),
+                                                  'right': (1, 1000)}
+                                relative_position_res = \
+                                    self.calculate_relative_in_block_per_graph(block_graph, direction_data,
+                                                                               min_required_to_pass=2,
+                                                                               sent_tested_vertices=cluster,
+                                                                               sent_anchor_vertices=p_l_new_vertices)
                                 if set(p_l_new_vertices) & set(cluster):
                                     cluster_graph = block_graph
                                     non_cluster = set(new_relevant_vertices).difference(cluster)
                                     cluster_graph.delete_vertices(non_cluster)
                                     brands_list = {v['brand_name'] for v in block_graph.vs}
-                                    results['checkerboarded'] = True
+                                    if relative_position_res:
+                                        results['checkerboarded'] = True
                                     results['brand_list'] = brands_list
                             else:
-                                results['block_ign_plabel'] = True
+                                if len(p_l_new_vertices) / float(len(cluster)) >= 0.5:
+                                    results['block_ign_plabel'] = True
                         if availability_param:
                             results['availability'] = False
                             attributes_list = {v[availability_param] for v in block_graph.vs}

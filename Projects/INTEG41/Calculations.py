@@ -1,15 +1,15 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.INTEG41.KPIGenerator import Generator
+from Projects.INTEG41.KPIGenerator import INTEG41Generator
 
 __author__ = 'Elyashiv'
 
 
-class Calculations(BaseCalculationsScript):
+class INTEG41Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        Generator(self.data_provider, self.output).main_function()
+        INTEG41Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIDIAGEOUSINTEG41Generator.run_project_calculations')
 
 
