@@ -111,7 +111,7 @@ class Const(object):
     COLUMNS_FOR_MENU = [FACINGS, BRAND, MANUFACTURER]
 
     EXTRA = "EXTRA"
-    OOS = "OOS"
-    DISTRIBUTED = "DISTRIBUTED"
+    OOS = "0"
+    DISTRIBUTED = "1"
     OTHER = "OTHER"
 

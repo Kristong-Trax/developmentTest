@@ -10,10 +10,18 @@ import shutil
 
 __author__ = 'yoava'
 
-top_sessions = list()
+"""
+this module creates dump file and sanity test classes for a specific project.
+all you have to do is to insert the project name and run it 
+"""
+
+TOP_SESSIONS = list()
 
 
 class SeedCreator:
+    """
+    this class creates seed file
+    """
     def __init__(self, project):
         self.project = project
         self.rds_conn = ProjectConnector(project, DbUsers.CalculationEng)
@@ -29,6 +37,10 @@ class SeedCreator:
         self.export_dir = os.path.join('/home', self.user, 'dev', 'traxdatabase', 'traxExport')
 
     def get_top_sessions(self):
+        """
+        this method gets top sessions from the project db to test
+        :return: list of sessions
+        """
         Log.info('Fetching 3 sessions')
         query = """
         SELECT s.session_uid, s.pk FROM probedata.session s
@@ -42,10 +54,14 @@ class SeedCreator:
         sessions_df = pd.read_sql(query, self.rds_conn.db)
         Log.info(str(sessions_df.values))
         for session in sessions_df.session_uid.values:
-            top_sessions.append(session)
+            TOP_SESSIONS.append(session)
         return sessions_df.session_uid.values
 
     def activate_exporter(self):
+        """
+        this method build a dump file with traxExporter from the given sessions
+        :return: None
+        """
         os.chdir(self.export_dir)
         sessions = self.get_top_sessions()
         Log.info('Activating exporter')
@@ -60,6 +76,9 @@ class SeedCreator:
 
 
 class SanityTestsCreator:
+    """
+    this class creates the sanity tests class
+    """
     TEST_CLASS = """
 import os
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -120,6 +139,10 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.session_list = session_list
 
     def create_test_class(self):
+        """
+        this method create sanity test class
+        :return: None
+        """
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
@@ -136,19 +159,25 @@ class TestKEngineOutOfTheBox(MockingTestCase):
 
 
 class CreateTestDataProjectSanity:
-
+    """
+    this classs creates project sanity data class
+    """
     def __init__(self, project):
         self.project = project
         self.user = os.environ.get('USER')
 
     def create_data_class(self):
+        """
+        this method creates the data class
+        :return:  None
+        """
         seed_data = """DATA_TYPE: BaseSeedData.MYSQL,
-                FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
-                PROJECT_NAME: project_name
+                        FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
+                        PROJECT_NAME: project_name
                 """.format(self.project)
         seed_data = '{' + seed_data
 
-        seed_data = seed_data + '}'
+        seed_data = seed_data + '        }'
 
         data_class_content = """
 from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH
@@ -179,5 +208,5 @@ if __name__ == '__main__':
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()
-    sanity = SanityTestsCreator(project_to_test, top_sessions)
+    sanity = SanityTestsCreator(project_to_test, TOP_SESSIONS)
     sanity.create_test_class()
