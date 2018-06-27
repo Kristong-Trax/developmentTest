@@ -178,7 +178,8 @@ class PNGRO_SAND_PRODToolBox:
 
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         for x, params in self.sbd_kpis_data.iterrows():
-            if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            if True:
                 general_filters = self.get_general_filters(params)
                 if general_filters:
                     score = 0

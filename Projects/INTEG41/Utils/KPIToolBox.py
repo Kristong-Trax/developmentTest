@@ -84,8 +84,7 @@ class INTEG41ToolBox:
         query = self.fetcher.get_sales_data(self.store_id, self.visit_date)
         df = pd.read_sql_query(query, self.rds_conn.db)
         products_list = df['product_fk'].tolist()
-        sub_brand_list = self.all_products[self.all_products['product_fk'].isin(products_list)]['sub_brand'].tolist()
-        return sub_brand_list
+        return products_list
 
     def get_sub_brands(self):
         """
@@ -101,7 +100,7 @@ class INTEG41ToolBox:
         temporary function - checks if there are new sub_brands that don't exist in the DB, and uploads them
         :return:
         """
-        all_sub_brands = self.all_products['sub_brand'].unique().tolist()
+        all_sub_brands = self.all_products['Sub Brand'].unique().tolist()
         current_sub_brand = self.sub_brands['name'].unique().tolist()
         subs_not_in_db = set(all_sub_brands) - set(current_sub_brand)
         if subs_not_in_db:
@@ -115,9 +114,12 @@ class INTEG41ToolBox:
         :return:
         """
         queries = []
-        for sub_brand in new_subs:
+        all_new_subs = self.all_products[self.all_products['Sub Brand'].isin(new_subs)]
+        for i, line in all_new_subs.iterrows():
+            sub_brand = line['Sub Brand']
+            brand = line['brand_fk']
             if sub_brand:
-                queries.append(self.fetcher.insert_new_sub_brands().format(sub_brand))
+                queries.append(self.fetcher.insert_new_sub_brands(sub_brand, brand))
         merge_queries = self.common.merge_insert_queries(queries)
         cur = self.rds_conn.db.cursor()
         for query in merge_queries:
@@ -263,15 +265,56 @@ class INTEG41ToolBox:
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
             standard_type = additional_attrs[INTEG41Const.NATIONAL_SEGMENT]
-            result_line = self.calculate_pod_by_sub_brand(
+            result_line = self.calculate_pod_on(
                 product_line['product_fk'], relevant_scif, standard_type, kpi_name)
             all_results = all_results.append(result_line, ignore_index=True)
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
-            all_results, kpi_db_names, weight, with_standard_type=True)
+            all_results, kpi_db_names, weight, with_standard_type=True, sub_brand_numeric=True)
         # add extra products to DB:
-        # if kpi_name == INTEG41Const.POD:
-        #     self.calculate_extras(relevant_assortment)
+        if kpi_name == INTEG41Const.POD:
+            self.calculate_extras_on(relevant_assortment, relevant_scif)
         return total_result, segment_result, national_result
+
+    def calculate_extras_on(self, relevant_assortment, filtered_scif):
+        """
+        add the extra products (products not shown in the template) to DB.
+        :param relevant_assortment: DF of assortment with all the PODs
+        :param filtered_scif: scif in the match scenes
+        :return:
+        """
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.POD][INTEG41Const.SKU])
+        all_diageo_products = filtered_scif[
+            filtered_scif['manufacturer_fk'] == self.manufacturer_fk]['product_fk'].unique().tolist()
+        assortment_products = relevant_assortment['product_fk'].unique().tolist()
+        products_not_in_list = set(all_diageo_products) - set(assortment_products)
+        result = INTEG41Const.EXTRA
+        for product in products_not_in_list:
+            self.common.write_to_db_result(
+                fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result))
+
+    def calculate_pod_on(self, product_fk, relevant_scif, standard_type, kpi_name):
+        """
+        Checks if specific product's sub_brand exists in the filtered scif
+        :param standard_type: S or N
+        :param product_fk:
+        :param relevant_scif: filtered scif
+        :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
+        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
+        """
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[kpi_name][INTEG41Const.SKU])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[kpi_name][INTEG41Const.TOTAL])
+        brand, sub_brand = self.get_product_details(product_fk)
+        facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
+        if facings > 0 or (product_fk in self.sales_data and kpi_name == INTEG41Const.POD):
+            result, passed = INTEG41Const.DISTRIBUTED, 1
+        else:
+            result, passed = INTEG41Const.OOS, 0
+        product_result = {INTEG41Const.PRODUCT_FK: product_fk, INTEG41Const.PASSED: passed,
+                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand, INTEG41Const.STANDARD_TYPE: standard_type}
+        self.common.write_to_db_result(
+            fk=sku_kpi_fk, numerator_id=product_fk,
+            result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+        return product_result
 
     def calculate_assortment(self, scene_types, kpi_name, weight):
         """
@@ -348,36 +391,6 @@ class INTEG41ToolBox:
                           INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand, INTEG41Const.STANDARD_TYPE: standard_type}
         return product_result
 
-    def calculate_pod_by_sub_brand(self, product_fk, relevant_scif, standard_type, kpi_name):
-        """
-        Checks if specific product's sub_brand exists in the filtered scif
-        :param standard_type: S or N
-        :param product_fk:
-        :param relevant_scif: filtered scif
-        :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
-        :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
-        """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.POD][INTEG41Const.SKU])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.POD][INTEG41Const.TOTAL])
-        brand, sub_brand = self.get_product_details(product_fk)
-        sub_brand_name = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
-        if sub_brand_name is None:
-            return None
-        if kpi_name == INTEG41Const.POD and sub_brand_name not in self.sales_data:
-            return None
-        facings = relevant_scif[(relevant_scif['brand_fk'] == brand) &
-                                (relevant_scif['sub_brand'] == sub_brand_name)]['facings'].sum()
-        if facings > 0:
-            result, passed = INTEG41Const.DISTRIBUTED, 1
-        else:
-            result, passed = INTEG41Const.OOS, 0
-        product_result = {INTEG41Const.PRODUCT_FK: product_fk, INTEG41Const.PASSED: passed,
-                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand, INTEG41Const.STANDARD_TYPE: standard_type}
-        self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=sub_brand,
-            result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
-        return product_result
-
     def calculate_display_compliance_sku(self, product_fk, relevant_scif, standard_type):
         """
         Checks if specific product passes the condition of the display
@@ -418,12 +431,12 @@ class INTEG41ToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[(self.scif_without_emptys['scene_id'].isin(relevant_scenes)) &
                                                  (self.scif_without_emptys['product_type'] == 'POS')]
-        all_sub_brands = relevant_scif['sub_brand'].unique().tolist()
+        all_sub_brands = relevant_scif['Sub Brand'].unique().tolist()
         all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
         den_res = relevant_scif['facings'].sum()
         diageo_facings = 0
         for sub_brand_name in all_sub_brands:
-            num_res = relevant_scif[relevant_scif['sub_brand'] == sub_brand_name]['facings'].sum()
+            num_res = relevant_scif[relevant_scif['Sub Brand'] == sub_brand_name]['facings'].sum()
             result = self.get_score(num_res, den_res)
             sub_brand_fk = self.get_sub_brand_fk(sub_brand_name)
             self.common.write_to_db_result(
@@ -444,7 +457,7 @@ class INTEG41ToolBox:
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
             denominator_result=den_res, result=diageo_result, score=score, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target * 100,
-            identifier_parent=self.common.get_dictionary(name=INTEG41Const.TOTAL))
+            identifier_parent=self.common.get_dictionary(name=INTEG41Const.TOTAL), should_enter=True)
         return score, 0, 0
 
     # display share:
@@ -524,12 +537,13 @@ class INTEG41ToolBox:
             relevant_competitions = relevant_competitions[relevant_competitions[INTEG41Const.STATE] == self.state]
         else:
             relevant_competitions = relevant_competitions[relevant_competitions[INTEG41Const.STATE] == INTEG41Const.OTHER]
-        all_results = pd.DataFrame(columns=INTEG41Const.COLUMNS_FOR_PRODUCT)
+        all_results = pd.DataFrame(columns=INTEG41Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, competition in relevant_competitions.iterrows():
             result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes, i)
             all_results = all_results.append(result_dict, ignore_index=True)
         kpi_db_names = INTEG41Const.DB_OFF_NAMES[kpi_name]
-        total_result, segment_result, national_result = self.insert_all_levels_to_db(all_results, kpi_db_names, weight)
+        total_result, segment_result, national_result = self.insert_all_levels_to_db(
+            all_results, kpi_db_names, weight, with_standard_type=True)
         return total_result, segment_result, national_result
 
     def calculate_shelf_facings_of_competition(self, competition, relevant_scenes, index):
@@ -548,9 +562,15 @@ class INTEG41ToolBox:
             return None
         our_fks = our_lines['product_fk'].unique().tolist()
         product_fk = our_fks[0]
+        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ASSORTMENTS_NAMES[INTEG41Const.DB_OFF])
+        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_off_trade_fk]
+        product_assortment_line = relevant_assortment[relevant_assortment['product_fk'] == product_fk]
+        if product_assortment_line.empty:
+            return None
+        additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
+        standard_type = additional_attrs[INTEG41Const.NATIONAL_SEGMENT]
         result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
         our_facings = self.calculate_shelf_facings_of_sku(our_fks, relevant_scenes, result_identifier)
-        # all_facings = our_facings
         if self.does_exist(competition[INTEG41Const.COMP_EAN_CODE]):
             comp_eans = competition[INTEG41Const.COMP_EAN_CODE].split(', ')
             comp_lines = self.all_products[self.all_products['product_ean_code'].isin(comp_eans)]
@@ -559,14 +579,11 @@ class INTEG41ToolBox:
                 return None
             comp_fks = comp_lines['product_fk'].unique().tolist()
             comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
-            # all_facings += comp_facings
             bench_value = competition[INTEG41Const.BENCH_VALUE]
-            # bench_value = float(bench_value.replace("%", ""))/100
             target = comp_facings * bench_value
         else:
             target = competition[INTEG41Const.BENCH_VALUE]
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
-        # result = self.get_score(our_facings, all_facings)
         brand, sub_brand = self.get_product_details(product_fk)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[INTEG41Const.SHELF_FACINGS][INTEG41Const.TOTAL])
         self.common.write_to_db_result(
@@ -574,7 +591,7 @@ class INTEG41ToolBox:
             result=comparison * 100, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {INTEG41Const.PRODUCT_FK: product_fk, INTEG41Const.PASSED: comparison,
-                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand}
+                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand, INTEG41Const.STANDARD_TYPE: standard_type}
         return product_result
 
     def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier):
@@ -594,7 +611,8 @@ class INTEG41ToolBox:
             if product_facing is None or np.isnan(product_facing):
                 product_facing = 0
             amount_of_facings += product_facing
-            if product_fk in self.calculated_shelf_facings:
+            # if product_fk in self.calculated_shelf_facings:
+            if 0 > 2:
                 continue
             else:
                 self.calculated_shelf_facings.append(product_fk)
@@ -615,12 +633,13 @@ class INTEG41ToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         all_products_table = self.templates[INTEG41Const.SHELF_PLACMENTS_SHEET]
-        all_results = pd.DataFrame(columns=INTEG41Const.COLUMNS_FOR_PRODUCT)
+        all_results = pd.DataFrame(columns=INTEG41Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in all_products_table.iterrows():
             result = self.calculate_shelf_placement_of_sku(product_line, relevant_scenes)
             all_results = all_results.append(result, ignore_index=True)
         kpi_db_names = INTEG41Const.DB_OFF_NAMES[kpi_name]
-        total_result, segment_result, national_result = self.insert_all_levels_to_db(all_results, kpi_db_names, weight)
+        total_result, segment_result, national_result = self.insert_all_levels_to_db(
+            all_results, kpi_db_names, weight, with_standard_type=True)
         return total_result, segment_result, national_result
 
     def convert_groups_from_template(self):
@@ -649,6 +668,13 @@ class INTEG41ToolBox:
             Log.warning("Product_ean '{}' does not exist".format(product_line[INTEG41Const.PRODUCT_EAN_CODE]))
             return None
         product_fk = product_fk.iloc[0]
+        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ASSORTMENTS_NAMES[INTEG41Const.DB_OFF])
+        relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_off_trade_fk]
+        product_assortment_line = relevant_assortment[relevant_assortment['product_fk'] == product_fk]
+        if product_assortment_line.empty:
+            return None
+        additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
+        standard_type = additional_attrs[INTEG41Const.NATIONAL_SEGMENT]
         min_shelf_loc = product_line[INTEG41Const.MIN_SHELF_LOCATION]
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
@@ -685,7 +711,7 @@ class INTEG41ToolBox:
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target_fk)
         product_result = {INTEG41Const.PRODUCT_FK: product_fk, INTEG41Const.PASSED: passed,
-                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand}
+                          INTEG41Const.BRAND: brand, INTEG41Const.SUB_BRAND: sub_brand, INTEG41Const.STANDARD_TYPE: standard_type}
         return product_result
 
     def calculate_specific_product_shelf_placement(self, match_product_line, shelf_groups):
@@ -737,7 +763,8 @@ class INTEG41ToolBox:
             compete_result_dict = self.calculate_msrp_of_competition(competition, relevant_scenes, i)
             all_competes = all_competes.append(compete_result_dict, ignore_index=True)
         kpi_db_names = INTEG41Const.DB_OFF_NAMES[kpi_name]
-        result, segment_result, national_result = self.insert_all_levels_to_db(all_competes, kpi_db_names, weight)
+        result, segment_result, national_result = self.insert_all_levels_to_db(
+            all_competes, kpi_db_names, weight, write_numeric=True)
         return result, 0, 0
 
     def calculate_msrp_of_competition(self, competition, relevant_scenes, index):
@@ -811,7 +838,8 @@ class INTEG41ToolBox:
         if price.empty:
             return None
         result = round(price.iloc[0], 2)
-        if product_fk not in self.calculated_price:
+        # if product_fk not in self.calculated_price:
+        if 2 > 0:
             self.calculated_price.append(product_fk)
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=product_fk, result=result,
@@ -861,7 +889,7 @@ class INTEG41ToolBox:
         :return: its details for assortment (brand, sub_brand)
         """
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
-        sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
+        sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['Sub Brand'].iloc[0]
         if not sub_brand:
             sub_brand_fk = None
         else:
@@ -920,8 +948,8 @@ class INTEG41ToolBox:
 
     # main insert to DB functions:
 
-    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, with_standard_type=False, without_subs=False,
-                                should_enter=True):
+    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, with_standard_type=False,
+                                should_enter=True, write_numeric=False, sub_brand_numeric=False):
         """
         This function gets all the sku results (with details) and puts in DB all the way up (sub_brand, brand, total,
         and segment-national if exist).
@@ -929,9 +957,10 @@ class INTEG41ToolBox:
         :param kpi_db_names: name as it's shown in the main sheet of the template.
         :param weight:
         :param with_standard_type: in KPIs that include standard_type we need to know for calculation their total
-        :param without_subs: when the sub_brand is the lowest level, we already wrote the results in the DB
+        :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         :param should_enter: if the total should enter the hierarchy table
-        :return:
+        :return: the scores of all
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[INTEG41Const.TOTAL])
         total_identifier = self.common.get_dictionary(kpi_fk=total_kpi_fk)
@@ -940,47 +969,54 @@ class INTEG41ToolBox:
                 continue
             brand_results = all_results[all_results[INTEG41Const.BRAND] == brand]
             self.insert_brand_and_subs_to_db(brand_results, kpi_db_names, brand, total_identifier,
-                                             without_subs=without_subs)
+                                             write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
         all_passed_results = all_results[INTEG41Const.PASSED]
         total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, INTEG41Const.TOTAL, weight, total_identifier,
-                                                should_enter=should_enter)
+                                                should_enter=should_enter, write_numeric=write_numeric)
         segment_result, national_result = 0, 0
         if with_standard_type:
             national_results = all_results[all_results[INTEG41Const.STANDARD_TYPE] == INTEG41Const.NATIONAL][INTEG41Const.PASSED]
-            national_result = self.insert_totals_to_db(
-                national_results, kpi_db_names, INTEG41Const.NATIONAL, weight, should_enter=should_enter)
+            national_result = self.insert_totals_to_db(national_results, kpi_db_names, INTEG41Const.NATIONAL, weight,
+                                                       should_enter=should_enter, write_numeric=write_numeric)
             segment_results = all_results[all_results[INTEG41Const.STANDARD_TYPE] == INTEG41Const.SEGMENT][INTEG41Const.PASSED]
-            segment_result = self.insert_totals_to_db(
-                segment_results, kpi_db_names, INTEG41Const.SEGMENT, weight, should_enter=should_enter)
+            segment_result = self.insert_totals_to_db(segment_results, kpi_db_names, INTEG41Const.SEGMENT, weight,
+                                                      should_enter=should_enter, write_numeric=write_numeric)
         return total_result, segment_result, national_result
 
-    def insert_brand_and_subs_to_db(self, brand_results, kpi_db_names, brand, total_identifier, without_subs=False):
+    def insert_brand_and_subs_to_db(self, brand_results, kpi_db_names, brand, total_identifier,
+                                    write_numeric=False, sub_brand_numeric=False):
         """
         Inserting all brand and sub_brand results
         :param brand_results: DF from all_results
         :param kpi_db_names:
         :param brand: fk
         :param total_identifier: for hierarchy
-        :param without_subs: when the sub_brand is the lowest level, we already wrote the results in the DB
-        :return:
+        :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         """
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[INTEG41Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
-        if not without_subs:
-            for sub_brand in brand_results[brand_results[INTEG41Const.BRAND] == brand][INTEG41Const.SUB_BRAND].unique().tolist():
-                if sub_brand is None or np.isnan(sub_brand):
-                    continue
-                sub_brand_results = brand_results[(brand_results[INTEG41Const.BRAND] == brand) &
-                                                  (brand_results[INTEG41Const.SUB_BRAND] == sub_brand)]
-                self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict)
+        for sub_brand in brand_results[brand_results[INTEG41Const.BRAND] == brand][INTEG41Const.SUB_BRAND].unique().tolist():
+            if sub_brand is None or np.isnan(sub_brand):
+                continue
+            sub_brand_results = brand_results[(brand_results[INTEG41Const.BRAND] == brand) &
+                                              (brand_results[INTEG41Const.SUB_BRAND] == sub_brand)]
+            self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict,
+                                         write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
         results = brand_results[INTEG41Const.PASSED]
-        num_res, den_res = results.sum(), results.count()
+        if write_numeric:
+            num_res, den_res = 0, 0
+            result = results.sum()
+        else:
+            num_res, den_res = results.sum(), results.count()
+            result = self.get_score(num_res, den_res)
         self.common.write_to_db_result(
             fk=brand_kpi_fk, numerator_id=brand, numerator_result=num_res,
-            denominator_result=den_res, result=self.get_score(num_res, den_res),
+            denominator_result=den_res, result=result,
             identifier_parent=total_identifier, identifier_result=brand_dict)
 
-    def insert_sub_brands_to_db(self, sub_brand_results, kpi_db_names, brand, sub_brand, brand_identifier):
+    def insert_sub_brands_to_db(self, sub_brand_results, kpi_db_names, brand, sub_brand, brand_identifier,
+                                write_numeric=False, sub_brand_numeric=False):
         """
         inserting sub_brand results into DB
         :param sub_brand_results: DF from all_products
@@ -988,19 +1024,28 @@ class INTEG41ToolBox:
         :param brand: fk
         :param sub_brand: fk
         :param brand_identifier: for hierarchy
-        :return:
+        :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         """
         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[INTEG41Const.SUB_BRAND])
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
         results = sub_brand_results[INTEG41Const.PASSED]
-        num_res, den_res = results.sum(), results.count()
+        num_res, den_res = 0, 0
+        if sub_brand_numeric:
+            result = INTEG41Const.DISTRIBUTED if results.sum() > 0 else INTEG41Const.OOS
+            result = self.get_pks_of_result(result)
+        elif write_numeric:
+            result = results.sum()
+        else:
+            num_res, den_res = results.sum(), results.count()
+            result = self.get_score(num_res, den_res)
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, numerator_result=num_res,
-            denominator_result=den_res, result=self.get_score(num_res, den_res),
+            denominator_result=den_res, result=result,
             identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
 
     def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None,
-                            should_enter=True):
+                            should_enter=True, write_numeric=False):
         """
         inserting all total level (includes segment and national) into DB
         :param all_passed_results: 'passed' column from all_results
@@ -1009,14 +1054,20 @@ class INTEG41ToolBox:
         :param total_kind: TOTAL/SEGMENT/NATIONAL
         :param identifier_result: optional, if has children
         :param should_enter: if the total should enter the hierarchy table
-        :return:
+        :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :return: the score
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[total_kind])
-        num_result, den_result = all_passed_results.sum(), all_passed_results.count()
-        result = self.get_score(num_result, den_result)
-        score = result * weight if kpi_db_names != INTEG41Const.DB_OFF_NAMES[INTEG41Const.MSRP] else 0
+        if write_numeric:
+            num_res, den_res = 0, 0
+            result = all_passed_results.sum()
+            score = 0
+        else:
+            num_res, den_res = all_passed_results.sum(), all_passed_results.count()
+            result = self.get_score(num_res, den_res)
+            score = result * weight
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_result, should_enter=should_enter,
-            denominator_result=den_result, result=result, identifier_result=identifier_result,
+            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+            denominator_result=den_res, result=result, identifier_result=identifier_result,
             identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=score)
         return score
