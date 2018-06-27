@@ -125,7 +125,7 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['79caf234-4a6e-42bc-ab0c-48b445dc048d']
+#     session_uids = ['d3d1e935-e0bd-4d4c-97f3-fca9ac8c1bed', 'da32e7e8-92dc-4cbe-a67e-35b267859cac']
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()
