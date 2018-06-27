@@ -1792,8 +1792,7 @@ class CCRUKPIToolBox:
             if p.get('Formula') != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            # children = map(int, p.get("Children").split("\n")) #Natalya
-            children = map(int, map(float, str(p.get("Children")).split("\n"))) #Natalya
+            children = map(int, map(float, str(p.get("Children")).split("\n")))
             kpi_total = 0
             score=0
             for c in params.values()[0]:

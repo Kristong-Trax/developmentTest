@@ -1818,7 +1818,6 @@ class CCRU_SANDKPIToolBox:
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, map(float, str(p.get("Children")).split("\n")))
-            # children = map(int, p.get("Children").split("\n"))
             kpi_total = 0
             score=0
             atomic_result_total = 0
