@@ -82,7 +82,7 @@ class DIAGEOIE_SANDToolBox:
 
         # if set_name in ('MPA', 'Local MPA', 'New Products',):
         #     set_score = self.calculate_assortment_sets(set_name)
-        elif set_name == 'Secondary Displays':
+        if set_name == 'Secondary Displays':
             set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
             if not set_score:
                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
