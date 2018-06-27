@@ -224,7 +224,7 @@ class PNGAMERICAToolBox:
                 category = row['category']
 
 
-                if kpi_type not in ['count of', 'category space', 'linear feet']:
+                if kpi_type not in ['hor_vs_vertical']:
                     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                     continue
 
@@ -281,8 +281,8 @@ class PNGAMERICAToolBox:
                     self.pantene_golden_strategy(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'HE':
                     self.herbal_essences_color_wheel(kpi_set_fk, kpi_name, scene_type)
-                elif kpi_type == 'H&S':
-                    self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
+                # elif kpi_type == 'H&S':
+                #     self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'category space':
                     self.calculate_category_space(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'bookend':
