@@ -124,7 +124,9 @@ class CCTHToolBox(CCTHConsts):
         self.kpi_static_data = self.get_kpi_static_data()
         self.tools = CCTHGENERALToolBox(self.data_provider, self.output)
         if '7-11' in self.store_type:
-            if self.visit_date >= datetime(2018, 01, 01).date():
+            if self.visit_date >= datetime(2018, 02, 01).date():
+                template_name = ParseTemplates.TEMPLATE_7_11_AFTER_FEB2018
+            elif self.visit_date >= datetime(2018, 01, 01).date():
                 template_name = ParseTemplates.TEMPLATE_7_11
             else:
                 template_name = ParseTemplates.TEMPLATE_7_11_AFTER_JULY2017
@@ -133,7 +135,10 @@ class CCTHToolBox(CCTHConsts):
             self.availability_id = self.gap_id = self.store_type
         else:
             if self.visit_date >= datetime(2018, 01, 01).date():
-                template_name = ParseTemplates.TEMPLATE_TT
+                if self.visit_date >= datetime(2018, 02, 01).date():
+                    template_name = ParseTemplates.TEMPLATE_TT_AFTER_FEB2018
+                else:
+                    template_name = ParseTemplates.TEMPLATE_TT
                 self.template = ParseTemplates(template=template_name)
                 self.calculation_type = self.template.TEMPLATE_TT
                 self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)

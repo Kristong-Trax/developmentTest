@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class Const(object):
+class INTEG41Const(object):
 
     # sheets:
     KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET = "KPIs", "Shelf Facings", "Pricing"
@@ -58,7 +58,6 @@ class Const(object):
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
     DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
     # names in DB:
-
     DB_OFF, DB_ON = "off_premise", "on_premise"
     DB_OFF_TOTAL = 'Total Score - Off Premise'
     DB_OFF_NATIONAL = 'National Score - Off Premise'
@@ -73,31 +72,34 @@ class Const(object):
             SUB_BRAND: 'Diageo Display Compliance Brand Variant %', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
             TOTAL: 'Shelf Facings - Total Score',
-            # NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
+            NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
             BRAND: 'Shelf Facings - Compliance Brand',
             SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
             TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand',
-            # NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
+            NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
             SUB_BRAND: 'Shelf Placement - Brand Variant', SKU: 'Shelf Placement - Brand Variant Size'},
         MSRP: {TOTAL: 'MSRP Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
         DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
     DB_ON_TOTAL = 'Total Score - On Premise'
+    DB_ON_NATIONAL = 'National Score - On Premise'
+    DB_ON_SEGMENT = 'Segment Score - On Premise'
     DB_ON_NAMES = {
         POD: {
-            TOTAL: 'On_POD - Total Score',
+            TOTAL: 'On_POD - Total Score', SEGMENT: 'On_POD - Segment Score', NATIONAL: 'On_POD - National Score',
             BRAND: 'On_POD - Generic Brand', SUB_BRAND: 'On_POD -  Brand Variant',
             SKU: 'On_POD -  Brand Variant Size'},
         BACK_BAR: {
-            TOTAL: 'Back Bar - Total Score',
+            TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
             SKU: 'Back Bar - Brand Variant Size'},
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
-            BRAND: 'Menu Share - Brand Variant Level', SUB_BRAND: 'Menu Share - Brand Variant Level'}}
+            # BRAND: 'Menu Share - Brand Variant Level',
+            SUB_BRAND: 'Menu Share - Brand Variant Level'}}
     DB_ASSORTMENTS_NAMES = {DB_OFF: "Assortment off Trade", DB_ON: "Assortment on Trade"}
     PERCENT_FOR_EYE_LEVEL = 0
 
