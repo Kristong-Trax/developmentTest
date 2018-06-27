@@ -23,6 +23,8 @@ class DIAGEOIECalculations(BaseCalculationsScript):
         diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
         diageo_generator.diageo_global_tap_brand_score_function(template_path)
         common.commit_results_data_to_new_tables()
+        DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
+        common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
@@ -31,7 +33,7 @@ class DIAGEOIECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageoie-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '97b1d068-4e9b-435b-a805-b30a1f220e02'
+#     session = 'c52740cd-a0c2-454b-9eb2-67b2005d6fde'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOIECalculations(data_provider, output).run_project_calculations()
