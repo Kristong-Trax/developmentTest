@@ -125,3 +125,679 @@ Traceback (most recent call last):
   File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/urllib3/util/connection.py", line 60, in create_connection
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
 KeyboardInterrupt[0m
+[34m2018-06-27 13:42:04,388 - rbus-sand calculations - 22259 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "ea03a0c", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 282}[0m
+[34m2018-06-27 13:42:04,393 - rbus-sand calculations - 22259 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "0c13822", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 272}[0m
+[34m2018-06-27 13:42:04,394 - rbus-sand calculations - 22259 - INFO - {"message": "Log level set to \"INFO\"", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "d44d89d", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 242}[0m
+[34m2018-06-27 13:42:04,394 - rbus-sand calculations - 22259 - INFO - {"message": "Environment set to \"Dev\"", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "3a6cdb1", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 13:42:04,395 - rbus-sand calculations - 22259 - INFO - {"message": "Process PID is 22259", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "4df4e24", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 237}[0m
+[34m2018-06-27 13:42:04,396 - rbus-sand calculations - 22259 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "083b2d5", "process": "10.0.0.121:Local", "platform": "python", "severity": "INFO", "version": "unknown", "size": 274}[0m
+[43m[30m2018-06-27 13:42:04,397 - rbus-sand calculations - 22259 - WARNING - {"message": "Unable to access vault while running in dev environment.", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "94cc0cb", "process": "10.0.0.121:Local", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 273}[0m
+[45m[1m[30m2018-06-27 13:42:05,157 - rbus-sand calculations - 22259 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "DEV", "application": "rbus-sand calculations", "cloud": "local", "id": "9468b6b", "process": "10.0.0.121:Local", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 248}
+Traceback (most recent call last):
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 23, in <module>
+    data_provider = KEngineDataProvider(project_name)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Algo/Calculations/Core/DataProvider.py", line 154, in __init__
+    self.orm_session = orm_session if orm_session is not None else OrmSession(project_name, writable=True)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Orm/OrmCore.py", line 27, in __init__
+    self.session = ProjectsSessions.get_session(project_name, writable, autocommit)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Orm/OrmCore.py", line 53, in get_session
+    cls.sessions.__setattr__(key_name, InnerOrmSession(project_name, writable, autocommit))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Orm/OrmCore.py", line 72, in __init__
+    project_instances = ProjectStore.get_project(project_name)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Projects/Store.py", line 312, in get_project
+    cls._check_invalidation_condition(use_cache)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Projects/Store.py", line 99, in _check_invalidation_condition
+    cls._load_data()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Projects/Store.py", line 63, in _load_data
+    for project in projects_cursor:
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 1046, in next
+    if len(self.__data) or self._refresh():
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 970, in _refresh
+    self.__batch_size))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/cursor.py", line 819, in __send_message
+    **kwargs)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/mongo_client.py", line 749, in _send_message_with_response
+    server = topology.select_server(selector)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py", line 141, in select_server
+    address))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/pymongo/topology.py", line 126, in select_servers
+    self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/threading.py", line 358, in wait
+    _sleep(delay)
+KeyboardInterrupt[0m
+[34m2018-06-27 13:42:14,283 - rbus-sand calculations - 22307 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 13:42:15,337 - rbus-sand calculations - 22307 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 13:42:15,340 - rbus-sand calculations - 22307 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:42:15,342 - rbus-sand calculations - 22307 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:42:15,344 - rbus-sand calculations - 22307 - INFO - {"message": "Process PID is 22307", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 13:42:15,560 - rbus-sand calculations - 22307 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 13:42:15,562 - rbus-sand calculations - 22307 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 13:42:22,763 - rbus-sand calculations - 22307 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[45m[1m[30m2018-06-27 13:42:24,136 - rbus-sand calculations - 22307 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea6e561", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 23, in <module>
+    data_provider = KEngineDataProvider(project_name)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Algo/Calculations/Core/DataProvider.py", line 155, in __init__
+    self.project_connector = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Projects/Connector.py", line 57, in __init__
+    is_project_queue=True, no_env=True)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Cloud/Services/Queues/Factory.py", line 54, in get_queue
+    is_unified, is_error, is_ttl, is_dead, queue, suffix, no_env, **kwargs))
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Cloud/Providers/AWS/Resources/Sqs.py", line 20, in __init__
+    self._queue = AwsResourceConnector.get_queue(self._region, self._queue_name)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Cloud/Providers/AWS/Resources/ResourceConnector.py", line 147, in get_queue
+    sqs_queue = conn.get_queue(queue)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/boto/sqs/connection.py", line 462, in get_queue
+    return self.get_object('GetQueueUrl', params, Queue)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/boto/connection.py", line 1192, in get_object
+    response = self.make_request(action, params, path, verb)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/boto/connection.py", line 1116, in make_request
+    return self._mexe(http_request)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/boto/connection.py", line 944, in _mexe
+    response = connection.getresponse()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/httplib.py", line 1045, in getresponse
+    response.begin()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/httplib.py", line 409, in begin
+    version, status, reason = self._read_status()
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/httplib.py", line 365, in _read_status
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/socket.py", line 476, in readline
+    data = self._sock.recv(self._rbufsize)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/ssl.py", line 241, in recv
+    return self.read(buflen)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/ssl.py", line 160, in read
+    return self._sslobj.read(len)
+KeyboardInterrupt[0m
+[31m[1m2018-06-27 13:42:24,213 - rbus-sand calculations - 22307 - ERROR - {
+    "message": "Could not disconnect from project rbus-sand with exception \nProjectConnector instance has no attribute 'db'",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "31712d1",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Data/Projects/Connector.py\", line 95, in _disconnect_rds",
+        "    if not isinstance(self.db, MySQLdb.connections.Connection):",
+        "AttributeError: ProjectConnector instance has no attribute 'db'"
+    ],
+    "size": 723
+}[0m
+[34m2018-06-27 13:42:25,203 - rbus-sand calculations - 22349 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 13:42:26,247 - rbus-sand calculations - 22349 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 13:42:26,248 - rbus-sand calculations - 22349 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:42:26,249 - rbus-sand calculations - 22349 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:42:26,250 - rbus-sand calculations - 22349 - INFO - {"message": "Process PID is 22349", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 13:42:26,393 - rbus-sand calculations - 22349 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 13:42:26,395 - rbus-sand calculations - 22349 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 13:42:32,786 - rbus-sand calculations - 22349 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[31m[1m2018-06-27 13:42:38,200 - rbus-sand calculations - 22349 - ERROR - {"message": "Session 47202937-9574-4BCC-B866-FC8EFA7FFD39 was not found for project rbus-sand", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "c0bbaa0", "process": "10.0.0.121:", "platform": "python", "severity": "ERROR", "version": "unknown", "size": 291}[0m
+[45m[1m[30m2018-06-27 13:42:38,205 - rbus-sand calculations - 22349 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ddcf520", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 25, in <module>
+    data_provider.load_session_data(session)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Algo/Calculations/Core/DataProvider.py", line 246, in load_session_data
+    self._init_session_info(session_uid)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Algo/Calculations/Core/DataProvider.py", line 427, in _init_session_info
+    raise Exception(msg)
+Exception: Session 47202937-9574-4BCC-B866-FC8EFA7FFD39 was not found for project rbus-sand[0m
+[43m[30m2018-06-27 13:42:38,321 - rbus-sand calculations - 22349 - WARNING - {"message": "Destructor disconnected from project rbus-sand since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 298}[0m
+[34m2018-06-27 13:42:50,689 - rbus-sand calculations - 22426 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 13:42:51,735 - rbus-sand calculations - 22426 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 13:42:51,736 - rbus-sand calculations - 22426 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:42:51,739 - rbus-sand calculations - 22426 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:42:51,741 - rbus-sand calculations - 22426 - INFO - {"message": "Process PID is 22426", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 13:42:51,887 - rbus-sand calculations - 22426 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 13:42:51,893 - rbus-sand calculations - 22426 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 13:42:58,130 - rbus-sand calculations - 22426 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 13:43:21,945 - rbus-sand calculations - 22426 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 16.569, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 13:43:23,716 - rbus-sand calculations - 22426 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 13:45:09,350 - rbus-sand calculations - 22426 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 13:45:12,889 - rbus-sand calculations - 22426 - INFO - {"message": "Total Calculations started at 2018-06-27 10:45:12.888972", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 13:45:12,906 - rbus-sand calculations - 22426 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 13:45:12,923 - rbus-sand calculations - 22426 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 13:45:13,023 - rbus-sand calculations - 22426 - INFO - {"message": "manufacturer score 1.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "35041c0", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:45:13,107 - rbus-sand calculations - 22426 - INFO - {"message": "category score 2.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d18fcf9", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-06-27 13:45:13,119 - rbus-sand calculations - 22426 - INFO - {"message": "K003 Score 1.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "86f5067", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 225}[0m
+[34m2018-06-27 13:45:13,203 - rbus-sand calculations - 22426 - INFO - {"message": "brand score COMPMONSTER 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:45:13,339 - rbus-sand calculations - 22426 - INFO - {"message": "brand score COMPROCKSTAR 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 13:45:13,454 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 004662752 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 13:45:13,634 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0041967346 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:13,775 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0045979202 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:13,886 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0045332455 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:13,984 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0045332454 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:14,067 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0046254292 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:14,204 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 004831887 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 13:45:14,320 - rbus-sand calculations - 22426 - INFO - {"message": "sku score 0041152875 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 13:45:15,394 - rbus-sand calculations - 22426 - INFO - {"message": "Saving to DB took 0:00:01.067673", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 13:45:15,396 - rbus-sand calculations - 22426 - INFO - {"message": "Total Calculations took 0:00:02.507950", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[43m[30m2018-06-27 13:45:15,398 - rbus-sand calculations - 22426 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[43m[30m2018-06-27 13:45:15,455 - rbus-sand calculations - 22426 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[34m2018-06-27 13:48:23,378 - rbus-sand calculations - 22922 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 13:48:24,433 - rbus-sand calculations - 22922 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 13:48:24,435 - rbus-sand calculations - 22922 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:48:24,437 - rbus-sand calculations - 22922 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:48:24,440 - rbus-sand calculations - 22922 - INFO - {"message": "Process PID is 22922", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 13:48:24,586 - rbus-sand calculations - 22922 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 13:48:24,591 - rbus-sand calculations - 22922 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 13:48:30,624 - rbus-sand calculations - 22922 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 13:48:54,717 - rbus-sand calculations - 22922 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 16.827, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 13:48:56,358 - rbus-sand calculations - 22922 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 13:49:33,307 - rbus-sand calculations - 22922 - INFO - {"message": "Total Calculations started at 2018-06-27 10:49:33.307449", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 13:49:33,316 - rbus-sand calculations - 22922 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 13:49:33,325 - rbus-sand calculations - 22922 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[45m[1m[30m2018-06-27 13:59:17,487 - rbus-sand calculations - 22922 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "21c7c03", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 27, in <module>
+    RBUSRBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 15, in run_project_calculations
+    RBUSRBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 433, in main_calculation
+    self.calculate_shelf_occupation()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 351, in calculate_shelf_occupation
+    manufacturer_score = self.calculate_redbull_manufacturer(shelf_occupation_dict, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 210, in calculate_redbull_manufacturer
+    score += self.calculate_manufacturer(curr_probe, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 194, in calculate_manufacturer
+    (~self.is_sub_category_excluded(row)):
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 194, in calculate_manufacturer
+    (~self.is_sub_category_excluded(row)):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 880, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:18564)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 843, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:17925)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[34m2018-06-27 13:59:19,772 - rbus-sand calculations - 24013 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 13:59:20,816 - rbus-sand calculations - 24013 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 13:59:20,818 - rbus-sand calculations - 24013 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 13:59:20,821 - rbus-sand calculations - 24013 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 13:59:20,824 - rbus-sand calculations - 24013 - INFO - {"message": "Process PID is 24013", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 13:59:21,049 - rbus-sand calculations - 24013 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 13:59:21,052 - rbus-sand calculations - 24013 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 13:59:27,218 - rbus-sand calculations - 24013 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 13:59:52,421 - rbus-sand calculations - 24013 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 17.653, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 13:59:54,126 - rbus-sand calculations - 24013 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:00:27,792 - rbus-sand calculations - 24013 - INFO - {"message": "Total Calculations started at 2018-06-27 11:00:27.792561", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:00:27,801 - rbus-sand calculations - 24013 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:00:27,811 - rbus-sand calculations - 24013 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:04:16,586 - rbus-sand calculations - 24013 - INFO - {"message": "manufacturer score 1.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "35041c0", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:04:16,981 - rbus-sand calculations - 24013 - INFO - {"message": "category score 2.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d18fcf9", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-06-27 14:04:17,012 - rbus-sand calculations - 24013 - INFO - {"message": "K003 Score 1.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "86f5067", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 225}[0m
+[34m2018-06-27 14:04:17,189 - rbus-sand calculations - 24013 - INFO - {"message": "brand score COMPMONSTER 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:04:17,374 - rbus-sand calculations - 24013 - INFO - {"message": "brand score COMPROCKSTAR 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 14:04:17,559 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 004662752 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:04:17,737 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0041967346 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:04:17,936 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0045979202 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:04:18,136 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0045332455 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:04:18,321 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0045332454 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:04:18,513 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0046254292 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:04:18,698 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 004831887 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:04:18,880 - rbus-sand calculations - 24013 - INFO - {"message": "sku score 0041152875 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[45m[1m[30m2018-06-27 14:04:18,890 - rbus-sand calculations - 24013 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "6184a8a", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 27, in <module>
+    RBUSRBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 15, in run_project_calculations
+    RBUSRBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/KPIGenerator.py", line 30, in main_function
+    self.tool_box.commit_results_data()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 491, in commit_results_data
+    cur.execute(query)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/cursors.py", line 205, in execute
+    self.errorhandler(self, exc, value)
+  File "/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/MySQLdb/connections.py", line 36, in defaulterrorhandler
+    raise errorclass, errorvalue
+OperationalError: (2006, 'MySQL server has gone away')[0m
+[43m[30m2018-06-27 14:04:19,240 - rbus-sand calculations - 24013 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[34m2018-06-27 14:19:08,952 - rbus-sand calculations - 25634 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:19:10,007 - rbus-sand calculations - 25634 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:19:10,009 - rbus-sand calculations - 25634 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:19:10,012 - rbus-sand calculations - 25634 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:19:10,014 - rbus-sand calculations - 25634 - INFO - {"message": "Process PID is 25634", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:19:10,249 - rbus-sand calculations - 25634 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:19:10,260 - rbus-sand calculations - 25634 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:19:21,344 - rbus-sand calculations - 25634 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:19:46,338 - rbus-sand calculations - 25634 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 17.344, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:19:48,017 - rbus-sand calculations - 25634 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:20:21,088 - rbus-sand calculations - 25634 - INFO - {"message": "Total Calculations started at 2018-06-27 11:20:21.088656", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:20:21,105 - rbus-sand calculations - 25634 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:20:21,118 - rbus-sand calculations - 25634 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[45m[1m[30m2018-06-27 14:23:28,884 - rbus-sand calculations - 25634 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "c2f9754", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 27, in <module>
+    RBUSRBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 15, in run_project_calculations
+    RBUSRBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 433, in main_calculation
+    self.calculate_shelf_occupation()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 351, in calculate_shelf_occupation
+    manufacturer_score = self.calculate_redbull_manufacturer(shelf_occupation_dict, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 210, in calculate_redbull_manufacturer
+    score += self.calculate_manufacturer(curr_probe, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 195, in calculate_manufacturer
+    redbull_manufacturer_products += r
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 195, in calculate_manufacturer
+    redbull_manufacturer_products += r
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 758, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:16066)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 749, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:15912)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[34m2018-06-27 14:23:31,080 - rbus-sand calculations - 26019 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:23:32,143 - rbus-sand calculations - 26019 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:23:32,144 - rbus-sand calculations - 26019 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:23:32,146 - rbus-sand calculations - 26019 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:23:32,148 - rbus-sand calculations - 26019 - INFO - {"message": "Process PID is 26019", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:23:32,292 - rbus-sand calculations - 26019 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:23:32,305 - rbus-sand calculations - 26019 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:23:38,850 - rbus-sand calculations - 26019 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:24:07,722 - rbus-sand calculations - 26019 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 21.273, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:24:09,422 - rbus-sand calculations - 26019 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:24:43,140 - rbus-sand calculations - 26019 - INFO - {"message": "Total Calculations started at 2018-06-27 11:24:43.140909", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:24:43,150 - rbus-sand calculations - 26019 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:24:43,160 - rbus-sand calculations - 26019 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[45m[1m[30m2018-06-27 14:24:54,160 - rbus-sand calculations - 26019 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3fc1ae3", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 27, in <module>
+    RBUSRBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 15, in run_project_calculations
+    RBUSRBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 433, in main_calculation
+    self.calculate_shelf_occupation()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 351, in calculate_shelf_occupation
+    manufacturer_score = self.calculate_redbull_manufacturer(shelf_occupation_dict, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 210, in calculate_redbull_manufacturer
+    score += self.calculate_manufacturer(curr_probe, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 195, in calculate_manufacturer
+    redbull_manufacturer_products += r
+NameError: global name 'r' is not defined[0m
+[43m[30m2018-06-27 14:24:54,221 - rbus-sand calculations - 26019 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[43m[30m2018-06-27 14:24:54,224 - rbus-sand calculations - 26019 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[34m2018-06-27 14:26:10,074 - rbus-sand calculations - 26243 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:26:11,102 - rbus-sand calculations - 26243 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:26:11,103 - rbus-sand calculations - 26243 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:26:11,104 - rbus-sand calculations - 26243 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:26:11,105 - rbus-sand calculations - 26243 - INFO - {"message": "Process PID is 26243", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:26:11,327 - rbus-sand calculations - 26243 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:26:11,329 - rbus-sand calculations - 26243 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:26:17,716 - rbus-sand calculations - 26243 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:26:41,978 - rbus-sand calculations - 26243 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 16.867, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:26:43,608 - rbus-sand calculations - 26243 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:27:16,069 - rbus-sand calculations - 26243 - INFO - {"message": "Total Calculations started at 2018-06-27 11:27:16.069250", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:27:16,078 - rbus-sand calculations - 26243 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:27:16,085 - rbus-sand calculations - 26243 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:27:16,178 - rbus-sand calculations - 26243 - INFO - {"message": "manufacturer score 1.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "35041c0", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:27:16,258 - rbus-sand calculations - 26243 - INFO - {"message": "category score 2.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d18fcf9", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-06-27 14:27:16,270 - rbus-sand calculations - 26243 - INFO - {"message": "K003 Score 1.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "86f5067", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 225}[0m
+[34m2018-06-27 14:27:16,356 - rbus-sand calculations - 26243 - INFO - {"message": "brand score COMPMONSTER 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:27:16,499 - rbus-sand calculations - 26243 - INFO - {"message": "brand score COMPROCKSTAR 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "a115292", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 14:27:16,579 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 004662752 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:27:16,660 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0041967346 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:16,744 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0045979202 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:16,823 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0045332455 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:16,920 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0045332454 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:17,010 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0046254292 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:17,090 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 004831887 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:27:17,172 - rbus-sand calculations - 26243 - INFO - {"message": "sku score 0041152875 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e18d324", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:27:18,234 - rbus-sand calculations - 26243 - INFO - {"message": "Saving to DB took 0:00:01.057451", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 14:27:18,239 - rbus-sand calculations - 26243 - INFO - {"message": "Total Calculations took 0:00:02.170201", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[43m[30m2018-06-27 14:27:18,244 - rbus-sand calculations - 26243 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[43m[30m2018-06-27 14:27:18,306 - rbus-sand calculations - 26243 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[34m2018-06-27 14:27:49,460 - rbus-sand calculations - 26404 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:27:50,494 - rbus-sand calculations - 26404 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:27:50,495 - rbus-sand calculations - 26404 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:27:50,496 - rbus-sand calculations - 26404 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:27:50,498 - rbus-sand calculations - 26404 - INFO - {"message": "Process PID is 26404", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:27:50,643 - rbus-sand calculations - 26404 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:27:50,779 - rbus-sand calculations - 26404 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:27:59,778 - rbus-sand calculations - 26404 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:28:24,010 - rbus-sand calculations - 26404 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 16.936, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:28:25,664 - rbus-sand calculations - 26404 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:28:58,428 - rbus-sand calculations - 26404 - INFO - {"message": "Total Calculations started at 2018-06-27 11:28:58.428146", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:28:58,437 - rbus-sand calculations - 26404 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:28:58,445 - rbus-sand calculations - 26404 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[45m[1m[30m2018-06-27 14:33:27,365 - rbus-sand calculations - 26404 - CRITICAL - {"message": "Unhandled exception hook caught", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "f743615", "process": "10.0.0.121:", "platform": "python", "severity": "CRITICAL", "version": "unknown", "size": 242}
+Traceback (most recent call last):
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1668, in <module>
+    main()
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1662, in main
+    globals = debugger.run(setup['file'], None, None, is_module)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 1072, in run
+    pydev_imports.execfile(file, globals, locals)  # execute the script
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 27, in <module>
+    RBUSRBUSCalculations(data_provider, output).run_project_calculations()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Calculations.py", line 15, in run_project_calculations
+    RBUSRBUSGenerator(self.data_provider, self.output).main_function()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 48, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/KPIGenerator.py", line 29, in main_function
+    self.tool_box.main_calculation(set_name=kpi_set_name)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 435, in main_calculation
+    self.calculate_shelf_occupation()
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 351, in calculate_shelf_occupation
+    manufacturer_score = self.calculate_redbull_manufacturer(shelf_occupation_dict, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 210, in calculate_redbull_manufacturer
+    score += self.calculate_manufacturer(curr_probe, product_list_field)
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 190, in calculate_manufacturer
+    for i, row in curr_probe.iterrows():
+  File "/home/yoava/dev/kpi_factory/Projects/RBUS/Utils/KPIToolBox.py", line 190, in calculate_manufacturer
+    for i, row in curr_probe.iterrows():
+  File "_pydevd_bundle/pydevd_cython.pyx", line 968, in _pydevd_bundle.pydevd_cython.SafeCallWrapper.__call__ (_pydevd_bundle/pydevd_cython.c:19675)
+    ret = (<object>method_obj)(*args)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 515, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:19009)
+    cpdef trace_dispatch(self, frame, str event, arg):
+  File "_pydevd_bundle/pydevd_cython.pyx", line 880, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:18564)
+    raise
+  File "_pydevd_bundle/pydevd_cython.pyx", line 843, in _pydevd_bundle.pydevd_cython.PyDBFrame.trace_dispatch (_pydevd_bundle/pydevd_cython.c:17925)
+    self.do_wait_suspend(thread, frame, event, arg)
+  File "_pydevd_bundle/pydevd_cython.pyx", line 254, in _pydevd_bundle.pydevd_cython.PyDBFrame.do_wait_suspend (_pydevd_bundle/pydevd_cython.c:5648)
+    self._args[0].do_wait_suspend(*args, **kwargs)
+  File "/opt/pycharm-community-2017.3.1/helpers/pydev/pydevd.py", line 817, in do_wait_suspend
+    time.sleep(0.01)
+KeyboardInterrupt[0m
+[34m2018-06-27 14:33:29,567 - rbus-sand calculations - 26914 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:33:30,599 - rbus-sand calculations - 26914 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:33:30,601 - rbus-sand calculations - 26914 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:33:30,603 - rbus-sand calculations - 26914 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:33:30,604 - rbus-sand calculations - 26914 - INFO - {"message": "Process PID is 26914", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:33:30,832 - rbus-sand calculations - 26914 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:33:30,840 - rbus-sand calculations - 26914 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:33:36,907 - rbus-sand calculations - 26914 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:34:01,287 - rbus-sand calculations - 26914 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 16.883, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:34:02,958 - rbus-sand calculations - 26914 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:34:36,087 - rbus-sand calculations - 26914 - INFO - {"message": "Total Calculations started at 2018-06-27 11:34:36.087250", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:34:36,099 - rbus-sand calculations - 26914 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:34:36,108 - rbus-sand calculations - 26914 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:34:36,202 - rbus-sand calculations - 26914 - INFO - {"message": "manufacturer score 1.27272727273", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ae49546", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 14:34:36,285 - rbus-sand calculations - 26914 - INFO - {"message": "category score 2.1875", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "cceda95", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 232}[0m
+[34m2018-06-27 14:34:36,299 - rbus-sand calculations - 26914 - INFO - {"message": "K003 Score 0.914772727273", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4862c6d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:34:36,382 - rbus-sand calculations - 26914 - INFO - {"message": "brand score COMPMONSTER 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e8c815b", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:34:36,555 - rbus-sand calculations - 26914 - INFO - {"message": "brand score COMPROCKSTAR 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "e8c815b", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 14:34:36,641 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 004662752 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:34:36,722 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0041967346 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:36,845 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0045979202 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:36,992 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0045332455 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:37,142 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0045332454 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:37,280 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0046254292 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:37,367 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 004831887 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:34:37,455 - rbus-sand calculations - 26914 - INFO - {"message": "sku score 0041152875 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "025ea2c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:34:38,536 - rbus-sand calculations - 26914 - INFO - {"message": "Saving to DB took 0:00:01.077097", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 14:34:38,544 - rbus-sand calculations - 26914 - INFO - {"message": "Total Calculations took 0:00:02.457494", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[43m[30m2018-06-27 14:34:38,551 - rbus-sand calculations - 26914 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[43m[30m2018-06-27 14:34:38,624 - rbus-sand calculations - 26914 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[34m2018-06-27 14:39:44,424 - rbus-sand calculations - 27454 - INFO - {"message": "Log is saved to /home/yoava/dev/kpi_factory/Projects/RBUS/log.txt", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ea03a0c", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 276}[0m
+[34m2018-06-27 14:39:45,483 - rbus-sand calculations - 27454 - INFO - {"message": "Log initialized with Syslog handler. Running on linux2 ", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "0c13822", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 266}[0m
+[34m2018-06-27 14:39:45,484 - rbus-sand calculations - 27454 - INFO - {"message": "Log level set to \"INFO\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "d44d89d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 236}[0m
+[34m2018-06-27 14:39:45,486 - rbus-sand calculations - 27454 - INFO - {"message": "Environment set to \"Prod\"", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3a6cdb1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:39:45,488 - rbus-sand calculations - 27454 - INFO - {"message": "Process PID is 27454", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4df4e24", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 231}[0m
+[34m2018-06-27 14:39:45,714 - rbus-sand calculations - 27454 - INFO - {"message": "Projects data is empty, loading data into memory cache...", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "083b2d5", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 268}[0m
+[31m[1m2018-06-27 14:39:45,717 - rbus-sand calculations - 27454 - ERROR - {
+    "message": "Exception unhandled was caught. Exception is : ",
+    "environment": "PROD",
+    "application": "rbus-sand calculations",
+    "cloud": "AWS",
+    "id": "de3406b",
+    "process": "10.0.0.121:",
+    "platform": "python",
+    "severity": "ERROR",
+    "version": "unknown",
+    "traceback": [
+        "Traceback (most recent call last):",
+        "  File \"/home/yoava/miniconda/envs/garage/lib/python2.7/site-packages/Trax/Utils/Classes/System.py\", line 19, in get_all_python_files",
+        "    all_files = next(os.walk(self.dir_path))[2]",
+        "StopIteration"
+    ],
+    "size": 598
+}[0m
+[34m2018-06-27 14:39:52,108 - rbus-sand calculations - 27454 - INFO - {"message": "Loaded projects data into memory cache", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "659292d", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[34m2018-06-27 14:40:16,447 - rbus-sand calculations - 27454 - INFO - {"message": "_init_static_data", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "session_uid": "47202937-9574-4BCC-B866-FC8EFA7FFD39", "duration": 17.016, "project_name": "rbus", "id": "ee93b20", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 327}[0m
+[43m[30m2018-06-27 14:40:18,176 - rbus-sand calculations - 27454 - WARNING - {"message": "Scenes in DB [190, 191, 192] are different from scenes received from barrier [] for project rbus session 47202937-9574-4BCC-B866-FC8EFA7FFD39", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ce06518", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 352}[0m
+[34m2018-06-27 14:40:51,757 - rbus-sand calculations - 27454 - INFO - {"message": "Total Calculations started at 2018-06-27 11:40:51.757865", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "4fcf468", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 267}[0m
+[34m2018-06-27 14:40:51,778 - rbus-sand calculations - 27454 - INFO - {"message": "K008 20 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:40:51,800 - rbus-sand calculations - 27454 - INFO - {"message": "K006 18 1", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "9753154", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 220}[0m
+[34m2018-06-27 14:40:51,902 - rbus-sand calculations - 27454 - INFO - {"message": "manufacturer score 1.27272727273", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "ae49546", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 14:40:51,984 - rbus-sand calculations - 27454 - INFO - {"message": "category score 2.27272727273", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "6f65fd1", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 14:40:51,997 - rbus-sand calculations - 27454 - INFO - {"message": "K003 Score 1.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "2085f6f", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 225}[0m
+[34m2018-06-27 14:40:52,069 - rbus-sand calculations - 27454 - INFO - {"message": "brand score COMPMONSTER 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "29b6279", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 238}[0m
+[34m2018-06-27 14:40:52,197 - rbus-sand calculations - 27454 - INFO - {"message": "brand score COMPROCKSTAR 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "29b6279", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 239}[0m
+[34m2018-06-27 14:40:52,269 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 004662752 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:40:52,342 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0041967346 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:52,424 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0045979202 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:52,501 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0045332455 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:52,595 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0045332454 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:52,673 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0046254292 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:52,749 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 004831887 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 234}[0m
+[34m2018-06-27 14:40:52,822 - rbus-sand calculations - 27454 - INFO - {"message": "sku score 0041152875 0.0", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "3f3d800", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 235}[0m
+[34m2018-06-27 14:40:53,921 - rbus-sand calculations - 27454 - INFO - {"message": "Saving to DB took 0:00:01.094826", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 243}[0m
+[34m2018-06-27 14:40:53,925 - rbus-sand calculations - 27454 - INFO - {"message": "Total Calculations took 0:00:02.167434", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "98c8d28", "process": "10.0.0.121:", "platform": "python", "severity": "INFO", "version": "unknown", "size": 249}[0m
+[43m[30m2018-06-27 14:40:53,929 - rbus-sand calculations - 27454 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
+[43m[30m2018-06-27 14:40:53,990 - rbus-sand calculations - 27454 - WARNING - {"message": "Destructor disconnected from project rbus since connection was not closed properly", "environment": "PROD", "application": "rbus-sand calculations", "cloud": "AWS", "id": "efc73bb", "process": "10.0.0.121:", "platform": "python", "severity": "WARNING", "version": "unknown", "size": 293}[0m
