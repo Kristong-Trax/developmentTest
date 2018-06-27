@@ -28,7 +28,8 @@ class PNGAMERICAPositionGraphs:
                           TOP, BOTTOM, LEFT, RIGHT, 'NATURALS', 'shelf_number', 'Sub Brand', 'bay_number', 'SEGMENT',
                           'PRICE SEGMENT', 'DIAPER SIZE', 'SUPER CATEGORY', 'P&G BRAND', 'PRIVATE LABEL',
                           'PRIVATE_LABEL', 'GENDER', 'PACK GROUP', 'HEAD SIZE', 'PG SIZE', 'CUSTOM SUBBRAND',
-                          'SHEET SIZE', 'scene_match_fk', 'FORM']
+                          'SHEET SIZE', 'scene_match_fk', 'FORM', 'y_mm', 'x_mm', 'width_mm_advance', 'height_mm_advance',
+                          'CREST_WHITE']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
@@ -134,7 +135,7 @@ class PNGAMERICAPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
+        Log.debug('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):
         """

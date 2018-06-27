@@ -57,6 +57,8 @@ EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
 ATTRIBUTE_3 = 'Filter stores by \'attribute 3\''
 BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
+OUTLET_ID = 'Outlet ID'
+EAN_CODE = 'product_ean_code'
 
 
 def log_runtime(description, log_start=False):
@@ -183,6 +185,18 @@ class BATRUToolBox:
         query = BATRUQueries.get_state(self.store_id)
         match_state = pd.read_sql_query(query, self.rds_conn.db)
         return 'No State' if match_state.empty else match_state['state'].values[0]
+
+    def upload_store_assortment_file_for_p1(self, file_path):
+        """
+        This function validates the template and uploads store assortments to pservice.custom_osa
+        It printS the stores and products that don't exist in the DB
+        :param file_path: the assortment file (suppose to have 2 columns: Outlet ID and product_ean_code
+        """
+        if self.tools.p1_assortment_validator(file_path):
+            self.tools.upload_store_assortment_file(file_path)
+        else:
+            Log.warning("Error in P1 store assortment template")
+            print "Please fix the issues and try again"
 
     def main_calculation(self):
         """
@@ -673,7 +687,7 @@ class BATRUToolBox:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(
                 lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'] == 'All']
+            monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
         # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
         extra_df = pd.DataFrame(columns=monitored_skus.columns)
         for sku in monitored_skus['ean_code'].unique().tolist():
@@ -818,7 +832,7 @@ class BATRUToolBox:
         if self.state in sections_template_data['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         for scene in scenes:
             if not self.scif.loc[self.scif['scene_fk'] == scene]['template_group'].values[0] == EXIT_TEMPLATE_GROUP:
                 continue
@@ -1301,7 +1315,7 @@ class BATRUToolBox:
         #     return True
         # else:
         #     return False
-        if end_seq == "All":
+        if end_seq.upper() == 'ALL':
             end_seq = bay_data['sequence'].max()
         else:
             end_seq = int(end_seq)
@@ -1330,11 +1344,11 @@ class BATRUToolBox:
         if self.state in sas_template['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         if self.scif['additional_attribute_3'].values[0] in sas_template['attribute_3'].unique().tolist():
             attribute_3 = self.scif['additional_attribute_3'].values[0]
         else:
-            attribute_3 = 'All'
+            attribute_3 = 'ALL'
         relevant_df = sas_template.loc[(sas_template['Equipment'] == fixture) &
                                        (sas_template['attribute_3'] == attribute_3) &
                                        (sas_template['State'] == state_for_calculation)]
@@ -1391,7 +1405,7 @@ class BATRUToolBox:
         if self.state in posm_template['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         posm_template = posm_template[posm_template['State'] == state_for_calculation]
         attribute_3 = self.scif['additional_attribute_3'].iloc[0]
         attribute_3_in_template = posm_template[ATTRIBUTE_3].unique()
@@ -1489,7 +1503,7 @@ class BATRUToolBox:
         posm_filters = {}
         for current_filter in filters:
             value = row[current_filter]
-            if value and value != 'ALL':
+            if value and value.upper() != 'ALL':
                 if current_filter in self.filters_params:
                     posm_filters[self.filters_params[current_filter]] = value
                 else:

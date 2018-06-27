@@ -45,7 +45,8 @@ class CCRUFIFA2018Queries:
         if size:
             final_result = final_result[final_result['size'].isin(size)]
         if shelves:
-            merged_dfs = pd.merge(final_result, self.matches, on=['product_fk', 'product_fk'])
+            matches = self.matches.loc[self.matches['scene_fk'].isin(scenes)]
+            merged_dfs = pd.merge(final_result, matches, on=['product_fk', 'product_fk'])
             if ',' in [shelves]:
                 shelves_list = [int(shelf) for shelf in shelves.split(',')]
             else:
@@ -54,7 +55,9 @@ class CCRUFIFA2018Queries:
             final_result = merged_filter
 
         try:
-            if "number of SKUs" in formula:
+            if 'shelf_number' in final_result.columns:
+                object_facings = len(final_result['product_ean_code'])
+            elif "number of SKUs" in formula:
                 object_facings = len(final_result['product_ean_code'].unique())
             else:
                 object_facings = final_result['facings'].sum()

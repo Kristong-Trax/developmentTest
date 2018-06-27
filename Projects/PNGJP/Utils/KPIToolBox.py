@@ -919,8 +919,9 @@ class PNGJPToolBox(PNGJPConsts):
                 self.all_products['product_ean_code'].isin(innovation_assortment_products)]
         except Exception as e:
             Log.warning("store_type '{}' is not valid : {}".format(store_type, e.message))
+            innovation_assortment_products = psku_assortment_products = []
 
-        assortment_products = innovation_assortment_products.append(psku_assortment_products).unique()
+        assortment_products = list(innovation_assortment_products.append(psku_assortment_products).unique())
 
         psku_assortment_products = psku_assortment_products.tolist()
         innovation_assortment_products = innovation_assortment_products.tolist()

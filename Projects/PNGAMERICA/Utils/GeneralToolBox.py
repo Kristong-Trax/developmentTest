@@ -43,6 +43,7 @@ class PNGAMERICAGENERALToolBox:
         self.ignore_stacking = ignore_stacking
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.front_facing = front_facing
+        self.average_shelf_values = {}
         for data in kwargs.keys():
             setattr(self, data, kwargs[data])
         if self.front_facing:
@@ -227,7 +228,7 @@ class PNGAMERICAGENERALToolBox:
             space_length = 0
         return space_length
 
-    def calculate_category_space(self, threshold=0.5, **filters):
+    def calculate_category_space(self, kpi_name, threshold=0.5, **filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -255,6 +256,12 @@ class PNGAMERICAGENERALToolBox:
                         bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1)][
                                                      'shelf_number'].unique().tolist())
+                        if kpi_name not in self.average_shelf_values.keys():
+                            self.average_shelf_values[kpi_name] = {'num_of_shelves': bay_num_of_shelves,
+                                                                   'num_of_bays': 1}
+                        else:
+                            self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
+                            self.average_shelf_values[kpi_name]['num_of_bays'] += 1
                         if bay_num_of_shelves:
                             bay_final_linear_value = tested_group_linear / float(bay_num_of_shelves)
                         else:
@@ -379,7 +386,9 @@ class PNGAMERICAGENERALToolBox:
         number_of_eye_level_entities = 0
         total_filtered_attributes = 0
         if percentage_result:
-            total_filtered_attributes = self.calculate_availability(**filters)
+            filters['stacking_layer'] = 1
+            total_filtered_attributes = self.calculate_share_space_length(**filters)
+            del filters['stacking_layer']
         products_on_eye_level = []
         for scene in relevant_scenes:
             eye_level_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
@@ -410,14 +419,16 @@ class PNGAMERICAGENERALToolBox:
                         eye_level_facings = eye_level_facings.append(eye_level_shelves)
                         # if any(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique()):
                         #     products_on_eye_level.append(eye_level_shelves[eye_level_shelves['manufacturer_name'] == 'PROCTER & GAMBLE']['product_name'].unique().tolist())
-                        if any(eye_level_facings[
+                        if any(eye_level_shelves[
                                                self.get_filter_condition(eye_level_shelves, **filters)]['product_ean_code']):
                             products_on_eye_level.append(eye_level_shelves[self.get_filter_condition(
                                 eye_level_shelves, **filters)]['product_name'].unique().tolist())
                     except Exception as e:
                         Log.info('Adding Eye Level products failed for bay {} in scene {}'.format(bay, scene))
-            eye_level_assortment = len(eye_level_facings[
-                                               self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+            # eye_level_assortment = len(eye_level_facings[
+            #                                    self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+            eye_level_assortment = sum(eye_level_facings[
+                                               self.get_filter_condition(eye_level_facings, **filters)]['width_mm_advance'])
             if percentage_result:
                 number_of_eye_level_entities += eye_level_assortment
             if min_number_of_products == self.ALL:
@@ -1417,6 +1428,194 @@ class PNGAMERICAGENERALToolBox:
 
                         return results
         return False
+
+    def calculate_block_together_new(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, include_other=EXCLUDE_OTHER, include_irrelevant=EXCLUDE_IRRELEVANT,
+                                 minimum_block_ratio=1, result_by_scene=False, vertical=False, horizontal=False,
+                                 orphan=False, group=False, block_of_blocks=False, block_products1=None, block_products2=None,
+                                 block_products=None, group_products=None, include_private_label=False,
+                                 availability_param=None, availability_value=None, color_wheel=False,
+                                 checkerboard=False, **filters):
+        """
+        :param group_products: if we searching for group in block - this is the filter of the group inside the big block
+        :param block_products: if we searching for group in block - this is the filter of the big block
+        :param group: True if the kpi is for block of product inside a bigger block
+        :param orphan: True if searching for orphan products 3 products away from the biggest block
+        :param horizontal: True if the biggest block have to be at least 2X2
+        :param vertical: True
+        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
+        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+                                False - The result is True if at least one scene has a block, False - otherwise.
+        :param filters: These are the parameters which the blocks are checked for.
+        :return: see 'result_by_scene' above.
+        """
+        if block_products is None:
+            block_products = {}
+        if block_products1 is None:
+            block_products1 = {}
+        if block_products2 is None:
+            block_products2 = {}
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            if result_by_scene:
+                return 0, 0
+            else:
+                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+                result = 'no_products'
+                return result
+        number_of_blocked_scenes = 0
+        cluster_ratios = []
+        horizontal_flag = vertical_flag = False
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            relevant_vertices = set(self.filter_vertices_from_graph(scene_graph, **filters))
+            if allowed_products_filters:
+                allowed_vertices = self.filter_vertices_from_graph(scene_graph, **allowed_products_filters)
+            else:
+                allowed_vertices = set()
+            # other_vertices = {v.index for v in scene_graph.vs.select(product_type='Other')}
+            if include_empty == self.EXCLUDE_EMPTY:
+                empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
+                allowed_vertices = set(allowed_vertices).union(empty_vertices)
+            if include_other == self.EXCLUDE_OTHER:
+                other_vertices = {v.index for v in scene_graph.vs.select(product_type='Other')}
+                allowed_vertices = set(allowed_vertices).union(other_vertices)
+            if include_private_label:
+                p_l_vertices = {v.index for v in scene_graph.vs.select(PRIVATE_LABEL='Y')}
+                allowed_vertices = set(allowed_vertices).union(p_l_vertices)
+            # if include_irrelevant == self.EXCLUDE_IRRELEVANT:
+            #     empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Irrelevant')}
+            #     allowed_vertices = set(allowed_vertices).union(empty_vertices)
+
+            all_vertices = {v.index for v in scene_graph.vs}
+            vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
+            scene_graph.delete_vertices(list(vertices_to_remove))
+            clusters = [cluster for cluster in scene_graph.clusters() if set(cluster).difference(allowed_vertices)]
+            if group:
+                new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **block_products)
+            elif block_of_blocks:
+                new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
+                new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
+            else:
+                new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
+            for cluster in clusters:
+                if not set(cluster).difference(allowed_vertices):
+                    clusters.remove(cluster)
+
+            for cluster in clusters:
+                if block_of_blocks:
+                    results = {}
+                    results['block_of_blocks'] = False
+                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
+                    if len(new_relevant_vertices1) > 0:
+                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
+                    else:
+                        cluster_ratio1 = 0
+                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
+                    if len(new_relevant_vertices2) > 0:
+                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
+                    else:
+                        cluster_ratio2 = 0
+                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
+                        results['block_of_blocks'] = True
+                        results['regular block'] = True
+                        return results
+                else:
+                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                    if len(new_relevant_vertices) > 0:
+                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                    else:
+                        cluster_ratio = 0
+                    cluster_ratios.append(cluster_ratio)
+                    if cluster_ratio >= minimum_block_ratio:
+                        results = {'regular block': True}
+                        all_vertices = {v.index for v in scene_graph.vs}
+                        non_cluster_vertices = all_vertices.difference(cluster)
+                        block_graph = scene_graph
+                        block_graph.delete_vertices(non_cluster_vertices)
+                        if horizontal or vertical:
+                            edges = self.get_block_edges_new(block_graph.vs)
+                            y_value = edges['visual'].get('top')-edges['visual'].get('bottom')
+                            x_value = edges['visual'].get('right')-edges['visual'].get('left')
+                            results['vertical'] = False
+                            results['horizontal'] = False
+                            if y_value > x_value:
+                                vertical_flag = True
+                            else:
+                                horizontal_flag = True
+                            results['vertical'] = vertical_flag
+                            results['horizontal'] = horizontal_flag
+                        if include_private_label:
+                            p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
+                            if checkerboard:
+                                results['checkerboarded'] = False
+                                direction_data = {'top': (1, 1000), 'bottom': (1, 1000), 'left': (1, 1000),
+                                                  'right': (1, 1000)}
+                                relative_position_res = \
+                                    self.calculate_relative_in_block_per_graph(block_graph, direction_data,
+                                                                               min_required_to_pass=2,
+                                                                               sent_tested_vertices=cluster,
+                                                                               sent_anchor_vertices=p_l_new_vertices)
+                                if set(p_l_new_vertices) & set(cluster):
+                                    cluster_graph = block_graph
+                                    non_cluster = set(new_relevant_vertices).difference(cluster)
+                                    cluster_graph.delete_vertices(non_cluster)
+                                    brands_list = {v['brand_name'] for v in block_graph.vs}
+                                    if relative_position_res:
+                                        results['checkerboarded'] = True
+                                    results['brand_list'] = brands_list
+                            else:
+                                if len(p_l_new_vertices) / float(len(cluster)) >= 0.5:
+                                    results['block_ign_plabel'] = True
+                        if availability_param:
+                            results['availability'] = False
+                            attributes_list = {v[availability_param] for v in block_graph.vs}
+                            if set(availability_value) & set(attributes_list):
+                                results['availability'] = True
+                        if color_wheel:
+                            scene_match_fk_list = {v['scene_match_fk'] for v in block_graph.vs}
+                            results['color_wheel'] = True
+                            results['scene_match_fk'] = scene_match_fk_list
+
+                        return results
+        return False
+
+    def get_block_edges_new(self, graph):
+        """
+        This function receives one or more vertex data of a block's graph, and returns the range of its edges -
+        The far most top, bottom, left and right pixels of its facings.
+        """
+        top = right = bottom = left = None
+
+        top = graph.get_attribute_values('y_mm')
+        top_index = max(xrange(len(top)), key=top.__getitem__)
+        top_height = graph.get_attribute_values('height_mm_advance')[top_index]
+        top = graph.get_attribute_values('y_mm')[top_index]
+        top += top_height / 2
+
+        bottom = graph.get_attribute_values('y_mm')
+        bottom_index = min(xrange(len(bottom)), key=bottom.__getitem__)
+        bottom_height = graph.get_attribute_values('height_mm_advance')[bottom_index]
+        bottom = graph.get_attribute_values('y_mm')[bottom_index]
+        bottom -= bottom_height / 2
+
+        left = graph.get_attribute_values('x_mm')
+        left_index = min(xrange(len(left)), key=left.__getitem__)
+        left_height = graph.get_attribute_values('width_mm_advance')[left_index]
+        left = graph.get_attribute_values('x_mm')[left_index]
+        left -= left_height / 2
+
+        right = graph.get_attribute_values('x_mm')
+        right_index = max(xrange(len(right)), key=right.__getitem__)
+        right_width = graph.get_attribute_values('width_mm_advance')[right_index]
+        right = graph.get_attribute_values('x_mm')[right_index]
+        right += right_width / 2
+
+        result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}
+        # result.update({'shelfs': list(set(graph.get_attribute_values('shelf_number')))})
+        return result
 
     def calculate_flexible_blocks(self, number_of_allowed_others=3, group=None, **filters):
         """
