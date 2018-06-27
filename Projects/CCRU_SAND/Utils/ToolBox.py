@@ -2431,7 +2431,7 @@ class CCRU_SANDKPIToolBox:
             else:
                 continue
 
-            if p.get("Formula") == "number of KPI Passed":  # session level
+            if p.get("Formula") == "number of KPI Passed" and p.get("Type") == "SESSION LEVEL":  # session level
                 result = 0
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
@@ -2441,7 +2441,15 @@ class CCRU_SANDKPIToolBox:
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                   "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "sum of KPI scores":  # session level
+            elif p.get("Formula") == "KPI score" and p.get("Type") == "SESSION LEVEL":  # session level
+                for k in self.kpi_facts_hidden:
+                    if k.get("KPI ID") in p.get("Children List"):
+                        result = k.get("score")
+                        kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+                                          "format": p.get("Result Format")})
+
+            elif p.get("Formula") == "sum of KPI scores" and p.get("Type") == "SESSION LEVEL":  # session level
                 result = 0
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
@@ -2450,7 +2458,7 @@ class CCRU_SANDKPIToolBox:
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                   "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "KPI result":  # session level
+            elif p.get("Formula") == "KPI result" and p.get("Type") == "SESSION LEVEL":  # session level
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
                         result = k.get("result")
@@ -2458,7 +2466,7 @@ class CCRU_SANDKPIToolBox:
                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                           "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "sum of KPI results":  # session level
+            elif p.get("Formula") == "sum of KPI results" and p.get("Type") == "SESSION LEVEL":  # session level
                 result = 0
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
@@ -2467,7 +2475,21 @@ class CCRU_SANDKPIToolBox:
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                   "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "Value":  # scene level
+            elif p.get("Formula") == "Passed or Failed Value" and p.get("Type") == "SESSION LEVEL":  # scene level
+                for k in self.kpi_facts_hidden:
+                    if k.get("KPI ID") in p.get("Children List"):
+                        passed_failed = str(p.get("Values")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n")
+                        if k.get("score") == 100:
+                            result = passed_failed[0]
+                        elif len(passed_failed) > 1:
+                            result = passed_failed[1]
+                        else:
+                            result = ""
+                        kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                                          "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+                                          "format": p.get("Result Format")})
+
+            elif p.get("Formula") == "Value" and p.get("Type") == "SCENE LEVEL":  # scene level
                 scenes = self.get_relevant_scenes(params)
                 for scene in scenes:
                     scene_uid = self.scenes_info[self.scenes_info['scene_fk'] == scene]['scene_uid'].values[0]
@@ -2475,7 +2497,7 @@ class CCRU_SANDKPIToolBox:
                                       "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
                                       "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "Attribute":  # scene level
+            elif p.get("Formula") == "Attribute" and p.get("Type") == "SCENE LEVEL":  # scene level
                 scenes = self.get_relevant_scenes(params)
                 if p.get("Values") == 'template.additional_attribute_1':
                     for scene in scenes:
@@ -2486,7 +2508,7 @@ class CCRU_SANDKPIToolBox:
                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                           "format": p.get("Result Format")})
 
-            elif p.get("Formula") == "Passed or Failed Value":  # scene level
+            elif p.get("Formula") == "Passed or Failed Value" and p.get("Type") == "SCENE LEVEL":  # scene level
                 scenes = self.get_relevant_scenes(params)
                 for scene in scenes:
                     scene_uid = self.scenes_info[self.scenes_info['scene_fk'] == scene]['scene_uid'].values[0]
@@ -2498,7 +2520,7 @@ class CCRU_SANDKPIToolBox:
                             elif len(passed_failed) > 1:
                                 result = passed_failed[1]
                             else:
-                                result = None
+                                result = ""
                             kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
                                               "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                               "format": p.get("Result Format")})
