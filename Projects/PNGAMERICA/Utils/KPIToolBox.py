@@ -294,7 +294,7 @@ class PNGAMERICAToolBox:
                 continue
         return
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_block_and_availability")
     def calculate_block_and_availability(self, kpi_set_fk, kpi_name, scene_types):
         """
         This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
@@ -1037,7 +1037,7 @@ class PNGAMERICAToolBox:
                                         score=result[1])
                 i += 1
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_adjacency_new")
     def calculate_adjacency_new(self, kpi_set_fk, kpi_name, scene_types, category,list_type=True):
 
         kpi_data = self.adjacency_data.loc[(self.adjacency_data['KPI name'] == kpi_name) &
@@ -1103,7 +1103,7 @@ class PNGAMERICAToolBox:
                                                 score=result[1])
                         i += 1
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_block_together")
     def calculate_block_together(self, kpi_set_fk, kpi_name, scene_type, return_result=False):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             block_template = self.block_data.loc[self.block_data['kpi group'] == kpi_name]
@@ -1187,7 +1187,7 @@ class PNGAMERICAToolBox:
             if return_result:
                 self.related_kpi_results[kpi_name] = res
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_block_together_new")
     def calculate_block_together_new(self, kpi_set_fk, kpi_name, scene_type, category):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             block_template = self.block_data.loc[(self.block_data['KPI name'] == kpi_name) &
@@ -1403,7 +1403,7 @@ class PNGAMERICAToolBox:
                 except IndexError as e:
                     Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_checkerboarded_new")
     def calculate_checkerboarded_new(self, kpi_set_fk, kpi_name, scene_type, category,list_type=None):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             if list_type:
@@ -1477,7 +1477,7 @@ class PNGAMERICAToolBox:
             except IndexError as e:
                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_linear_feet")
     def calculate_linear_feet(self, kpi_set_fk, kpi_name, scene_types, return_result = False):
         template = self.linear_feet_data.loc[self.linear_feet_data['KPI name'] == kpi_name]
         kpi_template = template.loc[template['KPI name'] == kpi_name]
@@ -1516,7 +1516,7 @@ class PNGAMERICAToolBox:
         if return_result:
             self.related_kpi_results[kpi_name] = score
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_linear_feet_new")
     def calculate_linear_feet_new(self, kpi_set_fk, kpi_name, scene_types, category):
         template = self.linear_feet_data.loc[self.linear_feet_data['KPI name'] == kpi_name]
         kpi_template = template.loc[(template['KPI name'] == kpi_name) & (template['category'] == category)]
@@ -1571,7 +1571,7 @@ class PNGAMERICAToolBox:
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_category_space")
     def calculate_category_space(self, kpi_set_fk, kpi_name, scene_types, category):
         template = self.category_space_data.loc[(self.category_space_data['KPI name'] == kpi_name) &
                                                 (self.category_space_data['category'] == category)]
@@ -1618,7 +1618,7 @@ class PNGAMERICAToolBox:
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_eye_level")
     def calculate_eye_level(self, kpi_set_fk, kpi_name, scene_type, category=None, list_type=False):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             if list_type:
@@ -1678,7 +1678,7 @@ class PNGAMERICAToolBox:
                         break
                 return
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_eye_level_new")
     def calculate_eye_level_new(self, kpi_set_fk, kpi_name, scene_type, category, list_type=False):
         if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
             if list_type:
