@@ -10,11 +10,25 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+import argparse
 
-PROJECT = 'ccru_sand'
+PROJECT = 'ccru-sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
+
+# to delete
+FILE = '/home/idanr/Desktop/ccru_sku.xlsx'
+TRUE = 0
+
+
+def _parse_arguments():
+    parser = argparse.ArgumentParser(description='Top SKU CCRU')
+    parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
+    parser.add_argument('--file', type=str, required=True, help='The assortment template')
+    parser.add_argument('--update_correlations', '-uc', type=int, required=True, help='Should we update correlations'
+                                                                                      'as well - 0 = False, 1 = True')
+    return parser.parse_args()
 
 
 class CCRU_SANDTopSKUAssortment:
@@ -22,9 +36,14 @@ class CCRU_SANDTopSKUAssortment:
     STORE_NUMBER = 'Store Number'
     PRODUCT_EAN_CODE = 'Product EAN'
 
-    def __init__(self, rds_conn=None):
-        if rds_conn is not None:
-            self._rds_conn = rds_conn
+    def __init__(self):
+        # self.parsed_args = _parse_arguments()
+        self.file_path = FILE
+        self.update_correlations = TRUE
+        self._rds_conn = self.rds_conn
+        self._current_top_skus = self.current_top_skus
+        self._store_data = self.store_data
+        self._product_data = self.product_data
         self.stores = {}
         self.products = {}
         self.all_queries = []
@@ -141,8 +160,13 @@ class CCRU_SANDTopSKUAssortment:
             current_skus = current_skus_all_stores[current_skus_all_stores['store_fk']==store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
-            for product_fk in products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, product_fk, deactivate_date))
+            if products_to_deactivate:
+                if len(products_to_deactivate) != 1:
+                    queries.append(
+                        self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
+                else:
+                    queries.append(self.get_deactivation_query(store_fk, '({})'.format(list(products_to_deactivate)[0]),
+                                                               deactivate_date))
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             # self.commit_results(queries)
@@ -152,20 +176,12 @@ class CCRU_SANDTopSKUAssortment:
         else:
             Log.info('{} - No products are configured as Top SKUs'.format(store_number))
 
-    def upload_top_sku_file(self, file_path, data_first_cell, ean_row_index, store_number_column_index,
-                            update_correlations=False):
-        data_first_cell = coordinate_from_string(data_first_cell)
-        data_column = column_index_from_string(data_first_cell[0]) - 1
-        data_row = int(data_first_cell[1]) - 1
-        store_number_column_index = column_index_from_string(store_number_column_index) - 1
-        # raw_data = pd.read_excel(file_path, header=range(ean_row_index, data_row), index_col=range(0, data_column))
-        raw_data = pd.read_excel(file_path)
+    def upload_top_sku_file(self):
+        raw_data = pd.read_excel(self.file_path)
         raw_data = raw_data.drop_duplicates(subset='Store Number', keep='first')
         raw_data = raw_data.fillna('')
         data = []
-        current_skus_all_stores = self.current_top_skus
         for index_data, store_raw_data in raw_data.iterrows():
-            # store_data = {self.STORE_NUMBER: index_data[store_number_column_index]}
             store_data = {self.STORE_NUMBER: store_raw_data['Store Number']}
             columns = list(store_raw_data.keys())
             columns.remove('Start Date')
@@ -176,10 +192,10 @@ class CCRU_SANDTopSKUAssortment:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
 
-        if update_correlations:
+        if self.update_correlations:
             self.update_correlations(data[0].keys())
         for store_data in data:
-            self.update_db_from_json(store_data, current_skus_all_stores, immediate_change=True)
+            self.update_db_from_json(store_data, self._current_top_skus, immediate_change=True)
 
         queries = self.merge_insert_queries(self.all_queries)
         self.commit_results(queries)
@@ -307,8 +323,7 @@ class CCRU_SANDTopSKUAssortment:
 
 if __name__ == '__main__':
     LoggerInitializer.init('test')
-    rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-    ts = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
-    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Targets June OSA.xlsx', data_first_cell='D2',
-                           ean_row_index=1, store_number_column_index='A', update_correlations=True)
-#     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
+    ts = CCRU_SANDTopSKUAssortment()
+    ts.upload_top_sku_file()
+# # # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
+# # # To run it locally just copy: -e prod --file **your file path** to the configuration -uc 1 or 0
