@@ -21,13 +21,21 @@ class PNGRO_SAND_PRODCalculations(BaseCalculationsScript):
 #     project_name = 'pngro-sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
+#         # 'cc0385ba-93b6-4d9f-808d-393936a84fac',
+#         # '82de15ca-23f4-43a7-b22b-88fcd9948fb6',
+#         # '2D4BB2DF-1CD5-4B82-968D-239DFA6090E9',
+#         # 'c2eb28bd-e200-44a2-8a39-c50ead41d5e0',
+#         # '3ed3ffa7-0024-42fd-9124-9206d7702fc8',
+#         # '9ff1c105-4a93-4f58-8064-a966a48b0942',
+#         '5dcdc4ea-55be-432f-9815-33fcfbb4ab02',
+#         '1a0a159e-a0ff-4e8d-a784-07609dfca8cd',
+#         '0f92d689-2e7b-4351-8ab9-29dc59eb865d',
+#         'd50f2225-4779-4b81-b806-a425e59cbd7c',
+#         'c56b9f18-703f-43cc-8b61-c2b6e3ff1fae',
+#         'adc69ee2-3d24-41aa-a864-b184e92a5a9d',
+#         '73e0be3d-aada-4c99-bf4e-37667e668906',
+#         'ff3f46b4-954a-4ef1-9ebc-f67c676cc2d5'
 #
-#         '5CC7FBE2-BD55-41B3-862C-ED5DD103E50F',
-#         'e732ac10-ee03-4a46-9cb8-88a85d2a57f9',
-#         '0dc9f0b8-2844-4ebd-b429-92ca7c8f8dca',
-#         'cb1d858c-5d57-42ab-93ab-625e25886ccb',
-#         '4ed5187b-2ecf-498b-afd1-18d7bd61a93b',
-#         '3829faec-c841-440d-af22-e9770532e57e'
 #     ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)

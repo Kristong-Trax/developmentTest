@@ -570,7 +570,7 @@ class PNGRO_PRODToolBox:
         return merged_queries
 
     def get_display_agg(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_name'] == 'Secondary shelf'][
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]
