@@ -61,7 +61,7 @@ class INTEG16ToolBox:
         self.kpi_results_queries = []
         self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
 
-    @kpi_runtime()
+
     def get_manufacturer_fk(self, manu):
         return self.all_products[self.all_products['manufacturer_name'] ==
                                  manu]['manufacturer_fk'].drop_duplicates().values[0]
