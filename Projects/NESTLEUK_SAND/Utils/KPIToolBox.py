@@ -286,12 +286,10 @@ class NESTLEUK_SANDToolBox(NESTLEUK_SANDConsts):
     def build_diamond_polygon(self, scene_fk):
         matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
                                                                               **{'scene_fk': scene_fk})]
-        try:
-            top = matches[(matches['shelf_number'] == 1) &
-                      (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
-            top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
-        except:
-            pass
+        shelf_number = min(matches['shelf_number'].unique().tolist())
+        top = matches[(matches['shelf_number'] == shelf_number) &
+                  (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
+        top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
         bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
                          (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
         bottom = int(bottom['y_mm']) - (int(bottom['height_mm']) / 2) # TODO height_mm_net

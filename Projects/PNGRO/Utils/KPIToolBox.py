@@ -280,7 +280,7 @@ class PNGRO_PRODToolBox:
         """
         survey_name = params['Param (1) Values']
         target_answers = params['Param (2) Values'].split(',')
-        survey_answer = self.tools.get_survey_answer(('question_fk', survey_name))
+        survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
         score = 100 if survey_answer in target_answers else 0
         return score
 
