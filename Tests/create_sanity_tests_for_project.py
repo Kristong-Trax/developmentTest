@@ -2,14 +2,15 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
 
 import os
 import pandas as pd
 import shutil
 
-from Trax.Utils.Logging.Logger import Log
-
 __author__ = 'yoava'
+
+top_sessions = list()
 
 
 class SeedCreator:
@@ -30,19 +31,26 @@ class SeedCreator:
     def get_top_sessions(self):
         Log.info('Fetching 3 sessions')
         query = """
-        select session_uid from probedata.session where status = 
-        'Completed' order by visit_date, number_of_scenes desc limit 3;
+        SELECT s.session_uid, s.pk FROM probedata.session s
+        join reporting.scene_item_facts r on r.session_id = s.pk
+        WHERE
+            status = 'Completed' 
+            and r.session_id is not null  
+            ORDER BY s.visit_date , s.number_of_scenes DESC
+            LIMIT 1;
         """
         sessions_df = pd.read_sql(query, self.rds_conn.db)
         Log.info(str(sessions_df.values))
+        for session in sessions_df.session_uid.values:
+            top_sessions.append(session)
         return sessions_df.session_uid.values
 
     def activate_exporter(self):
         os.chdir(self.export_dir)
         sessions = self.get_top_sessions()
         Log.info('Activating exporter')
-        export_command = """./traxExportIntuition.sh {0} {1} session_uid {2},{3},{4}""".\
-            format(self.rds_name, self.output_dir, sessions[0], sessions[1], sessions[2])
+        export_command = """./traxExportIntuition.sh {0} {1} session_uid {2}""". \
+            format(self.rds_name, self.output_dir, sessions[0])
         os.system(export_command)
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
@@ -52,29 +60,22 @@ class SeedCreator:
 
 
 class SanityTestsCreator:
-
-    def __init__(self, project):
-        self.project = project.lower().replace('_', '-')
-        self.project_capital = self.project.upper().replace('-', '_')
-        self.user = os.environ.get('USER')
-        self.project_short = self.project_capital.split('_')[0]
-        self.main_class_name = '{}Calculations'.format(self.project_short)
-
-    def get_test_class(self):
-        test_class = """
-        
+    TEST_CLASS = """
 import os
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 import MySQLdb
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.test_data_project_sanity import ProjectsSanityData
+from Tests.Data.%(project)s_test_data_project_sanity import ProjectsSanityData
+from Projects.%(project_capital)s.Calculations import %(main_class_name)s
+
 
 __author__ = '%(author)s'
+
 
 class TestKEngineOutOfTheBox(MockingTestCase):
 
@@ -98,39 +99,85 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    
-    @seeder.seed(["ccru_seed"], ProjectsSanityData())
-    def test_ccru_sanity(self):
+    @seeder.seed(["%(seed)s"], ProjectsSanityData())
+    def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['8DD169D2-EFE1-4B5F-8DA7-A805EADA17B7']
+        sessions = ['%(session_0)s']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            %{main_class_name}s(data_provider, output).run_project_calculations()
+            %(main_class_name)s(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
-        """
+"""
 
+    def __init__(self, project, session_list):
+        self.project = project.lower().replace('-', '_')
+        self.project_capital = self.project.upper().replace('-', '_')
+        self.user = os.environ.get('USER')
+        self.project_short = self.project_capital.split('_')[0]
+        self.main_class_name = '{}Calculations'.format(self.project_short)
+        self.session_list = session_list
+
+    def create_test_class(self):
         formatting_dict = {'author': self.user,
-                           'project': self.project,
+                           'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
-                           'generator_file_name': 'KPIGenerator',
-                           'generator_class_name': 'Generator',
-                           'tool_box_file_name': 'KPIToolBox',
-                           'tool_box_class_name': '{}ToolBox'.format(self.project_short),
-                           'main_file_name': self.main_class_name,
-                           'main_class_name': '{}Calculations'.format(self.project_short)
+                           'seed': '{}_seed'.format(self.project),
+                           'project': self.project,
+                           'session_0': self.session_list[0],
+                           # 'session_1': self.session_list[1],
+                           # 'session_2': self.session_list[2]
                            }
 
-        test_path = ('/home/yoava/dev/kpi_factory/Tests/{0}'.format(self.project))
+        test_path = ('/home/{0}/dev/kpi_factory/Tests/{1}_sanity_functional_tests'.format(self.user, self.project))
         with open(test_path + '.py', 'wb') as f:
-            f.write(test_class % formatting_dict)
+            f.write(SanityTestsCreator.TEST_CLASS % formatting_dict)
+
+
+class CreateTestDataProjectSanity:
+
+    def __init__(self, project):
+        self.project = project
+        self.user = os.environ.get('USER')
+
+    def create_data_class(self):
+        seed_data = """DATA_TYPE: BaseSeedData.MYSQL,
+                FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
+                PROJECT_NAME: project_name
+                """.format(self.project)
+        seed_data = '{' + seed_data
+
+        seed_data = seed_data + '}'
+
+        data_class_content = """
+from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_PATH
+from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
+
+__author__ = '{0}'
+
+
+class ProjectsSanityData(BaseSeedData):
+    project_name = TestProjectsNames().TEST_PROJECT_1
+    {1}_seed = {2} 
+""".format(self.user, self.project, seed_data)
+
+        data_class_path = \
+            ('/home/{0}/dev/kpi_factory/Tests/Data/{1}_test_data_project_sanity'.format(self.user, self.project))
+
+        with open(data_class_path + '.py', 'wb') as f:
+            f.write(data_class_content)
+
 
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    # creator = SeedCreator('inbevtradmx')
-    # creator.activate_exporter()
-    # creator.rds_conn.disconnect_rds()
-    sanity = SanityTestsCreator('ccru')
-    sanity.get_test_class()
+    project_to_test = 'inbevtradmx'
+    creator = SeedCreator(project_to_test)
+    creator.activate_exporter()
+    creator.rds_conn.disconnect_rds()
+    data_class = CreateTestDataProjectSanity(project_to_test)
+    data_class.create_data_class()
+    sanity = SanityTestsCreator(project_to_test, top_sessions)
+    sanity.create_test_class()

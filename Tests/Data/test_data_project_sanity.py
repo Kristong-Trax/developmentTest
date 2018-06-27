@@ -7,12 +7,12 @@ from Trax.Utils.Conventions.Events import AwsRegions
 
 __author__ = 'pavel'
 
-TERMINATE_MESSAGE = {
-    'type': InternalHandler.MessageType.TERMINATE
-}
+# TERMINATE_MESSAGE = {
+#     'type': InternalHandler.MessageType.TERMINATE
+# }
 
-INPUT_QUEUE_REGION = AwsRegions.NORTH_VIRGINIA
-TEST_UNIFIED_INPUT_QUEUE_NAME = 'K-ENGINE_UNIFIED_LOW_PRIORITY'
+# INPUT_QUEUE_REGION = AwsRegions.NORTH_VIRGINIA
+# TEST_UNIFIED_INPUT_QUEUE_NAME = 'K-ENGINE_UNIFIED_LOW_PRIORITY'
 
 
 class ProjectsSanityData(BaseSeedData):
