@@ -603,7 +603,7 @@ class PNGAMERICAToolBox:
                                             score=score)
                 return
 
-    @kpi_runtime()
+    @kpi_runtime("pngamer", "calculate_anchor_new")
     def calculate_anchor_new(self, kpi_set_fk, kpi_name, scene_type, category=None, list_type=False, return_result=False,
                              filters=None):
         if any(i in self.scif['template_name'].unique().tolist() for i in scene_type):
