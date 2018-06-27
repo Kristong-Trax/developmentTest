@@ -18,7 +18,7 @@ class SeedCreator:
         self.project = project
         self.rds_conn = ProjectConnector(project, DbUsers.CalculationEng)
         self.user = os.environ.get('USER')
-        self.exporter_outputs_dir = os.path.join('/home', self.user, 'Documents', 'exporter')
+        self.exporter_outputs_dir = os.path.join('/home', self.user, 'exporter')
         if not os.path.exists(self.exporter_outputs_dir):
             os.makedirs(self.exporter_outputs_dir)
         self.output_dir = os.path.join(self.exporter_outputs_dir, project)
