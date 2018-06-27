@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -60,9 +61,11 @@ class INTEG16ToolBox:
         self.kpi_results_queries = []
         self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
 
+    @kpi_runtime()
     def get_manufacturer_fk(self, manu):
         return self.all_products[self.all_products['manufacturer_name'] ==
                                  manu]['manufacturer_fk'].drop_duplicates().values[0]
+
 
     def main_function(self):
         """
