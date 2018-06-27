@@ -97,11 +97,12 @@ class INTEG16SceneToolBox:
         manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
         self.common.write_to_db_result(fk=kpi_fk_share, numerator_id=manu_fk, numerator_result=numerator_res,
-                                       result=result, denominator_id=template_fk, denominator_result=denominator_res,
-                                       score=score, target=target_share, identifier_parent=identifier_parent,
+                                       result=round(result, 0), denominator_id=template_fk,
+                                       denominator_result=denominator_res, score=score, target=target_share,
+                                       by_scene=True)
+        self.common.write_to_db_result(fk=kpi_fk_score, numerator_id=manu_fk, numerator_result=score, result=score,
+                                       score=score, target=target_score, identifier_parent=identifier_parent,
                                        by_scene=True, should_enter=True)
-        self.common.write_to_db_result(fk=kpi_fk_score, numerator_id=manu_fk, numerator_result=score, result=score, score=score,
-                                       target=target_score, by_scene=True)
         return score
 
     def fulfillment_sku_calculation(self):
