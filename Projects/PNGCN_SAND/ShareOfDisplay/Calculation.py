@@ -125,8 +125,12 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS + FOUR_SIDED)]
         total_tags = \
             self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS + FOUR_SIDED_TOTAL_DISPLAYS)]
+        # remove mixed scenes with table and cube tags together
+        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
+        table_scenes = table_tags.scene_fk.tolist()
         scenes = tags.scene_fk.tolist() + total_tags.scene_fk.tolist()
-        scenes = list(set(scenes))
+        mixed_with_table_scenes = list(set(scenes)&set(table_scenes))
+        scenes = list(set(scenes)-set(mixed_with_table_scenes))
         bays = pd.DataFrame({})
         display = pd.DataFrame({})
         for scene in scenes:
@@ -171,36 +175,52 @@ class PNGCN_SANDPNGShareOfDisplay(object):
     def _handle_table_display(self):
         """
             Handles table displays. All tags are aggregated to one display per scene with multiple tags.
-            If there are cube/non branded cube tags also -> table tags will be ignored and cube calculation will be applied
+            If there are cube/non branded cube tags also -> the display will be considered as Table display and cube size
+            will be considered as 3 table size (3*table size) -> number of cubes will be determined by Total_CUBE tag,
+            if there is no total_cube tag and only cube tags, we will ignore them and only table calculation will be applied
             :return:
             """
         Log.debug(self.log_prefix + ' Starting table display')
         table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
+        total_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)]
         other_tags = \
-            self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS + TABLE_TOTAL_DISPLAYS)]
+            self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS +
+                                                                                          TABLE_TOTAL_DISPLAYS + CUBE_TOTAL_DISPLAYS + CUBE_DISPLAYS)]
         table_scenes = table_tags.scene_fk.tolist()
-        cube_scenes = other_tags.scene_fk.tolist()
-        scenes = list(set(table_scenes)-set(cube_scenes))
+        other_scenes = other_tags.scene_fk.tolist()
+        total_cube_scenes = total_cube_tags.scene_fk.tolist()
+        mixed_scenes = list(set(table_scenes)&set(total_cube_scenes))  # scenes with total cube tag & table tag
+        # scenes = list((set(table_scenes)|set(mixed_scenes))-set(other_scenes))
+        scenes = list(set(table_scenes)-set(other_scenes))
         table_bays = pd.DataFrame({})
         table_display = pd.DataFrame({})
         if not table_tags.empty:
             table_display_fk = table_tags['display_fk'].values[0]
             table_display_name = table_tags['display_name'].values[0]
         for scene in scenes:
+            cube_size = 0
             table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
             table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()
             number_of_captured_sides = len(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
+            table_size = table_tags_scene['display_size'].values[0]
+            if scene in mixed_scenes:
+                # add the size of cube (1 cube = 3 tables), all_cube_tags includes cube and total in order to include all products
+                all_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS + CUBE_DISPLAYS)]
+                all_cube_tags_scene = all_cube_tags[all_cube_tags['scene_fk'] == scene]
+                cube_bays_scene = all_cube_tags_scene[['scene_fk', 'bay_number']].copy()
+                cube_size = all_cube_tags_scene.loc[all_cube_tags_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)].display_size.sum()
             if number_of_captured_sides ==1:
                 size = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
-                display_size = size
+                display_size = size + (cube_size * 3 * table_size)
             else:
                 min_side = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
                 max_side = max(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
-                table_size = table_tags_scene['display_size'].values[0]
-                display_size = min_side * max_side * table_size
+                display_size = (min_side * max_side * table_size) + (cube_size * 3 * table_size)
             table_display = table_display.append({'scene_fk': scene, 'display_fk': table_display_fk,
                                                   'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
+            if scene in mixed_scenes:
+                table_bays = table_bays.append(cube_bays_scene, ignore_index=True)
         if not table_bays.empty:
             table_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
         if not table_display.empty:
