@@ -209,14 +209,9 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                         self.write_to_db_result(kpi_fk, (kpi_score * 100, new_atomic, number_of_atomics),
                                                 level=self.LEVEL2)
                     else:
-                        if kpi_type == self.AVAILABILITY:
-                            # if number_of_atomics>0:
-                            #     kpi_score= 1 if float(number_of_passed_atomics/number_of_atomics) > 0.5 else 0
-                            self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
+
+                        self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
                                                 level=self.LEVEL2)
-                        else:
-                            self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
-                                                    level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
                     if number_of_atomics != 0 or number_of_passed_atomics != 0:
