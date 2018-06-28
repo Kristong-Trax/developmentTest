@@ -7,26 +7,27 @@ import stat
 
 from DevloperTools.ProjectCreator.Consts import MAIN_FILE_NAME, MAIN_FILE, LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE, \
     GENERATOR_FILE_NAME, GENERATOR, TOOL_BOX_FILE_NAME, TOOL_BOX, PROFILING_SCRIPT_NAME, PROFILING_SCRIPT, \
-    GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT
+    GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT, SCENE_TOOLBOX, SCENE_TOOLBOX_SCRIPT
 
 __author__ = 'yoava'
 
 
 class CreateKPIProject:
 
-    def __init__(self, project_name):
+    def __init__(self, project_name, calculate_by_scene=False):
         self.project = project_name.lower().replace('_', '-')
         self.project_capital = self.project.upper().replace('-', '_')
         self.project_short = self.project_capital.split('_')[0]
         self.author = os.environ.get('USER', '')
         self.project_path = self.get_project_path()
+        self.calculate_by_scene = calculate_by_scene
         self.create_project_directory()
 
     def get_project_path(self):
         path_to_list = os.path.abspath(__file__).split('/')
 
-        path = "{0}/{1}/{2}/{3}/{4}/Projects/{5}/".format(path_to_list[0], path_to_list[1], path_to_list[2], path_to_list[3],
-                                                     path_to_list[4], self.project_capital)
+        path = "{0}/{1}/{2}/{3}/{4}/Projects/{5}/".format(path_to_list[0], path_to_list[1], path_to_list[2],
+                                                          path_to_list[3], path_to_list[4], self.project_capital)
         return path
 
     def create_project_directory(self):
@@ -71,6 +72,7 @@ class CreateKPIProject:
                            'generator_class_name': 'Generator',
                            'tool_box_file_name': TOOL_BOX_FILE_NAME,
                            'tool_box_class_name': '{}ToolBox'.format(self.project_short),
+                           'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
                            'main_file_name': MAIN_FILE_NAME,
                            'main_class_name': '{}Calculations'.format(self.project_short)
                            }
@@ -85,6 +87,8 @@ class CreateKPIProject:
                            'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
                                          (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)],
                            'Tests': [(TESTS_SCRIPT_NAME + '_{}'.format(self.project), TEST_SCRIPT)]}
+        if self.calculate_by_scene:
+            files_to_create['Utils'].append((SCENE_TOOLBOX, SCENE_TOOLBOX_SCRIPT))
         return files_to_create
 
 
@@ -93,6 +97,6 @@ if __name__ == '__main__':
     LoggerInitializer.init('Creating new project')
     project = 'test1'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project)
+    new = CreateKPIProject(project, True)
     new.create_new_project()
     Log.info("project : " + project + " was created successfully")
