@@ -11,8 +11,9 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 
-from Projects.PNGRO_SAND.Utils.Fetcher import PNGROQueries
-from Projects.PNGRO_SAND.Utils.GeneralToolBox import PNGROGENERALToolBox
+from KPIUtils_v2.DB.Common import Common
+from Projects.PNGRO_SAND.Utils.Fetcher import PNGRO_SAND_PRODQueries
+from Projects.PNGRO_SAND.Utils.GeneralToolBox import PNGRO_SAND_PRODGENERALToolBox
 from Projects.PNGRO_SAND.Utils.ParseTemplates import parse_template
 
 __author__ = 'Israel'
@@ -41,7 +42,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class PNGROToolBox:
+class PNGRO_SAND_PRODToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -67,6 +68,9 @@ class PNGROToolBox:
     RELATIVE_POSITION = 'Relative Position'
     AVAILABILITY = 'Availability'
     SHELF_POSITION = 'Shelf Position'
+    SURVEY = 'Survey'
+    SHELF_NUMBERS = 'Shelf number for the eye level counting from the bottom'
+    NUMBER_OF_SHELVES = 'Number of shelves'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -84,24 +88,41 @@ class PNGROToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        # self.retailer = \
+        # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = PNGROGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.tools = PNGRO_SAND_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
-
-        self.kpis_data = parse_template(TEMPLATE_PATH, 'KPI display')
         self.display_data = parse_template(TEMPLATE_PATH, 'display weight')
+        # self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
-        self.sbd_kpis_data = parse_template(SBD_TEMPLATE_PATH, 'Sheet1', lower_headers_row_index=1)
+        self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+        self.common = Common(self.data_provider)
+        self.new_kpi_static_data = self.common.get_new_kpi_static_data()
+
+    @property
+    def matches(self):
+        if not hasattr(self, '_matches'):
+            self._matches = self.match_product_in_scene
+            self._matches = self._matches.merge(self.scif, on='product_fk')
+        return self._matches
+
+    @property
+    def match_display(self):
+        if not hasattr(self, '_match_display'):
+            self._match_display = self.get_status_session_by_display(self.session_uid)
+        return self._match_display
 
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = PNGROQueries.get_all_kpi_data()
+        query = PNGRO_SAND_PRODQueries.get_all_kpi_data()
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -110,7 +131,8 @@ class PNGROToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = PNGROQueries.get_match_display(self.session_uid)
+        query = PNGRO_SAND_PRODQueries.get_match_display(self.session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -119,7 +141,8 @@ class PNGROToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from static.stores.
         """
-        query = PNGROQueries.get_match_stores_by_retailer()
+        query = PNGRO_SAND_PRODQueries.get_match_stores_by_retailer()
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -128,17 +151,20 @@ class PNGROToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from static.stores.
         """
-        query = PNGROQueries.get_template_fk_by_category_fk()
+        query = PNGRO_SAND_PRODQueries.get_template_fk_by_category_fk()
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_display(self, session_uid):
-        query = PNGROQueries.get_status_session_by_display(session_uid)
+        query = PNGRO_SAND_PRODQueries.get_status_session_by_display(session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_category(self, session_uid):
-        query = PNGROQueries.get_status_session_by_category(session_uid)
+        query = PNGRO_SAND_PRODQueries.get_status_session_by_category(session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -146,59 +172,38 @@ class PNGROToolBox:
         """
         This function calculates the KPI results.
         """
-        match_display = self.get_status_session_by_display(self.session_uid)
-        if kwargs['kpi_set_fk'] == 1:
-            if not match_display.empty:
-                if match_display['exclude_status_fk'][0] in (1, 4):
-                    secondary_shelfs = self.scif.loc[self.scif['template_name'] == 'Secondary shelf'][
-                        'scene_id'].unique().tolist()
-                    display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
-                        .isin(secondary_shelfs)]
-                    display_filter_from_scif['count'] = 0
-                    display_agg = display_filter_from_scif.groupby(['scene_fk', 'display_name'], as_index=False).agg(
-                        {'count': np.size})
+        # if not self.match_display.empty:
+        #     if self.match_display['exclude_status_fk'][0] in (1, 4):
+        self.calculate_linear_share_of_shelf_per_product_display()
 
-                    for x, params in self.kpis_data.iterrows():
-                        score, result, result_2 = 0, 0.0, 0.0
-                        kpi_type = params[self.KPI_TYPE]
-
-                        if kpi_type == self.DISPLAYS_COUNT:
-                            result = self.display_count(params, display_agg)
-                        elif kpi_type == self.DISPLAYS_COUNT_BY_TYPE:
-                            score, result, result_2 = self.display_count_by_display_type(params, display_agg)
-                        elif kpi_type == self.SOD_BY_BRAND:
-                            result = self.sod_by_brand(params, display_agg)
-                        elif kpi_type == self.SOD_BY_MANUFACTURER:
-                            result = self.sod_by_manufacturer(params, display_agg)
-
-                        if result:
-                            kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.KPI_NAME])
-                            self.write_to_db_result(score=score, result=result, result_2=result_2, level=self.LEVEL3,
-                                                    fk=kpi_fk)
-
-        elif kwargs['kpi_set_fk'] == 2:
-            category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
-            for x, params in self.sbd_kpis_data.iterrows():
-                if self.check_if_blade_ok(params, match_display, category_status_ok):
-                    general_filters = self.get_general_filters(params)
-                    if general_filters:
-                        score = 0
-                        kpi_type = params[self.KPI_FAMILY]
-
-                        if kpi_type == self.BLOCKED_TOGETHER:
-                            score = self.block_together(params, **general_filters)
-                        elif kpi_type == self.SOS:
-                            score = self.sos(params, **general_filters)
-                        elif kpi_type == self.RELATIVE_POSITION:
-                            score = self.relative_position(params, **general_filters)
-                        elif kpi_type == self.AVAILABILITY:
-                            score = self.availability(params, **general_filters)
-                        elif kpi_type == self.SHELF_POSITION:
-                            score = self.shelf_position(params, **general_filters)
-
-                        atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
-                        if atomic_kpi_fk is not None:
-                            self.write_to_db_result(score=int(score), result=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
+        category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
+        for x, params in self.sbd_kpis_data.iterrows():
+            # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            if True:
+                general_filters = self.get_general_filters(params)
+                if general_filters:
+                    score = 0
+                    result = threshold = None
+                    kpi_type = params[self.KPI_FAMILY]
+                    if kpi_type == self.BLOCKED_TOGETHER:
+                        score = self.block_together(params, **general_filters)
+                    elif kpi_type == self.SOS:
+                        score, result, threshold = self.calculate_sos(params, **general_filters)
+                    elif kpi_type == self.RELATIVE_POSITION:
+                        score = self.calculate_relative_position(params, **general_filters)
+                    elif kpi_type == self.AVAILABILITY:
+                        score = self.calculate_availability(params, **general_filters)
+                    elif kpi_type == self.SHELF_POSITION:
+                        score = self.calculate_shelf_position(params, **general_filters)
+                    elif kpi_type == self.SURVEY:
+                        score = self.calculate_survey(params)
+                    atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
+                    if atomic_kpi_fk is not None:
+                        if result and threshold:
+                            self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
+                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
+                        else:
+                            self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -213,26 +218,28 @@ class PNGROToolBox:
             return False
 
     def get_general_filters(self, params):
-        template_name = params['Template Name']
-        category = params['Scene Category']
+        # template_name = params['Template Name']
+        # category = params['Scene Category']
         location_type = params['Location Type']
-        retailer = params['by Retailer']
+        # retailer = params['by Retailer']
 
-        if template_name.strip():
-            relative_scenes = self.scif[
-                (self.scif['template_name'] == template_name) & (self.scif['location_type'] == location_type)]
-        elif category.strip():
-            template_fk = self.match_template_fk_by_category_fk['pk'][
-                self.match_template_fk_by_category_fk['product_category_fk'] == int(float(category))].unique().tolist()
-            relative_scenes = self.scif[
-                (self.scif['template_fk'].isin(template_fk)) & (self.scif['location_type'] == location_type)]
-        else:
-            relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
+        relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
 
-        if retailer.strip():
-            stores = self.match_stores_by_retailer['pk'][
-                self.match_stores_by_retailer['name'] == retailer].unique().tolist()
-            relative_scenes = relative_scenes[(relative_scenes['store_id'].isin(stores))]
+        # if template_name.strip():
+        #     relative_scenes = self.scif[
+        #         (self.scif['template_name'] == template_name) & (self.scif['location_type'] == location_type)]
+        # elif category.strip():
+        #     template_fk = self.match_template_fk_by_category_fk['pk'][
+        #         self.match_template_fk_by_category_fk['product_category_fk'] == int(float(category))].unique().tolist()
+        #     relative_scenes = self.scif[
+        #         (self.scif['template_fk'].isin(template_fk)) & (self.scif['location_type'] == location_type)]
+        # else:
+        #     relative_scenes = self.scif[(self.scif['location_type'] == location_type)]
+        #
+        # if retailer.strip():
+        #     stores = self.match_stores_by_retailer['pk'][
+        #         self.match_stores_by_retailer['name'] == retailer].unique().tolist()
+        #     relative_scenes = relative_scenes[(relative_scenes['store_id'].isin(stores))]
 
         general_filters = {}
         if not relative_scenes.empty:
@@ -267,7 +274,17 @@ class PNGROToolBox:
                 return False
         return score_pass
 
-    def sos(self, params, **general_filters):
+    def calculate_survey(self, params):
+        """
+        This function calculates Survey-Question typed Atomics, and writes the result to the DB.
+        """
+        survey_name = params['Param (1) Values']
+        target_answers = params['Param (2) Values'].split(',')
+        survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
+        score = 100 if survey_answer in target_answers else 0
+        return score
+
+    def calculate_sos(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = map(unicode.strip, params['Param (1) Values'].split(','))
         type2 = params['Param Type (2)/ Denominator']
@@ -276,8 +293,8 @@ class PNGROToolBox:
         value3 = params['Param (3) Values']
         target = params['Target Policy']
 
-        numerator_filters = {type1: value1, type3: value3}
-        denominator_filters = {type2: value2, type3: value3}
+        numerator_filters = {type1: value1, type2: value2, type3: value3}
+        denominator_filters = {type2: value2}
 
         numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
                                                                        include_empty=True,
@@ -291,11 +308,11 @@ class PNGROToolBox:
         else:
             ratio = numerator_width / float(denominator_width)
         if (ratio * 100) >= int(target):
-            return True
+            return True, str(ratio), str(int(target)/100.0)
         else:
-            return False
+            return False, str(ratio), str(int(target)/100.0)
 
-    def relative_position(self, params, **general_filters):
+    def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = params['Param (1) Values']
         type2 = params['Param Type (2)/ Denominator']
@@ -316,7 +333,7 @@ class PNGROToolBox:
                                                     **dict(filters, **general_filters))
         return score
 
-    def availability(self, params, **general_filters):
+    def calculate_availability(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         type2 = params['Param Type (2)/ Denominator']
         value2 = params['Param (2) Values']
@@ -328,7 +345,7 @@ class PNGROToolBox:
             if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0: return True
         return False
 
-    def shelf_position(self, params, **general_filters):
+    def calculate_shelf_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = params['Param (1) Values']
         type2 = params['Param Type (2)/ Denominator']
@@ -355,65 +372,70 @@ class PNGROToolBox:
         else:
             return True
 
-    def display_count(self, params, display_agg):
-        score = 0.0
-        if params[self.BRAND].strip() or params[self.CATEGORY].strip():
-            if params[self.BRAND].strip():
-                sos_filters = {'brand_name': params[self.BRAND]}
-            else:
-                sos_filters = {'category': params[self.CATEGORY]}
-            if params[self.FORM].strip(): sos_filters['Form'] = params[self.FORM]
+    # def calculate_shelf_position(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = params['Param (1) Values']
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = params['Param (2) Values']
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #
+    #     if type3.strip():
+    #         filters = {type1: value1, type2: value2, type3: value3}
+    #     else:
+    #         filters = {type1: value1, type2: value2}
+    #
+    #     product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
+    #                                                                  **dict(filters, **general_filters))][
+    #                                                                 'product_fk'].unique().tolist()
+    #     bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
+    #         self.match_product_in_scene,
+    #         **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
+    #         [['shelf_number', 'bay_number', 'scene_fk']]
+    #
+    #     bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
+    #     bay_shelf_count['count'] = 0
+    #     bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
+    #
+    #     for scene in general_filters['scene_id']:
+    #         for bay in bay_shelf_list['bay_number'].unique().tolist():
+    #             shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
+    #             target = self.eye_level_target.copy()
+    #             number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
+    #                                                 (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
+    #             try:
+    #                 target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
+    #             except IndexError:
+    #                 target = '3,4,5'
+    #             target = map(lambda x: int(x), target.split(','))
+    #             score = len(set(shelf_list) - set(target))
+    #             if score > 0:
+    #                 return False
+    #     if not bay_shelf_list.empty:
+    #         return True
+    #     else:
+    #         return False
 
-            for y, display in display_agg.iterrows():
-                display_weight = self.get_display_weight_by_display_name(display['display_name'])
-                display_count = display['count']
-                general_filters = {'scene_id': display['scene_fk']}
-                score += self.tools.calculate_linear_share_of_display(sos_filters,
-                                                                      **general_filters) * display_weight * display_count
-        return score
-
-    def display_count_by_display_type(self, params, display_agg):
-        score, display_weight, display_count = 0.0, 0, 0
-
-        if params[self.BRAND].strip() or params[self.CATEGORY].strip():
-            if params[self.BRAND].strip():
-                sos_filters = {'brand_name': params[self.BRAND]}
-            else:
-                sos_filters = {'category': params[self.CATEGORY]}
-            if params[self.FORM].strip(): sos_filters['Form'] = params[self.FORM]
-
-            display = display_agg[display_agg['display_name'] == params[self.DISPLAY_NAME]]
-            if not display.empty:
-                for y, dis in display.iterrows():
-                    display_weight = self.get_display_weight_by_display_name(dis['display_name'])
-                    display_count += dis['count']
-                    general_filters = {'scene_id': dis['scene_fk']}
-                    score += self.tools.calculate_linear_share_of_display(sos_filters,
-                                                                         **general_filters) * dis['count']
-        return display_count, score, display_weight
-
-    def sod_by_brand(self, params, display_agg):
-        score = 0.0
-        if params[self.BRAND].strip():
-            numerator_filters = {'brand_name': params[self.BRAND]}
-            denominator_filters = {}
-            if params[self.FORM].strip():
-                numerator_filters['Form'] = params[self.FORM]
-                denominator_filters['Form'] = params[self.FORM]
-                score = self.calculate_sod_by_filters(display_agg, numerator_filters, denominator_filters)
-            elif params[self.CATEGORY].strip():
-                denominator_filters['category'] = params[self.CATEGORY]
-                numerator_filters['category'] = params[self.CATEGORY]
-                score = self.calculate_sod_by_filters(display_agg, numerator_filters, denominator_filters)
-        return score
-
-    def sod_by_manufacturer(self, params, display_agg):
-        score = 0.0
-        if params[self.MANUFACTURER].strip() and params[self.CATEGORY].strip():
-            numerator_filters = {'manufacturer_name': params[self.MANUFACTURER], 'category': params[self.CATEGORY]}
-            denominator_filters = {'category': params[self.CATEGORY]}
-            score = self.calculate_sod_by_filters(display_agg, numerator_filters, denominator_filters)
-        return score
+    def calculate_linear_share_of_shelf_per_product_display(self):
+        display_agg = self.get_display_agg()
+        for display in display_agg['display_name'].unique().tolist():
+            display_pd = display_agg[display_agg['display_name'] == display]
+            display_weight = self.get_display_weight_by_display_name(display)
+            display_count = sum(display_pd['count'].tolist())
+            general_filters = {'scene_id': display_pd['scene_fk'].tolist()}
+            display_width = self.tools.calculate_share_space_length(**general_filters) * display_weight * display_count
+            for product in self.matches['item_id'].unique().tolist():
+                general_filters.update({'item_id': product})
+                product_width = self.tools.calculate_share_space_length(
+                    **general_filters) * display_weight * display_count
+                if product_width and display_width:
+                    score = product_width / float(display_width)
+                    level_fk = self.get_new_kpi_fk_by_kpi_name('display count')
+                    self.common.write_to_db_result_new_tables(fk=level_fk, score=score, result=score,
+                                                              numerator_result=product_width,
+                                                              denominator_result=display_width,
+                                                              numerator_id=product,
+                                                              denominator_id=display_pd['pk'].values[0])
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name
@@ -452,6 +474,22 @@ class PNGROToolBox:
         else:
             ratio = numerator_score / float(denominator_score)
         return ratio
+
+    def get_new_kpi_fk_by_kpi_name(self, kpi_name):
+        """
+        convert kpi name to kpi_fk
+        :param kpi_name: string
+        :return: fk
+        """
+        assert isinstance(kpi_name, (unicode, basestring)), "name is not a string: %r" % kpi_name
+        column_key = 'pk'
+        column_value = 'client_name'
+        try:
+            return self.new_kpi_static_data[
+                self.new_kpi_static_data[column_value] == kpi_name][column_key].values[0]
+        except IndexError:
+            Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
+            return None
 
     def write_to_db_result(self, fk, level, score=None, result=None, result_2=None):
         """
@@ -497,7 +535,7 @@ class PNGROToolBox:
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, result, result_2, kpi_fk, fk)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'result', 'result_2', 'kpi_fk',
+                                               'calculation_time', 'score', 'result', 'threshold', 'kpi_fk',
                                                'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
@@ -508,9 +546,10 @@ class PNGROToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
-        delete_queries = PNGROQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = PNGRO_SAND_PRODQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:
@@ -529,3 +568,19 @@ class PNGROToolBox:
         for group in query_groups:
             merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
         return merged_queries
+
+    def get_display_agg(self):
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
+            'scene_id'].unique().tolist()
+        display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
+            .isin(secondary_shelfs)]
+        display_filter_from_scif['count'] = 0
+        return \
+            display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
+
+    # def get_shelf_level_target(self):
+    #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
+    #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
+    #                                                                             self.NUMBER_OF_SHELVES]]
+
+

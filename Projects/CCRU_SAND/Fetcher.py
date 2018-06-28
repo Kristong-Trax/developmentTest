@@ -43,7 +43,7 @@ class CCRU_SANDCCHKPIFetcher:
 
     def get_object_facings(self, scenes, objects, object_type, formula, size=[], form_factor=[],
                            shelves=None, products_to_exclude=[], form_factors_to_exclude=[], product_categories=[],
-                           product_sub_categories=[], product_brands=[], product_manufacturers=[]):
+                           product_sub_categories=[], product_brands = [], product_manufacturers = []):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
                                   'CAT': 'category',
@@ -107,7 +107,23 @@ class CCRU_SANDCCHKPIFetcher:
                    "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(session_fk)]
         return queries
 
-    def get_static_kpi_data(self):
+    # def get_static_kpi_data(self):
+    #     query = """
+    #             select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
+    #                    kpi.display_text as kpi_name, kpi.pk as kpi_fk,
+    #                    kps.name as kpi_set_name, kps.pk as kpi_set_fk
+    #             from static.atomic_kpi api
+    #             join static.kpi kpi on kpi.pk = api.kpi_fk
+    #             join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
+    #             where kps.name = '{}'""".format(self.set_name)
+    #     df = pd.read_sql_query(query, self.rds_conn.db)
+    #     return df
+
+# Sergey
+    def get_static_kpi_data(self, set_name=None):
+#        self.rds_conn.connect_rds()
+        if set_name is None:
+            set_name = self.set_name
         query = """
                 select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
                        kpi.display_text as kpi_name, kpi.pk as kpi_fk,
@@ -115,9 +131,10 @@ class CCRU_SANDCCHKPIFetcher:
                 from static.atomic_kpi api
                 join static.kpi kpi on kpi.pk = api.kpi_fk
                 join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-                where kps.name = '{}'""".format(self.set_name)
+                where kps.name = '{}'""".format(set_name)
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
+# Sergey
 
     # @staticmethod
     # def get_kpi_results_data():
@@ -161,8 +178,7 @@ class CCRU_SANDCCHKPIFetcher:
             kpi_name = kpi_name.decode('utf-8')
         except UnicodeEncodeError:
             pass
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
-                                      == kpi_name.replace("\\'", "'")]['kpi_fk']
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name.replace("\\'", "'")]['kpi_fk']
         if not kpi_fk.empty:
             return kpi_fk.values[0]
         else:
