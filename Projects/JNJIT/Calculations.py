@@ -30,7 +30,7 @@ class JNJITCalculations(BaseCalculationsScript):
         jnj_generator.secondary_placement_location_quality(survey_template)
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         jnj_generator.calculate_auto_assortment()
-        # jnj_generator.promo_calc()
+        jnj_generator.promo_calc()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
