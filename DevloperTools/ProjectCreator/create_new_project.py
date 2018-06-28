@@ -19,8 +19,15 @@ class CreateKPIProject:
         self.project_capital = self.project.upper().replace('-', '_')
         self.project_short = self.project_capital.split('_')[0]
         self.author = os.environ.get('USER', '')
-        self.project_path = os.path.join("/home", self.author, 'dev', 'kpi_factory', 'Projects', self.project_capital)
+        self.project_path = self.get_project_path()
         self.create_project_directory()
+
+    def get_project_path(self):
+        path_to_list = os.path.abspath(__file__).split('/')
+
+        path = "{0}/{1}/{2}/{3}/{4}/Projects/{5}/".format(path_to_list[0], path_to_list[1], path_to_list[2], path_to_list[3],
+                                                     path_to_list[4], self.project_capital)
+        return path
 
     def create_project_directory(self):
         if os.path.exists(self.project_path):
