@@ -1614,8 +1614,17 @@ class PNGAMERICAGENERALToolBox:
         right += right_width / 2
 
         result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}
-        # result.update({'shelfs': list(set(graph.get_attribute_values('shelf_number')))})
+        result.update({'shelfs': list(set(graph.get_attribute_values('shelf_number')))})
         return result
+
+    def handle_horizontal_and_vertical(self, graph):
+        x_values = graph.get_attribute_values('rect_x')
+        y_values = graph.get_attribute_values('rect_y')
+        max_x = max(x_values)
+        max_y = max(y_values)
+
+
+
 
     def calculate_flexible_blocks(self, number_of_allowed_others=3, group=None, **filters):
         """
