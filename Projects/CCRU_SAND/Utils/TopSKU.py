@@ -23,10 +23,14 @@ TRUE = 0
 
 
 def _parse_arguments():
+    """
+    This function gets the arguments from the command line / configuration in case of a local run and manage them.
+    :return:
+    """
     parser = argparse.ArgumentParser(description='Top SKU CCRU')
     parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--file', type=str, required=True, help='The assortment template')
-    parser.add_argument('--update_correlations', '-uc', type=int, required=True, help='Should we update correlations'
+    parser.add_argument('--update_correlations', '-uc', type=int, required=True, help='Should we update correlations?'
                                                                                       'as well - 0 = False, 1 = True')
     return parser.parse_args()
 
@@ -35,6 +39,8 @@ class CCRU_SANDTopSKUAssortment:
 
     STORE_NUMBER = 'Store Number'
     PRODUCT_EAN_CODE = 'Product EAN'
+    START_DATE = 'Start Date'
+    END_DATE = 'End Date'
 
     def __init__(self):
         # self.parsed_args = _parse_arguments()
@@ -114,7 +120,7 @@ class CCRU_SANDTopSKUAssortment:
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
-    def update_db_from_json(self, data, current_skus_all_stores, immediate_change=False, discard_missing_products=False):
+    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()
         missing_products = set()
         store_number = data.pop(self.STORE_NUMBER, None)
@@ -147,7 +153,6 @@ class CCRU_SANDTopSKUAssortment:
 
         if products:
             current_date = datetime(year=2018, month=05, day=26).date()  # If the product has a custom start_date
-            # current_date = datetime.now().date()  # If the product should be activated from today
             if immediate_change:
                 deactivate_date = current_date - timedelta(1)
                 activate_date = current_date
@@ -156,8 +161,7 @@ class CCRU_SANDTopSKUAssortment:
                 activate_date = current_date + timedelta(1)
 
             queries = []
-            # current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
-            current_skus = current_skus_all_stores[current_skus_all_stores['store_fk']==store_fk]['product_fk'].tolist()
+            current_skus = self._current_top_skus[self._current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
             if products_to_deactivate:
@@ -182,26 +186,26 @@ class CCRU_SANDTopSKUAssortment:
         raw_data = raw_data.fillna('')
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
-            store_data = {self.STORE_NUMBER: store_raw_data['Store Number']}
+            store_data = {}
             columns = list(store_raw_data.keys())
-            columns.remove('Start Date')
-            columns.remove('End Date')
-            columns.remove('Store Number')
-
             for column in columns:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
-
         if self.update_correlations:
-            self.update_correlations(data[0].keys())
+            self.update_correlations_func(data[0].keys())
         for store_data in data:
-            self.update_db_from_json(store_data, self._current_top_skus, immediate_change=True)
+            self.update_db_from_json(store_data, immediate_change=True)
 
         queries = self.merge_insert_queries(self.all_queries)
-        self.commit_results(queries)
+        # self.commit_results(queries)
         return data
 
-    def update_correlations(self, products_data):
+    def update_correlations_func(self, products_data):
+        """
+        2 products in the same columns (that seperated by ',') will counted as correlated products.
+        The function tracks them and updates static.product in attr5 of the main product (the first one in the dual)
+        :param products_data: all of the products that has a correlated product with them in their column
+        """
         correlations = {}
         for products in products_data:
             products = str(products)
@@ -225,8 +229,8 @@ class CCRU_SANDTopSKUAssortment:
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
         query = """update {} set end_date = '{}', is_current = NULL
-                   where store_fk = {} and product_fk = {} and end_date is null""".format(TOP_SKU_TABLE, date,
-                                                                                          store_fk, product_fk)
+                   where store_fk = {} and product_fk in {} and end_date is null""".format(TOP_SKU_TABLE, date,
+                                                                                           store_fk, product_fk)
         return query
 
     @staticmethod
@@ -250,33 +254,35 @@ class CCRU_SANDTopSKUAssortment:
         query = "update static.product set {} = '{}' where {}".format(CORRELATION_FIELD, anchor_ean_code, condition)
         return query
 
-    def commit_results(self, queries):
+    def connection_ritual(self):
+        """
+        This function connects to the DB and cursor
+        :return: rds connection and cursor connection
+        """
         self.rds_conn.disconnect_rds()
         rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
+        return rds_conn, cur
+
+    def commit_results(self, queries):
+        rds_conn, cur = self.connection_ritual()
         for query in self.update_queries:
             print query
             try:
                 cur.execute(query)
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
         rds_conn.db.commit()
-        rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
+        rds_conn, cur = self.connection_ritual()
         for query in queries:
             print query
             try:
                 cur.execute(query)
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
         rds_conn.db.commit()
 
@@ -303,7 +309,6 @@ class CCRU_SANDTopSKUAssortment:
         return query
 
     def merge_insert_queries(self, insert_queries):
-        # other_queries = []
         query_groups = {}
         for query in insert_queries:
             if 'update' in query:
@@ -318,7 +323,6 @@ class CCRU_SANDTopSKUAssortment:
             for group_index in xrange(0, len(query_groups[group]), 10**4):
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index+10**4])))
-        # merged_queries.extend(other_queries)
         return merged_queries
 
 if __name__ == '__main__':
@@ -326,4 +330,4 @@ if __name__ == '__main__':
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
-# # # To run it locally just copy: -e prod --file **your file path** to the configuration -uc 1 or 0
+# # # To run it locally just copy: -e prod --file **your file path** -uc 1 or 0 to the configuration
