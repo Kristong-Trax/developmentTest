@@ -7,7 +7,9 @@ import stat
 
 from DevloperTools.ProjectCreator.Consts import MAIN_FILE_NAME, MAIN_FILE, LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE, \
     GENERATOR_FILE_NAME, GENERATOR, TOOL_BOX_FILE_NAME, TOOL_BOX, PROFILING_SCRIPT_NAME, PROFILING_SCRIPT, \
-    GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT, SCENE_TOOLBOX, SCENE_TOOLBOX_SCRIPT
+    GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT, SCENE_TOOLBOX_FILE_NAME, \
+    SCENE_TOOLBOX_SCRIPT, SCENE_GENERATOR_SCRIPT, SCENE_GENERATOR_FILE_NAME, SCENE_CALCULATIONS_FILE_NAME, \
+    SCENE_CALCULATIONS_SCRIPT
 
 __author__ = 'yoava'
 
@@ -69,8 +71,11 @@ class CreateKPIProject:
                            'project': self.project,
                            'project_capital': self.project_capital,
                            'generator_file_name': GENERATOR_FILE_NAME,
+                           'scene_generator_file_name': SCENE_GENERATOR_FILE_NAME,
                            'generator_class_name': 'Generator',
+                           'scene_generator_class_name': 'SceneGenerator',
                            'tool_box_file_name': TOOL_BOX_FILE_NAME,
+                           'scene_tool_box_file_name': SCENE_TOOLBOX_FILE_NAME,
                            'tool_box_class_name': '{}ToolBox'.format(self.project_short),
                            'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
                            'main_file_name': MAIN_FILE_NAME,
@@ -88,7 +93,9 @@ class CreateKPIProject:
                                          (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)],
                            'Tests': [(TESTS_SCRIPT_NAME + '_{}'.format(self.project), TEST_SCRIPT)]}
         if self.calculate_by_scene:
-            files_to_create['Utils'].append((SCENE_TOOLBOX, SCENE_TOOLBOX_SCRIPT))
+            files_to_create['Utils'].append((SCENE_TOOLBOX_FILE_NAME, SCENE_TOOLBOX_SCRIPT))
+            files_to_create[''].append((SCENE_GENERATOR_FILE_NAME, SCENE_GENERATOR_SCRIPT))
+            files_to_create[''].append((SCENE_CALCULATIONS_FILE_NAME, SCENE_CALCULATIONS_SCRIPT))
         return files_to_create
 
 

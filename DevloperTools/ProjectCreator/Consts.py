@@ -8,7 +8,9 @@ LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
 PROFILING_SCRIPT_NAME = 'gen_profiling'
 DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
 TESTS_SCRIPT_NAME = 'test_unit'
-SCENE_TOOLBOX = 'KPISceneToolBox'
+SCENE_TOOLBOX_FILE_NAME = 'KPISceneToolBox'
+SCENE_GENERATOR_FILE_NAME = 'KPISceneGenerator'
+SCENE_CALCULATIONS_FILE_NAME = 'SceneCalculations'
 
 
 LOCAL_FILE = """
@@ -250,7 +252,7 @@ from Trax.Utils.Logging.Logger import Log
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
-__author__ = 'nissand'
+__author__ = '%(author)s'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -262,7 +264,6 @@ class %(scene_tool_box_class_name)s:
     LEVEL2 = 2
     LEVEL3 = 3
     
-
     def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
@@ -282,9 +283,53 @@ class %(scene_tool_box_class_name)s:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
-
     def main_function(self):
         score = 0
         return score
+"""
+
+SCENE_GENERATOR_SCRIPT = """
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Projects.%(project_capital)s.Utils.%(scene_tool_box_file_name)s import %(scene_tool_box_class_name)s
+
+from KPIUtils_v2.DB.CommonV2 import Common
+
+
+__author__ = '%(author)s'
+
+
+class SceneGenerator:
+
+    def __init__(self, data_provider, output=None):
+        self.data_provider = data_provider
+        self.output = output
+        self.project_name = data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.common = Common(data_provider)
+        self.scene_tool_box = %(scene_tool_box_class_name)s(self.data_provider, self.output, self.common)
+
+    @log_runtime('Total Calculations', log_start=True)
+    def scene_score(self):
+        if self.scene_tool_box.match_product_in_scene.empty:
+            Log.warning('Match product in scene is empty for this scene')
+        else:
+            self.scene_tool_box.main_function()
+            self.common.commit_results_data()
+"""
+
+SCENE_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
+from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
+
+
+class SceneCalculations(SceneBaseClass):
+    def __init__(self, data_provider):
+        super(SceneCalculations, self).__init__(data_provider)
+        self.scene_generator =  %(scene_generator_class_name)s(self._data_provider)
+
+    def calculate_kpis(self):
+        self.scene_generator.scene_score()
 
 """
