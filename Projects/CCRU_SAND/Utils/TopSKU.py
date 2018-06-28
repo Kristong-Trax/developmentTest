@@ -12,7 +12,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 import argparse
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
@@ -51,6 +51,7 @@ class CCRU_SANDTopSKUAssortment:
         self._store_data = self.store_data
         self._product_data = self.product_data
         self.stores = {}
+        self.stores_without_dates = []
         self.products = {}
         self.all_queries = []
         self.update_queries = []
@@ -120,6 +121,13 @@ class CCRU_SANDTopSKUAssortment:
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
+    def get_store_top_skus(self, store_fk):
+        query = """select store_fk, product_fk
+                   from pservice.custom_osa
+                   where store_fk = {}""".format(store_fk)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
     def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()
         missing_products = set()
@@ -128,9 +136,17 @@ class CCRU_SANDTopSKUAssortment:
             Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
             return
         store_fk = self.get_store_fk(store_number)
-        if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
+        start_date = data.pop(self.START_DATE, None)
+        end_date = data.pop(self.END_DATE, None)
+        if start_date is None or end_date is None:
+            Log.warning('The store {} does not have start date or end date.'.format(store_number))
+            self.stores_without_dates.append(store_fk)
             return
+        if store_fk is None:
+            Log.warning('Store {} does not exist.'.format(store_number))
+            return
+        last_month_top_sku_date = start_date.date()
+        current_store_top_sku = self.get_store_top_skus(store_fk)
         for key in data.keys():
             validation = False
             if not data[key]:
@@ -325,8 +341,9 @@ class CCRU_SANDTopSKUAssortment:
                                                                                 [group_index:group_index+10**4])))
         return merged_queries
 
+
 if __name__ == '__main__':
-    LoggerInitializer.init('test')
+    LoggerInitializer.init('Top SKU CCRU-SAND')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
