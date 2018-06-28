@@ -10,6 +10,8 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageous'
     sessions = [
+        # "8DF2FE10-66AA-45F7-B0CE-5B4CEA4EF009", # survey, empty
+        # "00E15DAB-B044-43BD-A520-3B371B540B54", # survey, empty
         "004F1CF3-7135-44FD-9651-5F1E9E4C0BB6",
         "039CA55C-2629-4055-BF3B-6ABBB7FCCC27",
         "6CA23F24-9A52-4D63-9594-BF202C81AEF0",
