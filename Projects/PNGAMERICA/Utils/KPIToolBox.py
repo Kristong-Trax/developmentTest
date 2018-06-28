@@ -224,7 +224,8 @@ class PNGAMERICAToolBox:
                 category = row['category']
 
 
-                if kpi_type not in ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']:
+                if kpi_type not in ['hor_vs_vertical']:
+                    # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                     continue
 
                 # if kpi_data['KPI Group type'].values[0]:
@@ -280,8 +281,8 @@ class PNGAMERICAToolBox:
                     self.pantene_golden_strategy(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'HE':
                     self.herbal_essences_color_wheel(kpi_set_fk, kpi_name, scene_type)
-                elif kpi_type == 'H&S':
-                    self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
+                # elif kpi_type == 'H&S':
+                #     self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'category space':
                     self.calculate_category_space(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'bookend':
@@ -786,6 +787,7 @@ class PNGAMERICAToolBox:
                 self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result,
                                         score=int(result))
 
+    @kpi_runtime()
     def calculate_count_of_new(self, kpi_set_fk, kpi_name, scene_type, category):
         kpi_template = self.count_of_data.loc[(self.count_of_data['KPI name'] == kpi_name) &
                                               (self.count_of_data['category'] == category)]
@@ -807,38 +809,49 @@ class PNGAMERICAToolBox:
                 values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
                                                         & (self.all_products['product_type'] == 'SKU')][
                     kpi_template['filter_1']].unique().tolist()
-            if kpi_template['filter_2']:
-                secondary_values_to_check = \
-                self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
-                                      & (self.all_products['product_type'] == 'SKU')][
-                    kpi_template['filter_2']].unique().tolist()
+            # if kpi_template['filter_2']:
+            #     secondary_values_to_check = \
+            #     self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
+            #                           & (self.all_products['product_type'] == 'SKU')][
+            #         kpi_template['filter_2']].unique().tolist()
 
             for primary_filter in values_to_check:
                 filters[kpi_template['filter_1']] = primary_filter
+                filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+                if kpi_template['filter_2']:
+                    secondary_values_to_check = \
+                        self.all_products.loc[(self.all_products['category'] == kpi_template['category']) &
+                                              (self.all_products[kpi_template['filter_1']] == primary_filter)
+                                              & (self.all_products['product_type'] == 'SKU')][
+                            kpi_template['filter_2']].unique().tolist()
                 if secondary_values_to_check:
-                    filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                     for secondary_filter in secondary_values_to_check:
                         if self.all_products[(self.all_products[kpi_template['filter_1']] == primary_filter) &
                                 (self.all_products[kpi_template['filter_2']] == secondary_filter)].empty or secondary_filter is None:
                             continue
 
                         filters[kpi_template['filter_2']] = secondary_filter
-                        # filtered_df2 = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
+                        filtered_df2 = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                        # result = len(filtered_df2['product_ean_code'].unique())
-                        if kpi_template['count'] == 'facings':
-                            result = self.tools.calculate_availability(**filters)
+                        if filtered_df2.empty:
+                            result = 0
                         else:
-                            result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
+                            if kpi_template['count'] == 'facings':
+                                result = self.tools.calculate_availability(**filters)
+                            else:
+                                result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
                         if kpi_template['score'] == 'number':
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=result,
                                                     score=int(result))
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                    if kpi_template['count'] == 'facings':
-                        result = self.tools.calculate_availability(**filters)
+                    if filtered_df.empty:
+                        result = 0
                     else:
-                        result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
+                        if kpi_template['count'] == 'facings':
+                            result = self.tools.calculate_availability(**filters)
+                        else:
+                            result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
                     if kpi_template['score'] == 'number':
                         self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=result,
                                                 score=int(result))
@@ -1193,26 +1206,11 @@ class PNGAMERICAToolBox:
                 save_list.append('regular block')
             if kpi_template['kpi type'] == 'hor_vs_vertical':
                 vertical = horizontal = True
-            # if kpi_template['Vertical Block']:
-            #     vertical = True
-            #     save_list.append('Vertical Block')
-            # if kpi_template['horizontally block']:
-            #     horizontal = True
-            #     save_list.append('horizontally block')
-            # if kpi_template['Orphan products']:
-            #     orphan = True
-            #     save_list.append('Orphan products')
-            # if kpi_template['group in block']:
-            #     group = True
-            #     save_list.append('group in block')
-            #     block_products = {'template_name': scene_type, kpi_template['attribute']: kpi_template['block']}
-            #     group_products = {'template_name': scene_type, kpi_template['attribute']: kpi_template['group']}
             if kpi_template['kpi type'] == 'block in block':
                 block_of_blocks = True
                 save_list.append('block in block')
                 block_products1 = {kpi_template['attribute']: kpi_template['value']}
                 block_products2 = {kpi_template['attribute1']: kpi_template['value1']}
-            segment = False
             include_empty = False
             values_to_check = []
             secondary_values_to_check = []
@@ -1274,7 +1272,6 @@ class PNGAMERICAToolBox:
                             except IndexError as e:
                                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
                 else:
-                    #TODO why are you using recursive function ?
                     res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                               vertical=vertical,
                                                               horizontal=horizontal, orphan=orphan, group=group,
@@ -1533,28 +1530,44 @@ class PNGAMERICAToolBox:
             values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
                                                     & (self.all_products['product_type'] == 'SKU')][
                 kpi_template['filter_1']].unique().tolist()
-        if kpi_template['filter_2']:
-            secondary_values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
-                                                              & (self.all_products['product_type'] == 'SKU')][
-                kpi_template['filter_2']].unique().tolist()
+        # if kpi_template['filter_2']:
+        #     secondary_values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
+        #                                                       & (self.all_products['product_type'] == 'SKU')][
+        #         kpi_template['filter_2']].unique().tolist()
 
         for primary_filter in values_to_check:
             filters[kpi_template['filter_1']] = primary_filter
             if primary_filter is None:
                 continue
+            filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+            if kpi_template['filter_2']:
+                secondary_values_to_check = \
+                    self.all_products.loc[(self.all_products['category'] == kpi_template['category']) &
+                                          (self.all_products[kpi_template['filter_1']] == primary_filter)
+                                          & (self.all_products['product_type'] == 'SKU')][
+                        kpi_template['filter_2']].unique().tolist()
             if secondary_values_to_check:
                 for secondary_filter in secondary_values_to_check:
                     if self.all_products[(self.all_products[kpi_template['filter_1']] == primary_filter) &
-                            (self.all_products[kpi_template['filter_2']] == secondary_filter)].empty or secondary_filter is None:
+                            (self.all_products[
+                                 kpi_template['filter_2']] == secondary_filter)].empty or secondary_filter is None:
                         continue
+
                     filters[kpi_template['filter_2']] = secondary_filter
+                    filtered_df2 = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                    result = self.tools.calculate_share_space_length(**filters)
+                    if filtered_df2.empty:
+                        result = 0
+                    else:
+                        result = self.tools.calculate_share_space_length(**filters)
                     score = result * self.MM_TO_FEET_CONVERSION
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                result = self.tools.calculate_share_space_length(**filters)
+                if filtered_df.empty:
+                    result = 0
+                else:
+                    result = self.tools.calculate_share_space_length(**filters)
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 

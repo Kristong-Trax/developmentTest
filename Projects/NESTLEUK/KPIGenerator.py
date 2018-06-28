@@ -25,4 +25,6 @@ class NESTLEUKGenerator:
             Log.warning('Scene item facts is empty for this session')
         for set_name in self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist():
             self.tool_box.calculate_nestle_score(set_name=set_name)
+
+        self.tool_box.calculate_ava()
         self.tool_box.commit_results_data()
