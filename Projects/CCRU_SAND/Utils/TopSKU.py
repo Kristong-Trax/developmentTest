@@ -242,7 +242,7 @@ class CCRU_SANDTopSKUAssortment:
             delattr(self, '_product_data')
 
     @staticmethod
-    def get_extention_query(store_fk, product_fk, new_end_date, curr_end_date):
+    def get_extension_query(store_fk, product_fk, new_end_date, curr_end_date):
         query = """update {} set end_date = '{}'
                    where store_fk = {} and product_fk in {} and end_date = '{}'""".format(TOP_SKU_TABLE,
                                                                                           new_end_date, store_fk,
@@ -353,5 +353,4 @@ if __name__ == '__main__':
     LoggerInitializer.init('Top SKU CCRU-SAND')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
-# # # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
 # # # To run it locally just copy: -e prod --file **your file path** -uc 1 or 0 to the configuration
