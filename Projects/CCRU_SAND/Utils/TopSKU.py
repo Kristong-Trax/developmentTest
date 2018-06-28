@@ -47,7 +47,7 @@ class CCRU_SANDTopSKUAssortment:
         self.file_path = FILE
         self.update_correlations = TRUE
         self._rds_conn = self.rds_conn
-        self._current_top_skus = self.current_top_skus
+        self._current_top_skus = 5 #self.current_top_skus
         self._store_data = self.store_data
         self._product_data = self.product_data
         self.stores = {}
@@ -114,17 +114,17 @@ class CCRU_SANDTopSKUAssortment:
                 product_fk = None
         return product_fk
 
-    def get_current_top_skus(self):
-        query = """select store_fk, product_fk
-                   from pservice.custom_osa
-                   where end_date is null"""
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        return data
+    # def get_current_top_skus(self):
+    #     query = """select store_fk, product_fk
+    #                from pservice.custom_osa
+    #                where end_date is null"""
+    #     data = pd.read_sql_query(query, self.rds_conn.db)
+    #     return data
 
-    def get_store_top_skus(self, store_fk):
-        query = """select store_fk, product_fk
-                   from pservice.custom_osa
-                   where store_fk = {}""".format(store_fk)
+    def get_store_top_skus(self, store_fk, curr_end_date_minus_a_day, curr_end_date):
+        query = """select store_fk, product_fk, start_date, end_date
+                   from pservice.custom_osa where store_fk = {} and end_date between '{}' and '{}';
+                   """.format(curr_end_date_minus_a_day, curr_end_date)
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
@@ -145,8 +145,7 @@ class CCRU_SANDTopSKUAssortment:
         if store_fk is None:
             Log.warning('Store {} does not exist.'.format(store_number))
             return
-        last_month_top_sku_date = start_date.date()
-        current_store_top_sku = self.get_store_top_skus(store_fk)
+        current_store_top_sku = self.get_store_top_skus(store_fk, (start_date.date() - timedelta(1)), start_date.date())
         for key in data.keys():
             validation = False
             if not data[key]:
@@ -170,11 +169,11 @@ class CCRU_SANDTopSKUAssortment:
         if products:
             current_date = datetime(year=2018, month=05, day=26).date()  # If the product has a custom start_date
             if immediate_change:
-                deactivate_date = current_date - timedelta(1)
-                activate_date = current_date
+                deactivate_date = start_date.date() - timedelta(1)
+                activate_date = start_date.date()
             else:
-                deactivate_date = current_date
-                activate_date = current_date + timedelta(1)
+                deactivate_date = start_date.date()
+                activate_date = start_date.date()+ timedelta(1)
 
             queries = []
             current_skus = self._current_top_skus[self._current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
@@ -241,6 +240,14 @@ class CCRU_SANDTopSKUAssortment:
                 queries.append(self.get_correlation_query(product_ean_code, correlations[product_ean_code]))
             self.commit_results(queries)
             delattr(self, '_product_data')
+
+    @staticmethod
+    def get_extention_query(store_fk, product_fk, new_end_date, curr_end_date):
+        query = """update {} set end_date = '{}'
+                   where store_fk = {} and product_fk in {} and end_date = '{}'""".format(TOP_SKU_TABLE,
+                                                                                          new_end_date, store_fk,
+                                                                                          product_fk, curr_end_date)
+        return query
 
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
