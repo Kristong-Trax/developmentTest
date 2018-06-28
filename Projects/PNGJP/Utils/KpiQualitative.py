@@ -310,12 +310,13 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return {'product_fk': list(filtered_products_fk)}
 
     def _get_ean_codes_by_product_group_id(self, column_name=PRODUCT_GROUP_ID, **params):
-        return self.product_groups_data[self.product_groups_data['Group Id'] == params[column_name].values[0]][
-                'Product EAN Code'].values[0].split(self.SEPARATOR)
+        return self.product_groups_data[self.product_groups_data['Group Id'] ==
+                                        params[column_name].values[0].split('.')[0]]['Product EAN Code'].values[0].\
+            split(self.SEPARATOR)
 
     def _get_allowed_products(self, allowed):
         allowed_products = set()
-        allowed.setdefault('product_type', []).extend(self._allowed_products['product_type'])
+        # allowed.setdefault('product_type', []).extend(self._allowed_products['product_type'])
         for key, value in allowed.items():
             products = self.data_provider.products.copy()
             allowed_bulk = set(
@@ -461,15 +462,14 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     def calculate_golden_zone(self, kpi, kpi_filters):
         shelves = [4, 5]
-        total_group_skus = None
         params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
-        if params[self.BRANDS].values[0] is not None:
+        if params[self.BRANDS].values[0]:
             kpi_filter['brand_local_name'] = params[self.BRANDS].values[0]
             total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
                                                                    **kpi_filter))
-        elif params[self.PRODUCT_GROUP_ID].values[0] is not None:
+        elif params[self.PRODUCT_GROUP_ID].values[0]:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
             kpi_filter[assortment_entity] = product_eans
             total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
@@ -477,6 +477,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         else:
             product_eans = params['Product EAN Code'].values[0].split(self.SEPARATOR)
             kpi_filter[assortment_entity] = product_eans
+            total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
+                                                                   **kpi_filter))
+
         result = int(
             self.tools.calculate_assortment(assortment_entity=assortment_entity,
                                             shelf_number_from_bottom=shelves,
@@ -502,7 +505,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
-            score = 100 if num_of_shelves > 3 else 0
+            score = 100 if num_of_shelves >= 3 else 0
             result = 1 if block_result and num_of_shelves > 3 else 0
 
         else:
@@ -524,7 +527,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         product_eans = self._get_ean_codes_by_product_group_id(**params)
         kpi_filter[self.PRODUCT_EAN_CODE_FIELD] = product_eans
 
-        allowed = {}
+        allowed = {'product_type': ['Other', 'Empty']}
         # allowed = params['allowed']
         allowed_products = self._get_allowed_products(allowed)
         filtered_products_all = self._get_filtered_products()
@@ -583,14 +586,15 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         group_b = {self.PRODUCT_EAN_CODE_FIELD: self._get_ean_codes_by_product_group_id('Product Group Id;B', **params)}
 
         # allowed_filter = self._get_allowed_products({'product_type': ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
-        allowed_filter = self._get_allowed_products({})
+        allowed_filter = self._get_allowed_products({'product_type': ['Irrelevant', 'Empty', 'Other']})
+        allowed_filter_without_other = self._get_allowed_products({'product_type': ['Irrelevant', 'Empty']})
         scene_filters = {'template_name': kpi_filter['template_name']}
 
         filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**scene_filters)
 
         for scene in relevant_scenes:
             adjacency = self.adjacency.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
-                                                           allowed_filter, a_target, b_target, target)
+                                                           allowed_filter_without_other, a_target, b_target, target)
             if adjacency:
                 direction = params.get('Direction', 'All').values[0]
                 if direction == 'All':
@@ -606,15 +610,27 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
-                            if max(edges_a['shelfs']) <= min(edges_b['shelfs']):
+                            if sorted(set(edges_a['shelfs'])) == sorted(set(edges_b['shelfs'])) and \
+                                    len(set(edges_a['shelfs'])) == 1:
+                                score = result = 0
+                            elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
+                                score = 100
+                                result = 1
+                            elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
                                 score = 100
                                 result = 1
                         elif direction == 'Horizontal':
                             if set(edges_a['shelfs']).intersection(edges_b['shelfs']):
-                                if edges_a['visual']['right'] <= edges_b['visual']['left']:
+                                extra_margin_a = (edges_a['visual']['right'] - edges_a['visual']['left']) / 10
+                                extra_margin_b = (edges_b['visual']['right'] - edges_b['visual']['left']) / 10
+                                edges_a_right = edges_a['visual']['right'] - extra_margin_a
+                                edges_b_left = edges_b['visual']['left'] + extra_margin_b
+                                edges_b_right = edges_b['visual']['right'] - extra_margin_b
+                                edges_a_left = edges_a['visual']['left'] + extra_margin_a
+                                if edges_a_right <= edges_b_left:
                                     score = 100
                                     result = 1
-                                elif edges_b['visual']['right'] <= edges_a['visual']['left']:
+                                elif edges_b_right <= edges_a_left:
                                         score = 100
                                         result = 1
         return score, result, threshold

@@ -19,10 +19,9 @@ class RBUSRBUSCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('rbus-sand calculations')
 #     Config.init()
-#     project_name = 'rbus-sand'
+#     project_name = 'rbus'
 #     data_provider = KEngineDataProvider(project_name)
-#     # session = '537C4629-9347-473D-8162-8BBB47E9482D'
-#     session = 'b6ce555b-763d-404a-b1d7-b514f3bb9bae'
+#     session = '47202937-9574-4BCC-B866-FC8EFA7FFD39'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     RBUSRBUSCalculations(data_provider, output).run_project_calculations()
