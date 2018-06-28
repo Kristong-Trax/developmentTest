@@ -7,7 +7,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 # from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -16,7 +16,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'nissand'
 
@@ -66,7 +66,8 @@ class CCITSceneToolBox:
         self.missing_products = []
 
     def get_manufacturer_fk(self, manu):
-        return self.all_products[self.all_products['manufacturer_name'] == manu]['manufacturer_fk'].drop_duplicates().values[0]
+        return self.all_products[self.all_products['manufacturer_name'] ==
+                                 manu]['manufacturer_fk'].drop_duplicates().values[0]
 
     def get_filtered_df(self, df, filters):
         for key, value in filters.items():
@@ -96,25 +97,28 @@ class CCITSceneToolBox:
         manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
         self.common.write_to_db_result(fk=kpi_fk_share, numerator_id=manu_fk, numerator_result=numerator_res,
-                                       result=result, denominator_id=template_fk, denominator_result=denominator_res,
-                                       score=score, target=target_share, identifier_parent=identifier_parent,
+                                       result=round(result, 0), denominator_id=template_fk,
+                                       denominator_result=denominator_res, score=score, target=target_share,
+                                       by_scene=True)
+        self.common.write_to_db_result(fk=kpi_fk_score, numerator_id=manu_fk, numerator_result=score, result=score,
+                                       score=score, target=target_score, identifier_parent=identifier_parent,
                                        by_scene=True, should_enter=True)
-        self.common.write_to_db_result(fk=kpi_fk_score, numerator_result=score, result=score, score=score,
-                                       target=target_score, by_scene=True)
         return score
 
     def fulfillment_sku_calculation(self):
         relevant_store_info = pd.DataFrame(columns=self.FULFILLMENT_SKU_RESULT_HEADER)
         relevant_store_info[['ean_code', 'points', 'type']] = self.fulfillment_template[self.fulfillment_template[
             self.store_type + self.SKU_TYPE_SUFFIX] != self.OUT_TYPE][['ean_code', self.store_type + self.POINTS_SUFFIX,
-                                                                       self.store_type + self.SKU_TYPE_SUFFIX]].drop_duplicates()
+                                                                       self.store_type + self.SKU_TYPE_SUFFIX]].\
+            drop_duplicates()
         products_in_scene = pd.to_numeric(self.products['product_ean_code'].dropna()).values
         relevant_store_info['dist'] = 0
         relevant_store_info.loc[relevant_store_info['ean_code'].isin(products_in_scene), 'dist'] = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('fulfillment_SKUs_score')
         identifier_parent = None
         for row in relevant_store_info.itertuples():
-            product_fk = self.all_products[self.all_products['product_ean_code'] == str(row.ean_code)]['product_fk'].drop_duplicates()
+            product_fk = self.all_products[self.all_products['product_ean_code'] == str(row.ean_code)]['product_fk'].\
+                drop_duplicates()
             if product_fk.empty:
                 self.missing_products.append(row.ean_code)
                 continue
@@ -122,10 +126,12 @@ class CCITSceneToolBox:
                 product_fk = product_fk.values[0]
             res = row.dist * row.points
             identifier_parent = self.common.get_dictionary(kpi_fk=
-                                                       self.common.get_kpi_fk_by_kpi_type(self.TYPE_KPI_MAP[row.type]))
+                                                           self.common.get_kpi_fk_by_kpi_type(
+                                                               self.TYPE_KPI_MAP[row.type]))
             identifier_parent['scene_fk'] = self.scene_info['scene_fk'].values[0]
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, numerator_result=res, result=res,
-                                           score=res, identifier_parent=identifier_parent, by_scene=True, should_enter=True)
+                                           score=res, identifier_parent=identifier_parent, by_scene=True,
+                                           should_enter=True)
         Log.info('Missing Products EAN_Code: {}'.format(self.missing_products))
         return relevant_store_info
 
@@ -133,20 +139,21 @@ class CCITSceneToolBox:
         type_aggrigation = pd.DataFrame(columns=self.FULFILLMENT_TYPE_RESULT_HEADER)
         type_aggrigation['type'] = self.TYPE_KPI_MAP.keys()
         for sku_type in self.TYPE_KPI_MAP.keys():
-            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'total_points'] = sku_res[(sku_res['type'] ==
-                                                                        sku_type) & (sku_res['dist'])]['points'].sum()
-            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'num_of_skus'] = len(sku_res[(sku_res['type'] ==
-                                                                        sku_type) & (sku_res['dist'])])
-            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'sku_point'] = sku_res[sku_res['type'] ==
-                                                                        sku_type]['points'].drop_duplicates().values[0]
+            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'total_points'] = \
+                sku_res[(sku_res['type'] == sku_type) & (sku_res['dist'])]['points'].sum()
+            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'num_of_skus'] = \
+                len(sku_res[(sku_res['type'] == sku_type) & (sku_res['dist'])])
+            type_aggrigation.loc[type_aggrigation['type'] == sku_type, 'sku_point'] = \
+                sku_res[sku_res['type'] == sku_type]['points'].drop_duplicates().values[0]
         identifier_parent = self.common.get_dictionary(
             kpi_fk=self.common.get_kpi_fk_by_kpi_type('fulfillment_scene_score'),
             template_fk=self.templates['template_fk'].drop_duplicates().values[0])
+        manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         for row in type_aggrigation.itertuples():
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TYPE_KPI_MAP[row.type])
             identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
             identifier_result['scene_fk'] = self.scene_info['scene_fk'].values[0]
-            self.common.write_to_db_result(fk=kpi_fk, numerator_result=row.num_of_skus, result=row.num_of_skus,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=row.num_of_skus, result=row.num_of_skus,
                                            score=row.total_points, identifier_parent=identifier_parent,
                                            identifier_result=identifier_result, by_scene=True, should_enter=True)
         return type_aggrigation, identifier_parent
@@ -157,18 +164,20 @@ class CCITSceneToolBox:
         core_skus = type_results[type_results['type'] == 'Core']['num_of_skus'].values[0]
         non_core_skus = type_results[type_results['type'] == 'Non-core']['num_of_skus'].values[0]
         if core_skus > max_unique_skus:
-            result = max_unique_skus * type_results[type_results['type'] == 'Core']['sku_point'].drop_duplicates().values[0]
+            result = max_unique_skus * \
+                     type_results[type_results['type'] == 'Core']['sku_point'].drop_duplicates().values[0]
         elif core_skus + non_core_skus > max_unique_skus:
             non_core_diff = max_unique_skus - core_skus
-            result = type_results[type_results['type'] == 'Core']['total_points'].drop_duplicates().values[0] + (
-            non_core_diff * type_results[type_results['type'] == 'Non-core']['sku_point'].drop_duplicates().values[0])
+            result = type_results[type_results['type'] == 'Core']['total_points'].drop_duplicates().values[0] + \
+                     (non_core_diff * type_results[type_results['type'] == 'Non-core'][
+                         'sku_point'].drop_duplicates().values[0])
         else:
             result = type_results['total_points'].sum()
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('fulfillment_scene_score')
         template_fk = self.templates['template_fk'].drop_duplicates().values[0]
         target = max_unique_skus * type_results[type_results['type'] == 'Core']['sku_point'].drop_duplicates().values[0]
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=template_fk, numerator_result=result, result=result,
-                                       score=result, target=target ,identifier_parent=identifier_parent,
+                                       score=result, target=target, identifier_parent=identifier_parent,
                                        identifier_result=identifier_result, by_scene=True, should_enter=True)
         return result
 
