@@ -115,3 +115,6 @@ class INTEG41Const(object):
     DISTRIBUTED = "1"
     OTHER = "OTHER"
 
+    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
+    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
+    SURVEY_ANSWER = "Yes"

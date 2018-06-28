@@ -10,14 +10,14 @@ from Projects.INTEG41.Utils.Const import INTEG41Const
 from Projects.INTEG41.Utils.Fetcher import INTEG41Queries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.INTEG41Calculations.AvailabilityINTEG41Calculations import Availability
 # from KPIUtils_v2.INTEG41Calculations.NumberOfScenesINTEG41Calculations import NumberOfScenes
 # from KPIUtils_v2.INTEG41Calculations.PositionGraphsINTEG41Calculations import PositionGraphs
 # from KPIUtils_v2.INTEG41Calculations.SOSINTEG41Calculations import SOS
 # from KPIUtils_v2.INTEG41Calculations.SequenceINTEG41Calculations import Sequence
-# from KPIUtils_v2.INTEG41Calculations.SurveyINTEG41Calculations import Survey
-# from KPIUtils_v2.INTEG41Calculations.INTEG41CalculationsUtils import GENERALToolBoxINTEG41Calculations
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'Elyashiv'
 
@@ -32,6 +32,7 @@ class INTEG41ToolBox:
         self.common = Common(self.data_provider)
         self.assortment = Assortment(self.data_provider, self.output)
         self.fetcher = INTEG41Queries
+        self.survey = Survey(self.data_provider, self.output)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -54,15 +55,15 @@ class INTEG41ToolBox:
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
-        if self.data_provider[Data.STORE_INFO]['store_type'].iloc[0] in ('Dining', 'Bar/Nightclub'):
-            self.on_premise = True
-        else:
-            self.on_premise = False
+        store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
+        self.on_premise = True if store_type in ('Dining', 'Bar/Nightclub') else False
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
         if self.on_premise:
             self.sales_data = self.get_sales_data()
+            self.no_menu_allowed = self.survey.check_survey_answer(survey_text=INTEG41Const.NO_MENU_ALLOWED_QUESTION,
+                                                                   target_answer=INTEG41Const.SURVEY_ANSWER)
         else:
             self.scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
@@ -72,6 +73,8 @@ class INTEG41ToolBox:
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
             self.calculated_price, self.calculated_shelf_facings = [], []
+            self.no_display_allowed = self.survey.check_survey_answer(survey_text=INTEG41Const.NO_DISPLAY_ALLOWED_QUESTION,
+                                                                      target_answer=INTEG41Const.SURVEY_ANSWER)
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
     # initialize:
@@ -245,6 +248,30 @@ class INTEG41ToolBox:
             return 0, 0, 0
         return total_score, segment_score, national_score
 
+    def survey_display_write_to_db(self, weight):
+        """
+        In case we don't have display (buy the survey question) we need to pass the KPI.
+        :param weight: float
+        :return: True if no display
+        """
+        if not self.no_display_allowed:
+            return False
+        score = 100
+        dict_of_fks = {
+            INTEG41Const.TOTAL: self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[INTEG41Const.DISPLAY_BRAND][INTEG41Const.TOTAL]),
+            INTEG41Const.NATIONAL: self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[INTEG41Const.DISPLAY_BRAND][
+                                                                   INTEG41Const.NATIONAL]),
+            INTEG41Const.SEGMENT: self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[INTEG41Const.DISPLAY_BRAND][
+                                                                  INTEG41Const.SEGMENT])
+        }
+        for kpi in dict_of_fks:
+            self.common.write_to_db_result(
+                fk=dict_of_fks[kpi], numerator_id=self.manufacturer_fk,
+                identifier_parent=self.common.get_dictionary(name=kpi),
+                result=score, should_enter=True, weight=weight * 100, score=score
+            )
+        return True
+
     # assortments:
 
     def calculate_on_assortment(self, scene_types, kpi_name, weight):
@@ -320,8 +347,8 @@ class INTEG41ToolBox:
         """
         Gets assortment type, and calculates it with the match function
         :param scene_types: string from template
-        :param kpi_name:
-        :param weight
+        :param kpi_name: POD or Display Brand
+        :param weight:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -329,6 +356,9 @@ class INTEG41ToolBox:
         if kpi_name == INTEG41Const.POD:
             calculate_function = self.calculate_pod_sku
         elif kpi_name == INTEG41Const.DISPLAY_BRAND:
+            if self.survey_display_write_to_db(weight):
+                Log.info("There is no display, Display Brand got 100")
+                return 100 * weight, 100 * weight, 100 * weight
             calculate_function = self.calculate_display_compliance_sku
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
         else:
@@ -426,6 +456,14 @@ class INTEG41ToolBox:
         :return:
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.MENU][INTEG41Const.TOTAL])
+        if self.no_menu_allowed:
+            Log.info("There is no menu, Menu got 100")
+            score = 100
+            self.common.write_to_db_result(
+                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target * 100,
+                result=score, should_enter=True, weight=weight * 100, score=score,
+                identifier_parent=self.common.get_dictionary(name=INTEG41Const.TOTAL))
+            return score * weight, 0, 0
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.MENU][INTEG41Const.MANUFACTURER])
         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_ON_NAMES[INTEG41Const.MENU][INTEG41Const.SUB_BRAND])
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -471,9 +509,17 @@ class INTEG41ToolBox:
         :return: total_result
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[INTEG41Const.DISPLAY_SHARE][INTEG41Const.TOTAL])
+        total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
+        if self.no_display_allowed:
+            Log.info("There is no display, Display Share got 100")
+            score = 100
+            self.common.write_to_db_result(
+                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target * 100,
+                result=score, should_enter=True, weight=weight * 100, score=score,
+                identifier_parent=self.common.get_dictionary(name=INTEG41Const.TOTAL))
+            return score * weight, 0, 0
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(INTEG41Const.DB_OFF_NAMES[
                                                                      INTEG41Const.DISPLAY_SHARE][INTEG41Const.MANUFACTURER])
-        total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
                                                      (self.scif_without_emptys['location_type'] == 'Secondary Shelf')]
