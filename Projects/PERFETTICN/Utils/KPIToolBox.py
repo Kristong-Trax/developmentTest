@@ -55,7 +55,8 @@ class PERFETTICNToolBox:
         self.common.commit_results_data_to_new_tables()
 
     def display_count(self):
-
+        """This function calculates how many displays find from types secondary shelf
+        """
         num_brands = {}
         display_info = self.scif['template_fk']
         display_fks = display_info.unique()
@@ -72,7 +73,10 @@ class PERFETTICNToolBox:
 
     def assortment_calculation(self):
         """
-        This function calculates the KPI results.
+        This function calculates 3 levels of assortment :
+        level3 is assortment SKU
+        level2 is assortment groups
+        level1 how many groups passed out of all
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
 
