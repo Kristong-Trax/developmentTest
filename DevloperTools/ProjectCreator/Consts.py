@@ -1,10 +1,3 @@
-
-import os
-import shutil
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Logging.Logger import Log
-import stat
-
 __author__ = 'yoava'
 
 MAIN_FILE_NAME = 'Calculations'
@@ -15,6 +8,9 @@ LOCAL_CALCULATIONS_FILE_NAME = 'LocalCalculations'
 PROFILING_SCRIPT_NAME = 'gen_profiling'
 DEPENDENCIES_SCRIPT_NAME = 'gen_dependency_graph'
 TESTS_SCRIPT_NAME = 'test_unit'
+SCENE_TOOLBOX_FILE_NAME = 'KPISceneToolBox'
+SCENE_GENERATOR_FILE_NAME = 'KPISceneGenerator'
+SCENE_CALCULATIONS_FILE_NAME = 'SceneCalculations'
 
 
 LOCAL_FILE = """
@@ -238,73 +234,102 @@ class Test%(project_capital)s(TestCase):
 
 """
 
+SCENE_TOOLBOX_SCRIPT = """
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Utils.Logging.Logger import Log
 
-class CreateKPIProject:
+# from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-    def __init__(self, project_name):
-        self.project = project_name.lower().replace('_', '-')
-        self.project_capital = self.project.upper().replace('-', '_')
-        self.project_short = self.project_capital.split('_')[0]
-        self.author = os.environ.get('USER', '')
-        self.project_path = \
-            '{}/Projects/{}/'.format(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), self.project_capital)
-        self.create_project_directory()
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
-    def create_project_directory(self):
-        if os.path.exists(self.project_path):
-            shutil.rmtree(self.project_path)
-        os.mkdir(self.project_path)
-        with open(self.project_path + '__init__.py', 'wb') as f:
-            f.write('')
+__author__ = '%(author)s'
 
-    def create_new_project(self):
-        files_to_create = {'': [(MAIN_FILE_NAME, MAIN_FILE),
-                                (LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE),
-                                (GENERATOR_FILE_NAME, GENERATOR)],
-                           'Utils': [(TOOL_BOX_FILE_NAME, TOOL_BOX),
-                                     ],
-                           'Profiling': [(PROFILING_SCRIPT_NAME, PROFILING_SCRIPT),
-                                         (DEPENDENCIES_SCRIPT_NAME, GEN_DEPENDENCY_SCRIPT)],
-                           'Tests': [(TESTS_SCRIPT_NAME+'_{}'.format(self.project), TEST_SCRIPT)]}
-
-        formatting_dict = {'author': self.author,
-                           'project': self.project,
-                           'project_capital': self.project_capital,
-                           'generator_file_name': GENERATOR_FILE_NAME,
-                           'generator_class_name': 'Generator',
-                           'tool_box_file_name': TOOL_BOX_FILE_NAME,
-                           'tool_box_class_name': '{}ToolBox'.format(self.project_short),
-                           'main_file_name': MAIN_FILE_NAME,
-                           'main_class_name': '{}Calculations'.format(self.project_short)
-                           }
-        for directory in files_to_create.keys():
-            if directory:
-                directory_path = self.project_path + directory + '/'
-                os.mkdir(directory_path)
-                with open(directory_path + '__init__.py', 'wb') as f:
-                    f.write('')
-            else:
-                directory_path = self.project_path
-            for file_name, file_content in files_to_create[directory]:
-                if directory == 'Profiling':
-                    with open(directory_path + file_name + '.sh', 'wb') as f:
-                        f.write(file_content)
-                        st = os.stat(os.path.join(directory_path, file_name + '.sh'))
-                        os.chmod(os.path.join(directory_path, file_name + '.sh'), st.st_mode | stat.S_IEXEC)
-                else:
-                    with open(directory_path + file_name + '.py', 'wb') as f:
-                        f.write(file_content % formatting_dict)
-
-        data_directory = os.path.join(self.project_path, 'Data')
-        if not os.path.exists(data_directory):
-            os.makedirs(data_directory)
+KPI_RESULT = 'report.kpi_results'
+KPK_RESULT = 'report.kpk_results'
+KPS_RESULT = 'report.kps_results'
 
 
-if __name__ == '__main__':
+class %(scene_tool_box_class_name)s:
+    LEVEL1 = 1
+    LEVEL2 = 2
+    LEVEL3 = 3
+    
+    def __init__(self, data_provider, output, common):
+        self.output = output
+        self.data_provider = data_provider
+        self.common = common
+        self.project_name = self.data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.products = self.data_provider[Data.PRODUCTS]
+        self.templates = self.data_provider[Data.TEMPLATES]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.session_info = self.data_provider[Data.SESSION_INFO]
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_type = self.data_provider.store_type
+        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.kpi_static_data = self.common.get_kpi_static_data()
+        self.kpi_results_queries = []
 
-    LoggerInitializer.init('Creating new project')
-    project = 'test1'
-    Log.info("project name : " + project)
-    new = CreateKPIProject(project)
-    new.create_new_project()
-    Log.info("project : " + project + " was created successfully")
+    def main_function(self):
+        score = 0
+        return score
+"""
+
+SCENE_GENERATOR_SCRIPT = """
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Projects.%(project_capital)s.Utils.%(scene_tool_box_file_name)s import %(scene_tool_box_class_name)s
+
+from KPIUtils_v2.DB.CommonV2 import Common
+
+
+__author__ = '%(author)s'
+
+
+class SceneGenerator:
+
+    def __init__(self, data_provider, output=None):
+        self.data_provider = data_provider
+        self.output = output
+        self.project_name = data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.common = Common(data_provider)
+        self.scene_tool_box = %(scene_tool_box_class_name)s(self.data_provider, self.output, self.common)
+
+    @log_runtime('Total Calculations', log_start=True)
+    def scene_score(self):
+        if self.scene_tool_box.match_product_in_scene.empty:
+            Log.warning('Match product in scene is empty for this scene')
+        else:
+            self.scene_tool_box.main_function()
+            self.common.commit_results_data()
+"""
+
+SCENE_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
+from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
+
+
+class SceneCalculations(SceneBaseClass):
+    def __init__(self, data_provider):
+        super(SceneCalculations, self).__init__(data_provider)
+        self.scene_generator =  %(scene_generator_class_name)s(self._data_provider)
+
+    def calculate_kpis(self):
+        self.scene_generator.scene_score()
+
+"""
