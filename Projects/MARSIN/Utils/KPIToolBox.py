@@ -209,6 +209,7 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                         self.write_to_db_result(kpi_fk, (kpi_score * 100, new_atomic, number_of_atomics),
                                                 level=self.LEVEL2)
                     else:
+
                         self.write_to_db_result(kpi_fk, (kpi_score, number_of_passed_atomics, number_of_atomics),
                                                 level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
