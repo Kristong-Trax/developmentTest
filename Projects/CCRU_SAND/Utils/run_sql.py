@@ -13,7 +13,8 @@ class RunSql:
 
     def run_it(self):
         statement_1 = """
-                        UPDATE `static`.`atomic_kpi` SET `name`='Espolon ReSpiritsado - 0.7L', `description`='Espolon ReSpiritsado - 0.7L', `display_text`='Espolon ReSpiritsado - 0.7L' WHERE `pk`='4710';
+                        UPDATE `static`.`atomic_kpi` SET `name`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L', `description`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L', `display_text`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L' WHERE `pk`='3256';
+
                                                """
 
         cur = self.aws_conn.db.cursor()
@@ -24,7 +25,7 @@ class RunSql:
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru-sand']:
+    for project in ['ccru']:
         print 'start project: ' + str(project)
         sql_to_run = RunSql(project)
         sql_to_run.run_it()
