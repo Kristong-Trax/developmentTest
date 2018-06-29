@@ -55,5 +55,5 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    ProjectDeploy.deploy(project="batru")
+    ProjectDeploy.deploy(project="ccru")
     pass
