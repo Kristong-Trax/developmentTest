@@ -69,16 +69,16 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         cursor.execute("""SELECT * FROM {table}""".format(table=table))
         self.assertEquals(cursor.rowcount, row_count)
 
-    @seeder.seed(["ccru_seed"], ProjectsSanityData())
-    def test_ccru_sanity(self):
-        project_name = ProjectsSanityData.project_name
-        data_provider = KEngineDataProvider(project_name)
-        sessions = ['8DD169D2-EFE1-4B5F-8DA7-A805EADA17B7']
-        for session in sessions:
-            data_provider.load_session_data(session)
-            output = Output()
-            ccru_calc(data_provider, output).run_project_calculations()
-            self._assert_kpi_results_filled()
+    # @seeder.seed(["ccru_seed"], ProjectsSanityData())
+    # def test_ccru_sanity(self):
+    #     project_name = ProjectsSanityData.project_name
+    #     data_provider = KEngineDataProvider(project_name)
+    #     sessions = ['8DD169D2-EFE1-4B5F-8DA7-A805EADA17B7']
+    #     for session in sessions:
+    #         data_provider.load_session_data(session)
+    #         output = Output()
+    #         ccru_calc(data_provider, output).run_project_calculations()
+    #         self._assert_kpi_results_filled()
 
     # @seeder.seed(["ccza_seed"], ProjectsSanityData())
     # def test_ccza_sanity(self):
