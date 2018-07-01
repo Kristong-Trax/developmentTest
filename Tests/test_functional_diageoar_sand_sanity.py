@@ -39,9 +39,9 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.DIAGEOAR.Utils.ToolBox.DIAGEOARDIAGEOToolBox.get_latest_directory_date_from_cloud', return_value='2018-01-01')
-    @patch('Projects.DIAGEOAR.Utils.ToolBox.DIAGEOARDIAGEOToolBox.save_latest_templates')
-    @patch('Projects.DIAGEOAR.Utils.ToolBox.DIAGEOARDIAGEOToolBox.download_template', return_value=diageoar_sand_template)
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud', return_value='2018-01-01')
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.download_template', return_value=diageoar_sand_template)
     @seeder.seed(["diageoar_sand_seed"], ProjectsSanityData())
     def test_diageoar_sand_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
