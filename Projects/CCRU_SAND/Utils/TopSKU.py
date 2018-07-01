@@ -249,6 +249,8 @@ class CCRU_SANDTopSKUAssortment:
         queries = self.merge_insert_queries(self.insert_queries)
         self.commit_results(queries)
         Log.info("Top SKU is done!")
+        Log.info("Total number of new assortments = {}. Total number of extension assortments = {}"
+                 .format(len(self.insert_queries), len(self.extension_queries)))
         if self.invalid_products:
             Log.warning("The following products does not exist in the DB: {}".format(self.invalid_products))
         if self.invalid_stores:
