@@ -33,7 +33,7 @@ class SeedCreator:
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         self.rds_name = self.rds_conn.project_params['rds_name']
-        self.seed_name = '{}_seed.sql.gz'.format(project)
+        self.seed_name = '{}_seed.sql.gz'.format(project.replace('-', '_'))
         self.export_dir = os.path.join('/home', self.user, 'dev', 'traxdatabase', 'traxExport')
 
     def get_top_sessions(self):
@@ -135,7 +135,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.project_capital = self.project.upper().replace('-', '_')
         self.user = os.environ.get('USER')
         self.project_short = self.project_capital.split('_')[0]
-        self.main_class_name = '{}Calculations'.format(self.project_short)
+        self.main_class_name = '{}Calculations'.format(self.project_capital)
         self.session_list = session_list
 
     def create_test_class(self):
@@ -146,7 +146,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
-                           'seed': '{}_seed'.format(self.project),
+                           'seed': '{}_seed'.format(self.project.replace('-','_')),
                            'project': self.project,
                            'session_0': self.session_list[0],
                            # 'session_1': self.session_list[1],
@@ -174,7 +174,7 @@ class CreateTestDataProjectSanity:
         seed_data = """DATA_TYPE: BaseSeedData.MYSQL,
                         FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
                         PROJECT_NAME: project_name
-                """.format(self.project)
+                """.format(self.project.replace('-', '_'))
         seed_data = '{' + seed_data
 
         seed_data = seed_data + '        }'
@@ -190,10 +190,11 @@ __author__ = '{0}'
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
     {1}_seed = {2} 
-""".format(self.user, self.project, seed_data)
+""".format(self.user, self.project.replace('-', '_'), seed_data)
 
         data_class_path = \
-            ('/home/{0}/dev/kpi_factory/Tests/Data/test_data_{1}_sanity'.format(self.user, self.project))
+            ('/home/{0}/dev/kpi_factory/Tests/Data/test_data_{1}_sanity'.format(self.user,
+                                                                                self.project.replace('-', '_')))
 
         with open(data_class_path + '.py', 'wb') as f:
             f.write(data_class_content)
@@ -202,7 +203,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'ccza'
+    project_to_test = 'diageoau-sand'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()

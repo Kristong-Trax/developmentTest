@@ -25,7 +25,7 @@ class NESTLEUKPositionGraphs:
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
                           'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          TOP, BOTTOM, LEFT, RIGHT, 'shelf_number','bay_number']
+                          TOP, BOTTOM, LEFT, RIGHT, 'shelf_number', 'bay_number', 'AVA_Attributes', 'product_fk']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
