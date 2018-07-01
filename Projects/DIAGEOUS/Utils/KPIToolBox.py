@@ -204,14 +204,14 @@ class DIAGEOUSToolBox:
                 national_store_score += national_weighted_score
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score,
-            identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=total_store_score)
+            identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=round(total_store_score, 2))
         if segment_kpi_fk and national_kpi_fk:
             self.common.write_to_db_result(
                 fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=segment_store_score,
-                identifier_result=self.common.get_dictionary(name=Const.SEGMENT), score=segment_store_score)
+                identifier_result=self.common.get_dictionary(name=Const.SEGMENT), score=round(segment_store_score, 2))
             self.common.write_to_db_result(
                 fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=national_store_score,
-                identifier_result=self.common.get_dictionary(name=Const.NATIONAL), score=national_store_score)
+                identifier_result=self.common.get_dictionary(name=Const.NATIONAL), score=round(national_store_score, 2))
 
     def calculate_set(self, kpi_line):
         """
@@ -487,15 +487,14 @@ class DIAGEOUSToolBox:
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
-        diageo_result = self.get_score(diageo_facings, den_res)
-        result = 100 if diageo_result / 100 >= target else 0
-        score = result * weight
+        result = self.get_score(diageo_facings, den_res)
+        score = 100 if result / 100 >= target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=diageo_result, score=score, weight=weight * 100,
+            denominator_result=den_res, result=result, score=score, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target * 100,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
-        return score, 0, 0
+        return score * weight, 0, 0
 
     # display share:
 
