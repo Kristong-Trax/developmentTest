@@ -72,7 +72,6 @@ class DIAGEOUSToolBox:
                     'shelf_number'].max()
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
-            self.calculated_price, self.calculated_shelf_facings = [], []
             self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
                                                                       target_answer=Const.SURVEY_ANSWER)
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
@@ -616,7 +615,6 @@ class DIAGEOUSToolBox:
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
         result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
-        our_facings = self.calculate_shelf_facings_of_sku(our_fks, relevant_scenes, result_identifier)
         if self.does_exist(competition[Const.COMP_EAN_CODE]):
             comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
             comp_lines = self.all_products[self.all_products['product_ean_code'].isin(comp_eans)]
@@ -627,8 +625,13 @@ class DIAGEOUSToolBox:
             comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
             bench_value = competition[Const.BENCH_VALUE]
             target = comp_facings * bench_value
-        else:
+        elif self.does_exist(competition[Const.BENCH_VALUE]):
             target = competition[Const.BENCH_VALUE]
+        else:
+            Log.warning("Product {} has no target in shelf facings".format(our_eans))
+            return None
+        our_facings = self.calculate_shelf_facings_of_sku(
+            our_fks, relevant_scenes, result_identifier, target=target, diageo_product=True)
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
@@ -640,16 +643,20 @@ class DIAGEOUSToolBox:
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
-    def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier):
+    def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier, target=None,
+                                       diageo_product=False):
         """
         Gets product(s) and counting its facings.
         :param product_fks: list of FKs
         :param relevant_scenes: list
         :param parent_identifier: for write_to_db
+        :param target: float, for the main product
+        :param diageo_product: bool, if it's the main product
         :return: amount of facings
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
         amount_of_facings = 0
+        denominator_id = self.manufacturer_fk if diageo_product else None
         for product_fk in product_fks:
             product_facing = self.scif_without_emptys[
                 (self.scif_without_emptys['product_fk'] == product_fk) &
@@ -657,14 +664,9 @@ class DIAGEOUSToolBox:
             if product_facing is None or np.isnan(product_facing):
                 product_facing = 0
             amount_of_facings += product_facing
-            # if product_fk in self.calculated_shelf_facings:
-            if 0 > 2:
-                continue
-            else:
-                self.calculated_shelf_facings.append(product_fk)
-                self.common.write_to_db_result(
-                    fk=kpi_fk, numerator_id=product_fk, result=product_facing,
-                    should_enter=True, identifier_parent=parent_identifier)
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
+                should_enter=True, identifier_parent=parent_identifier, target=target)
         return amount_of_facings
 
     # shelf placement:
@@ -884,12 +886,9 @@ class DIAGEOUSToolBox:
         if price.empty:
             return None
         result = round(price.iloc[0], 2)
-        # if product_fk not in self.calculated_price:
-        if 2 > 0:
-            self.calculated_price.append(product_fk)
-            self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=product_fk, result=result,
-                identifier_parent=parent_dict, should_enter=True)
+        self.common.write_to_db_result(
+            fk=kpi_fk, numerator_id=product_fk, result=result,
+            identifier_parent=parent_dict, should_enter=True)
         return result
 
     # help functions:
