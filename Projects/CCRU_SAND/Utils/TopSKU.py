@@ -163,7 +163,12 @@ class CCRU_SANDTopSKUAssortment:
         :param raw_data: The store assortment DF
         :return: A fix DF without the invalid columns
         """
-        data = raw_data.rename_axis(str.replace(' ', ' ', ''), axis=1)
+        duplicate_columns = []
+        for col in raw_data.columns:
+            if col.count('.'):
+                duplicate_columns.append(col)
+        data = raw_data.drop(duplicate_columns, axis=1)
+        data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
         products_from_template = data.columns.tolist()
         products_from_template.remove(STORE_NUMBER)
         products_from_template.remove(START_DATE)
