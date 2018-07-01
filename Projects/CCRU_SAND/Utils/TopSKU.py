@@ -1,10 +1,5 @@
-import os
 import pandas as pd
 from datetime import datetime, timedelta
-
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from openpyxl.utils import column_index_from_string, coordinate_from_string
-
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -18,7 +13,7 @@ CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
 
 # to delete
-FILE = '/home/idanr/Desktop/ccru_sku.xlsx'
+FILE = '/home/idanr/Desktop/avocado.xlsx'
 TRUE = 0
 
 
@@ -51,7 +46,9 @@ class CCRU_SANDTopSKUAssortment:
         self._store_data = self.store_data
         self._product_data = self.product_data
         self.stores = {}
-        self.stores_without_dates = []
+        self.stores_with_invalid_dates = []
+        self.invalid_stores = []
+        self.invalid_products = []
         self.products = {}
         self.all_queries = []
         self.update_queries = []
@@ -195,12 +192,82 @@ class CCRU_SANDTopSKUAssortment:
         else:
             Log.info('{} - No products are configured as Top SKUs'.format(store_number))
 
-    def upload_top_sku_file(self):
+    def products_validator(self, raw_data):
+        """
+        This function check if there's a product in the template that doesn't exist in the DB
+        :param raw_data: The store assortment DF
+        :return: A fix DF without the invalid columns
+        """
+        data = raw_data.rename_axis(str.replace(' ', ' ', ''), axis=1)
+        products_from_template = data.columns.tolist()
+        products_from_template.remove(self.STORE_NUMBER)
+        products_from_template.remove(self.START_DATE)
+        products_from_template.remove(self.END_DATE)
+        for product in products_from_template:
+            product = str(product)
+            if product.count(','):
+                products = product.replace(' ', '').split(',')
+                for prod in products:
+                    if self._product_data.loc[self._product_data['product_ean_code'] == prod].empty:
+                        Log.warning("Product with ean code = {} does not exist in the DB")
+                        self.invalid_products.append(prod)
+                        data = data.drop(product, axis=1)
+            else:
+                if self._product_data.loc[self._product_data['product_ean_code'] == product].empty:
+                    Log.warning("Product with ean code = {} does not exist in the DB")
+                    self.invalid_products.append(product)
+                    try:
+                        data = data.drop(int(product), axis=1)
+                    except Exception as e:
+                        data = data.drop(product, axis=1)
+        return data
+
+    def store_row_validator(self, store_row):
+        """
+        This function validates each template row: It checks if the store exists in the DB and if the dates are exist
+        and logic (start date <= end date).
+        :return: True in case of a valid row, Else: False.
+        """
+        store_number_1 = store_row[self.STORE_NUMBER]
+        stores_start_date = store_row[self.START_DATE]
+        stores_end_date = store_row[self.END_DATE]
+        if self._store_data.loc[self._store_data['store_number'] == str(store_number_1)].empty:
+            Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
+            self.invalid_stores.append(store_number_1)
+            return False
+        if not stores_start_date or not stores_end_date:
+            Log.warning("Missing dates for store number {}".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+        if type(stores_start_date) in [str, unicode] or type(stores_end_date) in [str, unicode]:
+            Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+        if stores_start_date > stores_end_date:
+            Log.warning("Invalid dates for store number {}".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+
+        return True
+
+    def parse_and_validate(self):
+        """
+        This function gets the data from the excel file, validates it and return a valid DataFrame
+        :return: A  Dataframe with valid products
+        """
         raw_data = pd.read_excel(self.file_path)
-        raw_data = raw_data.drop_duplicates(subset='Store Number', keep='first')
+        raw_data = raw_data.drop_duplicates(subset=['Store Number', self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
+        raw_data.columns.str.replace(' ', '')
+        raw_data = self.products_validator(raw_data)
+        return raw_data
+
+    def upload_top_sku_file(self):
+        raw_data = self.parse_and_validate()
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
+            if not self.store_row_validator(store_raw_data):
+                continue
             store_data = {}
             columns = list(store_raw_data.keys())
             for column in columns:
@@ -347,6 +414,31 @@ class CCRU_SANDTopSKUAssortment:
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index+10**4])))
         return merged_queries
+
+ # def send_email(self):
+ #        """
+ #        This func sends an e-mail at the end of the top sku upload
+ #        """
+ #        email_subject = 'OSA Targets upload for project : {}'.format(PROJECT)
+ #
+ #        email_body = 'Hello,<br><br>' \
+ #                     'OSA Target upload is sucessfully done.' \
+ #                     ' generated on :{} , for project : {}. <br><br>' \
+ #                     '{}' \
+ #                     '<br>Sincerely,<br><br>' \
+ #                     'Simon<br><br>' \
+ #                     '' \
+ #                     'This report was made by Trax Professional Services'.format(self.date, group, {})
+ #        email_body = RU.add_ps_comment_to_email_bodies(email_body, comment=RU.ENGLISH)
+ #        #  add report name: url link (one line per report)
+ #        for report in self.reports.keys():
+ #            new_line = '{}<br><br>{}'.format(self.reports[report], {})
+ #            email_body = email_body.format(new_line)
+ #        email_body = email_body.format('')
+ #        mailer = MailerFactory.get_mailer(EmailUsers.TraxMailer)
+ #        email_body += mailer.standard_email_body_message(group)
+ #        receivers = mailer.get_receivers_from_groups(group)
+ #        mailer.send_email(receivers=receivers, email_body=email_body, subject=email_subject, project_name='hbcde')
 
 
 if __name__ == '__main__':
