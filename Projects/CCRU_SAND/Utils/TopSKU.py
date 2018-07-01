@@ -8,7 +8,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
 
-PROJECT = 'ccru'
+PROJECT = 'ccru-sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
@@ -174,12 +174,12 @@ class CCRU_SANDTopSKUAssortment:
                 products = product.replace(' ', '').split(',')
                 for prod in products:
                     if self._product_data.loc[self._product_data['product_ean_code'] == prod].empty:
-                        Log.warning("Product with ean code = {} does not exist in the DB")
+                        Log.warning("Product with ean code = {} does not exist in the DB".format(prod))
                         self.invalid_products.append(prod)
                         data = data.drop(product, axis=1)
             else:
                 if self._product_data.loc[self._product_data['product_ean_code'] == product].empty:
-                    Log.warning("Product with ean code = {} does not exist in the DB")
+                    Log.warning("Product with ean code = {} does not exist in the DB".format())
                     self.invalid_products.append(product)
                     try:
                         data = data.drop(int(product), axis=1)
@@ -395,3 +395,4 @@ if __name__ == '__main__':
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** -uc 1 or 0 to the configuration
+# # # At the end of the script there are logs with all of the invalid products, store numbers and dates
