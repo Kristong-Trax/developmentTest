@@ -179,7 +179,7 @@ class CCRU_SANDTopSKUAssortment:
                         data = data.drop(product, axis=1)
             else:
                 if self._product_data.loc[self._product_data['product_ean_code'] == product].empty:
-                    Log.warning("Product with ean code = {} does not exist in the DB".format())
+                    Log.warning("Product with ean code = {} does not exist in the DB".format(product))
                     self.invalid_products.append(product)
                     try:
                         data = data.drop(int(product), axis=1)
@@ -389,6 +389,7 @@ class CCRU_SANDTopSKUAssortment:
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index+10**4])))
         return merged_queries
+
 
 if __name__ == '__main__':
     LoggerInitializer.init('Top SKU CCRU-SAND')
