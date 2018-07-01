@@ -72,13 +72,13 @@ class Const(object):
             SUB_BRAND: 'Diageo Display Compliance Brand Variant %', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
             TOTAL: 'Shelf Facings - Total Score',
-            # NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
+            NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
             BRAND: 'Shelf Facings - Compliance Brand',
             SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
             TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand',
-            # NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
+            NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
             SUB_BRAND: 'Shelf Placement - Brand Variant', SKU: 'Shelf Placement - Brand Variant Size'},
         MSRP: {TOTAL: 'MSRP Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
@@ -111,7 +111,10 @@ class Const(object):
     COLUMNS_FOR_MENU = [FACINGS, BRAND, MANUFACTURER]
 
     EXTRA = "EXTRA"
-    OOS = "OOS"
-    DISTRIBUTED = "DISTRIBUTED"
+    OOS = "0"
+    DISTRIBUTED = "1"
     OTHER = "OTHER"
 
+    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
+    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
+    SURVEY_ANSWER = "Yes"

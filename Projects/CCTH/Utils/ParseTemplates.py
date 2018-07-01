@@ -82,6 +82,8 @@ class CCTHParseTemplates(CCTHKPIConsts):
     TEMPLATE_7_11_AFTER_JULY2017 = 'Template_7_11_after_July2017'
     TEMPLATE_7_11 = 'Template_7_11_2018'
     TEMPLATE_TT = 'Template_TT_2018'
+    TEMPLATE_7_11_AFTER_FEB2018 = 'Template_7_11_after_Feb2018'
+    TEMPLATE_TT_AFTER_FEB2018 = 'Template_TT_after_Feb2018'
 
     def __init__(self, template):
         self.template = template
@@ -106,7 +108,7 @@ class CCTHParseTemplates(CCTHKPIConsts):
 
     @strip_df
     def parse_gap(self):
-        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_NOV2017):
+        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_FEB2018, self.TEMPLATE_TT_AFTER_NOV2017):
             regions = pd.read_excel(self.template_path, self.gap_consts.SHEET_NAME, skiprows=3)
             regions_columns = self.padd_columns(regions.columns.tolist())
             template_data = pd.read_excel(self.template_path, self.gap_consts.SHEET_NAME, skiprows=4)
@@ -130,12 +132,12 @@ class CCTHParseTemplates(CCTHKPIConsts):
                 template_data[column] = new_columns[column]
             return template_data
 
-        elif self.template in (self.TEMPLATE_7_11, self.TEMPLATE_7_11_AFTER_JULY2017):
+        elif self.template in (self.TEMPLATE_7_11, self.TEMPLATE_7_11_AFTER_FEB2018, self.TEMPLATE_7_11_AFTER_JULY2017):
             return pd.read_excel(self.template_path, self.gap_consts.SHEET_NAME, skiprows=4)
 
     @strip_df
     def parse_availability(self):
-        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_NOV2017):
+        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_FEB2018, self.TEMPLATE_TT_AFTER_NOV2017):
             regions = pd.read_excel(self.template_path, self.availability_consts.SHEET_NAME, skiprows=3)
             regions_columns = self.padd_columns(regions.columns.tolist())
             template_data = pd.read_excel(self.template_path, self.availability_consts.SHEET_NAME, skiprows=4)
@@ -159,12 +161,12 @@ class CCTHParseTemplates(CCTHKPIConsts):
                 template_data[column] = new_columns[column]
             return template_data
 
-        elif self.template in (self.TEMPLATE_7_11, self.TEMPLATE_7_11_AFTER_JULY2017):
+        elif self.template in (self.TEMPLATE_7_11, self.TEMPLATE_7_11_AFTER_FEB2018, self.TEMPLATE_7_11_AFTER_JULY2017):
             return pd.read_excel(self.template_path, self.availability_consts.SHEET_NAME, skiprows=4)
 
     @strip_df
     def parse_survey(self):
-        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_NOV2017):
+        if self.template in (self.TEMPLATE_TT, self.TEMPLATE_TT_AFTER_FEB2018, self.TEMPLATE_TT_AFTER_NOV2017):
             regions = pd.read_excel(self.template_path, self.survey_consts.SHEET_NAME, skiprows=3)
             regions_columns = self.padd_columns(regions.columns.tolist())
             store_types = pd.read_excel(self.template_path, self.survey_consts.SHEET_NAME, skiprows=4)
