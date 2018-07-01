@@ -135,7 +135,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.project_capital = self.project.upper().replace('-', '_')
         self.user = os.environ.get('USER')
         self.project_short = self.project_capital.split('_')[0]
-        self.main_class_name = '{}Calculations'.format(self.project_short)
+        self.main_class_name = '{}Calculations'.format(self.project_capital)
         self.session_list = session_list
 
     def create_test_class(self):
@@ -203,7 +203,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'cckh'
+    project_to_test = 'heinzcr-sand'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()
