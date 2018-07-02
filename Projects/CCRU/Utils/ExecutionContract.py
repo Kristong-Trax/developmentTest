@@ -22,8 +22,6 @@ TEMPLATES_TEMP_PATH = os.getcwd()
 class CCRUContract:
 
     def __init__(self, rds_conn=None):
-        self.parsed_args = self.parse_arguments()
-        self.file_path = self.parsed_args.file
         self.static_data_extractor = CCRUTopSKUAssortment(rds_conn=rds_conn)
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
@@ -54,8 +52,10 @@ class CCRUContract:
         return data
 
     def parse_and_upload_file(self, skiprows=2):
-        kpi_weights = self.get_kpi_weights(self.file_path, kpi_row=skiprows, weight_row=skiprows-1)
-        raw_data = pd.read_excel(self.file_path, skiprows=skiprows).fillna('')
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
+        kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
+        raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
         raw_data['Start Date'] = raw_data['Start Date'].astype(str)
         raw_data['End Date'] = raw_data['End Date'].astype(str)
         if self.static_data_extractor.STORE_NUMBER not in raw_data.columns:
