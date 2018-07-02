@@ -21,9 +21,6 @@ END_DATE = 'End Date'
 class CCRU_SANDTopSKUAssortment:
 
     def __init__(self):
-        self.parsed_args = self.parse_arguments()
-        self.file_path = self.parsed_args.file
-        self.update_correlations = self.parsed_args.update_correlations
         self._rds_conn = self.rds_conn
         self._current_top_skus = self.current_top_skus
         self._store_data = self.store_data
@@ -165,7 +162,7 @@ class CCRU_SANDTopSKUAssortment:
         """
         duplicate_columns = []
         for col in raw_data.columns:
-            if col.count('.'):
+            if str(col).count('.'):
                 duplicate_columns.append(col)
         data = raw_data.drop(duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
@@ -220,13 +217,13 @@ class CCRU_SANDTopSKUAssortment:
 
         return True
 
-    def parse_and_validate(self):
+    def parse_and_validate(self, file_path):
         """
         This function gets the data from the excel file, validates it and return a valid DataFrame
         :return: A  Dataframe with valid products
         """
         Log.info("Starting to read and validate the template")
-        raw_data = pd.read_excel(self.file_path)
+        raw_data = pd.read_excel(file_path)
         raw_data = raw_data.drop_duplicates(subset=['Store Number', START_DATE, END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '')
@@ -234,7 +231,10 @@ class CCRU_SANDTopSKUAssortment:
         return raw_data
 
     def upload_top_sku_file(self):
-        raw_data = self.parse_and_validate()
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
+        update_correlations = parsed_args.update_correlations
+        raw_data = self.parse_and_validate(file_path)
         Log.info("Template's validation is done! Starting to prepare the data")
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
@@ -246,7 +246,7 @@ class CCRU_SANDTopSKUAssortment:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
         Log.info("Data's preparation and validation is done")
-        if self.update_correlations:
+        if update_correlations:
             self.update_correlations_func(data[0].keys())
         Log.info("Starting to prepare the queries")
         for store_data in data:
