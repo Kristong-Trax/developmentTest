@@ -543,8 +543,8 @@ class CCRU_SANDKPIToolBox:
                             atomic_score = self.calculate_score(atomic_res, child)
 
                         # write to DB
-                        attributes_for_table3 = self.create_attributes_for_level3_df(child, atomic_score, kpi_fk)
-                        self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
+                        attributes_for_level3 = self.create_attributes_for_level3_df(child, atomic_score, kpi_fk)
+                        self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
 # Sergey
                         atomic_result = attributes_for_level3['result']
                         if atomic_result.size > 0:
