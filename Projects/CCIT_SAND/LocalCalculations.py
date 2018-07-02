@@ -3,7 +3,7 @@
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Projects.CCIT_SAND.Calculations import Calculations
-# from Projects.CCIT_SAND.SceneCalculations import SceneCalculations
+# from Projects.CCIT_SAND.SceneKpis.SceneCalculations import SceneCalculations
 
 
 # if __name__ == '__main__':
