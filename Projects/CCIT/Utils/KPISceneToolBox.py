@@ -115,6 +115,7 @@ class CCITSceneToolBox:
         relevant_products = self.match_product_in_scene['product_fk'].drop_duplicates().values
         Log.info("Self products type: {}".format(type(self.products['product_fk'].values[0])))
         Log.info("Relevant products type: {}".format(type(relevant_products[0])))
+        self.products['product_fk'] = self.products.product_fk.astype(np.int64)
         products = self.products[self.products['product_fk'].isin(relevant_products)][
                                               'product_ean_code'].dropna()
 
