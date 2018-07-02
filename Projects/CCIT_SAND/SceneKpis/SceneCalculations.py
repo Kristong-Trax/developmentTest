@@ -1,4 +1,4 @@
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
+from Trax.Apps.Services.KEngine.Handlerpackage.Scripts import SceneBaseClass
 # from Projects.CCIT_SAND.KPIGenerator import Generator
 from Projects.CCIT_SAND.KPISceneGenerator import SceneGenerator
 
