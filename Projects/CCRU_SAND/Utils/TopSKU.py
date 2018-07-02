@@ -21,8 +21,9 @@ class CCRU_SANDTopSKUAssortment:
     START_DATE = 'Start Date'
     END_DATE = 'End Date'
 
-    def __init__(self):
-        self._rds_conn = self.rds_conn
+    def __init__(self, rds_conn=None):
+        if rds_conn is not None:
+            self._rds_conn = rds_conn
         self._current_top_skus = self.current_top_skus
         self._store_data = self.store_data
         self._product_data = self.product_data
