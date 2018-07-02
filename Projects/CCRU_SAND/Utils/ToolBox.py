@@ -84,7 +84,7 @@ class CCRU_SANDKPIToolBox:
         self.top_sku_queries = []
         self.gap_groups_limit = {'Availability': 2, 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
         self.execution_contract = CCRU_SANDContract(rds_conn=self.rds_conn)
-        self.top_sku = CCRU_SANDTopSKUAssortment(rds_conn=self.rds_conn)
+        self.top_sku = CCRU_SANDTopSKUAssortment()
         self.execution_results = {}
         self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
         self.kpi_score_level2 = {}
