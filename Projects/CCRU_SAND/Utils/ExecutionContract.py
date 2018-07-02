@@ -21,7 +21,7 @@ TEMPLATES_TEMP_PATH = os.getcwd()
 class CCRU_SANDContract:
 
     def __init__(self, rds_conn=None):
-        self.static_data_extractor = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
+        self.static_data_extractor = CCRU_SANDTopSKUAssortment()
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
 
