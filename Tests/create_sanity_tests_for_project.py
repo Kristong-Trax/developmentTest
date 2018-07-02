@@ -71,7 +71,7 @@ class SeedCreator:
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
         shutil.copy2(os.path.join(self.output_dir, self.seed_name),
-                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', self.seed_name))
+                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', 'Seeds', self.seed_name))
         Log.info('Done')
 
 
@@ -89,7 +89,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
+from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
 
 
@@ -119,7 +119,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         connector.disconnect_rds()
     
     @seeder.seed(["%(seed)s"], ProjectsSanityData())
-    def test_%(project)s_sanity(self):
+    def test_%(project)s_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['%(session_0)s']
@@ -172,7 +172,7 @@ class CreateTestDataProjectSanity:
         :return:  None
         """
         seed_data = """DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
+                        FILES_RELATIVE_PATH: ['Data/Seeds/{}_seed.sql.gz'],
                         PROJECT_NAME: project_name
                 """.format(self.project.replace('-', '_'))
         seed_data = '{' + seed_data
@@ -193,7 +193,7 @@ class ProjectsSanityData(BaseSeedData):
 """.format(self.user, self.project.replace('-', '_'), seed_data)
 
         data_class_path = \
-            ('/home/{0}/dev/kpi_factory/Tests/Data/test_data_{1}_sanity'.format(self.user,
+            ('/home/{0}/dev/kpi_factory/Tests/Data/TestData/test_data_{1}_sanity'.format(self.user,
                                                                                 self.project.replace('-', '_')))
 
         with open(data_class_path + '.py', 'wb') as f:
@@ -203,7 +203,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'diageoau-sand'
+    project_to_test = 'diageouk'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()
