@@ -9,8 +9,8 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
-from Tests.Data.diageoar_template import diageoar_template
-from Tests.Data.test_data_diageoar_sanity import ProjectsSanityData
+from Tests.Data.Templates.diageoar_template import diageoar_template
+from Tests.Data.TestData.test_data_diageoar_sanity import ProjectsSanityData
 from Projects.DIAGEOAR.Calculations import DIAGEOARDIAGEOARCalculations
 
 
