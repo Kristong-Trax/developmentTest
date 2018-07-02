@@ -9,8 +9,8 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
-from Tests.Data.ccus_template_cach_dunkin_donuts import dunkin_donuts_json
-from Tests.Data.test_data_ccus_sanity import ProjectsSanityData
+from Tests.Data.Templates.ccus_template_cach_dunkin_donuts import dunkin_donuts_json
+from Tests.Data.TestData.test_data_ccus_sanity import ProjectsSanityData
 from Projects.CCUS.Calculations import CCUSCalculations
 
 
