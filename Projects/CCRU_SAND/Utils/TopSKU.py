@@ -24,9 +24,6 @@ class CCRU_SANDTopSKUAssortment:
     def __init__(self, rds_conn=None):
         if rds_conn is not None:
             self._rds_conn = rds_conn
-        self._current_top_skus = self.current_top_skus
-        self._store_data = self.store_data
-        self._product_data = self.product_data
         self.stores = {}
         self.stores_with_invalid_dates = []
         self.invalid_stores = []
@@ -177,12 +174,12 @@ class CCRU_SANDTopSKUAssortment:
             if product.count(','):
                 products = product.replace(' ', '').split(',')
                 for prod in products:
-                    if self._product_data.loc[self._product_data['product_ean_code'] == prod].empty:
+                    if self.product_data.loc[self.product_data['product_ean_code'] == prod].empty:
                         Log.warning("Product with ean code = {} does not exist in the DB".format(prod))
                         self.invalid_products.append(prod)
                         data = data.drop(product, axis=1)
             else:
-                if self._product_data.loc[self._product_data['product_ean_code'] == product].empty:
+                if self.product_data.loc[self.product_data['product_ean_code'] == product].empty:
                     Log.warning("Product with ean code = {} does not exist in the DB".format(product))
                     self.invalid_products.append(product)
                     try:
@@ -197,10 +194,11 @@ class CCRU_SANDTopSKUAssortment:
         and logic (start date <= end date).
         :return: True in case of a valid row, Else: False.
         """
+        store_data = self.store_data
         store_number_1 = store_row[self.STORE_NUMBER]
         stores_start_date = store_row[self.START_DATE]
         stores_end_date = store_row[self.END_DATE]
-        if self._store_data.loc[self._store_data['store_number'] == str(store_number_1)].empty:
+        if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
             Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
             self.invalid_stores.append(store_number_1)
             return False
@@ -236,6 +234,7 @@ class CCRU_SANDTopSKUAssortment:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
         update_correlations = parsed_args.update_correlations
+
         raw_data = self.parse_and_validate(file_path)
         Log.info("Template's validation is done! Starting to prepare the data")
         data = []
