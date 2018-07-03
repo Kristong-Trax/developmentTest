@@ -31,6 +31,9 @@ class PNGAMERICAGENERALToolBox:
 
     MM_TO_FEET_CONVERSION = 0.0032808399
 
+    FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
+    PG_CATEGORY = 'PG_CATEGORY'
+
     def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.rds_conn = rds_conn
@@ -230,7 +233,7 @@ class PNGAMERICAGENERALToolBox:
             space_length = 0
         return space_length
 
-    def calculate_category_space(self, kpi_name, threshold=0.5, retailer=None, **filters):
+    def calculate_category_space(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False,**filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -250,9 +253,13 @@ class PNGAMERICAGENERALToolBox:
                                                          (scene_matches['stacking_layer'] == 1) &
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
-                    tested_group_linear = self.calculate_share_space_length(**scene_filters)
-                    if tested_group_linear:
-                        bay_ratio = bay_total_linear / float(tested_group_linear)
+                    tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
+                    if exclude_pl:
+                        tested_group_linear = tested_group_linear.loc[(tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
+                    tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
+                    # tested_group_linear = self.calculate_share_space_length(**scene_filters)
+                    if tested_group_linear_value:
+                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
                     else:
                         bay_ratio = 0
                     if bay_ratio >= threshold:
@@ -266,17 +273,52 @@ class PNGAMERICAGENERALToolBox:
                             self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
                             self.average_shelf_values[kpi_name]['num_of_bays'] += 1
                         if bay_num_of_shelves:
-                            bay_final_linear_value = tested_group_linear / float(bay_num_of_shelves)
+                            bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
                         else:
                             bay_final_linear_value = 0
                         bay_values.append(bay_final_linear_value)
                         space_length += bay_final_linear_value
-                if retailer == 'CVS':
-                    space_length = sum([3 for value in bay_values if value > 0])
-                else:
-                    if (sum([value for value in bay_values if value > 0]) /
-                            float(len([value for value in bay_values if value > 0]))) < 3.5:
+                if retailer in ['CVS', 'Walgreens']:
+                    if (sum([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]) /
+                            float(len([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]))) < 3.2:
                         space_length = sum([3 for value in bay_values if value > 0])
+                else:
+                    space_length = sum([4 for value in bay_values if value*self.MM_TO_FEET_CONVERSION > 1.5])
+        except Exception as e:
+            Log.info('Linear Feet calculation failed due to {}'.format(e))
+            space_length = 0
+
+        return space_length
+
+    def calculate_share_space_length_new(self, threshold=0.5, retailer=None, exclude_pl=False,**filters):
+        """
+        :param threshold: The ratio for a bay to be counted as part of a category.
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        try:
+            filtered_scif = self.scif[
+                self.get_filter_condition(self.scif, **filters)]
+            space_length = 0
+            for scene in filtered_scif['scene_fk'].unique().tolist():
+                scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+                scene_filters = filters
+                scene_filters['scene_fk'] = scene
+                for bay in scene_matches['bay_number'].unique().tolist():
+                    bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
+                                                         (scene_matches['stacking_layer'] == 1) &
+                                                         (scene_matches['status'] == 1)]['width_mm_advance'].sum()
+                    scene_filters['bay_number'] = bay
+                    tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
+                    if exclude_pl:
+                        tested_group_linear = tested_group_linear.loc[(tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
+                    tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
+                    if tested_group_linear_value:
+                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
+                    else:
+                        bay_ratio = 0
+                    if bay_ratio >= threshold:
+                        space_length += tested_group_linear_value
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
@@ -1105,7 +1147,7 @@ class PNGAMERICAGENERALToolBox:
         :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
         """
         filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
+        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique().tolist()
         if tested_scenes:
             pass_counter = []
             for scene in tested_scenes:
