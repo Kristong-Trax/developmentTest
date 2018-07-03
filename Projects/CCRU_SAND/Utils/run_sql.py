@@ -13,7 +13,7 @@ class RunSql:
 
     def run_it(self):
         statement_1 = """
-                        UPDATE `static`.`atomic_kpi` SET `name`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L', `description`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L', `display_text`='Tea Display: Lead SKU Fuze Berry/Lemon - 1L' WHERE `pk`='3256';
+                        DELETE FROM `static`.`atomic_kpi` WHERE `pk`>='4695';
 
                                                """
 
@@ -25,7 +25,7 @@ class RunSql:
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru']:
+    for project in ['ccru-sand']:
         print 'start project: ' + str(project)
         sql_to_run = RunSql(project)
         sql_to_run.run_it()
