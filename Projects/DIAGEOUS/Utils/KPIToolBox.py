@@ -11,6 +11,7 @@ from Projects.DIAGEOUS.Utils.Fetcher import Queries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 # from KPIUtils_v2.DIAGEOUSCalculations.AvailabilityDIAGEOUSCalculations import Availability
 # from KPIUtils_v2.DIAGEOUSCalculations.NumberOfScenesDIAGEOUSCalculations import NumberOfScenes
@@ -44,14 +45,17 @@ class DIAGEOUSToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.get_state()
-        self.sub_brands = self.get_sub_brands()
+        # self.sub_brands = self.get_sub_brands()
+        self.sub_brands = self.ps_data.get_custom_entities(1002)
         # this function is temporary
-        self.refresh_sub_brands()
-        #
-        self.result_values = self.get_result_values()
-        self.products_with_prices = self.get_products_prices()
+        # self.refresh_sub_brands()
+        self.result_values = self.ps_data.get_result_values()
+        self.products_with_prices = self.ps_data.get_products_prices()
+        # self.result_values = self.get_result_values()
+        # self.products_with_prices = self.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
@@ -61,7 +65,8 @@ class DIAGEOUSToolBox:
         self.get_templates()
         self.kpi_results_queries = []
         if self.on_premise:
-            self.sales_data = self.get_sales_data()
+            # self.sales_data = self.get_sales_data()
+            self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
                                                                    target_answer=Const.SURVEY_ANSWER)
         else:
@@ -491,7 +496,7 @@ class DIAGEOUSToolBox:
         score = 100 if result / 100 >= target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=result, score=score, weight=weight * 100,
+            denominator_result=den_res, result=score, score=score, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target * 100,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight, 0, 0
@@ -542,7 +547,7 @@ class DIAGEOUSToolBox:
         score = 100 if (diageo_results >= target * den_res) else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target * 100,
-            denominator_result=den_res, result=diageo_result, should_enter=True, weight=weight * 100, score=score,
+            denominator_result=den_res, result=score, should_enter=True, weight=weight * 100, score=score,
             identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
         return score * weight, 0, 0
 
@@ -775,22 +780,17 @@ class DIAGEOUSToolBox:
         min_max_shleves = self.templates[Const.MINIMUM_SHELF_SHEET]
         shelf_from_bottom = match_product_line['shelf_number_from_bottom']
         scene = match_product_line['scene_fk']
-        shelf_groups_for_scene = min_max_shleves[
-            (min_max_shleves[Const.NUM_SHLEVES_MIN] <= self.scenes_with_shelves[scene]) &
-            (min_max_shleves[Const.NUM_SHLEVES_MAX] >= self.scenes_with_shelves[scene])]
-        group_for_product = shelf_groups_for_scene[shelf_groups_for_scene[
-            Const.SHELVES_FROM_BOTTOM] == shelf_from_bottom]
-        if group_for_product.empty:
-            group_names = [Const.OTHER]
-        else:
-            group_names = group_for_product[Const.SHELF_NAME].tolist()
+        if shelf_from_bottom > len(min_max_shleves):
+            shelf_from_bottom = len(min_max_shleves)
+        amount_of_shelves = self.scenes_with_shelves[scene] \
+            if self.scenes_with_shelves[scene] <= len(min_max_shleves.columns) else len(min_max_shleves.columns)
+        group_for_product = min_max_shleves[amount_of_shelves].iloc[shelf_from_bottom - 1]
         if "ALL" in shelf_groups:
-            answer_couple = 1, group_names[0]
+            answer_couple = 1, group_for_product
         else:
-            answer_couple = 0, group_names[0]
-            common_shelves = set(group_names) & set(shelf_groups)
-            if common_shelves:
-                answer_couple = 1, common_shelves.pop()
+            answer_couple = 0, group_for_product
+            if group_for_product in shelf_groups:
+                answer_couple = 1, group_for_product
         return answer_couple
 
     # msrp:
