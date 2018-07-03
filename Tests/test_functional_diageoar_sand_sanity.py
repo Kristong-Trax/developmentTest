@@ -7,9 +7,11 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
+from mock import patch
 
-from Tests.Data.TestData.test_data_sanofiau_sanity import ProjectsSanityData
-from Projects.SANOFIAU.Calculations import SANOFIAUCalculations
+from Tests.Data.Templates.diageoar_sand_template import diageoar_sand_template
+from Tests.Data.TestData.test_data_diageoar_sand_sanity import ProjectsSanityData
+from Projects.DIAGEOAR_SAND.Calculations import DIAGEOARCalculations
 
 
 __author__ = 'yoava'
@@ -36,14 +38,17 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
-    @seeder.seed(["sanofiau_seed"], ProjectsSanityData())
-    def test_sanofiau_sanity(self):
+
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud', return_value='2018-01-01')
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('Projects.DIAGEOAR_SAND.Utils.ToolBox.DIAGEOToolBox.download_template', return_value=diageoar_sand_template)
+    @seeder.seed(["diageoar_sand_seed"], ProjectsSanityData())
+    def test_diageoar_sand_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['BE46D874-7AC4-4769-B51F-4856BAB29DBB']
+        sessions = ['4a4a84cf-ad79-416f-bc6d-562d26e07aca']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            SANOFIAUCalculations(data_provider, output).run_project_calculations()
+            DIAGEOARCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
