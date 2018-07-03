@@ -24,7 +24,7 @@ class SANOFIRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofiru'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '7763E8B8-AEC9-404F-B8BB-FA0563DD1A11'
+#     session = '80938B10-0E88-4D82-9E23-D516C7463C56'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIRUCalculations(data_provider, output).run_project_calculations()
