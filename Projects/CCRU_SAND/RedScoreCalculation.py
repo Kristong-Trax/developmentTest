@@ -119,7 +119,7 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 
         self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('CCRU calculations')
 #     Config.init()

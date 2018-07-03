@@ -214,12 +214,14 @@ class MARSINToolBox(MARSINTemplateConsts, MARSINKPIConsts):
                                                 level=self.LEVEL2)
                     if kpi_group not in group_scores.keys():
                         group_scores[kpi_group] = [0, 0]
-                    if number_of_atomics != 0 or number_of_passed_atomics != 0:
-                        if kpi_type == self.AVAILABILITY:
-                            group_scores[kpi_group][0] += kpi_score
-                        else:
-                            group_scores[kpi_group][0] += new_atomic
-                        group_scores[kpi_group][1] += 1
+                    # this line was commented out according to Nakul's request in 2/7 that we will count KPIS even if
+                    # there is no product in the db
+                    # if number_of_atomics != 0 or number_of_passed_atomics != 0:
+                    if kpi_type == self.AVAILABILITY:
+                        group_scores[kpi_group][0] += kpi_score
+                    else:
+                        group_scores[kpi_group][0] += new_atomic
+                    group_scores[kpi_group][1] += 1
         for group_name in group_scores:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == group_name]['kpi_set_fk'].values[0]
             actual_points, max_points = group_scores[group_name]

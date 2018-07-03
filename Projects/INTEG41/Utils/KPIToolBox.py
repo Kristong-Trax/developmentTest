@@ -207,11 +207,12 @@ class INTEG41ToolBox:
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=total_store_score,
             identifier_result=self.common.get_dictionary(name=INTEG41Const.TOTAL), score=total_store_score)
         if segment_kpi_fk and national_kpi_fk:
+            nothing = self.get_pks_of_result(' ')
             self.common.write_to_db_result(
-                fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=segment_store_score,
+                fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=nothing,
                 identifier_result=self.common.get_dictionary(name=INTEG41Const.SEGMENT), score=segment_store_score)
             self.common.write_to_db_result(
-                fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=national_store_score,
+                fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=nothing,
                 identifier_result=self.common.get_dictionary(name=INTEG41Const.NATIONAL), score=national_store_score)
 
     def calculate_set(self, kpi_line):
