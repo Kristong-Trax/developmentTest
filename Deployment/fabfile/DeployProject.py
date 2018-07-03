@@ -27,6 +27,7 @@ class ProjectDeploy(ProjectDeployment):
                 print "root path={}".format(root_path)
                 copy_to_ace_live(sdk_factory_git_folder, ace_live_git_folder, kpi_factory_git_folder,
                                  converted_project_name)
+                ProjectDeployment.delete_pyc_files(ace_live_git_folder)
                 ProjectValidator.modules_checkup(root_path)
                 kpi_tag = ProjectDeploy.push_factory_new_tag(converted_project_name, kpi_repo)
                 ProjectDeploy.upload_to_live_git(ace_live_git_folder, ace_live_repo,
@@ -55,5 +56,5 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    ProjectDeploy.deploy(project="batru")
+    ProjectDeploy.deploy(project="americas-demo")
     pass
