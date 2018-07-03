@@ -1,7 +1,6 @@
 import os
 
 import MySQLdb
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 
 from Trax.Utils.Testing.Case import MockingTestCase
 
@@ -10,15 +9,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
-from Projects.INBEVTRADMX.Calculations import INBEVTRADMXCalculations as inbevtradmxcalc
-from Projects.INBEVTRADMX.Utils.KPIToolBox import INBEVTRADMXToolBox
-from Tests.Data.ccus_template_cach_dunkin_donuts import dunkin_donuts_json
 # from Projects.RIPETCAREUK_PROD.Calculation import MarsUkCalculations
-from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSCalculations as ccbottlersus_calc
-from Projects.CCRU.RedScoreCalculation import CCRUCalculations as ccru_calc
-from Projects.CCZA.Calculations import CCZACalculations as ccza_calc
-from Projects.CCUS.Calculations import CCUSCalculations as ccus_calc
-from Projects.PNGAMERICA.Calculations import PNGAMERICACalculations as pngamerica_calc
 # from Projects.DIAGEOZA.Calculations import DIAGEOZACalculations as diageoza_calc
 # from Projects.DIAGEOGTR.Calculations import DIAGEOGTRDIAGEOGTRCalculations as diageogtr_calc
 # from Projects.DIAGEOGTR.Utils.ToolBox import DIAGEOGTRDIAGEOGTRDIAGEOToolBox as Toolbox
@@ -35,8 +26,6 @@ from Projects.PNGAMERICA.Calculations import PNGAMERICACalculations as pngameric
 # from Projects.DIAGEOPT.Calculations import DIAGEOPTCalculations as diageopt_calc
 # from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations as diageoke_calc
 # from Projects.PNGJP.Calculations import PNGJPCalculations as pngcalc
-from Projects.MARSRU_PROD.MARSRUCalculation import MARSRU_PRODMARSRUCalculations as marsru_calc
-from Tests.Data.test_data_project_sanity import ProjectsSanityData
 
 __author__ = 'idanr'
 

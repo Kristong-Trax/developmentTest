@@ -8,7 +8,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.test_data_inbevtradmx_sanity import ProjectsSanityData
+from Tests.Data.TestData.test_data_inbevtradmx_sanity import ProjectsSanityData
 from Projects.INBEVTRADMX.Calculations import INBEVTRADMXCalculations
 
 
@@ -41,7 +41,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
     def test_inbevtradmx_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['b499c7b2-5d9e-4fd1-9f8b-f6defd0dbfcf']
+        sessions = ['c0d75d3b-2bdf-436d-868b-4870e754d2fb']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

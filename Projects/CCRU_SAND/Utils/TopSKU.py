@@ -12,22 +12,18 @@ PROJECT = 'ccru-sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
-STORE_NUMBER = 'Store Number'
-PRODUCT_EAN_CODE = 'Product EAN'
-START_DATE = 'Start Date'
-END_DATE = 'End Date'
+
 
 
 class CCRU_SANDTopSKUAssortment:
+    STORE_NUMBER = 'Store Number'
+    PRODUCT_EAN_CODE = 'Product EAN'
+    START_DATE = 'Start Date'
+    END_DATE = 'End Date'
 
-    def __init__(self):
-        self.parsed_args = self.parse_arguments()
-        self.file_path = self.parsed_args.file
-        self.update_correlations = self.parsed_args.update_correlations
-        self._rds_conn = self.rds_conn
-        self._current_top_skus = self.current_top_skus
-        self._store_data = self.store_data
-        self._product_data = self.product_data
+    def __init__(self, rds_conn=None):
+        if rds_conn is not None:
+            self._rds_conn = rds_conn
         self.stores = {}
         self.stores_with_invalid_dates = []
         self.invalid_stores = []
@@ -124,14 +120,14 @@ class CCRU_SANDTopSKUAssortment:
 
     def update_db_from_json(self, data):
         products = set()
-        store_number = data.pop(STORE_NUMBER, None)
+        store_number = data.pop(self.STORE_NUMBER, None)
         if store_number is None:
-            Log.warning("'{}' is required in data".format(STORE_NUMBER))
+            Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
             return
         store_fk = self.get_store_fk(store_number)
-        start_date = data.pop(START_DATE, None)
+        start_date = data.pop(self.START_DATE, None)
         start_date_minus_day = start_date.date() - timedelta(1)
-        end_date = data.pop(END_DATE, None)
+        end_date = data.pop(self.END_DATE, None)
         for key in data.keys():
             validation = False
             if not data[key]:
@@ -165,25 +161,25 @@ class CCRU_SANDTopSKUAssortment:
         """
         duplicate_columns = []
         for col in raw_data.columns:
-            if col.count('.'):
+            if str(col).count('.'):
                 duplicate_columns.append(col)
         data = raw_data.drop(duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
         products_from_template = data.columns.tolist()
-        products_from_template.remove(STORE_NUMBER)
-        products_from_template.remove(START_DATE)
-        products_from_template.remove(END_DATE)
+        products_from_template.remove(self.STORE_NUMBER)
+        products_from_template.remove(self.START_DATE)
+        products_from_template.remove(self.END_DATE)
         for product in products_from_template:
             product = str(product)
             if product.count(','):
                 products = product.replace(' ', '').split(',')
                 for prod in products:
-                    if self._product_data.loc[self._product_data['product_ean_code'] == prod].empty:
+                    if self.product_data.loc[self.product_data['product_ean_code'] == prod].empty:
                         Log.warning("Product with ean code = {} does not exist in the DB".format(prod))
                         self.invalid_products.append(prod)
                         data = data.drop(product, axis=1)
             else:
-                if self._product_data.loc[self._product_data['product_ean_code'] == product].empty:
+                if self.product_data.loc[self.product_data['product_ean_code'] == product].empty:
                     Log.warning("Product with ean code = {} does not exist in the DB".format(product))
                     self.invalid_products.append(product)
                     try:
@@ -198,10 +194,11 @@ class CCRU_SANDTopSKUAssortment:
         and logic (start date <= end date).
         :return: True in case of a valid row, Else: False.
         """
-        store_number_1 = store_row[STORE_NUMBER]
-        stores_start_date = store_row[START_DATE]
-        stores_end_date = store_row[END_DATE]
-        if self._store_data.loc[self._store_data['store_number'] == str(store_number_1)].empty:
+        store_data = self.store_data
+        store_number_1 = store_row[self.STORE_NUMBER]
+        stores_start_date = store_row[self.START_DATE]
+        stores_end_date = store_row[self.END_DATE]
+        if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
             Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
             self.invalid_stores.append(store_number_1)
             return False
@@ -220,21 +217,25 @@ class CCRU_SANDTopSKUAssortment:
 
         return True
 
-    def parse_and_validate(self):
+    def parse_and_validate(self, file_path):
         """
         This function gets the data from the excel file, validates it and return a valid DataFrame
         :return: A  Dataframe with valid products
         """
         Log.info("Starting to read and validate the template")
-        raw_data = pd.read_excel(self.file_path)
-        raw_data = raw_data.drop_duplicates(subset=['Store Number', START_DATE, END_DATE], keep='first')
+        raw_data = pd.read_excel(file_path)
+        raw_data = raw_data.drop_duplicates(subset=['Store Number', self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '')
         raw_data = self.products_validator(raw_data)
         return raw_data
 
     def upload_top_sku_file(self):
-        raw_data = self.parse_and_validate()
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
+        update_correlations = parsed_args.update_correlations
+
+        raw_data = self.parse_and_validate(file_path)
         Log.info("Template's validation is done! Starting to prepare the data")
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
@@ -246,7 +247,7 @@ class CCRU_SANDTopSKUAssortment:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
         Log.info("Data's preparation and validation is done")
-        if self.update_correlations:
+        if update_correlations:
             self.update_correlations_func(data[0].keys())
         Log.info("Starting to prepare the queries")
         for store_data in data:
