@@ -111,7 +111,9 @@ class CCITSceneToolBox:
             self.store_type + self.SKU_TYPE_SUFFIX] != self.OUT_TYPE][['ean_code', self.store_type + self.POINTS_SUFFIX,
                                                                        self.store_type + self.SKU_TYPE_SUFFIX]].\
             drop_duplicates()
-        products_in_scene = pd.to_numeric(self.products['product_ean_code'].dropna()).values
+        products_in_scene = self.match_product_in_scene['product_fk'].values
+        products_in_scene = pd.to_numeric(self.products[self.products['product_fk'].isin(products_in_scene)][
+                                              'product_ean_code'].dropna()).values
         relevant_store_info['dist'] = 0
         relevant_store_info.loc[relevant_store_info['ean_code'].isin(products_in_scene), 'dist'] = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('fulfillment_SKUs_score')
