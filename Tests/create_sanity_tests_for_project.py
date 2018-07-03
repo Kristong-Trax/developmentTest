@@ -119,7 +119,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         connector.disconnect_rds()
     
     @seeder.seed(["%(seed)s"], ProjectsSanityData())
-    def test_%(project)s_sanity(self):
+    def test_%(project)s_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['%(session_0)s']
@@ -203,7 +203,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'inbevtradmx'
+    project_to_test = 'diageobenelux-sand'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()

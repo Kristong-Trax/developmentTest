@@ -9,9 +9,9 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
-from Tests.Data.Templates.ccus_template_cach_dunkin_donuts import dunkin_donuts_json
-from Tests.Data.TestData.test_data_ccus_sanity import ProjectsSanityData
-from Projects.CCUS.Calculations import CCUSCalculations
+from Tests.Data.Templates.diageomx_template import diageomx_template
+from Tests.Data.TestData.test_data_diageomx_sanity import ProjectsSanityData
+from Projects.DIAGEOMX.Calculations import DIAGEOMXCalculations
 
 
 __author__ = 'yoava'
@@ -39,16 +39,18 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.CCUS.Utils.ToolBox.ToolBox.get_latest_directory_date_from_cloud', return_value='2018-01-01')
-    @patch('Projects.CCUS.Utils.ToolBox.ToolBox.save_latest_templates')
-    @patch('Projects.CCUS.Utils.ToolBox.ToolBox.download_template', return_value=dunkin_donuts_json)
-    @seeder.seed(["ccus_seed"], ProjectsSanityData())
-    def test_ccus_sanity(self, x, y, json):
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.get_latest_directory_date_from_cloud',
+           return_value='2018-05-18')
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.save_latest_templates')
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.download_template',
+           return_value=diageomx_template)
+    @seeder.seed(["diageomx_seed"], ProjectsSanityData())
+    def test_diageomx_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['327d4acd-25be-4e8b-883c-b3e767f246fa']
+        sessions = ['CB67084F-61D5-4D60-9E90-479A0F65C17C']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            CCUSCalculations(data_provider, output).run_project_calculations()
+            DIAGEOMXCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
