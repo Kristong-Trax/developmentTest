@@ -207,10 +207,10 @@ class DIAGEOUSToolBox:
             identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=round(total_store_score, 2))
         if segment_kpi_fk and national_kpi_fk:
             self.common.write_to_db_result(
-                fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=segment_store_score,
+                fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
                 identifier_result=self.common.get_dictionary(name=Const.SEGMENT), score=round(segment_store_score, 2))
             self.common.write_to_db_result(
-                fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=national_store_score,
+                fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
                 identifier_result=self.common.get_dictionary(name=Const.NATIONAL), score=round(national_store_score, 2))
 
     def calculate_set(self, kpi_line):
