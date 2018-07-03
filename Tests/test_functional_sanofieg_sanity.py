@@ -7,11 +7,9 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
-from mock import patch
 
-from Tests.Data.Templates.diageoie_sand_template import diageoie_sand_template
-from Tests.Data.TestData.test_data_diageoie_sand_sanity import ProjectsSanityData
-from Projects.DIAGEOIE_SAND.Calculations import DIAGEOIECalculations
+from Tests.Data.TestData.test_data_sanofieg_sanity import ProjectsSanityData
+from Projects.SANOFIEG.Calculations import SANOFIEGCalculations
 
 
 __author__ = 'yoava'
@@ -38,19 +36,14 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-    @patch('Projects.DIAGEOIE_SAND.Utils.ToolBox.DIAGEOIE_SANDDIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-05-18')
-    @patch('Projects.DIAGEOIE_SAND.Utils.ToolBox.DIAGEOIE_SANDDIAGEOToolBox.save_latest_templates')
-    @patch('Projects.DIAGEOIE_SAND.Utils.ToolBox.DIAGEOIE_SANDDIAGEOToolBox.download_template',
-           return_value=diageoie_sand_template)
-    @seeder.seed(["diageoie_sand_seed"], ProjectsSanityData())
-    def test_diageoie_sand_sanity(self, x, y, json):
+    
+    @seeder.seed(["sanofieg_seed"], ProjectsSanityData())
+    def test_sanofieg_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['1686f48f-7d15-11e7-9320-126e75b6b8c8']
+        sessions = ['A3866BD5-DA33-4812-8580-0A22211F747F']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            DIAGEOIECalculations(data_provider, output).run_project_calculations()
+            SANOFIEGCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
