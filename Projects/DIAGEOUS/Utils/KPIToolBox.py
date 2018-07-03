@@ -47,15 +47,12 @@ class DIAGEOUSToolBox:
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.state = self.get_state()
-        # self.sub_brands = self.get_sub_brands()
+        self.state = self.ps_data.get_state_name()
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         # this function is temporary
         # self.refresh_sub_brands()
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
-        # self.result_values = self.get_result_values()
-        # self.products_with_prices = self.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
@@ -65,7 +62,6 @@ class DIAGEOUSToolBox:
         self.get_templates()
         self.kpi_results_queries = []
         if self.on_premise:
-            # self.sales_data = self.get_sales_data()
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
                                                                    target_answer=Const.SURVEY_ANSWER)
@@ -82,16 +78,6 @@ class DIAGEOUSToolBox:
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
     # initialize:
-
-    def get_sales_data(self):
-        """
-        returns the list of the sub_brands relevant for the store and date
-        :return: list of strings
-        """
-        query = self.fetcher.get_sales_data(self.store_id, self.visit_date)
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        products_list = df['product_fk'].tolist()
-        return products_list
 
     def get_sub_brands(self):
         """
@@ -156,35 +142,6 @@ class DIAGEOUSToolBox:
                 else:
                     self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
                                                           keep_default_na=False)
-
-    def get_state(self):
-        """
-        :return: state_fk
-        """
-        if not self.data_provider[Data.STORE_INFO]['state_fk'][0]:
-            Log.error("session '{}' does not have a state".format(self.session_uid))
-            return Const.OTHER
-        query = self.fetcher.get_state().format(self.data_provider[Data.STORE_INFO]['state_fk'][0])
-        state = pd.read_sql_query(query, self.rds_conn.db)
-        return state.values[0][0]
-
-    def get_result_values(self):
-        """
-        gets the static.kpi_result_value table from DB
-        :return: DF
-        """
-        query = self.fetcher.get_result_values()
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        return df
-
-    def get_products_prices(self):
-        """
-        Gets all the session's products and prices from DB
-        :return:
-        """
-        query = self.fetcher.get_prices_dataframe().format(self.session_uid)
-        products_with_prices = pd.read_sql_query(query, self.rds_conn.db)
-        return products_with_prices[~products_with_prices['price_value'].isnull()]
 
     # main functions:
 
@@ -334,6 +291,8 @@ class DIAGEOUSToolBox:
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
+        if self.all_products[self.all_products['product_fk'] == product_fk].empty:
+            return None
         brand, sub_brand = self.get_product_details(product_fk)
         facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
@@ -473,14 +432,16 @@ class DIAGEOUSToolBox:
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[(self.scif_without_emptys['scene_id'].isin(relevant_scenes)) &
                                                  (self.scif_without_emptys['product_type'] == 'POS')]
-        all_sub_brands = relevant_scif['sub_brand'].unique().tolist()
         all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
         den_res = relevant_scif['facings'].sum()
         diageo_facings = 0
-        for sub_brand_name in all_sub_brands:
-            num_res = relevant_scif[relevant_scif['sub_brand'] == sub_brand_name]['facings'].sum()
+        for products in relevant_scif[['sub_brand', 'brand_fk']].drop_duplicates().itertuples():
+            sub_brand = products.sub_brand
+            brand_fk = products.brand_fk
+            num_res = relevant_scif[(relevant_scif['sub_brand'] == sub_brand) &
+                                    (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
             result = self.get_score(num_res, den_res)
-            sub_brand_fk = self.get_sub_brand_fk(sub_brand_name)
+            sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
             self.common.write_to_db_result(
                 fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
                 result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
@@ -945,16 +906,18 @@ class DIAGEOUSToolBox:
         if not sub_brand:
             sub_brand_fk = None
         else:
-            sub_brand_fk = self.get_sub_brand_fk(sub_brand)
+            sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand)
         return brand, sub_brand_fk
 
-    def get_sub_brand_fk(self, sub_brand):
+    def get_sub_brand_fk(self, sub_brand, brand_fk):
         """
         takes sub_brand and returns its pk
         :param sub_brand: str
-        :return: int
+        :param brand_fk: we need it for the parent_id (different brands can have common sub_brand)
+        :return: pk
         """
-        sub_brand_line = self.sub_brands[self.sub_brands['name'] == sub_brand]
+        sub_brand_line = self.sub_brands[(self.sub_brands['name'] == sub_brand) &
+                                         (self.sub_brands['parent_id'] == brand_fk)]
         if sub_brand_line.empty:
             return None
         else:
