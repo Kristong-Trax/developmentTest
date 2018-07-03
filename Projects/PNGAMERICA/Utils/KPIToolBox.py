@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -161,6 +163,13 @@ class PNGAMERICAToolBox:
                                   'FEM CARE': pd.read_excel(GOLDEN_PATH, 'FEM CARE')}
         self.related_kpi_results = {}
         self.block_results = {}
+        self.ps_dataprovider = PsDataProvider(data_provider, output)
+        self.scif = self._filter_excluded_scene()
+
+    def _filter_excluded_scene(self):
+        excluded_scenes_df = self.ps_dataprovider.get_excluded_scenes()
+        mask = self.scif['scene_id'].isin(excluded_scenes_df['pk'])
+        return self.scif[~mask]
 
     def get_kpi_static_data(self):
         """
