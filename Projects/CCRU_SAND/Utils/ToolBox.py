@@ -1246,6 +1246,11 @@ class CCRU_SANDKPIToolBox:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2')
             set_total_res += round(score) * p.get('KPI Weight')
+# Sergey 1 Begin
+            atomic_result = attributes_for_level3['result']
+            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
+# Sergey 1 End
         return set_total_res
 
     def calculate_facings_sos(self, params):
