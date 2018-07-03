@@ -2618,6 +2618,8 @@ class CCRU_SANDKPIToolBox:
                     threshold = 0
             else:
                 result = threshold = 0
+        if atomic_kpi_fk is None:
+            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(params.get('KPI name Eng'))
         if params.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
                                                    self.session_uid, self.set_name, self.store_id,
