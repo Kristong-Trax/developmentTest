@@ -243,7 +243,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['count of']:
+                # if kpi_type not in ['category space']:
                 #         # ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
                 #         #             'average shelf',
                 #         #             'regular block', 'block in block']:
@@ -1706,7 +1706,8 @@ class PNGAMERICAToolBox:
                     result = self.tools.calculate_category_space(new_kpi_name, exclude_pl=exclude_pl_wo_pg_category,
                                                                  **filters)
                     filters['category'] = kpi_template['category']
-                    score = result * self.MM_TO_FEET_CONVERSION
+                    # score = result * self.MM_TO_FEET_CONVERSION
+                    score = result
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score,
                                             score=score)
             else:
@@ -1717,7 +1718,8 @@ class PNGAMERICAToolBox:
                     del filters['category']
                 result = self.tools.calculate_category_space(new_kpi_name, exclude_pl=exclude_pl_wo_pg_category, **filters)
                 filters['category'] = kpi_template['category']
-                score = result * self.MM_TO_FEET_CONVERSION
+                # score = result * self.MM_TO_FEET_CONVERSION
+                score = result
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
 
     @kpi_runtime()
