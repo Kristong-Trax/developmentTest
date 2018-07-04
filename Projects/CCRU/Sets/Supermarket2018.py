@@ -5,7 +5,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 
-from Projects.CCRU.Utils.JSON import JsonGenerator
+from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 from KPIUtils.Utils.Helpers.LogHandler import log_handler
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -19,7 +19,7 @@ __author__ = 'urid'
 SUPERMARKET_2018 = 'Pos 2018 - MT - Supermarket'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
-
+SPIRITS = 'Spirits 2018 - MT - Supermarket'
 
 class CCRUSupermarket2018Calculations:
     def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
@@ -48,7 +48,7 @@ class CCRUSupermarket2018Calculations:
 
     @log_handler.log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        jg = JsonGenerator('ccru')
+        jg = CCRUJsonGenerator('ccru')
         jg.create_json('Supermarket PoS 2018.xlsx', SUPERMARKET_2018)
 
         calc_start_time = datetime.datetime.utcnow()
@@ -71,15 +71,20 @@ class CCRUSupermarket2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', SUPERMARKET_2018)
+# Sergey
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=SUPERMARKET_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
 
-        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018'), (MARKETING, 'Marketing')]
-        for extra_set_name, template_name in extra_sets_to_calculate:
+        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018', TARGET_EXECUTION),
+                                   (MARKETING, 'Marketing', MARKETING),
+                                   (SPIRITS, 'Supermarket Spirits 2018', 'Sheet1')]
+        for extra_set_name, template_name, sheet_name in extra_sets_to_calculate:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
-            jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
+            jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = datetime.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0

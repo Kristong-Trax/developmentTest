@@ -5,7 +5,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 
-from Projects.CCRU.Utils.JSON import JsonGenerator
+from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 from Trax.Data.Projects.Connector import ProjectConnector
 from KPIUtils.Utils.Helpers.LogHandler import log_handler
@@ -48,7 +48,7 @@ class CCRUQsr2018Calculations:
 
     @log_handler.log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        jg = JsonGenerator('ccru')
+        jg = CCRUJsonGenerator('ccru')
         jg.create_json('QSR PoS 2018.xlsx', QSR_2018)
 
         calc_start_time = datetime.datetime.utcnow()
@@ -72,15 +72,19 @@ class CCRUQsr2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', QSR_2018)
+# Sergey
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+# Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=QSR_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
 
-        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018'), (MARKETING, 'Marketing')]
-        for extra_set_name, template_name in extra_sets_to_calculate:
+        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018', TARGET_EXECUTION),
+                                   (MARKETING, 'Marketing', MARKETING)]
+        for extra_set_name, template_name, sheet_name in extra_sets_to_calculate:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
-            jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
+            jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = datetime.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0

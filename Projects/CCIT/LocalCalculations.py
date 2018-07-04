@@ -11,11 +11,11 @@
 #     Config.init()
 #     project_name = 'ccit'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '96AFB0D3-5D74-43DD-8D80-31F9C5CD3D07'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     Calculations(data_provider, output).run_project_calculations()
-    # scenes = [10, 11]
-    # for scene in scenes:
-    #     data_provider.load_scene_data(session, scene)
-    #     SceneCalculations(data_provider).calculate_kpis()
+#     session = '0CEEC13D-BDF7-4922-82D0-AA2880269A03'
+# #     data_provider.load_session_data(session)
+# #     output = Output()
+# #     Calculations(data_provider, output).run_project_calculations()
+#     scenes = [2, 3]
+#     for scene in scenes:
+#         data_provider.load_scene_data(session, scene)
+#         SceneCalculations(data_provider).calculate_kpis()
