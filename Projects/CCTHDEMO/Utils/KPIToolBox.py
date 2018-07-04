@@ -99,6 +99,7 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
     EXCLUDE_EMPTY = False
     INCLUDE_EMPTY = True
 
+
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
@@ -137,8 +138,10 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
             if self.visit_date >= datetime(2018, 01, 01).date():
                 if self.visit_date >= datetime(2018, 02, 01).date():
                     template_name = ParseTemplates.TEMPLATE_TT_AFTER_FEB2018
+                    # self.calculation_type = self.template.TEMPLATE_TT_AFTER_FEB2018
                 else:
                     template_name = ParseTemplates.TEMPLATE_TT
+                    # self.calculation_type = self.template.TEMPLATE_TT
                 self.template = ParseTemplates(template=template_name)
                 self.calculation_type = self.template.TEMPLATE_TT
                 self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)
@@ -641,21 +644,21 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         scene_types = params[self.template.SCENE_TYPE].split(self.template.SEPARATOR)
 
         # Check survey
-        if self.calculation_type == self.template.TEMPLATE_TT_AFTER_NOV2017 or self.calculation_type == self.template.TEMPLATE_TT:
-            survey_data = self.survey_data[(self.survey_data[self.template.survey_consts.KPI_NAME] == kpi_name) &
-                                           (self.survey_data[self.survey_id] == 'Y')]
-            if survey_data.empty:
-                return None
-            survey_data = survey_data.iloc[0]
-            survey_id = int(survey_data[self.template.survey_consts.SURVEY_ID])
-            target_answers = survey_data[self.template.survey_consts.SURVEY_ANSWER].split(self.template.SEPARATOR)
-            survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
-            if survey_answer:
-                survey_result = True if survey_answer.strip() in target_answers else False
-            else:
-                survey_result = False
-        else:
-            survey_result = True
+        # if self.calculation_type == self.template.TEMPLATE_TT_AFTER_NOV2017 or self.calculation_type == self.template.TEMPLATE_TT:
+        #     survey_data = self.survey_data[(self.survey_data[self.template.survey_consts.KPI_NAME] == kpi_name) &
+        #                                    (self.survey_data[self.survey_id] == 'Y')]
+        #     if survey_data.empty:
+        #         return None
+        #     survey_data = survey_data.iloc[0]
+        #     survey_id = int(survey_data[self.template.survey_consts.SURVEY_ID])
+        #     target_answers = survey_data[self.template.survey_consts.SURVEY_ANSWER].split(self.template.SEPARATOR)
+        #     survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
+        #     if survey_answer:
+        #         survey_result = True if survey_answer.strip() in target_answers else False
+        #     else:
+        #         survey_result = False
+        # else:
+        #     survey_result = True
 
         # Check availability
         availability_data = self.availability_data[
@@ -669,7 +672,8 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         availability = self.tools.calculate_availability(product_ean_code=products, additional_attribute_1=scene_types)
         availability_result = 100 if availability >= availability_target else 0
 
-        if survey_result and availability_result:
+        # if survey_result and availability_result:
+        if availability_result:
             score = 100
         else:
             score = 0
@@ -940,6 +944,8 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
 
     def calculate_share_of_shelf_single(self, params, scene_type_source='additional_attribute_1', scene_type=None,
                                         include_empty=EXCLUDE_EMPTY, **kargs):
+        if params['Include Empty'] == 'Y':
+            include_empty = self.INCLUDE_EMPTY
         numerator = {params['Type_Numerator']: params['Numerator'].split(self.template.SEPARATOR)}
         denominator = {params['Type_Denominator']: params['Denominator'].split(self.template.SEPARATOR)}
         if scene_type is not None:
@@ -947,6 +953,10 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
             denominator.update({scene_type_source: scene_type})
         if include_empty == self.EXCLUDE_EMPTY:
             denominator['product_type'] = (self.tools.EMPTY, self.tools.EXCLUDE_FILTER)
+        if params['Exclude Irrelevant'] == 'Y':
+            denominator['product_type'] = (self.tools.IRRELEVANT, self.tools.EXCLUDE_FILTER)
+        if params['Exclude Category'] != 'N':
+            denominator['category'] = (params['Exclude Category'].split(self.template.SEPARATOR), self.tools.EXCLUDE_FILTER)
         result_numerator = self.scif[
             self.tools.get_filter_condition(self.scif, **dict(numerator, **kargs))].facings.sum()
         result_denominator = self.scif[

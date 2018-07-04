@@ -23,6 +23,7 @@ class CCTHDEMOGENERALToolBox:
     STRICT_MODE = ALL = 1000
 
     EMPTY = 'Empty'
+    IRRELEVANT = 'Irrelevant'
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
