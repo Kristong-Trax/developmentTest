@@ -7,6 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
+from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -293,24 +294,27 @@ class INBEVTRADMXToolBox:
         atomic_kpi_score = 0
         # get column name to consider in calculation
         relevant_columns = map(str.strip, str(row['column names']).split(','))
+        is_kpi_passed = 0
         if self.check_store_type(row, relevant_columns):
             # get weight of current atomic kpi
             curr_weight = row['weights']
             # figure out what type of calculation need to be done
             if row['KPI type'] == 'Product Availability':
                 if self.calculate_availability_score(row, relevant_columns):
-                    atomic_kpi_score += curr_weight
+                    is_kpi_passed = 1
             elif row['KPI type'] == 'SOS':
                 ratio = self.calculate_sos_score(row, relevant_columns)
                 if (row['product_type'] == 'Empty') & (ratio <= 0.2):
-                    atomic_kpi_score += curr_weight
+                    is_kpi_passed = 1
                 elif ratio == 1:
-                    atomic_kpi_score += curr_weight
+                    is_kpi_passed = 1
             elif row['KPI type'] == 'Survey':
                 if self.calculate_survey_score(row):
-                    atomic_kpi_score += curr_weight
-        # write result to DB
-        self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name)
+                    is_kpi_passed = 1
+            if is_kpi_passed == 1:
+                atomic_kpi_score += curr_weight
+            # write result to DB
+            self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed, curr_weight)
         return atomic_kpi_score
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
@@ -336,7 +340,7 @@ class INBEVTRADMXToolBox:
                                         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
 
-    def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name):
+    def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
         this method writes atomic kpi score to static.kpi_results DB
         :param atomic_name: atomic kpi name
@@ -349,7 +353,12 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
                                                (self.kpi_static_data.kpi_name == kpi_name) &
                                                (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-        self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, atomic_score)
+
+        attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
+        attrs['result'] = {0: atomic_score}
+        attrs['kpi_weight'] = {0: curr_weight}
+        query = insert(attrs, self.common.KPI_RESULT)
+        self.common.kpi_results_queries.append(query)
 
     def calculate_kpi_set_from_template(self):
         """
