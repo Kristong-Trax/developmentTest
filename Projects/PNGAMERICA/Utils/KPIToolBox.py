@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -161,6 +163,13 @@ class PNGAMERICAToolBox:
                                   'FEM CARE': pd.read_excel(GOLDEN_PATH, 'FEM CARE')}
         self.related_kpi_results = {}
         self.block_results = {}
+        self.ps_dataprovider = PsDataProvider(data_provider, output)
+        self.scif = self._filter_excluded_scene()
+
+    def _filter_excluded_scene(self):
+        excluded_scenes_df = self.ps_dataprovider.get_excluded_scenes()
+        mask = self.scif['scene_id'].isin(excluded_scenes_df['pk'])
+        return self.scif[~mask]
 
     def get_kpi_static_data(self):
         """
@@ -234,9 +243,10 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
-                #                     'average shelf',
-                #                     'regular block', 'block in block']:
+                # if kpi_type not in ['count of']:
+                #         # ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
+                #         #             'average shelf',
+                #         #             'regular block', 'block in block']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -291,8 +301,8 @@ class PNGAMERICAToolBox:
                     self.calculate_average_shelf_new(kpi_set_fk, kpi_name, scene_type, category)
                 elif kpi_type == 'pantene':
                     self.pantene_golden_strategy(kpi_set_fk, kpi_name, scene_type)
-                elif kpi_type == 'HE':
-                    self.herbal_essences_color_wheel(kpi_set_fk, kpi_name, scene_type)
+                # elif kpi_type == 'HE':
+                #     self.herbal_essences_color_wheel(kpi_set_fk, kpi_name, scene_type)
                 # elif kpi_type == 'H&S':
                 #     self.head_and_shoulders_solution_center(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'category space':
@@ -826,10 +836,14 @@ class PNGAMERICAToolBox:
             #            'sub_category': kpi_template['Sub category'],
             #            'manufacturer_name': kpi_template['manufacturer name']}
             filters = {'scene_id': scenes, 'category': kpi_template['category']}
+            if kpi_template['category'] in FABRICARE_CATEGORIES:
+                category_att = PG_CATEGORY
+            else:
+                category_att = 'category'
             values_to_check = []
             secondary_values_to_check = []
             if kpi_template['filter_1']:
-                values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
+                values_to_check = self.all_products.loc[(self.all_products[category_att] == kpi_template['category'])
                                                         & (self.all_products['product_type'] == 'SKU')][
                     kpi_template['filter_1']].unique().tolist()
             # if kpi_template['filter_2']:
@@ -840,10 +854,9 @@ class PNGAMERICAToolBox:
 
             for primary_filter in values_to_check:
                 filters[kpi_template['filter_1']] = primary_filter
-                filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                 if kpi_template['filter_2']:
                     secondary_values_to_check = \
-                        self.all_products.loc[(self.all_products['category'] == kpi_template['category']) &
+                        self.all_products.loc[(self.all_products[category_att] == kpi_template['category']) &
                                               (self.all_products[kpi_template['filter_1']] == primary_filter)
                                               & (self.all_products['product_type'] == 'SKU')][
                             kpi_template['filter_2']].unique().tolist()
@@ -852,21 +865,36 @@ class PNGAMERICAToolBox:
                         if secondary_filter is None:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
+                        filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                         filtered_df2 = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                        if 'SEGMENT' in filters.keys():
+                            filters['PRIVATE_LABEL'] = 'N'
                         if filtered_df2.empty:
                             result = 0
                         else:
+                            if kpi_template['category'] in FABRICARE_CATEGORIES:
+                                filters[PG_CATEGORY] = kpi_template['category']
+                                if 'category' in filters.keys():
+                                    del filters['category']
                             if kpi_template['count'] == 'facings':
                                 result = self.tools.calculate_availability(**filters)
                             else:
                                 result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'],
                                                                          **filters)
+                        filters['category'] = kpi_template['category']
                         if kpi_template['score'] == 'number':
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=result,
                                                     score=int(result))
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    if kpi_template['category'] in FABRICARE_CATEGORIES:
+                        filters[PG_CATEGORY] = kpi_template['category']
+                        if 'category' in filters.keys():
+                            del filters['category']
+                        if 'SEGMENT' in filters.keys():
+                            filters['PRIVATE_LABEL'] = 'N'
+                    filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                     if filtered_df.empty:
                         result = 0
                     else:
@@ -874,6 +902,7 @@ class PNGAMERICAToolBox:
                             result = self.tools.calculate_availability(**filters)
                         else:
                             result = self.tools.calculate_assortment(assortment_entity=kpi_template['count'], **filters)
+                    filters['category'] = kpi_template['category']
                     if kpi_template['score'] == 'number':
                         self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=result,
                                                 score=int(result))
@@ -1119,6 +1148,8 @@ class PNGAMERICAToolBox:
                     i = 0
                     score_dict_list = sorted(score_dict.items(), key=lambda kv: kv[1], reverse=True)
                     for result in score_dict_list:
+                        if type(result) in [float, int]:
+                            continue
                         new_result = result[0].replace("'", "\'")
                         if "'" in new_result:
                             continue
@@ -1565,6 +1596,7 @@ class PNGAMERICAToolBox:
         values_to_check = []
         secondary_values_to_check = []
         kpi_template = kpi_template.iloc[0]
+        exclude_pl = False
         filters = {'template_name': scene_types, 'category': kpi_template['category']}
         if kpi_template['category'] in FABRICARE_CATEGORIES:
             category_att = PG_CATEGORY
@@ -1602,11 +1634,15 @@ class PNGAMERICAToolBox:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
                         filters[PG_CATEGORY] = kpi_template['category']
-                    del filters['category']
+                        if kpi_template['filter_2'] == 'SEGMENT':
+                            exclude_pl = True
+                        if 'category' in filters.keys():
+                            del filters['category']
                     if filtered_df2.empty:
                         result = 0
                     else:
-                        result = self.tools.calculate_share_space_length(**filters)
+                        # result = self.tools.calculate_share_space_length(**filters)
+                        result = self.tools.calculate_share_space_length_new(exclude_pl=exclude_pl, **filters)
                     score = result * self.MM_TO_FEET_CONVERSION
                     filters['category'] = kpi_template['category']
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score,
@@ -1615,12 +1651,16 @@ class PNGAMERICAToolBox:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                 if kpi_template['category'] in FABRICARE_CATEGORIES:
                     filters[PG_CATEGORY] = kpi_template['category']
-                del filters['category']
+                    if kpi_template['filter_1'] == 'SEGMENT':
+                        exclude_pl = True
+                    if 'category' in filters.keys():
+                        del filters['category']
                 filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
                 if filtered_df.empty:
                     result = 0
                 else:
-                    result = self.tools.calculate_share_space_length(**filters)
+                    # result = self.tools.calculate_share_space_length(**filters)
+                    result = self.tools.calculate_share_space_length_new(exclude_pl=exclude_pl, **filters)
                 score = result * self.MM_TO_FEET_CONVERSION
                 filters['category'] = kpi_template['category']
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
@@ -1635,6 +1675,7 @@ class PNGAMERICAToolBox:
         kpi_template = kpi_template.iloc[0]
         values_to_check = []
         secondary_values_to_check = []
+        exclude_pl_wo_pg_category = False
         filters = {'template_name': scene_types, 'category': kpi_template['category']}
         if kpi_template['category'] in FABRICARE_CATEGORIES:
             category_att = PG_CATEGORY
@@ -1658,9 +1699,12 @@ class PNGAMERICAToolBox:
                     filters[kpi_template['filter_2']] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
+                        exclude_pl_wo_pg_category = True
                         filters[PG_CATEGORY] = kpi_template['category']
-                    del filters['category']
-                    result = self.tools.calculate_category_space(new_kpi_name, **filters)
+                        if 'category' in filters.keys():
+                            del filters['category']
+                    result = self.tools.calculate_category_space(new_kpi_name, exclude_pl=exclude_pl_wo_pg_category,
+                                                                 **filters)
                     filters['category'] = kpi_template['category']
                     score = result * self.MM_TO_FEET_CONVERSION
                     self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score,
@@ -1668,9 +1712,10 @@ class PNGAMERICAToolBox:
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                 if kpi_template['category'] in FABRICARE_CATEGORIES:
+                    exclude_pl_wo_pg_category = True
                     filters[PG_CATEGORY] = kpi_template['category']
-                del filters['category']
-                result = self.tools.calculate_category_space(new_kpi_name, **filters)
+                    del filters['category']
+                result = self.tools.calculate_category_space(new_kpi_name, exclude_pl=exclude_pl_wo_pg_category, **filters)
                 filters['category'] = kpi_template['category']
                 score = result * self.MM_TO_FEET_CONVERSION
                 self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name, level=self.LEVEL3, result=score, score=score)
@@ -1782,7 +1827,8 @@ class PNGAMERICAToolBox:
                         if kpi_template['category'] in FABRICARE_CATEGORIES:
                             filters[PG_CATEGORY] = kpi_template['category']
                             category = 'FABRICARE'
-                        del filters['category']
+                            if 'category' in filters.keys():
+                                del filters['category']
                         self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                               category=category)
                 else:
@@ -1790,7 +1836,8 @@ class PNGAMERICAToolBox:
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
                         filters[PG_CATEGORY] = kpi_template['category']
                         category = 'FABRICARE'
-                    del filters['category']
+                        if 'category' in filters.keys():
+                            del filters['category']
                     self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                           category=category)
 
