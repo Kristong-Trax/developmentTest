@@ -1513,7 +1513,7 @@ class BATRUToolBox:
     def calculate_specific_posm(self, row, equipment_name, group_name, scene_fk):
         atomic_name = row['Atomic KPI Name']
         posm_count = 0
-        possible_products = row['Product Name'].split(", ")
+        possible_products = row['Product Name'].replace(".jpg", "").replace(".png", "").split(", ")
         for product in possible_products:
             filters = self.get_posm_filters(['Template Group', 'KPI Display Name'], row)
             filters['display_name'] = product
