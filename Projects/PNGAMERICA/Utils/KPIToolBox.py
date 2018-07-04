@@ -243,10 +243,9 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['category space']:
-                #         # ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
-                #         #             'average shelf',
-                #         #             'regular block', 'block in block']:
+                # if kpi_type not in ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
+                #                     'average shelf',
+                #                     'regular block', 'block in block']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -1305,9 +1304,16 @@ class PNGAMERICAToolBox:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
                         if not block_of_blocks:
+                            if kpi_template['filter_2'] == 'PRIVATE_LABEL':
+                                del filters['PRIVATE_LABEL']
                             new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                            filters[kpi_template['filter_2']] = secondary_filter
                         else:
                             new_kpi_name = kpi_name
+                        if kpi_template['category'] in FABRICARE_CATEGORIES:
+                            filters[PG_CATEGORY] = kpi_template['category']
+                            if 'category' in filters.keys():
+                                del filters['category']
                         res = self.tools.calculate_block_together_new(include_empty=include_empty,
                                                                       minimum_block_ratio=0.75,
                                                                       vertical=vertical,
@@ -1317,7 +1323,7 @@ class PNGAMERICAToolBox:
                                                                       block_of_blocks=block_of_blocks,
                                                                       block_products1=block_products1,
                                                                       block_products2=block_products2, **filters)
-
+                        filters['category'] = kpi_template['category']
                         if type(res) == str and res == 'no_products':
                             return
                         self.block_results[new_kpi_name] = res['regular block'] if res else 0
@@ -1342,6 +1348,10 @@ class PNGAMERICAToolBox:
                             except IndexError as e:
                                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
                 else:
+                    if kpi_template['category'] in FABRICARE_CATEGORIES:
+                        filters[PG_CATEGORY] = kpi_template['category']
+                        if 'category' in filters.keys():
+                            del filters['category']
                     res = self.tools.calculate_block_together_new(include_empty=include_empty, minimum_block_ratio=0.75,
                                                                   vertical=vertical,
                                                                   horizontal=horizontal, orphan=orphan, group=group,
@@ -1350,6 +1360,7 @@ class PNGAMERICAToolBox:
                                                                   block_of_blocks=block_of_blocks,
                                                                   block_products1=block_products1,
                                                                   block_products2=block_products2, **filters)
+                    filters['category'] = kpi_template['category']
                     if type(res) == str and res == 'no_products':
                         return
                     if not block_of_blocks:
@@ -1489,13 +1500,17 @@ class PNGAMERICAToolBox:
             values_to_check = []
             secondary_values_to_check = []
             filters = {'template_name': scene_type, 'category': kpi_template['category']}
+            if kpi_template['category'] in FABRICARE_CATEGORIES:
+                category_att = PG_CATEGORY
+            else:
+                category_att = 'category'
             if kpi_template['filter_1']:
-                values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
+                values_to_check = self.all_products.loc[(self.all_products[category_att] == kpi_template['category'])
                                                         & (self.all_products['product_type'] == 'SKU')][
                     kpi_template['filter_1']].unique().tolist()
             if kpi_template['filter_2']:
                 secondary_values_to_check = \
-                    self.all_products.loc[(self.all_products['category'] == kpi_template['category'])
+                    self.all_products.loc[(self.all_products[category_att] == kpi_template['category'])
                                           & (self.all_products['product_type'] == 'SKU')][
                         kpi_template['filter_2']].unique().tolist()
 
@@ -1508,9 +1523,18 @@ class PNGAMERICAToolBox:
                             continue
                         filters[kpi_template['filter_2']] = secondary_filter
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                        if kpi_template['category'] in FABRICARE_CATEGORIES:
+                            filters[PG_CATEGORY] = kpi_template['category']
+                            if 'category' in filters.keys():
+                                del filters['category']
                         self.checkerboarded_writer(kpi_set_fk, kpi_template, new_kpi_name, filters)
+                        filters['category'] = kpi_template['category']
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    if kpi_template['category'] in FABRICARE_CATEGORIES:
+                        filters[PG_CATEGORY] = kpi_template['category']
+                        if 'category' in filters.keys():
+                            del filters['category']
                     self.checkerboarded_writer(kpi_set_fk, kpi_template, new_kpi_name, filters)
 
     def checkerboarded_writer(self, kpi_set_fk, kpi_template, kpi_name, filters):
