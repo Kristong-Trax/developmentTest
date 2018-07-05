@@ -22,6 +22,7 @@ MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT = 60
 MAX_CYCLES_FOR_HISTORY_BASED_ASSORTMENT = 3
 EMPTY = 'Empty'
 OTHER = 'Other'
+NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Irrelevant", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
 P3_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
@@ -754,7 +755,7 @@ class BATRUToolBox:
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
         num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code'].isin(monitored_skus))]['facings'].count()
+                                              (self.scif['product_ean_code'].isin(monitored_skus))]['product_ean_code'].drop_duplicates().count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
@@ -916,8 +917,8 @@ class BATRUToolBox:
                         'product_fk'] == product]['product_type'].values[0] in (EMPTY, OTHER):
                         product_sequence = False
                     if product_ean_code not in section_products_including_bundles:
-                        if not (self.all_products.loc[self.all_products['product_fk'] == product][
-                                    'manufacturer_name'].values[0] == BAT):
+                        if not (self.all_products.loc[self.all_products['product_fk'] == product]['manufacturer_name'].values[0] == BAT or
+                                self.all_products.loc[self.all_products['product_fk'] == product]['product_name'].values[0] in NON_COMPETITOR_PRODUCTS):
                             competitor = True
                             presence = False
                         product_name = self.all_products.loc[self.all_products[
@@ -1359,7 +1360,7 @@ class BATRUToolBox:
             for display in relevant_df['display_name'].unique().tolist():
                 relevant_display = relevant_df.loc[relevant_df['display_name'] == display].iloc[0]
                 if not relevant_display.empty:
-                    if set(relevant_display['Names of template in SR'].split(", ")) \
+                    if set(relevant_display['Names of template in SR'].replace(".jpg", "").replace(".png", "").split(", ")) \
                             & set(scene_match_display['display_name'].unique().tolist()):
                         presence_score = 100
                     else:
