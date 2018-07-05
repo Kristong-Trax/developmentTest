@@ -754,7 +754,7 @@ class BATRUToolBox:
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
         num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code'].isin(monitored_skus))]['facings'].count()
+                                              (self.scif['product_ean_code'].isin(monitored_skus))]['product_ean_code'].drop_duplicates().count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
@@ -1359,7 +1359,7 @@ class BATRUToolBox:
             for display in relevant_df['display_name'].unique().tolist():
                 relevant_display = relevant_df.loc[relevant_df['display_name'] == display].iloc[0]
                 if not relevant_display.empty:
-                    if set(relevant_display['Names of template in SR'].split(", ")) \
+                    if set(relevant_display['Names of template in SR'].replace(".jpg", "").replace(".png", "").split(", ")) \
                             & set(scene_match_display['display_name'].unique().tolist()):
                         presence_score = 100
                     else:
