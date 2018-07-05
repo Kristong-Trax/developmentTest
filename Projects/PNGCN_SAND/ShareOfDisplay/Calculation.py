@@ -213,9 +213,12 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 size = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
                 display_size = size + (cube_size * 3 * table_size)
             else:
-                min_side = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
-                max_side = max(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
-                display_size = (min_side * max_side * table_size) + (cube_size * 3 * table_size)
+                try:
+                    min_side = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
+                    max_side = max(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
+                    display_size = (min_side * max_side * table_size) + (cube_size * 3 * table_size)
+                except Exception as e:
+                    display_size = (cube_size * 3 * table_size) # table bays are not valid
             table_display = table_display.append({'scene_fk': scene, 'display_fk': table_display_fk,
                                                   'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
