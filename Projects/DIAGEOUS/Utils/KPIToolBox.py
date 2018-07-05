@@ -109,7 +109,7 @@ class DIAGEOUSToolBox:
         :return:
         """
         queries = []
-        all_new_subs = self.all_products[['sub_brand', 'brand_fk']].drop_duplicates()
+        all_new_subs = self.all_products[self.all_products['is_active'] == 1][['sub_brand', 'brand_fk']].drop_duplicates()
         for line in all_new_subs.itertuples():
             sub_brand = line.sub_brand
             brand = line.brand_fk
@@ -117,9 +117,11 @@ class DIAGEOUSToolBox:
                 queries.append(self.fetcher.insert_new_sub_brands(sub_brand, brand))
         merge_queries = self.common.merge_insert_queries(queries)
         cur = self.rds_conn.db.cursor()
+        cur.execute("delete from static.custom_entity where entity_type_fk = 1002;")
         for query in merge_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+        print "AAAAAAAAAAAAAAAaaaaaaaaaaaaaaaaaaaaaaAAAAAAAAAAAAAAAAAAAAaaaaaaaaaaAAaaaaAAaaaAaaaaaaaaaaaaaaa"
         self.sub_brands = self.get_sub_brands()
 
     def get_templates(self):
@@ -488,7 +490,8 @@ class DIAGEOUSToolBox:
                                                                      Const.DISPLAY_SHARE][Const.MANUFACTURER])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
-                                                     (self.scif_without_emptys['location_type'] == 'Secondary Shelf')]
+                                                     (self.scif_without_emptys['location_type'] == 'Secondary Shelf') &
+                                                     (self.scif_without_emptys['product_type'] == 'SKU')]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
         for product_fk in relevant_products['product_fk'].unique().tolist():
             product_result = self.calculate_display_share_of_sku(product_fk, relevant_products, manufacturer_kpi_fk)
