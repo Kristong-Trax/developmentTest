@@ -110,7 +110,7 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        if self.visit_date >= datetime(2018, 01, 01).date():
+        if self.visit_date >= datetime(2016, 01, 01).date():  # todo: change back to 2018
             self.RED_SCORE = 'RED SCORE 2018'
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.session_fk = self.session_info['pk'][0]
