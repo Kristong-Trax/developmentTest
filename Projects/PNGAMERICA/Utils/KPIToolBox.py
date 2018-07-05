@@ -165,6 +165,8 @@ class PNGAMERICAToolBox:
         self.block_results = {}
         self.ps_dataprovider = PsDataProvider(data_provider, output)
         self.scif = self._filter_excluded_scene()
+        self.eye_level_results = {}
+        self.hor_ver_results = {}
 
     def _filter_excluded_scene(self):
         excluded_scenes_df = self.ps_dataprovider.get_excluded_scenes()
@@ -310,6 +312,8 @@ class PNGAMERICAToolBox:
                     self.calculate_bookend(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'posm':
                     self.calculate_posm_availability(kpi_set_fk, kpi_name, scene_type)
+                elif kpi_type == 'sud_orchestration':
+                    self.calculate_sud_orchestration(kpi_set_fk, kpi_name, scene_type)
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
@@ -1332,6 +1336,7 @@ class PNGAMERICAToolBox:
                             score = 1 if res['regular block'] else 0
                             if kpi_template['kpi type'] == 'hor_vs_vertical':
                                 result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
+                                self.hor_ver_results[kpi_name] = result
                             if kpi_template['kpi type'] == 'block in block':
                                 result = 1 if res['block_of_blocks'] else 0
                             try:
@@ -1373,6 +1378,7 @@ class PNGAMERICAToolBox:
                         score = 1 if res['regular block'] else 0
                         if kpi_template['kpi type'] == 'hor_vs_vertical':
                             result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
+                            self.hor_ver_results[kpi_name] = result
                         if kpi_template['kpi type'] == 'block in block':
                             result = 1 if res['block_of_blocks'] else 0
                         try:
@@ -1891,6 +1897,7 @@ class PNGAMERICAToolBox:
                 score = (result[0] / float(result[1])) * 100
             else:
                 score = None
+            self.eye_level_results[kpi_name] = score
         elif list_type:
             result = self.tools.calculate_eye_level_assortment(eye_level_configurations=eye_level_definition,
                                                                category=category, sub_category=sub_category,
@@ -1926,46 +1933,57 @@ class PNGAMERICAToolBox:
     def calculate_naturals_adjacency(self, kpi_set_fk, scene_type, kpi_name):
         pass
 
-    def calculate_auto_assortment_compliance(self):
-        auto_assortment = AutoAssortmentHandler()
-        current_store_assortment = auto_assortment.get_current_assortment_per_store(self.store_id, self.visit_date)
-        store_pskus = self.get_power_skus_per_store()
-        distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
-                                         (self.scif['dist_sc'] == 1)]['product_fk'].unique().tolist()
-        # psku_distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
-        #                                       (self.scif['dist_sc'] == 1) &
-        #                                       (self.scif['POWER_SKU'] == 'Y')]['product_fk'].unique().tolist()
-        psku_distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
-                                              (self.scif['dist_sc'] == 1) &
-                                              (self.scif['product_fk'].isin(store_pskus))][
-            'product_fk'].unique().tolist()
-        # psku_products = self.all_products[self.all_products['POWER_SKU'] == 'Y']['product_fk'].unique().tolist()
-        if current_store_assortment:
-            availability = (len(distributed_products) / float(len(current_store_assortment))) * 100
-        else:
-            availability = 0
-        osa_oos = 100 - availability
-        if current_store_assortment:
-            psku_availability = len(psku_distributed_products) / float(len(current_store_assortment)) * 100
-        else:
-            psku_availability = 0
-        psku_oos = 100 - psku_availability
-        if store_pskus:
-            d_void = (len(set(store_pskus).difference(set(current_store_assortment))) / float(
-                len(store_pskus))) * 100
-        else:
-            d_void = 0
-        osa_kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == 'OSA']['kpi_set_fk'].values[0]
-        dvoid_kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == 'D-VOID']['kpi_set_fk'].values[
-            0]
+    def calculate_sud_orchestration(self, kpi_set_fk, scene_type, kpi_name):
+        eye_level_kpi_name = 'Location:Eye_Level:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE'
+        block_kpi_name = 'Blocking:Prod_lvl_Blocking:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE:FORM=LAUNDRY UNIT DOSE'
+        result = 0
+        if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
+            if eye_level_kpi_name in self.eye_level_results.keys() and block_kpi_name in self.hor_ver_results.keys():
+                if self.eye_level_results[eye_level_kpi_name] > 0 and self.hor_ver_results[block_kpi_name] == 'HORIZONTAL':
+                    result = 1
 
-        self.write_to_db_result(osa_kpi_set_fk, result=None, level=self.LEVEL1)
-        # self.write_to_db_result(osa_kpi_set_fk, kpi_name='OSA', result=osa_oos, threshold=availability,
-        #                         level=self.LEVEL3)
-        self.save_assortment_raw_data(current_store_assortment, distributed_products, osa_kpi_set_fk)
-        self.write_to_db_result(dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
-        # self.write_to_db_result(dvoid_kpi_set_fk, kpi_name='D-VOID', result=d_void, threshold=0, level=self.LEVEL3)
-        self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk)
+            self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
+
+    def calculate_auto_assortment_compliance(self):
+            auto_assortment = AutoAssortmentHandler()
+            current_store_assortment = auto_assortment.get_current_assortment_per_store(self.store_id, self.visit_date)
+            store_pskus = self.get_power_skus_per_store()
+            distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
+                                             (self.scif['dist_sc'] == 1)]['product_fk'].unique().tolist()
+            # psku_distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
+            #                                       (self.scif['dist_sc'] == 1) &
+            #                                       (self.scif['POWER_SKU'] == 'Y')]['product_fk'].unique().tolist()
+            psku_distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
+                                                  (self.scif['dist_sc'] == 1) &
+                                                  (self.scif['product_fk'].isin(store_pskus))][
+                'product_fk'].unique().tolist()
+            # psku_products = self.all_products[self.all_products['POWER_SKU'] == 'Y']['product_fk'].unique().tolist()
+            if current_store_assortment:
+                availability = (len(distributed_products) / float(len(current_store_assortment))) * 100
+            else:
+                availability = 0
+            osa_oos = 100 - availability
+            if current_store_assortment:
+                psku_availability = len(psku_distributed_products) / float(len(current_store_assortment)) * 100
+            else:
+                psku_availability = 0
+            psku_oos = 100 - psku_availability
+            if store_pskus:
+                d_void = (len(set(store_pskus).difference(set(current_store_assortment))) / float(
+                    len(store_pskus))) * 100
+            else:
+                d_void = 0
+            osa_kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == 'OSA']['kpi_set_fk'].values[0]
+            dvoid_kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == 'D-VOID']['kpi_set_fk'].values[
+                0]
+
+            self.write_to_db_result(osa_kpi_set_fk, result=None, level=self.LEVEL1)
+            # self.write_to_db_result(osa_kpi_set_fk, kpi_name='OSA', result=osa_oos, threshold=availability,
+            #                         level=self.LEVEL3)
+            self.save_assortment_raw_data(current_store_assortment, distributed_products, osa_kpi_set_fk)
+            self.write_to_db_result(dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
+            # self.write_to_db_result(dvoid_kpi_set_fk, kpi_name='D-VOID', result=d_void, threshold=0, level=self.LEVEL3)
+            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk)
 
     def calculate_auto_assortment_compliance_per_category(self):
         auto_assortment = AutoAssortmentHandler()
