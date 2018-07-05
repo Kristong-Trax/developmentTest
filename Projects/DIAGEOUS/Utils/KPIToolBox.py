@@ -45,6 +45,8 @@ class DIAGEOUSToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
+        self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
+                                                  (self.all_products['category'] == 'SPIRITS')]
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.ps_data.get_state_name()
@@ -570,9 +572,8 @@ class DIAGEOUSToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.DB_OFF])
         our_eans = competition[Const.OUR_EAN_CODE].split(', ')
-        our_lines = self.all_products[(self.all_products['product_ean_code'].isin(our_eans)) &
-                                      (self.all_products['product_type'] == 'SKU') &
-                                      (self.all_products['category'] == 'SPIRITS')]
+
+        our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
         if our_lines.empty:
             Log.warning("The products {} in shelf facings don't exist in DB".format(our_eans))
             return None
@@ -587,9 +588,7 @@ class DIAGEOUSToolBox:
         result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
         if self.does_exist(competition[Const.COMP_EAN_CODE]):
             comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
-            comp_lines = self.all_products[(self.all_products['product_ean_code'].isin(comp_eans)) &
-                                           (self.all_products['product_type'] == 'SKU') &
-                                           (self.all_products['category'] == 'SPIRITS')]
+            comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
             if comp_lines.empty:
                 Log.warning("The products {} in shelf facings don't exist in DB".format(comp_eans))
                 return None
@@ -792,12 +791,10 @@ class DIAGEOUSToolBox:
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.COMPETITION])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.TOTAL])
-        our_ean = competition[Const.OUR_EAN_CODE]
-        our_line = self.all_products[(self.all_products['product_ean_code'] == our_ean) &
-                                     (self.all_products['product_type'] == 'SKU') &
-                                     (self.all_products['category'] == 'SPIRITS')]
+        our_ean, comp_ean = competition[Const.OUR_EAN_CODE], competition[Const.COMP_EAN_CODE]
         min_relative, max_relative = competition[Const.MIN_MSRP_RELATIVE], competition[Const.MAX_MSRP_RELATIVE]
         min_absolute, max_absolute = competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE]
+        our_line = self.all_products_sku[self.all_products_sku['product_ean_code'] == our_ean]
         if our_line.empty:
             Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
             return None
@@ -806,34 +803,31 @@ class DIAGEOUSToolBox:
         our_price = self.calculate_sku_price(product_fk, relevant_scenes, result_dict)
         if our_price is None:
             return None
-        is_competitor = (self.does_exist(competition[Const.COMP_EAN_CODE]) and
+        is_competitor = (self.does_exist(comp_ean) and
                          self.does_exist(min_relative) and self.does_exist(max_relative))
         is_absolute = self.does_exist(min_absolute) and self.does_exist(max_absolute)
         if is_competitor:
-            comp_ean = competition[Const.COMP_EAN_CODE]
-            comp_line = self.all_products[(self.all_products['product_ean_code'] == comp_ean) &
-                                          (self.all_products['product_type'] == 'SKU') &
-                                          (self.all_products['category'] == 'SPIRITS')]
+            comp_line = self.all_products_sku[self.all_products_sku['product_ean_code'] == comp_ean]
             if comp_line.empty:
                 Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
-                return None
-            comp_fk = comp_line['product_fk'].iloc[0]
-            comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
-            if comp_price is None:
-                return None
-            range_price = (round(comp_price + competition[Const.MIN_MSRP_RELATIVE], 1),
-                           round(comp_price + competition[Const.MAX_MSRP_RELATIVE], 1))
+                comp_price = our_price + competition[Const.MIN_MSRP_RELATIVE]
+            else:
+                comp_fk = comp_line['product_fk'].iloc[0]
+                comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
+                if comp_price is None:
+                    comp_price = our_price + min_relative
+            range_price = (round(comp_price + min_relative, 1),
+                           round(comp_price + max_relative, 1))
         elif is_absolute:
-            range_price = (competition[Const.MIN_MSRP_ABSOLUTE], competition[Const.MAX_MSRP_ABSOLUTE])
+            range_price = (min_absolute, max_absolute)
         else:
             Log.warning("In MSRP product {} does not have clear competitor".format(product_fk))
-            return None
+            range_price = (our_price, our_price)
+        result = 0
         if our_price < range_price[0]:
             result = range_price[0] - our_price
         elif our_price > range_price[1]:
             result = our_price - range_price[1]
-        else:
-            result = 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
