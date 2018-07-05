@@ -30,8 +30,8 @@ class CCTHDEMOGenerator:
             if success_status == 1:
                 Log.info('Session is surveyed - hence calculating KPIs')
                 self.tool_box.calculate_red_score()
-                self.tool_box.calculate_report()
-                self.tool_box.write_gaps_to_db()
+                # self.tool_box.calculate_report()
+                # self.tool_box.write_gaps_to_db()
             else:
                 Log.info('Session is not surveyed - hence skipping KPI calculations')
             self.tool_box.commit_results_data()

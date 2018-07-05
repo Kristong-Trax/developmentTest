@@ -135,24 +135,30 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
             self.calculation_type = template_name
             self.availability_id = self.gap_id = self.store_type
         else:
-            if self.visit_date >= datetime(2018, 01, 01).date():
-                if self.visit_date >= datetime(2018, 02, 01).date():
-                    template_name = ParseTemplates.TEMPLATE_TT_AFTER_FEB2018
-                    # self.calculation_type = self.template.TEMPLATE_TT_AFTER_FEB2018
-                else:
-                    template_name = ParseTemplates.TEMPLATE_TT
-                    # self.calculation_type = self.template.TEMPLATE_TT
-                self.template = ParseTemplates(template=template_name)
-                self.calculation_type = self.template.TEMPLATE_TT
-                self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)
-                self.availability_id = self.gap_id = '{};{}'.format('All Regions', self.store_type)
-                self.survey_questions = self.template.parse_sheet(self.SURVEY_SHEET)
-            else:
-                template_name = ParseTemplates.TEMPLATE_TT_AFTER_NOV2017
-                self.template = ParseTemplates(template=template_name)
-                self.calculation_type = self.template.TEMPLATE_TT_AFTER_NOV2017
-                self.survey_id = '{};{};{}'.format(self.region, self.store_type, self.segmentation)
-                self.availability_id = self.gap_id = '{};{}'.format(self.region, self.store_type)
+            template_name = ParseTemplates.TEMPLATE_TT_AFTER_FEB2018
+            self.template = ParseTemplates(template=template_name)
+            self.calculation_type = self.template.TEMPLATE_TT
+            self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)
+            self.availability_id = self.gap_id = '{};{}'.format('All Regions', self.store_type)
+            self.survey_questions = self.template.parse_sheet(self.SURVEY_SHEET)
+            # if self.visit_date >= datetime(2018, 01, 01).date():
+            #     if self.visit_date >= datetime(2018, 02, 01).date():
+            #         template_name = ParseTemplates.TEMPLATE_TT_AFTER_FEB2018
+            #         # self.calculation_type = self.template.TEMPLATE_TT_AFTER_FEB2018
+            #     else:
+            #         template_name = ParseTemplates.TEMPLATE_TT
+            #         # self.calculation_type = self.template.TEMPLATE_TT
+            #     self.template = ParseTemplates(template=template_name)
+            #     self.calculation_type = self.template.TEMPLATE_TT
+            #     self.survey_id = '{};{};{}'.format('All Regions', self.store_type, self.segmentation)
+            #     self.availability_id = self.gap_id = '{};{}'.format('All Regions', self.store_type)
+            #     self.survey_questions = self.template.parse_sheet(self.SURVEY_SHEET)
+            # else:
+            #     template_name = ParseTemplates.TEMPLATE_TT_AFTER_NOV2017
+            #     self.template = ParseTemplates(template=template_name)
+            #     self.calculation_type = self.template.TEMPLATE_TT_AFTER_NOV2017
+            #     self.survey_id = '{};{};{}'.format(self.region, self.store_type, self.segmentation)
+            #     self.availability_id = self.gap_id = '{};{}'.format(self.region, self.store_type)
         self.templates_data = self.template.parse_kpi()
         self.availability_data = self.template.parse_availability()
         self.survey_data = self.template.parse_survey()
@@ -390,12 +396,12 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
                     cola_result = "%.2f" % sovi['SOVI Cola'][0]
                 else:
                     cola_result = None
-                if sovi['SOVI Sparkling'][0] is not None:
-                    sparkling_result = "%.2f" % sovi['SOVI Sparkling'][0]
-                else:
-                    sparkling_result = None
+                # if sovi['SOVI Sparkling'][0] is not None:
+                #     sparkling_result = "%.2f" % sovi['SOVI Sparkling'][0]
+                # else:
+                #     sparkling_result = None
                 self.write_to_db_result_report(kpi_set_fk, cola_result, 'SOVI Cola', 501)
-                self.write_to_db_result_report(kpi_set_fk, sparkling_result, 'SOVI Sparkling', 502)
+                # self.write_to_db_result_report(kpi_set_fk, sparkling_result, 'SOVI Sparkling', 502)
             elif kpi == self.TRADER:
                 order = 600
                 results = self.calculate_trader()
@@ -516,8 +522,8 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
                             score_percent = 1
                         score_percent = score * score_percent
                         scores_weights.append(score_percent)
-                        if score == 0:
-                            self.add_gap(child)
+                        # if score == 0:
+                        #     self.add_gap(child)
             if not scores:
                 scores = [0]
                 self.summary[main_child[self.template.KPI_NAME]] = [None, None, None]
@@ -862,16 +868,24 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         sovi_params = sovi_params[sovi_params['KPI'] == params[self.template.KPI_NAME]]
         target = params[self.template.TARGET]
         score = 0, None, target * 100
+        product_list_facing_target = []
         facing_target = int(sovi_params['Facing Target'])
+        if sovi_params['EAN Code for Facing Target'].notnull().iloc[0]:
+            product_list_facing_target = sovi_params['EAN Code for Facing Target'].iloc[0].split(',')
         scene_types = sovi_params['Scene Type'].iloc[0].split(',')
         if scene_types[0] != 'all':
             scene_types = self.scif[self.scif['template_name'].isin(scene_types)]['template_name'].unique().tolist()
         params_row = sovi_params[:]
         params_row.pop(self.template.SCENE_TYPE)
         check_failed_type = True
+        if params_row['Exclude Empty'].values[0] == 'Y':
+            include_empty = self.EXCLUDE_EMPTY
+        else:
+            include_empty = self.INCLUDE_EMPTY
         for scene_type in scene_types:
             if scene_type == 'all':
-                result_numerator, result_denominator = self.calculate_share_of_shelf_single(params=params_row.iloc[0])
+                result_numerator, result_denominator = self.calculate_share_of_shelf_single(params=params_row.iloc[0],
+                                                                                            include_empty=include_empty)
                 try:
                     result = float(result_numerator) / float(result_denominator)
                 except:
@@ -890,16 +904,23 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
                         params=params_row.iloc[0],
                         scene_type=scene_type,
                         scene_type_source='template_name',
-                        include_empty=self.INCLUDE_EMPTY,
+                        include_empty=include_empty,
                         **{'scene_id': scene})
                     try:
                         result = float(result_numerator) / float(result_denominator)
                     except:
                         result = 0
-                    facings = self.scif[(self.scif['manufacturer_name'] == 'Thainamthip') &
+                    if product_list_facing_target:
+                        facings = self.scif[(self.scif['manufacturer_name'] == 'Thainamthip') &
                                         (self.scif['category'] == 'Still') &
+                                        (self.scif['product_ean_code'].isin(product_list_facing_target)) &
                                         (self.scif['template_name'] == scene_type) &
                                         (self.scif['scene_id'] == scene)].facings.sum()
+                    else:
+                        facings = self.scif[(self.scif['manufacturer_name'] == 'Thainamthip') &
+                                            (self.scif['category'] == 'Still') &
+                                            (self.scif['template_name'] == scene_type) &
+                                            (self.scif['scene_id'] == scene)].facings.sum()
 
                     scene_type = scene_type
                     sovi_scores_result = str(int(result * 100)) + '%'

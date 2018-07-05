@@ -23,7 +23,7 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     # TT
     sessions = \
-        ['ffae4c42-97db-4c22-8844-5ef42ce82218'
+        ['0e316bfa-e4fb-4d1b-ae47-94accc9df161'
         # TT
             # food shop
             # '0bd3db85-92cd-40f8-b317-6f1b5cebd22b',
