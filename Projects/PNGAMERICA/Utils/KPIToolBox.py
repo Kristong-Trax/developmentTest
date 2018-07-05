@@ -30,6 +30,7 @@ DVOID = 'D-VOID'
 DVOID_AGG = 'OSA:%_Dvoid:{category}:BRAND={brand}'
 OSA_AGG_KPI_NAME = 'OSA:%_OSA:{category}:BRAND={brand}'
 OSA_PRODUCT_KPI_NAME = 'OSA:SKU_OSA_Primary:{category}:BRAND={brand}:PRODUCT={ean_code}'
+DVOID_PRODUCT_KPI_NAME = 'OSA:SKU_Dvoid:{category}:BRAND={brand}:PRODUCT={ean_code}'
 BLOCK_KPI_NAME = 'Blocking:Prod_lvl_Blocking:{category}:BRAND={brand_name}'
 CSPACE_KPI_NAME = 'Spacing:Category_Space:{category}'
 BLOCK_KPI_NAMES_PAIRING_MAPPING = {
@@ -2156,7 +2157,7 @@ class PNGAMERICAToolBox:
             self.write_to_db_result(dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
 
             self.save_assortment_raw_data(current_brand_assortment, distributed_products, osa_kpi_set_fk)
-            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk)
+            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk, is_d_void=True)
 
     def get_power_skus_per_store(self):
         store_power_skus = self.power_skus[self.power_skus['Retailer'] == self.retailer]['pk'].unique().tolist()
@@ -2170,7 +2171,7 @@ class PNGAMERICAToolBox:
 
         return store_power_skus_fks
 
-    def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk):
+    def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk, is_d_void=False):
         for product in assortment_list:
             oos_result = 1
             # if product in dist_prod_list:
@@ -2198,7 +2199,10 @@ class PNGAMERICAToolBox:
                 category = product_info.category.values[0]
                 brand = product_info.brand_name.values[0]
                 ean_code = self.get_product_ean_code(product_info)
-                kpi_name = OSA_PRODUCT_KPI_NAME.format(category=category, brand=brand, ean_code=ean_code)
+                if is_d_void:
+                    kpi_name = DVOID_PRODUCT_KPI_NAME.format(category=category, brand=brand, ean_code=ean_code)
+                else:
+                    kpi_name = OSA_PRODUCT_KPI_NAME.format(category=category, brand=brand, ean_code=ean_code)
                 # kpi_name = self.all_products[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
                 if ean_code != '-1':
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, result=oos_result, threshold=1,
