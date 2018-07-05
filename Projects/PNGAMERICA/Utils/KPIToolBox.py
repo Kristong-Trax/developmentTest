@@ -245,9 +245,9 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['eye level']:
-                #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
-                #     continue
+                if kpi_type not in ['anchor']:
+                    # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
+                    continue
 
                 # if kpi_data['KPI Group type'].values[0]:
                 #     if kpi_type in BLOCK_TOGETHER:
@@ -713,9 +713,7 @@ class PNGAMERICAToolBox:
                         if kpi_data['category'] in FABRICARE_CATEGORIES:
                             category_att = PG_CATEGORY
                             category = 'FABRICARE'
-                        else:
-                            category_att = 'category'
-                        filters[category_att] = kpi_data['category']
+                            filters[category_att] = kpi_data['category']
                         results = self.tools.calculate_products_on_edge(list_result=list_type, position=position,
                                                                         category=category, **filters)
                         if not results.empty:
