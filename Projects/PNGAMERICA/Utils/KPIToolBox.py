@@ -245,9 +245,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
-                #                     'average shelf',
-                #                     'regular block', 'block in block']:
+                # if kpi_type not in ['eye level']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -314,6 +312,8 @@ class PNGAMERICAToolBox:
                     self.calculate_posm_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'sud_orchestration':
                     self.calculate_sud_orchestration(kpi_set_fk, kpi_name, scene_type)
+                elif kpi_type == 'fabricare_regimen':
+                    self.calculate_fabricare_regimen(kpi_set_fk, kpi_name, scene_type)
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
@@ -1863,6 +1863,7 @@ class PNGAMERICAToolBox:
                                 del filters['category']
                         self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                               category=category)
+                        filters['category'] = kpi_template['category']
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
@@ -1872,6 +1873,7 @@ class PNGAMERICAToolBox:
                             del filters['category']
                     self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                           category=category)
+                    filters['category'] = kpi_template['category']
 
     def eye_level_writer(self, kpi_template, kpi_set_fk, kpi_name, filters, list_type, category=None):
         list_result = False
@@ -1943,6 +1945,19 @@ class PNGAMERICAToolBox:
                     result = 1
 
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
+
+    def calculate_fabricare_regimen(self, kpi_set_fk, scene_type, kpi_name):
+            block_kpi_name1 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - LIQUID'
+            block_kpi_name2 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - SHEETS'
+            block_kpi_name3 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - BEADS'
+            result = 0
+            if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
+                if block_kpi_name1 in self.block_results.keys() and block_kpi_name2 in self.block_results.keys() and \
+                                block_kpi_name3 in self.block_results.keys():
+                        if self.block_results[block_kpi_name1] and self.block_results[block_kpi_name2] and self.block_results[block_kpi_name3]:
+                            result = 1
+
+                self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
 
     def calculate_auto_assortment_compliance(self):
             auto_assortment = AutoAssortmentHandler()
@@ -2121,7 +2136,8 @@ class PNGAMERICAToolBox:
             else:
                 d_void = 0
                 d_void_new = 0
-            brand_osa_name = OSA + ' ' + brand
+            # brand_osa_name = OSA + ' ' + brand
+            brand_osa_name = OSA.format(category=brand_categories, brand=brand)
 
             # self.write_to_db_result(osa_aggregation_kpi_set_fk, kpi_name=category, result=osa_oos, threshold=availability,
             #                         level=self.LEVEL3)
