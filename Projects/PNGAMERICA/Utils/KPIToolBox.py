@@ -83,7 +83,7 @@ BLOCK_TOGETHER = ['Regular Block', 'horizontally blocked', 'vertically blocked',
                   'regular block', 'block in block', 'hor_vs_vertical']
 FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
 PG_CATEGORY = 'PG_CATEGORY'
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.4.xlsx')
 POWER_SKUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PowerSKUs_3.xlsx')
 
 GOLDEN_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'golden_shelves.xlsx'
@@ -245,9 +245,9 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                if kpi_type not in ['anchor']:
-                    # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
-                    continue
+                # if kpi_type not in ['anchor', 'linear feet']:
+                #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
+                #     continue
 
                 # if kpi_data['KPI Group type'].values[0]:
                 #     if kpi_type in BLOCK_TOGETHER:
