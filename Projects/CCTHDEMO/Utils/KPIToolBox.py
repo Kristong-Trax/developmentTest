@@ -944,17 +944,16 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
 
     def calculate_share_of_shelf_single(self, params, scene_type_source='additional_attribute_1', scene_type=None,
                                         include_empty=EXCLUDE_EMPTY, **kargs):
-        if params['Include Empty'] == 'Y':
-            include_empty = self.INCLUDE_EMPTY
         numerator = {params['Type_Numerator']: params['Numerator'].split(self.template.SEPARATOR)}
         denominator = {params['Type_Denominator']: params['Denominator'].split(self.template.SEPARATOR)}
         if scene_type is not None:
             numerator.update({scene_type_source: scene_type})
             denominator.update({scene_type_source: scene_type})
         if include_empty == self.EXCLUDE_EMPTY:
-            denominator['product_type'] = (self.tools.EMPTY, self.tools.EXCLUDE_FILTER)
-        if params['Exclude Irrelevant'] == 'Y':
-            denominator['product_type'] = (self.tools.IRRELEVANT, self.tools.EXCLUDE_FILTER)
+            if params['Exclude Irrelevant'] == 'Y':
+                denominator['product_type'] = ([self.tools.EMPTY, self.tools.IRRELEVANT], self.tools.EXCLUDE_FILTER)
+            else:
+                denominator['product_type'] = (self.tools.EMPTY, self.tools.EXCLUDE_FILTER)
         if params['Exclude Category'] != 'N':
             denominator['category'] = (params['Exclude Category'].split(self.template.SEPARATOR), self.tools.EXCLUDE_FILTER)
         result_numerator = self.scif[
