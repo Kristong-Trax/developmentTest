@@ -22,6 +22,7 @@ MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT = 60
 MAX_CYCLES_FOR_HISTORY_BASED_ASSORTMENT = 3
 EMPTY = 'Empty'
 OTHER = 'Other'
+NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Irrelevant", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
 P3_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
@@ -916,8 +917,8 @@ class BATRUToolBox:
                         'product_fk'] == product]['product_type'].values[0] in (EMPTY, OTHER):
                         product_sequence = False
                     if product_ean_code not in section_products_including_bundles:
-                        if not (self.all_products.loc[self.all_products['product_fk'] == product][
-                                    'manufacturer_name'].values[0] == BAT):
+                        if not (self.all_products.loc[self.all_products['product_fk'] == product]['manufacturer_name'].values[0] == BAT or
+                                self.all_products.loc[self.all_products['product_fk'] == product]['product_name'].values[0] in NON_COMPETITOR_PRODUCTS):
                             competitor = True
                             presence = False
                         product_name = self.all_products.loc[self.all_products[
