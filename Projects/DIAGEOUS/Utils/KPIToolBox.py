@@ -1080,12 +1080,16 @@ class DIAGEOUSToolBox:
             num_res, den_res = 0, 0
             result = all_passed_results.sum()
             score = result * weight
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+                denominator_result=den_res, result=score, identifier_result=identifier_result,
+                identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=result)
         else:
             num_res, den_res = all_passed_results.sum(), all_passed_results.count()
-            score = self.get_score(num_res, den_res)
-            result = score * weight
-        self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
-            denominator_result=den_res, result=result, identifier_result=identifier_result,
-            identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=score)
+            result = self.get_score(num_res, den_res)
+            score = result * weight
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+                denominator_result=den_res, result=result, identifier_result=identifier_result,
+                identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=score)
         return score
