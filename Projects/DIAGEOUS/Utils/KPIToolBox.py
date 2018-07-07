@@ -257,7 +257,7 @@ class DIAGEOUSToolBox:
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
             standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
-            result_line = self.calculate_pod_on(
+            result_line = self.calculate_ass_sku_on(
                 product_line['product_fk'], relevant_scif, standard_type, kpi_name)
             all_results = all_results.append(result_line, ignore_index=True)
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
@@ -284,7 +284,7 @@ class DIAGEOUSToolBox:
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result))
 
-    def calculate_pod_on(self, product_fk, relevant_scif, standard_type, kpi_name):
+    def calculate_ass_sku_on(self, product_fk, relevant_scif, standard_type, kpi_name):
         """
         Checks if specific product's sub_brand exists in the filtered scif
         :param standard_type: S or N
@@ -295,9 +295,9 @@ class DIAGEOUSToolBox:
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
-        if self.all_products[self.all_products['product_fk'] == product_fk].empty:
-            return None
         brand, sub_brand = self.get_product_details(product_fk)
+        if sub_brand is None:
+            return None
         facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
             result, passed = Const.DISTRIBUTED, 1
@@ -442,6 +442,8 @@ class DIAGEOUSToolBox:
         for products in relevant_scif[['sub_brand', 'brand_fk']].drop_duplicates().itertuples():
             sub_brand = products.sub_brand
             brand_fk = products.brand_fk
+            if not sub_brand or not brand_fk:
+                continue
             num_res = relevant_scif[(relevant_scif['sub_brand'] == sub_brand) &
                                     (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
             result = self.get_score(num_res, den_res)
@@ -609,8 +611,8 @@ class DIAGEOUSToolBox:
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, score=our_facings,
-            result=comparison * 100, identifier_result=result_identifier,
+            fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
+            result=our_facings, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
@@ -900,6 +902,8 @@ class DIAGEOUSToolBox:
         :param product_fk:
         :return: its details for assortment (brand, sub_brand)
         """
+        if self.all_products[self.all_products['product_fk'] == product_fk].empty:
+            return None, None
         brand = self.all_products[self.all_products['product_fk'] == product_fk]['brand_fk'].iloc[0]
         sub_brand = self.all_products[self.all_products['product_fk'] == product_fk]['sub_brand'].iloc[0]
         if not sub_brand:
@@ -1075,12 +1079,17 @@ class DIAGEOUSToolBox:
         if write_numeric:
             num_res, den_res = 0, 0
             result = all_passed_results.sum()
+            score = result * weight
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+                denominator_result=den_res, result=score, identifier_result=identifier_result,
+                identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=result)
         else:
             num_res, den_res = all_passed_results.sum(), all_passed_results.count()
             result = self.get_score(num_res, den_res)
-        score = result * weight
-        self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
-            denominator_result=den_res, result=result, identifier_result=identifier_result,
-            identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=score)
+            score = result * weight
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+                denominator_result=den_res, result=result, identifier_result=identifier_result,
+                identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=score)
         return score
