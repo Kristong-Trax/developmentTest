@@ -249,7 +249,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['anchor', 'linear feet']:
+                # if kpi_type not in ['checkerboarded']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -727,7 +727,8 @@ class PNGAMERICAToolBox:
                         # kpi_names = kpi_template.loc[kpi_template['kpi group'] == kpi_name]['KPI name'].unique().tolist()
                         score_dict = {}
                         filters['category'] = kpi_data['category']
-                        del filters[PG_CATEGORY]
+                        if PG_CATEGORY in filters.keys():
+                            del filters[PG_CATEGORY]
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                         if kpi_data['secondary_lead']:
                             for result in list(set(list_result_new)):
@@ -744,11 +745,13 @@ class PNGAMERICAToolBox:
                         i = 0
                         for result in score_dict.keys():
                             i += 1
-                            result = result.replace("'", "\\'")
+                            new_result = result.replace("'", "\'")
+                            if "'" in new_result:
+                                continue
                             # self.write_to_db_result(kpi_set_fk, kpi_name=kpi_names[i], level=self.LEVEL3, result=result,
                             #                         score=score_dict[result])
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name + ' ' + str(i), level=self.LEVEL3,
-                                                    result=result,
+                                                    result=new_result,
                                                     score=score_dict[result])
             else:
                 # filters = {}
@@ -1107,18 +1110,23 @@ class PNGAMERICAToolBox:
         values_to_check = []
         secondary_values_to_check = []
         tested_filters = {'category': kpi_data['category']}
+        if kpi_data['category'] in FABRICARE_CATEGORIES:
+            category_att = PG_CATEGORY
+        else:
+            category_att = 'category'
         if kpi_data['filter_1']:
-            values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_data['category'])
+            values_to_check = self.all_products.loc[(self.all_products[category_att] == kpi_data['category'])
                                                     & (self.all_products['product_type'] == 'SKU')][
                 kpi_data['filter_1']].unique().tolist()
-        if kpi_data['filter_2']:
-            secondary_values_to_check = \
-                self.all_products.loc[(self.all_products['category'] == kpi_data['category'])
-                                      & (self.all_products['product_type'] == 'SKU')][
-                    kpi_data['filter_2']].unique().tolist()
 
         for primary_filter in values_to_check:
             tested_filters[kpi_data['filter_1']] = primary_filter
+            if kpi_data['filter_2']:
+                secondary_values_to_check = \
+                    self.all_products.loc[(self.all_products[category_att] == kpi_data['category']) &
+                                          (self.all_products[kpi_data['filter_1']] == primary_filter)
+                                          & (self.all_products['product_type'] == 'SKU')][
+                        kpi_data['filter_2']].unique().tolist()
             if secondary_values_to_check:
                 for secondary_filter in secondary_values_to_check:
                     if self.all_products[(self.all_products[kpi_data['filter_1']] == primary_filter) &
@@ -1126,8 +1134,13 @@ class PNGAMERICAToolBox:
                         continue
                     tested_filters[kpi_data['filter_2']] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **tested_filters)
+                    if kpi_data['category'] in FABRICARE_CATEGORIES:
+                        tested_filters[PG_CATEGORY] = kpi_data['category']
+                        if 'category' in tested_filters.keys():
+                            del tested_filters['category']
                     results = self.tools.calculate_adjacency_relativeness(tested_filters, direction_data,
                                                                           **general_filters)
+                    tested_filters['category'] = kpi_data['category']
                     if results:
                         score_dict = {}
                         for result in list(set(results)):
@@ -1144,8 +1157,13 @@ class PNGAMERICAToolBox:
                             i += 1
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **tested_filters)
+                if kpi_data['category'] in FABRICARE_CATEGORIES:
+                    tested_filters[PG_CATEGORY] = kpi_data['category']
+                    if 'category' in tested_filters.keys():
+                        del tested_filters['category']
                 results = self.tools.calculate_adjacency_relativeness(tested_filters, direction_data,
                                                                       **general_filters)
+                tested_filters['category'] = kpi_data['category']
                 if results:
                     score_dict = {}
                     for result in list(set(results)):
@@ -1544,6 +1562,7 @@ class PNGAMERICAToolBox:
                         if 'category' in filters.keys():
                             del filters['category']
                     self.checkerboarded_writer(kpi_set_fk, kpi_template, new_kpi_name, filters)
+                    filters['category'] = kpi_template['category']
 
     def checkerboarded_writer(self, kpi_set_fk, kpi_template, kpi_name, filters):
         include_empty = False
@@ -1564,18 +1583,20 @@ class PNGAMERICAToolBox:
                                             result=result,
                                             score=1)
             else:
-                res.pop('regular block')
-                for kpi in res.keys():
-                    try:
-                        self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3,
-                                                result=1 if res[kpi] else 0,
-                                                score=1 if res[kpi] else 0)
-                    except IndexError as e:
-                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                # res.pop('regular block')
+                # for kpi in res.keys():
+                try:
+                    self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3,
+                                            result=1 if res['checkerboarded'] else 0,
+                                            score=1 if res['checkerboarded'] else 0)
+                except IndexError as e:
+                    Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
         else:
             try:
                 if kpi_template['brand_list']:
+                    self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
+                else:
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
             except IndexError as e:
                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
