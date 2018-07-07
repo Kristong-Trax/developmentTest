@@ -278,12 +278,12 @@ class PNGAMERICAGENERALToolBox:
                             bay_final_linear_value = 0
                         bay_values.append(bay_final_linear_value)
                         space_length += bay_final_linear_value
-                if retailer in ['CVS', 'Walgreens']:
-                    if (sum([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]) /
-                            float(len([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]))) < 3.2:
-                        space_length = sum([3 for value in bay_values if value > 0])
-                else:
-                    space_length = sum([4 for value in bay_values if value*self.MM_TO_FEET_CONVERSION > 1.5])
+            if retailer in ['CVS', 'Walgreens']:
+                if (sum([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]) /
+                        float(len([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]))) < 3.2:
+                    space_length = sum([3 for value in bay_values if value > 0])
+            else:
+                space_length = sum([4 for value in bay_values if value*self.MM_TO_FEET_CONVERSION > 1.5])
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
