@@ -1,7 +1,7 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conf.Configuration import Config
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Utils.Conf.Configuration import Config
 
 from KPIUtils.GlobalProjects.HEINZ.KPIGenerator import HEINZGenerator
 from KPIUtils.DB.Common import Common
@@ -20,20 +20,20 @@ class HEINZCRCalculations(BaseCalculationsScript):
         heinz = HEINZGenerator(self.data_provider, self.output, common)
         heinz.heinz_global_distribution_per_category()
         heinz.heinz_global_share_of_shelf_function()
-        heinz.heinz_global_price_adherence(pd.read_excel("/root/KEngine/prod_KPI/Projects/HEINZCR_SAND/Config/Price Adherence Targets 010718 Costa Rica.xlsx", sheetname="Price Adherence"))
+        heinz.heinz_global_price_adherence(pd.read_excel("/root/KEngine/prod_KPI/Projects/HEINZCR_SAND/Config/PriceAdherenceTargets010718.xlsx", sheetname="Price Adherence"))
         heinz.heinz_global_extra_spaces()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('heinzcr-sand calculations')
-    Config.init()
-    project_name = 'heinzcr-sand'
-    data_provider = KEngineDataProvider(project_name)
-    # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-    sessions = ['7D2A86BC-CC37-42EB-B79D-06A48FD7FEF7']
-    for session in sessions:
-        data_provider.load_session_data(session)
-        output = Output()
-        HEINZCRCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('heinzcr-sand calculations')
+#     Config.init()
+#     project_name = 'heinzcr-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
+#     sessions = ['7D2A86BC-CC37-42EB-B79D-06A48FD7FEF7']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         HEINZCRCalculations(data_provider, output).run_project_calculations()
