@@ -2097,6 +2097,7 @@ class PNGAMERICAToolBox:
             # self.write_to_db_result(osa_aggregation_kpi_set_fk, result=None, level=self.LEVEL1)
             # self.write_to_db_result(dvoid_aggregation_kpi_set_fk, result=None, level=self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_auto_assortment_compliance_per_brand(self):
         auto_assortment = AutoAssortmentHandler()
         current_store_assortment = auto_assortment.get_current_assortment_per_store(self.store_id, self.visit_date)
@@ -2190,6 +2191,7 @@ class PNGAMERICAToolBox:
 
         return store_power_skus_fks
 
+    @kpi_runtime()
     def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk, is_d_void=False):
         for product in assortment_list:
             oos_result = 1
