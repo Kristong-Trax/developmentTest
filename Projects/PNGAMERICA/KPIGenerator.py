@@ -38,4 +38,5 @@ class PNGAMERICAGenerator:
                 self.tool_box.write_to_db_result(kpi_set_fk, result=None, level=self.tool_box.LEVEL2, kpi_fk=kpi)
         # self.tool_box.calculate_auto_assortment_compliance()
         # self.tool_box.calculate_auto_assortment_compliance_per_category()
+        self.tool_box.calculate_auto_assortment_compliance_per_brand()
         self.tool_box.commit_results_data()

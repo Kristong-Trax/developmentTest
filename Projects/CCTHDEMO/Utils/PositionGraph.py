@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class PNGAMERICAPositionGraphs:
+class CCTHDEMOPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -24,19 +24,12 @@ class PNGAMERICAPositionGraphs:
     STRICT_MODE = 'Strict Mode'
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          TOP, BOTTOM, LEFT, RIGHT, 'NATURALS', 'shelf_number', 'Sub Brand', 'bay_number', 'SEGMENT',
-                          'PRICE SEGMENT', 'DIAPER SIZE', 'SUPER CATEGORY', 'P&G BRAND', 'PRIVATE LABEL',
-                          'PRIVATE_LABEL', 'GENDER', 'PACK GROUP', 'HEAD SIZE', 'PG SIZE', 'CUSTOM SUBBRAND',
-                          'SHEET SIZE', 'scene_match_fk', 'FORM', 'y_mm', 'x_mm', 'width_mm_advance', 'height_mm_advance',
-                          'CREST_WHITE', 'rect_x', 'rect_y', 'PG_CATEGORY', 'BENEFIT']
+                          'brand_name', 'category', 'manufacturer_name']
 
-    def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
+    def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE):
         self.data_provider = data_provider
         self.flexibility = flexibility
         self.proximity_mode = proximity_mode
-        if rds_conn is not None:
-            self._rds_conn = rds_conn
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.position_graphs = {}
@@ -61,27 +54,27 @@ class PNGAMERICAPositionGraphs:
             self.create_position_graphs(scene_id)
         return self.position_graphs.get(scene_id)
 
-    def get_filtered_matches(self):
+    def get_filtered_matches(self, include_stacking=False):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
+        matches = matches[matches['status'] == 1]
+        if not include_stacking:
+            matches = matches[matches['stacking_layer'] == 1]
+        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
-        scene_template = scene_template.merge(self.data_provider.templates[['template_name',
-                                                                            'template_fk', 'location_type']],
-                                              how='left', on='template_fk')
-        scene_template['scene_id'] = scene_template['scene_fk']
-        matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
+        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
+                                                                           'scene_id', 'scene_fk']],
+                                how='left', on='scene_fk', suffixes=['', '_4'])
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
-        matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches
 
     def get_missing_data(self):
         query = """
                 select p.pk as product_fk, p.product_name, p.product_type,
-                       p.product_ean_code, p.sub_category, sb.name as sub_brand_name,
+                       p.product_ean_code, sb.name as sub_brand_name,
                        b.name as brand_name, c.name as category, m.name as manufacturer_name
                 from static.product p
                 join static.brand b on b.pk = p.brand_fk
@@ -97,7 +90,7 @@ class PNGAMERICAPositionGraphs:
                 select ms.pk as scene_match_fk, ms.*
                 from probedata.match_product_in_scene ms
                 join probedata.scene s on s.pk = ms.scene_fk
-                where s.session_uid = '{}'""".format(self.session_uid)
+                where s.session_uid = '{}'""".format(self.TOP, self.BOTTOM, self.LEFT, self.RIGHT, self.session_uid)
         matches = pd.read_sql_query(query, self.rds_conn.db)
         return matches
 
@@ -111,8 +104,7 @@ class PNGAMERICAPositionGraphs:
         else:
             scenes = self.match_product_in_scene['scene_fk'].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
-                                                  (self.match_product_in_scene['stacking_layer'] == 1)]
+            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
             matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
@@ -135,7 +127,7 @@ class PNGAMERICAPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = datetime.datetime.utcnow()
-        Log.debug('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
+        Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):
         """
@@ -225,39 +217,5 @@ class PNGAMERICAPositionGraphs:
                                                     (anchor_bottom < right_bay[self.BOTTOM])))]
                 surrounding_right = surrounding_right[VERTEX_FK_FIELD]
 
-        return dict(top=surrounding_top, bottom=surrounding_bottom,
-                    left=surrounding_left, right=surrounding_right)
-
-    def get_entity_matrix(self, scene_id, entity):
-        """
-        This function creates a list of lists:
-        Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
-        """
-        if entity not in self.ATTRIBUTES_TO_SAVE:
-            Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
-            return None
-        graph = self.get(scene_id).copy()
-        if len(graph.es) == 0:
-            return []
-        edges_to_remove = graph.es.select(direction_ne='left')
-        graph.delete_edges([edge.index for edge in edges_to_remove])
-
-        incidents_dict = {}
-        matrix = []
-        for vertex in graph.vs:
-            vertex_id = vertex.index
-            incidents = graph.incident(vertex_id)
-            if incidents:
-                incidents_dict[graph.es[incidents[0]].target] = vertex_id
-            else:
-                matrix.append([vertex_id])
-        for i, row in enumerate(matrix):
-            current = row[0]
-            while current in incidents_dict.keys():
-                current = incidents_dict[current]
-                row.append(current)
-            for y, index in enumerate(row):
-                row[y] = graph.vs[index][entity]
-            matrix[i] = row
-        return matrix
-
+        return dict(surrounding_top=surrounding_top, surrounding_bottom=surrounding_bottom,
+                    surrounding_left=surrounding_left, surrounding_right=surrounding_right)

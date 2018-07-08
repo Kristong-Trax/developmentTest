@@ -27,6 +27,10 @@ DENOMINATOR = 'Denominator'
 ENTITY = 'Entity'
 OSA = 'OSA'
 DVOID = 'D-VOID'
+DVOID_AGG = 'OSA:%_Dvoid:{category}:BRAND={brand}'
+OSA_AGG_KPI_NAME = 'OSA:%_OSA:{category}:BRAND={brand}'
+OSA_PRODUCT_KPI_NAME = 'OSA:SKU_OSA_Primary:{category}:BRAND={brand}:PRODUCT={ean_code}'
+DVOID_PRODUCT_KPI_NAME = 'OSA:SKU_Dvoid:{category}:BRAND={brand}:PRODUCT={ean_code}'
 BLOCK_KPI_NAME = 'Blocking:Prod_lvl_Blocking:{category}:BRAND={brand_name}'
 CSPACE_KPI_NAME = 'Spacing:Category_Space:{category}'
 BLOCK_KPI_NAMES_PAIRING_MAPPING = {
@@ -83,7 +87,7 @@ BLOCK_TOGETHER = ['Regular Block', 'horizontally blocked', 'vertically blocked',
                   'regular block', 'block in block', 'hor_vs_vertical']
 FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
 PG_CATEGORY = 'PG_CATEGORY'
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template_v4.4.xlsx')
 POWER_SKUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PowerSKUs_3.xlsx')
 
 GOLDEN_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'golden_shelves.xlsx'
@@ -245,9 +249,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['hor_vs_vertical', 'category space', 'orchestrated', 'linear feet', 'count of',
-                #                     'average shelf',
-                #                     'regular block', 'block in block']:
+                # if kpi_type not in ['checkerboarded']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -314,6 +316,8 @@ class PNGAMERICAToolBox:
                     self.calculate_posm_availability(kpi_set_fk, kpi_name, scene_type)
                 elif kpi_type == 'sud_orchestration':
                     self.calculate_sud_orchestration(kpi_set_fk, kpi_name, scene_type)
+                elif kpi_type == 'fabricare_regimen':
+                    self.calculate_fabricare_regimen(kpi_set_fk, kpi_name, scene_type)
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
@@ -713,9 +717,7 @@ class PNGAMERICAToolBox:
                         if kpi_data['category'] in FABRICARE_CATEGORIES:
                             category_att = PG_CATEGORY
                             category = 'FABRICARE'
-                        else:
-                            category_att = 'category'
-                        filters[category_att] = kpi_data['category']
+                            filters[category_att] = kpi_data['category']
                         results = self.tools.calculate_products_on_edge(list_result=list_type, position=position,
                                                                         category=category, **filters)
                         if not results.empty:
@@ -725,7 +727,8 @@ class PNGAMERICAToolBox:
                         # kpi_names = kpi_template.loc[kpi_template['kpi group'] == kpi_name]['KPI name'].unique().tolist()
                         score_dict = {}
                         filters['category'] = kpi_data['category']
-                        del filters[PG_CATEGORY]
+                        if PG_CATEGORY in filters.keys():
+                            del filters[PG_CATEGORY]
                         new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                         if kpi_data['secondary_lead']:
                             for result in list(set(list_result_new)):
@@ -742,11 +745,13 @@ class PNGAMERICAToolBox:
                         i = 0
                         for result in score_dict.keys():
                             i += 1
-                            result = result.replace("'", "\\'")
+                            new_result = result.replace("'", "\'")
+                            if "'" in new_result:
+                                continue
                             # self.write_to_db_result(kpi_set_fk, kpi_name=kpi_names[i], level=self.LEVEL3, result=result,
                             #                         score=score_dict[result])
                             self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name + ' ' + str(i), level=self.LEVEL3,
-                                                    result=result,
+                                                    result=new_result,
                                                     score=score_dict[result])
             else:
                 # filters = {}
@@ -1105,18 +1110,23 @@ class PNGAMERICAToolBox:
         values_to_check = []
         secondary_values_to_check = []
         tested_filters = {'category': kpi_data['category']}
+        if kpi_data['category'] in FABRICARE_CATEGORIES:
+            category_att = PG_CATEGORY
+        else:
+            category_att = 'category'
         if kpi_data['filter_1']:
-            values_to_check = self.all_products.loc[(self.all_products['category'] == kpi_data['category'])
+            values_to_check = self.all_products.loc[(self.all_products[category_att] == kpi_data['category'])
                                                     & (self.all_products['product_type'] == 'SKU')][
                 kpi_data['filter_1']].unique().tolist()
-        if kpi_data['filter_2']:
-            secondary_values_to_check = \
-                self.all_products.loc[(self.all_products['category'] == kpi_data['category'])
-                                      & (self.all_products['product_type'] == 'SKU')][
-                    kpi_data['filter_2']].unique().tolist()
 
         for primary_filter in values_to_check:
             tested_filters[kpi_data['filter_1']] = primary_filter
+            if kpi_data['filter_2']:
+                secondary_values_to_check = \
+                    self.all_products.loc[(self.all_products[category_att] == kpi_data['category']) &
+                                          (self.all_products[kpi_data['filter_1']] == primary_filter)
+                                          & (self.all_products['product_type'] == 'SKU')][
+                        kpi_data['filter_2']].unique().tolist()
             if secondary_values_to_check:
                 for secondary_filter in secondary_values_to_check:
                     if self.all_products[(self.all_products[kpi_data['filter_1']] == primary_filter) &
@@ -1124,8 +1134,13 @@ class PNGAMERICAToolBox:
                         continue
                     tested_filters[kpi_data['filter_2']] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **tested_filters)
+                    if kpi_data['category'] in FABRICARE_CATEGORIES:
+                        tested_filters[PG_CATEGORY] = kpi_data['category']
+                        if 'category' in tested_filters.keys():
+                            del tested_filters['category']
                     results = self.tools.calculate_adjacency_relativeness(tested_filters, direction_data,
                                                                           **general_filters)
+                    tested_filters['category'] = kpi_data['category']
                     if results:
                         score_dict = {}
                         for result in list(set(results)):
@@ -1142,8 +1157,13 @@ class PNGAMERICAToolBox:
                             i += 1
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **tested_filters)
+                if kpi_data['category'] in FABRICARE_CATEGORIES:
+                    tested_filters[PG_CATEGORY] = kpi_data['category']
+                    if 'category' in tested_filters.keys():
+                        del tested_filters['category']
                 results = self.tools.calculate_adjacency_relativeness(tested_filters, direction_data,
                                                                       **general_filters)
+                tested_filters['category'] = kpi_data['category']
                 if results:
                     score_dict = {}
                     for result in list(set(results)):
@@ -1542,6 +1562,7 @@ class PNGAMERICAToolBox:
                         if 'category' in filters.keys():
                             del filters['category']
                     self.checkerboarded_writer(kpi_set_fk, kpi_template, new_kpi_name, filters)
+                    filters['category'] = kpi_template['category']
 
     def checkerboarded_writer(self, kpi_set_fk, kpi_template, kpi_name, filters):
         include_empty = False
@@ -1562,18 +1583,20 @@ class PNGAMERICAToolBox:
                                             result=result,
                                             score=1)
             else:
-                res.pop('regular block')
-                for kpi in res.keys():
-                    try:
-                        self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3,
-                                                result=1 if res[kpi] else 0,
-                                                score=1 if res[kpi] else 0)
-                    except IndexError as e:
-                        Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
+                # res.pop('regular block')
+                # for kpi in res.keys():
+                try:
+                    self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3,
+                                            result=1 if res['checkerboarded'] else 0,
+                                            score=1 if res['checkerboarded'] else 0)
+                except IndexError as e:
+                    Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
 
         else:
             try:
                 if kpi_template['brand_list']:
+                    self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
+                else:
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=0, score=0)
             except IndexError as e:
                 Log.info('Saving KPI {} failed due to {}'.format(kpi_name, e))
@@ -1863,6 +1886,7 @@ class PNGAMERICAToolBox:
                                 del filters['category']
                         self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                               category=category)
+                        filters['category'] = kpi_template['category']
                 else:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
@@ -1872,6 +1896,7 @@ class PNGAMERICAToolBox:
                             del filters['category']
                     self.eye_level_writer(kpi_template, kpi_set_fk, new_kpi_name, filters, list_type,
                                           category=category)
+                    filters['category'] = kpi_template['category']
 
     def eye_level_writer(self, kpi_template, kpi_set_fk, kpi_name, filters, list_type, category=None):
         list_result = False
@@ -1943,6 +1968,19 @@ class PNGAMERICAToolBox:
                     result = 1
 
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
+
+    def calculate_fabricare_regimen(self, kpi_set_fk, scene_type, kpi_name):
+            block_kpi_name1 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - LIQUID'
+            block_kpi_name2 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - SHEETS'
+            block_kpi_name3 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - BEADS'
+            result = 0
+            if set(self.scif['template_name'].unique().tolist()) & set(scene_type):
+                if block_kpi_name1 in self.block_results.keys() and block_kpi_name2 in self.block_results.keys() and \
+                                block_kpi_name3 in self.block_results.keys():
+                        if self.block_results[block_kpi_name1] and self.block_results[block_kpi_name2] and self.block_results[block_kpi_name3]:
+                            result = 1
+
+                self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
 
     def calculate_auto_assortment_compliance(self):
             auto_assortment = AutoAssortmentHandler()
@@ -2121,20 +2159,24 @@ class PNGAMERICAToolBox:
             else:
                 d_void = 0
                 d_void_new = 0
-            brand_osa_name = OSA + ' ' + brand
+            for category in brand_categories:
+                brand_osa_name = OSA_AGG_KPI_NAME.format(category=category, brand=brand)
+            # brand_osa_name = OSA + ' ' + brand
 
             # self.write_to_db_result(osa_aggregation_kpi_set_fk, kpi_name=category, result=osa_oos, threshold=availability,
             #                         level=self.LEVEL3)
-            self.write_to_db_result(osa_kpi_set_fk, kpi_name=brand_osa_name, result=osa_oos, threshold=availability,
+                self.write_to_db_result(osa_kpi_set_fk, kpi_name=brand_osa_name, result=osa_oos, threshold=availability,
                                     level=self.LEVEL3)
             # self.write_to_db_result(dvoid_aggregation_kpi_set_fk, kpi_name=category, result=d_void, threshold=0, level=self.LEVEL3)
-            self.write_to_db_result(dvoid_kpi_set_fk, kpi_name=brand_osa_name, result=d_void, threshold=0,
+
+                dvoid_name = DVOID_AGG.format(category=category, brand=brand)
+                self.write_to_db_result(dvoid_kpi_set_fk, kpi_name=dvoid_name, result=d_void, threshold=0,
                                     level=self.LEVEL3)
             self.write_to_db_result(osa_kpi_set_fk, result=None, level=self.LEVEL1)
             self.write_to_db_result(dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
 
             self.save_assortment_raw_data(current_brand_assortment, distributed_products, osa_kpi_set_fk)
-            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk)
+            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk, is_d_void=True)
 
     def get_power_skus_per_store(self):
         store_power_skus = self.power_skus[self.power_skus['Retailer'] == self.retailer]['pk'].unique().tolist()
@@ -2148,7 +2190,7 @@ class PNGAMERICAToolBox:
 
         return store_power_skus_fks
 
-    def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk):
+    def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk, is_d_void=False):
         for product in assortment_list:
             oos_result = 1
             # if product in dist_prod_list:
@@ -2172,8 +2214,16 @@ class PNGAMERICAToolBox:
             if product in dist_prod_list:
                 oos_result = 0
             try:
-                kpi_name = self.all_products[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
-                if kpi_name is not None:
+                product_info = self.all_products[self.all_products['product_fk'] == product]
+                category = product_info.category.values[0]
+                brand = product_info.brand_name.values[0]
+                ean_code = self.get_product_ean_code(product_info)
+                if is_d_void:
+                    kpi_name = DVOID_PRODUCT_KPI_NAME.format(category=category, brand=brand, ean_code=ean_code)
+                else:
+                    kpi_name = OSA_PRODUCT_KPI_NAME.format(category=category, brand=brand, ean_code=ean_code)
+                # kpi_name = self.all_products[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
+                if ean_code != '-1':
                     self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, result=oos_result, threshold=1,
                                             level=self.LEVEL3)
                 else:
@@ -2187,6 +2237,14 @@ class PNGAMERICAToolBox:
                                             level=self.LEVEL3)
                 Log.info('Product pk {} has no EAN code'.format(product))
                 continue
+
+    def get_product_ean_code(self, product_info):
+        if product_info.product_ean_code.values[0] is not None:
+            return product_info.product_ean_code.values[0]
+        elif product_info.item_code.values[0] is not None:
+            return product_info.item_code.values[0]
+        else:
+            return -1
 
     def check_products_on_top_shelf(self, kpi_set_fk, kpi_name, scene_type):
         kpi_template = self.count_of_data.loc[self.count_of_data['KPI name'] == kpi_name]  # todo: change this
