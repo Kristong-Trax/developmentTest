@@ -10,7 +10,7 @@ import pandas as pd
 __author__ = 'Eli'
 
 
-class HEINZCRCalculations(BaseCalculationsScript):
+class HEINZCRHEINZCRCalculations(BaseCalculationsScript):
     """
     https://confluence.trax-cloud.com/pages/resumedraft.action?draftId=174198555&draftShareId=feac8c7a-ec57-4b36-b380-190d3668debc
     """
@@ -36,4 +36,4 @@ class HEINZCRCalculations(BaseCalculationsScript):
 #     for session in sessions:
 #         data_provider.load_session_data(session)
 #         output = Output()
-#         HEINZCRCalculations(data_provider, output).run_project_calculations()
+#         HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
