@@ -249,7 +249,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['checkerboarded']:
+                # if kpi_type not in ['eye level','regular block','sud_orchestration']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -1958,7 +1958,7 @@ class PNGAMERICAToolBox:
     def calculate_naturals_adjacency(self, kpi_set_fk, scene_type, kpi_name):
         pass
 
-    def calculate_sud_orchestration(self, kpi_set_fk, scene_type, kpi_name):
+    def calculate_sud_orchestration(self, kpi_set_fk, kpi_name, scene_type):
         eye_level_kpi_name = 'Location:Eye_Level:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE'
         block_kpi_name = 'Blocking:Prod_lvl_Blocking:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE:FORM=LAUNDRY UNIT DOSE'
         result = 0
@@ -1969,7 +1969,7 @@ class PNGAMERICAToolBox:
 
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
 
-    def calculate_fabricare_regimen(self, kpi_set_fk, scene_type, kpi_name):
+    def calculate_fabricare_regimen(self, kpi_set_fk, kpi_name, scene_type):
             block_kpi_name1 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - LIQUID'
             block_kpi_name2 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - SHEETS'
             block_kpi_name3 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - BEADS'
