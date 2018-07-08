@@ -647,7 +647,7 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         This function calculates BCCP Atomics (including both surveys and availability), and saves the result to the DB.
         """
         kpi_name = params[self.template.KPI_NAME]
-        scene_types = params[self.template.SCENE_TYPE].split(self.template.SEPARATOR)
+        # scene_types = params[self.template.SCENE_TYPE].split(self.template.SEPARATOR)
 
         # Check survey
         # if self.calculation_type == self.template.TEMPLATE_TT_AFTER_NOV2017 or self.calculation_type == self.template.TEMPLATE_TT:
@@ -675,7 +675,8 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
         availability_target = int(availability_target)
         products = str(availability_data[self.template.availability_consts.PRODUCT_EAN_CODES]).split(
             self.template.SEPARATOR)
-        availability = self.tools.calculate_availability(product_ean_code=products, additional_attribute_1=scene_types)
+        # availability = self.tools.calculate_availability(product_ean_code=products, additional_attribute_1=scene_types)
+        availability = self.tools.calculate_availability(product_ean_code=products)
         availability_result = 100 if availability >= availability_target else 0
 
         # if survey_result and availability_result:
