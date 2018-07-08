@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 
-from Projects.CCRU.Utils.JSON import JsonGenerator
+from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 from Trax.Data.Projects.Connector import ProjectConnector
 
@@ -49,7 +49,7 @@ class CCRUFastFoodCalculations:
         return self._rds_conn
 
     def main_function(self):
-        jg = JsonGenerator('ccru')
+        jg = CCRUJsonGenerator('ccru')
         jg.create_json('Fastfood.xlsx', FAST_FOOD)
 
         calc_start_time = datetime.datetime.utcnow()
