@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import pandas as pd
 
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
@@ -13,8 +11,6 @@ __author__ = 'Nimrod'
 
 
 class CustomConfigurations(object):
-
-
 
     CUSTOM_FIELD = 'KPI Type'
     DEFAULT_SUFFIXES = ['_{}'.format(i) for i in xrange(1, 11)]
@@ -74,7 +70,7 @@ class AddKPIs(Consts, CustomConfigurations):
         """
         update_query = "update static.kpi set weight = '{}' where pk = {}"
         queries = []
-        for kpi in self.data:
+        for kpi in self.data.to_dict('records'):
             kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == kpi.get(self.KPI_SET_NAME)) &
                                           (self.kpi_static_data['kpi_name'] == kpi.get(self.KPI_NAME))]['kpi_fk'].values[0]
             queries.append(update_query.format(kpi.get(self.WEIGHT), kpi_fk))
@@ -113,7 +109,7 @@ class AddKPIs(Consts, CustomConfigurations):
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
             set_name = kpis.iloc[i][self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = unicode(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            kpi_name = str(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
             if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                     (self.kpi_static_data['kpi_name'] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
@@ -140,8 +136,8 @@ class AddKPIs(Consts, CustomConfigurations):
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
             set_name = atomic[self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = unicode(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
-            atomic_name = unicode(atomic[self.ATOMIC_KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            kpi_name = str(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            atomic_name = str(atomic[self.ATOMIC_KPI_NAME]).replace("'", "\\'").encode('utf-8')
 
             if self.custom_mode:
                 names = []
@@ -188,5 +184,8 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('pngjp', '/home/Shani/Desktop/KPISpngjp.xlsx')
-    kpi.add_kpis_from_template()
+    kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
+    # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
+    # kpi.add_kpis_from_template()
+    kpi.add_weights()
+

@@ -47,6 +47,7 @@ BLOCK_KPI_NAMES_PAIRING_MAPPING = {
         'Blocking:Block_Hor_vs_Ver:{category}:SEG={SEGMENT}:FORM={FORM}'}
 CATEGORY_OSA_MAPPING = {
     'AIR CARE': 'OSA AIR CARE',
+    'AI': 'OSA AI',
     'AP/DO': 'OSA AP/DO',
     'BABY CARE': 'OSA BABY CARE',
     'DISH CARE': 'OSA DISH CARE',
@@ -60,10 +61,12 @@ CATEGORY_OSA_MAPPING = {
     'QUICK CLEAN': 'OSA QUICK CLEAN',
     'RESPIRATORY': 'OSA RESPIRATORY',
     'SHAVE': 'OSA SHAVE',
-    'SKIN CARE': 'OSA SKIN CARE'
+    'SKIN CARE': 'OSA SKIN CARE',
+    'FEM CARE': 'OSA FEM CARE'
 }
 CATEGORY_DVOID_MAPPING = {
     'AIR CARE': 'D-VOID AIR CARE',
+    'AI': 'D-VOID AI',
     'AP/DO': 'D-VOID AP/DO',
     'BABY CARE': 'D-VOID BABY CARE',
     'DISH CARE': 'D-VOID DISH CARE',
@@ -77,8 +80,10 @@ CATEGORY_DVOID_MAPPING = {
     'QUICK CLEAN': 'D-VOID QUICK CLEAN',
     'RESPIRATORY': 'D-VOID RESPIRATORY',
     'SHAVE': 'D-VOID SHAVE',
-    'SKIN CARE': 'D-VOID SKIN CARE'
+    'SKIN CARE': 'D-VOID SKIN CARE',
+    'FEM CARE': 'D-VOID FEM CARE'
 }
+SUPPORTED_CATEGORIES = ['AI', 'FABRICARE', 'ORAL CARE', 'FEM CARE']
 BLOCK_PARAMS = ['SEGMENT', 'sub_category', 'brand_name', 'SUPER CATEGORY', 'manufacturer_name', 'NATURALS', 'Sub Brand',
                 'P&G BRAND', 'PRIVATE_LABEL', 'GENDER', 'PRICE SEGMENT', 'HEAD SIZE', 'PG SIZE']
 ADJACENCY_PARAMS = ['sub_category', 'brand_name', 'NATURALS', 'Sub Brand',
@@ -249,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['checkerboarded']:
+                # if kpi_type not in ['eye level','regular block','sud_orchestration']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -1687,7 +1692,7 @@ class PNGAMERICAToolBox:
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
                     if kpi_template['category'] in FABRICARE_CATEGORIES:
                         filters[PG_CATEGORY] = kpi_template['category']
-                        if kpi_template['filter_2'] == 'SEGMENT':
+                        if kpi_template['filter_2'] == 'SEGMENT' or kpi_template['filter_1'] == PG_CATEGORY:
                             exclude_pl = True
                         if 'category' in filters.keys():
                             del filters['category']
@@ -1958,7 +1963,7 @@ class PNGAMERICAToolBox:
     def calculate_naturals_adjacency(self, kpi_set_fk, scene_type, kpi_name):
         pass
 
-    def calculate_sud_orchestration(self, kpi_set_fk, scene_type, kpi_name):
+    def calculate_sud_orchestration(self, kpi_set_fk, kpi_name, scene_type):
         eye_level_kpi_name = 'Location:Eye_Level:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE'
         block_kpi_name = 'Blocking:Prod_lvl_Blocking:TOTAL LAUNDRY CARE:SEG=LAUNDRY CARE:FORM=LAUNDRY UNIT DOSE'
         result = 0
@@ -1969,7 +1974,7 @@ class PNGAMERICAToolBox:
 
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=result, score=result)
 
-    def calculate_fabricare_regimen(self, kpi_set_fk, scene_type, kpi_name):
+    def calculate_fabricare_regimen(self, kpi_set_fk, kpi_name, scene_type):
             block_kpi_name1 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - LIQUID'
             block_kpi_name2 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - SHEETS'
             block_kpi_name3 = 'Blocking:Prod_lvl_Blocking:TOTAL FABRIC CONDITIONERS:SEG=FABRIC CONDITIONERS:FORM=FABRIC CONDITIONER - BEADS'
@@ -2097,11 +2102,13 @@ class PNGAMERICAToolBox:
             # self.write_to_db_result(osa_aggregation_kpi_set_fk, result=None, level=self.LEVEL1)
             # self.write_to_db_result(dvoid_aggregation_kpi_set_fk, result=None, level=self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_auto_assortment_compliance_per_brand(self):
         auto_assortment = AutoAssortmentHandler()
         current_store_assortment = auto_assortment.get_current_assortment_per_store(self.store_id, self.visit_date)
         store_pskus = self.get_power_skus_per_store()
-        for brand in self.scif['brand_name'].unique().tolist():
+        assortment_brands = self.all_products.loc[self.all_products['product_fk'].isin(current_store_assortment)]['brand_name'].unique().tolist()
+        for brand in assortment_brands:
             brand_categories = self.all_products[self.all_products['brand_name'] == brand]['category'].unique().tolist()
             if not set(brand_categories) & set(CATEGORY_OSA_MAPPING.keys()) or not set(brand_categories) & set(
                     self.scif['template_group'].unique().tolist()):
@@ -2112,6 +2119,9 @@ class PNGAMERICAToolBox:
             distributed_products = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
                                              (self.scif['dist_sc'] == 1) &
                                              (self.scif['brand_name'] == brand)]['product_fk'].unique().tolist()
+            distributed_categories = self.scif[(self.scif['product_fk'].isin(current_store_assortment)) &
+                                             (self.scif['dist_sc'] == 1) &
+                                             (self.scif['brand_name'] == brand)]['category'].unique().tolist()
             psku_distributed_products = self.scif[(self.scif['dist_sc'] == 1) &
                                                   (self.scif['product_fk'].isin(store_pskus)) &
                                                   (self.scif['brand_name'] == brand)]['product_fk'].unique().tolist()
@@ -2123,12 +2133,12 @@ class PNGAMERICAToolBox:
             # category_dvoid_kpi_set_fk = \
             #     self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category_dvoid_set]['kpi_set_fk'].values[
             #         0]
-            osa_kpi_set_fk = \
-                self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == OSA]['kpi_set_fk'].values[
-                    0]
-            dvoid_kpi_set_fk = \
-                self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == DVOID]['kpi_set_fk'].values[
-                    0]
+            # osa_kpi_set_fk = \
+            #     self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == OSA]['kpi_set_fk'].values[
+            #         0]
+            # dvoid_kpi_set_fk = \
+            #     self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == DVOID]['kpi_set_fk'].values[
+            #         0]
             psku_products = self.all_products[(self.all_products['product_fk'].isin(store_pskus))
                                               & (self.all_products['brand_name'] == brand)][
                 'product_fk'].unique().tolist()
@@ -2160,23 +2170,40 @@ class PNGAMERICAToolBox:
                 d_void = 0
                 d_void_new = 0
             for category in brand_categories:
-                brand_osa_name = OSA_AGG_KPI_NAME.format(category=category, brand=brand)
-            # brand_osa_name = OSA + ' ' + brand
+                try:
+                    if category not in SUPPORTED_CATEGORIES:
+                        continue
+                    if category not in distributed_categories:
+                        continue
+                    category_osa_set = CATEGORY_OSA_MAPPING[category]
+                    category_osa_kpi_set_fk = \
+                        self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category_osa_set]['kpi_set_fk'].values[
+                            0]
+                    category_dvoid_set = CATEGORY_DVOID_MAPPING[category]
+                    category_dvoid_kpi_set_fk = \
+                        self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category_dvoid_set][
+                            'kpi_set_fk'].values[
+                            0]
+                    brand_osa_name = OSA_AGG_KPI_NAME.format(category=category, brand=brand)
+                # brand_osa_name = OSA + ' ' + brand
 
-            # self.write_to_db_result(osa_aggregation_kpi_set_fk, kpi_name=category, result=osa_oos, threshold=availability,
-            #                         level=self.LEVEL3)
-                self.write_to_db_result(osa_kpi_set_fk, kpi_name=brand_osa_name, result=osa_oos, threshold=availability,
-                                    level=self.LEVEL3)
-            # self.write_to_db_result(dvoid_aggregation_kpi_set_fk, kpi_name=category, result=d_void, threshold=0, level=self.LEVEL3)
+                # self.write_to_db_result(osa_aggregation_kpi_set_fk, kpi_name=category, result=osa_oos, threshold=availability,
+                #                         level=self.LEVEL3)
+                    self.write_to_db_result(category_osa_kpi_set_fk, kpi_name=brand_osa_name, result=osa_oos, threshold=availability,
+                                        level=self.LEVEL3)
+                # self.write_to_db_result(dvoid_aggregation_kpi_set_fk, kpi_name=category, result=d_void, threshold=0, level=self.LEVEL3)
 
-                dvoid_name = DVOID_AGG.format(category=category, brand=brand)
-                self.write_to_db_result(dvoid_kpi_set_fk, kpi_name=dvoid_name, result=d_void, threshold=0,
-                                    level=self.LEVEL3)
-            self.write_to_db_result(osa_kpi_set_fk, result=None, level=self.LEVEL1)
-            self.write_to_db_result(dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
+                    dvoid_name = DVOID_AGG.format(category=category, brand=brand)
+                    self.write_to_db_result(category_dvoid_kpi_set_fk, kpi_name=dvoid_name, result=d_void, threshold=0,
+                                        level=self.LEVEL3)
+                    self.write_to_db_result(category_osa_kpi_set_fk, result=None, level=self.LEVEL1)
+                    self.write_to_db_result(category_dvoid_kpi_set_fk, result=None, level=self.LEVEL1)
 
-            self.save_assortment_raw_data(current_brand_assortment, distributed_products, osa_kpi_set_fk)
-            self.save_assortment_raw_data(store_pskus, psku_distributed_products, dvoid_kpi_set_fk, is_d_void=True)
+                    self.save_assortment_raw_data(current_brand_assortment, distributed_products, category_osa_kpi_set_fk)
+                    self.save_assortment_raw_data(store_pskus, psku_distributed_products, category_dvoid_kpi_set_fk, is_d_void=True)
+                except Exception as e:
+                    Log.info('Category {} is not supported'.format(category))
+                    continue
 
     def get_power_skus_per_store(self):
         store_power_skus = self.power_skus[self.power_skus['Retailer'] == self.retailer]['pk'].unique().tolist()
@@ -2190,6 +2217,7 @@ class PNGAMERICAToolBox:
 
         return store_power_skus_fks
 
+    @kpi_runtime()
     def save_assortment_raw_data(self, assortment_list, dist_prod_list, kpi_set_fk, is_d_void=False):
         for product in assortment_list:
             oos_result = 1
