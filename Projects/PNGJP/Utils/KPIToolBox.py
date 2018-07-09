@@ -334,16 +334,19 @@ class PNGJPToolBox(PNGJPConsts):
 
         scenes_filters = self.get_scenes_filters(params, category)
         for product_ean_code in distribution_products:
-            product_brand = self.all_products.loc[self.all_products['product_ean_code'] ==
-                                                  product_ean_code][self.BRAND_LOCAL_NAME].values[0]
-            atomic_kpi_name = atomic_name.format(category=category, brand=product_brand,
-                                                 ean=product_ean_code)
-            result = int(self.tools.calculate_assortment(product_ean_code=product_ean_code, **scenes_filters))
-            if result > 0:
-                self.write_to_db_result(score=result, level=self.LEVEL3, kpi_set_name=kpi_set_name,
-                                        kpi_name=kpi_set_name, atomic_kpi_name=atomic_kpi_name)
-            else:
-                self.atomic_results[kpi_set_name][atomic_kpi_name] = result
+            try:
+                product_brand = self.all_products.loc[self.all_products['product_ean_code'] ==
+                                                      product_ean_code][self.BRAND_LOCAL_NAME].values[0]
+                atomic_kpi_name = atomic_name.format(category=category, brand=product_brand,
+                                                     ean=product_ean_code)
+                result = int(self.tools.calculate_assortment(product_ean_code=product_ean_code, **scenes_filters))
+                if result > 0:
+                    self.write_to_db_result(score=result, level=self.LEVEL3, kpi_set_name=kpi_set_name,
+                                            kpi_name=kpi_set_name, atomic_kpi_name=atomic_kpi_name)
+                else:
+                    self.atomic_results[kpi_set_name][atomic_kpi_name] = result
+            except Exception as e:
+                Log.warning("product_ean_code:'{}' or atomic_kpi_name does not exist in DB".format(product_ean_code))
 
     def calculate_distribution_by_scene(self, category, params):
         kpi_set_name = params[self.SET_NAME]
