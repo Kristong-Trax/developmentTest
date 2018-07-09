@@ -23,7 +23,7 @@ class SANOFIZACalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofiza'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '69D4BF95-6E2B-453E-AAAA-4E73A8DF8975'
+#     session = '542EEB24-752E-4651-927C-A83EA32C5F45'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIZACalculations(data_provider, output).run_project_calculations()
