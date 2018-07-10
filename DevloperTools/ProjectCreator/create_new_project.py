@@ -2,7 +2,7 @@
 import os
 import shutil
 
-from KPIUtils_v2.Utils.Decorators.Decorators import log_task
+from Trax.Tools.ProfessionalServices.TemplateValidator.Decorators.Decorators import *
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
