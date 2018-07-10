@@ -28,7 +28,7 @@ class INBEVTRADMXGeo:
         :param first_point: first point
         :param second_point: second point
         :return: haversine distance
-        # """
+        """
         # result = haversine(first_point.pos_lat, first_point.pos_long, second_point.pos_lat, second_point.pos_long)
         result = haversine((first_point.pos_lat, first_point.pos_long),
                            (second_point.pos_lat, second_point.pos_long)) * 1000
@@ -36,12 +36,12 @@ class INBEVTRADMXGeo:
 
     @staticmethod
     def is_probes_location_none(probes_location):
-        return (probes_location.store_uid.values[0] is None) and (probes_location.pos_lat.values[0] is None) and \
+        return (probes_location.store_uid.values[0] is None) or (probes_location.pos_lat.values[0] is None) or \
                (probes_location.pos_long.values[0] is None)
 
     @staticmethod
     def is_store_location_none(store_location):
-        return (store_location.pos_lat.values[0] is None) and (store_location.pos_long.values[0] is None)
+        return (store_location.pos_lat.values[0] is None) or (store_location.pos_long.values[0] is None)
 
     def calculate_geo_location(self):
         """"
