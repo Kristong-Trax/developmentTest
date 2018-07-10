@@ -22,8 +22,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Elyashiv'
 
-OFF_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'off_premise Template.xlsx')
-ON_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'on_premise Template.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
 class DIAGEOUSToolBox:
@@ -51,8 +50,6 @@ class DIAGEOUSToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.ps_data.get_state_name()
         self.sub_brands = self.ps_data.get_custom_entities(1002)
-        # this function is temporary
-        # self.insert_new_subs()
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
@@ -67,6 +64,7 @@ class DIAGEOUSToolBox:
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
                                                                    target_answer=Const.SURVEY_ANSWER)
+            self.kpi_main_sheet = Const.ON_TRADE_MAIN
         else:
             self.scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
@@ -77,52 +75,10 @@ class DIAGEOUSToolBox:
             self.converted_groups = self.convert_groups_from_template()
             self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
                                                                       target_answer=Const.SURVEY_ANSWER)
+            self.kpi_main_sheet = Const.OFF_TRADE_MAIN
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
 
     # initialize:
-
-    def get_sub_brands(self):
-        """
-        returns the DF of the sub_brands
-        :return:
-        """
-        query = self.fetcher.get_sub_brands()
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        return df
-
-    # def refresh_sub_brands(self):
-    #     """
-    #     temporary function - checks if there are new sub_brands that don't exist in the DB, and uploads them
-    #     :return:
-    #     """
-    #     all_sub_brands = self.all_products['sub_brand'].unique().tolist()
-    #     current_sub_brand = self.sub_brands['name'].unique().tolist()
-    #     subs_not_in_db = set(all_sub_brands) - set(current_sub_brand)
-    #     if subs_not_in_db:
-    #         self.insert_new_subs(subs_not_in_db)
-
-    def insert_new_subs(self):
-        """
-        Temporary function: Gets a list of all sub_brands not in the DB and inserts them.
-        After that - reloads the local DF.
-        :param new_subs: list
-        :return:
-        """
-        queries = []
-        all_new_subs = self.all_products[self.all_products['is_active'] == 1][['sub_brand', 'brand_fk']].drop_duplicates()
-        for line in all_new_subs.itertuples():
-            sub_brand = line.sub_brand
-            brand = line.brand_fk
-            if sub_brand:
-                queries.append(self.fetcher.insert_new_sub_brands(sub_brand, brand))
-        merge_queries = self.common.merge_insert_queries(queries)
-        cur = self.rds_conn.db.cursor()
-        cur.execute("delete from static.custom_entity where entity_type_fk = 1002;")
-        for query in merge_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        print "AAAAAAAAAAAAAAAaaaaaaaaaaaaaaaaaaaaaaAAAAAAAAAAAAAAAAAAAAaaaaaaaaaaAAaaaaAAaaaAaaaaaaaaaaaaaaa"
-        self.sub_brands = self.get_sub_brands()
 
     def get_templates(self):
         """
@@ -130,22 +86,20 @@ class DIAGEOUSToolBox:
         """
         if self.on_premise:
             for sheet in Const.ON_SHEETS:
-                self.templates[sheet] = pd.read_excel(ON_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                      keep_default_na=False)
+                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
         else:
             for sheet in Const.OFF_SHEETS:
                 if sheet in ([Const.SHELF_FACING_SHEET, Const.PRICING_SHEET]):
                     converters = {Const.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
                                   Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                    self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
                                                           converters=converters, keep_default_na=False)
                 elif sheet == Const.SHELF_PLACMENTS_SHEET:
                     converters = {Const.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
+                    self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
                                                           converters=converters, keep_default_na=False)
                 else:
-                    self.templates[sheet] = pd.read_excel(OFF_TEMPLATE_PATH, sheetname=sheet, skiprows=2,
-                                                          keep_default_na=False)
+                    self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
 
     # main functions:
 
@@ -162,7 +116,7 @@ class DIAGEOUSToolBox:
             total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_TOTAL)
             segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_SEGMENT)
             national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NATIONAL)
-        for i, kpi_line in self.templates[Const.KPIS_SHEET].iterrows():
+        for i, kpi_line in self.templates[self.kpi_main_sheet].iterrows():
             total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(kpi_line)
             if kpi_line[Const.KPI_GROUP]:
                 total_store_score += total_weighted_score
