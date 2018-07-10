@@ -118,6 +118,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     HIERARCHY = 'Hierarchy'
     GOLDEN_ZONE = 'Golden Zone'
+    GOLDEN_ZONE_CRITERIA = 'Golden Zone Criteria'
     BLOCK = 'Block'
     ADJACENCY = 'Adjacency'
     ANCHOR = 'Anchor'
@@ -152,6 +153,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', self.template_name)
         self.template_data = parse_template(self.TEMPLATE_PATH, self.HIERARCHY)
         self.golden_zone_data = parse_template(self.TEMPLATE_PATH, self.GOLDEN_ZONE)
+        self.golden_zone_data_criteria = parse_template(self.TEMPLATE_PATH, self.GOLDEN_ZONE_CRITERIA)
         self.block_data = parse_template(self.TEMPLATE_PATH, self.BLOCK)
         self.adjacency_data = parse_template(self.TEMPLATE_PATH, self.ADJACENCY)
         self.anchor_data = parse_template(self.TEMPLATE_PATH, self.ANCHOR)
