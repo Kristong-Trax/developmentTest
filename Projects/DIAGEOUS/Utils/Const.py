@@ -5,14 +5,15 @@ __author__ = 'Elyashiv'
 class Const(object):
 
     # sheets:
-    KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET = "KPIs", "Shelf Facings", "Pricing"
+    ON_TRADE_MAIN = "main - on_trade"
+    OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET = "main - off_trade", "Shelf Facings", "Pricing"
     SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
     DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
     OFF_SHEETS = [
-        KPIS_SHEET, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
+        OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
         DISPLAY_TARGET_SHEET, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET,
     ]
-    ON_SHEETS = [KPIS_SHEET]
+    ON_SHEETS = [ON_TRADE_MAIN]
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
