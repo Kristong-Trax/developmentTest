@@ -163,6 +163,7 @@ class Packager:
 class KPIUtilsGenerator:
 
     KPI_FACTORY = 'kpi_factory'
+    SDK_FACTORY = 'sdk_factory'
     KPI_UTILS = 'KPIUtils'
     KPI_UTILS_V2 = 'KPIUtils_v2'
     SETUP = 'setup.py'
@@ -171,10 +172,10 @@ class KPIUtilsGenerator:
 
         if jenkins:
             self.rel_path = os.path.dirname(os.getcwd())
-            self.ace_path = os.path.join(self.rel_path, self.KPI_FACTORY)
+            self.ace_path = os.path.join(self.rel_path, self.SDK_FACTORY)
         else:
             self.rel_path = os.path.expanduser('~')
-            self.ace_path = os.path.join(self.rel_path, 'dev', self.KPI_FACTORY)
+            self.ace_path = os.path.join(self.rel_path, 'dev', self.SDK_FACTORY)
 
         self.kpi_utils_path = os.path.join(self.ace_path, self.KPI_UTILS)
         self.kpi_utils_v2_path = os.path.join(self.ace_path, self.KPI_UTILS_V2)
