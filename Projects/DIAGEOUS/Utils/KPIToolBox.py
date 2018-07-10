@@ -826,7 +826,7 @@ class DIAGEOUSToolBox:
         elif is_absolute:
             range_price = (min_absolute, max_absolute)
         else:
-            Log.warning("In MSRP product {} does not have clear competitor".format(product_fk))
+            Log.warning("In MSRP product {} does not have a clear competitor".format(product_fk))
             range_price = (our_price, our_price)
         result = 0
         if our_price < range_price[0]:
