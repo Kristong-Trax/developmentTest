@@ -5,10 +5,8 @@ import shutil
 from KPIUtils_v2.Utils.Decorators.Decorators import log_task
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Utils.Logging import Metrics
 from Trax.Utils.Logging.Logger import Log
 import stat
-from Trax.Apps.Services.PSMonitor.Server import PsMonitor
 
 from DevloperTools.ProjectCreator.Consts import MAIN_FILE_NAME, MAIN_FILE, LOCAL_CALCULATIONS_FILE_NAME, LOCAL_FILE, \
     GENERATOR_FILE_NAME, GENERATOR, TOOL_BOX_FILE_NAME, TOOL_BOX, PROFILING_SCRIPT_NAME, PROFILING_SCRIPT, \
@@ -21,7 +19,6 @@ __author__ = 'yoava'
 
 class CreateKPIProject:
 
-    # @log_task(monitor_screen='Task', monitor_object='New Project')
     def __init__(self, project_name, calculate_by_scene=False):
         self.project = project_name.lower().replace('_', '-')
         self.project_capital = self.project.upper().replace('-', '_')
@@ -45,10 +42,8 @@ class CreateKPIProject:
         with open(self.project_path + '__init__.py', 'wb') as f:
             f.write('')
 
+    @log_task(monitor_object='NewProject')
     def create_new_project(self):
-        monitor = PsMonitor()
-        monitor.send_to_grafana(monitor_screen='TASKTASK', monitor_object='NEW PROJECT', project=self.project, value=1)
-
         files_to_create = self.get_files_to_create()
 
         formatting_dict = self.get_formatting_dict()
@@ -111,7 +106,7 @@ class CreateKPIProject:
 if __name__ == '__main__':
     Config.init('')
     LoggerInitializer.init('Creating new project')
-    project = 'test1'
+    project = 'test6'
     Log.info("project name : " + project)
     new = CreateKPIProject(project)
     new.create_new_project()
