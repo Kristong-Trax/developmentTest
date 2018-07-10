@@ -410,4 +410,4 @@ class INBEVTRADMXToolBox:
 
         # calculate from template
         self.calculate_kpi_set_from_template()
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
