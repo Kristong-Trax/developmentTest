@@ -968,17 +968,22 @@ class DIAGEOUSToolBox:
         """
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
+        num_res, den_res = 0, 0
         for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
             if sub_brand is None or np.isnan(sub_brand):
                 continue
             sub_brand_results = brand_results[(brand_results[Const.BRAND] == brand) &
                                               (brand_results[Const.SUB_BRAND] == sub_brand)]
+            den_res += 1
+            num_res += sub_brand_results['passed'].max()
             self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict,
                                          write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
         results = brand_results[Const.PASSED]
         if write_numeric:
             num_res, den_res = 0, 0
             result = results.sum()
+        elif sub_brand_numeric:
+            result = self.get_score(num_res, den_res)
         else:
             num_res, den_res = results.sum(), results.count()
             result = self.get_score(num_res, den_res)
