@@ -302,7 +302,7 @@ class CCRU_SANDTopSKUAssortment:
 
     @staticmethod
     def get_activation_query(store_fk, product_fk, start_date, end_date):
-        attributes = pd.DataFrame([(store_fk, product_fk, str(start_date), str(end_date), 1)],
+        attributes = pd.DataFrame([(store_fk, product_fk, str(start_date), str(end_date), None)],
                                   columns=['store_fk', 'product_fk', 'start_date', 'end_date', 'is_current'])
         query = insert(attributes.to_dict(), TOP_SKU_TABLE)
         return query
