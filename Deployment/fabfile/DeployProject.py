@@ -1,8 +1,8 @@
 import os
 import sys
 
-from KPIUtils_v2.Utils.Decorators.Decorators import log_task
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Tools.ProfessionalServices.TemplateValidator.Decorators.Decorators import log_task
 from Trax.Utils.Conf.Configuration import Config
 
 from Deployment.fabfile.BaseDeployment import ProjectDeployment
