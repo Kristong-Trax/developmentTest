@@ -254,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['eye level','regular block','sud_orchestration']:
+                # if kpi_type not in ['anchor']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -656,8 +656,10 @@ class PNGAMERICAToolBox:
             score = 0
             values_to_check = []
             secondary_values_to_check = []
+            i = 0
             if list_type:
                 kpi_data = kpi_template.iloc[0]
+                score_dict = {}
                 for s_type in scene_type:
                     if 'LL' in s_type:
                         position = 'left'
@@ -727,10 +729,9 @@ class PNGAMERICAToolBox:
                                                                         category=category, **filters)
                         if not results.empty:
                             list_result.append(results[kpi_data['lead']].values.tolist())
-                    if list_result:
+                    if list_result and not results.empty:
                         list_result_new = [item for so in list_result for item in so]
                         # kpi_names = kpi_template.loc[kpi_template['kpi group'] == kpi_name]['KPI name'].unique().tolist()
-                        score_dict = {}
                         filters['category'] = kpi_data['category']
                         if PG_CATEGORY in filters.keys():
                             del filters[PG_CATEGORY]
@@ -746,18 +747,21 @@ class PNGAMERICAToolBox:
                                             (results[kpi_data['lead']] == result) & (results[kpi_data['secondary_lead']]
                                                                                      == sec_att)].count
                         for result in list(set(list_result_new)):
-                            score_dict[result] = list_result_new.count(result)
-                        i = 0
-                        for result in score_dict.keys():
-                            i += 1
-                            new_result = result.replace("'", "\'")
-                            if "'" in new_result:
-                                continue
-                            # self.write_to_db_result(kpi_set_fk, kpi_name=kpi_names[i], level=self.LEVEL3, result=result,
-                            #                         score=score_dict[result])
-                            self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name + ' ' + str(i), level=self.LEVEL3,
-                                                    result=new_result,
-                                                    score=score_dict[result])
+                            if result in score_dict.keys():
+                                current_value = score_dict[result]
+                                score_dict[result] = list_result_new.count(result) + current_value
+                            else:
+                                score_dict[result] = list_result_new.count(result)
+                for result in score_dict.keys():
+                    new_result = result.replace("'", "\'")
+                    if "'" in new_result:
+                        continue
+                    # self.write_to_db_result(kpi_set_fk, kpi_name=kpi_names[i], level=self.LEVEL3, result=result,
+                    #                         score=score_dict[result])
+                    i += 1
+                    self.write_to_db_result(kpi_set_fk, kpi_name=new_kpi_name + ' ' + str(i), level=self.LEVEL3,
+                                            result=new_result,
+                                            score=score_dict[result])
             else:
                 # filters = {}
                 # kpi_data = kpi_template.iloc[0]
