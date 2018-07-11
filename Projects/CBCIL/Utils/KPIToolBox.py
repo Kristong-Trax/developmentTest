@@ -14,7 +14,7 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Projects.CBCIL.Utils.Fetcher import CBCILCBCIL_Queries
 from Projects.CBCIL.Utils.GeneralToolBox import CBCILCBCIL_GENERALToolBox
 from Projects.CBCIL.Utils.ParseTemplates import parse_template
-from KPIUtils.DB.Common import Common
+# from KPIUtils.DB.Common import Common
 
 __author__ = 'Israel'
 
