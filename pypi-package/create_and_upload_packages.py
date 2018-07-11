@@ -93,7 +93,7 @@ class Packager:
         if not os.path.exists(os.path.join(os.getcwd(), 'Dependencies')):
             os.makedirs(os.path.join(os.getcwd(), 'Dependencies'))
         deps_file = os.path.join(os.getcwd(), 'Dependencies', 'deps.txt')
-        os.system('sfood --recursive ' + self.ace_path + ' > ' + deps_file)
+        os.system('~/miniconda/envs/garage/bin/sfood --recursive ' + self.ace_path + ' > ' + deps_file)
         return deps_file
 
     def copy_init_files(self):
@@ -162,7 +162,7 @@ class Packager:
 
 class KPIUtilsGenerator:
 
-    KPI_FACTORY = 'kpi_factory'
+    SDK_FACTORY = 'sdk_factory'
     KPI_UTILS = 'KPIUtils'
     KPI_UTILS_V2 = 'KPIUtils_v2'
     SETUP = 'setup.py'
@@ -171,13 +171,13 @@ class KPIUtilsGenerator:
 
         if jenkins:
             self.rel_path = os.path.dirname(os.getcwd())
-            self.ace_path = os.path.join(self.rel_path, self.KPI_FACTORY)
+            self.sdk_path = os.path.join(self.rel_path, self.SDK_FACTORY)
         else:
             self.rel_path = os.path.expanduser('~')
-            self.ace_path = os.path.join(self.rel_path, 'dev', self.KPI_FACTORY)
+            self.sdk_path = os.path.join(self.rel_path, 'dev', self.SDK_FACTORY)
 
-        self.kpi_utils_path = os.path.join(self.ace_path, self.KPI_UTILS)
-        self.kpi_utils_v2_path = os.path.join(self.ace_path, self.KPI_UTILS_V2)
+        self.kpi_utils_path = os.path.join(self.sdk_path, self.KPI_UTILS)
+        self.kpi_utils_v2_path = os.path.join(self.sdk_path, self.KPI_UTILS_V2)
         self.tmp_package_path = os.path.join(self.rel_path, 'KPIUtils_tmp')
         self.tmp_package_path_v2 = os.path.join(self.rel_path, 'KPIUtils_v2_tmp')
 
@@ -221,6 +221,6 @@ if __name__ == '__main__':
     is_jenkins = True
     packager = Packager(is_jenkins)
     packager.create_and_upload_package()
-    # utils_maker = KPIUtilsGenerator(is_jenkins)
-    # utils_maker.create_and_upload_packages()
+    utils_maker = KPIUtilsGenerator(is_jenkins)
+    utils_maker.create_and_upload_packages()
 
