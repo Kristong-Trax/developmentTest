@@ -463,28 +463,24 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return merged_queries
 
     def calculate_golden_zone(self, kpi, kpi_filters):
-        shelves = [4, 5]
+        # shelves = [4, 5]
         params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
         if params[self.BRANDS].values[0]:
             kpi_filter['brand_local_name'] = params[self.BRANDS].values[0]
-            total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
-                                                                   **kpi_filter))
+            total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
         elif params[self.PRODUCT_GROUP_ID].values[0]:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
             kpi_filter[assortment_entity] = product_eans
-            total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
-                                                                   **kpi_filter))
+            total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
         else:
             product_eans = params['Product EAN Code'].values[0].split(self.SEPARATOR)
             kpi_filter[assortment_entity] = product_eans
-            total_group_skus = int(self.tools.calculate_assortment(assortment_entity=assortment_entity,
-                                                                   **kpi_filter))
+            total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
 
         result = int(
-            self.tools.calculate_assortment(assortment_entity=assortment_entity,
-                                            shelf_number_from_bottom=shelves,
+            self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria,
                                             **kpi_filter))
         score = 0
         threshold = float(params[self.GROUP_GOLDEN_ZONE_THRESHOLD].values[0])

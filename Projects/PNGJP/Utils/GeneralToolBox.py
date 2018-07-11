@@ -177,15 +177,18 @@ class PNGJPGENERALToolBox:
         return assortment
 
     def calculate_facings_on_golden_zone(self, golden_zone_data, **filters):
-        filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        bays = filtered_df['bay_number'].unique().tolist()
         total_facings = 0
-        for bay in bays:
-            bay_df = filtered_df.loc[filtered_df['bay_number']==bay]
-            num_shelves = bay_df['shelf_number'].max()
-            golden_zone_shelves =self.get_golden_zone_shelves(num_shelves, golden_zone_data)
-            facings_on_golden_zone=len(bay_df.loc[bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
-            total_facings += facings_on_golden_zone
+        filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        scenes = filtered_df['scene_fk'].unique().tolist()
+        for scene in scenes:
+            bays = filtered_df.loc[filtered_df['scene_fk']==scene]['bay_number'].unique().tolist()
+            for bay in bays:
+                bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene['bay_number']==bay)]
+                filtered_bay_df = filtered_df.loc[filtered_df['bay_number'] == bay]
+                num_shelves = bay_df['shelf_number'].max()
+                golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
+                facings_on_golden_zone = len(filtered_bay_df.loc[bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                total_facings += facings_on_golden_zone
         return total_facings
 
     def get_golden_zone_shelves(self, shelves_num, golden_zone_template):
@@ -193,13 +196,14 @@ class PNGJPGENERALToolBox:
         :param shelves_num: num of shelves in specific bay
         :return: list of eye shelves
         """
-        res_table = golden_zone_template[(golden_zone_template["No. of shelves max"] >= shelves_num) & (
-            golden_zone_template["No. of shelves min"] <= shelves_num)][["Ignore from bottom",
+        data = golden_zone_template.astype(int)
+        res_table = data[(data["No. of shelves max"] >= shelves_num) & (
+            data["No. of shelves min"] <= shelves_num)][["Ignore from bottom",
                                                                               "Ignore from top"]]
         if res_table.empty:
             return []
-        start_shelf = res_table['ignored_from_bottom'].iloc[0] + 1
-        end_shelf = shelves_num - res_table['Ignore from top'].iloc[0]
+        start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+        end_shelf = shelves_num - res_table['Ignore from top'].iloc[0] + 1
         final_shelves = range(start_shelf, end_shelf)
         return final_shelves
 
