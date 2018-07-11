@@ -22,6 +22,9 @@ MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT = 60
 MAX_CYCLES_FOR_HISTORY_BASED_ASSORTMENT = 3
 EMPTY = 'Empty'
 OTHER = 'Other'
+IRRELEVANT = 'Irrelevant'
+SKU = 'SKU'
+POSM = 'POS'
 NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Irrelevant", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
@@ -296,9 +299,9 @@ class BATRUToolBox:
                 'product_ean_code'].unique().tolist()
             total_assortment_init = self.all_products[self.all_products['product_fk'].isin(session_product_fks) &
                                                       (self.all_products['manufacturer_name'] == BAT) &
-                                                      (self.all_products['product_type'] == 'SKU')][
+                                                      (self.all_products['product_type'].isin([SKU, POSM]))][
                 'product_ean_code'].unique().tolist()
-            active_products = self.all_products.loc[(self.all_products['product_type'] == 'SKU') &
+            active_products = self.all_products.loc[(self.all_products['product_type'].isin([SKU, POSM])) &
                                                     (self.all_products['manufacturer_name'] == BAT) &
                                                     (self.all_products['is_active'] == 1)][
                 'product_ean_code'].unique().tolist()
@@ -481,7 +484,7 @@ class BATRUToolBox:
         return pd.read_sql_query(query, self.rds_conn.db)
 
     def get_missing_products_to_api_set(self, set_fk):
-        existing_skus = self.all_products[self.all_products['product_type'] == 'SKU']
+        existing_skus = self.all_products[self.all_products['product_type'].isin([SKU, POSM])]
         set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk][
             'atomic_kpi_name'].unique().tolist()
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk]['kpi_fk'].iloc[0]
@@ -643,14 +646,14 @@ class BATRUToolBox:
         in_p, params = self._get_sessions_list_as_params_and_query(session_ids, 'session_id')
         if not template_group:
             query = '''SELECT distinct p.ean_code as product_ean_code FROM reporting.scene_item_facts sif
-                        join static_new.product p on p.pk = sif.item_id and p.type = 'SKU'
+                        join static_new.product p on p.pk = sif.item_id and p.type in('SKU','POS')
                         join probedata.scene sc on sc.pk=sif.scene_id
                         join static.template st on st.pk=sc.template_fk
                        where dist_sc = 1 and session_id in ({})'''.format(
                 ",".join(str(session) for session in session_ids))
         else:
             query = '''SELECT distinct p.ean_code as product_ean_code FROM reporting.scene_item_facts sif
-                        join static_new.product p on p.pk = sif.item_id and p.type = 'SKU'
+                        join static_new.product p on p.pk = sif.item_id and p.type in('SKU','POS')
                         join probedata.scene sc on sc.pk=sif.scene_id
                         join static.template st on st.pk=sc.template_fk
                        where sif.dist_sc = 1 and sif.session_id in ({}) and st.template_group = '{}'
@@ -775,7 +778,8 @@ class BATRUToolBox:
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
         num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code_lead'].isin(monitored_skus))]['product_ean_code_lead'].drop_duplicates().count()
+                                              (self.scif['product_ean_code_lead'].isin(monitored_skus))]['product_ean_code_lead']\
+            .drop_duplicates().count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
@@ -788,7 +792,7 @@ class BATRUToolBox:
         # facing_of_recognized = self.merged_additional_data.loc[
         #     self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]['facings'].sum()
         facing_of_all = self.scif.loc[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                      (self.scif['product_type'].isin(['Other', 'SKU']))]['facings'].sum()
+                                      (self.scif['product_type'].isin([OTHER, SKU, POSM]))]['facings'].sum()
         products_eans = self.merged_additional_data.loc[
             self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME][
             'product_ean_code'].unique().tolist()
@@ -947,12 +951,12 @@ class BATRUToolBox:
                     )]\
                     .merge(self.all_products, how='left', on='product_pk', suffixes=['', '_all_products'])
 
-                last_sequence = 0
-                competitor = False
-                presence = True
-                empty = False
-                product_sequence = True
+                no_competitors = True
+                no_empties = True
+                sequence_passed = True
+
                 misplaced_prods_for_result = []
+                last_prod_seq_ind = 0
 
                 specific_section_products_template = sections_products_template_data\
                     .loc[sections_products_template_data['Section'] == str(int(float(section)))]
@@ -969,80 +973,75 @@ class BATRUToolBox:
                     manufacturer_name = section_shelf_data\
                         .loc[section_shelf_data['sequence'] == sequence]['manufacturer_name'].values[0]
 
-                    if product_type == EMPTY:
-                        empty = True
-
-                    if product_type in (EMPTY, OTHER):
-                        product_sequence = False
-
                     if product_ean_code not in section_products:
-                        if not (manufacturer_name == BAT or product_name in NON_COMPETITOR_PRODUCTS):
-                            competitor = True
-                            presence = False
                         misplaced_prods_for_result.append(product_name)
-                    else:
-                        try:
-                            prod_seq_ind = sequence_template_data\
-                                .loc[sequence_template_data['product_ean_code_lead'] == product_ean_code]['index'].values[0]
-                            if not (int(prod_seq_ind) >= int(last_sequence)):
-                                product_sequence = False
-                            last_sequence = prod_seq_ind
-                        except Exception as e:
-                            Log.warning('Product ean {} is not configured in template of Sequence list'.format(product_ean_code))
-                            product_sequence = False
 
-                # Saving results for section
-                products_to_check = section_shelf_data\
-                    .loc[section_shelf_data['product_type'] == 'SKU']['product_fk_lead'].unique().tolist()
-                if products_to_check:
-                    try:
-                        if specific_section_products_template['Index (Duplications priority)'].iloc[0] == '':
-                            priorities_section = priorities_data
-                        else:
-                            priorities_section = specific_section_products_template
-                        repeatness = self.check_repeatness(products_to_check, section_shelf_data, priorities_section)
-                    except Exception as e:
-                        repeatness = False
+                    if not (manufacturer_name == BAT or product_type in (EMPTY, IRRELEVANT)):
+                        no_competitors = False
+
+                    if product_type in (EMPTY, IRRELEVANT):
+                        no_empties = False
+
+                    if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
+                        prod_seq_ind = sequence_template_data\
+                            .loc[sequence_template_data['product_ean_code_lead'] == product_ean_code]['index'].values[0]
+                        if not (int(prod_seq_ind) >= int(last_prod_seq_ind)):
+                            sequence_passed = False
+                            last_prod_seq_ind = prod_seq_ind
+                    elif manufacturer_name == BAT and product_type in (SKU, POSM):
+                        Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
+                        sequence_passed = False
+
+                if no_competitors:
+                    presence_passed = self.check_section_presence(specific_section_products_template,
+                                                                  section_shelf_data,
+                                                                  outside_shelf_data)
                 else:
-                    repeatness = False
+                    presence_passed = False
 
-                if not competitor:
-                    presence = self.check_section_presence3(specific_section_products_template,
-                                                            section_shelf_data,
-                                                            outside_shelf_data)
-                presence_score = 1 if presence else 0
+                priorities_section = priorities_data[['product_ean_code_lead','Index (Duplications priority)']]
+                if not (specific_section_products_template['Index (Duplications priority)'].iloc[0] == ''):
+                    priority_max = priorities_section['Index (Duplications priority)'].max()
+                    specific_section_products_template['Index (Duplications priority)'] = \
+                        specific_section_products_template['Index (Duplications priority)'] + priority_max + 1
+                    priorities_section.append(specific_section_products_template[['product_ean_code_lead','Index (Duplications priority)']])
+
+                repeatness_passed = self.check_repeatness(section_shelf_data, priorities_section)
+
+                presence_score = 1 if presence_passed else 0
+
                 sequence_score_2 = 'N'
-                sequence_score = 1 if product_sequence else 0
+                sequence_score = 1 if sequence_passed else 0
+
                 repeatness_score_2 = 'N'
-                repeatness_score = 1 if repeatness else 0
+                repeatness_score = 1 if repeatness_passed else 0
+
                 section_score_2 = 'FAIL'
                 section_score = 0
+
                 result = ','.join([product_name.replace("'", "\\'") for product_name in misplaced_prods_for_result])
 
-                if not competitor:
-                    status = 1
-                    if presence:
-                        result = None
-                        if not product_sequence:
-                            if empty:
-                                status = 2
-                            elif not empty:
-                                status = 3
-                        else:
-                            sequence_score_2 = 'Y'
-                            status = 4
-                            if repeatness:
-                                repeatness_score_2 = 'Y'
-                                status = 5
-                                section_score_2 = 'PASS'
-                                section_score = 1
-                else:
-                    status = 0
+                section_status = 0
+                if no_competitors:
+                    section_status = 1
+                    if presence_passed:
+                        section_status = 2
+                        if no_empties:
+                            section_status = 3
+                            if not sequence_passed:
+                                section_status = 4
+                                sequence_score_2 = 'Y'
+                                if repeatness_passed:
+                                    section_status = 5
+                                    repeatness_score_2 = 'Y'
+                                    section_score_2 = 'PASS'
+                                    section_score = 1
 
-                sections_statuses[section] = status
+                sections_statuses[section] = section_status
+
                 # Saving to regular set
                 self.save_level2_and_level3(SK, self.PRESENCE_KPI_NAME, result=result,
-                                            score=presence_score, score_2=status,
+                                            score=presence_score, score_2=section_status,
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
                                             model_id=section_name)
                 self.save_level2_and_level3(SK, self.SEQUENCE_KPI_NAME, result=None,
@@ -1120,14 +1119,19 @@ class BATRUToolBox:
         self.save_level1(SAS, score=sas_zone_score)
         self.save_level1(SAS_RAW_DATA, score=sas_zone_score)
 
-    def check_repeatness(self, products_to_check, section_shelf_data, priorities_section):
+    def check_repeatness(self, section_shelf_data, priorities_section):
         """
         The function checks if the section has a product with more facings than other, despite its priority lower
-        :param products_to_check: the relevant products
         :param section_shelf_data: match_product_in_scene relevant data
         :param priorities_section: the priorities from the match template
         :return: true if all the products' facings are right
         """
+        products_to_check = section_shelf_data \
+            .loc[section_shelf_data['product_type'].isin([SKU, POSM])]['product_ean_code_lead'].unique().tolist()
+        if products_to_check
+        else:
+        repeatness_passed = False
+
         section_facings_histogram = {}
         for product_to_check in set(products_to_check):
             section_facings_histogram[product_to_check] = \
@@ -1164,67 +1168,9 @@ class BATRUToolBox:
             last_min_facings = row['min']
         return True
 
-    # def check_section_presence(self, section_products, section_brands, section_template, scene, products_on_shelf):
-    #     mandatory_skus = section_template[section_template['Mandatory'] == 'Yes']['product_ean_code'].unique().tolist()
-    #     scenes_to_check_mandatory_skus = self.scif[~(self.scif['scene_fk'] == scene) &
-    #                                                ~(self.scif['template_group'] == ENTRY_TEMPLATE_GROUP)][
-    #         'scene_fk'].unique().tolist()
-    #     products_on_shelf_unique = products_on_shelf['product_ean_code'].unique().tolist()
-    #     mandatory_skus_presence_in_other_scenes = self.scif[(self.scif['scene_fk'].isin(scenes_to_check_mandatory_skus))
-    #                                                         & (self.scif['product_ean_code'].isin(mandatory_skus))]
-    #     presence = True
-    #     if not mandatory_skus_presence_in_other_scenes.empty:
-    #         presence = False
-    #     else:
-    #         if not set(section_products) & set(products_on_shelf_unique):
-    #             brands_on_shelf = self.all_products[self.all_products['product_ean_code'].isin(
-    #                 products_on_shelf_unique)]['brand_name'].unique().tolist()
-    #             manufacturers_on_shelf = self.all_products[
-    #                 self.all_products['product_ean_code'].isin(
-    #                     products_on_shelf_unique)]['manufacturer_name'].unique().tolist()
-    #             if not set(section_brands) & set(brands_on_shelf):
-    #                 if manufacturers_on_shelf and BAT not in manufacturers_on_shelf:
-    #                     return False
-    #         else:
-    #             mandatory_skus_present_in_scene = self.scif[(self.scif['scene_fk'] == scene)
-    #                                                         & (self.scif['product_ean_code'].isin(mandatory_skus))][
-    #                 'product_ean_code'].unique().tolist()
-    #             relevant_products = products_on_shelf_unique + self.get_bundle_lead_by_ean_list(
-    #                 products_on_shelf_unique)
-    #             for mandatory_sku in mandatory_skus_present_in_scene:
-    #                 if mandatory_sku not in relevant_products:
-    #                     return False
-    #             for section_product in set(products_on_shelf_unique) ^ set(mandatory_skus):
-    #                 if section_product not in section_products:
-    #                     return False
-    #     return presence
-    #
-    # def check_section_presence2(self, section_template, scene, shelf_data):
-    #     """
-    #     New function for presence. This function only checks if one of the mandatory products exists in another section
-    #     IN THE SAME scene, and this is the only case presence will be false.
-    #     :param section_template: the match lines for the current section (from the template)
-    #     :param scene: current scene_fk
-    #     :param shelf_data: the data from match_product_in_scene of the current section
-    #     :return: false only if product_fk from the mandatory exists in the list of the products in current
-    #              scene other sessions
-    #     """
-    #     current_section_match_fks = shelf_data['scene_match_fk'].tolist()
-    #     mandatory_skus = section_template[section_template['Mandatory'] == 'Yes'][
-    #         'product_ean_code'].unique().tolist()
-    #     mandatory_product_fks = self.all_products[self.all_products['product_ean_code'].isin(mandatory_skus)][
-    #         'product_fk'].tolist()
-    #     other_sections_product_fks = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
-    #                                                              ~(self.match_product_in_scene['scene_match_fk'].isin(
-    #                                                                  current_section_match_fks))][
-    #         'product_fk'].unique().tolist()
-    #     if set(mandatory_product_fks) & set(other_sections_product_fks):
-    #         return False
-    #     return True
+    def check_section_presence(self, section_template, products_on_shelf, products_outside):
 
-    def check_section_presence3(self, section_template, products_on_shelf, products_outside):
-
-        if len(products_on_shelf[products_on_shelf['product_type'].isin([EMPTY, OTHER])].unique().tolist()) > 0:
+        if len(products_on_shelf[~(products_on_shelf['product_type'].isin([EMPTY, IRRELEVANT]))].unique().tolist()) == 0:
             return False
 
         mandatory_fks = section_template[section_template['Mandatory'] == 'Yes']['product_fk_lead'].unique().tolist()
@@ -1356,7 +1302,7 @@ class BATRUToolBox:
             (bay_data['shelf_number'].between(start_shelf, end_shelf)) &
             (bay_data['sequence'].between(start_seq, end_seq))]
         shelf_rlv_data = shelf_rlv_data.merge(self.all_products, on=['product_name'])
-        if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY, OTHER])][
+        if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY, IRRELEVANT])][
                    'manufacturer_name'].unique().tolist()) == 1 and BAT in shelf_rlv_data[
             'manufacturer_name'].values.tolist():
             return True
