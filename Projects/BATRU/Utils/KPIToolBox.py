@@ -1133,41 +1133,42 @@ class BATRUToolBox:
         if not products_to_check:
             return False
 
-        section_facings_histogram = pd.DataFrame(columns=['priority', 'product_ean_code', 'facings'])
+        section_facings_histogram = []
         for product_ean_code in set(products_to_check):
-            priority = priorities_section\
-                .loc[priorities_section['product_ean_code_lead'] == product_ean_code]['Index (Duplications priority)'].values[0]
-            facings = section_shelf_data\
-                .loc[section_shelf_data['product_ean_code_lead'] == product_ean_code]['product_fk'].count()
-            section_facings_histogram\
-                .append(pd.DataFrame({'priority': priority, 'product_ean_code': product_ean_code, 'facings': facings}))\
-                .sort_values(by='priority', ascending=False)
+            if product_ean_code in priorities_section['product_ean_code_lead'].tolist():
+                priority = priorities_section\
+                    .loc[priorities_section['product_ean_code_lead'] == product_ean_code]['Index (Duplications priority)'].values[0]
+                facings = section_shelf_data\
+                    .loc[section_shelf_data['product_ean_code_lead'] == product_ean_code]['product_fk'].count()
+                section_facings_histogram\
+                    .append({'priority': priority, 'product_ean_code': product_ean_code, 'facings': facings})
+            else:
+                Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
+        section_facings_histogram = pd.DataFrame(section_facings_histogram)
 
-
-
-
-        min_max_facings = []
-        for current_priority in section_facings_histogram_df['priority'].unique().tolist():
-            priority_df = section_facings_histogram_df[section_facings_histogram_df['priority'] == current_priority]
-            row = {'priority': current_priority, 'max': priority_df['facings'].max(), 'min': priority_df['facings'].min()}
-            min_max_facings.append(row)
-        min_max_df = pd.DataFrame(min_max_facings)
-        min_max_df = min_max_df.sort_values(by=['priority'], ascending=False)
+        min_max_facings = pd.DataFrame(columns=['priority', 'max', 'min'])
+        for current_priority in section_facings_histogram['priority'].unique().tolist():
+            current_priority_data = section_facings_histogram[section_facings_histogram['priority'] == current_priority]
+            min_max_facings.append({'priority': current_priority_data,
+                                    'max': current_priority_data['facings'].max(),
+                                    'min': current_priority_data['facings'].min()})
+        min_max_facings = pd.DataFrame(min_max_facings).sort_values(by=['priority'], ascending=False)
 
         last_priority = 0
         last_min_facings = 0
         is_not_first = False
-        for i, row in min_max_df.iterrows():
+        for i, row in min_max_facings.iterrows():
             current_priority, current_max_facings = row['priority'], row['max']
             if is_not_first:
-                if ((last_priority - current_priority == 1 and current_max_facings > last_min_facings)
-                    or (last_priority - current_priority > 1 and current_max_facings >= last_min_facings))\
+                if ((last_priority - current_priority == 1 and current_max_facings >= last_min_facings)
+                    or (last_priority - current_priority > 1 and current_max_facings > last_min_facings))\
                         and not last_min_facings == current_max_facings == 1:
                     return False
             else:
                 is_not_first = True
             last_priority = current_priority
             last_min_facings = row['min']
+
         return True
 
     def check_section_presence(self, section_template, products_on_shelf, products_outside):
