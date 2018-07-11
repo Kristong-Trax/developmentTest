@@ -6,7 +6,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
-# from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.Common import Common as commonV1
 # from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -37,12 +37,16 @@ class CCITToolBox:
     STORE_ATT_1 = 'Store Att1'
     SCORE_MULTIPLIER = 'Score multiplier'
     NON_KPI = 0
+    ATOMIC_KPI_NAME = 'atomic_kpi_name'
+    KPI_NAME = 'kpi_name'
+    KPI_SET_NAME = 'kpi_set_name'
 
 
-    def __init__(self, data_provider, output, common):
+    def __init__(self, data_provider, output, commonV2, commonV1):
         self.output = output
         self.data_provider = data_provider
-        self.common = common
+        self.common = commonV2
+        self.commonV1 = commonV1
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -57,15 +61,32 @@ class CCITToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.old_kpi_static_data = self.commonV1.get_kpi_static_data()
         self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.kpi_results_queries = []
         self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
-
 
     def get_manufacturer_fk(self, manu):
         return self.all_products[self.all_products['manufacturer_name'] ==
                                  manu]['manufacturer_fk'].drop_duplicates().values[0]
 
+    def insert_results_to_old_tables(self):
+        kpi_lvls = pd.DataFrame(columns=['level_by_num', 'level_by_name', 'kpis'])
+        kpi_lvls['level_by_num'] = [self.LEVEL3, self.LEVEL2, self.LEVEL1]
+        kpi_lvls['level_by_name'] = [self.ATOMIC_KPI_NAME, self.KPI_NAME, self.KPI_SET_NAME]
+        for kpi in kpi_lvls['level_by_name'].values:
+            kpis = self.old_kpi_static_data[kpi].drop_duplicates().values
+            kpis = ",".join(kpis)
+            kpi_lvls.loc[kpi_lvls['level_by_name'] == kpi, 'kpis'] = kpis
+        for row in kpi_lvls.itertuples():
+            for kpi in row.kpis.split(','):
+                old_kpi_fk = self.commonV1.get_kpi_fk_by_kpi_name(kpi, row.level_by_num)
+                if row.level_by_num != self.LEVEL1:
+                    new_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi)
+                else:
+                    new_kpi_fk = self.common.get_kpi_fk_by_kpi_type('scene_score')
+                score = self.scene_results[self.scene_results['kpi_level_2_fk'] == new_kpi_fk]['score'].sum()
+                self.commonV1.write_to_db_result(old_kpi_fk, row.level_by_num, score)
 
     def main_function(self):
         """
@@ -86,9 +107,10 @@ class CCITToolBox:
         identifier_result['session_fk'] = self.session_info['pk'].values[0]
         identifier_result['store_fk'] = self.store_id
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=origin_res,
-                                       result=origin_res, score=origin_res, should_enter=False,
-                                       identifier_result=identifier_result)
+                                       denominator_id=self.store_id, result=origin_res, score=origin_res,
+                                       should_enter=False, identifier_result=identifier_result)
         for scene in scene_kpi_fks:
             self.common.write_to_db_result(fk=self.NON_KPI, should_enter=True, scene_result_fk=scene,
                                            identifier_parent=identifier_result)
+        self.insert_results_to_old_tables()
         return
