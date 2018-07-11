@@ -1004,7 +1004,8 @@ class BATRUToolBox:
                     priority_max = priorities_section['Index (Duplications priority)'].max()
                     specific_section_products_template['Index (Duplications priority)'] = \
                         specific_section_products_template['Index (Duplications priority)'] + priority_max + 1
-                    priorities_section.append(specific_section_products_template[['product_ean_code_lead','Index (Duplications priority)']])
+                    priorities_section.append(specific_section_products_template[['product_ean_code_lead','Index (Duplications priority)']])\
+                        .sort_values(by='Index (Duplications priority)', ascending=[False])
 
                 repeatness_passed = self.check_repeatness(section_shelf_data, priorities_section)
 
@@ -1127,22 +1128,23 @@ class BATRUToolBox:
         :return: true if all the products' facings are right
         """
         products_to_check = section_shelf_data \
-            .loc[section_shelf_data['product_type'].isin([SKU, POSM])]['product_ean_code_lead'].unique().tolist()
-        if products_to_check
-        else:
-        repeatness_passed = False
+            .loc[(section_shelf_data['manufacturer_name'] == BAT) &
+                 (section_shelf_data['product_type'].isin([SKU, POSM]))]['product_ean_code_lead'].unique().tolist()
+        if not products_to_check:
+            return False
 
-        section_facings_histogram = {}
-        for product_to_check in set(products_to_check):
-            section_facings_histogram[product_to_check] = \
-                {'facings': section_shelf_data.loc[section_shelf_data['product_fk_lead'] == product_to_check]['product_fk_lead'].count()}
-            product_to_check_ean = \
-                self.all_products.loc[self.all_products['product_fk_lead'] == product_to_check]['product_ean_code_lead'].values[0]
-            section_facings_histogram[product_to_check]['priority'] = \
-                float(priorities_section.loc[priorities_section['product_ean_code_lead'] == product_to_check_ean]
-                       ['Index (Duplications priority)'].values[0])
+        section_facings_histogram = pd.DataFrame(columns=['priority', 'product_ean_code', 'facings'])
+        for product_ean_code in set(products_to_check):
+            priority = priorities_section\
+                .loc[priorities_section['product_ean_code_lead'] == product_ean_code]['Index (Duplications priority)'].values[0]
+            facings = section_shelf_data\
+                .loc[section_shelf_data['product_ean_code_lead'] == product_ean_code]['product_fk'].count()
+            section_facings_histogram\
+                .append(pd.DataFrame({'priority': priority, 'product_ean_code': product_ean_code, 'facings': facings}))\
+                .sort_values(by='priority', ascending=False)
 
-        section_facings_histogram_df = pd.DataFrame.from_dict(section_facings_histogram, orient='index')
+
+
 
         min_max_facings = []
         for current_priority in section_facings_histogram_df['priority'].unique().tolist():
