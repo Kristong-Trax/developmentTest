@@ -124,6 +124,7 @@ class DIAGEOUSToolBox:
                 national_store_score += national_weighted_score
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=round(total_store_score, 1),
+            denominator_id=self.store_id,
             identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=round(total_store_score, 1))
         if segment_kpi_fk and national_kpi_fk:
             self.common.write_to_db_result(
