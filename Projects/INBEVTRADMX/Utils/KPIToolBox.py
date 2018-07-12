@@ -343,6 +343,8 @@ class INBEVTRADMXToolBox:
     def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
         this method writes atomic kpi score to static.kpi_results DB
+        :param curr_weight: current weight of atomic kpi
+        :param is_kpi_passed: is this kpi passed
         :param atomic_name: atomic kpi name
         :param atomic_score: the score
         :param kpi_name: name of related kpi
