@@ -15,7 +15,7 @@ class ProjectDeploy(ProjectDeployment):
     def __init__(self, project=None):
         self.project = project
 
-    @log_task(monitor_object='DeployProject')
+    # @log_task(monitor_object='DeployProject')
     def deploy(self):
         sdk_factory_git_folder, sdk_repo = get_sdk_factory_repository()
         ace_live_git_folder, ace_live_repo = get_live_repository()

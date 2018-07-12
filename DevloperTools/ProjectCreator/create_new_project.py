@@ -42,7 +42,7 @@ class CreateKPIProject:
         with open(self.project_path + '__init__.py', 'wb') as f:
             f.write('')
 
-    @log_task(monitor_object='NewProject')
+    # @log_task(monitor_object='NewProject')
     def create_new_project(self):
         files_to_create = self.get_files_to_create()
 
@@ -105,9 +105,9 @@ class CreateKPIProject:
 
 if __name__ == '__main__':
     LoggerInitializer.init('new_project')
-    Config.init()
+    Config.init(app_name='new_project_new')
     project = 'test1'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project)
-    new.create_new_project()
-    Log.info("project : " + project + " was created successfully")
+    # new = CreateKPIProject(project)
+    # new.create_new_project()
+    Log.info('project {} was created successfully'.format(project))
