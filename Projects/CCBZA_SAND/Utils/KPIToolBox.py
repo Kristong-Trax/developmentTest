@@ -90,11 +90,17 @@ class CCBZA_SANDToolBox:
         # if self.template_data:
         score = 0
         kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-        kpi_types = self.get_kpi_types_by_set_name(kpi_set_name)
+        # kpi_types = self.get_kpi_types_by_set_name(kpi_set_name)
         kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
         for index, kpi in kpi_data.iterrows():
+            kpi_types = self.get_kpi_types_by_kpi(kpi)
             for kpi_type in kpi_types:
                 atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi)
+                # if kpi_type == 'Availability':
+                #     self.calculate_availability()
+                # elif kpi_type == '':
+                #     self.calculate_pricing
+
 
 
         return score
@@ -120,9 +126,14 @@ class CCBZA_SANDToolBox:
     def get_relevant_template_data(self):
         pass
 
-    def get_kpi_types_by_set_name(self, kpi_set_name):
-        kpi_types = self.template_data[SET_TAB][self.template_data[SET_TAB][KPI_NAME] == kpi_set_name][KPI_TYPE].values[0]
-        # kpi_types_list = kpi_types.split(', ') if ', ' in kpi_types else kpi_types.split(',')
+    # def get_kpi_types_by_set_name(self, kpi_set_name):
+    #     kpi_types = self.template_data[SET_TAB][self.template_data[SET_TAB][KPI_NAME] == kpi_set_name][KPI_TYPE].values[0]
+    #     # kpi_types_list = kpi_types.split(', ') if ', ' in kpi_types else kpi_types.split(',')
+    #     kpi_types_list = re.split(r', |,| ,', kpi_types)
+    #     return kpi_types_list
+
+    def get_kpi_types_by_kpi(self, kpi):
+        kpi_types = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi[KPI_NAME]][KPI_TYPE]
         kpi_types_list = re.split(r', |,| ,', kpi_types)
         return kpi_types_list
 
@@ -132,7 +143,6 @@ class CCBZA_SANDToolBox:
                                                         (self.template_data[kpi_type][ATTRIBUTE_1].isin(self.store_data['additional_attribute_1'])) &
                                                         (self.template_data[kpi_type][ATTRIBUTE_2].isin(self.store_data['additional_attribute_2']))]
         return atomic_kpis_data
-        
 
     # def get_kpi_data_by_set_name(self, kpi_set_name):
     #     kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
