@@ -27,7 +27,7 @@ class PNGJPGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         # self.tool_box.main_calculation()
-        # self.tool_box.hadle_update_custom_scif()
+        self.tool_box.hadle_update_custom_scif()
         # self.tool_box.commit_results_data()
         self.KpiQualitative_tool_box.main_calculation()
         # self.KpiQualitative_tool_box.commit_results_data()

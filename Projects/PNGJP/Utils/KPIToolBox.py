@@ -938,8 +938,9 @@ class PNGJPToolBox(PNGJPConsts):
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
-                    # result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
-                    # length_mm_custom = 1 if result else 0
+                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                                                                                  ,product_fk=product))
+                    length_mm_custom = 1 if result else 0
                     scenes = self.get_scenes_for_product(product)
                     in_assortment_OSA = oos_osa = mha_in_assortment = mha_oos = 0
 
@@ -949,9 +950,9 @@ class PNGJPToolBox(PNGJPConsts):
                         mha_in_assortment = 1
 
                     for scene in scenes:
-                        result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
-                                                                                 ,product_fk=product, scene_fk=scene))
-                        length_mm_custom = 1 if result else 0
+                        # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                        #                                                          ,product_fk=product, scene_fk=scene))
+                        # length_mm_custom = 1 if result else 0
                         self.get_custom_query(scene, product, in_assortment_OSA, oos_osa, mha_in_assortment, mha_oos,
                                               length_mm_custom)
                 else:
@@ -978,13 +979,13 @@ class PNGJPToolBox(PNGJPConsts):
             products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
             for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
                 # The product is not in assortment list and not oos. (0,0)
-                # result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
-                # length_mm_custom = 1 if result else 0
+                result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
+                length_mm_custom = 1 if result else 0
                 scenes = self.get_scenes_for_product(product)
                 for scene in scenes:
-                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
-                                                                                 ,product_fk=product, scene_fk=scene))
-                    length_mm_custom = 1 if result else 0
+                    # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                    #                                                              ,product_fk=product, scene_fk=scene))
+                    # length_mm_custom = 1 if result else 0
                     self.get_custom_query(scene, product, 0, 0, 0, 0, length_mm_custom)
 
             # self.commit_custom_scif()
