@@ -20,7 +20,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pngjp'
     data_provider = KEngineDataProvider(project_name)
-    session = 'CEF8E4D9-09CB-4641-9362-E7F56A49CD9C'
+    session = '3E3571B3-4F3A-4978-882B-4E0DDF26517A'
     # session = '22920B98-E56A-4CF5-BDC1-AF288FA0ED9B'
     data_provider.load_session_data(session)
     output = Output()

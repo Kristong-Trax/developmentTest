@@ -179,16 +179,17 @@ class PNGJPGENERALToolBox:
     def calculate_facings_on_golden_zone(self, golden_zone_data, **filters):
         total_facings = 0
         filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        scenes = filtered_df['scene_fk'].unique().tolist()
-        for scene in scenes:
-            bays = filtered_df.loc[filtered_df['scene_fk']==scene]['bay_number'].unique().tolist()
-            for bay in bays:
-                bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene['bay_number']==bay)]
-                filtered_bay_df = filtered_df.loc[filtered_df['bay_number'] == bay]
-                num_shelves = bay_df['shelf_number'].max()
-                golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
-                facings_on_golden_zone = len(filtered_bay_df.loc[bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
-                total_facings += facings_on_golden_zone
+        if not filtered_df.empty:
+            scenes = filtered_df['scene_fk'].unique().tolist()
+            for scene in scenes:
+                bays = filtered_df.loc[filtered_df['scene_fk']==scene]['bay_number'].unique().tolist()
+                for bay in bays:
+                    bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene['bay_number']==bay)]
+                    filtered_bay_df = filtered_df.loc[filtered_df['bay_number'] == bay]
+                    num_shelves = bay_df['shelf_number'].max()
+                    golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
+                    facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                    total_facings += facings_on_golden_zone
         return total_facings
 
     def get_golden_zone_shelves(self, shelves_num, golden_zone_template):

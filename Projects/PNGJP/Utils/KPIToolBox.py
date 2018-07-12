@@ -938,8 +938,7 @@ class PNGJPToolBox(PNGJPConsts):
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
-                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
-                                                                                  ,product_fk=product))
+                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
                     length_mm_custom = 1 if result else 0
                     scenes = self.get_scenes_for_product(product)
                     in_assortment_OSA = oos_osa = mha_in_assortment = mha_oos = 0
@@ -988,7 +987,7 @@ class PNGJPToolBox(PNGJPConsts):
                     # length_mm_custom = 1 if result else 0
                     self.get_custom_query(scene, product, 0, 0, 0, 0, length_mm_custom)
 
-            # self.commit_custom_scif()
+            self.commit_custom_scif()
 
     def get_scenes_for_product(self, product_fk=None):
         """
