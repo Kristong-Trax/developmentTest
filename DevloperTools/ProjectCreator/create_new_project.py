@@ -108,6 +108,6 @@ if __name__ == '__main__':
     Config.init(app_name='new_project_new')
     project = 'test1'
     Log.info("project name : " + project)
-    # new = CreateKPIProject(project)
-    # new.create_new_project()
+    new = CreateKPIProject(project)
+    new.create_new_project()
     Log.info('project {} was created successfully'.format(project))
