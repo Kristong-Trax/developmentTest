@@ -373,6 +373,7 @@ class CBCILCBCIL_ToolBox(object):
             filters.update(params['All'])
             for scene in params['All']['scene_id']:
                 filters.update({'scene_id': scene})
+                filters.pop('')
                 block = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.75,
                                                              allowed_products_filters={'product_type': 'Other'},
                                                              vertical=True, **filters)
