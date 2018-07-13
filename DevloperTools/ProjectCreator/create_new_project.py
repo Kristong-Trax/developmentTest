@@ -2,7 +2,7 @@
 import os
 import shutil
 
-from Trax.Tools.ProfessionalServices.TemplateValidator.Decorators.Decorators import *
+from KPIUtils_v2.Utils.Decorators.Decorators import log_task
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
@@ -42,7 +42,7 @@ class CreateKPIProject:
         with open(self.project_path + '__init__.py', 'wb') as f:
             f.write('')
 
-    # @log_task(monitor_object='NewProject')
+    @log_task(action='new_project', message='Project created successfully', environment='prod')
     def create_new_project(self):
         files_to_create = self.get_files_to_create()
 
@@ -106,7 +106,7 @@ class CreateKPIProject:
 if __name__ == '__main__':
     LoggerInitializer.init('new_project')
     Config.init(app_name='new_project_new')
-    project = 'test1'
+    project = 'test3'
     Log.info("project name : " + project)
     new = CreateKPIProject(project)
     new.create_new_project()
