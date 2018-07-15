@@ -206,7 +206,7 @@ class KPIUtilsGenerator:
         this method creates and uploads the package to s3
         :return: None
         """
-        # self.copy_and_upload_utils()
+        self.copy_and_upload_utils()
         self.copy_and_upload_utils_v2()
 
     def copy_and_upload_utils(self):
