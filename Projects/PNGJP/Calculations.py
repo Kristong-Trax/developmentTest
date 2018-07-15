@@ -20,7 +20,7 @@ class PNGJPCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'pngjp'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '58F873D7-6146-461D-A894-0870BBB0860A'
+#     session = '3E3571B3-4F3A-4978-882B-4E0DDF26517A'
 #     # session = '22920B98-E56A-4CF5-BDC1-AF288FA0ED9B'
 #     data_provider.load_session_data(session)
 #     output = Output()
