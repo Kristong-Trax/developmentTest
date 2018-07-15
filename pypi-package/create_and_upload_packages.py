@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from distutils.dir_util import copy_tree
 
 from Trax.Utils.Logging.Logger import Log
@@ -205,7 +206,7 @@ class KPIUtilsGenerator:
         this method creates and uploads the package to s3
         :return: None
         """
-        self.copy_and_upload_utils()
+        # self.copy_and_upload_utils()
         self.copy_and_upload_utils_v2()
 
     def copy_and_upload_utils(self):
@@ -218,9 +219,9 @@ class KPIUtilsGenerator:
 
 
 if __name__ == '__main__':
-    is_jenkins = True
-    packager = Packager(is_jenkins)
-    packager.create_and_upload_package()
+    is_jenkins = False
+    # packager = Packager(is_jenkins)
+    # packager.create_and_upload_package()
     utils_maker = KPIUtilsGenerator(is_jenkins)
     utils_maker.create_and_upload_packages()
 
