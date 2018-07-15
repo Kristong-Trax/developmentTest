@@ -1050,7 +1050,10 @@ class PNGAMERICAToolBox:
             general_filters[kpi_data['filter attribute 2']] = kpi_data['attribute_2']
         for direction in direction_data:
             try:
+                if direction == 'bottom':
+                    continue
                 if kpi_data['vertical'] == 'Y':
+                    y_values_dict = {}
                     general_filters[filters[0]] = filters[1]
                     order = False
                     block_result = self.tools.calculate_block_together_new(include_empty=False,
@@ -1060,6 +1063,7 @@ class PNGAMERICAToolBox:
                         y_values = []
                         block_height, total_avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
                                                                                             minimum_block_ratio=0.75,
+                                                                                            include_private_label=True,
                                                                                             orch=True, **general_filters)
                         for orch_filter in kpi_data['attribute'].split(', '):
                             block_filters = general_filters
@@ -1067,18 +1071,29 @@ class PNGAMERICAToolBox:
                             block_filters[kpi_data['filter attribute']] = orch_filter
                             subset_block_height, avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
                                                                                                        minimum_block_ratio=0.75,
+                                                                                                       include_private_label=True,
                                                                               orch=True, **block_filters)
                             if subset_block_height == 0:
-                                order = False
+                                if orch_filter == 'ECONOMY':  #todo remove this once DB is fixed
+                                    continue
+                                filtered_matches = self.tools.match_product_in_scene[self.tools.get_filter_condition(
+                                    self.tools.match_product_in_scene, **block_filters)]
+                                special_y_value = filtered_matches['rect_y'].tolist()
+                                if special_y_value:
+                                    avg_y_value = sum(special_y_value) / float(len(special_y_value))
+                            y_values_dict[orch_filter] = avg_y_value
                             y_values.append(avg_y_value)
                         threshold = 0.1*block_height
                         if kpi_data['custom orchestration'] == 'Y':
                             if len(y_values) == 3:
                                 if not (y_values[0] < (y_values[1] + threshold) and y_values[0] > (y_values[1] - threshold)):
                                     order = False
+                            else:
+                                order = False
                         else:
                             if direction == 'bottom':
                                 last_value = 0
+                                last_index = 0
                                 for y_value in reversed(y_values):
                                     if last_value == 0:
                                         last_value = y_value
@@ -1088,13 +1103,19 @@ class PNGAMERICAToolBox:
                                         order = False
                             else:
                                 last_value = 0
-                                for y_value in y_values:
-                                    if last_value == 0:
-                                        last_value = y_value
-                                    if last_value-threshold < y_value:
-                                        last_value = y_value
+                                last_index = 0
+                                for key in y_values_dict.keys():
+                                    y_value = y_values_dict[key]
+                                    if filter_attributes_index_dict[key]>=last_index:
+                                        if last_value > 0:
+                                            if last_value-threshold > y_value:
+                                                last_value = y_value
+                                            else:
+                                                order = False
                                     else:
                                         order = False
+                                    last_index = filter_attributes_index_dict[key]
+                                    last_value = y_value
                     result = 1 if order else 0
                     # result = self.tools.calculate_vertical_product_sequence_per_bay(sequence_filters=filters,
                     #                                                                 direction=direction,
