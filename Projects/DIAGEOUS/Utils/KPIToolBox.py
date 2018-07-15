@@ -201,7 +201,14 @@ class DIAGEOUSToolBox:
             standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
             result_line = self.calculate_ass_on_sku(
                 product_line['product_fk'], relevant_scif, standard_type, kpi_name)
-            all_results = all_results.append(result_line, ignore_index=True)
+            if not result_line:
+                continue
+            sub_brand = result_line[Const.SUB_BRAND]
+            sub_brands_results = all_results[all_results[Const.SUB_BRAND] == sub_brand]
+            if sub_brands_results.empty:
+                all_results = all_results.append(result_line, ignore_index=True)
+            elif result_line[Const.PASSED] > 0:
+                all_results.loc[all_results[Const.SUB_BRAND] == sub_brand, Const.PASSED] = 1
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
             all_results, kpi_db_names, weight, with_standard_type=True, sub_brand_numeric=True)
         # add extra products to DB:
@@ -504,7 +511,6 @@ class DIAGEOUSToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.OFF])
         our_eans = competition[Const.OUR_EAN_CODE].split(', ')
-
         our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
         if our_lines.empty:
             Log.warning("The products {} in shelf facings don't exist in DB".format(our_eans))
@@ -523,16 +529,17 @@ class DIAGEOUSToolBox:
             comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
             if comp_lines.empty:
                 Log.warning("The products {} in shelf facings don't exist in DB".format(comp_eans))
-                return None
-            comp_fks = comp_lines['product_fk'].unique().tolist()
-            comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
-            bench_value = competition[Const.BENCH_VALUE]
-            target = comp_facings * bench_value
+                target = 0
+            else:
+                comp_fks = comp_lines['product_fk'].unique().tolist()
+                comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
+                bench_value = competition[Const.BENCH_VALUE]
+                target = comp_facings * bench_value
         elif self.does_exist(competition[Const.BENCH_VALUE]):
             target = competition[Const.BENCH_VALUE]
         else:
             Log.warning("Product {} has no target in shelf facings".format(our_eans))
-            return None
+            target = 0
         our_facings = self.calculate_shelf_facings_of_sku(
             our_fks, relevant_scenes, result_identifier, target=target, diageo_product=True)
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
@@ -943,22 +950,17 @@ class DIAGEOUSToolBox:
         """
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
-        num_res, den_res = 0, 0
         for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
             if sub_brand is None or np.isnan(sub_brand):
                 continue
             sub_brand_results = brand_results[(brand_results[Const.BRAND] == brand) &
                                               (brand_results[Const.SUB_BRAND] == sub_brand)]
-            den_res += 1
-            num_res += sub_brand_results['passed'].max()
             self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict,
                                          write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
         results = brand_results[Const.PASSED]
         if write_numeric:
             num_res, den_res = 0, 0
             result = results.sum()
-        elif sub_brand_numeric:
-            result = self.get_score(num_res, den_res)
         else:
             num_res, den_res = results.sum(), results.count()
             result = self.get_score(num_res, den_res)
