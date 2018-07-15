@@ -1627,7 +1627,7 @@ class PNGAMERICAGENERALToolBox:
                             results['vertical'] = vertical_flag
                             results['horizontal'] = horizontal_flag
                         if orch:
-                            edges = self.get_block_edges_new(block_graph.vs)
+                            edges = self.get_block_edges_new(block_graph.vs, x_att='rect_x', y_att='rect_y')
                             block_height = edges['visual'].get('top') - edges['visual'].get('bottom')
                             avg_y = sum(block_graph.vs.get_attribute_values('rect_y')) / float(
                                 len(block_graph.vs.get_attribute_values('rect_y')))
@@ -1665,37 +1665,43 @@ class PNGAMERICAGENERALToolBox:
                             results['scene_match_fk'] = scene_match_fk_list
 
                         return results
+        if orch:
+            return 0, 0
         return False
 
-    def get_block_edges_new(self, graph):
+    def get_block_edges_new(self, graph, x_att=None, y_att=None):
         """
         This function receives one or more vertex data of a block's graph, and returns the range of its edges -
         The far most top, bottom, left and right pixels of its facings.
         """
         top = right = bottom = left = None
+        if x_att is None:
+            x_att = 'x_mm'
+        if y_att is None:
+            y_att = 'y_mm'
 
-        top = graph.get_attribute_values('y_mm')
+        top = graph.get_attribute_values(y_att)
         top_index = max(xrange(len(top)), key=top.__getitem__)
         top_height = graph.get_attribute_values('height_mm_advance')[top_index]
-        top = graph.get_attribute_values('y_mm')[top_index]
+        top = graph.get_attribute_values(y_att)[top_index]
         top += top_height / 2
 
-        bottom = graph.get_attribute_values('y_mm')
+        bottom = graph.get_attribute_values(y_att)
         bottom_index = min(xrange(len(bottom)), key=bottom.__getitem__)
         bottom_height = graph.get_attribute_values('height_mm_advance')[bottom_index]
-        bottom = graph.get_attribute_values('y_mm')[bottom_index]
+        bottom = graph.get_attribute_values(y_att)[bottom_index]
         bottom -= bottom_height / 2
 
-        left = graph.get_attribute_values('x_mm')
+        left = graph.get_attribute_values(x_att)
         left_index = min(xrange(len(left)), key=left.__getitem__)
         left_height = graph.get_attribute_values('width_mm_advance')[left_index]
-        left = graph.get_attribute_values('x_mm')[left_index]
+        left = graph.get_attribute_values(x_att)[left_index]
         left -= left_height / 2
 
-        right = graph.get_attribute_values('x_mm')
+        right = graph.get_attribute_values(x_att)
         right_index = max(xrange(len(right)), key=right.__getitem__)
         right_width = graph.get_attribute_values('width_mm_advance')[right_index]
-        right = graph.get_attribute_values('x_mm')[right_index]
+        right = graph.get_attribute_values(x_att)[right_index]
         right += right_width / 2
 
         result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}
