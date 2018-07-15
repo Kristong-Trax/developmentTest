@@ -70,7 +70,7 @@ class AddKPIs(Consts, CustomConfigurations):
         """
         update_query = "update static.kpi set weight = '{}' where pk = {}"
         queries = []
-        for kpi in self.data:
+        for kpi in self.data.to_dict('records'):
             kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == kpi.get(self.KPI_SET_NAME)) &
                                           (self.kpi_static_data['kpi_name'] == kpi.get(self.KPI_NAME))]['kpi_fk'].values[0]
             queries.append(update_query.format(kpi.get(self.WEIGHT), kpi_fk))
@@ -184,5 +184,8 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('ccza', '/home/natalyak/Desktop/CCZA/KPIs for DB.xlsx')
-    kpi.add_kpis_from_template()
+    kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
+    # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
+    # kpi.add_kpis_from_template()
+    kpi.add_weights()
+

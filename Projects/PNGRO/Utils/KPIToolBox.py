@@ -88,15 +88,15 @@ class PNGRO_PRODToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.retailer = \
-        self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
+        # self.retailer = \
+        # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.display_data = parse_template(TEMPLATE_PATH, 'display weight')
-        self.eye_level_target = self.get_shelf_level_target()
+        # self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
         self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -172,21 +172,23 @@ class PNGRO_PRODToolBox:
         """
         This function calculates the KPI results.
         """
-        if not self.match_display.empty:
-            if self.match_display['exclude_status_fk'][0] in (1, 4):
-                self.calculate_linear_share_of_shelf_per_product_display()
+        # if not self.match_display.empty:
+        #     if self.match_display['exclude_status_fk'][0] in (1, 4):
+        self.calculate_linear_share_of_shelf_per_product_display()
 
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         for x, params in self.sbd_kpis_data.iterrows():
-            if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            if True:
                 general_filters = self.get_general_filters(params)
                 if general_filters:
                     score = 0
+                    result = threshold = None
                     kpi_type = params[self.KPI_FAMILY]
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        score = self.calculate_sos(params, **general_filters)
+                        score, result, threshold = self.calculate_sos(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
@@ -197,8 +199,11 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_survey(params)
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
-                        self.write_to_db_result(score=int(score), result=int(score), level=self.LEVEL3,
-                                                fk=atomic_kpi_fk)
+                        if result and threshold:
+                            self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
+                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
+                        else:
+                            self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -275,8 +280,8 @@ class PNGRO_PRODToolBox:
         """
         survey_name = params['Param (1) Values']
         target_answers = params['Param (2) Values'].split(',')
-        survey_answer = self.tools.get_survey_answer(('question_fk', survey_name))
-        score = 100 if survey_answer in target_answers else 0
+        survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
+        score = 1 if survey_answer in target_answers else 0
         return score
 
     def calculate_sos(self, params, **general_filters):
@@ -288,8 +293,8 @@ class PNGRO_PRODToolBox:
         value3 = params['Param (3) Values']
         target = params['Target Policy']
 
-        numerator_filters = {type1: value1, type3: value3}
-        denominator_filters = {type2: value2, type3: value3}
+        numerator_filters = {type1: value1, type2: value2, type3: value3}
+        denominator_filters = {type2: value2}
 
         numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
                                                                        include_empty=True,
@@ -303,9 +308,9 @@ class PNGRO_PRODToolBox:
         else:
             ratio = numerator_width / float(denominator_width)
         if (ratio * 100) >= int(target):
-            return True
+            return True, str(ratio), str(int(target)/100.0)
         else:
-            return False
+            return False, str(ratio), str(int(target)/100.0)
 
     def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -530,7 +535,7 @@ class PNGRO_PRODToolBox:
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, result, result_2, kpi_fk, fk)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'result', 'result_2', 'kpi_fk',
+                                               'calculation_time', 'score', 'result', 'threshold', 'kpi_fk',
                                                'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
@@ -565,7 +570,7 @@ class PNGRO_PRODToolBox:
         return merged_queries
 
     def get_display_agg(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_name'] == 'Secondary shelf'][
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]
@@ -573,9 +578,9 @@ class PNGRO_PRODToolBox:
         return \
             display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
 
-    def get_shelf_level_target(self):
-        eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
-        return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
-                                                                                self.NUMBER_OF_SHELVES]]
+    # def get_shelf_level_target(self):
+    #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
+    #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
+    #                                                                             self.NUMBER_OF_SHELVES]]
 
 

@@ -94,6 +94,13 @@ class INBEVBEINBEVBEToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
+        try:
+            self.inbev_template = NewTemplate(self.project_name)
+            for set_name in ['Linear Share of Shelf', 'OSA']:
+                self.get_missing_products_to_api_set(set_name)
+        except Exception as e:
+            Log.info('Updating API sets failed')
+        self.kpi_static_data = self.get_kpi_static_data()
         self.tools = INBEVBEINBEVBEINBEVToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
@@ -123,12 +130,6 @@ class INBEVBEINBEVBEToolBox:
         # self.rect_values = self.get_rect_values()
         self.extra_bundle_leads = []
         self.current_date = datetime.date
-        try:
-            self.inbev_template = NewTemplate(self.project_name)
-            for set_name in ['Linear Share of Shelf', 'OSA']:
-                self.get_missing_products_to_api_set(set_name)
-        except Exception as e:
-            Log.info('Updating API sets failed')
 
     @staticmethod
     def inrange(x, min, max):
@@ -160,6 +161,7 @@ class INBEVBEINBEVBEToolBox:
         This function returns the session's business unit (equal to store type for some KPIs)
         """
         query = INBEVBEINBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -172,6 +174,7 @@ class INBEVBEINBEVBEToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = INBEVBEINBEVBEQueries.get_all_kpi_data()
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -181,22 +184,26 @@ class INBEVBEINBEVBEToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = INBEVBEINBEVBEQueries.get_match_display(self.session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
         query = INBEVBEINBEVBEQueries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
         query = INBEVBEINBEVBEQueries.get_oos_messages(self.session_uid)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
 
     def get_store_number_1(self):
         query = INBEVBEINBEVBEQueries.get_store_number_1(self.store_id)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
@@ -287,28 +294,14 @@ class INBEVBEINBEVBEToolBox:
             ).tolist()
         else:
             falsely_recognized_products_list = []
-        # products_without_oos_reasons = self.oos_messages.loc[
-        #     (~self.scif['product_fk'].isin(ass_prod_present_in_store)) & (
-        #         ~self.oos_messages['product_fk'].isin(self.has_assortment_list)) & (
-        #         self.scif[object_type].isin(ass_prod_list))]
-        # if not products_without_oos_reasons.empty:
-        #     products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique().tolist()
-        # else:
-        #     products_without_oos_reasons_list = []
         ass_prod_present_in_store.extend(self.products_to_add)
         ass_prod_list.extend(self.products_to_add)
         set_score = 0
         self.check_on_shelf_availability_on_scene_level(OSA)
         if set_name == OSA:
-            self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store, object_type,
+            products_list = list(set(ass_prod_list) - set(delisted_products['product_fk']))
+            self.calculate_osa_assortment_and_oos(products_list, ass_prod_present_in_store, object_type,
                                                   falsely_recognized_prods=falsely_recognized_products_list)
-            # self.calculate_osa_assortment_and_oos(ass_prod_list, ass_prod_present_in_store, object_type,
-            #                                       falsely_recognized_prods=falsely_recognized_products_list,
-            #                                       products_without_oos_reasons=products_without_oos_reasons_list)
-            # updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-            #     (self.all_products['att3'] == 'YES') | (
-            #         self.all_products['product_fk'].isin(self.missing_bundle_leads)))][
-            #     'product_fk'].unique().tolist()
 
             updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
                 (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
@@ -485,19 +478,6 @@ class INBEVBEINBEVBEToolBox:
                 product, self.store_id, datetime.utcnow())
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
-
-            try:
-                product_ean_code = \
-                    self.all_products.loc[self.all_products['product_fk']
-                                          == product]['product_ean_code'].values[0]
-            except IndexError as e:
-                Log.info('Product fk {} is not defined in the DB'.format(product))
-                continue
-            assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
-            oos_kpi_name = str(product_ean_code) + ' - OOS'
-            self.save_level2_and_level3(OSA, assortment_kpi_name, 0)
-            self.save_level2_and_level3(OSA, oos_kpi_name, 0)
-
         return
 
     def main_calculation(self, set_name):
@@ -1366,11 +1346,9 @@ class INBEVBEINBEVBEToolBox:
                 self.kpi_results_queries.append(query)
 
     def save_linear_length_results(self):
+        product_list_to_write = []
         scenes_to_check = self.scif['scene_fk'].unique().tolist()
         session_products = self.scif['product_fk'].unique().tolist()
-        # products_to_check = self.all_products.loc[(self.all_products['product_fk'].isin(session_products)) & (
-        #     (self.all_products['att3'] == 'YES') | (
-        #         self.all_products['product_fk'].isin(self.missing_bundle_leads)))]['product_fk'].unique().tolist()
         products_to_check = self.all_products.loc[
             (self.all_products['product_fk'].isin(session_products)) & (
                 (self.all_products['att3'] == 'YES') | (
@@ -1383,31 +1361,27 @@ class INBEVBEINBEVBEToolBox:
         for product in products_to_check:
             aggregated_linear_length = 0
             for scene in scenes_to_check:
-
                 product_bundle_lead = self.get_bundle_lead(product)
                 if not product_bundle_lead:
                     product_bundle_lead = product
                 if (scene, product_bundle_lead) in self.scene_item_length_mm_dict:
-                    scene_product_length = self.scene_item_length_mm_dict[scene,
-                                                                          product_bundle_lead]
+                    scene_product_length = self.scene_item_length_mm_dict[scene, product_bundle_lead]
                 else:
                     scene_product_length = 0
 
-                # if (scene, product) in self.scene_item_length_mm_dict:
-                #     scene_product_length = self.scene_item_length_mm_dict[scene, product]
-                # else:
-                #     scene_product_length = 0
                 aggregated_linear_length += scene_product_length
             try:
                 product_ean_code = \
                     self.all_products.loc[self.all_products['product_fk']
-                                          == product]['product_ean_code'].values[0]
+                                          == product_bundle_lead]['product_ean_code'].values[0]
             except IndexError as e:
-                Log.info('Product {} is not defined'.format(product))
+                Log.info('Product {} is not defined'.format(product_bundle_lead))
                 continue
             if product_ean_code:
-                self.save_level2_and_level3('Linear Share of Shelf',
-                                            product_ean_code, aggregated_linear_length)
+                if product_ean_code not in product_list_to_write:
+                    self.save_level2_and_level3('Linear Share of Shelf',
+                                                product_ean_code, aggregated_linear_length)
+                    product_list_to_write.append(product_ean_code)
 
     def calculate_block_together_sets(self, set_name):
         """
@@ -1527,9 +1501,8 @@ class INBEVBEINBEVBEToolBox:
         return False
 
     def get_missing_products_to_api_set(self, set_name):
-        existing_skus = \
-            self.all_products[self.all_products['product_type']
-                              == 'SKU']['product_ean_code'].unique().tolist()
+        existing_skus = self.all_products[~self.all_products['product_ean_code'].isin(['746', '747', '748'])
+                                            ]['product_ean_code'].unique().tolist()
         set_data = \
             self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                  == set_name]['atomic_kpi_name'].unique().tolist()

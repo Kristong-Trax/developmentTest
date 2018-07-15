@@ -57,7 +57,7 @@ class CCBRToolBox:
         self.kpi_results_new_tables_queries = []
         self.New_kpi_static_data = self.get_new_kpi_static_data()
         self.session_id = self.data_provider.session_id
-        self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price(self.session_id)
+        self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price_union(self.session_id)
         self.common_db = Common(self.data_provider)
         self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")

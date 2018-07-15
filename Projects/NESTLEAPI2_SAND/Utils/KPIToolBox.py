@@ -118,7 +118,7 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                     brand_filter = brand_filter[brand_filter['brand_name'] == brand]
                     num_of_products_in_brand = sum(brand_filter['facings'])
                     result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
-                    atomic_name = 'sos for category_group_{} and brand_{}'.format(category_group, brand)
+                    atomic_name = 'sos for brand_{}'.format(brand)
                     self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
             shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]

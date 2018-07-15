@@ -4,6 +4,7 @@ import collections as collect
 import copy
 from datetime import datetime, timedelta
 
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -226,6 +227,7 @@ class INBEVNLINBEVBEToolBox:
                 continue
         return final_shelves
 
+    @kpi_runtime()
     def check_on_shelf_availability(self, set_name):
         """
         This function is used for OSA set calculations
@@ -557,6 +559,7 @@ class INBEVNLINBEVBEToolBox:
         kpi_set_fk = kpi_data['kpi_set_fk'].values[0]
         self.write_to_db_result(kpi_set_fk, score, self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_eye_level_availability(self, set_name):
         total_inbev_prods_counter = 0
         results = []
@@ -656,6 +659,7 @@ class INBEVNLINBEVBEToolBox:
 
         return round(set_score, 2)
 
+    @kpi_runtime()
     def custom_share_of_shelf(self, set_name):
         set_score = 0
         if set_name == 'Linear Share of Shelf vs. Target':
@@ -1014,6 +1018,7 @@ class INBEVNLINBEVBEToolBox:
         return counter_by_order
         #groupby(set(lst), key=lst.count)
 
+    @kpi_runtime()
     def product_stacking(self, set_name):
         kpi_df_include_stacking = self.match_product_in_scene.merge(
             self.products, on=['product_fk'])
@@ -1035,6 +1040,7 @@ class INBEVNLINBEVBEToolBox:
         # self.save_level1(set_name, set_score)
         return round(set_score, 2)
 
+    @kpi_runtime()
     def shelf_impact_score(self):
         total_score = 0
         must_have_assortment_score = self.calculate_must_have_assortment()
@@ -1334,6 +1340,7 @@ class INBEVNLINBEVBEToolBox:
                                                 product_ean_code, aggregated_linear_length)
                     product_list_to_write.append(product_ean_code)
 
+    @kpi_runtime()
     def calculate_block_together_sets(self, set_name):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -1373,6 +1380,7 @@ class INBEVNLINBEVBEToolBox:
 
         return round(set_score, 2)
 
+    @kpi_runtime()
     def calculate_pallet_presence(self):
         """
         This function calculates every Pallet-Presence typed KPI from the relevant sets, and returns the set final score.
@@ -1384,6 +1392,7 @@ class INBEVNLINBEVBEToolBox:
         set_score = (PALLET_WEIGHT * pallet_score) + (HALF_PALLET_WEIGHT * half_pallet_score)
         return set_score, pallet_score, half_pallet_score
 
+    @kpi_runtime()
     def calculate_share_of_assortment(self):
         """
         This function calculates every Share-of-Assortment typed KPI from the relevant sets, and returns the set final score.

@@ -21,7 +21,7 @@ TEMPLATES_TEMP_PATH = os.getcwd()
 class CCRU_SANDContract:
 
     def __init__(self, rds_conn=None):
-        self.static_data_extractor = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
+        self.static_data_extractor = CCRU_SANDTopSKUAssortment()
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
 
@@ -89,8 +89,9 @@ class CCRU_SANDContract:
         return conversion
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('')
-#     Config.init()
-#     path = '/home/ubuntu/dev/trax_ace_factory/Projects/CCRU/Utils/MT Targets February TRAX pt1.xlsx'
-#     CCRU_SANDContract().parse_and_upload_file(path)
+if __name__ == '__main__':
+    # LoggerInitializer.init('ccru_sand')
+    Log.init('ccru_sand', 'Execution Contract')
+    Config.init()
+    path = '/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Contract execution targets June 2018.xlsx'
+    CCRU_SANDContract().parse_and_upload_file(path)
