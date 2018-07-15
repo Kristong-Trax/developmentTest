@@ -1,8 +1,8 @@
 import os
 import sys
 
+from KPIUtils_v2.Utils.Decorators.Decorators import log_task
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Tools.ProfessionalServices.TemplateValidator.Decorators.Decorators import log_task
 from Trax.Utils.Conf.Configuration import Config
 
 from Deployment.fabfile.BaseDeployment import ProjectDeployment
@@ -11,11 +11,12 @@ from Deployment.fabfile.Git import copy_to_ace_live, get_kpi_factory_repository,
 from Deployment.fabfile.ProjectValidation import ProjectValidator
 
 
+@log_task(action='ProjectDeployment', message='Deploying Project', environment='prod')
 class ProjectDeploy(ProjectDeployment):
     def __init__(self, project=None):
         self.project = project
 
-    @log_task(monitor_object='DeployProject')
+    # @log_task(monitor_object='DeployProject')
     def deploy(self):
         sdk_factory_git_folder, sdk_repo = get_sdk_factory_repository()
         ace_live_git_folder, ace_live_repo = get_live_repository()
