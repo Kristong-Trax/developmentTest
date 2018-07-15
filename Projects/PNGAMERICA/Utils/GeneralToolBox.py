@@ -1632,7 +1632,7 @@ class PNGAMERICAGENERALToolBox:
                             avg_y = sum(block_graph.vs.get_attribute_values('rect_y')) / float(
                                 len(block_graph.vs.get_attribute_values('rect_y')))
                             return block_height, avg_y
-                        if include_private_label:
+                        if include_private_label and not orch:
                             p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
                             if checkerboard:
                                 results['checkerboarded'] = False
