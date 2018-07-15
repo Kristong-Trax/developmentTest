@@ -11,10 +11,10 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.CBCIL.Utils.PositionGraph import CBCILCBCIL_PositionGraphs
 
-__author__ = 'Israel'
+__author__ = 'natalyak'
 
 
-class CBCILCBCIL_GENERALToolBox:
+class CCBZA_SAND_GENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1

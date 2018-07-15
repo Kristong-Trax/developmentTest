@@ -2,16 +2,16 @@
 __author__ = 'natalyak'
 
 class CCBZA_SAND_Queries(object):
-    # @staticmethod
-    # def get_all_kpi_data():
-    #     return """
-    #             select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
-    #                    kpi.display_text as kpi_name, kpi.pk as kpi_fk,
-    #                    kps.name as kpi_set_name, kps.pk as kpi_set_fk
-    #             from static.atomic_kpi api
-    #             left join static.kpi kpi on kpi.pk = api.kpi_fk
-    #             join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-    #         """
+    @staticmethod
+    def get_all_kpi_data():
+        return """
+                select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
+                       kpi.display_text as kpi_name, kpi.pk as kpi_fk,
+                       kps.name as kpi_set_name, kps.pk as kpi_set_fk
+                from static.atomic_kpi api
+                left join static.kpi kpi on kpi.pk = api.kpi_fk
+                join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
+            """
     #
     # @staticmethod
     # def get_delete_session_results_query(session_uid, session_fk):
@@ -59,6 +59,13 @@ class CCBZA_SAND_Queries(object):
                 from static.stores s
                 where s.pk = {}
             """.format(store_fk)
+
+    @staticmethod
+    def get_new_kpi_data():
+        return """
+                select *
+                from static.kpi_level_2
+            """
 
     # @staticmethod
     # def get_template_fk_by_category_fk():
