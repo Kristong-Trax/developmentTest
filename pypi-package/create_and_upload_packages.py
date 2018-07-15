@@ -219,9 +219,9 @@ class KPIUtilsGenerator:
 
 
 if __name__ == '__main__':
-    is_jenkins = False
-    # packager = Packager(is_jenkins)
-    # packager.create_and_upload_package()
+    is_jenkins = True
+    packager = Packager(is_jenkins)
+    packager.create_and_upload_package()
     utils_maker = KPIUtilsGenerator(is_jenkins)
     utils_maker.create_and_upload_packages()
 
