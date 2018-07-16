@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Projects.DIAGEOUS_SAND.Utils.DIAGEOUS_SANDConst import DIAGEOUS_SANDConst
+from Projects.DIAGEOUS_SAND.Utils.Const import DIAGEOUS_SANDConst
 from Projects.DIAGEOUS_SAND.Utils.Fetcher import DIAGEOUS_SANDQueries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -545,7 +545,7 @@ class DIAGEOUS_SANDToolBox:
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, score=comparison,
+            fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
             result=our_facings, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: comparison,
@@ -662,7 +662,7 @@ class DIAGEOUS_SANDToolBox:
         shelf_groups = self.templates[DIAGEOUS_SANDConst.SHELF_GROUPS_SHEET]
         target = shelf_groups[shelf_groups[DIAGEOUS_SANDConst.NUMBER_GROUP] == min_shelf_loc][DIAGEOUS_SANDConst.SHELF_GROUP].iloc[0]
         target_fk = self.get_pks_of_result(target)
-        score = passed
+        score = passed * 100
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
