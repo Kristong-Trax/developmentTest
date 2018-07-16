@@ -58,7 +58,10 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.ALL_PRODUCTS]
-        self.products['sub_brand'] = self.products['Sub Brand']#the sub_brand column is empty
+        try:
+            self.products['sub_brand'] = self.products['Sub Brand']#the sub_brand column is empty
+        except:
+            pass
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -67,7 +70,10 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif['sub_brand'] = self.scif['Sub Brand']#the sub_brand column is empty
+        try:
+            self.scif['sub_brand'] = self.scif['Sub Brand']#the sub_brand column is empty
+        except:
+            pass
         self.set_name = set_name
         self.kpi_fetcher = MARSRU_PRODMARSRUKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                        self.set_name, self.products, self.session_uid)

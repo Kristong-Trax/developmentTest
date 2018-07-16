@@ -522,8 +522,8 @@ class CCTHDEMOToolBox(CCTHDEMOConsts):
                             score_percent = 1
                         score_percent = score * score_percent
                         scores_weights.append(score_percent)
-                        # if score == 0:
-                        #     self.add_gap(child)
+                        if score == 0:
+                            self.add_gap(child)
             if not scores:
                 scores = [0]
                 self.summary[main_child[self.template.KPI_NAME]] = [None, None, None]
