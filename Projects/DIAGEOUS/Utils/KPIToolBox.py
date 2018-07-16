@@ -545,7 +545,7 @@ class DIAGEOUSToolBox:
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, score=comparison,
+            fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
             result=our_facings, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
@@ -662,7 +662,7 @@ class DIAGEOUSToolBox:
         shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
         target = shelf_groups[shelf_groups[Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
         target_fk = self.get_pks_of_result(target)
-        score = passed
+        score = passed * 100
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
