@@ -128,7 +128,7 @@ class BATRU_SANDToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         new_products = False
         try:
-            sets_and_kpi_fk = {'Assortment Distribution': 5, 'Assortment Distribution - Entry': 24, 'Mobile Price Monitoring': 5660}
+            sets_and_kpi_fk = {'Assortment Distribution': 5, 'Assortment Distribution - Entry': 24}
             for set_name in sets_and_kpi_fk:
                 if self.get_missing_products_to_api_set(set_name, sets_and_kpi_fk[set_name]):
                     new_products = True
