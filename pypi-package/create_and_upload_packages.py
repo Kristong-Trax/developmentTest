@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from distutils.dir_util import copy_tree
 
 from Trax.Utils.Logging.Logger import Log
