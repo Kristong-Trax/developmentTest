@@ -254,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['category space']:
+                # if kpi_type not in ['orchestrated']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -1050,34 +1050,77 @@ class PNGAMERICAToolBox:
             general_filters[kpi_data['filter attribute 2']] = kpi_data['attribute_2']
         for direction in direction_data:
             try:
+                if direction == 'bottom':
+                    continue
                 if kpi_data['vertical'] == 'Y':
-                    # block_result = self.tools.calculate_block_together_new(include_empty=False,
-                    #                                                        minimum_block_ratio=0.75, **general_filters)
-                    # if block_result:
-                    #     y_values = []
-                    #     block_height, total_avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
-                    #                                                                         minimum_block_ratio=0.75,
-                    #                                                                         orch=True, **general_filters)
-                    #     for orch_filter in kpi_data['attribute'].split(', '):
-                    #         block_filters = general_filters
-                    #         block_filters[kpi_data['filter attribute']] = orch_filter
-                    #         subset_block_height, avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
-                    #                                                                                    minimum_block_ratio=0.75,
-                    #                                                           orch=True, **block_filters)
-                    #         y_values.append(avg_y_value)
-                    #     order = False
-                    #     threshold = 0.1*block_height
-                    #     if direction == 'bottom':
-                    #         if y_values == reversed(sorted(y_values)):
-                    #             order = True
-                    #     else:
-                    #         if y_values == sorted(y_values):
-                    #             order = True
-
-                    result = self.tools.calculate_vertical_product_sequence_per_bay(sequence_filters=filters,
-                                                                                    direction=direction,
-                                                                                    filter_attributes_index_dict=filter_attributes_index_dict,
-                                                                                    **general_filters)
+                    y_values_dict = {}
+                    general_filters[filters[0]] = filters[1]
+                    order = False
+                    block_result = self.tools.calculate_block_together_new(include_empty=False,
+                                                                           minimum_block_ratio=0.75, **general_filters)
+                    if block_result:
+                        order = True
+                        y_values = []
+                        block_height, total_avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
+                                                                                            minimum_block_ratio=0.75,
+                                                                                            include_private_label=True,
+                                                                                            orch=True, **general_filters)
+                        for orch_filter in kpi_data['attribute'].split(', '):
+                            block_filters = general_filters
+                            del block_filters[kpi_data['filter attribute']]
+                            block_filters[kpi_data['filter attribute']] = orch_filter
+                            subset_block_height, avg_y_value = self.tools.calculate_block_together_new(include_empty=False,
+                                                                                                       minimum_block_ratio=0.75,
+                                                                                                       include_private_label=True,
+                                                                              orch=True, **block_filters)
+                            if subset_block_height == 0:
+                                if orch_filter == 'ECONOMY':  #todo remove this once DB is fixed
+                                    continue
+                                filtered_matches = self.tools.match_product_in_scene[self.tools.get_filter_condition(
+                                    self.tools.match_product_in_scene, **block_filters)]
+                                special_y_value = filtered_matches['rect_y'].tolist()
+                                if special_y_value:
+                                    avg_y_value = sum(special_y_value) / float(len(special_y_value))
+                            y_values_dict[orch_filter] = avg_y_value
+                            y_values.append(avg_y_value)
+                        threshold = 0.1*block_height
+                        if kpi_data['custom orchestration'] == 'Y':
+                            if len(y_values) == 3:
+                                if not (y_values[0] < (y_values[1] + threshold) and y_values[0] > (y_values[1] - threshold)):
+                                    order = False
+                            else:
+                                order = False
+                        else:
+                            if direction == 'bottom':
+                                last_value = 0
+                                last_index = 0
+                                for y_value in reversed(y_values):
+                                    if last_value == 0:
+                                        last_value = y_value
+                                    if y_value < last_value+threshold:
+                                        last_value = y_value
+                                    else:
+                                        order = False
+                            else:
+                                last_value = 0
+                                last_index = 0
+                                for key in y_values_dict.keys():
+                                    y_value = y_values_dict[key]
+                                    if filter_attributes_index_dict[key]>=last_index:
+                                        if last_value > 0:
+                                            if last_value-threshold > y_value:
+                                                last_value = y_value
+                                            else:
+                                                order = False
+                                    else:
+                                        order = False
+                                    last_index = filter_attributes_index_dict[key]
+                                    last_value = y_value
+                    result = 1 if order else 0
+                    # result = self.tools.calculate_vertical_product_sequence_per_bay(sequence_filters=filters,
+                    #                                                                 direction=direction,
+                    #                                                                 filter_attributes_index_dict=filter_attributes_index_dict,
+                    #                                                                 **general_filters)
                 else:
                     result = self.tools.calculate_product_sequence_per_shelf(sequence_filters=filters,
                                                                              direction=direction,
@@ -1088,24 +1131,24 @@ class PNGAMERICAToolBox:
                 result = False
             score += 1 if result else 0
 
-        if kpi_data['custom orchestration'] == 'Y':
-            # block_result = self.tools.calculate_block_together_new(include_empty=False,
-            #                                                        minimum_block_ratio=0.75, **general_filters)
-            filters_for_anchor = {'PRICE SEGMENT': 'ECONOMY'}
-            self.calculate_anchor_new(kpi_set_fk, kpi_name + ' anchor', scene_types, filters=filters_for_anchor)
-            filters_for_anchor_reverse = {'PRICE SEGMENT': 'PREMIUM'}
-            self.calculate_anchor_new(kpi_set_fk, kpi_name + ' reverse', scene_types,
-                                      filters=filters_for_anchor_reverse)
-            tested_filters = {'PRICE SEGMENT': 'SUPER PREMIUM'}
-            anchor_filters = {'PRICE SEGMENT': ['PREMIUM', 'ECONOMY']}
-            direction_data = {'top', 'bottom'}
-            relative_pos_result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
-                                                                         **general_filters)
-            if relative_pos_result and self.related_kpi_results[kpi_name + ' anchor'] \
-                    and self.related_kpi_results[kpi_name + ' reverse']:
-                score = 1
-            else:
-                score = 0
+        # if kpi_data['custom orchestration'] == 'Y':
+        #     block_result = self.tools.calculate_block_together_new(include_empty=False,
+        #                                                            minimum_block_ratio=0.75, **general_filters)
+        #     filters_for_anchor = {'PRICE SEGMENT': 'ECONOMY'}
+        #     self.calculate_anchor_new(kpi_set_fk, kpi_name + ' anchor', scene_types, filters=filters_for_anchor)
+        #     filters_for_anchor_reverse = {'PRICE SEGMENT': 'PREMIUM'}
+        #     self.calculate_anchor_new(kpi_set_fk, kpi_name + ' reverse', scene_types,
+        #                               filters=filters_for_anchor_reverse)
+        #     tested_filters = {'PRICE SEGMENT': 'SUPER PREMIUM'}
+        #     anchor_filters = {'PRICE SEGMENT': ['PREMIUM', 'ECONOMY']}
+        #     direction_data = {'top', 'bottom'}
+        #     relative_pos_result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+        #                                                                  **general_filters)
+        #     if relative_pos_result and self.related_kpi_results[kpi_name + ' anchor'] \
+        #             and self.related_kpi_results[kpi_name + ' reverse']:
+        #         score = 1
+        #     else:
+        #         score = 0
         scores = 1 if score > 0 else 0
         try:
             self.write_to_db_result(kpi_set_fk, kpi_name=kpi_name, level=self.LEVEL3, result=scores, score=scores)

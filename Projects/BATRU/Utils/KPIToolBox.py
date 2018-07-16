@@ -1417,12 +1417,14 @@ class BATRUToolBox:
                         self.p4_display_count[equipment] = 1
                         count = self.p4_display_count[equipment]
 
-                    if count != 1:
-                        equipment = '{} # {}'.format(equipment, count)
+                    if count == 1:
+                        equipment_to_db = equipment
+                    else:
+                        equipment_to_db = '{} # {}'.format(equipment, count)
 
                     if not equipment_template.empty:
                         try:
-                            result = self.calculate_passed_equipments(equipment_template, equipment, scene)  # has equipment passed?
+                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
                         except IndexError:
                             Log.warning('The KPI is not in the DB yet')
                             result = 0
