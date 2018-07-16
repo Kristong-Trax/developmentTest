@@ -190,6 +190,9 @@ class PNGJP_SAND2GENERALToolBox:
                     num_shelves = bay_df['shelf_number'].max()
                     golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
                     facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                    linear_on_golden_zone = filtered_bay_df.loc[
+                        (filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)) & (filtered_bay_df['stacking_layer'] == 1)]['width_mm'].sum()
+                    total_linear += linear_on_golden_zone
                     total_facings += facings_on_golden_zone
         if linear:
             return total_linear
