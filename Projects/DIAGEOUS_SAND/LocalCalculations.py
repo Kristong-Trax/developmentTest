@@ -8,7 +8,7 @@ from Projects.DIAGEOUS_SAND.Calculations import DIAGEOUS_SANDCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('diageous calculations')
     Config.init()
-    project_name = 'diageous-sand'
+    project_name = 'diageous_sand'
     sessions = [
         # "8DF2FE10-66AA-45F7-B0CE-5B4CEA4EF009", # survey, empty
         # "00E15DAB-B044-43BD-A520-3B371B540B54", # survey, empty
