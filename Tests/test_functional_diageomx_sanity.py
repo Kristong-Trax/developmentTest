@@ -1,18 +1,21 @@
 
 import os
+import MySQLdb
+
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
-from Tests.Data.Templates.diageomx_template import diageomx_template
+from Tests.Data.Templates.diageomx.MPA import mpa
+from Tests.Data.Templates.diageomx.NewProducts import products
+from Tests.Data.Templates.diageomx.POSM import posm
+from Tests.Data.Templates.diageomx.RelativePosition import position
 from Tests.Data.TestData.test_data_diageomx_sanity import ProjectsSanityData
 from Projects.DIAGEOMX.Calculations import DIAGEOMXCalculations
-
 
 __author__ = 'yoava'
 
@@ -43,9 +46,15 @@ class TestKEngineOutOfTheBox(MockingTestCase):
            return_value='2018-05-18')
     @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.save_latest_templates')
     @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.download_template',
-           return_value=diageomx_template)
+           return_value=mpa)
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.download_template',
+           return_value=products)
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.download_template',
+           return_value=position)
+    @patch('Projects.DIAGEOMX.Utils.ToolBox.DIAGEOMXDIAGEOToolBox.download_template',
+           return_value=posm)
     @seeder.seed(["diageomx_seed"], ProjectsSanityData())
-    def test_diageomx_sanity(self, x, y, json):
+    def test_diageomx_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['CB67084F-61D5-4D60-9E90-479A0F65C17C']

@@ -18,6 +18,7 @@ __author__ = 'shanim'
 CBS = 'Pos 2018 - MT - Convenience Big'
 TARGET_EXECUTION = 'Target Execution 2018' # todo: is this should be kept the same?
 MARKETING = 'Marketing 2017' # todo: is this should be kept the same?
+SPIRITS = 'Spirits 2018 - MT - Convenience'
 
 
 class CCRU_SANDConvenienceBigCalculations:
@@ -79,11 +80,13 @@ class CCRU_SANDConvenienceBigCalculations:
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
 
-        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018'), (MARKETING, 'Marketing')]
-        for extra_set_name, template_name in extra_sets_to_calculate:
+        extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution 2018', TARGET_EXECUTION),
+                                   (MARKETING, 'Marketing', MARKETING),
+                                   (SPIRITS, 'Convenience Spirits 2018', 'Sheet1')]
+        for extra_set_name, template_name, sheet_name in extra_sets_to_calculate:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
-            jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
+            jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = datetime.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0

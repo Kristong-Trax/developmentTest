@@ -1,15 +1,19 @@
 
 import os
+import MySQLdb
+
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
-from Tests.Data.Templates.diageoke_sand_template import diageoke_sand_template
+from Tests.Data.Templates.diageoke.LocalMPA import local_mpa
+from Tests.Data.Templates.diageoke.MPA import mpa
+from Tests.Data.Templates.diageoke.NewProducts import products
+from Tests.Data.Templates.diageoke.POSM import posm
 from Tests.Data.TestData.test_data_diageoke_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOKE_SAND.Calculations import DIAGEOKE_SANDCalculations
 
@@ -40,12 +44,18 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         connector.disconnect_rds()
 
     @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-05-18')
+           return_value='2018-06-14')
     @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.save_latest_templates')
     @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
-           return_value=diageoke_sand_template)
+           return_value=mpa)
+    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+           return_value=local_mpa)
+    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+           return_value=products)
+    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+           return_value=posm)
     @seeder.seed(["diageoke_sand_seed"], ProjectsSanityData())
-    def test_diageoke_sand_sanity(self, x, y, json):
+    def test_diageoke_sand_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['9d26eaaa-4501-4e2d-8ccb-644d8e9ff749']

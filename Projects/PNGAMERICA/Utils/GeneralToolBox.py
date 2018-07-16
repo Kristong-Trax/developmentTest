@@ -2,6 +2,7 @@ import xlrd
 import json
 import pandas as pd
 import numpy as np
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
@@ -31,6 +32,9 @@ class PNGAMERICAGENERALToolBox:
 
     MM_TO_FEET_CONVERSION = 0.0032808399
 
+    FABRICARE_CATEGORIES = ['TOTAL FABRIC CONDITIONERS', 'BLEACH AND LAUNDRY ADDITIVES', 'TOTAL LAUNDRY CARE']
+    PG_CATEGORY = 'PG_CATEGORY'
+
     def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.rds_conn = rds_conn
@@ -47,6 +51,8 @@ class PNGAMERICAGENERALToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.front_facing = front_facing
         self.average_shelf_values = {}
+        self.ps_dataprovider = PsDataProvider(data_provider, output)
+        self.scif = self._filter_excluded_scene()
         for data in kwargs.keys():
             setattr(self, data, kwargs[data])
         if self.front_facing:
@@ -69,6 +75,11 @@ class PNGAMERICAGENERALToolBox:
                 self._match_product_in_scene = self._match_product_in_scene[
                     self._match_product_in_scene['stacking_layer'] == 1]
         return self._match_product_in_scene
+
+    def _filter_excluded_scene(self):
+        excluded_scenes_df = self.ps_dataprovider.get_excluded_scenes()
+        mask = self.scif['scene_id'].isin(excluded_scenes_df['pk'])
+        return self.scif[~mask]
 
     def get_survey_answer(self, survey_data, answer_field=None):
         """
@@ -230,7 +241,7 @@ class PNGAMERICAGENERALToolBox:
             space_length = 0
         return space_length
 
-    def calculate_category_space(self, kpi_name, threshold=0.5, retailer=None, **filters):
+    def calculate_category_space(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False,**filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -250,9 +261,13 @@ class PNGAMERICAGENERALToolBox:
                                                          (scene_matches['stacking_layer'] == 1) &
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
-                    tested_group_linear = self.calculate_share_space_length(**scene_filters)
-                    if tested_group_linear:
-                        bay_ratio = bay_total_linear / float(tested_group_linear)
+                    tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
+                    if exclude_pl:
+                        tested_group_linear = tested_group_linear.loc[(tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
+                    tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
+                    # tested_group_linear = self.calculate_share_space_length(**scene_filters)
+                    if tested_group_linear_value:
+                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
                     else:
                         bay_ratio = 0
                     if bay_ratio >= threshold:
@@ -266,17 +281,52 @@ class PNGAMERICAGENERALToolBox:
                             self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
                             self.average_shelf_values[kpi_name]['num_of_bays'] += 1
                         if bay_num_of_shelves:
-                            bay_final_linear_value = tested_group_linear / float(bay_num_of_shelves)
+                            bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
                         else:
                             bay_final_linear_value = 0
                         bay_values.append(bay_final_linear_value)
                         space_length += bay_final_linear_value
-                if retailer == 'CVS':
+            if retailer in ['CVS', 'Walgreens']:
+                if (sum([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]) /
+                        float(len([value*self.MM_TO_FEET_CONVERSION for value in bay_values if value > 0]))) < 3.2:
                     space_length = sum([3 for value in bay_values if value > 0])
-                else:
-                    if (sum([value for value in bay_values if value > 0]) /
-                            float(len([value for value in bay_values if value > 0]))) < 3.5:
-                        space_length = sum([3 for value in bay_values if value > 0])
+            else:
+                space_length = sum([4 for value in bay_values if value*self.MM_TO_FEET_CONVERSION > 1.5])
+        except Exception as e:
+            Log.info('Linear Feet calculation failed due to {}'.format(e))
+            space_length = 0
+
+        return space_length
+
+    def calculate_share_space_length_new(self, threshold=0.5, retailer=None, exclude_pl=False,**filters):
+        """
+        :param threshold: The ratio for a bay to be counted as part of a category.
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        try:
+            filtered_scif = self.scif[
+                self.get_filter_condition(self.scif, **filters)]
+            space_length = 0
+            for scene in filtered_scif['scene_fk'].unique().tolist():
+                scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+                scene_filters = filters
+                scene_filters['scene_fk'] = scene
+                for bay in scene_matches['bay_number'].unique().tolist():
+                    bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
+                                                         (scene_matches['stacking_layer'] == 1) &
+                                                         (scene_matches['status'] == 1)]['width_mm_advance'].sum()
+                    scene_filters['bay_number'] = bay
+                    tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
+                    if exclude_pl:
+                        tested_group_linear = tested_group_linear.loc[(tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
+                    tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
+                    if tested_group_linear_value:
+                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
+                    else:
+                        bay_ratio = 0
+                    if bay_ratio >= threshold:
+                        space_length += tested_group_linear_value
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
@@ -1105,7 +1155,7 @@ class PNGAMERICAGENERALToolBox:
         :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
         """
         filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
+        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique().tolist()
         if tested_scenes:
             pass_counter = []
             for scene in tested_scenes:
@@ -1449,7 +1499,7 @@ class PNGAMERICAGENERALToolBox:
                                      block_products2=None,
                                      block_products=None, group_products=None, include_private_label=False,
                                      availability_param=None, availability_value=None, color_wheel=False,
-                                     checkerboard=False, **filters):
+                                     checkerboard=False, orch=False,**filters):
         """
         :param group_products: if we searching for group in block - this is the filter of the group inside the big block
         :param block_products: if we searching for group in block - this is the filter of the big block
@@ -1576,7 +1626,13 @@ class PNGAMERICAGENERALToolBox:
                                 pass
                             results['vertical'] = vertical_flag
                             results['horizontal'] = horizontal_flag
-                        if include_private_label:
+                        if orch:
+                            edges = self.get_block_edges_new(block_graph.vs, x_att='rect_x', y_att='rect_y')
+                            block_height = edges['visual'].get('top') - edges['visual'].get('bottom')
+                            avg_y = sum(block_graph.vs.get_attribute_values('rect_y')) / float(
+                                len(block_graph.vs.get_attribute_values('rect_y')))
+                            return block_height, avg_y
+                        if include_private_label and not orch:
                             p_l_new_vertices = {v.index for v in block_graph.vs.select(PRIVATE_LABEL='Y')}
                             if checkerboard:
                                 results['checkerboarded'] = False
@@ -1609,37 +1665,43 @@ class PNGAMERICAGENERALToolBox:
                             results['scene_match_fk'] = scene_match_fk_list
 
                         return results
+        if orch:
+            return 0, 0
         return False
 
-    def get_block_edges_new(self, graph):
+    def get_block_edges_new(self, graph, x_att=None, y_att=None):
         """
         This function receives one or more vertex data of a block's graph, and returns the range of its edges -
         The far most top, bottom, left and right pixels of its facings.
         """
         top = right = bottom = left = None
+        if x_att is None:
+            x_att = 'x_mm'
+        if y_att is None:
+            y_att = 'y_mm'
 
-        top = graph.get_attribute_values('y_mm')
+        top = graph.get_attribute_values(y_att)
         top_index = max(xrange(len(top)), key=top.__getitem__)
         top_height = graph.get_attribute_values('height_mm_advance')[top_index]
-        top = graph.get_attribute_values('y_mm')[top_index]
+        top = graph.get_attribute_values(y_att)[top_index]
         top += top_height / 2
 
-        bottom = graph.get_attribute_values('y_mm')
+        bottom = graph.get_attribute_values(y_att)
         bottom_index = min(xrange(len(bottom)), key=bottom.__getitem__)
         bottom_height = graph.get_attribute_values('height_mm_advance')[bottom_index]
-        bottom = graph.get_attribute_values('y_mm')[bottom_index]
+        bottom = graph.get_attribute_values(y_att)[bottom_index]
         bottom -= bottom_height / 2
 
-        left = graph.get_attribute_values('x_mm')
+        left = graph.get_attribute_values(x_att)
         left_index = min(xrange(len(left)), key=left.__getitem__)
         left_height = graph.get_attribute_values('width_mm_advance')[left_index]
-        left = graph.get_attribute_values('x_mm')[left_index]
+        left = graph.get_attribute_values(x_att)[left_index]
         left -= left_height / 2
 
-        right = graph.get_attribute_values('x_mm')
+        right = graph.get_attribute_values(x_att)
         right_index = max(xrange(len(right)), key=right.__getitem__)
         right_width = graph.get_attribute_values('width_mm_advance')[right_index]
-        right = graph.get_attribute_values('x_mm')[right_index]
+        right = graph.get_attribute_values(x_att)[right_index]
         right += right_width / 2
 
         result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}

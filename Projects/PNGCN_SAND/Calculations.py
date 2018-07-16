@@ -31,7 +31,7 @@ class PNGCN_SANDPngCNEmptyCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'pngcn-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'cd8fd77a-046a-41ba-a826-dc4a1c7bc5c6'
+#     session = '0efdaaf3-61ba-47cf-a20a-fbe8709975c6'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PNGCN_SANDPngCNEmptyCalculations(data_provider, output).run_project_calculations()
