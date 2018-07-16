@@ -202,7 +202,7 @@ class CCBZA_SANDToolBox:
     def create_kpi_results_container():
         columns = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
         df = pd.DataFrame(columns=columns)
-        df = df.fillna(0) # need to see if we want to do that
+        # df = df.fillna(0) # need to see if we want to do that
         return df
 
     @staticmethod
