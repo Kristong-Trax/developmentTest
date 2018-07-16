@@ -2,6 +2,12 @@ __author__ = 'yoava'
 
 import ast
 import os
+# from KPIUtils_v2.Utils.Decorators.Decorators import log_task
+
+"""
+this script is used for finding number of usages of functions from kpi_utils_v2 in kpi_factory projects, 
+and what has been used
+"""
 
 
 class UsageAnalyzer:
@@ -92,6 +98,16 @@ class UsageAnalyzer:
                     used_imports.add(name)
         return usage_counter, used_imports
 
+    # def find_function_from_import(self, import_line, name):
+    #     line = import_line.strip(" ")
+    #     relevant_part = line[line.find(name): len(line)]
+    #     a = relevant_part.split('(')[0]
+    #     if len(a.split('.')) == 3:
+    #         print a.split('.')[2]
+    #     # print a, len(a.split('.'))
+    #     # b = a.split['.'][2]
+    #     # print b
+
     def iterate_file(self, imports):
         """
         this method iterates the file and finds number of usages from kpi_utils and and used usages
@@ -146,6 +162,8 @@ if __name__ == '__main__':
             tool_box = os.path.join(path, 'Utils', 'KPIToolBox.py')
             if os.path.exists(tool_box):
                 analyzer = UsageAnalyzer(file_path=tool_box, verbose=False)
+                # log_task(action='import_checker', message='import for project', environment='prod',
+                #          project_name=project.lower(), user_name=os.environ.get('USER'))
                 all_imports.update(analyzer.run())
 
     for im in all_imports:
