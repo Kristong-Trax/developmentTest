@@ -1,12 +1,13 @@
 __author__ = 'yoava'
 
 import ast
+import os
 
 
 class UsageAnalyzer:
 
-    def __init__(self, verbose):
-        self.file_path = '/home/yoava/dev/kpi_factory/Projects/PERFETTICN/Utils/KPIToolBox.py'
+    def __init__(self, file_path, verbose=False):
+        self.file_path = file_path
         self.verbose = verbose
         self.file_dict = self.insert_file_to_dict()
         self.used_imports = self.find_kpi_utils_v2_usage()
@@ -50,19 +51,35 @@ class UsageAnalyzer:
                         # check if we are inside a class method
                         if isinstance(class_exp, ast.FunctionDef):
                             if class_exp.name == '__init__':
-                                first_line = class_exp.lineno + 1
-                                last_line = first_line + len(class_exp.body)
-                                # iterate init method
-                                for i in range(first_line, last_line + 1):
-                                    for imp in self.used_imports:
-                                        if str(self.file_dict[i]).__contains__(str(imp)):
-                                            def_str = self.file_dict[i].split('=')[0].strip(' ')
-                                            actual_import_names.append(def_str)
+                                self.get_actual_import_names(actual_import_names, class_exp)
                                 break
         f.close()
         return actual_import_names
 
-    def find_usage_inside_functions(self, func, imports):
+    def get_actual_import_names(self, actual_import_names, class_exp):
+        """
+        this method finds inside the actual name of the imports as they were given inside 'init' function
+        :param actual_import_names:
+        :param class_exp:
+        :return:
+        """
+        first_line = class_exp.lineno + 1
+        last_line = first_line + len(class_exp.body)
+        # iterate init method
+        for i in range(first_line, last_line + 1):
+            for imp in self.used_imports:
+                if str(self.file_dict[i]).__contains__(str(imp)):
+                    def_str = self.file_dict[i].split('=')[0].strip(' ')
+                    actual_import_names.append(def_str)
+
+    def find_usage_inside_function(self, func, imports):
+        """
+        this method find the number of usages from kpi_utils_v2 imports inside function
+        :param func: function / class method to check
+        :param imports: imports from kpi_utils
+        :return: number of usages
+        """
+        used_imports = set()
         usage_counter = 0
         line_number = func.lineno
         final_line = func.body[len(func.body)-1].lineno
@@ -72,33 +89,64 @@ class UsageAnalyzer:
                     if self.verbose:
                         print "import {0} appears in line {1} in function {2}".format(name, line + 1, func.name)
                     usage_counter += 1
-        return usage_counter
+                    used_imports.add(name)
+        return usage_counter, used_imports
 
     def iterate_file(self, imports):
-        num_of_functions = 0
-        usage_number = 0
+        """
+        this method iterates the file and finds number of usages from kpi_utils and and used usages
+        :param imports: imports from kpi_utils
+        :return:
+        """
+        usage_number, imports_number = 0, 0
+        imports_set = set()
         with open(self.file_path) as f:
             tree = ast.parse(f.read())
-
             for exp in tree.body:
                 if isinstance(exp, ast.FunctionDef):
-                    print exp
-                    num_of_functions += 1
-                    usage_number += self.find_usage_inside_functions(exp, imports)
+                    usage_number = self.get_number_of_usages_and_imports(exp, imports, imports_set, usage_number)
                 if isinstance(exp, ast.ClassDef):
                     for class_exp in exp.body:
                         if isinstance(class_exp, ast.FunctionDef):
-                            usage_number += self.find_usage_inside_functions(class_exp, imports)
-                    num_of_functions += sum(isinstance(class_exp, ast.FunctionDef) for class_exp in exp.body)
-
+                            usage_number = self.get_number_of_usages_and_imports(class_exp, imports, imports_set,
+                                                                                 usage_number)
         f.close()
+        return usage_number, imports_set
+
+    def get_number_of_usages_and_imports(self, class_exp, imports, imports_set, usage_number):
+        """
+        this method counts number of usages in function and updates usages set
+        :param class_exp: function
+        :param imports: all imports
+        :param imports_set: used imports
+        :param usage_number: number of usages in class
+        :return: usage number
+        """
+        imports_number, used_imports = self.find_usage_inside_function(class_exp, imports)
+        usage_number += imports_number
+        imports_set.update(used_imports)
         return usage_number
+
+    def run(self):
+        import_names = self.find_names_in_init()
+        usages, import_set = self.iterate_file(import_names)
+        if usages > 0:
+            print "There are {0} usages of kpi_utils_v2 in file {1} ".format(usages, self.file_path)
+        else:
+            print "No usages in file {0}".format(self.file_path)
+        return import_set
 
 
 if __name__ == '__main__':
-    analyzer = UsageAnalyzer(verbose=False)
-    names = analyzer.find_names_in_init()
-    print names
-    usages = analyzer.iterate_file(names)
-    print "in file {0} there are {1} usages of kpi_utils_lvl2".format(analyzer.file_path , usages)
+    projects_dir = '/home/yoava/dev/kpi_factory/Projects'
+    all_imports = set()
+    for project in os.listdir(projects_dir):
+        path = os.path.join(projects_dir, project)
+        if os.path.isdir(path):
+            tool_box = os.path.join(path, 'Utils', 'KPIToolBox.py')
+            if os.path.exists(tool_box):
+                analyzer = UsageAnalyzer(file_path=tool_box, verbose=False)
+                all_imports.update(analyzer.run())
 
+    for im in all_imports:
+        print im
