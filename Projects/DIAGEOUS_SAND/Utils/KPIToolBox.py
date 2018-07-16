@@ -46,12 +46,6 @@ class DIAGEOUS_SANDToolBox:
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS')]
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.state = self.ps_data.get_state_name()
-        self.sub_brands = self.ps_data.get_custom_entities(1002)
-        self.result_values = self.ps_data.get_result_values()
-        self.products_with_prices = self.ps_data.get_products_prices()
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
@@ -60,6 +54,11 @@ class DIAGEOUS_SANDToolBox:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.state = self.ps_data.get_state_name()
+        self.sub_brands = self.ps_data.get_custom_entities(1002)
+        self.result_values = self.ps_data.get_result_values()
+        self.products_with_prices = self.ps_data.get_products_prices()
         if self.on_off == DIAGEOUS_SANDConst.ON:
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=DIAGEOUS_SANDConst.NO_MENU_ALLOWED_QUESTION,
@@ -225,7 +224,8 @@ class DIAGEOUS_SANDToolBox:
         :return:
         """
         all_diageo_products = filtered_scif[
-            filtered_scif['manufacturer_fk'] == self.manufacturer_fk]['product_fk'].unique().tolist()
+            (filtered_scif['manufacturer_fk'] == self.manufacturer_fk) &
+            (filtered_scif['facings'] > 0)]['product_fk'].unique().tolist()
         assortment_products = relevant_assortment['product_fk'].unique().tolist()
         products_not_in_list = set(all_diageo_products) - set(assortment_products)
         result = DIAGEOUS_SANDConst.EXTRA
@@ -261,7 +261,7 @@ class DIAGEOUS_SANDToolBox:
         all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
-            if kpi_name == DIAGEOUS_SANDConst.DISPLAY_BRAND and additional_attrs[DIAGEOUS_SANDConst.DISPLAY] == 0:
+            if kpi_name == DIAGEOUS_SANDConst.DISPLAY_BRAND and additional_attrs[DIAGEOUS_SANDConst.DISPLAY] in (0, '0'):
                 continue
             standard_type = additional_attrs[DIAGEOUS_SANDConst.NATIONAL_SEGMENT]
             result_line = calculate_function(product_line['product_fk'], relevant_scif, standard_type)
@@ -545,7 +545,7 @@ class DIAGEOUS_SANDToolBox:
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, score=comparison,
+            fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
             result=our_facings, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: comparison,
@@ -662,7 +662,7 @@ class DIAGEOUS_SANDToolBox:
         shelf_groups = self.templates[DIAGEOUS_SANDConst.SHELF_GROUPS_SHEET]
         target = shelf_groups[shelf_groups[DIAGEOUS_SANDConst.NUMBER_GROUP] == min_shelf_loc][DIAGEOUS_SANDConst.SHELF_GROUP].iloc[0]
         target_fk = self.get_pks_of_result(target)
-        score = passed
+        score = passed * 100
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
