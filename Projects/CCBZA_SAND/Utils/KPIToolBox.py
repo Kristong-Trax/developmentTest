@@ -105,7 +105,6 @@ class CCBZA_SANDToolBox:
             # self.current_kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set]['kpi_set_name'].values[0] #alternative
 
             # kpi_types = self.get_kpi_types_by_set_name(kpi_set_name)
-
             kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name] # we get the relevant kpis for the set
             for index, kpi in kpi_data.iterrows():
                 kpi_types = self.get_kpi_types_by_kpi(kpi)
@@ -181,8 +180,10 @@ class CCBZA_SANDToolBox:
     #     return kpi_types_list
 
     def get_kpi_types_by_kpi(self, kpi):
-        kpi_types = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi[KPI_NAME]][KPI_TYPE]
-        kpi_types_list = re.split(r', |,| ,', kpi_types)
+        kpi_types = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi[KPI_NAME]][KPI_TYPE].values[0]
+        # kpi_types_list = self.split_string(kpi_types, [', ', ' ,', ' , ', ','])
+        # kpi_types_list = re.split(r', |,| ,', kpi_types)
+        kpi_types_list = self.split_and_strip(kpi_types)
         return kpi_types_list
 
     def get_atomic_kpis_data(self, kpi_type, kpi):
@@ -205,7 +206,7 @@ class CCBZA_SANDToolBox:
         return df
 
     @staticmethod
-    def split_string_by_deviders(string, *deviders):
+    def split_string(string, deviders):
         regex=''
         for devider in deviders:
             regex += str(devider)+'|'
@@ -213,6 +214,10 @@ class CCBZA_SANDToolBox:
         print regex
         result_list = re.split(regex, string)
         return result_list
+
+    @staticmethod
+    def split_and_strip(string):
+        return map(lambda x: x.strip(' '), string.split(','))
 
     def calculate_kpi_result(self, kpi):
         is_split_score = self.does_kpi_have_split_score(kpi)
@@ -226,20 +231,6 @@ class CCBZA_SANDToolBox:
             # see if all the atomics pass
             # take the score from the kpi tab for the relevant store
             pass
-
-    # def calculate_survey(self, filters):
-    #     params = general_filters['filters']
-    #     filters = params['2'].copy()
-    #     try:
-    #         survey_question = int(filters.get('question_id')[0])
-    #     except:
-    #         survey_question = 0
-    #     target_answers = general_filters[self.TARGET].split(self.SEPARATOR)
-    #     survey_answer = self.tools.get_survey_answer(('question_fk', [survey_question]))
-    #     if survey_answer:
-    #         return 100 if survey_answer.strip() in target_answers else False
-    #     else:
-    #         return 0
 
     def calculate_survey(self, atomic_kpis_data):
         """
@@ -266,9 +257,9 @@ class CCBZA_SANDToolBox:
 
     def add_kpi_result_to_kpi_results_container(self, atomic_kpi, score):
         columns = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
-        set_name = self.current_kpi_set_name
+        # set_name = self.current_kpi_set_name
         kpi_name = atomic_kpi[KPI_NAME]
         atomic_name = atomic_kpi[ATOMIC_KPI_NAME]
-        new_kpi_row = pd.DataFrame([set_name, kpi_name, atomic_name, score], columns=columns)
+        new_kpi_row = pd.DataFrame([self.current_kpi_set_name, kpi_name, atomic_name, score], columns=columns)
         self.kpi_results_data = self.kpi_results_data.append(new_kpi_row, ignore_index=True)
 

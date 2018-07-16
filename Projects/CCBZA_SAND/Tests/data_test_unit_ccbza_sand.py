@@ -82,8 +82,7 @@ class DataTestUnitCCBZA_SAND(object):
     columns_kpi_results = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
     kpi_set_names_from_template = ['COOLERS & MERCHANDISING', 'KEY PACK: Availability, Pricing, Activation',
                                    'AVAILABILITY', 'PRICE COMPLIANCE', 'COMBOS & ACTIVATION', 'BONUS POINTS']
-    kpi_data_df_kpi_types_spaced_comma_enter = pd.DataFrame.from_records([
-        {SET_NAME: 'COOLERS & MERCHANDISING', KPI_NAME: 'Coolers', KPI_TYPE: 'Price, Survey, Availability, SOS, Count',
-         SPLIT_SCORE: 'Y', DEPENDENCY: '', 'L&T Spaza Affordable': ''}
-    ])
+    kpi_types_split_by_comma = 'Price,Survey,Availability,SOS,Count'
+    kpi_types_split_irregularly = 'Price,Survey, Availability ,SOS , Count'
+    kpi_types_one_value = 'Price'
 

@@ -33,7 +33,7 @@
 # import os
 # import pandas as pd
 # from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, \
-#     SET_NAME
+#     SET_NAME, KPI_NAME
 #
 #
 # class TestCCBZA_SAND(MockingTestCase):
@@ -148,21 +148,37 @@
 #     #     print tool_box.store_data
 #
 #     def test_get_kpi_types_by_kpi_returns_a_list_of_kpi_types(self):
-#         tool_box = self.get_tool_box_with_mocked_template_path('{}/../Data/Template_L&T.xlsx'.format(os.path.dirname(os.path.realpath(__file__))))
-#         print tool_box.template_path
-#         kpi_set_name = 'COOLERS & MERCHANDISING Test'
-#         print tool_box.template_data[KPI_TAB]
-#         # kpi_data = tool_box.template_data[KPI_TAB][tool_box.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
-#         # print kpi_data
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         kpi_set_name = 'COOLERS & MERCHANDISING'
+#         kpi_data = tool_box.template_data[KPI_TAB][tool_box.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
+#         expected_kpi_types = ['Price', 'Survey', 'Availability', 'SOS', 'Count']
+#         for index, kpi in kpi_data.iterrows():
+#             kpi_types=''
+#             if index == 0:
+#                 kpi_types = tool_box.get_kpi_types_by_kpi(kpi)
+#             self.assertItemsEqual(kpi_types, expected_kpi_types)
 #
-#         # tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
-#         # kpi_set_name = 'COOLERS & MERCHANDISING'
-#         # kpi_data = tool_box.template_data[KPI_TAB][tool_box.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
-#         # print kpi_data
+#     def test_split_string_only_one_divider_type(self):
+#         expected_list_after_split = ['Price', 'Survey', 'Availability', 'SOS', 'Count']
+#         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_split_by_comma
+#         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
+#         self.assertItemsEqual(kpi_types, expected_list_after_split)
 #
-#         # kpi_data = DataTestUnitCCBZA_SAND.kpi_data_df_kpi_types_spaced_comma_enter
-#         # print kpi_data
-#         # for index, kpi in kpi_data.iterrows():
-#         #     print index
-#         #     kpi_types = tool_box.get_kpi_types_by_kpi(kpi)
-
+#     def test_split_string_irregular_dividers(self):
+#         expected_list_after_split = ['Price', 'Survey', 'Availability', 'SOS', 'Count']
+#         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_split_irregularly
+#         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
+#         self.assertItemsEqual(kpi_types, expected_list_after_split)
+#
+#     def test_split_string_one_value(self):
+#         expected_list_after_split = ['Price']
+#         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_one_value
+#         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
+#         self.assertItemsEqual(kpi_types, expected_list_after_split)
+#         self.assertIsInstance(kpi_types, list)
+#
+#     def test_get_atomic_kpis_data_returns_dataframe_with_atomic_kpis_parameters(self):
+#         pass
+#
+#
+#
