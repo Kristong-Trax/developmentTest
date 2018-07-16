@@ -358,11 +358,11 @@ class BATRU_SANDToolBox:
         This function calculates the KPI results.
         """
         if not self.scif.empty:
-            # self.handle_priority_1()
+            self.handle_priority_1()
             self.handle_priority_2()
-            # self.handle_priority_3()
-            # self.handle_priority_4()
-            # self.handle_priority_5()
+            self.handle_priority_3()
+            self.handle_priority_4()
+            self.handle_priority_5()
             # self.handle_assortment_update('/home/Yasmin/Desktop/BATRU/Assortment/20171115/XLSX')
 
     def handle_assortment_update(self, dir_path):
