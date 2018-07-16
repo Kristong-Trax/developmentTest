@@ -26,5 +26,5 @@ class DIAGEOIEGenerator:
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
             score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-            self.tool_box.write_to_db_result(kpi_set_fk, score, self.tool_box.LEVEL1)
+        #     self.tool_box.write_to_db_result(kpi_set_fk, score, self.tool_box.LEVEL1)
         self.tool_box.commit_results_data()

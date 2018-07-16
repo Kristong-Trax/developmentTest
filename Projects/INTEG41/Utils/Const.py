@@ -53,15 +53,15 @@ class INTEG41Const(object):
     BACK_BAR = "Back Bar"
     MENU = "Menu"
 
-    SEGMENT, NATIONAL, TOTAL = "segment", "national", "total"
+    SEGMENT, NATIONAL, TOTAL = "S", "N", "total"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
-
+    DISPLAY, NATIONAL_SEGMENT = "display", "national_segment_ind"
     # names in DB:
-
-    DB_OFF_SCORE_TOTAL = 'Total Score - Off Premise'
-    DB_OFF_SCORE_NATIONAL = 'National Score - Off Premise'
-    DB_OFF_SCORE_SEGMENT = 'Segment Score - Off Premise'
+    DB_OFF, DB_ON = "off_premise", "on_premise"
+    DB_OFF_TOTAL = 'Total Score - Off Premise'
+    DB_OFF_NATIONAL = 'National Score - Off Premise'
+    DB_OFF_SEGMENT = 'Segment Score - Off Premise'
     DB_OFF_NAMES = {
         POD: {
             TOTAL: 'POD - Total Score', NATIONAL: 'POD - National Score', SEGMENT: 'POD - Segment Score',
@@ -72,41 +72,49 @@ class INTEG41Const(object):
             SUB_BRAND: 'Diageo Display Compliance Brand Variant %', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
             TOTAL: 'Shelf Facings - Total Score',
-            # NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
+            NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
             BRAND: 'Shelf Facings - Compliance Brand',
             SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_PLACEMENT: {
             TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand',
-            # NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
+            NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
             SUB_BRAND: 'Shelf Placement - Brand Variant', SKU: 'Shelf Placement - Brand Variant Size'},
         MSRP: {TOTAL: 'MSRP Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
         DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
     DB_ON_TOTAL = 'Total Score - On Premise'
+    DB_ON_NATIONAL = 'National Score - On Premise'
+    DB_ON_SEGMENT = 'Segment Score - On Premise'
     DB_ON_NAMES = {
         POD: {
-            TOTAL: 'POD - Total Score',
-            BRAND: 'POD - Generic Brand', SUB_BRAND: 'POD -  Brand Variant',
-            SKU: 'POD -  Brand Variant Size'},
+            TOTAL: 'On_POD - Total Score', SEGMENT: 'On_POD - Segment Score', NATIONAL: 'On_POD - National Score',
+            BRAND: 'On_POD - Generic Brand', SUB_BRAND: 'On_POD -  Brand Variant',
+            SKU: 'On_POD -  Brand Variant Size'},
         BACK_BAR: {
-            TOTAL: 'Back Bar - Total Score',
+            TOTAL: 'Back Bar - Total Score', NATIONAL: 'Back Bar - National Score', SEGMENT: 'Back Bar - Segment Score',
             BRAND: 'Back Bar - Generic Brand', SUB_BRAND: 'Back Bar - Brand Variant',
             SKU: 'Back Bar - Brand Variant Size'},
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
-            BRAND: 'Menu Share - Brand Variant Level', SUB_BRAND: 'Menu Share - Brand Variant Level'}}
-
+            # BRAND: 'Menu Share - Brand Variant Level',
+            SUB_BRAND: 'Menu Share - Brand Variant Level'}}
+    DB_ASSORTMENTS_NAMES = {DB_OFF: "Assortment off Trade", DB_ON: "Assortment on Trade"}
     PERCENT_FOR_EYE_LEVEL = 0
 
-    PRODUCT_FK, STANDARD_TYPE, PASSED = "product_fk", "standard_type", "passed"
+    PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
-    COLUMNS_FOR_PRODUCT2 = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+    COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
+    COLUMNS_FOR_MENU = [FACINGS, BRAND, MANUFACTURER]
 
     EXTRA = "EXTRA"
-    OOS = "OOS"
-    DISTRIBUTED = "DISTRIBUTED"
+    OOS = "0"
+    DISTRIBUTED = "1"
     OTHER = "OTHER"
 
+    NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
+    NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
+    SURVEY_ANSWER = "Yes"

@@ -72,14 +72,17 @@ class AMERICASToolBox:
 
     def calculate_second_kpi(self):
         product_name = 'MODELO ESPECIAL 355ML BOTE SINGLE'
-        product_fk = self.get_product_fk_from_product_name(product_name)
-        products_in_scene_df = self.match_product_in_scene[self.match_product_in_scene.product_fk == product_fk]
         facing_counter = 0
-        for i, row in products_in_scene_df.iterrows():
-            if str(row.face_count) == 'nan':
-                facing_counter += 1
-            else:
-                facing_counter += row.face_count
+        try:
+            product_fk = self.get_product_fk_from_product_name(product_name)
+            products_in_scene_df = self.match_product_in_scene[self.match_product_in_scene.product_fk == product_fk]
+            for i, row in products_in_scene_df.iterrows():
+                if str(row.face_count) == 'nan':
+                    facing_counter += 1
+                else:
+                    facing_counter += row.face_count
+        except IndexError:
+            pass
         return facing_counter >= 5
 
     def write_result_to_db(self, kpi_name, kpi_result):

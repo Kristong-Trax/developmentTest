@@ -2,6 +2,7 @@
 import os
 import json
 import pandas as pd
+import argparse
 
 from Trax.Utils.Logging.Logger import Log
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -50,7 +51,9 @@ class CCRUContract:
         os.remove(self.temp_path)
         return data
 
-    def parse_and_upload_file(self, file_path, skiprows=2):
+    def parse_and_upload_file(self, skiprows=2):
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
         kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
         raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
         raw_data['Start Date'] = raw_data['Start Date'].astype(str)
@@ -88,10 +91,20 @@ class CCRUContract:
         conversion = {x[0]: x[1] for x in conversion}
         return conversion
 
+    @staticmethod
+    def parse_arguments():
+        """
+        This function gets the arguments from the command line / configuration in case of a local run and manage them.
+        :return:
+        """
+        parser = argparse.ArgumentParser(description='Execution Contract CCRU')
+        parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
+        parser.add_argument('--file', type=str, required=True, help='The assortment template')
+        return parser.parse_args()
+
 
 if __name__ == '__main__':
     # LoggerInitializer.init('ccru')
     Log.init('ccru', 'Execution Contract')
     Config.init()
-    path = '/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Contract execution targets June 2018.xlsx'
-    CCRUContract().parse_and_upload_file(path)
+    CCRUContract().parse_and_upload_file()
