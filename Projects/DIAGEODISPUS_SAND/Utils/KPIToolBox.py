@@ -7,6 +7,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -35,6 +36,7 @@ class DIAGEODISPUSToolBox:
     CASE_PACK = 'CASE PACK'
     SKU_PERFORMANCE = 'sku_performance'
     BRAND_PERFORMANCE = 'brand_performance'
+    FAMILY_BRAND = 1000
 
     def __init__(self, data_provider, output, common):
         self.output = output
@@ -55,41 +57,51 @@ class DIAGEODISPUSToolBox:
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_results_queries = []
         self.template = self.occupancy_template = pd.read_excel(self.TEMPLATE_PATH)
-        self.manual_collection_number = []
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.manual_collection_number = self.ps_data_provider.get_manual_collection_number()
+        self.custom_entities = self.ps_data_provider.get_custom_entities(self.FAMILY_BRAND)
 
     def get_kpi_fk_by_type(self, kpi_type):
         assert isinstance(kpi_type, (unicode, basestring)), "name is not a string: %r" % kpi_type
         try:
-            return self.new_kpi_static_data[self.kpi_static_data['type'] == kpi_type]['pk'].values[0]
+            return self.new_kpi_static_data[self.new_kpi_static_data['type'] == kpi_type]['pk'].values[0]
         except IndexError:
             Log.info("Kpi name: {} is not equal to any kpi name in static table".format(kpi_type))
             return None
 
+    def get_family_brand_fk(self, brand):
+        try:
+            return self.custom_entities[self.custom_entities['name'] == brand]['pk'].values[0]
+        except IndexError:
+            Log.info("Family Brand name: {} is not equal to any family brand name in static table".format(brand))
+            return None
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
         relevant_brands = self.template['brand_name'].values
-        relevant_products = self.scif[(self.scif['brand_name'].isin(relevant_brands)) & (self.scif['oos_sc'] != 1)]
+        relevant_products = self.all_products[self.all_products['BRAND FAMILY'].isin(relevant_brands)][
+            'product_fk'].drop_duplicates().values
+        relevant_products = self.manual_collection_number[(self.manual_collection_number['product_fk'].isin(
+            relevant_products))]['product_fk'].drop_duplicates().values
         sku_results = pd.DataFrame(columns=['sku', 'brand', 'num_of_cases'])
         sku_results['sku'] = relevant_products
         for product in relevant_products:
-            display_cases = self.manual_collection_number[self.manual_collection_number['product_fk'] == product][
-                self.DISPLAY_CASES].drop_duplicates().values[0]
-            display_bottles = self.manual_collection_number[self.manual_collection_number['product_fk'] == product][
-                self.DISPLAY_BOTTLES].drop_duplicates().values[0]
-            case_pack = self.scif[self.scif['product_fk'] == product][self.CASE_PACK].drop_duplicates().values[0]
-            # sku_results.loc[sku_results['sku']== product, ['brand', 'num_of_cases']] = []
-            sku_results.loc[sku_results['sku'] == product, 'brand'] = self.scif[self.scif['product_fk'] == product][
-                'brand_fk'].drop_duplicates().values[0]
+            display_cases = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
+                    self.manual_collection_number['name'] == self.DISPLAY_CASES)]['value'].drop_duplicates().values[0]
+            display_bottles = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
+                    self.manual_collection_number['name'] == self.DISPLAY_BOTTLES)]['value'].drop_duplicates().values[0]
+            case_pack = self.all_products[self.all_products['product_fk'] == product][self.CASE_PACK].drop_duplicates().values[0]
+            sku_results.loc[sku_results['sku'] == product, 'brand'] = self.all_products[self.all_products['product_fk'] == product][
+                'BRAND FAMILY'].drop_duplicates().values[0]
             sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
                 display_bottles), float(case_pack))
-        sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
-        for row in sku_results.itertuples():
-            self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
-                                                      numerator_result=row.num_of_cases, result=row.num_of_cases,
-                                                      score=row.num_of_cases)
+        # sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
+        # for row in sku_results.itertuples():
+        #     self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
+        #                                               numerator_result=row.num_of_cases, result=row.num_of_cases,
+        #                                               score=row.num_of_cases)
         brand_results = pd.DataFrame(columns=['brand', 'num_of_cases'])
         brand_results['brand'] = sku_results['brand'].drop_duplicates().values
         for brand in sku_results['brand'].drop_duplicates().values:
@@ -97,7 +109,8 @@ class DIAGEODISPUSToolBox:
                                                                                          brand]['num_of_cases'].sum()
         brand_kpi_fk = self.get_kpi_fk_by_type(self.BRAND_PERFORMANCE)
         for row in brand_results.itertuples():
-            self.common.write_to_db_result_new_tables(fk=brand_kpi_fk, numerator_id=row.brand,
+            family_brand_fk = self.get_family_brand_fk(row.brand)
+            self.common.write_to_db_result_new_tables(fk=brand_kpi_fk, numerator_id=family_brand_fk,
                                                       numerator_result=row.num_of_cases, result=row.num_of_cases,
                                                       score=row.num_of_cases)
         return
