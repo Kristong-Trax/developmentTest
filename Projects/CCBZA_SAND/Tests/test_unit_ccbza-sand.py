@@ -59,6 +59,7 @@
 #         # self._main_calculation_mock = self.mock_object('CBCILCBCIL_ToolBox.main_calculation')
 #         # self._CBCIL_GeneralToolBox_mock = self._mock_general_toolbox()
 #         # self._scores = DataScores()
+#         self.template_mock = self.mock_template_data()
 #         self.output = MagicMock()
 #
 #     def mock_data_provider(self):
@@ -82,23 +83,25 @@
 #         store_data.return_value = DataTestUnitCCBZA_SAND.store_data
 #         return store_data.return_value
 #
-#     def mock_template_data(self, template_path):
+#     def mock_template_data(self):
 #         template_data_mock = self.mock_object('CCBZA_SANDToolBox.get_template_data')
 #         template_data = {}
+#         template_path = '{}/Data/Template_L&T.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
+#         print template_path
 #         sheet_names = pd.ExcelFile(template_path).sheet_names
 #         for sheet in sheet_names:
 #             template_data[sheet] = parse_template(template_path, sheet, lower_headers_row_index=0)
 #         template_data_mock.return_value = template_data
-#         self.template_data_mock = template_data_mock.return_value
+#         return template_data_mock.return_value
 #
-#     def get_tool_box_with_mocked_template_path(self, path):
-#         # print object.__class__.__name__
-#         template_path_mock = self.mock_object('CCBZA_SANDToolBox.get_template_path')
-#         template_path_mock.return_value = path
-#         self.template_path_mock = template_path_mock.return_value
-#         self.mock_template_data(self.template_path_mock)
-#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
-#         return tool_box
+#     # def get_tool_box_with_mocked_template_path(self, path):
+#     #     # print object.__class__.__name__
+#     #     template_path_mock = self.mock_object('CCBZA_SANDToolBox.get_template_path')
+#     #     template_path_mock.return_value = path
+#     #     self.template_path_mock = template_path_mock.return_value
+#     #     self.mock_template_data(self.template_path_mock)
+#     #     tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#     #     return tool_box
 #
 #     # this is for functional test
 #     def test_get_store_data_by_store_id_returns_(self):
@@ -143,7 +146,9 @@
 #
 #     def test_toolbox_properties(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
-#         print tool_box.template_path
+#         # print tool_box.template_path
+#         print tool_box.template_data[KPI_TAB][SET_NAME]
+#         # print self.template_mock[KPI_TAB][SET_NAME]
 #         # print tool_box.kpi_static_data
 #         # print tool_box.new_kpi_static_data
 #         print tool_box.store_data

@@ -81,8 +81,8 @@ class CCBZA_SANDToolBox:
         self.output = output
         self.data_provider = data_provider
         # self.common = Common(self.data_provider)
-        self.general_tool_box = GENERALToolBox(self.data_provider)
-        self.common_sos = SOS(self.data_provider, self.output)
+        # self.general_tool_box = GENERALToolBox(self.data_provider)
+        # self.common_sos = SOS(self.data_provider, self.output)
 
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -291,29 +291,35 @@ class CCBZA_SANDToolBox:
     def calculate_sos(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            template_filter = {'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])}
-            product_type_filter = {'product_type': 'SKU'}
-            # general_filters = self.get_general_calculation_parameters(atomic_kpi)
             sos_calculation_filters = self.get_sos_calculation_parameters(atomic_kpi)
-            condition_1_target = float(atomic_kpi[CONDITION_1_TARGET])/100
-            sos_filters_condition_1_numerator = sos_calculation_filters[CONDITION_1]['numerator']
-            sos_filters_condition_1_denominator = sos_calculation_filters[CONDITION_1]['denominator'].update(template_filter).update(product_type_filter)
+            condition_scores = []
 
+            condition_1_target = float(atomic_kpi[CONDITION_1_TARGET])/100
+            condition_1_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_1])
+            condition_scores.append(100 if condition_1_ratio >=condition_1_target else 0)
 
             condition_2_target = float(atomic_kpi[CONDITION_2_TARGET])/100
-            sos_filters_condition_2 = sos_calculation_filters[CONDITION_2].update(template_filter).update(product_type_filter)
+            condition_2_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_2])
+            condition_scores.append(100 if condition_2_ratio >= condition_2_target else 0)
 
-            # columns = atomic_kpi.index.values
-            # condition_1_filters = filter(lambda y: y[0] == CONDITION_1, map(lambda x: x.split(' '), columns))
+            atomic_score = atomic_kpi[SCORE] if all([score == 100 for score in condition_scores]) else 0
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+            # write atomic score / maybe also result to DB
 
-    def calculate_sos_per_condition(self, numerator_filters, denominator_filters):
-        numerator_filters.update(denominator_filters)
-
+    def calculate_sos_per_condition(self, condition_filters):
+        numerator_result = self.get_facings_based_on_critera(condition_filters['numerator'])
+        denominator_result = self.get_facings_based_on_critera(condition_filters['denominator'])
+        return float(numerator_result)/denominator_result if denominator_result != 0 else 0
 
     def get_facings_based_on_critera(self, filters):
-        for condition in filters.keys():
-            pass
-
+        filtered_scif = self.scif.copy()
+        for column, criteria in filters.items():
+            if isinstance(criteria, list):
+                filtered_scif = filtered_scif[filtered_scif[column].isin(criteria)]
+            else:
+                filtered_scif = filtered_scif[filtered_scif[column] == criteria]
+        number_of_facings = sum(filtered_scif['facings'].values) if not filtered_scif.empty else 0  # check scif field
+        return number_of_facings
 
     # will be adding it when necessarry
     # def get_general_calculation_parameters(self, atomic_kpi):
@@ -334,19 +340,28 @@ class CCBZA_SANDToolBox:
                                   CONDITION_2: {'numerator':{}, 'denominator': {}}}
         for i in range(len(self.split_and_strip(atomic_kpi[CONDITION_1_NUMERATOR_TYPE]))):
             calculation_parameters[CONDITION_1]['numerator'].update({self.split_and_strip(atomic_kpi[CONDITION_1_NUMERATOR_TYPE])[i]:
-                                                                    self.split_and_strip(atomic_kpi[CONDITION_1_NUMERATOR])[i]})
+                                                                    (self.split_and_strip(atomic_kpi[CONDITION_1_NUMERATOR])[i]).lower()})
 
         for i in range(len(self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR_TYPE]))):
             calculation_parameters[CONDITION_1]['denominator'].update({self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR_TYPE])[i]:
-                                                                       self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR])[i]})
+                                                                           (self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR])[i]).lower()})
+
+        calculation_parameters[CONDITION_1]['denominator'].update({'product_type': 'SKU',
+                                                                   'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
+        calculation_parameters[CONDITION_1]['numerator'].update(calculation_parameters[CONDITION_1]['denominator'])
 
         for i in range(len(self.split_and_strip(atomic_kpi[CONDITION_2_NUMERATOR_TYPE]))):
             calculation_parameters[CONDITION_2]['numerator'].update({self.split_and_strip(atomic_kpi[CONDITION_2_NUMERATOR_TYPE])[i]:
-                                                                    self.split_and_strip(atomic_kpi[CONDITION_2_NUMERATOR])[i]})
+                                                                         (self.split_and_strip(atomic_kpi[CONDITION_2_NUMERATOR])[i]).lower()})
 
         for i in range(len(self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR_TYPE]))):
             calculation_parameters[CONDITION_2]['denominator'].update({self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR_TYPE])[i]:
-                                                                    self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR])[i]})
+                                                                           (self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR])[i]).lower()})
+
+        calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU',
+                                                                   'template_name': self.split_and_strip(
+                                                                       atomic_kpi[TEMPLATE_NAME])})
+        calculation_parameters[CONDITION_2]['numerator'].update(calculation_parameters[CONDITION_2]['denominator'])
         return calculation_parameters
 
     # def get_sos_condition_filters(self, atomic_kpi, *conditions):
