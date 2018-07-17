@@ -858,7 +858,6 @@ class BATRU_SANDGENERALToolBox:
             data = data[data.keys()[0]]
         return data
 
-
     def get_match_display(self):
         """
         This function extracts the display matches data and saves it into one global data frame.
@@ -868,64 +867,51 @@ class BATRU_SANDGENERALToolBox:
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def upload_store_assortment_file(self, file_path, data_first_cell=None, ean_row_index=None, store_number_column_index=None,
-                            update_correlations=False):
-        # data_first_cell = coordinate_from_string(data_first_cell)
-        # data_column = column_index_from_string(data_first_cell[0]) - 1
-        # data_row = int(data_first_cell[1]) - 1
-        # store_number_column_index = column_index_from_string(store_number_column_index) - 1
-        # raw_data = pd.read_excel(file_path, header=range(ean_row_index - 1, data_row), index_col=range(0, data_column))
-        raw_data = pd.read_excel(file_path)
+    def p1_assortment_validator(self, file_path):
+        """
+        This function validates the store assortment template.
+        It compares the OUTLET_ID (= store_number_1) and the products ean_code to the stores and products from the DB
+        :param file_path: Store assortment template
+        :return: False in case of an error and True in case of a valid template
+        """
+        raw_data = pd.read_csv(file_path, sep='\t')
+        raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
+        raw_data = raw_data.fillna('')
+        stores = self.store_data
+        valid_stores = stores.loc[stores['store_number'].isin(raw_data[OUTLET_ID])]
+        if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
+            print "Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
+                                                                         set(valid_stores['store_number'])))
+            return False
+
+        valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
+        if len(valid_product) != len(raw_data[EAN_CODE].unique()):
+            print "Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
+                                                                           set(valid_product[EAN_CODE])))
+            return False
+
+        return True
+
+    def upload_store_assortment_file(self, file_path):
+        # raw_data = pd.read_excel(file_path)
+        raw_data = pd.read_csv(file_path, sep='\t')
         raw_data = raw_data.drop_duplicates(subset=raw_data.columns, keep='first')
         raw_data = raw_data.fillna('')
         data = []
         for store in raw_data[OUTLET_ID].unique().tolist():
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
-            store_data[raw_data.loc[raw_data[OUTLET_ID] == store][OUTLET_ID].values[0]] = store_products
+            store_data[store] = store_products
             data.append(store_data)
-
-        # data = []
-        # for index_data, store_raw_data in raw_data.iterrows():
-        #     store_data = {self.STORE_NUMBER: index_data[0]}
-        #     for column in store_raw_data.keys():
-        #         store_data[column[0]] = store_raw_data[column]
-        #     data.append(store_data)
-
-        # if update_correlations:
-        #     self.update_correlations(data[0].keys())
         for store_data in data:
             self.update_db_from_json(store_data, immediate_change=True)
-
         queries = self.merge_insert_queries(self.all_queries)
         self.commit_results(queries)
         return data
 
-    # def update_correlations(self, products_data):
-    #     correlations = {}
-    #     for products in products_data:
-    #         products = str(products)
-    #         if products.count(','):
-    #             correlated_products = set()
-    #             products = products.split(',')
-    #             main_product = products.pop(-1).strip()
-    #             for product in products:
-    #                 product_fk = self.get_product_fk(product)
-    #                 if product_fk is not None:
-    #                     correlated_products.add(product_fk)
-    #             if correlated_products:
-    #                 correlations[main_product] = list(correlated_products)
-        # if correlations:
-        #     queries = [self.get_delete_correlation_query()]
-        #     for product_ean_code in correlations:
-        #         queries.append(self.get_correlation_query(product_ean_code, correlations[product_ean_code]))
-        #     self.commit_results(queries)
-        #     delattr(self, '_product_data')
-
     def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
         products = set()
         missing_products = set()
-        # store_number = data.pop(self.STORE_NUMBER, None)
         store_number = data.keys()[0]
         if store_number is None:
             Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
@@ -934,11 +920,8 @@ class BATRU_SANDGENERALToolBox:
         if store_fk is None:
             Log.warning('Store {} does not exist. Exiting...'.format(store_number))
             return
-        # for key in data.keys():
         for key in data[store_number]:
             validation = False
-            # if not data[key]:
-            #     validation = False
             if isinstance(key, (float, int)):
                 validation = True
             elif isinstance(key, (str, unicode)):
@@ -954,7 +937,6 @@ class BATRU_SANDGENERALToolBox:
         if missing_products and not discard_missing_products:
             Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
             return
-
         if products:
             current_date = datetime.now().date()
             if immediate_change:
@@ -963,16 +945,15 @@ class BATRU_SANDGENERALToolBox:
             else:
                 deactivate_date = current_date
                 activate_date = current_date + timedelta(1)
-
             queries = []
             current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
-            for product_fk in products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, product_fk, deactivate_date))
+            # for product_fk in products_to_deactivate:
+            if products_to_deactivate:
+                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
-            # self.commit_results(queries)
             self.all_queries.extend(queries)
             Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
                 store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
@@ -1036,8 +1017,8 @@ class BATRU_SANDGENERALToolBox:
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
         query = """update {} set end_date = '{}', is_current = '0'
-                   where store_fk = {} and product_fk = {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
-                                                                                          store_fk, product_fk)
+                   where store_fk = {} and product_fk in {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
+                                                                                           store_fk, product_fk)
         return query
 
     @staticmethod
@@ -1071,6 +1052,7 @@ class BATRU_SANDGENERALToolBox:
         for query in self.update_queries:
             try:
                 cur.execute(query)
+                print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
@@ -1084,6 +1066,7 @@ class BATRU_SANDGENERALToolBox:
         for query in queries:
             try:
                 cur.execute(query)
+                print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
