@@ -30,7 +30,6 @@ class DIAGEOUSToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.assortment = Assortment(self.data_provider, self.output)
         self.fetcher = Queries
         self.survey = Survey(self.data_provider, self.output)
         self.project_name = self.data_provider.project_name
@@ -59,6 +58,7 @@ class DIAGEOUSToolBox:
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
+        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data)
         if self.on_off == Const.ON:
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
