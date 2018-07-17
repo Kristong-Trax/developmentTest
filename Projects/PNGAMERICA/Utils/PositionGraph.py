@@ -29,7 +29,7 @@ class PNGAMERICAPositionGraphs:
                           'PRICE SEGMENT', 'DIAPER SIZE', 'SUPER CATEGORY', 'P&G BRAND', 'PRIVATE LABEL',
                           'PRIVATE_LABEL', 'GENDER', 'PACK GROUP', 'HEAD SIZE', 'PG SIZE', 'CUSTOM SUBBRAND',
                           'SHEET SIZE', 'scene_match_fk', 'FORM', 'y_mm', 'x_mm', 'width_mm_advance', 'height_mm_advance',
-                          'CREST_WHITE']
+                          'CREST_WHITE', 'rect_x', 'rect_y', 'PG_CATEGORY', 'BENEFIT']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider

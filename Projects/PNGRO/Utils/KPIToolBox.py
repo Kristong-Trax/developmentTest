@@ -15,6 +15,7 @@ from KPIUtils_v2.DB.Common import Common
 from Projects.PNGRO.Utils.Fetcher import PNGRO_PRODQueries
 from Projects.PNGRO.Utils.GeneralToolBox import PNGRO_PRODGENERALToolBox
 from Projects.PNGRO.Utils.ParseTemplates import parse_template
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'Israel'
 
@@ -88,15 +89,15 @@ class PNGRO_PRODToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.retailer = \
-        self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
+        # self.retailer = \
+        # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.display_data = parse_template(TEMPLATE_PATH, 'display weight')
-        self.eye_level_target = self.get_shelf_level_target()
+        # self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
         self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -172,13 +173,15 @@ class PNGRO_PRODToolBox:
         """
         This function calculates the KPI results.
         """
-        if not self.match_display.empty:
-            if self.match_display['exclude_status_fk'][0] in (1, 4):
-                self.calculate_linear_share_of_shelf_per_product_display()
+        Assortment(self.data_provider, self.output).main_assortment_calculation()
+        # if not self.match_display.empty:
+        #     if self.match_display['exclude_status_fk'][0] in (1, 4):
+        self.calculate_linear_share_of_shelf_per_product_display()
 
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         for x, params in self.sbd_kpis_data.iterrows():
-            if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
+            if True:
                 general_filters = self.get_general_filters(params)
                 if general_filters:
                     score = 0
@@ -279,8 +282,8 @@ class PNGRO_PRODToolBox:
         """
         survey_name = params['Param (1) Values']
         target_answers = params['Param (2) Values'].split(',')
-        survey_answer = self.tools.get_survey_answer(('question_fk', survey_name))
-        score = 100 if survey_answer in target_answers else 0
+        survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
+        score = 1 if survey_answer in target_answers else 0
         return score
 
     def calculate_sos(self, params, **general_filters):
@@ -569,7 +572,7 @@ class PNGRO_PRODToolBox:
         return merged_queries
 
     def get_display_agg(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_name'] == 'Secondary shelf'][
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]
@@ -577,9 +580,9 @@ class PNGRO_PRODToolBox:
         return \
             display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
 
-    def get_shelf_level_target(self):
-        eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
-        return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
-                                                                                self.NUMBER_OF_SHELVES]]
+    # def get_shelf_level_target(self):
+    #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
+    #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
+    #                                                                             self.NUMBER_OF_SHELVES]]
 
 

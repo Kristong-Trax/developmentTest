@@ -131,6 +131,8 @@ class PNGJPToolBox(PNGJPConsts):
         self.innovation_assortment = parse_template(self.TEMPLATE_PATH, 'Innovation Assortment')
         self.psku_assortment = parse_template(self.TEMPLATE_PATH, 'PSKU Assortment')
         self.scene_types = parse_template(self.TEMPLATE_PATH, 'Category-Scene_Type')
+        self.GOLDEN_ZONE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateQualitative.xlsx')
+        self.golden_zone_data_criteria = parse_template(self.GOLDEN_ZONE_PATH, 'Golden Zone Criteria')
         self.category_scene_types = self.get_category_scene_types()
         self._custom_templates = {}
         self.scenes_types_for_categories = {}
@@ -334,16 +336,19 @@ class PNGJPToolBox(PNGJPConsts):
 
         scenes_filters = self.get_scenes_filters(params, category)
         for product_ean_code in distribution_products:
-            product_brand = self.all_products.loc[self.all_products['product_ean_code'] ==
-                                                  product_ean_code][self.BRAND_LOCAL_NAME].values[0]
-            atomic_kpi_name = atomic_name.format(category=category, brand=product_brand,
-                                                 ean=product_ean_code)
-            result = int(self.tools.calculate_assortment(product_ean_code=product_ean_code, **scenes_filters))
-            if result > 0:
-                self.write_to_db_result(score=result, level=self.LEVEL3, kpi_set_name=kpi_set_name,
-                                        kpi_name=kpi_set_name, atomic_kpi_name=atomic_kpi_name)
-            else:
-                self.atomic_results[kpi_set_name][atomic_kpi_name] = result
+            try:
+                product_brand = self.all_products.loc[self.all_products['product_ean_code'] ==
+                                                      product_ean_code][self.BRAND_LOCAL_NAME].values[0]
+                atomic_kpi_name = atomic_name.format(category=category, brand=product_brand,
+                                                     ean=product_ean_code)
+                result = int(self.tools.calculate_assortment(product_ean_code=product_ean_code, **scenes_filters))
+                if result > 0:
+                    self.write_to_db_result(score=result, level=self.LEVEL3, kpi_set_name=kpi_set_name,
+                                            kpi_name=kpi_set_name, atomic_kpi_name=atomic_kpi_name)
+                else:
+                    self.atomic_results[kpi_set_name][atomic_kpi_name] = result
+            except Exception as e:
+                Log.warning("product_ean_code:'{}' or atomic_kpi_name does not exist in DB".format(product_ean_code))
 
     def calculate_distribution_by_scene(self, category, params):
         kpi_set_name = params[self.SET_NAME]
@@ -919,20 +924,21 @@ class PNGJPToolBox(PNGJPConsts):
                 self.all_products['product_ean_code'].isin(innovation_assortment_products)]
         except Exception as e:
             Log.warning("store_type '{}' is not valid : {}".format(store_type, e.message))
+            innovation_assortment_products = psku_assortment_products = []
 
-        assortment_products = innovation_assortment_products.append(psku_assortment_products).unique()
+        assortment_products = list(innovation_assortment_products.append(psku_assortment_products).unique())
 
         psku_assortment_products = psku_assortment_products.tolist()
         innovation_assortment_products = innovation_assortment_products.tolist()
-        shelves = [4, 5]
+        # shelves = [4, 5]
         all_scenes_in_scif = self.scif[SCENE_FK].unique().tolist()
 
         if all_scenes_in_scif:
-            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].tolist()
+            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].unique().tolist()
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
-                    result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
+                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
                     length_mm_custom = 1 if result else 0
                     scenes = self.get_scenes_for_product(product)
                     in_assortment_OSA = oos_osa = mha_in_assortment = mha_oos = 0
@@ -943,6 +949,9 @@ class PNGJPToolBox(PNGJPConsts):
                         mha_in_assortment = 1
 
                     for scene in scenes:
+                        # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                        #                                                          ,product_fk=product, scene_fk=scene))
+                        # length_mm_custom = 1 if result else 0
                         self.get_custom_query(scene, product, in_assortment_OSA, oos_osa, mha_in_assortment, mha_oos,
                                               length_mm_custom)
                 else:
@@ -969,10 +978,13 @@ class PNGJPToolBox(PNGJPConsts):
             products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
             for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
                 # The product is not in assortment list and not oos. (0,0)
-                result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
+                result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
                 length_mm_custom = 1 if result else 0
                 scenes = self.get_scenes_for_product(product)
                 for scene in scenes:
+                    # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                    #                                                              ,product_fk=product, scene_fk=scene))
+                    # length_mm_custom = 1 if result else 0
                     self.get_custom_query(scene, product, 0, 0, 0, 0, length_mm_custom)
 
             self.commit_custom_scif()

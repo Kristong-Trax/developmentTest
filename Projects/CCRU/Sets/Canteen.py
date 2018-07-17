@@ -9,7 +9,7 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Projects.Connector import ProjectConnector
 
-from Projects.CCRU.Utils.JSON import JsonGenerator
+from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 
 __author__ = 'urid'
@@ -49,7 +49,7 @@ class CCRUCanteenCalculations:
         return self._rds_conn
 
     def main_function(self):
-        jg = JsonGenerator('ccru')
+        jg = CCRUJsonGenerator('ccru')
         jg.create_json('Canteen.xlsx', CANTEEN)
 
         calc_start_time = datetime.datetime.utcnow()
