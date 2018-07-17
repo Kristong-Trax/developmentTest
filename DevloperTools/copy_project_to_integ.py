@@ -94,5 +94,5 @@ class MoveCodeToINTEG:
 
 
 if __name__ == '__main__':
-    a = MoveCodeToINTEG("CCTH", "CCTHDEMO")
+    a = MoveCodeToINTEG("PNGJP", "PNGJP_SAND2")
     a.copy_project()
