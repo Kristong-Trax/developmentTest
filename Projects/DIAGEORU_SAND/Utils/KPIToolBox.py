@@ -7,10 +7,8 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-
 from Projects.DIAGEORU_SAND.Utils.Fetcher import DIAGEORUQueries
 from Projects.DIAGEORU_SAND.Utils.ToolBox import DIAGEORUDIAGEOToolBox
-from Projects.DIAGEOIE.Utils.GeneralToolBox import DIAGEOIEGENERALToolBox
 
 __author__ = 'Yasmin'
 

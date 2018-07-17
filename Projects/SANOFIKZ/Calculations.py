@@ -17,13 +17,13 @@ class SANOFIKZCalculations(BaseCalculationsScript):
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
+#
 # if __name__ == '__main__':
 #     LoggerInitializer.init('sanofikz calculations')
 #     Config.init()
 #     project_name = 'sanofikz'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'E3B4F781-3538-4DB6-9DA7-E4B488361D94'
+#     session = 'FFD0945A-789A-4998-B6DD-FAC0C5BB920F'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIKZCalculations(data_provider, output).run_project_calculations()

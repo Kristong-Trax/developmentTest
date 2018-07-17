@@ -187,10 +187,10 @@ class AutoAssortmentHandler:
                     queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             # self.commit_results(queries)
             self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
+            Log.debug('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
                 store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
         else:
-            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
+            Log.debug('{} - No products are configured as Top SKUs'.format(store_number))
 
     def upload_top_sku_file(self, file_path, data_first_cell, ean_row_index, store_number_column_index,
                             update_correlations=False):
@@ -292,7 +292,7 @@ class AutoAssortmentHandler:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
@@ -306,7 +306,7 @@ class AutoAssortmentHandler:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()

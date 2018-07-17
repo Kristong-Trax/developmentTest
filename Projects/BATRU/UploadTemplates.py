@@ -1,7 +1,7 @@
 # coding=utf-8
 import os
 import pandas as pd
-import getpass
+# import getpass
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
@@ -466,8 +466,8 @@ class NewTemplate:
 #         # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
 #         # the template in Data/StoreAssortment.csv, activate this line and run it.
 #         # Const.P4_SET_NAME,
-#         # Const.SK_SET_NAME,
-#         Const.SAS_SET_NAME,
+#         Const.SK_SET_NAME,
+#         # Const.SAS_SET_NAME,
 #     ]
 #     for kpi_name in kpi_names:
 #         template = NewTemplate(project_name, kpi_name)

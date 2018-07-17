@@ -7,7 +7,7 @@ from openpyxl.utils import column_index_from_string, coordinate_from_string
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -127,7 +127,7 @@ class CCRUTopSKUAssortment:
             # return
 
         if products:
-            current_date = datetime(year=2018, month=04, day=28).date()  # If the product has a custom start_date
+            current_date = datetime(year=2018, month=06, day=30).date()  # If the product has a custom start_date
             # current_date = datetime.now().date()  # If the product should be activated from today
             if immediate_change:
                 deactivate_date = current_date - timedelta(1)
@@ -305,10 +305,10 @@ class CCRUTopSKUAssortment:
         # merged_queries.extend(other_queries)
         return merged_queries
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('test')
-#     rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-#     ts = CCRUTopSKUAssortment(rds_conn=rds_conn)
-#     ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Targets May OSA.xlsx', data_first_cell='D2',
-#                            ean_row_index=1, store_number_column_index='A')
+if __name__ == '__main__':
+    LoggerInitializer.init('test')
+    rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+    ts = CCRUTopSKUAssortment(rds_conn=rds_conn)
+    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Target_OSA_July.xlsx', data_first_cell='D2',
+                           ean_row_index=1, store_number_column_index='A', update_correlations=True)
 #     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!

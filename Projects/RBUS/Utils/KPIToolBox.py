@@ -188,11 +188,12 @@ class RBUSRBUSToolBox:
         total_products = 0
         redbull_manufacturer_products = 0
         for i, row in curr_probe.iterrows():
-            facing_count = get_face_count(row.face_count)
-            total_products += facing_count
-            if (self.get_value_of_product_by_column_name(row, product_list_field) == u'Red Bull') & \
-                    (~self.is_sub_category_excluded(row)):
-                redbull_manufacturer_products += facing_count
+            if row['stacking_layer'] == 1:
+                facing_count = get_face_count(row.face_count)
+                total_products += facing_count
+                if (self.get_value_of_product_by_column_name(row, product_list_field) == u'Red Bull') & \
+                        (~self.is_sub_category_excluded(row)):
+                    redbull_manufacturer_products += facing_count
         return float(redbull_manufacturer_products) / total_products
 
     def calculate_redbull_manufacturer(self, shelf_occupation_dict, product_list_field):
@@ -219,11 +220,12 @@ class RBUSRBUSToolBox:
         total_products = 0
         # iterate curr_probe rows
         for i, row in curr_probe.iterrows():
-            facing_count = get_face_count(row.face_count)
-            total_products += facing_count
-            if (self.get_value_of_product_by_column_name(row, product_list_field) == u'Energy') & \
-                    (~self.is_sub_category_excluded(row)):
-                energy_products += facing_count
+            if row['stacking_layer'] == 1:
+                facing_count = get_face_count(row.face_count)
+                total_products += facing_count
+                if (self.get_value_of_product_by_column_name(row, product_list_field) == u'Energy') & \
+                        (~self.is_sub_category_excluded(row)):
+                    energy_products += facing_count
         return float(energy_products) / total_products
 
     def calculate_energy_drinks(self, shelf_occupation_dict, product_list_field):
@@ -248,11 +250,12 @@ class RBUSRBUSToolBox:
         total_products = 0
         curr_brand_count = 0
         for i, row in curr_probe.iterrows():
-            facing_count = get_face_count(row.face_count)
-            total_products += facing_count
-            sub_brand = self.get_value_of_product_by_column_name(row, product_list_field)
-            if (sub_brand == brand_value) & (~self.is_sub_category_excluded(row)):
-                curr_brand_count += facing_count
+            if row['stacking_layer'] == 1:
+                facing_count = get_face_count(row.face_count)
+                total_products += facing_count
+                sub_brand = self.get_value_of_product_by_column_name(row, product_list_field)
+                if (sub_brand == brand_value) & (~self.is_sub_category_excluded(row)):
+                    curr_brand_count += facing_count
         return float(curr_brand_count) / total_products
 
     def calculate_brand_by_name(self, kpi, shelf_occupation_dict, brand_name, product_list_field):
@@ -300,11 +303,12 @@ class RBUSRBUSToolBox:
         total_products = 0
         curr_sku_count = 0
         for i, row in curr_probe.iterrows():
-            facing_count = get_face_count(row.face_count)
-            total_products += facing_count
-            if (self.get_value_of_product_by_column_name(row, product_list_field) == sku_name) & \
-                    (~self.is_sub_category_excluded(row)):
-                curr_sku_count += facing_count
+            if row['stacking_layer'] == 1:
+                facing_count = get_face_count(row.face_count)
+                total_products += facing_count
+                if (self.get_value_of_product_by_column_name(row, product_list_field) == sku_name) & \
+                        (~self.is_sub_category_excluded(row)):
+                    curr_sku_count += facing_count
         return float(curr_sku_count) / total_products
 
     def calculate_sku_by_name(self, kpi, shelf_occupation_dict, sku_name, product_list_field):

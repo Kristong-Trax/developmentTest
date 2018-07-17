@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsG
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
-
+from KPIUtils.DB.Common import Common
 from Projects.DIAGEOUK.Utils.KPIToolBox import DIAGEOUKToolBox, log_runtime
 
 __author__ = 'Nimrod'
@@ -23,7 +23,9 @@ class DIAGEOUKGenerator:
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = DIAGEOUKToolBox(self.data_provider, self.output)
+        self.common = Common(self.data_provider)
+        self.tool_box = DIAGEOUKToolBox(self.data_provider, self.output, self.common)
+        # self.tool_box = DIAGEOUKToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -37,5 +39,6 @@ class DIAGEOUKGenerator:
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         for kpi_set_name in set_names:
             self.tool_box.main_calculation(set_name=kpi_set_name)
-        self.tool_box.commit_results_data()
+        self.common.commit_results_data()
+        # self.tool_box.commit_results_data()
 

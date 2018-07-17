@@ -22,6 +22,7 @@ MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT = 60
 MAX_CYCLES_FOR_HISTORY_BASED_ASSORTMENT = 3
 EMPTY = 'Empty'
 OTHER = 'Other'
+NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Irrelevant", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
 P3_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
@@ -57,6 +58,8 @@ EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
 ATTRIBUTE_3 = 'Filter stores by \'attribute 3\''
 BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
+OUTLET_ID = 'Outlet ID'
+EAN_CODE = 'product_ean_code'
 
 
 def log_runtime(description, log_start=False):
@@ -183,6 +186,18 @@ class BATRUToolBox:
         query = BATRUQueries.get_state(self.store_id)
         match_state = pd.read_sql_query(query, self.rds_conn.db)
         return 'No State' if match_state.empty else match_state['state'].values[0]
+
+    def upload_store_assortment_file_for_p1(self, file_path):
+        """
+        This function validates the template and uploads store assortments to pservice.custom_osa
+        It printS the stores and products that don't exist in the DB
+        :param file_path: the assortment file (suppose to have 2 columns: Outlet ID and product_ean_code
+        """
+        if self.tools.p1_assortment_validator(file_path):
+            self.tools.upload_store_assortment_file(file_path)
+        else:
+            Log.warning("Error in P1 store assortment template")
+            print "Please fix the issues and try again"
 
     def main_calculation(self):
         """
@@ -673,7 +688,7 @@ class BATRUToolBox:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(
                 lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'] == 'All']
+            monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
         # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
         extra_df = pd.DataFrame(columns=monitored_skus.columns)
         for sku in monitored_skus['ean_code'].unique().tolist():
@@ -686,16 +701,29 @@ class BATRUToolBox:
             bundled_products = self.get_bundles_by_definitions(
                         product_fk, convert=LEAD2BUNDLE, input_type='product_fk', output_type='product_ean_code')
             for bundle_product in bundled_products:
-                extra_df = extra_df.append(
-                    {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
-                    ignore_index=True)
+                if self.is_relevant_bundle(sku, bundle_product):
+                    extra_df = extra_df.append(
+                        {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
+                        ignore_index=True)
+                    break
                 # prod_atts_dict_list = list(prod_atts_dict)
                 # prod_atts_dict = [state, bundle_product, 1]
                 # extra_df.append(prod_atts_dict)
 
-        monitored_skus.append(extra_df)
-
+        monitored_skus=monitored_skus.append(extra_df)
         return monitored_skus['ean_code']
+
+    def is_relevant_bundle(self, product_sku, bundle_sku):
+        """
+        This function checks if the bundle product needs to be added to the monitored_sku Data Frame.
+        Logic: If the product doesn't exist in the store and the bundle product does, add it.
+        :return: 1 in case of we need to add the bundle.
+        """
+        filtered_scif = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME)]
+        if filtered_scif.loc[filtered_scif['product_ean_code'] == product_sku].empty:
+            if not filtered_scif.loc[filtered_scif['product_ean_code'] == bundle_sku].empty:
+                return 1
+        return 0
 
     def calculate_fulfilment(self, monitored_products):
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_FULFILMENT]['kpi_fk'].iloc[0]
@@ -727,7 +755,7 @@ class BATRUToolBox:
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
         num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code'].isin(monitored_skus))]['facings'].sum()
+                                              (self.scif['product_ean_code'].isin(monitored_skus))]['product_ean_code'].drop_duplicates().count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
@@ -805,7 +833,7 @@ class BATRUToolBox:
         if self.state in sections_template_data['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         for scene in scenes:
             if not self.scif.loc[self.scif['scene_fk'] == scene]['template_group'].values[0] == EXIT_TEMPLATE_GROUP:
                 continue
@@ -889,8 +917,8 @@ class BATRUToolBox:
                         'product_fk'] == product]['product_type'].values[0] in (EMPTY, OTHER):
                         product_sequence = False
                     if product_ean_code not in section_products_including_bundles:
-                        if not (self.all_products.loc[self.all_products['product_fk'] == product][
-                                    'manufacturer_name'].values[0] == BAT):
+                        if not (self.all_products.loc[self.all_products['product_fk'] == product]['manufacturer_name'].values[0] == BAT or
+                                self.all_products.loc[self.all_products['product_fk'] == product]['product_name'].values[0] in NON_COMPETITOR_PRODUCTS):
                             competitor = True
                             presence = False
                         product_name = self.all_products.loc[self.all_products[
@@ -1288,7 +1316,7 @@ class BATRUToolBox:
         #     return True
         # else:
         #     return False
-        if end_seq == "All":
+        if end_seq.upper() == 'ALL':
             end_seq = bay_data['sequence'].max()
         else:
             end_seq = int(end_seq)
@@ -1317,11 +1345,11 @@ class BATRUToolBox:
         if self.state in sas_template['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         if self.scif['additional_attribute_3'].values[0] in sas_template['attribute_3'].unique().tolist():
             attribute_3 = self.scif['additional_attribute_3'].values[0]
         else:
-            attribute_3 = 'All'
+            attribute_3 = 'ALL'
         relevant_df = sas_template.loc[(sas_template['Equipment'] == fixture) &
                                        (sas_template['attribute_3'] == attribute_3) &
                                        (sas_template['State'] == state_for_calculation)]
@@ -1332,7 +1360,7 @@ class BATRUToolBox:
             for display in relevant_df['display_name'].unique().tolist():
                 relevant_display = relevant_df.loc[relevant_df['display_name'] == display].iloc[0]
                 if not relevant_display.empty:
-                    if set(relevant_display['Names of template in SR'].split(", ")) \
+                    if set(relevant_display['Names of template in SR'].replace(".jpg", "").replace(".png", "").split(", ")) \
                             & set(scene_match_display['display_name'].unique().tolist()):
                         presence_score = 100
                     else:
@@ -1378,7 +1406,7 @@ class BATRUToolBox:
         if self.state in posm_template['State'].unique().tolist():
             state_for_calculation = self.state
         else:
-            state_for_calculation = 'All'
+            state_for_calculation = 'ALL'
         posm_template = posm_template[posm_template['State'] == state_for_calculation]
         attribute_3 = self.scif['additional_attribute_3'].iloc[0]
         attribute_3_in_template = posm_template[ATTRIBUTE_3].unique()
@@ -1408,12 +1436,14 @@ class BATRUToolBox:
                         self.p4_display_count[equipment] = 1
                         count = self.p4_display_count[equipment]
 
-                    if count != 1:
-                        equipment = '{} # {}'.format(equipment, count)
+                    if count == 1:
+                        equipment_to_db = equipment
+                    else:
+                        equipment_to_db = '{} # {}'.format(equipment, count)
 
                     if not equipment_template.empty:
                         try:
-                            result = self.calculate_passed_equipments(equipment_template, equipment, scene)  # has equipment passed?
+                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
                         except IndexError:
                             Log.warning('The KPI is not in the DB yet')
                             result = 0
@@ -1476,7 +1506,7 @@ class BATRUToolBox:
         posm_filters = {}
         for current_filter in filters:
             value = row[current_filter]
-            if value and value != 'ALL':
+            if value and value.upper() != 'ALL':
                 if current_filter in self.filters_params:
                     posm_filters[self.filters_params[current_filter]] = value
                 else:
@@ -1486,7 +1516,7 @@ class BATRUToolBox:
     def calculate_specific_posm(self, row, equipment_name, group_name, scene_fk):
         atomic_name = row['Atomic KPI Name']
         posm_count = 0
-        possible_products = row['Product Name'].split(", ")
+        possible_products = row['Product Name'].replace(".jpg", "").replace(".png", "").split(", ")
         for product in possible_products:
             filters = self.get_posm_filters(['Template Group', 'KPI Display Name'], row)
             filters['display_name'] = product
