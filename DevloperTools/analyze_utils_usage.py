@@ -2,6 +2,7 @@ __author__ = 'yoava'
 
 import ast
 import os
+import pandas as pd
 # from KPIUtils_v2.Utils.Decorators.Decorators import log_task
 
 """
@@ -16,7 +17,8 @@ class UsageAnalyzer:
         self.file_path = file_path
         self.verbose = verbose
         self.file_dict = self.insert_file_to_dict()
-        self.used_imports = self.find_kpi_utils_v2_usage()
+        self.kpi_utils_used_imports = self.find_kpi_utils_v2_usage('KPIUtils')
+        self.kpi_utils_v2_used_imports = self.find_kpi_utils_v2_usage('KPIUtils_v2')
 
     def insert_file_to_dict(self):
         """
@@ -30,16 +32,21 @@ class UsageAnalyzer:
         fp.close()
         return file_dict
 
-    def find_kpi_utils_v2_usage(self):
+    def find_kpi_utils_v2_usage(self, version):
         """
         this method finds the imports that are being used from kpi_utils_v2
         :return: list off imports
         """
         kpi_utils_imports = []
         for x in self.file_dict.values():
-            if x.__contains__('KPIUtils_v2') and not x.__contains__('#'):
-                imp = x.split('import')
-                kpi_utils_imports.append(str(imp[1]).strip(' ').strip("\n"))
+            if version == 'KPIUtils':
+                if x.__contains__(version) and not x.__contains__('#') and not x.__contains__('KPIUtils_v2'):
+                    imp = x.split('import')
+                    kpi_utils_imports.append(str(imp[1]).strip(' ').strip("\n"))
+            else:
+                if x.__contains__(version) and not x.__contains__('#'):
+                    imp = x.split('import')
+                    kpi_utils_imports.append(str(imp[1]).strip(' ').strip("\n"))
         return kpi_utils_imports
 
     def find_names_in_init(self):
@@ -47,24 +54,30 @@ class UsageAnalyzer:
         this method finds the names of the imports as they are given in the 'init' method
         :return: list of import names
         """
-        actual_import_names = []
+        kpi_utils_actual_import_names = []
+        kpi_utils_v2_actual_import_names = []
         with open(self.file_path) as f:
             tree = ast.parse(f.read())
             for exp in tree.body:
                 # check if we are inside a class now
+
                 if isinstance(exp, ast.ClassDef):
                     for class_exp in exp.body:
                         # check if we are inside a class method
                         if isinstance(class_exp, ast.FunctionDef):
                             if class_exp.name == '__init__':
-                                self.get_actual_import_names(actual_import_names, class_exp)
+                                self.get_actual_import_names(kpi_utils_actual_import_names, class_exp,
+                                                             self.kpi_utils_used_imports)
+                                self.get_actual_import_names(kpi_utils_v2_actual_import_names, class_exp,
+                                                             self.kpi_utils_v2_used_imports)
                                 break
         f.close()
-        return actual_import_names
+        return kpi_utils_actual_import_names, kpi_utils_v2_actual_import_names
 
-    def get_actual_import_names(self, actual_import_names, class_exp):
+    def get_actual_import_names(self, actual_import_names, class_exp, import_list):
         """
         this method finds inside the actual name of the imports as they were given inside 'init' function
+        :param import_list:
         :param actual_import_names:
         :param class_exp:
         :return:
@@ -73,7 +86,7 @@ class UsageAnalyzer:
         last_line = first_line + len(class_exp.body)
         # iterate init method
         for i in range(first_line, last_line + 1):
-            for imp in self.used_imports:
+            for imp in import_list:
                 if str(self.file_dict[i]).__contains__(str(imp)):
                     def_str = self.file_dict[i].split('=')[0].strip(' ')
                     actual_import_names.append(def_str)
@@ -108,10 +121,10 @@ class UsageAnalyzer:
     #     # b = a.split['.'][2]
     #     # print b
 
-    def iterate_file(self, imports):
+    def iterate_file(self, import_list):
         """
         this method iterates the file and finds number of usages from kpi_utils and and used usages
-        :param imports: imports from kpi_utils
+        :param import_list: imports from kpi_utils
         :return:
         """
         usage_number, imports_number = 0, 0
@@ -120,11 +133,11 @@ class UsageAnalyzer:
             tree = ast.parse(f.read())
             for exp in tree.body:
                 if isinstance(exp, ast.FunctionDef):
-                    usage_number = self.get_number_of_usages_and_imports(exp, imports, imports_set, usage_number)
+                    usage_number = self.get_number_of_usages_and_imports(exp, import_list, imports_set, usage_number)
                 if isinstance(exp, ast.ClassDef):
                     for class_exp in exp.body:
                         if isinstance(class_exp, ast.FunctionDef):
-                            usage_number = self.get_number_of_usages_and_imports(class_exp, imports, imports_set,
+                            usage_number = self.get_number_of_usages_and_imports(class_exp, import_list, imports_set,
                                                                                  usage_number)
         f.close()
         return usage_number, imports_set
@@ -144,18 +157,24 @@ class UsageAnalyzer:
         return usage_number
 
     def run(self):
-        import_names = self.find_names_in_init()
-        usages, import_set = self.iterate_file(import_names)
-        if usages > 0:
-            print "There are {0} usages of kpi_utils_v2 in file {1} ".format(usages, self.file_path)
-        else:
-            print "No usages in file {0}".format(self.file_path)
-        return import_set
+        kpi_utils_import_names, kpi_utils_v2_import_names = self.find_names_in_init()
+        usages_v1, import_set_v1 = self.iterate_file(kpi_utils_import_names)
+        usages_v2, import_set_v2 = self.iterate_file(kpi_utils_v2_import_names)
+        print self.file_path
+        print "There are {0} usages of kpi_utils in file ".format(usages_v1)
+        print "There are {0} usages of kpi_utils_v2 in file".format(usages_v2)
+        # if usages > 0:
+        #     print "There are {0} usages of kpi_utils_v2 in file {1} ".format(usages, self.file_path)
+        # else:
+        #     print "No usages in file {0}".format(self.file_path)
+        return project, usages_v1, import_set_v1, usages_v2, import_set_v2
 
 
 if __name__ == '__main__':
     projects_dir = '/home/yoava/dev/kpi_factory/Projects'
-    all_imports = set()
+    # all_imports = set()
+    df = pd.DataFrame(columns=['Project_name', 'number_of_uses_v1', 'used_imports_v1', 'number_of_uses_v2',
+                               'used_imports_v2'])
     for project in os.listdir(projects_dir):
         path = os.path.join(projects_dir, project)
         if os.path.isdir(path):
@@ -164,7 +183,14 @@ if __name__ == '__main__':
                 analyzer = UsageAnalyzer(file_path=tool_box, verbose=False)
                 # log_task(action='import_checker', message='import for project', environment='prod',
                 #          project_name=project.lower(), user_name=os.environ.get('USER'))
-                all_imports.update(analyzer.run())
+                project, usages_v1, import_set_v1, usages_v2, import_set_v2 = analyzer.run()
+                # all_imports.update(imports)
+                json = {'Project_name': project, 'number_of_uses_v1': usages_v1, 'used_imports_v1': str(import_set_v1),
+                        'number_of_uses_v2': usages_v2, 'used_imports_v2': import_set_v2}
+                df = df.append(json, ignore_index=True)
 
-    for im in all_imports:
-        print im
+    writer = pd.ExcelWriter('/home/yoava/Documents/usage.xlsx')
+    df.to_excel(writer, sheet_name='Sheet1')
+    writer.save()
+    # for im in all_imports:
+    #     print im
