@@ -328,6 +328,19 @@ class PNGRO_PRODToolBox:
             filters = {type1: [value1, value2], type3: value3}
         else:
             filters = {type1: value1, type2: value2, type3: value3}
+
+        try:
+            filters.pop('')
+        except:
+            pass
+        try:
+            block_products1.pop('')
+        except:
+            pass
+        try:
+            block_products2.pop('')
+        except:
+            pass
         score = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.9,
                                                     allowed_products_filters={'product_type': 'Other'},
                                                     block_of_blocks=True, block_products1=block_products1,
