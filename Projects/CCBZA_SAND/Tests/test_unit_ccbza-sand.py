@@ -114,6 +114,7 @@
 #     def test_get_template_data_returns_template_dict_with_required_tabs_and_necessary_columns(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
 #         template_data = tool_box.get_template_data()
+#         # self.assertFalse(template_data['KPI']['Dependancy'].values[0])
 #         self.assertTrue(all([tab in template_data.keys() for tab in DataTestUnitCCBZA_SAND.required_template_tabs]))
 #         self.assertIsInstance(template_data, dict)
 #         for key, sheet_data in template_data.items():
@@ -140,12 +141,12 @@
 #         print kpi_sets
 #         self.assertItemsEqual(kpi_sets, DataTestUnitCCBZA_SAND.kpi_set_names_from_template)
 #
-#     # def test_toolbox_properties(self):
-#     #     tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
-#     #     print tool_box.template_path
-#     #     # print tool_box.kpi_static_data
-#     #     print tool_box.new_kpi_static_data
-#     #     print tool_box.store_data
+#     def test_toolbox_properties(self):
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         print tool_box.template_path
+#         # print tool_box.kpi_static_data
+#         # print tool_box.new_kpi_static_data
+#         print tool_box.store_data
 #
 #     def test_get_kpi_types_by_kpi_returns_a_list_of_kpi_types(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
@@ -177,8 +178,39 @@
 #         self.assertItemsEqual(kpi_types, expected_list_after_split)
 #         self.assertIsInstance(kpi_types, list)
 #
+#     def test_split_empty_string(self):
+#         expected_list_after_split = ['']
+#         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_empty_string
+#         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
+#         print kpi_types
+#         self.assertItemsEqual(kpi_types, expected_list_after_split)
+#         self.assertIsInstance(kpi_types, list)
+#         self.assertTrue(kpi_types)
+#
+#     def test_split_name_with_space(self):
+#         expected_list_after_split = ['Availability KPI', 'SOS', 'Count']
+#         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_name_with_space
+#         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
+#         print kpi_types
+#         self.assertItemsEqual(kpi_types, expected_list_after_split)
+#         self.assertIsInstance(kpi_types, list)
+#         self.assertTrue(kpi_types)
+#
 #     def test_get_atomic_kpis_data_returns_dataframe_with_atomic_kpis_parameters(self):
-#         pass
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         kpi_set_name = 'COOLERS & MERCHANDISING'
+#         kpi_data = tool_box.template_data[KPI_TAB][tool_box.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
+#         for index, kpi in kpi_data.iterrows():
+#             kpi_types = tool_box.get_kpi_types_by_kpi(kpi)
+#             for kpi_type in kpi_types:
+#                 atomic_kpis_data = tool_box.get_atomic_kpis_data(kpi_type, kpi)
+#                 print kpi_type
+#                 if kpi_type == 'Availability':
+#                     print atomic_kpis_data
+#         # finish test - make sure that the template path is taken from Test data
+#         # think how to test template path...
 #
 #
-
+#
+#
+#

@@ -85,4 +85,6 @@ class DataTestUnitCCBZA_SAND(object):
     kpi_types_split_by_comma = 'Price,Survey,Availability,SOS,Count'
     kpi_types_split_irregularly = 'Price,Survey, Availability ,SOS , Count'
     kpi_types_one_value = 'Price'
+    kpi_types_empty_string = ''
+    kpi_types_name_with_space = 'Availability KPI ,SOS, Count'
 
