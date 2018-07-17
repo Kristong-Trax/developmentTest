@@ -49,7 +49,7 @@ class Const(object):
         ON: {TOTAL: 'Total Score - On Premise',
              SEGMENT: 'Segment Score - On Premise', NATIONAL: 'National Score - On Premise'},
         OFF: {TOTAL: 'Total Score - Off Premise',
-              SEGMENT: 'National Score - Off Premise', NATIONAL: 'National Score - Off Premise'}
+              SEGMENT: 'Segment Score - Off Premise', NATIONAL: 'National Score - Off Premise'}
     }
     DB_OFF_NAMES = {
         POD: {
