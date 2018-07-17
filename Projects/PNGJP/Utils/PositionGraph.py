@@ -61,9 +61,6 @@ class PNGJPPositionGraphs:
     def get_filtered_matches(self, include_stacking=False):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches[matches['status'] == 1]
-        if not include_stacking:
-            matches = matches[matches['stacking_layer'] == 1]
         matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
         matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
