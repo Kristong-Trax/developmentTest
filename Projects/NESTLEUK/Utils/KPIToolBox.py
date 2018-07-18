@@ -271,17 +271,25 @@ class NESTLEUKToolBox(NESTLEUKConsts):
         products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
         products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
         for scene in scenes_to_check:
-            polygon = self.build_diamond_polygon(scene)
-            for product_fk in products_for_check:
-                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
-                if result:
-                    in_assortment_osa = 1
-                    result = self.calculate_polygon(scene=scene, product_fk=product_fk, polygon=polygon)
-                    mha_in_assortment = 1 if result >= target else 0
-                else:
-                    in_assortment_osa = mha_in_assortment = 0
-                self.get_custom_query(scene_fk=scene, product_fk=product_fk,
-                                      in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+            if self.validate_scene(scene):
+                polygon = self.build_diamond_polygon(scene)
+                for product_fk in products_for_check:
+                    result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                    if result:
+                        in_assortment_osa = 1
+                        result = self.calculate_polygon(scene=scene, product_fk=product_fk, polygon=polygon)
+                        mha_in_assortment = 1 if result >= target else 0
+                    else:
+                        in_assortment_osa = mha_in_assortment = 0
+                    self.get_custom_query(scene_fk=scene, product_fk=product_fk,
+                                          in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+
+    def validate_scene(self, scene_fk):
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                              **{'scene_fk': scene_fk})]
+        if len(matches['shelf_number'].unique().tolist()) > 1:
+            return True
+        return False
 
     def build_diamond_polygon(self, scene_fk):
         matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
