@@ -15,7 +15,7 @@ this module creates dump file and sanity test classes for a specific project.
 all you have to do is to insert the project name and run it 
 """
 
-TOP_SESSIONS = list()
+TOP_SESSIONS = []
 
 
 class SeedCreator:
@@ -57,13 +57,20 @@ class SeedCreator:
             TOP_SESSIONS.append(session)
         return sessions_df.session_uid.values
 
-    def activate_exporter(self):
+    def get_specific_session(self, session_uid):
+        TOP_SESSIONS.append(session_uid)
+        return [session_uid]
+
+    def activate_exporter(self, specific_session=None):
         """
         this method build a dump file with traxExporter from the given sessions
         :return: None
         """
         os.chdir(self.export_dir)
-        sessions = self.get_top_sessions()
+        if specific_session is not None:
+            sessions = self.get_specific_session(specific_session)
+        else:
+            sessions = self.get_top_sessions()
         Log.info('Activating exporter')
         export_command = """./traxExportIntuition.sh {0} {1} session_uid {2}""". \
             format(self.rds_name, self.output_dir, sessions[0])
@@ -120,7 +127,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         connector.disconnect_rds()
     
     @seeder.seed(["%(seed)s"], ProjectsSanityData())
-    def test_%(project)s_sanity(self, x, y, json):
+    def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['%(session_0)s']
@@ -204,7 +211,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'pngcareus-sand'
+    project_to_test = 'mychemistau'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()
