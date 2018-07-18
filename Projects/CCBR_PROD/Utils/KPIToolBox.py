@@ -429,6 +429,7 @@ class CCBRToolBox:
         :param filters: the scif filters
         :return: the number of different scenes answered the condition  (hard coded 50%)
         """
+        filtered_df = filtered_df[~filtered_df['product_name'].isin(['Empty', 'Irrelevant'])]
         scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
         scene_data = scene_data.rename(columns={"facings": "facings_nom"})
 
