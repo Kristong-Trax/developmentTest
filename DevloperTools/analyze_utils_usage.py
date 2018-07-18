@@ -183,10 +183,10 @@ if __name__ == '__main__':
                 analyzer = UsageAnalyzer(file_path=tool_box, verbose=False)
                 # log_task(action='import_checker', message='import for project', environment='prod',
                 #          project_name=project.lower(), user_name=os.environ.get('USER'))
-                project, usages_v1, import_set_v1, usages_v2, import_set_v2 = analyzer.run()
+                project, usages_1, import_set_1, usages_2, import_set_2 = analyzer.run()
                 # all_imports.update(imports)
-                json = {'Project_name': project, 'number_of_uses_v1': usages_v1, 'used_imports_v1': str(import_set_v1),
-                        'number_of_uses_v2': usages_v2, 'used_imports_v2': import_set_v2}
+                json = {'Project_name': project, 'number_of_uses_v1': usages_1, 'used_imports_v1': str(import_set_1),
+                        'number_of_uses_v2': usages_2, 'used_imports_v2': import_set_2}
                 df = df.append(json, ignore_index=True)
 
     writer = pd.ExcelWriter('/home/yoava/Documents/usage.xlsx')
