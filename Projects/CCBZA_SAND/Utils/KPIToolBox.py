@@ -10,7 +10,7 @@ from Trax.Utils.Logging.Logger import Log
 # from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
@@ -66,11 +66,17 @@ CONDITION_2_NUMERATOR_TYPE = 'Condition 2 - Numerator Type'
 CONDITION_2_DENOMINATOR = 'Condition 2 - Denominator'
 CONDITION_2_DENOMINATOR_TYPE = 'Condition 2 - Denominator Type'
 CONDITION_2_TARGET = 'Condition 2 - Target'
-
+AVAILABILITY_TYPE = 'type avia'
 
 #Other constants
 CONDITION_1 = 'Condition_1'
 CONDITION_2 = 'Condition_2'
+AVAILABILITY_POS = 'Availability POS'
+AVAILABILITY_SKU_FACING_AND = 'Availability SKU facing And'
+AVAILABILITY_SKU_FACING_OR = 'Availability SKU facing Or'
+KO_PRODUCTS = 'KO PRODUCTS'
+GENERAL_FILTERS = 'general_filters'
+KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -80,9 +86,11 @@ class CCBZA_SANDToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
+
         # self.common = Common(self.data_provider)
         # self.general_tool_box = GENERALToolBox(self.data_provider)
         # self.common_sos = SOS(self.data_provider, self.output)
+        self.common_availability = Availability(self.data_provider)
 
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -131,7 +139,7 @@ class CCBZA_SANDToolBox:
                     if kpi_type == 'Survey':
                         self.calculate_survey(atomic_kpis_data)
                     elif kpi_type == 'Availability':
-                        pass
+                        self.calculate_availability_custom(atomic_kpis_data)
                     elif kpi_type == 'Count':
                         pass
                     elif kpi_type == 'Price':
@@ -241,7 +249,7 @@ class CCBZA_SANDToolBox:
 
     @staticmethod
     def split_and_strip(string):
-        return map(lambda x: x.strip(' '), string.split(','))
+        return map(lambda x: x.strip(' '), str(string).split(','))
 
     def calculate_kpi_result(self, kpi):
         is_split_score = self.does_kpi_have_split_score(kpi)
@@ -307,33 +315,44 @@ class CCBZA_SANDToolBox:
             # write atomic score / maybe also result to DB
 
     def calculate_sos_per_condition(self, condition_filters):
-        numerator_result = self.get_facings_based_on_critera(condition_filters['numerator'])
-        denominator_result = self.get_facings_based_on_critera(condition_filters['denominator'])
+        numerator_result = self.get_facings_based_on_critera(self.scif, condition_filters['numerator'])
+        denominator_result = self.get_facings_based_on_critera(self.scif, condition_filters['denominator'])
         return float(numerator_result)/denominator_result if denominator_result != 0 else 0
 
-    def get_facings_based_on_critera(self, filters):
-        filtered_scif = self.scif.copy()
-        for column, criteria in filters.items():
-            if isinstance(criteria, list):
-                filtered_scif = filtered_scif[filtered_scif[column].isin(criteria)]
-            else:
-                filtered_scif = filtered_scif[filtered_scif[column] == criteria]
-        number_of_facings = sum(filtered_scif['facings'].values) if not filtered_scif.empty else 0  # check scif field
+    def get_facings_based_on_critera(self, scif, filters):
+        filtered_scif = self.filter_df_based_on_filtering_dictionary(scif, filters)
+        # for column, criteria in filters.items():
+        #     if isinstance(criteria, list):
+        #         filtered_scif = filtered_scif[filtered_scif[column].isin(criteria)]
+        #     else:
+        #         filtered_scif = filtered_scif[filtered_scif[column] == criteria]
+        number_of_facings = sum(filtered_scif['facings'].values) if not filtered_scif.empty else 0
         return number_of_facings
 
-    # will be adding it when necessarry
-    # def get_general_calculation_parameters(self, atomic_kpi):
-    #     calculation_parameters = {}
-    #     try:
-    #         template_names = self.split_and_strip(atomic_kpi[TEMPLATE_NAME])
-    #     except KeyError:
-    #         template_names = None
-    #     if template_names:
-    #         relevant_scenes = self.scif[(self.scif['template_name'].isin(template_names))]
-    #     else:
-    #         relevant_scenes = self.scif
-    #     scenes_ids_filter = {'scenes_ids': relevant_scenes['scene_id'].unique().tolist()}
-    #     calculation_parameters.update(scenes_ids_filter)
+    def filter_df_based_on_filtering_dictionary(self, df, filters):
+        filtered_df = df.copy()
+        for column, criteria in filters.items():
+            if isinstance(criteria, list):
+                filtered_df = filtered_df[filtered_df[column].isin(criteria)]
+            else:
+                filtered_df = filtered_df[filtered_df[column] == criteria]
+        return filtered_df
+
+    #will be adding it when necessarry
+    def get_general_calculation_parameters(self, atomic_kpi):
+        calculation_parameters = {}
+        try:
+            template_names = self.split_and_strip(atomic_kpi[TEMPLATE_NAME])
+        except KeyError:
+            template_names = None
+        if template_names:
+            relevant_scenes = self.scif[(self.scif['template_name'].isin(template_names))]
+        else:
+            relevant_scenes = self.scif
+        scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
+        calculation_parameters.update(scenes_ids_filter)
+        calculation_parameters.update({'manufacturer_name': KO_PRODUCTS})  # will see if i need it based on updated template
+        return calculation_parameters
 
     def get_sos_calculation_parameters(self, atomic_kpi):
         calculation_parameters = {CONDITION_1: {'numerator':{}, 'denominator': {}},
@@ -346,8 +365,10 @@ class CCBZA_SANDToolBox:
             calculation_parameters[CONDITION_1]['denominator'].update({self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR_TYPE])[i]:
                                                                            (self.split_and_strip(atomic_kpi[CONDITION_1_DENOMINATOR])[i]).lower()})
 
-        calculation_parameters[CONDITION_1]['denominator'].update({'product_type': 'SKU',
-                                                                   'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
+        calculation_parameters[CONDITION_1]['denominator'].update({'product_type': 'SKU'})
+        if atomic_kpi[TEMPLATE_NAME]:
+            calculation_parameters[CONDITION_1]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
+
         calculation_parameters[CONDITION_1]['numerator'].update(calculation_parameters[CONDITION_1]['denominator'])
 
         for i in range(len(self.split_and_strip(atomic_kpi[CONDITION_2_NUMERATOR_TYPE]))):
@@ -358,9 +379,9 @@ class CCBZA_SANDToolBox:
             calculation_parameters[CONDITION_2]['denominator'].update({self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR_TYPE])[i]:
                                                                            (self.split_and_strip(atomic_kpi[CONDITION_2_DENOMINATOR])[i]).lower()})
 
-        calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU',
-                                                                   'template_name': self.split_and_strip(
-                                                                       atomic_kpi[TEMPLATE_NAME])})
+        calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU'})
+        if atomic_kpi[TEMPLATE_NAME]:
+            calculation_parameters[CONDITION_2]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
         calculation_parameters[CONDITION_2]['numerator'].update(calculation_parameters[CONDITION_2]['denominator'])
         return calculation_parameters
 
@@ -370,12 +391,66 @@ class CCBZA_SANDToolBox:
     #         condition_columns = filter(lambda y: y[0] == condition, map(lambda x: x.split(' '), columns))
     #
 
+    def calculate_availability_custom(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            score = 0 # or None
+            if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
+                score = self.calculate_availability_pos(atomic_kpi)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
+                score = self.calculate_availability_sku_facing_and(atomic_kpi)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
+                score = self.calculate_availability_sku_facing_or(atomic_kpi)
+            else:
+                Log.warning('Availablity of type {} is not supported by calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                continue
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+            # write atomic score (maybe also result) to DB
 
+    def calculate_availability_pos(self, atomic_kpi):
+        score = 0
+        return score
 
+    def calculate_availability_sku_facing_and(self, atomic_kpi):
+        max_score = atomic_kpi[SCORE]
+        score = None
+        calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+                               KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        relevant_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
+        # unique_skus_list = []
+        # if all([key == False for key in calculation_filters[KPI_SPECIFIC_FILTERS].keys()]):
+        #     unique_skus_list =
 
+        result = self.common_availability.calculate_availability_by_scene(**calculation_filters)
+        target = atomic_kpi[TARGET]
+        if max_score:
+            score = max_score if result >= target else 0
+        else:
+            score = 100 if result >= target else 0
+        self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+        # write atomic score (maybe also result) to DB
+        return score
 
+    def calculate_availability_sku_facing_or(self, atomic_kpi):
+        pass
 
-
-
-
-
+    def get_availability_and_price_calculation_parameters(self, atomic_kpi):
+        # columns = atomic_kpi.index.values
+        condition_filters = {}
+        relevant_columns = filter(lambda y: atomic_kpi[y]==True, filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values))
+        for column in relevant_columns:
+            if column.startswith('type'):
+                condition_number = str(column.strip('type'))
+                matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
+                                            relevant_columns)
+                value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+                if value_col:
+                    value_list = self.split_and_strip(atomic_kpi[value_col])
+                    condition_filters.update({atomic_kpi[column]: atomic_kpi[value_col] if len(value_list) <= 1 else value_list})
+                else:
+                    Log.error('condition {} does not have corresponding value column'.format(column)) # should it be error?
+        # if atomic_kpi[TEMPLATE_NAME]:
+        #     condition_filters.update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME]), 'manufacturer_name': KO_PRODUCTS})
+        # else:
+        #     condition_filters.update({'manufacturer_name': KO_PRODUCTS})
+        return condition_filters
