@@ -93,7 +93,7 @@ class Const(object):
     COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
     COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
 
-    EXTRA, OOS, DISTRIBUTED, OTHER = "EXTRA", "0", "1", "OTHER"
+    EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
     NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
     NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
     SURVEY_ANSWER = "Yes"
