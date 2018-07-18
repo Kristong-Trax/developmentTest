@@ -780,8 +780,9 @@ class BATRUToolBox:
         # monitored_data = self.merged_additional_data[
         #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
         # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
-        num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code_lead'].isin(monitored_skus))]['product_ean_code_lead']\
+        scif = self.scif[self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME]\
+            .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
+        num_of_recognized_monitor = scif[scif['product_ean_code_lead'].isin(monitored_skus)]['product_ean_code_lead']\
             .drop_duplicates().count()
         # TODO: perhaps to add check for bundle
         if num_of_all_monitor:
