@@ -1045,8 +1045,7 @@ class BATRUToolBox:
                 section_score = 0
                 section_score_2 = 'FAIL'
 
-                misplaced_products_result = ',\\lf'.join([product_name.replace("'", "\\'") for product_name in misplaced_products])
-                misplaced_products_result_api = ','.join([product_name.replace("'", "\\'") for product_name in misplaced_products])
+                misplaced_products_result = ','.join([product_name.replace("'", "\\'") for product_name in misplaced_products])
 
                 # Defining section scores
                 section_status = 0
@@ -1093,7 +1092,7 @@ class BATRUToolBox:
                                             level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
 
                 # Saving to API set
-                self.write_to_db_result_for_api(score=misplaced_products_result_api, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                                 kpi_name=SK_RAW_DATA,
                                                 atomic_kpi_name=self.API_SKU_PRESENCE_KPI_NAME.format(
                                                     fixture=fixture_name_for_db,
