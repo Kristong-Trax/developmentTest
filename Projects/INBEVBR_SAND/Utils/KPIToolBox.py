@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.6 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.7 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -188,13 +188,26 @@ class INBEVBRToolBox:
         if product_size != "":
             df = self.filter_product_size(df, product_size)
 
-        df_numirator = self.count_of_scenes(df, filters)
-        numerator_number_of_facings = df_numirator['facings'].sum()
-        if (numerator_number_of_facings >= target_packs):
+        df_packs = self.count_of_scenes(df, filters)
+        df_packs = df_packs[df_packs['num_packs'] >= target_packs]
+        number_of_valid_scenes = len(df_packs)
+
+
+        if (number_of_valid_scenes >= target_secondary):
             count_result = weight
+
         else:
+
+            # count number of facings
+            if ('form_factor' in filters.keys()):
+                del filters['form_factor']
+            df_numirator = self.count_of_facings(df,filters)
+            numerator_number_of_facings = df_numirator['facings'].sum()
+
             df_numirator = df_numirator.rename(columns={'facings': 'facings_nom'})
-            del filters['manufacturer_name']
+            for f in ['manufacturer_name', 'brand_name']:
+                if f in filters:
+                    del filters[f]
             df_denominator = self.count_of_scenes(df, filters)
             scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_id')
             df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
@@ -374,11 +387,27 @@ class INBEVBRToolBox:
         return number_of_facings
 
     def count_of_scenes(self, df, filters):
-        facing_data = df[self.tools.get_filter_condition(df, **filters)]
+
+
+        #
+        matches = pd.merge(self.match_product_in_scene,self.all_products,on="product_fk")
+        all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
+        matches = pd.merge(matches, all_scene_info, on="scene_fk")
+        matches = matches[self.tools.get_filter_condition(matches, **filters)]
+        matches = matches.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
+        return matches
+        # face_count
+        #
+
+        # check
+        # if ('form_factor' in filters.keys()):
+        #     df['facings'] = df[['facings', 'tagged']].apply(
+        #         lambda r: r['facings'] if r['facings'] >= 0 else r['tagged'], axis=1)
+        #
+        # facing_data = df[self.tools.get_filter_condition(df, **filters)]
 
         # filter by scene_id and by template_name (scene type)
-        scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
-        return scene_types_groupby
+        # scene_types_groupby = matches.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
