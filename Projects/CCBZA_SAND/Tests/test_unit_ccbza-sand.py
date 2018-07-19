@@ -215,7 +215,11 @@
 #         # finish test - make sure that the template path is taken from Test data
 #         # think how to test template path...
 #
-#
-#
-#
-#
+#     def test_get_availability_and_price_calculation_parameters(self):
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         df = tool_box.template_data[PRICE_TAB].iloc[2]
+#         filters = tool_box.get_availability_and_price_calculation_parameters(df)
+#         print filters
+#         df = tool_box.template_data[PRICE_TAB].iloc[1]
+#         filters = tool_box.get_availability_and_price_calculation_parameters(df)
+#         print filters
