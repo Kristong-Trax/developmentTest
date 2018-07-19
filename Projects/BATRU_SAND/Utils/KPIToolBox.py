@@ -675,7 +675,7 @@ class BATRU_SANDToolBox:
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
-                self.merged_additional_data['template_name'] == u'Дата производства']
+                self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
             score = self.calculate_fulfilment(monitored_sku['ean_code'])
             efficiency_score = self.calculate_efficiency()
             self.get_raw_data()
