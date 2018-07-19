@@ -1971,7 +1971,9 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
             products_target = filtered_target_scif['product_fk'].tolist()
             products_neighbors = filtered_neighbors_scif['product_fk'].tolist()
-            score = self.calculate_block_together(allowed_products_filters={'product_fk': products_neighbors},
+            score = 0
+            if products_target:
+                score = self.calculate_block_together(allowed_products_filters={'product_fk': products_neighbors},
                                                   **({'product_fk': products_target}))
             if score:
                 result = 'TRUE'
@@ -2043,7 +2045,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
             scene_graph = self.position_graphs.get(scene).copy()
             clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
-
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)

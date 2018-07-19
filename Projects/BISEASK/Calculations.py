@@ -14,7 +14,7 @@ class BISEASKCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         if str(self.data_provider.visit_date)>='2018-02-01' and str(self.data_provider.visit_date)<='2018-02-28':
-            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BISEASK', 'Data', 'Template_old.xlsx')
+            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BISEASK', 'Data', 'Template_Old.xlsx')
         else:
             TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BISEASK',
                                          'Data', 'Template.xlsx')
@@ -27,7 +27,7 @@ class BISEASKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'biseask'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '333615B3-A0D0-433D-98F0-1E8EEB089AE4'
+#     session = 'EE588AB6-103A-40D3-998D-5C696B5527BD'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     BISEASKCalculations(data_provider, output).run_project_calculations()
