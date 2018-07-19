@@ -128,6 +128,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
     VERTICAL = 'Vertical Block'
     GROUP_GOLDEN_ZONE_THRESHOLD = 'Threshold'
     PRODUCT_GROUP_ID = 'Product Group Id'
+    ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
     KPI_FORMAT = 'Category: {category} - KPI Question: {question}'
 
     def __init__(self, data_provider, output):
@@ -491,6 +492,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return score, result, threshold
 
     def calculate_block(self, kpi, kpi_filters):
+        allowed_products_filters = {}
         threshold = 0
         params = self.block_data[self.block_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
@@ -498,8 +500,14 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         if params[self.PRODUCT_GROUP_ID].values[0] is not None:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
             kpi_filter['product_ean_code'] = product_eans
+        if (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] is not None) and (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] != ''):
+            product_eans = self._get_ean_codes_by_product_group_id(column_name=self.ALLOWED_PRODUCT_GROUP_ID, **params)
+            allowed_products_filters['product_ean_code'] = product_eans
+        else:
+            allowed_products_filters = None
         if params[self.VERTICAL].values[0] == 'Y':
             block_result, num_of_shelves = self.tools.calculate_block_together(vertical=True,
+                                                                               allowed_products_filters=allowed_products_filters,
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
@@ -508,6 +516,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
         else:
             block_result = self.tools.calculate_block_together(minimum_block_ratio=float(block_threshold),
+                                                               allowed_products_filters=allowed_products_filters,
                                                                **kpi_filter)
             score = 100 if block_result else 0
             result = 1 if block_result else 0
