@@ -31,7 +31,9 @@ P5_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data'
 POSM_AVAILABILITY = 'POSM Status'
 SHARE_OF = 'Share of Shelf / Assortment'
 PRICE_MONITORING = 'Price Monitoring'
+MOBILE_PRICE_MONITORING = 'Mobile Price Monitoring'
 P2_FULFILMENT = 'Price-Monitoring fulfillment (TMR)'
+P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
 P2_RAW_DATA = 'Raw Data'
 P2_SET_PRICE = 'Price Monitoring'
@@ -668,18 +670,20 @@ class BATRU_SANDToolBox:
     # P2 KPI
 
     def handle_priority_2(self):
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[
-            0]
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        mobile_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
-                self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
-            score = self.calculate_fulfilment(monitored_sku)
-            self.calculate_efficiency()
+                self.merged_additional_data['template_name'] == u'Дата производства']
+            score = self.calculate_fulfilment(monitored_sku['ean_code'])
+            efficiency_score = self.calculate_efficiency()
             self.get_raw_data()
-
+            self.set_p2_sku_mobile_results(monitored_sku)
             if score or score == 0:
                 self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
+                self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
+                                        score_2=format(efficiency_score, '.2f'))
 
     def get_sku_monitored(self, state):
         monitored_skus = self.get_custom_template(P2_PATH, 'SKUs')
@@ -690,7 +694,8 @@ class BATRU_SANDToolBox:
         else:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
         # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
-        extra_df = pd.DataFrame(columns=monitored_skus.columns)
+        # extra_df = pd.DataFrame(columns=monitored_skus.columns)
+        extra_df = pd.DataFrame(columns=list(monitored_skus.columns) + [u'leading'])
         for sku in monitored_skus['ean_code'].unique().tolist():
             try:
                 product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk'].values[0]
@@ -703,15 +708,17 @@ class BATRU_SANDToolBox:
             for bundle_product in bundled_products:
                 if self.is_relevant_bundle(sku, bundle_product):
                     extra_df = extra_df.append(
-                        {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
+                        {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1, 'leading': sku},
                         ignore_index=True)
                     break
                 # prod_atts_dict_list = list(prod_atts_dict)
                 # prod_atts_dict = [state, bundle_product, 1]
                 # extra_df.append(prod_atts_dict)
 
-        monitored_skus=monitored_skus.append(extra_df)
-        return monitored_skus['ean_code']
+        monitored_skus = monitored_skus.append(extra_df)
+        monitored_skus = monitored_skus.fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()][
+            'ean_code']})
+        return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
         """
@@ -727,6 +734,7 @@ class BATRU_SANDToolBox:
 
     def calculate_fulfilment(self, monitored_products):
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_FULFILMENT]['kpi_fk'].iloc[0]
+        mobile_kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_MOBILE_FULFILMENT]['kpi_fk'].iloc[0]
         atomic_fk = \
             self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == P2_FULFILMENT]['atomic_kpi_fk'].iloc[0]
         score = self.get_fulfilment(monitored_products)
@@ -735,6 +743,7 @@ class BATRU_SANDToolBox:
             return
         else:
             self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
+            self.write_to_db_result(mobile_kpi_fk, round(score, 2), self.LEVEL2)
             self.write_to_db_result(atomic_fk, round(score, 2), self.LEVEL3)
             return score
 
@@ -745,6 +754,7 @@ class BATRU_SANDToolBox:
         score = self.get_efficiency()
         self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
         self.write_to_db_result(atomic_fk, round(score, 2), self.LEVEL3)
+        return score
 
     def get_fulfilment(self, monitored_skus):
         """
@@ -815,10 +825,53 @@ class BATRU_SANDToolBox:
                                             kpi_set_name=P2_SET_DATE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
-
         # using P4 save function to save None without problems so will add set name to api.
         self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None,
                                         kpi_set_name=P2_SET_DATE)
+
+    def set_p2_sku_mobile_results(self, monitored_sku):
+        new_products = False
+        set_name = 'Mobile Price Monitoring'
+        kpi_fk = 5660
+        try:
+            existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
+                'product_ean_code'].isin(monitored_sku['leading'].values))]
+            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name][
+                'atomic_kpi_name'].unique().tolist()
+            not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
+            if not_in_db_products.any:
+                self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
+                new_products = True
+        except Exception as e:
+            Log.info('Updating Mobile price sets failed')
+        if new_products:
+            self.kpi_static_data = self.get_kpi_static_data()
+        monitored_sku = monitored_sku.drop_duplicates(subset=['leading'], keep='last')
+        for index in xrange(len(monitored_sku)):
+            row = monitored_sku.iloc[index]
+            try:
+                product_name = self.all_products[self.all_products['product_ean_code'] == row.leading][
+                    'product_short_name'].drop_duplicates().values[0]
+            except Exception as e:
+                Log.warning('Product ean {} is not defined in the DB'.format(row.leading))
+                continue
+            try:
+                kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
+                                              (self.kpi_static_data['kpi_set_name'] == set_name)][
+                    'atomic_kpi_fk'].drop_duplicates().values[0]
+                product_fk = self.all_products[self.all_products['product_ean_code'] == row.ean_code][
+                    'product_fk'].drop_duplicates().values[0]
+                score = 0 if self.merged_additional_data[self.merged_additional_data['item_id'] == product_fk].empty else 1
+                result = 0
+                result2 = 0
+                if score:
+                    result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                        'price_value'].drop_duplicates().values[0]
+                    result2 = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                        'Formatted_Date'].drop_duplicates().values[0]
+                self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
+            except Exception as e:
+                Log.error('{}'.format(e))
 
     # P3 KPI
 
@@ -1851,13 +1904,14 @@ class BATRU_SANDToolBox:
             else:
                 self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
 
-    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None):
+    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None,
+                           result_2=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
         attributes = self.create_attributes_dict(fk, result, level, score=score, threshold=threshold, score2=score_2,
-                                                 score_3=score_3)
+                                                 score_3=score_3, result_2=result_2)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -1869,7 +1923,8 @@ class BATRU_SANDToolBox:
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, fk, result, level, score2=None, score=None, threshold=None, score_3=None):
+    def create_attributes_dict(self, fk, result, level, score2=None, score=None, threshold=None, score_3=None,
+                               result_2=None):
         """
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
@@ -1895,10 +1950,10 @@ class BATRU_SANDToolBox:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        result, kpi_fk, fk, threshold, score, score2, score_3)],
+                                        result, kpi_fk, fk, threshold, score, score2, score_3, result_2)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
                                                'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
-                                               'score', 'score_2', 'score_3'])
+                                               'score', 'score_2', 'score_3', 'result_2'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
