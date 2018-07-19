@@ -917,12 +917,13 @@ class BATRU_SANDToolBox:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == u'Дата производства']
             score = self.calculate_fulfilment(monitored_sku['ean_code'])
-            self.calculate_efficiency()
+            efficiency_score = self.calculate_efficiency()
             self.get_raw_data()
             self.set_p2_sku_mobile_results(monitored_sku)
             if score or score == 0:
                 self.p2_write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
-                self.p2_write_to_db_result(mobile_set_fk, format(score, '.2f'), self.LEVEL1)
+                self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
+                                        score_2=format(efficiency_score, '.2f'))
 
     def check_sas_zone_in_fixture(self, product_matrix, section_df, fixture, option=None):
         start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_df, sas_flag=True)
@@ -1048,6 +1049,7 @@ class BATRU_SANDToolBox:
         score = self.get_efficiency()
         self.p2_write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.p2_write_to_db_result(atomic_fk, score, self.LEVEL3)
+        return score
 
     def get_fulfilment(self, monitored_skus):
         """
@@ -1116,7 +1118,6 @@ class BATRU_SANDToolBox:
         set_name = 'Mobile Price Monitoring'
         kpi_fk = 5660
         try:
-            # sets_and_kpi_fk = {'Mobile Price Monitoring': 5660}
             existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
                 'product_ean_code'].isin(monitored_sku['leading'].values))]
             set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name][
