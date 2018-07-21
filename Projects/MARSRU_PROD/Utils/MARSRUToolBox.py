@@ -312,7 +312,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
             try:
                 cur.execute(query)
             except :
-                print 'could not run query: {}'.format()
+                Log.error('could not run query: {}'.format(query))
+                print 'could not run query: {}'.format(query)
         self.rds_conn.db.commit()
 
     def hadle_update_custom_scif(self):
