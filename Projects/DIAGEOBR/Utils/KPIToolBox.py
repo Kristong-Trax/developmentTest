@@ -107,10 +107,10 @@ class DIAGEOBRToolBox:
             set_score = self.calculate_assortment_sets(set_name)
         elif set_name in ('POSM'):
             set_score = self.calculate_posm_sets(set_name)
-        elif set_name == 'Visible to Customer':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
+        # elif set_name == 'Visible to Customer':
+        #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+        #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+        #     self.save_level2_and_level3(set_name, set_name, set_score)
         elif set_name == 'Secondary Displays':
             set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
             self.save_level2_and_level3(set_name, set_name, set_score)
