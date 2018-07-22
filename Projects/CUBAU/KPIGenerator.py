@@ -28,4 +28,5 @@ class CUBAUGenerator:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
         self.tools_summary.main_calculation()
-        # self.tool_box.common.commit_results_data_to_new_tables()
+        self.tools_summary.common.commit_results_data()
+        self.tool_box.common.commit_results_data_to_new_tables()
