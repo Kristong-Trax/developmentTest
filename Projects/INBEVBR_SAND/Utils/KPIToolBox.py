@@ -131,8 +131,6 @@ class INBEVBRToolBox:
         weight = row[Const.WEIGHT].values[0]
         df = self.scif
 
-
-
         product_size = row[Const.PRODUCT_SIZE].values[0]
         if product_size != "":
             df = self.filter_product_size(df, product_size)
@@ -183,7 +181,8 @@ class INBEVBRToolBox:
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
 
-        df = self.scif.copy()
+        df = self.match_product_in_scene.copy()
+        df = pd.merge(df, self.all_products, on="product_fk")
         product_size = row[Const.PRODUCT_SIZE].values[0]
         if product_size != "":
             df = self.filter_product_size(df, product_size)
@@ -191,7 +190,6 @@ class INBEVBRToolBox:
         df_packs = self.count_of_scenes(df, filters)
         df_packs = df_packs[df_packs['num_packs'] >= target_packs]
         number_of_valid_scenes = len(df_packs)
-
 
         if (number_of_valid_scenes >= target_secondary):
             count_result = weight
@@ -201,20 +199,19 @@ class INBEVBRToolBox:
             # count number of facings
             if ('form_factor' in filters.keys()):
                 del filters['form_factor']
-            df_numirator = self.count_of_facings(df,filters)
-            numerator_number_of_facings = df_numirator['facings'].sum()
-
+            df_numirator = self.count_of_scenes(df,filters)
             df_numirator = df_numirator.rename(columns={'facings': 'facings_nom'})
             for f in ['manufacturer_name', 'brand_name']:
                 if f in filters:
                     del filters[f]
             df_denominator = self.count_of_scenes(df, filters)
-            scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_id')
+            scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_fk')
             df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
                                                                     scene_types_groupby['facings']) * 100 >= target]
+            number_of_valid_scenes = len(df_target_filtered)
             if target_secondary == "":
                 target_secondary = 1
-            if len(df_target_filtered) >= target_secondary:
+            if number_of_valid_scenes >= target_secondary:
                 count_result = weight
 
         if count_result == 0:
@@ -227,7 +224,7 @@ class INBEVBRToolBox:
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
+                                           numerator_result=number_of_valid_scenes,
                                            denominator_result=target, result=count_result)
 
     def handle_count_atomics(self, atomic_id, atomic_name):
@@ -386,16 +383,20 @@ class INBEVBRToolBox:
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
 
+    def count_of_facings_from_mpis(self, df, filters):
+
+        all_scene_info = pd.merge(self.scene_info, self.data_provider[Data.ALL_TEMPLATES], on='template_fk')
+        df = pd.merge(df, all_scene_info, on="scene_fk")
+        df = df[self.tools.get_filter_condition(df, **filters)]
+        return len(df)
+
     def count_of_scenes(self, df, filters):
 
-
-        #
-        matches = pd.merge(self.match_product_in_scene,self.all_products,on="product_fk")
         all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
-        matches = pd.merge(matches, all_scene_info, on="scene_fk")
-        matches = matches[self.tools.get_filter_condition(matches, **filters)]
-        matches = matches.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
-        return matches
+        df = pd.merge(df, all_scene_info, on="scene_fk")
+        df = df[self.tools.get_filter_condition(df, **filters)]
+        df = df.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
+        return df
         # face_count
         #
 
