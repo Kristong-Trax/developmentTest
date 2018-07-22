@@ -11,9 +11,9 @@ from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.Survey import Survey
 from KPIUtils.Calculations.SOS import SOS
 from KPIUtils.Calculations.Availability import Availability
-from KPIUtils.Utils.Convertors.FilterHandler import FilterGenerator
+# from KPIUtils.Utils.Convertors.FilterHandler import FilterGenerator
 
-# projct imports
+# project imports
 from Projects.CCBOTTLERSUS.REDSCORE.GeneralToolBox import REDGENERALToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.Queries import Queries
 from Projects.CCBOTTLERSUS.Utils.ParseTemplates import parse_template
@@ -24,12 +24,10 @@ from Projects.CCBOTTLERSUS.REDSCORE.Checks import Checks
 
 class REDToolBox:
     def __init__(self, data_provider, output, id):
-
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -40,9 +38,7 @@ class REDToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = REDGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        # self.kpi_results_queries = []
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-
         # load helpers
         if id == 0:
             self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
@@ -54,16 +50,11 @@ class REDToolBox:
                                               'MANUAL RED SURVEY_COKE_UNITED_RS_KPI_Template_v3.5.xlsx')
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
-
         self.common_db = Common(self.data_provider, self.RED_SCORE)
         self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db_integ.delete_results_data_by_kpi_set()
-
-
         self.kpi_static_data = self.common_db.get_kpi_static_data()
-        # self.kpi_convertor = KpiConverter(self.kpi_static_data)
-        self.filter_gen = FilterGenerator()
         self.checks = Checks(self.data_provider)
         self.sos = SOS(data_provider=data_provider, output=output)
         self.availability = Availability(data_provider=data_provider, output=output)

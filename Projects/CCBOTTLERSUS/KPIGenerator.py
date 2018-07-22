@@ -11,7 +11,7 @@ from Projects.CCBOTTLERSUS.Utils.KPIToolBox import log_runtime, BCIKPIToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import REDToolBox
 
 
-__author__ = 'ortal & ilan'
+__author__ = 'ortal & ilan & Shivi'
 
 
 class CcbottlersGenerator:
@@ -25,11 +25,10 @@ class CcbottlersGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        Common(self.data_provider).commit_results_data()
-        self.calculate_bci()
-        self.calculate_manufacturer_displays()
+        # Common(self.data_provider).commit_results_data()
+        # self.calculate_bci()
+        # self.calculate_manufacturer_displays()
         self.calculate_red_score()
-
 
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
@@ -60,13 +59,11 @@ class CcbottlersGenerator:
     @log_runtime('Red Score Calculations')
     def calculate_red_score(self):
         Log.info('starting calculate_red_score')
-
-        try:
-            # for i in xrange(2):
-            #     tool_box = REDToolBox(self.data_provider, self.output, i)
-            #     tool_box.calculate_red_score()
-            tool_box = REDToolBox(self.data_provider, self.output, 1)
-            tool_box.calculate_red_score()
-        except Exception as e:
-            Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
-
+        for i in xrange(2):
+            try:
+                tool_box = REDToolBox(self.data_provider, self.output, i)
+                tool_box.calculate_red_score()
+            except Exception as e:
+                Log.error('failed to calculate CCBOTTLERSUS RED SCORE {}: {}'.format(i, e.message))
+        # tool_box = REDToolBox(self.data_provider, self.output, 1)
+        # tool_box.calculate_red_score()
