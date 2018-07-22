@@ -1,9 +1,9 @@
 import pandas as pd
-# from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-#
+
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
@@ -17,7 +17,7 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         tool_box = MARSRU_PRODMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
         tool_box.hadle_update_custom_scif()
         jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
-        jg.create_json('KPI MARS 23.03.18.xlsx')
+        jg.create_json('MARS KPIs 2018.xlsx', year_filter='2018')
         tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
@@ -36,11 +36,18 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         tool_box.get_placed_near(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_availability_on_golden_shelves(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_for_specific_display(jg.project_kpi_dict.get('kpi_data')[0])
-        attributes_for_table1 = pd.DataFrame([(tool_box.set_name, tool_box.session_uid,
-                                               tool_box.store_id, tool_box.visit_date.isoformat()
-                                               , 100, 3)], columns=['kps_name', 'session_uid', 'store_fk',
-                                                                       'visit_date', 'score_1',
-                                                                       'kpi_set_fk'])
+        attributes_for_table1 = pd.DataFrame([(tool_box.set_name,
+                                               tool_box.session_uid,
+                                               tool_box.store_id,
+                                               tool_box.visit_date.isoformat(),
+                                               100,
+                                               3)],
+                                             columns=['kps_name',
+                                                      'session_uid',
+                                                      'store_fk',
+                                                      'visit_date',
+                                                      'score_1',
+                                                      'kpi_set_fk'])
 
         tool_box.write_to_db_result(attributes_for_table1, 'level1', tool_box.set_name)
         tool_box.commit_results_data()
@@ -51,12 +58,10 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'marsru-prod'
 #     session_uids = [
-#         '18dfa3e9-2301-4622-b3ea-396dbb962a93',
-#         '8a50066e-d94f-4db5-acf0-54cd2f8d71fc',
-#         '3b75a6a3-8776-4c88-8c50-32e229b3fa9a',
-#         'b5c90b60-9790-4919-935e-54eba9628ad2',
-#         'ca6b2fd5-8900-456f-8067-11be6e0f3b90',
-#         'aefb0be2-6557-454e-8bb4-6cc0de20a392',
+#         '4675635c-1e40-41a2-b11e-6472382df1b0',
+#         'ea0f81e1-eea6-45c9-880f-7a2581a081e7',
+#         '905f5087-8fca-41c3-a901-f9a82e684137',
+#         '3ffaf3e2-de72-4001-af7e-397062b3bd6f'
 #     ]
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()

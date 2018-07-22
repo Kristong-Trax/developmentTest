@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v4.6 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template v5.0 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -429,6 +429,7 @@ class CCBRToolBox:
         :param filters: the scif filters
         :return: the number of different scenes answered the condition  (hard coded 50%)
         """
+        filtered_df = filtered_df[~filtered_df['product_name'].isin(['Empty', 'Irrelevant'])]
         scene_data = filtered_df[self.tools.get_filter_condition(filtered_df, **filters)]
         scene_data = scene_data.rename(columns={"facings": "facings_nom"})
 
