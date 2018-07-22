@@ -250,21 +250,54 @@ class NESTLEUKToolBox(NESTLEUKConsts):
     def calculate_bottom_shelf(self, kpi, scenes_to_check):
         target = int(kpi[self.templates_class.TARGET])
         shelf_number = map(lambda x: x.strip(), kpi['shelf_number_from_bottom'].split(','))
+        shelf_percent = int(kpi['shelf_percent'])
         products_for_check = map(lambda x: x.strip(), kpi['product_ean_code'].split(','))
         products_for_check = self.all_products[self.all_products['product_ean_code'].isin(products_for_check)]['product_fk'].tolist()
         for scene in scenes_to_check:
+            shelf_edges = self.build_shelf_edges(scene, shelf_percent)
             for product_fk in products_for_check:
-                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scenes_to_check)
+                result = self.tools.calculate_availability(product_fk=product_fk, scene_fk=scene)
                 if result:
                     in_assortment_osa = 1
-                    result = self.tools.calculate_availability(product_ean_code=products_for_check,
-                                                               scene_fk=scenes_to_check,
-                                                               shelf_number_from_bottom=shelf_number)
+                    result = self.calculate_contain(scene, product_fk, shelf_edges, shelf_number)
                     mha_in_assortment = 1 if result >= target else 0
                 else:
                     in_assortment_osa = mha_in_assortment = 0
                 self.get_custom_query(scene_fk=scene, product_fk=product_fk,
                                       in_assortment_OSA=in_assortment_osa, mha_in_assortment=mha_in_assortment)
+
+    def build_shelf_edges(self, scene_fk, shelf_percent):
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                              **{'scene_fk': scene_fk})]
+        left = matches.copy().sort_values('x_mm', ascending=True).iloc[0]
+        left = int(left['x_mm']) - (int(left['width_mm']) / 2) # TODO width_mm_net
+        right = matches.copy().sort_values('x_mm', ascending=False).iloc[0]
+        right = int(right['x_mm']) + (int(right['width_mm']) / 2) # TODO width_mm_net
+        shelf_len = right - left
+        shelf_len_after_downsize = (shelf_len - (shelf_len * shelf_percent / 100)) / 2
+        edges = {'left': left + shelf_len_after_downsize, 'right': right - shelf_len_after_downsize}
+        return edges
+
+    def build_product_edges(self, matches):
+        points = []
+        for x, product_show in matches.iterrows():
+            left = int(product_show['x_mm']) - (int(product_show['width_mm']) / 2)  # TODO width_mm_net
+            right = int(product_show['x_mm']) + (int(product_show['width_mm']) / 2)  # TODO width_mm_net
+            edges_point = {'left': left, 'right': right}
+            points.append(edges_point)
+        return points
+
+    def calculate_contain(self, scene, product_fk, shelf_edges, shelf_number):
+        matches = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene,
+                                                                              **{'scene_fk': scene,
+                                                                                 'shelf_number_from_bottom': shelf_number,
+                                                                                 'product_fk': product_fk})]
+        points = self.build_product_edges(matches)
+        for point in points:
+            if (shelf_edges['left'] < point['left'] < shelf_edges['right']) or \
+                    (shelf_edges['left'] < point['right'] < shelf_edges['right']):
+                return True
+        return False
 
     def calculate_diamond(self, kpi, scenes_to_check):
         target = int(kpi[self.templates_class.TARGET])
