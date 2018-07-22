@@ -199,15 +199,15 @@ class INBEVBRToolBox:
             # count number of facings
             if ('form_factor' in filters.keys()):
                 del filters['form_factor']
-            df_numirator = self.count_of_scenes(df,filters)
-            df_numirator = df_numirator.rename(columns={'facings': 'facings_nom'})
+            df_numirator = self.count_of_scenes_facings(df,filters)
+            df_numirator = df_numirator.rename(columns={'face_count': 'facings_nom'})
             for f in ['manufacturer_name', 'brand_name']:
                 if f in filters:
                     del filters[f]
-            df_denominator = self.count_of_scenes(df, filters)
+            df_denominator = self.count_of_scenes_facings(df, filters)
             scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_fk')
             df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
-                                                                    scene_types_groupby['facings']) * 100 >= target]
+                                                                    scene_types_groupby['face_count']) * 100 >= target]
             number_of_valid_scenes = len(df_target_filtered)
             if target_secondary == "":
                 target_secondary = 1
@@ -397,18 +397,16 @@ class INBEVBRToolBox:
         df = df[self.tools.get_filter_condition(df, **filters)]
         df = df.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
         return df
-        # face_count
-        #
 
-        # check
-        # if ('form_factor' in filters.keys()):
-        #     df['facings'] = df[['facings', 'tagged']].apply(
-        #         lambda r: r['facings'] if r['facings'] >= 0 else r['tagged'], axis=1)
-        #
-        # facing_data = df[self.tools.get_filter_condition(df, **filters)]
+    def count_of_scenes_facings(self, df, filters):
 
-        # filter by scene_id and by template_name (scene type)
-        # scene_types_groupby = matches.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
+        all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
+        df = pd.merge(df, all_scene_info, on="scene_fk")
+        df = df[self.tools.get_filter_condition(df, **filters)]
+        df['face_count'] = df['face_count'].fillna(1)
+        df = df.groupby(['template_name', 'scene_fk'])['face_count'].sum().reset_index()
+        return df
+
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
