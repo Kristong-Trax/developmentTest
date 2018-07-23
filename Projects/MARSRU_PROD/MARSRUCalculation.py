@@ -8,10 +8,14 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 
+from KPIUtils.Utils.Helpers.LogHandler import log_handler
+
 __author__ = 'urid'
 
 
 class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
+
+    @log_handler.log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         tool_box = MARSRU_PRODMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
