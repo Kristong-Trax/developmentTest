@@ -254,9 +254,9 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['orchestrated']:
-                #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
-                #     continue
+                if kpi_type not in ['eye level']:
+                    # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
+                    continue
 
                 # if kpi_data['KPI Group type'].values[0]:
                 #     if kpi_type in BLOCK_TOGETHER:
