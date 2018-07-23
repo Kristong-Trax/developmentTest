@@ -5,12 +5,12 @@ import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.DIAGEOUS.Utils.Const import Const
-from Projects.DIAGEOUS.Utils.Fetcher import Queries
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
+# from Projects.DIAGEOUS.Utils.Fetcher import Queries
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Data.Projects.Connector import ProjectConnector
 # from KPIUtils_v2.DIAGEOUSCalculations.AvailabilityDIAGEOUSCalculations import Availability
@@ -30,7 +30,6 @@ class DIAGEOUSToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.fetcher = Queries
         self.survey = Survey(self.data_provider, self.output)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -41,6 +40,7 @@ class DIAGEOUSToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
@@ -48,12 +48,13 @@ class DIAGEOUSToolBox:
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
-        store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
+        store_type = self.store_info['store_type'].iloc[0]
+        store_number_1 = self.store_info['store_number_1'].iloc[0]
         self.on_off = Const.ON if store_type in ('Dining', 'Bar/Nightclub') else Const.OFF
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.ps_data = PsDataProvider(self.data_provider, self.output, assortment_filter=store_number_1)
         self.state = self.ps_data.get_state_name()
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
@@ -64,11 +65,11 @@ class DIAGEOUSToolBox:
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
                                                                    target_answer=Const.SURVEY_ANSWER)
         else:
-            scenes = self.scif_without_emptys['scene_fk'].unique().tolist()
+            scenes = self.scene_info['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
             for scene in scenes:
                 shelf = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][
-                    'shelf_number'].max()
+                    'shelf_number_from_bottom'].max()
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
             self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
@@ -391,12 +392,15 @@ class DIAGEOUSToolBox:
                 result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
+            manufacturer_target = None
             if manufacturer_fk == self.manufacturer_fk:
                 diageo_facings = num_res
+                manufacturer_target = target
             result = self.get_score(num_res, den_res)
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
-                denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
         self.common.write_to_db_result(
