@@ -91,7 +91,7 @@ class PERFETTICNToolBox:
                 else:
                     score = 0
                 self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk, result.passes,
-                                                          res, result.assortment_super_group_fk, denominator_res, score)
+                                                          score, result.assortment_super_group_fk, denominator_res, score)
 
             if not lvl2_result.empty:
                 lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
