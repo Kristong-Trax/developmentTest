@@ -3,7 +3,9 @@ import pandas as pd
 from numpy import nan
 from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, \
     SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, SCORE, STORE_TYPE, \
-    ATTRIBUTE_1, ATTRIBUTE_2
+    ATTRIBUTE_1, ATTRIBUTE_2, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET, SCORE, AVAILABILITY_TYPE, \
+    CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE, CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_1_TARGET, \
+    CONDITION_2_NUMERATOR, CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE, CONDITION_2_TARGET
 
 class DataScores(object):
     SCORES_1 = [(None, 0.15), (100, 0.15), (3, 0.15)]
@@ -12,6 +14,15 @@ class DataScores(object):
     SCORES_4_NONE_NO_WEIGHTS = [(None, None), (None, None), (None, None)]
     SCORES_5_NONE_WEIGHTS = [(None, 0.15), (None, 0.15), (None, 0.15)] # score_1_1 in my example
     SCORES_6 = [(100, None), (0, None), (100, None)]
+
+class StoreTypes(object):
+    LT_Spaza_Affordable = 'L&T Spaza Affordable'
+    LT_Gen_D_Affordable = 'L&T Gen D Affordable'
+    LT_Spaza_Mainstream = 'L&T Spaza Mainstream'
+    LT_Gen_D_Mainstream = 'L&T Gen D Mainstream'
+    LT_Spaza_Premium = 'L&T Spaza Premium'
+    LT_Gen_D_Premium = 'L&T Gen D Premium'
+    store_list = [LT_Spaza_Affordable, LT_Gen_D_Affordable, LT_Spaza_Mainstream, LT_Gen_D_Mainstream, LT_Spaza_Premium, LT_Gen_D_Premium]
 
 class DataTestUnitCCBZA_SAND(object):
 
@@ -76,15 +87,47 @@ class DataTestUnitCCBZA_SAND(object):
         {'pk': 100, 'visit_date': '2018-06-01', 'store_fk': 1, 's_sales_rep_fk': 111, 'exclude_status_fk': None, 'status': 'Completed'}
     ])
 
-    required_template_tabs = [KPI_TAB, PLANOGRAM_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB]
+    required_template_tabs = [KPI_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB]
     columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]
     columns_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    columns_price_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET,
+                         SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    columns_avaialability_tab = [KPI_NAME, ATOMIC_KPI_NAME, AVAILABILITY_TYPE, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3,
+                                 VALUE1, VALUE2, VALUE3, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    columns_sos_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE,
+                       CONDITION_1_TARGET, CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_2_NUMERATOR,
+                       CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE,
+                       CONDITION_2_TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    columns_count_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+
     columns_kpi_results = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
     kpi_set_names_from_template = ['COOLERS & MERCHANDISING', 'KEY PACK: Availability, Pricing, Activation',
-                                   'AVAILABILITY', 'PRICE COMPLIANCE', 'COMBOS & ACTIVATION', 'BONUS POINTS']
+                                   'AVAILABILITY', 'PRICE COMPLIANCE', 'COMBOS & ACTIVATION', 'BONUS POINTS', 'TEST SET']
     kpi_types_split_by_comma = 'Price,Survey,Availability,SOS,Count'
     kpi_types_split_irregularly = 'Price,Survey, Availability ,SOS , Count'
     kpi_types_one_value = 'Price'
     kpi_types_empty_string = ''
     kpi_types_name_with_space = 'Availability KPI ,SOS, Count'
+    string_represented_by_number = 200
 
+    index_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]+StoreTypes.store_list
+
+    test_kpi_1_series = pd.Series(['TEST SET', 'TEST KPI 1', 'Survey', 'Y', '', '', '', '', '', '', ''],
+                                  index=index_kpi_tab)
+    avail_and_pricing_all_bonus_kpi_series = pd.Series(['BONUS POINTS', 'Availability and Pricing of ALL Key Packs ',
+                                                        '', 'N', 'KEY PACK: Availability, Pricing, Activation', '', '',
+                                                        '', '', '', ''], index=index_kpi_tab)
+    coolers_kpi_series = pd.Series(['COOLERS & MERCHANDISING', 'Coolers', 'Price, Survey, Availability, SOS, Count',
+                                    'Y', '', '', '', '', '', '', ''], index=index_kpi_tab)
+
+# class SCIFDataTestCCBZA_SAND(object):
+
+    # scif_for_filtering = pd.DataFrame.from_records([
+    #     {'session_id': 160, 'scene_fk': 95, 'scene_id': 95, 'template_name': 'CCBSA Cooler', 'item_id': }
+    # ])
+
+    # scif = pd.DataFrame.from_records([
+    #     {'session_id': 160, 'scene_fk': 95, 'scene_id': 95, 'template_name': 'CCBSA Cooler',
+    #
+    #     }
+    # ])

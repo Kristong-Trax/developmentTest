@@ -67,6 +67,13 @@ CONDITION_2_DENOMINATOR = 'Condition 2 - Denominator'
 CONDITION_2_DENOMINATOR_TYPE = 'Condition 2 - Denominator Type'
 CONDITION_2_TARGET = 'Condition 2 - Target'
 AVAILABILITY_TYPE = 'type avia'
+TYPE1 = 'type1'
+TYPE2 = 'type2'
+TYPE3 = 'type3'
+VALUE1 = 'value1'
+VALUE2 = 'value2'
+VALUE3 = 'value3'
+
 
 #Other constants
 CONDITION_1 = 'Condition_1'
@@ -84,6 +91,7 @@ BRAND_NAME = 'brand_name'
 POS_BRAND_FIELD = 'attr5' # in the labels will need to be changed
 PRODUCT_TYPE = 'product_type'
 NUMERIC_FIELDS = ['size']
+MANUFACTURER_NAME = 'manufacturer_name'
 
 #scif values
 SKU='SKU'
@@ -101,7 +109,7 @@ class CCBZA_SANDToolBox:
         # self.common = Common(self.data_provider)
         # self.general_tool_box = GENERALToolBox(self.data_provider)
         # self.common_sos = SOS(self.data_provider, self.output)
-        self.common_availability = Availability(self.data_provider)
+        # self.common_availability = Availability(self.data_provider)
 
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -147,19 +155,20 @@ class CCBZA_SANDToolBox:
                 # atomic_scores = []
                 for kpi_type in kpi_types:
                     atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi) # we get relevant atomics from the sheets
-                    if kpi_type == 'Survey':
-                        self.calculate_survey(atomic_kpis_data)
-                    elif kpi_type == 'Availability':
-                        self.calculate_availability_custom(atomic_kpis_data)
-                    elif kpi_type == 'Count':
-                        pass
-                    elif kpi_type == 'Price':
-                        pass
-                    elif kpi_type == 'SOS':
-                        self.calculate_sos(atomic_kpis_data)
-                    else:
-                        Log.warning("KPI of type '{}' is not supported".format(kpi_type.encode('utf8')))
-                        continue
+                    if not atomic_kpis_data.empty:
+                        if kpi_type == 'Survey':
+                            self.calculate_survey(atomic_kpis_data)
+                        elif kpi_type == 'Availability':
+                            self.calculate_availability_custom(atomic_kpis_data)
+                        elif kpi_type == 'Count':
+                            self.calculate_count(atomic_kpis_data)
+                        elif kpi_type == 'Price':
+                            self.calculate_price(atomic_kpis_data)
+                        elif kpi_type == 'SOS':
+                            self.calculate_sos(atomic_kpis_data)
+                        else:
+                            Log.warning("KPI of type '{}' is not supported".format(kpi_type.encode('utf8')))
+                            continue
                 kpi_result = self.calculate_kpi_result(kpi)
                 #write result to the DB
                 set_score += kpi_result
@@ -216,10 +225,12 @@ class CCBZA_SANDToolBox:
     #     return kpi_types_list
 
     def get_kpi_types_by_kpi(self, kpi):
-        kpi_types = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi[KPI_NAME]][KPI_TYPE].values[0]
-        # kpi_types_list = self.split_string(kpi_types, [', ', ' ,', ' , ', ','])
-        # kpi_types_list = re.split(r', |,| ,', kpi_types)
-        kpi_types_list = self.split_and_strip(kpi_types)
+        kpi_types_list = []
+        if kpi[KPI_TYPE]:
+            kpi_types = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi[KPI_NAME]][KPI_TYPE].values[0]
+            # kpi_types_list = self.split_string(kpi_types, [', ', ' ,', ' , ', ','])
+            # kpi_types_list = re.split(r', |,| ,', kpi_types)
+            kpi_types_list = self.split_and_strip(kpi_types)
         return kpi_types_list
 
     def get_atomic_kpis_data(self, kpi_type, kpi):
@@ -234,7 +245,15 @@ class CCBZA_SANDToolBox:
     @staticmethod
     def does_kpi_have_split_score(kpi):
         split_score = kpi[SPLIT_SCORE].strip(' ')
-        return True if split_score == 'Y' else False
+        if split_score == 'Y':
+            return True
+        elif split_score == 'N':
+            return False
+        else:
+            Log.error('{} field has invalid value for kpi {}. Should be Y or N'.format(SPLIT_SCORE, kpi[KPI_NAME]))
+
+        # split_score = kpi[SPLIT_SCORE].strip(' ')
+        # return True if split_score == 'Y' else False #ask Istrael if we want error message in case of invalid value
 
     @staticmethod
     def does_kpi_have_dependency(kpi):
@@ -260,7 +279,7 @@ class CCBZA_SANDToolBox:
 
     @staticmethod
     def split_and_strip(string):
-        return map(lambda x: x.strip(' '), str(string).split(','))
+        return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
     def calculate_kpi_result(self, kpi):
         is_split_score = self.does_kpi_have_split_score(kpi)
@@ -276,15 +295,45 @@ class CCBZA_SANDToolBox:
             # take the score from the kpi tab for the relevant store
             pass
 
+    def calculate_price(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            score = 0
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            max_score = atomic_kpi[SCORE]
+            target = atomic_kpi[TARGET]
+            if target:
+                pass
+            else:
+                pass
+
+    def calculate_count(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            max_score = atomic_kpi[SCORE]
+            target = atomic_kpi[TARGET]
+            calculation_filters = self.get_general_calculation_parameters(atomic_kpi)
+            # list_of_scenes = calculation_filters['scene_fk']
+            session_door_count = 0
+            for scene in calculation_filters['scene_fk']:
+                scene_filter = {'scene_fk': scene}
+                relevant_match_prod_in_scene = self.filter_df_based_on_filtering_dictionary(self.match_product_in_scene, scene_filter)
+                number_of_bays = len(relevant_match_prod_in_scene['bay_number'].unique())
+                session_door_count += number_of_bays
+                # should we record scene result to DB
+            atomic_result = 100 if session_door_count>=target else 0
+            atomic_score = self.calculate_atomic_score(atomic_result, max_score)
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+            # write score to DB
+
     def calculate_survey(self, atomic_kpis_data):
         """
         This function calculates Survey-Question typed Atomics, and writes the result to the DB.
         """
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            survey_id = int(atomic_kpi[SURVEY_QUESTION_CODE])
+            survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE]))
             expected_answers = atomic_kpi[EXPECTED_RESULT]
-            survey_max_score = atomic_kpi[SCORE]
+            survey_max_score = float(atomic_kpi[SCORE])
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
             atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == atomic_kpi[ATOMIC_KPI_NAME]]
             score = None
@@ -304,31 +353,66 @@ class CCBZA_SANDToolBox:
         # set_name = self.current_kpi_set_name
         kpi_name = atomic_kpi[KPI_NAME]
         atomic_name = atomic_kpi[ATOMIC_KPI_NAME]
-        new_kpi_row = pd.DataFrame([self.current_kpi_set_name, kpi_name, atomic_name, score], columns=columns)
-        self.kpi_results_data = self.kpi_results_data.append(new_kpi_row, ignore_index=True)
+        # new_kpi_row = pd.DataFrame([self.current_kpi_set_name, kpi_name, atomic_name, score], columns=columns)
+        # self.kpi_results_data = self.kpi_results_data.append(new_kpi_row, ignore_index=True)
+        #
+        self.kpi_results_data = self.kpi_results_data.append([{SET_NAME: self.current_kpi_set_name, KPI_NAME: kpi_name,
+                                                               ATOMIC_KPI_NAME: atomic_name, SCORE: score}], ignore_index=True)
 
     def calculate_sos(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            sos_calculation_filters = self.get_sos_calculation_parameters(atomic_kpi)
-            condition_scores = []
+            calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+                                   KPI_SPECIFIC_FILTERS: self.get_sos_calculation_parameters(atomic_kpi)}
+            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+            condition_1_target = float(atomic_kpi[CONDITION_1_TARGET]) / 100
+            condition_2_target = float(atomic_kpi[CONDITION_2_TARGET]) / 100
+            max_score = atomic_kpi[SCORE]
 
-            condition_1_target = float(atomic_kpi[CONDITION_1_TARGET])/100
-            condition_1_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_1])
-            condition_scores.append(100 if condition_1_ratio >=condition_1_target else 0)
+            scenes_results = []
+            for scene in list_of_scenes:
+                condition_scores = []
+                calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+                filtered_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
+                condition_1_ratio = self.calculate_sos_for_condition(filtered_scif, calculation_filters[KPI_SPECIFIC_FILTERS][CONDITION_1])
+                condition_scores.append(100 if condition_1_ratio >= condition_1_target else 0)
 
-            condition_2_target = float(atomic_kpi[CONDITION_2_TARGET])/100
-            condition_2_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_2])
-            condition_scores.append(100 if condition_2_ratio >= condition_2_target else 0)
+                condition_2_ratio = self.calculate_sos_for_condition(filtered_scif, calculation_filters[KPI_SPECIFIC_FILTERS][CONDITION_2])
+                condition_scores.append(100 if condition_2_ratio >= condition_2_target else 0)
+                scenes_results.append(100 if all(condition_scores) else 0)
+                # do we need to write the result for each scene to DB
 
-            atomic_score = atomic_kpi[SCORE] if all([score == 100 for score in condition_scores]) else 0
+            atomic_result = 100 if all(scenes_results) else 0
+            atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write atomic score / maybe also result to DB
 
-    def calculate_sos_per_condition(self, condition_filters):
-        numerator_result = self.get_facings_based_on_critera(self.scif, condition_filters['numerator'])
-        denominator_result = self.get_facings_based_on_critera(self.scif, condition_filters['denominator'])
-        return float(numerator_result)/denominator_result if denominator_result != 0 else 0
+    #         # OPTION 2- SOS for session but at specific scene types - uncomment template name parameter at sos_calculation parameters
+    #         atomic_kpi = atomic_kpis_data.iloc[i]
+    #         sos_calculation_filters = self.get_sos_calculation_parameters(atomic_kpi)
+    #         condition_scores = []
+    #
+    #         condition_1_target = float(atomic_kpi[CONDITION_1_TARGET])/100
+    #         condition_1_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_1])
+    #         condition_scores.append(100 if condition_1_ratio >=condition_1_target else 0)
+    #
+    #         condition_2_target = float(atomic_kpi[CONDITION_2_TARGET])/100
+    #         condition_2_ratio = self.calculate_sos_per_condition(sos_calculation_filters[CONDITION_2])
+    #         condition_scores.append(100 if condition_2_ratio >= condition_2_target else 0)
+    #
+    #         atomic_score = atomic_kpi[SCORE] if all([score == 100 for score in condition_scores]) else 0
+    #         self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+    #         # write atomic score / maybe also result to DB
+    #
+    # def calculate_sos_per_condition(self, condition_filters):
+    #     numerator_result = self.get_facings_based_on_critera(self.scif, condition_filters['numerator'])
+    #     denominator_result = self.get_facings_based_on_critera(self.scif, condition_filters['denominator'])
+    #     return float(numerator_result)/denominator_result if denominator_result != 0 else 0
+
+    def calculate_sos_for_condition(self, df, condition_filters):
+        numerator_result = self.get_facings_based_on_critera(df, condition_filters['numerator'])
+        denominator_result = self.get_facings_based_on_critera(df, condition_filters['denominator'])
+        return float(numerator_result) / denominator_result if denominator_result != 0 else 0
 
     def get_facings_based_on_critera(self, scif, filters):
         filtered_scif = self.filter_df_based_on_filtering_dictionary(scif, filters)
@@ -370,16 +454,16 @@ class CCBZA_SANDToolBox:
                                   CONDITION_2: {'numerator':{}, 'denominator': {}}}
         calculation_parameters[CONDITION_1]['numerator'].update({atomic_kpi[CONDITION_1_NUMERATOR_TYPE]: atomic_kpi[CONDITION_1_NUMERATOR].lower()})
         calculation_parameters[CONDITION_1]['denominator'].update({atomic_kpi[CONDITION_1_DENOMINATOR_TYPE]: atomic_kpi[CONDITION_1_DENOMINATOR].lower()})
-        calculation_parameters[CONDITION_1]['denominator'].update({'product_type': 'SKU'}) # talk to Israel
-        if atomic_kpi[TEMPLATE_NAME]:
-            calculation_parameters[CONDITION_1]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
+        # calculation_parameters[CONDITION_1]['denominator'].update({'product_type': 'SKU'}) # talk to Israel
+        # if atomic_kpi[TEMPLATE_NAME]:
+        #     calculation_parameters[CONDITION_1]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
         calculation_parameters[CONDITION_1]['numerator'].update(calculation_parameters[CONDITION_1]['denominator'])
 
         calculation_parameters[CONDITION_2]['numerator'].update({atomic_kpi[CONDITION_2_NUMERATOR_TYPE]: atomic_kpi[CONDITION_2_NUMERATOR].lower()})
         calculation_parameters[CONDITION_2]['denominator'].update({atomic_kpi[CONDITION_2_DENOMINATOR_TYPE]: atomic_kpi[CONDITION_2_DENOMINATOR].lower()})
-        calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU'})  # talk to Israel
-        if atomic_kpi[TEMPLATE_NAME]:
-            calculation_parameters[CONDITION_2]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
+        # calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU'})  # talk to Israel
+        # if atomic_kpi[TEMPLATE_NAME]:
+        #     calculation_parameters[CONDITION_2]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
         calculation_parameters[CONDITION_2]['numerator'].update(calculation_parameters[CONDITION_2]['denominator'])
         return calculation_parameters
 
@@ -411,8 +495,9 @@ class CCBZA_SANDToolBox:
         target = atomic_kpi[TARGET]
         calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
                                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
         session_results = []
-        for scene in calculation_filters[GENERAL_FILTERS]['scene_fk']:
+        for scene in list_of_scenes:
             scene_results = []
             calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
             scene_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
@@ -462,7 +547,8 @@ class CCBZA_SANDToolBox:
         atomic_result = 0 # lets see if we want to make it None
         if atomic_kpi[TEMPLATE_NAME]:
             scene_results = []
-            for scene in calculation_filters[GENERAL_FILTERS]['scene_fk']:
+            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+            for scene in list_of_scenes:
                 calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
                 scene_relevant_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
                 scene_result = self.calculate_availability_result_all_skus(scene_relevant_scif, calculation_filters, atomic_kpi)
@@ -504,7 +590,8 @@ class CCBZA_SANDToolBox:
         atomic_result = 0
         if atomic_kpi[TEMPLATE_NAME]:
             scene_results = []
-            for scene in calculation_filters[GENERAL_FILTERS]['scene_fk']:
+            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+            for scene in list_of_scenes:
                 calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
                 scene_relevant_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
                 scene_result = self.calculate_availability_result_any_sku(scene_relevant_scif, calculation_filters, atomic_kpi)
