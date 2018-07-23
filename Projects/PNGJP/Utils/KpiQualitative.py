@@ -11,6 +11,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.PNGJP.Utils.Fetcher import PNGJPQueries
 from Projects.PNGJP.Utils.GeneralToolBox import PNGJPGENERALToolBox
@@ -128,6 +129,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
     VERTICAL = 'Vertical Block'
     GROUP_GOLDEN_ZONE_THRESHOLD = 'Threshold'
     PRODUCT_GROUP_ID = 'Product Group Id'
+    ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
     KPI_FORMAT = 'Category: {category} - KPI Question: {question}'
 
     def __init__(self, data_provider, output):
@@ -462,6 +464,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                 [group_index:group_index + 10 ** 4])))
         return merged_queries
 
+    @kpi_runtime(kpi_desc='calculate_golden_zone')
     def calculate_golden_zone(self, kpi, kpi_filters):
         # shelves = [4, 5]
         params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
@@ -490,7 +493,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             result = (result / float(total_group_skus)) * 100
         return score, result, threshold
 
+    @kpi_runtime(kpi_desc='calculate_block')
     def calculate_block(self, kpi, kpi_filters):
+        allowed_products_filters = {}
         threshold = 0
         params = self.block_data[self.block_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
@@ -498,8 +503,14 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         if params[self.PRODUCT_GROUP_ID].values[0] is not None:
             product_eans = self._get_ean_codes_by_product_group_id(**params)
             kpi_filter['product_ean_code'] = product_eans
+        if (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] is not None) and (params[self.ALLOWED_PRODUCT_GROUP_ID].values[0] != ''):
+            product_eans = self._get_ean_codes_by_product_group_id(column_name=self.ALLOWED_PRODUCT_GROUP_ID, **params)
+            allowed_products_filters['product_ean_code'] = product_eans
+        else:
+            allowed_products_filters = None
         if params[self.VERTICAL].values[0] == 'Y':
             block_result, num_of_shelves = self.tools.calculate_block_together(vertical=True,
+                                                                               allowed_products_filters=allowed_products_filters,
                                                                                minimum_block_ratio=float(
                                                                                    block_threshold),
                                                                                **kpi_filter)
@@ -508,11 +519,13 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
         else:
             block_result = self.tools.calculate_block_together(minimum_block_ratio=float(block_threshold),
+                                                               allowed_products_filters=allowed_products_filters,
                                                                **kpi_filter)
             score = 100 if block_result else 0
             result = 1 if block_result else 0
         return score, result, threshold
 
+    @kpi_runtime(kpi_desc='calculate_anchor')
     def calculate_anchor(self, kpi, kpi_filters):
         score = result = threshold = 0
         params = self.anchor_data[self.anchor_data['fixed KPI name'] == kpi]
@@ -565,6 +578,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             break
         return score, result, threshold
 
+    @kpi_runtime(kpi_desc='calculate_adjacency')
     def calculate_adjacency(self, kpi, kpi_filters):
         score = result = threshold = 0
         params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]

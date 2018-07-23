@@ -32,7 +32,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
         self.session_uid = session_uid
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
-                           brand_category=None, sub_brands=[], sub_brands_to_exclude=[], include_stacking=False,
+                           brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
+                           cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
                            form_factor_to_exclude=[], linear=False):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -89,6 +90,10 @@ class MARSRU_PRODMARSRUKPIFetcher:
             final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
         if sub_brands_to_exclude:
             final_result = final_result[~final_result['sub_brand'].isin(sub_brands_to_exclude)]
+        if cl_sub_cats:
+            final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
+        if cl_sub_cats_to_exclude:
+            final_result = final_result[~final_result['Client Sub Category Name'].isin(cl_sub_cats_to_exclude)]
 
         try:
             if "number of SKUs" in formula:

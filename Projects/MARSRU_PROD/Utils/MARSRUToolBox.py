@@ -16,6 +16,8 @@ from Projects.MARSRU_PROD.MARSRUFetcher import MARSRU_PRODMARSRUKPIFetcher
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 from Projects.MARSRU_PROD.Utils.PositionGraph import MARSRU_PRODPositionGraphs
 
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+
 __author__ = 'urid'
 
 BINARY = 'BINARY'
@@ -176,6 +178,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     #     kpi_level_3_results = self.data_provider.add_session_fields_old_tables(kpi_level_3_results)
     #     return kpi_level_3_results
 
+    @kpi_runtime()
     def check_for_specific_display(self, params):
         """
         This function checks if a specific display( = scene type) exists in a store
@@ -217,6 +220,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
         self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def check_availability_on_golden_shelves(self, params):
         """
         This function is used to calculate availability for given SKU on golden shelves (#3,4 from bottom)
@@ -312,7 +316,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
             try:
                 cur.execute(query)
             except :
-                print 'could not run query: {}'.format()
+                Log.error('could not run query: {}'.format(query))
+                print 'could not run query: {}'.format(query)
         self.rds_conn.db.commit()
 
     def hadle_update_custom_scif(self):
@@ -551,6 +556,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     #         Log.warning('No survey data for this session')
     #     return score
 
+    @kpi_runtime()
     def check_availability(self, params):
         """
         This function is used to calculate availability given a set pf parameters
@@ -651,6 +657,14 @@ class MARSRU_PRODMARSRUKPIToolBox:
             sub_brands_to_exclude = [str(sub_brand) for sub_brand in params.get('Sub brand to exclude').split(", ")]
         else:
             sub_brands_to_exclude = []
+        if params.get('Client Sub Category Name to include'):
+            cl_sub_cats = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to include').split(", ")]
+        else:
+            cl_sub_cats = []
+        if params.get('Client Sub Category Name to exclude'):
+            cl_sub_cats_to_exclude = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to exclude').split(", ")]
+        else:
+            cl_sub_cats_to_exclude = []
         if params.get('Stacking'):
             include_stacking = True
         if params.get('Brand Category value'):
@@ -680,6 +694,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                                              formula=formula, form_factor=form_factors,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
+                                                             cl_sub_cats=cl_sub_cats,
+                                                             cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
                                                              include_stacking=include_stacking,
                                                              form_factor_to_exclude=form_factors_to_exclude,
                                                              brand_category=brand_category)
@@ -772,6 +788,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         #         relevant_scenes.append(scene)
         return include_list
 
+    @kpi_runtime()
     def check_number_of_scenes(self, params):
         """
         This function is used to calculate number of scenes
@@ -818,6 +835,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
             # return set_total_res
 
+    @kpi_runtime()
     def check_survey_answer(self, params):
         """
         This function is used to calculate survey answer according to given target
@@ -867,7 +885,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     continue
             else:
                 self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
-                Log.warning('No survey data for this session')
+                Log.warning('No survey data with survey response code {} for this session'
+                            .format(str(int(p.get('Survey Question_ID_code')))))
             # score = self.calculate_score(kpi_total_res, p)
             # if p.get('level') == 3:  # todo should be a separate generic function
             #     # level3_output = {'result': d.get(result), 'score': score,
@@ -892,6 +911,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return score
 
+    @kpi_runtime()
     def check_price(self, params, scenes=[]):
         for p in params.values()[0]:
             kpi_total_res = 0
@@ -923,6 +943,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def custom_linear_sos(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_linear_sos':
@@ -1022,6 +1043,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return final_linear_sos_values
 
+    @kpi_runtime()
     def check_layout_size(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'layout size':
@@ -1144,6 +1166,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                     'product_fk'].unique().tolist())
         return float(final_linear_size / 1000), products
 
+    @kpi_runtime()
     def custom_marsru_1(self, params):
         """
         This function checks if a shelf size is more than 3 meters
@@ -1195,6 +1218,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return scenes_dict
 
+    @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
         self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
         for p in params.values()[0]:
@@ -1647,6 +1671,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                         'stacking_layer': match['stacking_layer'].values[0],
                                         'shelf_px_total': int(match['shelf_px_total'].values[0])}
 
+    @kpi_runtime()
     def multiple_brands_blocked_in_rectangle(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_4' and p.get('Formula') != 'custom_mars_4_2018':
@@ -1705,6 +1730,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def golden_shelves(self, params):
         """
         This function checks if a predefined product is present in golden shelves
@@ -1755,6 +1781,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def facings_by_brand(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_3' and p.get('Formula') != 'custom_mars_3_linear':
@@ -1809,6 +1836,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def must_range_skus(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_7':  # todo update in the file
@@ -1890,6 +1918,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def negative_neighbors(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_6':
@@ -1938,6 +1967,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             result_filter[filter_name] = (filter_values, is_include)
         return result_filter
 
+    @kpi_runtime()
     def get_total_linear(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'total_linear':
@@ -1958,6 +1988,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def get_placed_near(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'placed_near':
