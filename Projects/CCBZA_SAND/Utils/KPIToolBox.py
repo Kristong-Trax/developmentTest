@@ -94,8 +94,8 @@ NUMERIC_FIELDS = ['size']
 MANUFACTURER_NAME = 'manufacturer_name'
 
 #scif values
-SKU='SKU'
-POS='POS'
+SKU = 'SKU'
+POS = 'POS'
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -120,7 +120,8 @@ class CCBZA_SANDToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        # self.scif = self.data_provider[Data.SCENE_ITEM_FACTS
+        self.scif = self.get_manufacturer_related_scif()
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         # self.kpi_static_data = self.common.get_kpi_static_data()
 
@@ -179,6 +180,10 @@ class CCBZA_SANDToolBox:
         query = CCBZA_SAND_Queries.get_store_data_by_store_id(self.store_id)
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
+
+    def get_manufacturer_related_scif(self):
+        scif = self.data_provider[Data.SCENE_ITEM_FACTS].copy()
+        return scif[scif[MANUFACTURER_NAME] == KO_PRODUCTS]
 
     def get_template_path(self):
         store_type = self.store_data['store_type'].values[0]      # to check
@@ -310,17 +315,22 @@ class CCBZA_SANDToolBox:
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             max_score = atomic_kpi[SCORE]
-            target = atomic_kpi[TARGET]
+            target = float(atomic_kpi[TARGET])
             calculation_filters = self.get_general_calculation_parameters(atomic_kpi)
             # list_of_scenes = calculation_filters['scene_fk']
             session_door_count = 0
+            scene_door_count = []
             for scene in calculation_filters['scene_fk']:
                 scene_filter = {'scene_fk': scene}
-                relevant_match_prod_in_scene = self.filter_df_based_on_filtering_dictionary(self.match_product_in_scene, scene_filter)
+                matches = self.match_product_in_scene.copy()
+                relevant_match_prod_in_scene = matches[self.tools.get_filter_condition(matches, **scene_filter)]
+                    # self.filter_df_based_on_filtering_dictionary(self.match_product_in_scene, scene_filter)
                 number_of_bays = len(relevant_match_prod_in_scene['bay_number'].unique())
-                session_door_count += number_of_bays
+                scene_door_count.append(number_of_bays)
+                # session_door_count += number_of_bays
                 # should we record scene result to DB
-            atomic_result = 100 if session_door_count>=target else 0
+            atomic_result = 100 if any(doors >= target for doors in scene_door_count) else 0
+            # atomic_result = 100 if session_door_count>=target else 0
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write score to DB
@@ -446,7 +456,7 @@ class CCBZA_SANDToolBox:
             relevant_scenes = self.scif
         scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
         calculation_parameters.update(scenes_ids_filter)
-        calculation_parameters.update({'manufacturer_name': KO_PRODUCTS})  # will see if i need it based on updated template
+        # calculation_parameters.update({'manufacturer_name': KO_PRODUCTS})  # will see if i need it based on updated template
         return calculation_parameters
 
     def get_sos_calculation_parameters(self, atomic_kpi):
@@ -480,6 +490,7 @@ class CCBZA_SANDToolBox:
             if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
                 score = self.calculate_availability_pos(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
+
                 score = self.calculate_availability_sku_facing_and(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
                 score = self.calculate_availability_sku_facing_or(atomic_kpi)
@@ -548,6 +559,7 @@ class CCBZA_SANDToolBox:
         if atomic_kpi[TEMPLATE_NAME]:
             scene_results = []
             list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+
             for scene in list_of_scenes:
                 calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
                 scene_relevant_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
@@ -562,7 +574,7 @@ class CCBZA_SANDToolBox:
                 scene_results.append(scene_result)
             if scene_results:
                 # write result to DB by scene????
-                atomic_result=100 if all([result==100 for result in scene_results]) else 0
+                atomic_result=100 if all([result == 100 for result in scene_results]) else 0
         else:
             filtered_scif = self.filter_df_based_on_filtering_dictionary(self.scif, calculation_filters[GENERAL_FILTERS])
             atomic_result = self.calculate_availability_result_all_skus(filtered_scif, calculation_filters, atomic_kpi)
@@ -622,8 +634,13 @@ class CCBZA_SANDToolBox:
                                                 relevant_columns)
                     value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
                     if value_col:
-                        value_list = self.split_and_strip(atomic_kpi[value_col])
-                        condition_filters.update({atomic_kpi[column]: atomic_kpi[value_col] if len(value_list) <= 1 else value_list})
+                        value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
+                                         self.split_and_strip(atomic_kpi[value_col]))
+                        condition_filters.update({atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
+                        # current_type = atomic_kpi[column]
+                        # current_value = self.get_string_or_number(atomic_kpi[column], atomic_kpi[value_col])
+                        # condition_filters.update({current_type: current_value if len(value_list) <= 1 else value_list})
+                        # condition_filters.update({atomic_kpi[column]: self.get_string_or_number(atomic_kpi[column], atomic_kpi[value_col]) if len(value_list) <= 1 else value_list})
                     else:
                         Log.error('condition {} does not have corresponding value column'.format(column)) # should it be error?
         # if atomic_kpi[TEMPLATE_NAME]:
@@ -633,7 +650,8 @@ class CCBZA_SANDToolBox:
         return condition_filters
 
     # see later if I want to use this function
-    def get_string_or_number(self, field, value):
+    @staticmethod
+    def get_string_or_number(field, value):
         if field in NUMERIC_FIELDS:
             try:
                 value = float(value)
@@ -673,10 +691,10 @@ class CCBZA_SANDToolBox:
     def check_brand_strip(self, brand, df, target):
         pass
 
-
-    def calculate_atomic_score(self, atomic_result, max_score):
+    @staticmethod
+    def calculate_atomic_score(atomic_result, max_score):
         if max_score:
-            score = max_score if atomic_result == 100 else 0
+            score = float(max_score) if atomic_result == 100 else 0
         else:
             score = atomic_result
         return score
