@@ -98,6 +98,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.potential_products = {}
         self.custom_scif_queries = []
         self.shelf_square_boundaries = {}
+        self.kpi_results=pd.DataFrame()
         self.object_type_conversion = {'SKUs': 'product_ean_code',
                                        'BRAND': 'brand_name',
                                        'BRAND in CAT': 'brand_name',
@@ -2328,6 +2329,9 @@ class MARSRU_PRODMARSRUKPIToolBox:
             # threshold = self.thresholds_and_results[params.get('#Mars KPI NAME')]['threshold']
         else:
             result = threshold = 0
+
+        self.kpi_results = self.kpi_results.append(pd.DataFrame([params.get('#Mars KPI NAME'), score, result],
+                                                                columns=['kpi_name', 'kpi_score', 'kpi_result']))
         attributes_for_table3 = pd.DataFrame([(params.get('KPI Display name RU').encode('utf-8').replace("'","''"),
                                                self.session_uid, self.set_name, self.store_id,
                                                self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
