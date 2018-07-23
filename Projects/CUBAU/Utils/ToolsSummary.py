@@ -2,6 +2,7 @@ import os
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 from Projects.CUBAU.Utils.ParseTemplates import parse_template
+from Projects.CUBAU.Utils.GeneralToolBox import CUBAUCUBAUGENERALToolBox
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
@@ -26,6 +27,7 @@ class Summary:
         self.tools = GENERALToolBox(self.data_provider)
         self.common = Common(self.data_provider)
         self.kpi_results_queries = []
+        self.cub_tools = CUBAUCUBAUGENERALToolBox(self.data_provider, self.output)
 
 
     # @log_runtime('Main Calculation')
@@ -38,13 +40,28 @@ class Summary:
         return
 
     def calc_adjacency(self):
-        # self.adjancency.calculate_adjacency()
         kpi_data = self.template_data.loc[self.template_data['KPI Type'] == ADJACENCY]
         for index, row in kpi_data.iterrows():
             kpi_filters = {}
             kpi_filters['template_display_name'] = row['display name'].split(",")
-            score, result, threshold = self.calculate_adjacency(row, kpi_filters)
+            adjacent_products = self.calculate_relative_adjacency(row)
+            if adjacent_products:
+                self.write_to_db(kpi_data, 100, adjacent_products)
+            else:
+                self.write_to_db(kpi_data, 0, adjacent_products)
 
+        return
+
+    def calc_competitor_adjacency(self):
+        kpi_data = self.template_data.loc[self.template_data['KPI Type'] == ADJACENCY]
+        for index, row in kpi_data.iterrows():
+            kpi_filters = {}
+            kpi_filters['template_display_name'] = row['display name'].split(",")
+            competitor_products = self.calculate_relative_adjacency(row, **kpi_filters)
+            if competitor_products:
+                self.write_to_db(kpi_data, 100, 1)
+            else:
+                self.write_to_db(kpi_data, 0, 0)
         return
 
     def calc_block(self):
@@ -61,75 +78,39 @@ class Summary:
             self.write_to_db(row, score)
         return
 
-    def write_to_db(self, kpi_data, score):
+    def calculate_relative_adjacency(self, kpi_data, **general_filters):
+        adjacencies = []
+        if kpi_data.empty:
+            return None
+        direction_data = {'top': (1, 1), 'bottom': (1, 1), 'left': (1, 1), 'right': (1, 1)}
+        entity_type = kpi_data['Group A Entity Type']
+        entity_value = kpi_data['Group A Entity Value'].split(",")
+        tested_filters = {entity_type: entity_value}
+        entity_to_return = kpi_data['Anchor entity to return']
+        if kpi_data['Anchor entity'] != '':
+            anchor_filters = {kpi_data['Anchor entity']:kpi_data['Anchor value']}
+        else:
+            anchor_filters = None
+        adjacencies = self.cub_tools.calculate_adjacency_relativeness(tested_filters, direction_data, entity_to_return, anchor_filters,
+                                                                           **general_filters)
+        if adjacencies:
+            total_result = 0
+            for neighbor in list(set(adjacencies)):
+                if not total_result:
+                    total_result = neighbor
+                else:
+                    total_result = total_result + ', ' + neighbor
+            score = 100
+        else:
+            total_result = None
+            score = 0
+        # self.write_to_db(kpi_data, score, total_result)
+        return total_result
+
+
+    def write_to_db(self, kpi_data, score, result=None):
         kpi_name = kpi_data['KPI']
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, 2)
         atomic_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, 3)
         self.common.write_to_db_result(kpi_fk, 2, score)
-        self.common.write_to_db_result(atomic_kpi_fk, 3, score)
-
-    # def calculate_adjacency(self, kpi_data, kpi_filters):
-    #     score = result = threshold = 0
-    #     # params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]
-    #     kpi_filter = kpi_filters.copy()
-    #     # target = kpi_data['Target']
-    #     # target = float(target.values[0])
-    #
-    #     entity_type_group_a = kpi_data['Group A Entity Type']
-    #     entity_value_group_a = kpi_data['Group A Entity Value'].split(",")
-    #     entity_type_group_b = kpi_data['Group B Entity Type']
-    #     entity_value_group_b = kpi_data['Group B Entity Value'].split(",")
-    #     # kpi_filters['display_name'] = kpi_data['template_display name'].split(",")
-    #
-    #     group_a = {entity_type_group_a: entity_value_group_a}
-    #     group_b = {entity_type_group_b: entity_value_group_b}
-    #
-    #     allowed_filter = self.tools.get_products_by_filters({'product_type': ['Irrelevant', 'Empty', 'Other']})
-    #     allowed_filter_without_other = self.tools.get_products_by_filters({'product_type': ['Irrelevant', 'Empty']})
-    #
-    #     filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**kpi_filter)
-    #
-    #     for scene in relevant_scenes:
-    #         adjacency = self.adjacency.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
-    #                                                        allowed_filter_without_other, a_target=0.65, b_target=0.65, target=0.65)
-    #         score = result = adjacency
-            # if adjacency:
-            #     direction = params.get('Direction', 'All').values[0]
-            #     if direction == 'All':
-            #         score = result = adjacency
-            #     else:
-            #         # a = self.data_provider.products[self.tools.get_filter_condition(self.data_provider.products, **group_a)]['product_fk'].tolist()
-            #         # b = self.data_provider.products[self.tools.get_filter_condition(self.data_provider.products, **group_b)]['product_fk'].tolist()
-            #         # a = self.scif[self.scif['product_fk'].isin(a)]['product_name'].drop_duplicates()
-            #         # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
-            #
-            #         edges_a = self.block.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
-            #         edges_b = self.block.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
-            #
-            #         if edges_a and edges_b:
-            #             if direction == 'Vertical':
-            #                 if sorted(set(edges_a['shelfs'])) == sorted(set(edges_b['shelfs'])) and \
-            #                         len(set(edges_a['shelfs'])) == 1:
-            #                     score = result = 0
-            #                 elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
-            #                     score = 100
-            #                     result = 1
-            #                 elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
-            #                     score = 100
-            #                     result = 1
-            #             elif direction == 'Horizontal':
-            #                 if set(edges_a['shelfs']).intersection(edges_b['shelfs']):
-            #                     extra_margin_a = (edges_a['visual']['right'] - edges_a['visual']['left']) / 10
-            #                     extra_margin_b = (edges_b['visual']['right'] - edges_b['visual']['left']) / 10
-            #                     edges_a_right = edges_a['visual']['right'] - extra_margin_a
-            #                     edges_b_left = edges_b['visual']['left'] + extra_margin_b
-            #                     edges_b_right = edges_b['visual']['right'] - extra_margin_b
-            #                     edges_a_left = edges_a['visual']['left'] + extra_margin_a
-            #                     if edges_a_right <= edges_b_left:
-            #                         score = 100
-            #                         result = 1
-            #                     elif edges_b_right <= edges_a_left:
-            #                             score = 100
-            #                             result = 1
-        # return score, result, threshold
-
+        self.common.write_to_db_result(atomic_kpi_fk, 3, score, result=result)
