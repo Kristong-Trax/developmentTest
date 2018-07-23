@@ -69,7 +69,7 @@ class DIAGEOUSToolBox:
             self.scenes_with_shelves = {}
             for scene in scenes:
                 shelf = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene][
-                    'shelf_number'].max()
+                    'shelf_number_from_bottom'].max()
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
             self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
@@ -640,6 +640,8 @@ class DIAGEOUSToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
             'product_fk'].tolist()
+        if 3531 in product_fk_with_substs:
+            print 2
         relevant_products = self.match_product_in_scene[
             (self.match_product_in_scene['product_fk'].isin(product_fk_with_substs)) &
             (self.match_product_in_scene['scene_fk'].isin(relevant_scenes))]
