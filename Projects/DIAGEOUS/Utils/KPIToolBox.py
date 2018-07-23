@@ -640,8 +640,6 @@ class DIAGEOUSToolBox:
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
             'product_fk'].tolist()
-        if 3531 in product_fk_with_substs:
-            print 2
         relevant_products = self.match_product_in_scene[
             (self.match_product_in_scene['product_fk'].isin(product_fk_with_substs)) &
             (self.match_product_in_scene['scene_fk'].isin(relevant_scenes))]
