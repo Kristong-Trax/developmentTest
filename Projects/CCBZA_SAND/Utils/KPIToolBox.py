@@ -96,6 +96,7 @@ MANUFACTURER_NAME = 'manufacturer_name'
 #scif values
 SKU = 'SKU'
 POS = 'POS'
+OTHER = 'Other'
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -302,14 +303,111 @@ class CCBZA_SANDToolBox:
 
     def calculate_price(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
-            score = 0
+            atomic_score = 0
             atomic_kpi = atomic_kpis_data.iloc[i]
-            max_score = atomic_kpi[SCORE]
             target = atomic_kpi[TARGET]
-            if target:
-                pass
-            else:
-                pass
+            max_score = atomic_kpi[SCORE]
+            filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+                       KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+            calculation_filters = filters[GENERAL_FILTERS]
+            calculation_filters.update(filters[KPI_SPECIFIC_FILTERS])
+            list_of_scenes = calculation_filters['scene_fk']
+            session_results = []
+            for scene in list_of_scenes:
+                scene_result = 0
+                calculation_filters['scene_fk'] = scene
+                scif = self.scif.copy()
+                scene_relevant_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
+                if not scene_relevant_scif.empty:
+                    unique_skus_list = scene_relevant_scif['item_id'].unique().tolist()
+                    price_filters = {'scene_fk': scene, 'product_fk': unique_skus_list}
+                    matches = self.match_product_in_scene.copy()
+                    relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
+                    # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)][['scene_fk', 'product_fk', 'price']]
+                    if target:
+                        scene_result = self.calculate_price_vs_target(relevant_matches, unique_skus_list, target)
+                    else:
+                        scene_result = self.calculate_price_presence(relevant_matches, unique_skus_list)
+                    session_results.append(scene_result)
+                # session_results.append(scene_result) # - in case we want to count as zero score the scenes where there were no skus satidfiyting the parameters
+            if session_results:
+                atomic_result = 100 if all(session_results) else 0
+                atomic_score = self.calculate_atomic_score(atomic_result, max_score)
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+
+    @staticmethod
+    def calculate_price_presence(matches, skus_list):
+        price_presence = []
+        for sku in skus_list:
+            sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+            print sku_prices
+            is_price = True if any(price is not None for price in sku_prices) else False
+            print sku, is_price
+            price_presence.append(is_price)
+        result = 100 if all(price_presence) else 0
+        return result
+
+    @staticmethod
+    def calculate_price_vs_target(matches, skus_list, target):
+        target = float(target)
+        price_reaching_target = []
+        for sku in skus_list:
+            sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+            print sku_prices
+            price_meets_target = True if any(price <= target for price in sku_prices) else False
+            print price_meets_target
+            price_reaching_target.append(price_meets_target)
+        print price_reaching_target
+        result = 100 if all(price_reaching_target) else 0
+        return result
+
+    # def calculate_price(self, atomic_kpis_data):
+    #     for i in xrange(len(atomic_kpis_data)):
+    #         score = 0
+    #         atomic_kpi = atomic_kpis_data.iloc[i]
+    #         # max_score = atomic_kpi[SCORE]
+    #         target = atomic_kpi[TARGET]
+    #         if target:
+    #             score = self.calculate_price_vs_target(atomic_kpi)
+    #         else:
+    #             score = self.calculate_price_presence(atomic_kpi)
+    #         self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+    #         # write kpi result to DB
+    #
+    # def calculate_price_presence(self, atomic_kpi):
+    #     score = 0
+    #     max_score = atomic_kpi[SCORE]
+    #     filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+    #                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+    #     calculation_filters = filters[GENERAL_FILTERS]
+    #     calculation_filters.update(filters[KPI_SPECIFIC_FILTERS])
+    #     list_of_scenes = calculation_filters['scene_fk']
+    #     session_results = []
+    #     for scene in list_of_scenes:
+    #         scene_result = 0
+    #         calculation_filters['scene_fk'] = scene
+    #         scif = self.scif.copy()
+    #         scene_relevant_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
+    #         sku_prices_array = scene_relevant_scif['median_price'].values
+    #         if sku_prices_array:
+    #             scene_result = 100 if all([price is not None for price in sku_prices_array]) else 0
+    #         session_results.append(scene_result)
+    #     if session_results:
+    #         atomic_result = 100 if all(session_results) else 0
+    #         score = self.calculate_atomic_score(atomic_result, max_score)
+    #     return score
+    #
+    # def calculate_price_vs_target(self, atomic_kpi):
+    #     score = 0
+    #     max_score = atomic_kpi[SCORE]
+    #     target = atomic_kpi[TARGET]
+    #     filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+    #                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+    #     calculation_filters = filters[GENERAL_FILTERS]
+    #     calculation_filters.update(filters[KPI_SPECIFIC_FILTERS])
+    #     list_of_scenes = calculation_filters['scene_fk']
+    #     session_results = []
+    #     for scene in list_of_scenes:
 
     def calculate_count(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
@@ -322,7 +420,7 @@ class CCBZA_SANDToolBox:
             scene_door_count = []
             for scene in calculation_filters['scene_fk']:
                 scene_filter = {'scene_fk': scene}
-                # filter = {'scene_fk': scene, 'shelf_number': 1}
+                # filter = {'scene_fk': scene, 'shelf_number': [1, 2]}
                 matches = self.match_product_in_scene.copy()
                 # print self.tools.get_filter_condition(matches, **filter)
                 relevant_match_prod_in_scene = matches[self.tools.get_filter_condition(matches, **scene_filter)]
@@ -447,7 +545,7 @@ class CCBZA_SANDToolBox:
         return filtered_df
 
     #will be adding it when necessarry
-    def get_general_calculation_parameters(self, atomic_kpi):
+    def get_general_calculation_parameters(self, atomic_kpi, product_types = None):
         calculation_parameters = {}
         try:
             template_names = self.split_and_strip(atomic_kpi[TEMPLATE_NAME])
@@ -460,6 +558,8 @@ class CCBZA_SANDToolBox:
         scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
         calculation_parameters.update(scenes_ids_filter)
         # calculation_parameters.update({'manufacturer_name': KO_PRODUCTS})  # will see if i need it based on updated template
+        if product_types is not None:
+            calculation_parameters.update({'product_type': product_types})
         return calculation_parameters
 
     def get_sos_calculation_parameters(self, atomic_kpi):
