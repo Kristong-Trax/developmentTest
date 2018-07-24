@@ -37,6 +37,7 @@ POSM_AVAILABILITY = 'POSM Status'
 SHARE_OF = 'Share of Shelf / Assortment'
 PRICE_MONITORING = 'Price Monitoring'
 MOBILE_PRICE_MONITORING = 'Mobile Price Monitoring'
+MOBILE_PRICE_MONITORING_KPI_FK = 5891
 P2_FULFILMENT = 'Price-Monitoring fulfillment (TMR)'
 P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
@@ -622,7 +623,7 @@ class BATRUToolBox:
                                                                   left_on=['scene_id', 'item_id'],
                                                                   right_on=['scene_fk', 'product_fk'])
         if not merged_additional_data.empty:
-            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], inplace=True)
+            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], how='all', inplace=True)
 
         return merged_additional_data
 
@@ -827,12 +828,12 @@ class BATRUToolBox:
 
     def get_raw_data(self):
         # raw_data = self.merged_additional_data.dropna(subset=['price_value', 'date_value'])
-        if not self.merged_additional_data.empty:
-            # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
-            self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
-                '%m.%Y')
-        else:
-            self.merged_additional_data['Formatted_Date'] = 0
+        # if not self.merged_additional_data.empty:
+        #     # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
+        #     self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
+        #         '%m.%Y')
+        # else:
+        #     self.merged_additional_data['Formatted_Date'] = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product = row['product_ean_code']
@@ -845,11 +846,22 @@ class BATRUToolBox:
                 product_for_db = bundle_lead
             else:
                 product_for_db = product
-            self.write_to_db_result_for_api(score=row['price_value'], level=self.LEVEL3, level3_score=None,
+
+            if row['price_value'] is None:
+                price_value_for_db = 0
+            else:
+                price_value_for_db = row['price_value']
+
+            if isinstance(row['fixed_date'], pd._libs.tslib.NaTType):  # None
+                formatted_date_for_db = '0'
+            else:
+                formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+
+            self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
-            self.write_to_db_result_for_api(score=row['Formatted_Date'], level=self.LEVEL3, level3_score=None,
+            self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_DATE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
@@ -860,8 +872,8 @@ class BATRUToolBox:
 
     def set_p2_sku_mobile_results(self, monitored_sku):
         new_products = False
-        set_name = 'Mobile Price Monitoring'
-        kpi_fk = 5891
+        set_name = MOBILE_PRICE_MONITORING
+        kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
         try:
             existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
                 'product_ean_code'].isin(monitored_sku['leading'].values))]
@@ -875,6 +887,8 @@ class BATRUToolBox:
             Log.info('Updating Mobile price sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
+            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
+            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
         monitored_sku = monitored_sku.drop_duplicates(subset=['leading'], keep='last')
         for index in xrange(len(monitored_sku)):
             row = monitored_sku.iloc[index]
@@ -896,8 +910,12 @@ class BATRUToolBox:
                 if score:
                     result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
                         'price_value'].drop_duplicates().values[0]
-                    result2 = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                        'Formatted_Date'].drop_duplicates().values[0]
+                    result2 = pd.to_datetime(self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                            'fixed_date'].drop_duplicates().values[0])
+                    if not isinstance(result2, pd._libs.tslib.NaTType):
+                        result2 = pd.to_datetime(str(result2)).strftime('%m.%Y')
+                    else:
+                        result2 = None
                 self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
             except Exception as e:
                 Log.error('{}'.format(e))
@@ -1658,9 +1676,7 @@ class BATRUToolBox:
             if row['is_set_score'] == '1':
                 set_score = score
 
-            atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[
-                0]
+            atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
             kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].iloc[0]
             self.write_to_db_result(atomic_fk, result=round(score * 100, 2), score=round(score * 100, 2),
                                     score_2=round(score, 2), level=self.LEVEL3)
