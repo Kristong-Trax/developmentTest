@@ -15,6 +15,7 @@ from KPIUtils_v2.DB.Common import Common
 from Projects.PNGRO.Utils.Fetcher import PNGRO_PRODQueries
 from Projects.PNGRO.Utils.GeneralToolBox import PNGRO_PRODGENERALToolBox
 from Projects.PNGRO.Utils.ParseTemplates import parse_template
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'Israel'
 
@@ -172,6 +173,7 @@ class PNGRO_PRODToolBox:
         """
         This function calculates the KPI results.
         """
+        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
         # if not self.match_display.empty:
         #     if self.match_display['exclude_status_fk'][0] in (1, 4):
         self.calculate_linear_share_of_shelf_per_product_display()
@@ -326,6 +328,19 @@ class PNGRO_PRODToolBox:
             filters = {type1: [value1, value2], type3: value3}
         else:
             filters = {type1: value1, type2: value2, type3: value3}
+
+        try:
+            filters.pop('')
+        except:
+            pass
+        try:
+            block_products1.pop('')
+        except:
+            pass
+        try:
+            block_products2.pop('')
+        except:
+            pass
         score = self.tools.calculate_block_together(include_empty=False, minimum_block_ratio=0.9,
                                                     allowed_products_filters={'product_type': 'Other'},
                                                     block_of_blocks=True, block_products1=block_products1,

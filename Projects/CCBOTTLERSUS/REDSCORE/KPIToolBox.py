@@ -51,7 +51,7 @@ class REDToolBox:
             self.RED_SCORE_INTEG = Const.RED_SCORE_INTEG
         else:
             self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                              'MANUAL RED SURVEY_COKE_UNITED_RS_KPI_Template_v3.4.xlsx')
+                                              'MANUAL RED SURVEY_COKE_UNITED_RS_KPI_Template_v3.5.xlsx')
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
 

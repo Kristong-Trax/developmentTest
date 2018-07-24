@@ -176,6 +176,45 @@ class PNGJP_SAND2GENERALToolBox:
                     assortment += 1
         return assortment
 
+    def calculate_linear_facings_on_golden_zone(self, golden_zone_data, linear=False, **filters):
+        total_facings = 0
+        total_linear = 0
+        filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        if not filtered_df.empty:
+            scenes = filtered_df['scene_fk'].unique().tolist()
+            for scene in scenes:
+                bays = filtered_df.loc[filtered_df['scene_fk']==scene]['bay_number'].unique().tolist()
+                for bay in bays:
+                    bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene['bay_number']==bay)]
+                    filtered_bay_df = filtered_df.loc[filtered_df['bay_number'] == bay]
+                    num_shelves = bay_df['shelf_number'].max()
+                    golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
+                    facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                    linear_on_golden_zone = filtered_bay_df.loc[
+                        (filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)) & (filtered_bay_df['stacking_layer'] == 1)]['width_mm'].sum()
+                    total_linear += linear_on_golden_zone
+                    total_facings += facings_on_golden_zone
+        if linear:
+            return total_linear
+        else:
+            return total_facings
+
+    def get_golden_zone_shelves(self, shelves_num, golden_zone_template):
+        """
+        :param shelves_num: num of shelves in specific bay
+        :return: list of eye shelves
+        """
+        data = golden_zone_template.astype(int)
+        res_table = data[(data["No. of shelves max"] >= shelves_num) & (
+            data["No. of shelves min"] <= shelves_num)][["Ignore from bottom",
+                                                                              "Ignore from top"]]
+        if res_table.empty:
+            return []
+        start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+        end_shelf = shelves_num - res_table['Ignore from top'].iloc[0] + 1
+        final_shelves = range(start_shelf, end_shelf)
+        return final_shelves
+
     def calculate_share_of_shelf(self, sos_filters=None, include_empty=EXCLUDE_EMPTY, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).

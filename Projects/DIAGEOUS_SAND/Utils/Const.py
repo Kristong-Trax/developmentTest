@@ -49,7 +49,7 @@ class DIAGEOUS_SANDConst(object):
         ON: {TOTAL: 'Total Score - On Premise',
              SEGMENT: 'Segment Score - On Premise', NATIONAL: 'National Score - On Premise'},
         OFF: {TOTAL: 'Total Score - Off Premise',
-              SEGMENT: 'National Score - Off Premise', NATIONAL: 'National Score - Off Premise'}
+              SEGMENT: 'Segment Score - Off Premise', NATIONAL: 'National Score - Off Premise'}
     }
     DB_OFF_NAMES = {
         POD: {
@@ -93,7 +93,7 @@ class DIAGEOUS_SANDConst(object):
     COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
     COLUMNS_FOR_PRODUCT_PLACEMENT = [PASSED, SHELF_NAME, FACINGS]
 
-    EXTRA, OOS, DISTRIBUTED, OTHER = "EXTRA", "0", "1", "OTHER"
+    EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
     NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
     NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
     SURVEY_ANSWER = "Yes"
