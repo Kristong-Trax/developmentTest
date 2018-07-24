@@ -10,6 +10,8 @@ from KPIUtils.DB.Common import Common
 
 BLOCK = 'Block'
 ADJACENCY = 'Adjacency'
+COMPETITOR_ADJACENCY = 'Competitor Adjacency'
+KPI_SET = 'Summary KPIs'
 
 class Summary:
 
@@ -28,7 +30,10 @@ class Summary:
         self.common = Common(self.data_provider)
         self.kpi_results_queries = []
         self.cub_tools = CUBAUCUBAUGENERALToolBox(self.data_provider, self.output)
-
+        self.store_type = self.data_provider.store_type
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.session_uid= self.data_provider.session_uid
+        self.visit_date = self.data_provider.visit_date
 
     # @log_runtime('Main Calculation')
     def main_calculation(self):
@@ -37,43 +42,53 @@ class Summary:
         """
         self.calc_adjacency()
         self.calc_block()
+        self.calc_competitor_adjacency()
         return
 
     def calc_adjacency(self):
         kpi_data = self.template_data.loc[self.template_data['KPI Type'] == ADJACENCY]
         for index, row in kpi_data.iterrows():
-            kpi_filters = {}
-            kpi_filters['template_display_name'] = row['display name'].split(",")
+            # kpi_filters = {}
+            # kpi_filters['template_display_name'] = row['display name'].split(",")
             adjacent_products = self.calculate_relative_adjacency(row)
             if adjacent_products:
-                self.write_to_db(kpi_data, 100, adjacent_products)
+                self.write_to_db(row, 100, adjacent_products)
             else:
-                self.write_to_db(kpi_data, 0, adjacent_products)
+                self.write_to_db(row, 0, adjacent_products)
 
         return
 
     def calc_competitor_adjacency(self):
-        kpi_data = self.template_data.loc[self.template_data['KPI Type'] == ADJACENCY]
+        kpi_data = self.template_data.loc[self.template_data['KPI Type'] == COMPETITOR_ADJACENCY]
         for index, row in kpi_data.iterrows():
             kpi_filters = {}
             kpi_filters['template_display_name'] = row['display name'].split(",")
+            if row['Store additional attribute 1']:
+                if not self.store_info['additional_attribute_1'].values[0] in row['Store additional attribute 1'].split(","):
+                    continue
             competitor_products = self.calculate_relative_adjacency(row, **kpi_filters)
             if competitor_products:
-                self.write_to_db(kpi_data, 100, 1)
+                self.write_to_db(row, 100, 1)
             else:
-                self.write_to_db(kpi_data, 0, 0)
+                self.write_to_db(row, 0, 0)
         return
 
     def calc_block(self):
         kpi_data = self.template_data.loc[self.template_data['KPI Type'] == BLOCK]
         for index, row in kpi_data.iterrows():
             kpi_filters = {}
-            entity_type = row['Group A Entity Type']
-            entity_value = row['Group A Entity Value'].split(",")
+            if row['store type']:
+                if not row['store type'] == self.store_type:
+                    continue
+            entity_type = row['Block Entity Type']
+            entity_value = row['Block Entity Value'].split(",")
             kpi_filters[entity_type] = entity_value
             kpi_filters['template_display_name'] = row['display name'].strip().split(",")
             threshold = row['Target']
-            block_result = self.block.calculate_block_together(minimum_block_ratio=threshold, **kpi_filters)
+            if threshold:
+                threshold = float(threshold)
+            block_result = self.cub_tools.calculate_block_together(minimum_block_ratio=threshold, **kpi_filters)
+            # block_result = self.block.calculate_block_together(minimum_block_ratio=threshold, **kpi_filters) #todo:open bug to Ilan
             score = 100 if block_result else 0
             self.write_to_db(row, score)
         return
@@ -83,12 +98,12 @@ class Summary:
         if kpi_data.empty:
             return None
         direction_data = {'top': (1, 1), 'bottom': (1, 1), 'left': (1, 1), 'right': (1, 1)}
-        entity_type = kpi_data['Group A Entity Type']
-        entity_value = kpi_data['Group A Entity Value'].split(",")
+        entity_type = kpi_data['Block Entity Type']
+        entity_value = kpi_data['Block Entity Value'].split(",")
         tested_filters = {entity_type: entity_value}
-        entity_to_return = kpi_data['Anchor entity to return']
-        if kpi_data['Anchor entity'] != '':
-            anchor_filters = {kpi_data['Anchor entity']:kpi_data['Anchor value']}
+        entity_to_return = kpi_data['Anchor Entity to return']
+        if kpi_data['Anchor Entity Type'] != '':
+            anchor_filters = {kpi_data['Anchor Entity Type']:kpi_data['Anchor Entity Value']}
         else:
             anchor_filters = None
         adjacencies = self.cub_tools.calculate_adjacency_relativeness(tested_filters, direction_data, entity_to_return, anchor_filters,
@@ -96,21 +111,26 @@ class Summary:
         if adjacencies:
             total_result = 0
             for neighbor in list(set(adjacencies)):
-                if not total_result:
-                    total_result = neighbor
-                else:
-                    total_result = total_result + ', ' + neighbor
-            score = 100
+                if str(neighbor) != 'nan':
+                    if not total_result:
+                        total_result = neighbor.replace("'", "\\'").encode('utf-8')
+                    else:
+                        total_result = total_result + ', ' + neighbor.replace("'", "\\'").encode('utf-8')
         else:
             total_result = None
-            score = 0
         # self.write_to_db(kpi_data, score, total_result)
-        return total_result
+        return str(total_result)
 
 
     def write_to_db(self, kpi_data, score, result=None):
         kpi_name = kpi_data['KPI']
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, 2)
+        # store_fk = self.store_info.store_fk.values[0]
         atomic_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, 3)
         self.common.write_to_db_result(kpi_fk, 2, score)
-        self.common.write_to_db_result(atomic_kpi_fk, 3, score, result=result)
+        kwargs = self.common.create_basic_dict(atomic_kpi_fk)
+        kwargs['display_text'] = kpi_name
+        kwargs['result'] = result
+        self.common.write_to_db_result(fk=kpi_fk, level=3, score=score, **kwargs)
+                                       # session_uid=self.session_uid, display_text=kpi_name, kps_name=KPI_SET,
+                                       # atomic_kpi_fk=atomic_kpi_fk, store_fk=store_fk, result=result)
