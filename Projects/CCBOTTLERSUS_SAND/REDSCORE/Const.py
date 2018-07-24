@@ -1,50 +1,62 @@
 
-__author__ = 'ilanp'
+__author__ = 'Elyashiv'
 
 
 class Const(object):
 
-    # sheet names
-    KPIS_SHEET_NAME = 'KPIs'
-    SURVEY_SHEET_NAME = 'Survey'
-    SOS_NAME = 'SOS'
-    SKU_AVAILABILITY_SHEET_NAME = 'SKU_Availability'
-    SCENE_AVAILABILITY_SHEET_NAME = 'SCENE_Availability'
-    SURVEY_SHEET_QUESTION_PK_FIELD = 'Survey Q ID'
-    SURVEY_SHEET_ANSWER_FIELD = 'Accepted Answer'
-    EXCLUSION_SHEET = 'SKU_Exclusion'
-    SHEET = 'Sheet'
-    STORE_ATT15 = 'Store Attribute - Attr15'
+    # sheets:
+    KPIS = "KPIs"
+    AVAILABILITY = "Availability"
+    SOS = "SOS"
+    SURVEY = "Survey"
+    SKU_EXCLUSION = "SKU_Exclusion"
+    SHEETS = [
+        KPIS, AVAILABILITY, SOS, SURVEY, SKU_EXCLUSION
+    ]
 
-    # const
-    RED_SCORE = 'Red SCORE'
-    KPI_GROUP = 'KPI Group'
-    KPI_NAME = 'KPI Name'
-    PRODUCT_CODES = 'Product EAN Code'
-    SCENE_TYPE = 'SCENE TYPE (TEMPLATE NAME)'
-    SCENE_TYPE2 = 'Scene Type'
-    SCENE_TYPE_GROUP = 'Scene Type Group (Template Group)'
-    AVAILABILITY_IMPULSE_ZONE = 'Impulze zone availability'
-    WEIGHT = 'Weight'
-    TEST_GROUP_CONDITION = 'Test Group Condition'
-    CORE_BRANDS = '20oz SSD core brands in Impulse Zone Cooler'
-    TRADEMARK = 'Trademark (att2)'
-    PACKAGE_TYPE ='Package Type (att3)'
-    PRODUCT_CATEGORY = 'SSD Still (att4)'
-    CONDITION = 'Condition'
-    DISPLAY_NAME = 'Display Name'
-    STORE_TYPE = 'Store Type'
-    MANUFACTURE = 'Manufacturer'
-    BRAND_NAME = 'Brand Name'
-    SUB_CATEGORY = 'Sub Category'
-    NUM_OF_SUB_PACKAGES = 'Number of Sub Packages'
-    ENTITY_TYPE_NUMERATOR = 'Entity Type Numerator'
-    NUMERATOR = 'Numerator'
-    CATEGORY = 'Category'
-    BRAND = 'Brand'
-    TARGET = 'Target (%)'
-    TARGET2 = 'Target'
-    INCREMENTAL = 'Incremental'
+    # generic columns:
+    KPI_NAME = "KPI_name"
+    SCENE_TYPE = "scene_type"
+    SCENE_TYPE_GROUP = "scene_type_group"
+    PACKAGE_TYPE = "package_type"
+    SSD_STILL = "SSD/still"
+    STORE_ATTRIBUTE = "store_attribute"
+    TRADEMARK = "trademark"
+    TARGET = "target"
 
-    #test group condition
-    ALL_PASSED = 'All Passed'
+    # columns of KPIS
+    REGION = "Region"
+    STORE_TYPE = "store_type"
+    SCENE_LEVEL = "scene_level"
+    TESTED_GROUP = "tested_group"
+    GROUP_TARGET = "group_target"
+    CONDITION = "condition"
+    INCREMENTAL = "incremental"
+    SHEET = "sheet"
+    EXCLUSION_SHEET = "exclusion_sheet"
+    WEIGHT = "weight"
+
+    # columns of AVAILABILITY:
+    SCENE_SKU = "scene/SKU"
+    MANUFACTURER = "manufacturer"
+    BRAND = "brand"
+    PRODUCT_NAME = "product_name"
+    PRODUCT_EAN = "product_ean_code"
+    BRAND_TARGET = "brand_target"
+
+    # columns of SOS:
+    DEN_TYPES = "denominator_types"
+    DEN_VALS = "denominator_values"
+    NUM_TYPES = "numerator_types"
+    NUM_VALS = "numerator_values"
+    TRADEMARK_CONDITION = "trademark_conditional"
+
+    # columns of survey:
+    Q_TEXT = "question_text"
+    Q_ID = "question_ID"
+    ACCEPTED_ANSWER = "accepted_answer"
+    REQUIRED_ANSWER = "required_answer"
+
+    # columns of exclusion:
+    ENTITY_TYPES = "entity_types"
+    ENTITY_VALUES = "entity_values"

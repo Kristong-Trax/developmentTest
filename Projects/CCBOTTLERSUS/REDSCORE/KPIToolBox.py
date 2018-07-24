@@ -42,12 +42,12 @@ class REDToolBox:
         # load helpers
         if id == 0:
             self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                              'COKE_UNITED_RS_KPI_Template_v5.1.xlsx')
+                                              'KPITemplateV1.xlsx')
             self.RED_SCORE = Const.RED_SCORE
             self.RED_SCORE_INTEG = Const.RED_SCORE_INTEG
         else:
             self.TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                              'MANUAL RED SURVEY_COKE_UNITED_RS_KPI_Template_v3.5.xlsx')
+                                              'SurveyTemplateV1.xlsx')
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
         self.common_db = Common(self.data_provider, self.RED_SCORE)
