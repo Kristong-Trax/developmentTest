@@ -1193,7 +1193,7 @@ class BATRUToolBox:
 
         # Store level results
         if self.sas_zone_statuses_dict:
-            sas_zone_score = str(min(self.sas_zone_statuses_dict.values())) + '/' +\
+            sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
                              str(len(self.sas_zone_statuses_dict.values()))
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
@@ -1215,6 +1215,10 @@ class BATRUToolBox:
         :param priorities_section: the priorities from the match template
         :return: true if all the products' facings are right
         """
+
+        if len(priorities_section['Index (Duplications priority)'].unique().tolist()) == 1:
+            return True
+
         products_to_check = section_shelf_data \
             .loc[(section_shelf_data['manufacturer_name'] == BAT) &
                  (section_shelf_data['product_type'].isin([SKU, POSM]))]['product_ean_code_lead'].unique().tolist()
