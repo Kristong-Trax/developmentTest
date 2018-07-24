@@ -106,7 +106,7 @@ class PERFETTICNToolBox:
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
                     if res >= 0:
-                        score = 100
+                        score = 10
                     else:
                         score = 0
                     self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl1,
