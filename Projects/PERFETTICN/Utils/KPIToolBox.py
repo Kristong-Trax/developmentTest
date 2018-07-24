@@ -82,8 +82,6 @@ class PERFETTICNToolBox:
 
         for result in lvl3_result.itertuples():
             score = result.in_store
-            if score >= 1:
-                score = 100
             self.common.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
                                                       score, result.assortment_group_fk, 1, score)
         if not lvl3_result.empty:
@@ -97,7 +95,7 @@ class PERFETTICNToolBox:
                     score = 0
                 self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk,
                                                           result.passes,
-                                                          (res*100), result.assortment_super_group_fk, denominator_res,
+                                                          res, result.assortment_super_group_fk, denominator_res,
                                                           score)
 
             if not lvl2_result.empty:
@@ -106,7 +104,7 @@ class PERFETTICNToolBox:
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
                     if res >= 0:
-                        score = 10
+                        score = 100
                     else:
                         score = 0
                     self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl1,
