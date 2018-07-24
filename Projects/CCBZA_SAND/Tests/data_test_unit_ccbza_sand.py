@@ -112,9 +112,14 @@ class DataTestUnitCCBZA_SAND(object):
 
     index_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]+StoreTypes.store_list
     index_count_tab = [KPI_NAME, TEMPLATE_NAME, ATOMIC_KPI_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
-    index_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    index_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, SCORE, STORE_TYPE,
+                        ATTRIBUTE_1, ATTRIBUTE_2]
     index_price_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TYPE1, VALUE1, TYPE2, VALUE2, TYPE3, VALUE3, TARGET,
                        SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    index_sos_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE,
+                     CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_1_TARGET, CONDITION_2_NUMERATOR,
+                     CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE,
+                     CONDITION_2_TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
 
     test_kpi_1_series = pd.Series(['TEST SET', 'TEST KPI 1', 'Survey', 'Y', '', '', '', '', '', '', ''],
                                   index=index_kpi_tab)
@@ -142,6 +147,10 @@ class DataTestUnitCCBZA_SAND(object):
                                      '', 'form_factor', 'can', '5.0', '', 'L&T', 'Spaza Affordable', ''], index=index_price_tab)
     price_atomic_series_no_type_values = pd.Series(['SSD IC', 'Price compliance of 200ml Can', '', '', '', '',
                                      '', '', '', '5.0', '', 'L&T', 'Spaza Affordable', ''], index=index_price_tab)
+    sos_atomic_series = pd.Series(['Coolers', 'CCBSA Quad Cola>= 50% of CCBSA SSDs - cold of which Diets/Zeros/Lights>=30%',
+                                   'CCBSA Cooler', 'Quad Cola', 'Attribute 2', 'SSD', 'Category', '50', 'Diets',
+                                   'Attribute 3', 'SSD', 'Category', '30', '5', 'L&T', 'Spaza Affordable', ''],
+                                  index=index_sos_tab)
 
 class SCIFDataTestCCBZA_SAND(object):
 

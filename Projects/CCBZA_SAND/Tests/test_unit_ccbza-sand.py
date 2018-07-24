@@ -46,7 +46,8 @@
 #     # mock_path = 'Projects.CCBZA_SAND.Utils.KPIToolBox'
 #
 #     def setUp(self):
-#         super(TestCCBZA_SAND, self).setUp()
+#         # super(TestCCBZA_SAND, self).setUp()
+#         super(TestCCBZA_SAND, self).set_up()
 #         self.mock_data_provider()
 #         self.data_provider_mock.project_name = 'Test_Project_1'
 #         self.data_provider_mock.rds_conn = MagicMock()
@@ -449,6 +450,16 @@
 #             self.assertEquals(result[KPI_NAME], kpi[KPI_NAME])
 #             self.assertEquals(result[ATOMIC_KPI_NAME], atomics_list[i])
 #             self.assertEquals(result[SCORE], expected_atomic_scores_list[i])
+#
+#     def test_get_sos_calculation_parameters(self):
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         atomic_kpi = DataTestUnitCCBZA_SAND.sos_atomic_series
+#         filters = tool_box.get_sos_calculation_parameters(atomic_kpi)
+#         expected_result = {'Condition_1': {'denominator': {'Category': 'SSD'},
+#                                            'numerator': {'Category': 'SSD', 'Attribute 2': 'Quad Cola'}},
+#                            'Condition_2': {'denominator': {'Category': 'SSD'}, 'numerator': {'Attribute 3': 'Diets',
+#                                                                                              'Category': 'SSD'}}}
+#         self.assertDictEqual(filters, expected_result)
 #
 #     def test_get_availability_and_price_calculation_parameters(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
