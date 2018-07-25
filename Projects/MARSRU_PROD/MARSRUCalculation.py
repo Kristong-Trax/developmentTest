@@ -1,8 +1,8 @@
 import pandas as pd
 
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
@@ -57,27 +57,27 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         tool_box.commit_results_data()
         self.timer.stop('MARSRU_PRODMARSRUCalculations.run_project_calculations')
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('MARSRU_PROD calculations')
-#     Config.init()
-#     project_name = 'marsru-prod'
-#     session_uids = [  # 'fffd300a-da28-4ca6-bbaf-76202ebc72bf',
-#                     'fec86a78-da2f-4756-9d7a-abf19788864a',
-#                     'ffd38534-ba02-46ec-837f-0f5e1d903d3c',
-#                     '9a4bdacc-5365-4435-aac7-59abee434fa0',
-#                     'ffc36219-421b-4784-afca-932de4999693',
-#                     'ff1bd935-f5bc-4e73-8ea1-b2093db8ae6b',
-#                     'ff340ff1-7601-419e-a942-f49e86a1fce6'
-#     ]
-#     data_provider = KEngineDataProvider(project_name)
-#     output = Output()
-#     for session in session_uids:
-#         data_provider.load_session_data(session)
-#         MARSRU_PRODMARSRUCalculations(data_provider, output).run_project_calculations()
-#
-#     # jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
-#     # jg.create_json('KPI MARS 16.03.17.xlsx')
-#     # # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
-#     # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, output, 'MARS KPIs 2017')
-#     # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
-#     # tb.insert_new_kpis_old(project_name)
+if __name__ == '__main__':
+    LoggerInitializer.init('MARSRU_PROD calculations')
+    Config.init()
+    project_name = 'marsru-prod'
+    session_uids = [  # 'fffd300a-da28-4ca6-bbaf-76202ebc72bf',
+                    'fec86a78-da2f-4756-9d7a-abf19788864a',
+                    'ffd38534-ba02-46ec-837f-0f5e1d903d3c',
+                    '9a4bdacc-5365-4435-aac7-59abee434fa0',
+                    'ffc36219-421b-4784-afca-932de4999693',
+                    'ff1bd935-f5bc-4e73-8ea1-b2093db8ae6b',
+                    'ff340ff1-7601-419e-a942-f49e86a1fce6'
+    ]
+    data_provider = KEngineDataProvider(project_name)
+    output = Output()
+    for session in session_uids:
+        data_provider.load_session_data(session)
+        MARSRU_PRODMARSRUCalculations(data_provider, output).run_project_calculations()
+
+    # jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
+    # jg.create_json('KPI MARS 16.03.17.xlsx')
+    # # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
+    # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, output, 'MARS KPIs 2017')
+    # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
+    # tb.insert_new_kpis_old(project_name)

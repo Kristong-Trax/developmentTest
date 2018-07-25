@@ -411,14 +411,33 @@ class MARSRU_PRODMARSRUKPIFetcher:
         jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
         targets = jg.project_kpi_dict['must_range_skus']
         skus_list = []
+
         if store_type and region:  # Validation check
+
             if "EAN" in targets[0]:
+
                 for row in targets:
-                    store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
+
+                    try:
+                        kpi_name_to_check = str(row.get('KPI name').encode('utf-8'))
+                    except AttributeError as e:
+                        kpi_name_to_check = None
+
+                    try:
+                        kpi_result_to_check = str(row.get('KPI name').encode('utf-8')).split(',\n')
+                    except AttributeError as e:
+                        kpi_result_to_check = None
+
+                    try:
+                        store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
+                    except AttributeError as e:
+                        store_types = None
+
                     try:
                         regions = str(row.get('Region').encode('utf-8')).split(',\n')
                     except AttributeError as e:
                         regions = None
+
                     if regions:
                         if store_type.encode('utf-8') in store_types and region.encode('utf-8') in regions:
                             skus_list = str(row.get('EAN')).split(',\n')
@@ -429,6 +448,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                             skus_list = str(row.get('EAN')).split(', ')
                         else:
                             continue
+
             elif "Shelf # from the bottom" in targets[0]:
                 for row in targets:
                     store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
@@ -437,6 +457,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                         break
                     else:
                         continue
+
             elif "Attribute 5" in targets[0]:
                 for row in targets:
                     if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8') or \
@@ -454,6 +475,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                     skus_list.append({"shelf from": shelf_length_from,
                                       "shelf to": shelf_length_to,
                                       "result": result})
+
         return skus_list
 
     def get_filtered_matches(self, include_stacking=True):
