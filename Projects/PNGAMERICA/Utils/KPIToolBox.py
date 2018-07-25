@@ -254,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['orchestrated']:
+                # if kpi_type not in ['eye level']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -2203,7 +2203,7 @@ class PNGAMERICAToolBox:
         for brand in assortment_brands:
             brand_categories = self.all_products[self.all_products['brand_name'] == brand]['category'].unique().tolist()
             if not set(brand_categories) & set(CATEGORY_OSA_MAPPING.keys()) or not set(brand_categories) & set(
-                    self.scif['template_group'].unique().tolist()):
+                    SUPPORTED_CATEGORIES):
                 continue
             current_brand_assortment = self.all_products[
                 (self.all_products['product_fk'].isin(current_store_assortment)) &
@@ -2340,6 +2340,8 @@ class PNGAMERICAToolBox:
             try:
                 product_info = self.all_products[self.all_products['product_fk'] == product]
                 category = product_info.category.values[0]
+                if category not in SUPPORTED_CATEGORIES:
+                    continue
                 brand = product_info.brand_name.values[0]
                 ean_code = self.get_product_ean_code(product_info)
                 if is_d_void:

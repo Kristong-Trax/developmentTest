@@ -14,7 +14,8 @@ from KPIUtils.Calculations.Survey import Survey
 from Projects.CCBR_PROD.Utils.Fetcher import CCBRQueries
 from Projects.CCBR_PROD.Utils.GeneralToolBox import CCBRGENERALToolBox
 from Projects.CCBR_PROD.Data.Const import Const
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider as PsDataProvider
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider as PsDataProvider_v2
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
@@ -58,6 +59,7 @@ class CCBRToolBox:
         self.New_kpi_static_data = self.get_new_kpi_static_data()
         self.session_id = self.data_provider.session_id
         self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price_union(self.session_id)
+        self.survey_answers = PsDataProvider_v2(self.data_provider, self.output).get_result_values()
         self.common_db = Common(self.data_provider)
         self.count_sheet = pd.read_excel(PATH, Const.COUNT).fillna("")
         self.group_count_sheet = pd.read_excel(PATH, Const.GROUP_COUNT).fillna("")
@@ -167,7 +169,13 @@ class CCBRToolBox:
             if not isinstance(survey_result, (int, long, float)):
                 Log.warning("question id " + str(question_id) + " in template is not a number")
                 return
-
+        elif question_answer_template == Const.STRING:
+            possible_answers = self.survey_answers[self.survey_answers['kpi_result_type_fk']==2]
+            answer_df = possible_answers[possible_answers['value']==survey_result]
+            if answer_df.empty:
+                survey_result = -1
+            else:
+                survey_result = answer_df.iloc[0]['pk']
         else:
             answer = self.survey.check_survey_answer(('question_fk', question_id), question_answer_template)
             survey_result = 1 if answer else -1

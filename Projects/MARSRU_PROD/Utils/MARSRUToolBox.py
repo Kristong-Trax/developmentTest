@@ -658,6 +658,14 @@ class MARSRU_PRODMARSRUKPIToolBox:
             sub_brands_to_exclude = [str(sub_brand) for sub_brand in params.get('Sub brand to exclude').split(", ")]
         else:
             sub_brands_to_exclude = []
+        if params.get('Client Sub Category Name to include'):
+            cl_sub_cats = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to include').split(", ")]
+        else:
+            cl_sub_cats = []
+        if params.get('Client Sub Category Name to exclude'):
+            cl_sub_cats_to_exclude = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to exclude').split(", ")]
+        else:
+            cl_sub_cats_to_exclude = []
         if params.get('Stacking'):
             include_stacking = True
         if params.get('Brand Category value'):
@@ -687,6 +695,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                                              formula=formula, form_factor=form_factors,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
+                                                             cl_sub_cats=cl_sub_cats,
+                                                             cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
                                                              include_stacking=include_stacking,
                                                              form_factor_to_exclude=form_factors_to_exclude,
                                                              brand_category=brand_category)

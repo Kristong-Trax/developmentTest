@@ -61,11 +61,13 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('MARSRU_PROD calculations')
 #     Config.init()
 #     project_name = 'marsru-prod'
-#     session_uids = [
-#         '4675635c-1e40-41a2-b11e-6472382df1b0',
-#         'ea0f81e1-eea6-45c9-880f-7a2581a081e7',
-#         '905f5087-8fca-41c3-a901-f9a82e684137',
-#         '3ffaf3e2-de72-4001-af7e-397062b3bd6f'
+#     session_uids = [  # 'fffd300a-da28-4ca6-bbaf-76202ebc72bf',
+#                     'fec86a78-da2f-4756-9d7a-abf19788864a',
+#                     'ffd38534-ba02-46ec-837f-0f5e1d903d3c',
+#                     '9a4bdacc-5365-4435-aac7-59abee434fa0',
+#                     'ffc36219-421b-4784-afca-932de4999693',
+#                     'ff1bd935-f5bc-4e73-8ea1-b2093db8ae6b',
+#                     'ff340ff1-7601-419e-a942-f49e86a1fce6'
 #     ]
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()
