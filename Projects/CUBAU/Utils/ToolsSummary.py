@@ -76,6 +76,7 @@ class Summary:
     def calc_block(self):
         kpi_data = self.template_data.loc[self.template_data['KPI Type'] == BLOCK]
         for index, row in kpi_data.iterrows():
+            result = None
             kpi_filters = {}
             if row['store type']:
                 if not row['store type'] == self.store_type:
@@ -89,8 +90,12 @@ class Summary:
                 threshold = float(threshold)
             block_result = self.cub_tools.calculate_block_together(minimum_block_ratio=threshold, **kpi_filters)
             # block_result = self.block.calculate_block_together(minimum_block_ratio=threshold, **kpi_filters) #todo:open bug to Ilan
+            filters, relevant_scenes = self.cub_tools.separate_location_filters_from_product_filters(**kpi_filters)
             score = 100 if block_result else 0
-            self.write_to_db(row, score)
+            if len(relevant_scenes) == 0:
+                result = 'No relevant products or scenes'
+                score = None
+            self.write_to_db(row, score, result)
         return
 
     def calculate_relative_adjacency(self, kpi_data, **general_filters):
