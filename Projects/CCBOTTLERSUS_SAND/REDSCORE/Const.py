@@ -27,7 +27,7 @@ class Const(object):
     # columns of KPIS
     REGION = "Region"
     STORE_TYPE = "store_type"
-    SCENE_LEVEL = "scene_level"
+    SESSION_LEVEL = "session_level"
     TESTED_GROUP = "tested_group"
     GROUP_TARGET = "group_target"
     CONDITION = "condition"
@@ -60,3 +60,11 @@ class Const(object):
     # columns of exclusion:
     ENTITY_TYPES = "entity_types"
     ENTITY_VALUES = "entity_values"
+
+    # table of scene results
+    SCENE_FK = "scene_fk"
+    RESULT = "result"
+    KPI_FK = "kpi_fk"
+    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, KPI_FK, RESULT]
+
+    ALL = "ALL"

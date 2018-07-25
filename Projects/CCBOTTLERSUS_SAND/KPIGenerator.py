@@ -1,15 +1,24 @@
+
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCBOTTLERSUS_SAND.Utils.KPIToolBox import log_runtime
+
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.KPIToolBox import CCBOTTLERSUS_SANDREDToolBox
 
+from KPIUtils_v2.DB.Common import Common
 
-__author__ = 'ortal & ilan & Shivi'
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+__author__ = 'Elyashiv'
 
 
-class CCBOTTLERSUS_SANDCcbottlersGenerator:
+class Generator:
+
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
+        self.project_name = data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.tool_box = CCBOTTLERSUS_SANDREDToolBox(self.data_provider, self.output)
+        self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -17,14 +26,9 @@ class CCBOTTLERSUS_SANDCcbottlersGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        self.calculate_red_score()
-
-    @log_runtime('Red Score Calculations')
-    def calculate_red_score(self):
-        Log.info('starting calculate_red_score')
-        for i in xrange(2):
-            try:
-                tool_box = CCBOTTLERSUS_SANDREDToolBox(self.data_provider, self.output, i)
-                tool_box.calculate_red_score()
-            except Exception as e:
-                Log.error('failed to calculate CCBOTTLERSUS RED SCORE {}: {}'.format(i, e.message))
+        if self.tool_box.scif.empty:
+            Log.warning('Scene item facts is empty for this session')
+        # for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
+        #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
+        #     self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
+        # self.common.commit_results_data()

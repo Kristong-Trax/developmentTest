@@ -5,10 +5,9 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
-from Projects.CCBOTTLERSUS_SAND.REDSCORE.SceneKPIToolBox import CCBOTTLERSUS_SANDSceneRedToolBox
 from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-# from KPIUtils_v2.DB.CommonV2 import Common as Common2
+from KPIUtils_v2.DB.CommonV2 import Common as Common2
+
 
 __author__ = 'Elyashiv'
 
@@ -16,9 +15,9 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV1.xlsx')
 
 
-class CCBOTTLERSUS_SANDREDToolBox:
+class CCBOTTLERSUS_SANDSceneRedToolBox:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, templates, common):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -32,17 +31,13 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.survey = Survey(self.data_provider, self.output)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.templates = {}
-        for sheet in Const.SHEETS:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet)
+        self.templates = templates
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
-        self.common = Common(self.data_provider)
+        self.common = common
         self.kpi_static_data_session = self.common.kpi_static_data
-        self.scene_calculator = CCBOTTLERSUS_SANDSceneRedToolBox(data_provider, output, self.templates, self.common)
-        self.scenes_results = None
+        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -50,14 +45,17 @@ class CCBOTTLERSUS_SANDREDToolBox:
             the function gets the kpi (level 2) row, and calculates its children.
             :return: float - score of the kpi.
         """
-        self.scenes_results = self.scene_calculator.main_calculation()
         main_template = self.templates[Const.KPIS]
         main_template = main_template[(main_template[Const.REGION] == self.region) &
-                                      (main_template[Const.STORE_TYPE] == self.store_type)]
+                                      (main_template[Const.STORE_TYPE] == self.store_type) &
+                                      (main_template[Const.SESSION_LEVEL].isnull())]
         for i, line in main_template.iterrows():
-            weight = line[Const.WEIGHT]
-            if line[Const.SHEET] == Const.SURVEY:
-                self.calculate_survey_specific(line)
+            self.calculate_main_kpi(line)
+        return self.scenes_results
+
+    def write_to_scene_level(self, kpi_name, kpi_fk, scene_fk, result=0):
+        result_dict = {Const.KPI_FK: kpi_fk, Const.KPI_NAME: kpi_name, Const.SCENE_FK: scene_fk, Const.RESULT: result}
+        self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
     def calculate_main_kpi(self, kpi_line):
         kpi_name = kpi_line[Const.KPI_NAME]
@@ -76,23 +74,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return passed_counter >= target
 
     def get_kpi_function(self, kpi_type):
-        if kpi_type == Const.SURVEY:
-            return self.calculate_survey_specific
+        if kpi_type == Const.AVAILABILITY:
+            return self.calculate_availability_sku
         else:
             return None
 
-    def calculate_survey_specific(self, kpi_line):
-        question = kpi_line[Const.Q_TEXT]
-        question_id = None
-        if not question:
-            question_id = kpi_line[Const.Q_ID]
-        answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
-        if question:
-            for answer in answers:
-                if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
-                    return True
-        elif question_id:
-            for answer in answers:
-                if self.survey.check_survey_answer(survey_text=('question_fk', int(question_id)), target_answer=answer):
-                    return True
-            return False
+    def calculate_availability_sku(self, kpi_line):
+        ssd_still = kpi_line[Const.SSD_STILL]
+        scene_type = kpi_line[Const.SCENE_TYPE]
+        scene_type_group = kpi_line[Const.SCENE_TYPE_GROUP]
+        manu = kpi_line[Const.SSD_STILL]
+        ssd_still = kpi_line[Const.SSD_STILL]
+
