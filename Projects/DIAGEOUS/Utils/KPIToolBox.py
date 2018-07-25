@@ -42,7 +42,8 @@ class DIAGEOUSToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
+        self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty") &
+                                             (self.scif['substitution_product_fk'].isnull())]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
                                                   (self.all_products['category'] == 'SPIRITS')]
         self.kpi_static_data = self.common.kpi_static_data
