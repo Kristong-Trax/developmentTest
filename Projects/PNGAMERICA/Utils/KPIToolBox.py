@@ -2340,6 +2340,8 @@ class PNGAMERICAToolBox:
             try:
                 product_info = self.all_products[self.all_products['product_fk'] == product]
                 category = product_info.category.values[0]
+                if category not in SUPPORTED_CATEGORIES:
+                    continue
                 brand = product_info.brand_name.values[0]
                 ean_code = self.get_product_ean_code(product_info)
                 if is_d_void:
