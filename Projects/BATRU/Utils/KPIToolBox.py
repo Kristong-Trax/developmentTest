@@ -1,4 +1,5 @@
 # coding=utf-8
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -12,7 +13,7 @@ from Projects.BATRU.Utils.ParseTemplates import parse_template
 from Projects.BATRU.Utils.Fetcher import BATRUQueries
 from Projects.BATRU.Utils.GeneralToolBox import BATRUGENERALToolBox
 from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
-from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 
 
 __author__ = 'uri'
@@ -37,6 +38,7 @@ POSM_AVAILABILITY = 'POSM Status'
 SHARE_OF = 'Share of Shelf / Assortment'
 PRICE_MONITORING = 'Price Monitoring'
 MOBILE_PRICE_MONITORING = 'Mobile Price Monitoring'
+MOBILE_PRICE_MONITORING_KPI_FK = 5891
 P2_FULFILMENT = 'Price-Monitoring fulfillment (TMR)'
 P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
@@ -67,22 +69,6 @@ BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
-
-
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-
-        return wrapper
-
-    return decorator
 
 
 class BATRUToolBox:
@@ -622,7 +608,7 @@ class BATRUToolBox:
                                                                   left_on=['scene_id', 'item_id'],
                                                                   right_on=['scene_fk', 'product_fk'])
         if not merged_additional_data.empty:
-            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], inplace=True)
+            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], how='all', inplace=True)
 
         return merged_additional_data
 
@@ -827,12 +813,12 @@ class BATRUToolBox:
 
     def get_raw_data(self):
         # raw_data = self.merged_additional_data.dropna(subset=['price_value', 'date_value'])
-        if not self.merged_additional_data.empty:
-            # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
-            self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
-                '%m.%Y')
-        else:
-            self.merged_additional_data['Formatted_Date'] = 0
+        # if not self.merged_additional_data.empty:
+        #     # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
+        #     self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
+        #         '%m.%Y')
+        # else:
+        #     self.merged_additional_data['Formatted_Date'] = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product = row['product_ean_code']
@@ -845,11 +831,22 @@ class BATRUToolBox:
                 product_for_db = bundle_lead
             else:
                 product_for_db = product
-            self.write_to_db_result_for_api(score=row['price_value'], level=self.LEVEL3, level3_score=None,
+
+            if np.isnan(row['price_value']):  # None
+                price_value_for_db = 0
+            else:
+                price_value_for_db = format(row['price_value'], '.2f')
+
+            if isinstance(row['fixed_date'], pd._libs.tslib.NaTType):  # None
+                formatted_date_for_db = '0'
+            else:
+                formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+
+            self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
-            self.write_to_db_result_for_api(score=row['Formatted_Date'], level=self.LEVEL3, level3_score=None,
+            self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_DATE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
@@ -860,8 +857,8 @@ class BATRUToolBox:
 
     def set_p2_sku_mobile_results(self, monitored_sku):
         new_products = False
-        set_name = 'Mobile Price Monitoring'
-        kpi_fk = 5891
+        set_name = MOBILE_PRICE_MONITORING
+        kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
         try:
             existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
                 'product_ean_code'].isin(monitored_sku['leading'].values))]
@@ -875,6 +872,8 @@ class BATRUToolBox:
             Log.info('Updating Mobile price sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
+            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
+            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
         monitored_sku = monitored_sku.drop_duplicates(subset=['leading'], keep='last')
         for index in xrange(len(monitored_sku)):
             row = monitored_sku.iloc[index]
@@ -890,14 +889,26 @@ class BATRUToolBox:
                     'atomic_kpi_fk'].drop_duplicates().values[0]
                 product_fk = self.all_products[self.all_products['product_ean_code'] == row.ean_code][
                     'product_fk'].drop_duplicates().values[0]
+
                 score = 0 if self.merged_additional_data[self.merged_additional_data['item_id'] == product_fk].empty else 1
                 result = 0
                 result2 = 0
                 if score:
+
                     result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
                         'price_value'].drop_duplicates().values[0]
-                    result2 = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                        'Formatted_Date'].drop_duplicates().values[0]
+                    if np.isnan(result):  # None
+                        result = 0
+                    else:
+                        result = format(result, '.2f')
+
+                    result2 = pd.to_datetime(self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                            'fixed_date'].drop_duplicates().values[0])
+                    if isinstance(result2, pd._libs.tslib.NaTType):  # None
+                        result2 = '0'
+                    else:
+                        result2 = pd.to_datetime(str(result2)).strftime('%m.%Y')
+
                 self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
             except Exception as e:
                 Log.error('{}'.format(e))
@@ -992,8 +1003,11 @@ class BATRUToolBox:
                     (self.match_product_in_scene[shelf_number].between(start_shelf, end_shelf))]\
                     .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
-                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
+                if section_shelf_data_all.empty:
+                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    continue
 
+                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
                 if section_shelf_data.empty:
                     Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
                     continue
@@ -1193,7 +1207,7 @@ class BATRUToolBox:
 
         # Store level results
         if self.sas_zone_statuses_dict:
-            sas_zone_score = str(min(self.sas_zone_statuses_dict.values())) + '/' +\
+            sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
                              str(len(self.sas_zone_statuses_dict.values()))
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
@@ -1215,6 +1229,10 @@ class BATRUToolBox:
         :param priorities_section: the priorities from the match template
         :return: true if all the products' facings are right
         """
+
+        if len(priorities_section['Index (Duplications priority)'].unique().tolist()) == 1:
+            return True
+
         products_to_check = section_shelf_data \
             .loc[(section_shelf_data['manufacturer_name'] == BAT) &
                  (section_shelf_data['product_type'].isin([SKU, POSM]))]['product_ean_code_lead'].unique().tolist()
@@ -1343,7 +1361,7 @@ class BATRUToolBox:
 
     def get_absolute_sequence(self, shelf_data):
         if shelf_data.empty:
-            return
+            return pd.DataFrame()
         shelf_data_sequence_dict = {}
         for bay in shelf_data['bay_number'].unique().tolist():
             last_bay_seq = 0
@@ -1654,14 +1672,12 @@ class BATRUToolBox:
             if row['is_set_score'] == '1':
                 set_score = score
 
-            atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[
-                0]
+            atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
             kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].iloc[0]
-            self.write_to_db_result(atomic_fk, result=round(score * 100, 2), score=round(score * 100, 2),
-                                    score_2=round(score, 2), level=self.LEVEL3)
-            self.write_to_db_result(kpi_fk, result=round(score, 2), score_2=round(score, 2), level=self.LEVEL2)
-        self.write_to_db_result(set_fk, result=round(set_score * 100, 2), level=self.LEVEL1)
+            self.write_to_db_result(atomic_fk, result=format(score * 100, '.2f'), score=format(score * 100, '.0f'),
+                                    score_2=format(score, '.2f'), level=self.LEVEL3)
+            self.write_to_db_result(kpi_fk, result=format(score, '.0f'), score_2=format(score, '.2f'), level=self.LEVEL2)
+        self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
 
     def calculate_soa(self, row):
         manufacturer = row['Manufacturer']
