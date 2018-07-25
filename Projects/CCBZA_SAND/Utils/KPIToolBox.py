@@ -73,6 +73,7 @@ TYPE3 = 'type3'
 VALUE1 = 'value1'
 VALUE2 = 'value2'
 VALUE3 = 'value3'
+TEMPLATE_DISPLAY_NAME = 'Template Display Name'
 
 
 #Other constants
@@ -168,6 +169,8 @@ class CCBZA_SANDToolBox:
                             self.calculate_price(atomic_kpis_data)
                         elif kpi_type == 'SOS':
                             self.calculate_sos(atomic_kpis_data)
+                        elif kpi_type == 'Planogram':
+                            self.calculate_planogram_compliance(atomic_kpis_data)
                         else:
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type.encode('utf8')))
                             continue
@@ -301,13 +304,23 @@ class CCBZA_SANDToolBox:
             # take the score from the kpi tab for the relevant store
             pass
 
+    def calculate_planogram_compliance(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_score = 0
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            template_names = self.split_and_strip(atomic_kpi[TEMPLATE_DISPLAY_NAME])
+            relevant_scenes = self.scif[(self.scif['template_display_name'].isin(template_names))]
+            scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
+
+
+
     def calculate_price(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_score = 0
             atomic_kpi = atomic_kpis_data.iloc[i]
             target = atomic_kpi[TARGET]
             max_score = atomic_kpi[SCORE]
-            filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+            filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),  # add product type??
                        KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
             calculation_filters = filters[GENERAL_FILTERS]
             calculation_filters.update(filters[KPI_SPECIFIC_FILTERS])
