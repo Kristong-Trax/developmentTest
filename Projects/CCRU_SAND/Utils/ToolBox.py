@@ -2864,6 +2864,8 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_top_sku(self):
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
+        if not top_skus:
+            return
         for scene_fk in self.scif['scene_id'].unique():
             scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
