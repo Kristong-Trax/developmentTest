@@ -2203,7 +2203,7 @@ class PNGAMERICAToolBox:
         for brand in assortment_brands:
             brand_categories = self.all_products[self.all_products['brand_name'] == brand]['category'].unique().tolist()
             if not set(brand_categories) & set(CATEGORY_OSA_MAPPING.keys()) or not set(brand_categories) & set(
-                    self.scif['template_group'].unique().tolist()):
+                    SUPPORTED_CATEGORIES):
                 continue
             current_brand_assortment = self.all_products[
                 (self.all_products['product_fk'].isin(current_store_assortment)) &
