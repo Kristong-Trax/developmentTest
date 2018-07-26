@@ -16,8 +16,6 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
 __author__ = 'nissand'
 
 KPI_RESULT = 'report.kpi_results'
@@ -56,11 +54,10 @@ class DIAGEODISPUSToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_results_queries = []
-        self.template = self.occupancy_template = pd.read_excel(self.TEMPLATE_PATH)
+        self.template = pd.read_excel(self.TEMPLATE_PATH)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.manual_collection_number = self.ps_data_provider.get_manual_collection_number()
         self.custom_entities = self.ps_data_provider.get_custom_entities(self.FAMILY_BRAND)
-
     def get_kpi_fk_by_type(self, kpi_type):
         assert isinstance(kpi_type, (unicode, basestring)), "name is not a string: %r" % kpi_type
         try:
@@ -69,7 +66,7 @@ class DIAGEODISPUSToolBox:
             Log.info("Kpi name: {} is not equal to any kpi name in static table".format(kpi_type))
             return None
 
-    def get_family_brand_fk(self, brand):
+    def competition_group_fk(self, brand):
         try:
             return self.custom_entities[self.custom_entities['name'] == brand]['pk'].values[0]
         except IndexError:
@@ -80,8 +77,18 @@ class DIAGEODISPUSToolBox:
         """
         This function calculates the KPI results.
         """
-        relevant_brands = self.template['brand_name'].values
-        relevant_products = self.all_products[self.all_products['BRAND FAMILY'].isin(relevant_brands)][
+        relevant_brands = self.template['Competition Group'].values
+        # relevant_products = []
+        # for row in self.template.iterrows():
+        #     # x = row[1].values.tostr()
+        #     filters = dict([(str(k), str(v)) for k, v in dict(row[1]).items()])
+        #     tmp = self.all_products[self.genaral_toolbox(self.data_provider).get_filter_condition(
+        #         self.all_products, **filters)]['product_fk'].drop_duplicates()
+        #
+        #     if not tmp.empty:
+        #         relevant_products.append(list(tmp.values))
+        #     # relevant_products.append()
+        relevant_products = self.all_products[self.all_products['Competition Group'].isin(relevant_brands)][
             'product_fk'].drop_duplicates().values
         relevant_products = self.manual_collection_number[(self.manual_collection_number['product_fk'].isin(
             relevant_products))]['product_fk'].drop_duplicates().values
@@ -94,7 +101,7 @@ class DIAGEODISPUSToolBox:
                     self.manual_collection_number['name'] == self.DISPLAY_BOTTLES)]['value'].drop_duplicates().values[0]
             case_pack = self.all_products[self.all_products['product_fk'] == product][self.CASE_PACK].drop_duplicates().values[0]
             sku_results.loc[sku_results['sku'] == product, 'brand'] = self.all_products[self.all_products['product_fk'] == product][
-                'BRAND FAMILY'].drop_duplicates().values[0]
+                'Competition Group'].drop_duplicates().values[0]
             sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
                 display_bottles), float(case_pack))
         # sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
@@ -109,8 +116,8 @@ class DIAGEODISPUSToolBox:
                                                                                          brand]['num_of_cases'].sum()
         brand_kpi_fk = self.get_kpi_fk_by_type(self.BRAND_PERFORMANCE)
         for row in brand_results.itertuples():
-            family_brand_fk = self.get_family_brand_fk(row.brand)
-            self.common.write_to_db_result_new_tables(fk=brand_kpi_fk, numerator_id=family_brand_fk,
+            competition_group_fk = self.competition_group_fk(row.brand)
+            self.common.write_to_db_result_new_tables(fk=brand_kpi_fk, numerator_id=competition_group_fk,
                                                       numerator_result=row.num_of_cases, result=row.num_of_cases,
                                                       score=row.num_of_cases)
         return

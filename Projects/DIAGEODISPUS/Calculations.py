@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.DIAGEODISPUS_SAND.KPIGenerator import Generator
+from Projects.DIAGEODISPUS.KPIGenerator import Generator
 
 __author__ = 'nissand'
 

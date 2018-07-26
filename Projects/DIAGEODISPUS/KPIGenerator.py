@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEODISPUS_SAND.Utils.KPIToolBox import DIAGEODISPUSToolBox
+from Projects.DIAGEODISPUS.Utils.KPIToolBox import DIAGEODISPUSToolBox
 
 from KPIUtils_v2.DB.Common import Common
 
