@@ -3,8 +3,10 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+
 from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+import numpy as np
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -12,7 +14,7 @@ from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-import numpy as np
+
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'limorc'
@@ -50,8 +52,8 @@ class HEINEKENTWToolBox:
         """
         This function calculates the KPI results.
         """
-       # self.assortment_calculation()
-       # self.common.commit_results_data_to_new_tables()
+        self.assortment_calculation()
+        self.common.commit_results_data_to_new_tables()
 
     def assortment_calculation(self):
         """
@@ -65,26 +67,27 @@ class HEINEKENTWToolBox:
         for result in lvl3_result.itertuples():
             score = result.in_store
             self.common.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
-                                                      score, result.assortment_group_fk, 1, score)
+                                                        score, result.assortment_group_fk, 1, score)
         if not lvl3_result.empty:
             s = self.scif[['product_fk', 'category']]
             a = lvl3_result.merge(s, on='product_fk', how='left')
-            category_list =a['category'].unique()
+            category_list = a['category'].unique()
 
-            for cat in category_list :
-                lvl3_result_cat = lvl3_result["category"==cat]
+            for cat in category_list:
+                lvl3_result_cat = lvl3_result["category" == cat]
                 lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result_cat)
                 for result in lvl2_result.itertuples():
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
                     if result.passes >= 1:
-                            score = 100
+                        score = 100
                     else:
                         score = 0
                         self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk,
-                                                            result.passes,
-                                                            res, result.assortment_super_group_fk, denominator_res,
-                                                            score)
+                                                                      result.passes,
+                                                                      res, result.assortment_super_group_fk,
+                                                                      denominator_res,
+                                                                      score)
 
         return
 
