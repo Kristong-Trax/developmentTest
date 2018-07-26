@@ -101,8 +101,8 @@ class DIAGEOKEToolBox:
             filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
             set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
             self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name == 'Local SOS':
-            set_score = self.calculate_sos_set()
+        # elif set_name == 'Local SOS':
+        #     set_score = self.calculate_sos_set()
         else:
             return
 
@@ -128,6 +128,7 @@ class DIAGEOKEToolBox:
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
 
     def calculate_sos_set(self):
+        # todo: This is a deprecated function
         """
         This function calculates SOS for the Manufacturer (Level1), Category (Level2) and Brand (Level3) levels.
         """

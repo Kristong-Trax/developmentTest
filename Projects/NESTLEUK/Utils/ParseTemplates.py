@@ -6,7 +6,7 @@ import pandas as pd
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
 
 
-class AvailabilityConsts(object):
+class NESTLEUKAvailabilityConsts(object):
 
     SHEET_NAME = 'BPPC_AVAILABILITY'
 
@@ -47,7 +47,7 @@ class NESTLEUKParseTemplates:
     def __init__(self, template):
         self.template = template
         self.template_path = os.path.join(TEMPLATE_PATH, '{}.xlsx'.format(template))
-        self.availability_consts = AvailabilityConsts()
+        self.availability_consts = NESTLEUKAvailabilityConsts()
 
     def parse_template(self, template_path=None, sheet_name=None, lower_headers_row_index=0, upper_headers_row_index=None,
                        data_content_column_index=None, output_column_name_separator=';', input_column_name_separator=',',

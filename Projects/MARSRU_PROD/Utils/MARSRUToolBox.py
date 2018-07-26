@@ -16,6 +16,8 @@ from Projects.MARSRU_PROD.MARSRUFetcher import MARSRU_PRODMARSRUKPIFetcher
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 from Projects.MARSRU_PROD.Utils.PositionGraph import MARSRU_PRODPositionGraphs
 
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+
 __author__ = 'urid'
 
 BINARY = 'BINARY'
@@ -58,7 +60,10 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.ALL_PRODUCTS]
-        self.products['sub_brand'] = self.products['Sub Brand']#the sub_brand column is empty
+        try:
+            self.products['sub_brand'] = self.products['Sub Brand']#the sub_brand column is empty
+        except:
+            pass
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -67,7 +72,10 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif['sub_brand'] = self.scif['Sub Brand']#the sub_brand column is empty
+        try:
+            self.scif['sub_brand'] = self.scif['Sub Brand']#the sub_brand column is empty
+        except:
+            pass
         self.set_name = set_name
         self.kpi_fetcher = MARSRU_PRODMARSRUKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                        self.set_name, self.products, self.session_uid)
@@ -90,6 +98,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.potential_products = {}
         self.custom_scif_queries = []
         self.shelf_square_boundaries = {}
+        self.kpi_results_stored = pd.DataFrame()
         self.object_type_conversion = {'SKUs': 'product_ean_code',
                                        'BRAND': 'brand_name',
                                        'BRAND in CAT': 'brand_name',
@@ -170,6 +179,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     #     kpi_level_3_results = self.data_provider.add_session_fields_old_tables(kpi_level_3_results)
     #     return kpi_level_3_results
 
+    @kpi_runtime()
     def check_for_specific_display(self, params):
         """
         This function checks if a specific display( = scene type) exists in a store
@@ -211,6 +221,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
         self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def check_availability_on_golden_shelves(self, params):
         """
         This function is used to calculate availability for given SKU on golden shelves (#3,4 from bottom)
@@ -306,7 +317,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
             try:
                 cur.execute(query)
             except :
-                print 'could not run query: {}'.format()
+                Log.error('could not run query: {}'.format(query))
+                print 'could not run query: {}'.format(query)
         self.rds_conn.db.commit()
 
     def hadle_update_custom_scif(self):
@@ -545,6 +557,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
     #         Log.warning('No survey data for this session')
     #     return score
 
+    @kpi_runtime()
     def check_availability(self, params):
         """
         This function is used to calculate availability given a set pf parameters
@@ -645,6 +658,14 @@ class MARSRU_PRODMARSRUKPIToolBox:
             sub_brands_to_exclude = [str(sub_brand) for sub_brand in params.get('Sub brand to exclude').split(", ")]
         else:
             sub_brands_to_exclude = []
+        if params.get('Client Sub Category Name to include'):
+            cl_sub_cats = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to include').split(", ")]
+        else:
+            cl_sub_cats = []
+        if params.get('Client Sub Category Name to exclude'):
+            cl_sub_cats_to_exclude = [str(cl_sub_cat) for cl_sub_cat in params.get('Client Sub Category Name to exclude').split(", ")]
+        else:
+            cl_sub_cats_to_exclude = []
         if params.get('Stacking'):
             include_stacking = True
         if params.get('Brand Category value'):
@@ -674,6 +695,8 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                                              formula=formula, form_factor=form_factors,
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
+                                                             cl_sub_cats=cl_sub_cats,
+                                                             cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
                                                              include_stacking=include_stacking,
                                                              form_factor_to_exclude=form_factors_to_exclude,
                                                              brand_category=brand_category)
@@ -766,12 +789,12 @@ class MARSRU_PRODMARSRUKPIToolBox:
         #         relevant_scenes.append(scene)
         return include_list
 
+    @kpi_runtime()
     def check_number_of_scenes(self, params):
         """
         This function is used to calculate number of scenes
 
         """
-        set_total_res = 0
         for p in params.values()[0]:
             if p.get('Formula') != 'number of scenes':
                 continue
@@ -802,7 +825,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     kpi_total_res += res
 
             score = self.calculate_score(kpi_total_res, p)
-            # set_total_res += score * p.get('KPI Weight')
 
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
@@ -810,46 +832,52 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
 
-            # return set_total_res
+        return
 
+    @kpi_runtime()
     def check_survey_answer(self, params):
         """
         This function is used to calculate survey answer according to given target
 
         """
         score = False
-        d = {'Yes': [u'Да', u'ДА', u'да'], 'No': u'Нет'}
+        d = {'Yes': [u'Да', u'ДА', u'да'], 'No': [u'Нет', u'НЕТ', u'нет']}
         for p in params.values()[0]:
-            kpi_total_res = 0
+
             score = 0  # default score
             if p.get('Type') != 'SURVEY' or p.get('Formula') != 'answer for survey':
                 continue
-            survey_data = self.survey_response.loc[self.survey_response['code'] == str(int(p.get('Survey Question_ID_code')))]
+
+            survey_question_code = str(int(p.get('Survey Question_ID_code')))
+            survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
             if not survey_data['selected_option_text'].empty:
-                result = survey_data['selected_option_text'].values[0]
-                # targets = [d.get(target) if target in d.keys() else target
-                #            for target in str(p.get('Target')).split(", ")]
+
                 if p.get('Answer type') == 'Boolean':
+                    result = survey_data['selected_option_text'].values[0]
                     if result in d.get('Yes'):
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'TRUE'}
-                        # score = 'TRUE'
                     else:
-                        # score = 'FALSE'
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
-                elif p.get('Answer type') == 'List':
-                    # result = ','.join([str(result_value.encode('utf-8')) for result_value in
-                    #                    survey_data['selected_option_text'].values])
-                    # result = str([result_value for result_value in survey_data['selected_option_text'].values])
-                    result = self.kpi_fetcher.get_survey_answers_codes(survey_data['code'].values[0], survey_data['selected_option_text'].values[0])
 
+                # elif p.get('Answer type') == 'String':
+                #     result = self.kpi_fetcher.get_survey_answers_codes(survey_question_code, survey_data['selected_option_text'].values[0])
+                #     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+
+                elif p.get('Answer type') in ['List', 'String']:
+                    result = []
+                    for answer in survey_data['selected_option_text'].unique().tolist():
+                        result += [self.kpi_fetcher.get_survey_answers_codes(survey_question_code, answer)]
+
+                    result = ','.join([str(r) for r in result])
                     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
-                    # score = result
+
                 elif p.get('Answer type') == 'Int':
                     try:
                         result = int(survey_data['number_value'].values[0])
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
                     except ValueError as e:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+
                 elif p.get('Answer type') == 'Float':
                     try:
                         result = float(survey_data['number_value'].values[0])
@@ -861,31 +889,18 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     continue
             else:
                 self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
-                Log.warning('No survey data for this session')
-            # score = self.calculate_score(kpi_total_res, p)
-            # if p.get('level') == 3:  # todo should be a separate generic function
-            #     # level3_output = {'result': d.get(result), 'score': score,
-            #     #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-            #     #                  'kpi_name': p.get('KPI name Eng')}
-            #     # self.output.add_kpi_results(Keys.KPI_LEVEL_3_RESULTS, self.convert_kpi_level_3(level3_output))
-            #     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'), self.set_name)
-            #     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-            #     self.write_to_db_result(attributes_for_level3, 'level3')
-            # elif p.get('level') == 2:
-            #     # level2_output = {'result': d.get(result), 'score': score,
-            #     #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-            #     #                  'kpi_name': p.get('KPI name Eng')}
-            #     # self.output.add_kpi_results(Keys.KPI_LEVEL_2_RESULTS, self.convert_kpi_level_2(level2_output))
+                Log.warning('No survey data with survey response code {} for this session'
+                            .format(str(int(p.get('Survey Question_ID_code')))))
+
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
-            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-            self.write_to_db_result(attributes_for_level3, 'level3')
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-            # else:
-            #     Log.warning('No level indicated for this KPI')
+            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+            self.write_to_db_result(attributes_for_level3, 'level3')
 
         return score
 
+    @kpi_runtime()
     def check_price(self, params, scenes=[]):
         for p in params.values()[0]:
             kpi_total_res = 0
@@ -917,6 +932,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def custom_linear_sos(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_linear_sos':
@@ -1016,6 +1032,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return final_linear_sos_values
 
+    @kpi_runtime()
     def check_layout_size(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'layout size':
@@ -1138,6 +1155,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                     'product_fk'].unique().tolist())
         return float(final_linear_size / 1000), products
 
+    @kpi_runtime()
     def custom_marsru_1(self, params):
         """
         This function checks if a shelf size is more than 3 meters
@@ -1189,6 +1207,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         return scenes_dict
 
+    @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
         self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
         for p in params.values()[0]:
@@ -1641,6 +1660,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                         'stacking_layer': match['stacking_layer'].values[0],
                                         'shelf_px_total': int(match['shelf_px_total'].values[0])}
 
+    @kpi_runtime()
     def multiple_brands_blocked_in_rectangle(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_4' and p.get('Formula') != 'custom_mars_4_2018':
@@ -1699,6 +1719,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def golden_shelves(self, params):
         """
         This function checks if a predefined product is present in golden shelves
@@ -1749,6 +1770,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def facings_by_brand(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_3' and p.get('Formula') != 'custom_mars_3_linear':
@@ -1803,12 +1825,13 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def must_range_skus(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_7':  # todo update in the file
                 continue
             values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type, self.region,
-                                                                                   p.get('#Mars KPI NAME'))
+                                                                                   p.get('#Mars KPI NAME'), self.kpi_results_stored)
             scenes = self.get_relevant_scenes(p)
             if values_list:
                 if p.get('#Mars KPI NAME') == 2317:
@@ -1884,6 +1907,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def negative_neighbors(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_6':
@@ -1932,6 +1956,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             result_filter[filter_name] = (filter_values, is_include)
         return result_filter
 
+    @kpi_runtime()
     def get_total_linear(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'total_linear':
@@ -1952,6 +1977,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_table3 = self.create_attributes_for_level3_df(p, 100, kpi_fk)
             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
 
+    @kpi_runtime()
     def get_placed_near(self, params):
         for p in params.values()[0]:
             if p.get('Formula') != 'placed_near':
@@ -1965,7 +1991,9 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
             products_target = filtered_target_scif['product_fk'].tolist()
             products_neighbors = filtered_neighbors_scif['product_fk'].tolist()
-            score = self.calculate_block_together(allowed_products_filters={'product_fk': products_neighbors},
+            score = 0
+            if products_target:
+                score = self.calculate_block_together(allowed_products_filters={'product_fk': products_neighbors},
                                                   **({'product_fk': products_target}))
             if score:
                 result = 'TRUE'
@@ -2037,7 +2065,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
             scene_graph = self.position_graphs.get(scene).copy()
             clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
-
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
@@ -2309,6 +2336,9 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                                       'store_fk', 'visit_date',
                                                       'calculation_time', 'score', 'kpi_fk',
                                                       'atomic_kpi_fk', 'result', 'name'])
+        self.kpi_results_stored = self.kpi_results_stored.append([{'kpi_name': str(params.get('#Mars KPI NAME')),
+                                                                   'result': str(result),
+                                                                   'score': str(score)}])
 
         return attributes_for_table3
 

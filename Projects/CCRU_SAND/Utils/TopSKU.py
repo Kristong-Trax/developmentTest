@@ -1,34 +1,50 @@
-import os
+import argparse
+from datetime import timedelta
 import pandas as pd
-from datetime import datetime, timedelta
-
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from openpyxl.utils import column_index_from_string, coordinate_from_string
-
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from Trax.Utils.Logging.Logger import Log
 
-PROJECT = 'ccru_sand'
+
+PROJECT = 'ccru-sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'att5'
 
 
-class CCRU_SANDTopSKUAssortment:
 
+class CCRU_SANDTopSKUAssortment:
     STORE_NUMBER = 'Store Number'
     PRODUCT_EAN_CODE = 'Product EAN'
+    START_DATE = 'Start Date'
+    END_DATE = 'End Date'
 
     def __init__(self, rds_conn=None):
         if rds_conn is not None:
             self._rds_conn = rds_conn
         self.stores = {}
+        self.stores_with_invalid_dates = []
+        self.invalid_stores = []
+        self.invalid_products = []
         self.products = {}
-        self.all_queries = []
-        self.update_queries = []
+        self.extension_queries = []
+        self.insert_queries = []
+
+    @staticmethod
+    def parse_arguments():
+        """
+        This function gets the arguments from the command line / configuration in case of a local run and manage them.
+        :return:
+        """
+        parser = argparse.ArgumentParser(description='Top SKU CCRU')
+        parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
+        parser.add_argument('--file', type=str, required=True, help='The assortment template')
+        parser.add_argument('--update_correlations', '-uc', type=int, required=True,
+                            help='Should we update correlations?'
+                                 'as well - 0 = False, 1 = True')
+        return parser.parse_args()
 
     @property
     def current_top_skus(self):
@@ -42,7 +58,7 @@ class CCRU_SANDTopSKUAssortment:
             self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
-        except:
+        except Exception as e:
             self._rds_conn.disconnect_rds()
             self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
@@ -95,17 +111,23 @@ class CCRU_SANDTopSKUAssortment:
         data = pd.read_sql_query(query, self.rds_conn.db)
         return data
 
-    def update_db_from_json(self, data, current_skus_all_stores, immediate_change=False, discard_missing_products=False):
+    def get_store_top_skus(self, store_fk, curr_end_date_minus_a_day, curr_end_date):
+        query = """select store_fk, product_fk, start_date, end_date
+                   from pservice.custom_osa where store_fk = {} and end_date between '{}' and '{}';
+                   """.format(store_fk, curr_end_date_minus_a_day, curr_end_date)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def update_db_from_json(self, data):
         products = set()
-        missing_products = set()
         store_number = data.pop(self.STORE_NUMBER, None)
         if store_number is None:
             Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
             return
         store_fk = self.get_store_fk(store_number)
-        if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
-            return
+        start_date = data.pop(self.START_DATE, None)
+        start_date_minus_day = start_date.date() - timedelta(1)
+        end_date = data.pop(self.END_DATE, None)
         for key in data.keys():
             validation = False
             if not data[key]:
@@ -117,75 +139,139 @@ class CCRU_SANDTopSKUAssortment:
             if validation:
                 product_ean_code = str(key).split(',')[-1]
                 product_fk = self.get_product_fk(product_ean_code)
-                if product_fk is None:
-                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
-                    missing_products.add(product_ean_code)
-                    continue
                 products.add(product_fk)
-        if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
-            # return
-
         if products:
-            current_date = datetime(year=2018, month=05, day=26).date()  # If the product has a custom start_date
-            # current_date = datetime.now().date()  # If the product should be activated from today
-            if immediate_change:
-                deactivate_date = current_date - timedelta(1)
-                activate_date = current_date
-            else:
-                deactivate_date = current_date
-                activate_date = current_date + timedelta(1)
-
-            queries = []
-            # current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
-            current_skus = current_skus_all_stores[current_skus_all_stores['store_fk']==store_fk]['product_fk'].tolist()
-            products_to_deactivate = set(current_skus).difference(products)
-            products_to_activate = set(products).difference(current_skus)
-            for product_fk in products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, product_fk, deactivate_date))
+            current_store_top_sku = self.get_store_top_skus(store_fk, start_date_minus_day,
+                                                            start_date.date())['product_fk'].tolist()
+            products_to_extend = set(products).intersection(current_store_top_sku)
+            products_to_activate = set(products).difference(current_store_top_sku)
             for product_fk in products_to_activate:
-                queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
-            # self.commit_results(queries)
-            self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
-                store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
+                self.insert_queries.append(self.get_activation_query(store_fk, product_fk, start_date, end_date))
+            for product_fk in products_to_extend:
+                self.extension_queries.append(
+                    self.get_extension_query(store_fk, product_fk, end_date, start_date_minus_day, start_date))
         else:
             Log.info('{} - No products are configured as Top SKUs'.format(store_number))
 
-    def upload_top_sku_file(self, file_path, data_first_cell, ean_row_index, store_number_column_index,
-                            update_correlations=False):
-        data_first_cell = coordinate_from_string(data_first_cell)
-        data_column = column_index_from_string(data_first_cell[0]) - 1
-        data_row = int(data_first_cell[1]) - 1
-        store_number_column_index = column_index_from_string(store_number_column_index) - 1
-        # raw_data = pd.read_excel(file_path, header=range(ean_row_index, data_row), index_col=range(0, data_column))
-        raw_data = pd.read_excel(file_path)
-        raw_data = raw_data.drop_duplicates(subset='Store Number', keep='first')
-        raw_data = raw_data.fillna('')
-        data = []
-        current_skus_all_stores = self.current_top_skus
-        for index_data, store_raw_data in raw_data.iterrows():
-            # store_data = {self.STORE_NUMBER: index_data[store_number_column_index]}
-            store_data = {self.STORE_NUMBER: store_raw_data['Store Number']}
-            columns = list(store_raw_data.keys())
-            columns.remove('Start Date')
-            columns.remove('End Date')
-            columns.remove('Store Number')
+    def products_validator(self, raw_data):
+        """
+        This function check if there's a product in the template that doesn't exist in the DB
+        :param raw_data: The store assortment DF
+        :return: A fix DF without the invalid columns
+        """
+        duplicate_columns = []
+        for col in raw_data.columns:
+            if str(col).count('.'):
+                duplicate_columns.append(col)
+        data = raw_data.drop(duplicate_columns, axis=1)
+        data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
+        products_from_template = data.columns.tolist()
+        products_from_template.remove(self.STORE_NUMBER)
+        products_from_template.remove(self.START_DATE)
+        products_from_template.remove(self.END_DATE)
+        for product in products_from_template:
+            product = str(product)
+            if product.count(','):
+                products = product.replace(' ', '').split(',')
+                for prod in products:
+                    if self.product_data.loc[self.product_data['product_ean_code'] == prod].empty:
+                        Log.warning("Product with ean code = {} does not exist in the DB".format(prod))
+                        self.invalid_products.append(prod)
+                        data = data.drop(product, axis=1)
+            else:
+                if self.product_data.loc[self.product_data['product_ean_code'] == product].empty:
+                    Log.warning("Product with ean code = {} does not exist in the DB".format(product))
+                    self.invalid_products.append(product)
+                    try:
+                        data = data.drop(int(product), axis=1)
+                    except Exception as e:
+                        data = data.drop(product, axis=1)
+        return data
 
+    def store_row_validator(self, store_row):
+        """
+        This function validates each template row: It checks if the store exists in the DB and if the dates are exist
+        and logic (start date <= end date).
+        :return: True in case of a valid row, Else: False.
+        """
+        store_data = self.store_data
+        store_number_1 = store_row[self.STORE_NUMBER]
+        stores_start_date = store_row[self.START_DATE]
+        stores_end_date = store_row[self.END_DATE]
+        if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
+            Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
+            self.invalid_stores.append(store_number_1)
+            return False
+        if not stores_start_date or not stores_end_date:
+            Log.warning("Missing dates for store number {}".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+        if type(stores_start_date) in [str, unicode] or type(stores_end_date) in [str, unicode]:
+            Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+        if stores_start_date > stores_end_date:
+            Log.warning("Invalid dates for store number {}".format(store_number_1))
+            self.stores_with_invalid_dates.append(store_number_1)
+            return False
+
+        return True
+
+    def parse_and_validate(self, file_path):
+        """
+        This function gets the data from the excel file, validates it and return a valid DataFrame
+        :return: A  Dataframe with valid products
+        """
+        Log.info("Starting to read and validate the template")
+        raw_data = pd.read_excel(file_path)
+        raw_data = raw_data.drop_duplicates(subset=['Store Number', self.START_DATE, self.END_DATE], keep='first')
+        raw_data = raw_data.fillna('')
+        raw_data.columns.str.replace(' ', '')
+        raw_data = self.products_validator(raw_data)
+        return raw_data
+
+    def upload_top_sku_file(self):
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
+        update_correlations = parsed_args.update_correlations
+
+        raw_data = self.parse_and_validate(file_path)
+        Log.info("Template's validation is done! Starting to prepare the data")
+        data = []
+        for index_data, store_raw_data in raw_data.iterrows():
+            if not self.store_row_validator(store_raw_data):
+                continue
+            store_data = {}
+            columns = list(store_raw_data.keys())
             for column in columns:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
-
+        Log.info("Data's preparation and validation is done")
         if update_correlations:
-            self.update_correlations(data[0].keys())
+            self.update_correlations_func(data[0].keys())
+        Log.info("Starting to prepare the queries")
         for store_data in data:
-            self.update_db_from_json(store_data, current_skus_all_stores, immediate_change=True)
-
-        queries = self.merge_insert_queries(self.all_queries)
+            self.update_db_from_json(store_data)
+        queries = self.merge_insert_queries(self.insert_queries)
         self.commit_results(queries)
-        return data
+        Log.info("Top SKU is done!")
+        Log.info("Total number of new assortments = {}. Total number of extension assortments = {}"
+                 .format(len(self.insert_queries), len(self.extension_queries)))
+        if self.invalid_products:
+            Log.warning("The following products does not exist in the DB: {}".format(self.invalid_products))
+        if self.invalid_stores:
+            Log.warning("The following stores does not exist in the DB: {}".format(self.invalid_stores))
+        if self.stores_with_invalid_dates:
+            Log.warning("The following stores had invalid dates: {}".format(self.stores_with_invalid_dates))
+        return
 
-    def update_correlations(self, products_data):
+    def update_correlations_func(self, products_data):
+        """
+        2 products in the same columns (that seperated by ',') will counted as correlated products.
+        The function tracks them and updates static.product in attr5 of the main product (the first one in the dual)
+        :param products_data: all of the products that has a correlated product with them in their column
+        """
+        Log.info("Starting update correlated products")
         correlations = {}
         for products in products_data:
             products = str(products)
@@ -207,16 +293,17 @@ class CCRU_SANDTopSKUAssortment:
             delattr(self, '_product_data')
 
     @staticmethod
-    def get_deactivation_query(store_fk, product_fk, date):
-        query = """update {} set end_date = '{}', is_current = NULL
-                   where store_fk = {} and product_fk = {} and end_date is null""".format(TOP_SKU_TABLE, date,
-                                                                                          store_fk, product_fk)
+    def get_extension_query(store_fk, product_fk, new_end_date, curr_end_date_minus_day, curr_end_date):
+        query = """update {} set end_date = '{}'
+                   where store_fk = {} and product_fk in {} and end_date 
+                   between '{}' and '{}';""".format(TOP_SKU_TABLE, new_end_date, store_fk, product_fk,
+                                                    curr_end_date_minus_day, curr_end_date)
         return query
 
     @staticmethod
-    def get_activation_query(store_fk, product_fk, date):
-        attributes = pd.DataFrame([(store_fk, product_fk, str(date), 1)],
-                                  columns=['store_fk', 'product_fk', 'start_date', 'is_current'])
+    def get_activation_query(store_fk, product_fk, start_date, end_date):
+        attributes = pd.DataFrame([(store_fk, product_fk, str(start_date), str(end_date), None)],
+                                  columns=['store_fk', 'product_fk', 'start_date', 'end_date', 'is_current'])
         query = insert(attributes.to_dict(), TOP_SKU_TABLE)
         return query
 
@@ -234,33 +321,43 @@ class CCRU_SANDTopSKUAssortment:
         query = "update static.product set {} = '{}' where {}".format(CORRELATION_FIELD, anchor_ean_code, condition)
         return query
 
-    def commit_results(self, queries):
+    def connection_ritual(self):
+        """
+        This function connects to the DB and cursor
+        :return: rds connection and cursor connection
+        """
         self.rds_conn.disconnect_rds()
         rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
-        for query in self.update_queries:
+        return rds_conn, cur
+
+    def commit_results(self, merged_insert_queries):
+        Log.info("Starting to commit the queries")
+        rds_conn, cur = self.connection_ritual()
+        batch_size = 1000
+        query_num = 0
+        for query in self.extension_queries:
             print query
             try:
                 cur.execute(query)
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
+            if query_num > batch_size:
+                query_num = 0
+                rds_conn, cur = self.connection_ritual()
+                rds_conn.db.commit()
+            query_num += 1
         rds_conn.db.commit()
-        rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        for query in queries:
+        rds_conn, cur = self.connection_ritual()
+        for query in merged_insert_queries:
             print query
             try:
                 cur.execute(query)
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-                cur = rds_conn.db.cursor()
+                rds_conn, cur = self.connection_ritual()
                 continue
         rds_conn.db.commit()
 
@@ -286,29 +383,25 @@ class CCRU_SANDTopSKUAssortment:
         query = insert(attributes.to_dict(), CUSTOM_SCIF_TABLE)
         return query
 
-    def merge_insert_queries(self, insert_queries):
-        # other_queries = []
+    @staticmethod
+    def merge_insert_queries(insert_queries):
         query_groups = {}
         for query in insert_queries:
-            if 'update' in query:
-                self.update_queries.append(query)
-            else:
-                static_data, inserted_data = query.split('VALUES ')
-                if static_data not in query_groups:
-                    query_groups[static_data] = []
-                query_groups[static_data].append(inserted_data)
+            static_data, inserted_data = query.split('VALUES ')
+            if static_data not in query_groups:
+                query_groups[static_data] = []
+            query_groups[static_data].append(inserted_data)
         merged_queries = []
         for group in query_groups:
             for group_index in xrange(0, len(query_groups[group]), 10**4):
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index+10**4])))
-        # merged_queries.extend(other_queries)
         return merged_queries
 
+
 if __name__ == '__main__':
-    LoggerInitializer.init('test')
-    rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
-    ts = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
-    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Targets June OSA.xlsx', data_first_cell='D2',
-                           ean_row_index=1, store_number_column_index='A', update_correlations=True)
-#     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
+    LoggerInitializer.init('Top SKU CCRU-SAND')
+    ts = CCRU_SANDTopSKUAssortment()
+    ts.upload_top_sku_file()
+# # # To run it locally just copy: -e prod --file **your file path** -uc 1 or 0 to the configuration
+# # # At the end of the script there are logs with all of the invalid products, store numbers and dates

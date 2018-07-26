@@ -172,9 +172,9 @@ class PNGRO_SAND_PRODToolBox:
         """
         This function calculates the KPI results.
         """
-        if not self.match_display.empty:
-            if self.match_display['exclude_status_fk'][0] in (1, 4):
-                self.calculate_linear_share_of_shelf_per_product_display()
+        # if not self.match_display.empty:
+        #     if self.match_display['exclude_status_fk'][0] in (1, 4):
+        self.calculate_linear_share_of_shelf_per_product_display()
 
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         for x, params in self.sbd_kpis_data.iterrows():
@@ -281,7 +281,7 @@ class PNGRO_SAND_PRODToolBox:
         survey_name = params['Param (1) Values']
         target_answers = params['Param (2) Values'].split(',')
         survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
-        score = 100 if survey_answer in target_answers else 0
+        score = 1 if survey_answer in target_answers else 0
         return score
 
     def calculate_sos(self, params, **general_filters):
@@ -570,7 +570,7 @@ class PNGRO_SAND_PRODToolBox:
         return merged_queries
 
     def get_display_agg(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_name'] == 'Secondary shelf'][
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]

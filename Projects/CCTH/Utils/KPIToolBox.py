@@ -666,6 +666,7 @@ class CCTHToolBox(CCTHConsts):
         availability_target = int(availability_target)
         products = str(availability_data[self.template.availability_consts.PRODUCT_EAN_CODES]).split(
             self.template.SEPARATOR)
+        products = map(lambda x: x.strip(), products)
         availability = self.tools.calculate_availability(product_ean_code=products, additional_attribute_1=scene_types)
         availability_result = 100 if availability >= availability_target else 0
 

@@ -293,6 +293,8 @@ class RBUSRBUSToolBox:
         """
         product_fk = row.product_fk
         all_products_row = self.all_products.loc[self.all_products.product_fk == product_fk]
+        if column_name == 'Sub Brand':
+            column_name = 'sub_brand_name'
         value = all_products_row[column_name].values[0]
         return value
 

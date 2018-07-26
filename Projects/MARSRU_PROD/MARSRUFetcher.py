@@ -32,7 +32,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
         self.session_uid = session_uid
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
-                           brand_category=None, sub_brands=[], sub_brands_to_exclude=[], include_stacking=False,
+                           brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
+                           cl_sub_cats=[], cl_sub_cats_to_exclude=[], include_stacking=False,
                            form_factor_to_exclude=[], linear=False):
         object_type_conversion = {'SKUs': 'product_ean_code',
                                   'BRAND': 'brand_name',
@@ -89,6 +90,10 @@ class MARSRU_PRODMARSRUKPIFetcher:
             final_result = final_result[final_result['sub_brand'].isin(sub_brands)]
         if sub_brands_to_exclude:
             final_result = final_result[~final_result['sub_brand'].isin(sub_brands_to_exclude)]
+        if cl_sub_cats:
+            final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
+        if cl_sub_cats_to_exclude:
+            final_result = final_result[~final_result['Client Sub Category Name'].isin(cl_sub_cats_to_exclude)]
 
         try:
             if "number of SKUs" in formula:
@@ -401,30 +406,52 @@ class MARSRU_PRODMARSRUKPIFetcher:
 
         return final_answers
 
-    def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name):
+    def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
         jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
         jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
         targets = jg.project_kpi_dict['must_range_skus']
         skus_list = []
+
         if store_type and region:  # Validation check
-            if "EAN" in targets[0]:
+
+            if 'EAN' in targets[0]:
+
                 for row in targets:
-                    store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
-                    try:
-                        regions = str(row.get('Region').encode('utf-8')).split(',\n')
-                    except AttributeError as e:
-                        regions = None
-                    if regions:
-                        if store_type.encode('utf-8') in store_types and region.encode('utf-8') in regions:
-                            skus_list = str(row.get('EAN')).split(',\n')
-                        else:
-                            continue
+
+                    if 'Store type' in row:
+                        store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
                     else:
-                        if store_type.encode('utf-8') in store_types:
-                            skus_list = str(row.get('EAN')).split(', ')
+                        store_types = []
+
+                    if 'Region' in row:
+                        regions = str(row.get('Region').encode('utf-8')).split(',\n')
+                    else:
+                        regions = []
+
+                    if (not store_types or store_type.encode('utf-8') in store_types) and\
+                        (not regions or region.encode('utf-8') in regions):
+
+                        if 'KPI name' in row:
+
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
+                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').split(',\n')
+                            kpi_result = kpi_results[kpi_results['kpi_name'] == kpi_name_to_check]['result']
+                            if not kpi_result.empty:
+                                if kpi_result[0] in kpi_results_to_check:
+                                    skus_list = str(row.get('EAN')).split(',\n')
+                                    break
+                                else:
+                                    continue
+                            else:
+                                continue
+
                         else:
-                            continue
-            elif "Shelf # from the bottom" in targets[0]:
+                            skus_list = str(row.get('EAN')).split(',\n')
+                            break
+                    else:
+                        continue
+
+            elif 'Shelf # from the bottom' in targets[0]:
                 for row in targets:
                     store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
                     if store_type.encode('utf-8') in store_types:
@@ -432,7 +459,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
                         break
                     else:
                         continue
-            elif "Attribute 5" in targets[0]:
+
+            elif 'Attribute 5' in targets[0]:
                 for row in targets:
                     if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8') or \
                                     store_type.encode('utf-8') != row.get('Store type').encode('utf-8'):
@@ -446,9 +474,10 @@ class MARSRU_PRODMARSRUKPIFetcher:
                     except ValueError:
                         shelf_length_to = 10000
                     result = str(row.get('Result'))
-                    skus_list.append({"shelf from": shelf_length_from,
-                                      "shelf to": shelf_length_to,
-                                      "result": result})
+                    skus_list.append({'shelf from': shelf_length_from,
+                                      'shelf to': shelf_length_to,
+                                      'result': result})
+
         return skus_list
 
     def get_filtered_matches(self, include_stacking=True):

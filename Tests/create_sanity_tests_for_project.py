@@ -15,7 +15,7 @@ this module creates dump file and sanity test classes for a specific project.
 all you have to do is to insert the project name and run it 
 """
 
-TOP_SESSIONS = list()
+TOP_SESSIONS = []
 
 
 class SeedCreator:
@@ -33,7 +33,7 @@ class SeedCreator:
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         self.rds_name = self.rds_conn.project_params['rds_name']
-        self.seed_name = '{}_seed.sql.gz'.format(project)
+        self.seed_name = '{}_seed.sql.gz'.format(project.replace('-', '_'))
         self.export_dir = os.path.join('/home', self.user, 'dev', 'traxdatabase', 'traxExport')
 
     def get_top_sessions(self):
@@ -57,13 +57,20 @@ class SeedCreator:
             TOP_SESSIONS.append(session)
         return sessions_df.session_uid.values
 
-    def activate_exporter(self):
+    def get_specific_session(self, session_uid):
+        TOP_SESSIONS.append(session_uid)
+        return [session_uid]
+
+    def activate_exporter(self, specific_session=None):
         """
         this method build a dump file with traxExporter from the given sessions
         :return: None
         """
         os.chdir(self.export_dir)
-        sessions = self.get_top_sessions()
+        if specific_session is not None:
+            sessions = self.get_specific_session(specific_session)
+        else:
+            sessions = self.get_top_sessions()
         Log.info('Activating exporter')
         export_command = """./traxExportIntuition.sh {0} {1} session_uid {2}""". \
             format(self.rds_name, self.output_dir, sessions[0])
@@ -71,7 +78,7 @@ class SeedCreator:
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
         shutil.copy2(os.path.join(self.output_dir, self.seed_name),
-                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', self.seed_name))
+                     os.path.join('/home', self.user, 'dev', 'kpi_factory', 'Tests', 'Data', 'Seeds', self.seed_name))
         Log.info('Done')
 
 
@@ -81,15 +88,16 @@ class SanityTestsCreator:
     """
     TEST_CLASS = """
 import os
+import MySQLdb
+
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.test_data_%(project)s_sanity import ProjectsSanityData
+from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
 
 
@@ -135,7 +143,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.project_capital = self.project.upper().replace('-', '_')
         self.user = os.environ.get('USER')
         self.project_short = self.project_capital.split('_')[0]
-        self.main_class_name = '{}Calculations'.format(self.project_short)
+        self.main_class_name = '{}Calculations'.format(self.project_capital)
         self.session_list = session_list
 
     def create_test_class(self):
@@ -146,7 +154,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
-                           'seed': '{}_seed'.format(self.project),
+                           'seed': '{}_seed'.format(self.project.replace('-','_')),
                            'project': self.project,
                            'session_0': self.session_list[0],
                            # 'session_1': self.session_list[1],
@@ -172,9 +180,9 @@ class CreateTestDataProjectSanity:
         :return:  None
         """
         seed_data = """DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/{}_seed.sql.gz'],
+                        FILES_RELATIVE_PATH: ['Data/Seeds/{}_seed.sql.gz'],
                         PROJECT_NAME: project_name
-                """.format(self.project)
+                """.format(self.project.replace('-', '_'))
         seed_data = '{' + seed_data
 
         seed_data = seed_data + '        }'
@@ -190,10 +198,11 @@ __author__ = '{0}'
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
     {1}_seed = {2} 
-""".format(self.user, self.project, seed_data)
+""".format(self.user, self.project.replace('-', '_'), seed_data)
 
         data_class_path = \
-            ('/home/{0}/dev/kpi_factory/Tests/Data/test_data_{1}_sanity'.format(self.user, self.project))
+            ('/home/{0}/dev/kpi_factory/Tests/Data/TestData/test_data_{1}_sanity'.format(self.user,
+                                                                                self.project.replace('-', '_')))
 
         with open(data_class_path + '.py', 'wb') as f:
             f.write(data_class_content)
@@ -202,7 +211,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'inbevtradmx'
+    project_to_test = 'mychemistau'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()

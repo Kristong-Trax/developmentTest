@@ -22,11 +22,11 @@ class DIAGEORUDIAGEORUCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoru-sand calculations')
+#     LoggerInitializer.init('diageoru calculations')
 #     Config.init()
-#     project_name = 'diageoru-sand'
+#     project_name = 'diageoru'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = ''
+#     session = '68680f5f-0499-4fab-ab74-291e4c4890d7'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEORUDIAGEORUCalculations(data_provider, output).run_project_calculations()
