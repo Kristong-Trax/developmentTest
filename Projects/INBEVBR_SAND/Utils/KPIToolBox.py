@@ -25,7 +25,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.8 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.0 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -55,9 +55,21 @@ class INBEVBRToolBox:
         self.tools = INBEVBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_type_filter = self.store_info['store_type'].values[0].strip()
-        self.region_name_filter = self.store_info['region_name'].values[0].strip()
-        self.state_name_filter = self.store_info['additional_attribute_2'].values[0].strip()
+        try:
+            self.store_type_filter = self.store_info['store_type'].values[0].strip()
+        except:
+            Log.error("there is no store type in the db")
+            return
+        try:
+            self.region_name_filter = self.store_info['region_name'].values[0].strip()
+        except:
+            Log.error("there is no region in the db")
+            return
+        try:
+            self.state_name_filter = self.store_info['additional_attribute_2'].values[0].strip()
+        except:
+            Log.error("there is no state in the db")
+            return
         self.kpi_results_queries = []
         self.survey = Survey(self.data_provider, self.output)
         self.kpi_results_new_tables_queries = []
@@ -373,7 +385,7 @@ class INBEVBRToolBox:
                                 Const.MANUFACTURER: 'manufacturer_name',
                                 Const.CONTAINER_TYPE: 'form_factor',
                                 Const.ATT1: 'att1',
-                                Const.FLAVOR: 'flavor',
+                                Const.FLAVOR: 'Flavor',
                                 Const.BEER_TYPE: 'att2'}
 
         for key in filters.keys():
