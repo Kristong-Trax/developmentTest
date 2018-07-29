@@ -19,9 +19,9 @@ class CUBAUCalculations(BaseCalculationsScript):
 if __name__ == '__main__':
     Log.init('cubau calculations')
     Config.init()
-    project_name = 'CUB'
+    project_name = 'CUB-NEW'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['b729413c-fcf1-43bb-8fa1-06c6735c8cb2']
+    sessions = ['20D7323A-AD23-4C1F-BCEA-3788836C7AF5']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
