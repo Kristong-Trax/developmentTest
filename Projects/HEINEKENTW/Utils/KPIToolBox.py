@@ -27,6 +27,18 @@ class HEINEKENTWToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
 
+    DIST_STORE_LVL1 = 1014
+    OOS_STORE_LVL1 = 1015
+    DIST_STORE_LVL2 = 1016
+    OOS_STORE_LVL2 = 1017
+
+    DIST_CATEGORY_LVL1 = 1018
+    OOS_CATEGORY_LVL1 = 1019
+    DIST_CATEGORY_LVL2 = 1020
+    OOS_CATEGORY_LVL2 = 1021
+
+    MANUFACTURER_FK = 233  # heinken manfucturer
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -50,41 +62,99 @@ class HEINEKENTWToolBox:
         """
         This function calculates the KPI results.
         """
-       # self.assortment_calculation()
-       # self.common.commit_results_data_to_new_tables()
 
-    def assortment_calculation(self):
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        self.category_assortment_calculation(lvl3_result)
+        self.store_assortment_calculation(lvl3_result)
+        self.common.commit_results_data_to_new_tables()
+
+    def category_assortment_calculation(self,lvl3_result):
         """
         This function calculates 3 levels of assortment :
         level3 is assortment SKU
         level2 is assortment groups
         level1 how many groups passed out of all
         """
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
-
-        for result in lvl3_result.itertuples():
-            score = result.in_store
-            self.common.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
-                                                      score, result.assortment_group_fk, 1, score)
         if not lvl3_result.empty:
-            s = self.scif[['product_fk', 'category']]
-            a = lvl3_result.merge(s, on='product_fk', how='left')
-            category_list =a['category'].unique()
+            cat_df = self.scif[['product_fk', 'category_fk']]
+            lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
+            lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
+            for result in lvl3_with_cat.itertuples():
+                score = result.in_store * 100
+                # Distrubtion
+                self.common.write_to_db_result_new_tables(fk=self.DIST_CATEGORY_LVL1, numerator_id=result.product_fk,
+                                                          numerator_result=score,
+                                                          result=score, denominator_id=result.category_fk,
+                                                          denominator_result=1, score=score, score_after_actions=score)
+                # OOS
+                self.common.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL1, numerator_id=result.product_fk,
+                                                          numerator_result=100 - score,
+                                                          result=score, denominator_id=result.category_fk,
+                                                          denominator_result=1, score=100 - score,
+                                                          score_after_actions=score)
 
-            for cat in category_list :
-                lvl3_result_cat = lvl3_result["category"==cat]
+            category_list = cat_df['category_fk'].unique()
+            for cat in category_list:
+                lvl3_result_cat = lvl3_with_cat[lvl3_with_cat["category_fk"] == cat]
                 lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result_cat)
                 for result in lvl2_result.itertuples():
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
-                    if result.passes >= 1:
-                            score = 100
-                    else:
-                        score = 0
-                        self.common.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk,
-                                                            result.passes,
-                                                            res, result.assortment_super_group_fk, denominator_res,
-                                                            score)
+                    # Distrubtion
+                    self.common.write_to_db_result_new_tables(fk=self.DIST_CATEGORY_LVL2,
+                                                              numerator_id=self.MANUFACTURER_FK,
+                                                              numerator_result=result.passes,
+                                                              denominator_id=cat,
+                                                              denominator_result=denominator_res,
+                                                              result=res, score=res, score_after_actions=res)
 
+                    # OOS
+                    self.common.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL2,
+                                                              numerator_id=self.MANUFACTURER_FK,
+                                                              numerator_result=denominator_res - result.passes,
+                                                              denominator_id=cat,
+                                                              denominator_result=denominator_res,
+                                                              result=1 - res, score=(1 - res),
+                                                              score_after_actions=1 - res)
         return
 
+    def store_assortment_calculation(self,lvl3_result):
+        """
+        This function calculates the KPI results.
+        """
+
+        for result in lvl3_result.itertuples():
+            score = result.in_store*100
+            # Distrubtion
+            self.common.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL1, numerator_id=result.product_fk,
+                                                      numerator_result=score,
+                                                      result=score, denominator_id=self.store_id,
+                                                      denominator_result=1, score=score)
+            # OOS
+            self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL1, numerator_id=result.product_fk,
+                                                      numerator_result=100-score,
+                                                      result=100-score, denominator_id=self.store_id,
+                                                      denominator_result=1, score=(100-score), score_after_actions=100-score)
+
+        if not lvl3_result.empty:
+            self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and result.group_target_date <= self.current_date:
+                    denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res))
+                # Distrubtion
+                self.common.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL2, numerator_id=self.MANUFACTURER_FK,
+                                                          denominator_id=self.store_id,
+                                                          numerator_result=result.passes, denominator_result=denominator_res,
+                                                          result=res, score=res,score_after_actions=res)
+
+                # OOS
+                self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL2,
+                                                          numerator_id=self.MANUFACTURER_FK,
+                                                          numerator_result=denominator_res-result.passes,
+                                                          denominator_id=self.store_id,
+                                                          denominator_result=denominator_res,
+                                                          result=1-res, score=1-res, score_after_actions=1-res)
+        return
