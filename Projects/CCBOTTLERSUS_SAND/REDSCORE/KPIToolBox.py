@@ -59,10 +59,10 @@ class CCBOTTLERSUS_SANDREDToolBox:
             if line[Const.SHEET] == Const.SURVEY:
                 self.calculate_survey_specific(line)
 
-    def calculate_main_kpi(self, kpi_line):
-        kpi_name = kpi_line[Const.KPI_NAME]
-        target = kpi_line[Const.GROUP_TARGET]
-        kpi_type = kpi_line[Const.SHEET]
+    def calculate_main_kpi(self, kpi_main_line, scene_fk):
+        kpi_name = kpi_main_line[Const.KPI_NAME]
+        target = kpi_main_line[Const.GROUP_TARGET]
+        kpi_type = kpi_main_line[Const.SHEET]
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         if target == Const.ALL:

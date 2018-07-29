@@ -57,18 +57,18 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         result_dict = {Const.KPI_FK: kpi_fk, Const.KPI_NAME: kpi_name, Const.SCENE_FK: scene_fk, Const.RESULT: result}
         self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
-    def calculate_main_kpi(self, kpi_line):
-        kpi_name = kpi_line[Const.KPI_NAME]
-        target = kpi_line[Const.GROUP_TARGET]
-        kpi_type = kpi_line[Const.SHEET]
+    def calculate_main_kpi(self, kpi_main_line):
+        kpi_name = kpi_main_line[Const.KPI_NAME]
+        target = kpi_main_line[Const.GROUP_TARGET]
+        kpi_type = kpi_main_line[Const.SHEET]
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         if target == Const.ALL:
             target = len(relevant_template)
         passed_counter = 0
         function = self.get_kpi_function(kpi_type)
-        for i, line in relevant_template.iterrows():
-            answer = function(line)
+        for i, kpi_line in relevant_template.iterrows():
+            answer = function(kpi_line)
             if answer:
                 passed_counter += 1
         return passed_counter >= target
