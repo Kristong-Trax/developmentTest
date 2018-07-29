@@ -159,6 +159,7 @@ class CCRUTopSKUAssortment:
         data_row = int(data_first_cell[1]) - 1
         store_number_column_index = column_index_from_string(store_number_column_index) - 1
         # raw_data = pd.read_excel(file_path, header=range(ean_row_index, data_row), index_col=range(0, data_column))
+        Log.info("File path = {}".format(file_path))
         raw_data = pd.read_excel(file_path)
         raw_data = raw_data.drop_duplicates(subset='Store Number', keep='first')
         raw_data = raw_data.fillna('')
@@ -309,6 +310,6 @@ if __name__ == '__main__':
     LoggerInitializer.init('test')
     rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
     ts = CCRUTopSKUAssortment(rds_conn=rds_conn)
-    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/Target_OSA_July.xlsx', data_first_cell='D2',
+    ts.upload_top_sku_file(file_path='/home/ubuntu/tmp/recalc_idan/OSA_CCRU/OSA_AUGUST.xlsx', data_first_cell='D2',
                            ean_row_index=1, store_number_column_index='A', update_correlations=True)
 #     # !!! COMMENT: Remember to change current_date on row 128 before running the script!!!
