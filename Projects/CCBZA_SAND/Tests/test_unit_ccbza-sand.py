@@ -356,15 +356,15 @@
 #         # self.assertEquals(tool_box.kpi_results_data[ATOMIC_KPI_NAME].values[0], 'Cooler Outside or 1st Inside')
 #         # self.assertEquals(tool_box.kpi_results_data[SCORE].values[0], 0)
 #
-#     def test_get_general_calculation_parameters_returns_dict_with_scenes_related_to_templates(self):
+#     def test_get_general_calculation_parameters_returns_dict_with_scenes_related_to_templates_and_manufacturer_KO(self):
 #         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
 #         atomic_kpi = DataTestUnitCCBZA_SAND.count_atomic_series
 #         general_filters = tool_box.get_general_calculation_parameters(atomic_kpi)
-#         expected_return_value = {'scene_fk': [95, 96]}
+#         expected_return_value = {'scene_fk': [95, 96], 'manufacturer_name': 'KO PRODUCTS'}
 #         self.assertDictEqual(general_filters, expected_return_value)
 #
-#     def test_get_general_calculation_parameters_returns_dict_with_all_scenes_in_session_if_no_template_names(self):
+#     def test_get_general_calculation_parameters_returns_dict_with_all_scenes_in_session_if_no_template_names_manuf_not_KO(self):
 #         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
 #         atomic_kpi = DataTestUnitCCBZA_SAND.count_atomic_template_field_empty
@@ -372,7 +372,7 @@
 #         expected_return_value = {'scene_fk': [95, 96, 97]}
 #         self.assertDictEqual(general_filters, expected_return_value)
 #
-#     def test_get_general_calculation_parameters_returns_dict_with_all_scenes_in_session_if_no_template_field(self):
+#     def test_get_general_calculation_parameters_returns_dict_with_all_scenes_in_session_if_no_template_field_no_KO_field(self):
 #         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
 #         atomic_kpi = DataTestUnitCCBZA_SAND.survey_atomic_series
@@ -470,14 +470,28 @@
 #             self.assertEquals(result[SCORE], expected_atomic_scores_list[i])
 #             self.assertEquals(result[MAX_SCORE], max_score_list[i])
 #
-#     def test_get_sos_calculation_parameters(self):
+#     def test_get_sos_calculation_parameters_two_conditions(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
 #         atomic_kpi = DataTestUnitCCBZA_SAND.sos_atomic_series
 #         filters = tool_box.get_sos_calculation_parameters(atomic_kpi)
-#         expected_result = {'Condition_1': {'denominator': {'Category': 'SSD'},
-#                                            'numerator': {'Category': 'SSD', 'Attribute 2': 'Quad Cola'}},
-#                            'Condition_2': {'denominator': {'Category': 'SSD'}, 'numerator': {'Attribute 3': 'Diets',
-#                                                                                              'Category': 'SSD'}}}
+#         print filters
+#         expected_result = {'Condition 1': {'denom': {'Category': 'SSD'},
+#                                            'numer': {'Category': 'SSD', 'Attribute 2': 'Quad Cola'},
+#                                            'target': '50'},
+#                            'Condition 2': {'denom': {'Category': 'SSD'},
+#                                            'numer': {'Attribute 3': 'Diets','Category': 'SSD'},
+#                                            'target': '30'}}
+#         self.assertDictEqual(filters, expected_result)
+#
+#     def testget_sos_calculation_parameters_one_condition(self):
+#         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+#         atomic_kpi = DataTestUnitCCBZA_SAND.sos_atomic_series_one_condition
+#         filters = tool_box.get_sos_calculation_parameters(atomic_kpi)
+#         expected_result = {'Condition 1': {'numer': {'product_ean_code': ['5449000234612', '5449000027559',
+#                                                                           '5449000234636'],
+#                                                      'category': 'SSD'},
+#                                            'denom': {'category': 'SSD'},
+#                                            'target': '65'}}
 #         self.assertDictEqual(filters, expected_result)
 #
 #     def test_calculate_price_presence_where_there_is_at_least_one_price_per_sku(self):

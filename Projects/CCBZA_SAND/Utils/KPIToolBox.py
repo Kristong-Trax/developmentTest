@@ -155,12 +155,12 @@ class CCBZA_SANDToolBox:
         This function calculates the KPI results.
         """
         # if self.template_data:
+        red_score = 0
         for kpi_set_name in self.kpi_sets:
             self.current_kpi_set_name = kpi_set_name
             set_score = 0
             # kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set]['kpi_set_name'].values[0]
             # self.current_kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set]['kpi_set_name'].values[0] #alternative
-
             # kpi_types = self.get_kpi_types_by_set_name(kpi_set_name)
             kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name] # we get the relevant kpis for the set
             for index, kpi in kpi_data.iterrows():
@@ -187,8 +187,10 @@ class CCBZA_SANDToolBox:
                 kpi_result = self.calculate_kpi_result(kpi)
                 #write result to the DB
                 set_score += kpi_result
+            red_score += set_score
             # write set_score to db - maybe in KPIGenerator? Will see...
-            self.commit_results_data()
+        # write red_score to db - maybe in KPIGenerator? Will see..
+        self.commit_results_data()
 
     def get_store_data_by_store_id(self):
         query = CCBZA_SAND_Queries.get_store_data_by_store_id(self.store_id)
@@ -643,7 +645,6 @@ class CCBZA_SANDToolBox:
             relevant_scenes = self.scif
         scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
         calculation_parameters.update(scenes_ids_filter)
-        # calculation_parameters.update({'manufacturer_name': KO_PRODUCTS})  # will see if i need it based on updated template
         try:
             is_KO_Only = True if atomic_kpi[KO_ONLY] == 'Y' else False
         except:
@@ -664,31 +665,12 @@ class CCBZA_SANDToolBox:
             if all([atomic_kpi[col] for col in condition_columns]):
                 filters.update({condition: {'numer': {}, 'denom': {}}})
                 filters[condition]['numer'].update({atomic_kpi[' '.join([condition, NUMER, TYPE])]:
-                                                    atomic_kpi[' '.join([condition, NUMER])]})
+                                                    self.string_or_list(atomic_kpi[' '.join([condition, NUMER])])})
                 filters[condition]['denom'].update({atomic_kpi[' '.join([condition, DENOM, TYPE])]:
-                                                    atomic_kpi[' '.join([condition, DENOM])]})
+                                                    self.string_or_list(atomic_kpi[' '.join([condition, DENOM])])})
                 filters[condition]['target'] = atomic_kpi[' '.join([condition, C_TARGET])]
                 filters[condition]['numer'].update(filters[condition]['denom'])
         return filters
-        #
-        # calculation_parameters = {CONDITION_1: {'numerator':{}, 'denominator': {}},
-        #                           CONDITION_2: {'numerator':{}, 'denominator': {}}}
-        # calculation_parameters[CONDITION_1]['numerator'].update({atomic_kpi[CONDITION_1_NUMERATOR_TYPE]:
-        #                                                          atomic_kpi[CONDITION_1_NUMERATOR]})
-        # calculation_parameters[CONDITION_1]['denominator'].update({atomic_kpi[CONDITION_1_DENOMINATOR_TYPE]:
-        #                                                            atomic_kpi[CONDITION_1_DENOMINATOR]})
-        # calculation_parameters[CONDITION_1]['numerator'].update(calculation_parameters[CONDITION_1]['denominator'])
-        #
-        # calculation_parameters[CONDITION_2]['numerator'].update({atomic_kpi[CONDITION_2_NUMERATOR_TYPE]:
-        #                                                          atomic_kpi[CONDITION_2_NUMERATOR]})
-        # calculation_parameters[CONDITION_2]['denominator'].update({atomic_kpi[CONDITION_2_DENOMINATOR_TYPE]:
-        #                                                            atomic_kpi[CONDITION_2_DENOMINATOR]})
-        # # calculation_parameters[CONDITION_2]['denominator'].update({'product_type': 'SKU'})  # talk to Israel
-        # # if atomic_kpi[TEMPLATE_NAME]:
-        # #     calculation_parameters[CONDITION_2]['denominator'].update({'template_name': self.split_and_strip(atomic_kpi[TEMPLATE_NAME])})
-        # calculation_parameters[CONDITION_2]['numerator'].update(calculation_parameters[CONDITION_2]['denominator'])
-        # return calculation_parameters
-
     # def get_sos_condition_filters(self, atomic_kpi, *conditions):
     #     columns = atomic_kpi.index.values
     #     for condition in conditions:
@@ -980,3 +962,13 @@ class CCBZA_SANDToolBox:
         else:
             score = atomic_result
         return score
+
+    def string_or_list(self, string):
+        string_to_list = self.split_and_strip(string)
+        if len(string_to_list) == 1:
+            return string
+        else:
+            return string_to_list
+
+    def reflect_result_by_sku(self):
+        pass

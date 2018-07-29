@@ -6,7 +6,7 @@ from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TA
     ATTRIBUTE_1, ATTRIBUTE_2, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET, SCORE, AVAILABILITY_TYPE, \
     CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE, CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_1_TARGET, \
     CONDITION_2_NUMERATOR, CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE, \
-    CONDITION_2_TARGET, KO_PRODUCTS, TEMPLATE_DISPLAY_NAME
+    CONDITION_2_TARGET, KO_PRODUCTS, TEMPLATE_DISPLAY_NAME, BY_SCENE, KO_ONLY
 
 class DataScores(object):
     SCORES_1 = [(None, 0.15), (100, 0.15), (3, 0.15)]
@@ -92,14 +92,15 @@ class DataTestUnitCCBZA_SAND(object):
     columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]
     columns_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
     columns_price_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET,
-                         SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+                         SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2, BY_SCENE, KO_ONLY]
     columns_avaialability_tab = [KPI_NAME, ATOMIC_KPI_NAME, AVAILABILITY_TYPE, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3,
-                                 VALUE1, VALUE2, VALUE3, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+                                 VALUE1, VALUE2, VALUE3, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2, BY_SCENE, KO_ONLY]
     columns_sos_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE,
                        CONDITION_1_TARGET, CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_2_NUMERATOR,
                        CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE,
-                       CONDITION_2_TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
-    columns_count_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+                       CONDITION_2_TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2, BY_SCENE, KO_ONLY]
+    columns_count_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2,
+                         BY_SCENE, KO_ONLY]
     columns_planogram_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_DISPLAY_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
 
     columns_kpi_results = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
@@ -113,7 +114,8 @@ class DataTestUnitCCBZA_SAND(object):
     string_represented_by_number = 200
 
     index_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]+StoreTypes.store_list
-    index_count_tab = [KPI_NAME, TEMPLATE_NAME, ATOMIC_KPI_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
+    index_count_tab = [KPI_NAME, TEMPLATE_NAME, ATOMIC_KPI_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1,
+                       ATTRIBUTE_2, BY_SCENE, KO_ONLY]
     index_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, SCORE, STORE_TYPE,
                         ATTRIBUTE_1, ATTRIBUTE_2]
     index_price_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TYPE1, VALUE1, TYPE2, VALUE2, TYPE3, VALUE3, TARGET,
@@ -131,9 +133,9 @@ class DataTestUnitCCBZA_SAND(object):
     coolers_kpi_series = pd.Series(['COOLERS & MERCHANDISING', 'Coolers', 'Price, Survey, Availability, SOS, Count',
                                     'Y', '', '', '', '', '', '', ''], index=index_kpi_tab)
     count_atomic_series = pd.Series(['Coolers', 'CCBSA Cooler, DOC Cooler', 'Min 4 x Cooler Doors', 4, 10,
-                                     'L&T', 'Spaza Affordable', 'Gold'], index=index_count_tab)
+                                     'L&T', 'Spaza Affordable', 'Gold', 'N', 'Y'], index=index_count_tab)
     count_atomic_template_field_empty = pd.Series(['Coolers', '', 'Min 4 x Cooler Doors', 4, 10,
-                                     'L&T', 'Spaza Affordable', 'Gold'], index=index_count_tab)
+                                     'L&T', 'Spaza Affordable', 'Gold', 'N', 'N'], index=index_count_tab)
     survey_atomic_series = pd.Series(['TEST KPI 1', 'Atomic KPI 1', 'Yes', 1, 5,
                                      'L&T', '', ''], index=index_survey_tab)
     price_atomic_series = pd.Series(['SSD IC', 'Price compliance of 200ml Can', '', 'size', '200.0', 'brand_name',
@@ -153,6 +155,11 @@ class DataTestUnitCCBZA_SAND(object):
                                    'CCBSA Cooler', 'Quad Cola', 'Attribute 2', 'SSD', 'Category', '50', 'Diets',
                                    'Attribute 3', 'SSD', 'Category', '30', '5', 'L&T', 'Spaza Affordable', ''],
                                   index=index_sos_tab)
+    sos_atomic_series_one_condition = pd.Series(
+        ['Coolers', 'Diets > 65% out of all CCBSA SSD (CCBSA Cooler)',
+         'CCBSA Cooler', '5449000234612,5449000027559,5449000234636', 'product_ean_code', 'SSD', 'category', '65', '',
+         '', '', '', '', '5', 'L&T', 'Spaza Affordable', ''],
+        index=index_sos_tab)
 
 class SCIFDataTestCCBZA_SAND(object):
 
