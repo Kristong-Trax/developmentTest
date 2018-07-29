@@ -282,7 +282,7 @@ class CBCILCBCIL_ToolBox(object):
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
             self.write_gaps_to_db()
-            # self.commit_results_data()
+            self.commit_results_data()
 
     @staticmethod
     def combine_kpi_details(kpi_fk, scores, denominator_weight):
@@ -340,7 +340,6 @@ class CBCILCBCIL_ToolBox(object):
         except:
             params2 = map(unicode.strip, params[self.PARAMS_VALUE_2].split(','))
 
-        #Natalya added
         try:
             params3 = map(float, params[self.PARAMS_VALUE_3].split(','))
         except:
@@ -353,7 +352,6 @@ class CBCILCBCIL_ToolBox(object):
                      '1': {params[self.PARAMS_TYPE_1]: map(unicode.strip, params[self.PARAMS_VALUE_1].split(','))},
                      '2': {params[self.PARAMS_TYPE_2]: params2},
                      '3': {params[self.PARAMS_TYPE_3]: params3},
-                     # '3': {params[self.PARAMS_TYPE_3]: map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))},
                      'All': general_filters}
                   }
         return result
