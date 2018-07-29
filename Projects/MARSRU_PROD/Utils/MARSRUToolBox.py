@@ -98,6 +98,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.potential_products = {}
         self.custom_scif_queries = []
         self.shelf_square_boundaries = {}
+        self.kpi_results_stored = pd.DataFrame()
         self.object_type_conversion = {'SKUs': 'product_ean_code',
                                        'BRAND': 'brand_name',
                                        'BRAND in CAT': 'brand_name',
@@ -794,7 +795,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
         This function is used to calculate number of scenes
 
         """
-        set_total_res = 0
         for p in params.values()[0]:
             if p.get('Formula') != 'number of scenes':
                 continue
@@ -825,7 +825,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     kpi_total_res += res
 
             score = self.calculate_score(kpi_total_res, p)
-            # set_total_res += score * p.get('KPI Weight')
 
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
@@ -833,7 +832,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
 
-            # return set_total_res
+        return
 
     @kpi_runtime()
     def check_survey_answer(self, params):
@@ -842,38 +841,43 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
         """
         score = False
-        d = {'Yes': [u'Да', u'ДА', u'да'], 'No': u'Нет'}
+        d = {'Yes': [u'Да', u'ДА', u'да'], 'No': [u'Нет', u'НЕТ', u'нет']}
         for p in params.values()[0]:
-            kpi_total_res = 0
+
             score = 0  # default score
             if p.get('Type') != 'SURVEY' or p.get('Formula') != 'answer for survey':
                 continue
-            survey_data = self.survey_response.loc[self.survey_response['code'] == str(int(p.get('Survey Question_ID_code')))]
+
+            survey_question_code = str(int(p.get('Survey Question_ID_code')))
+            survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
             if not survey_data['selected_option_text'].empty:
-                result = survey_data['selected_option_text'].values[0]
-                # targets = [d.get(target) if target in d.keys() else target
-                #            for target in str(p.get('Target')).split(", ")]
+
                 if p.get('Answer type') == 'Boolean':
+                    result = survey_data['selected_option_text'].values[0]
                     if result in d.get('Yes'):
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'TRUE'}
-                        # score = 'TRUE'
                     else:
-                        # score = 'FALSE'
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
-                elif p.get('Answer type') == 'List':
-                    # result = ','.join([str(result_value.encode('utf-8')) for result_value in
-                    #                    survey_data['selected_option_text'].values])
-                    # result = str([result_value for result_value in survey_data['selected_option_text'].values])
-                    result = self.kpi_fetcher.get_survey_answers_codes(survey_data['code'].values[0], survey_data['selected_option_text'].values[0])
 
+                # elif p.get('Answer type') == 'String':
+                #     result = self.kpi_fetcher.get_survey_answers_codes(survey_question_code, survey_data['selected_option_text'].values[0])
+                #     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+
+                elif p.get('Answer type') in ['List', 'String']:
+                    result = []
+                    for answer in survey_data['selected_option_text'].unique().tolist():
+                        result += [self.kpi_fetcher.get_survey_answers_codes(survey_question_code, answer)]
+
+                    result = ','.join([str(r) for r in result])
                     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
-                    # score = result
+
                 elif p.get('Answer type') == 'Int':
                     try:
                         result = int(survey_data['number_value'].values[0])
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
                     except ValueError as e:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+
                 elif p.get('Answer type') == 'Float':
                     try:
                         result = float(survey_data['number_value'].values[0])
@@ -887,27 +891,12 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
                 Log.warning('No survey data with survey response code {} for this session'
                             .format(str(int(p.get('Survey Question_ID_code')))))
-            # score = self.calculate_score(kpi_total_res, p)
-            # if p.get('level') == 3:  # todo should be a separate generic function
-            #     # level3_output = {'result': d.get(result), 'score': score,
-            #     #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-            #     #                  'kpi_name': p.get('KPI name Eng')}
-            #     # self.output.add_kpi_results(Keys.KPI_LEVEL_3_RESULTS, self.convert_kpi_level_3(level3_output))
-            #     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'), self.set_name)
-            #     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-            #     self.write_to_db_result(attributes_for_level3, 'level3')
-            # elif p.get('level') == 2:
-            #     # level2_output = {'result': d.get(result), 'score': score,
-            #     #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-            #     #                  'kpi_name': p.get('KPI name Eng')}
-            #     # self.output.add_kpi_results(Keys.KPI_LEVEL_2_RESULTS, self.convert_kpi_level_2(level2_output))
+
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
-            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-            self.write_to_db_result(attributes_for_level3, 'level3')
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-            # else:
-            #     Log.warning('No level indicated for this KPI')
+            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+            self.write_to_db_result(attributes_for_level3, 'level3')
 
         return score
 
@@ -1842,7 +1831,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             if p.get('Formula') != 'custom_mars_7':  # todo update in the file
                 continue
             values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type, self.region,
-                                                                                   p.get('#Mars KPI NAME'))
+                                                                                   p.get('#Mars KPI NAME'), self.kpi_results_stored)
             scenes = self.get_relevant_scenes(p)
             if values_list:
                 if p.get('#Mars KPI NAME') == 2317:
@@ -2347,6 +2336,9 @@ class MARSRU_PRODMARSRUKPIToolBox:
                                                       'store_fk', 'visit_date',
                                                       'calculation_time', 'score', 'kpi_fk',
                                                       'atomic_kpi_fk', 'result', 'name'])
+        self.kpi_results_stored = self.kpi_results_stored.append([{'kpi_name': str(params.get('#Mars KPI NAME')),
+                                                                   'result': str(result),
+                                                                   'score': str(score)}])
 
         return attributes_for_table3
 
