@@ -458,46 +458,6 @@ class CBCILCBCIL_ToolBox(object):
         return 0
 
     def calculate_availability_by_top_shelf(self, **general_filters):
-        # params = general_filters['filters']
-        # if params['All']['scene_id']:
-        #     shelf_number = int(general_filters.get(self.TARGET, 1))
-        #     shelf_numbers = range(shelf_number + 1)[1:]
-        #     if shelf_numbers:
-        #         filters = params['1'].copy()
-        #         filters.update(params['2'])
-        #         filters.update(params['3'])
-        #         filters.update(params['All'])
-        #         filters.update({'shelf_number': shelf_numbers})
-        #         result = self.match_product_in_scene[
-        #             self.tools.get_filter_condition(self.match_product_in_scene, **filters)]
-        #         result = result['shelf_number'].unique().tolist()
-        #         if len(result) == len(shelf_numbers):
-        #             return 100
-        # return 0
-
-        # Option2
-        # params = general_filters['filters']
-        # if params['All']['scene_id']:
-        #     shelf_number = int(general_filters.get(self.TARGET, 1))
-        #     shelf_numbers = range(shelf_number + 1)[1:]
-        #     if shelf_numbers:
-        #         scif_filters = {'scene_fk': params['All']['scene_id']}
-        #         scif_filters.update(params['1'])
-        #         scif_filters.update(params['2'])
-        #         scif = self.scif.copy()
-        #         scene_skus = scif[self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
-        #         if scene_skus:
-        #             matches_filters = {'scene_fk': params['All']['scene_id']}
-        #             matches_filters.update({'product_fk': scene_skus})
-        #             matches_filters.update({'shelf_number': shelf_numbers})
-        #             matches = self.match_product_in_scene.copy()
-        #             result_matches = matches[self.tools.get_filter_condition(matches, **matches_filters)]
-        #             if not result_matches.empty:
-        #                 scene_by_shelf_facings = result_matches.pivot(index='scene_fk', columns='shelf_number', )
-        #                 # scene_by_shelf_facings.where(scene_by_shelf_facings.notnull(), None)
-        #                 # print scene_by_shelf_facings.all(axis=1)
-        #                 # for i in xrange(len(scene_by_shelf_facings)):
-
         params = general_filters['filters']
         if params['All']['scene_id']:
             shelf_number = int(general_filters.get(self.TARGET, 1))
@@ -525,17 +485,6 @@ class CBCILCBCIL_ToolBox(object):
                                                            for facing in shelf_facings_result]) else 0
                     session_results.append(scene_result)
                 return 100 if all(session_results) else 0
-
-                #
-                # filters = params['1'].copy()
-                # filters.update(params['2'])
-                # filters.update(params['3'])
-                # filters.update(params['All'])
-                # filters.update({'shelf_number': shelf_numbers})
-                # result = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene, **filters)]
-                # result = result['shelf_number'].unique().tolist()
-                # if len(result) == len(shelf_numbers):
-                #     return 100
         return 0
 
     def calculate_availability_by_sequence(self, **general_filters):
