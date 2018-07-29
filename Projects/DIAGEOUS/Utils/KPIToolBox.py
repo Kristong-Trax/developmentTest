@@ -291,7 +291,8 @@ class DIAGEOUSToolBox:
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
         brand, sub_brand = self.get_product_details(product_fk)
-        if sub_brand is None:
+        if sub_brand is None or self.all_products[
+                    self.all_products['product_fk'] == product_fk]['is_active'].iloc[0] == 0:
             return None
         facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
@@ -313,6 +314,8 @@ class DIAGEOUSToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
+        if self.all_products[self.all_products['product_fk'] == product_fk]['is_active'].iloc[0] == 0:
+            return None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
@@ -336,6 +339,8 @@ class DIAGEOUSToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
+        if self.all_products[self.all_products['product_fk'] == product_fk]['is_active'].iloc[0] == 0:
+            return None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL])
         facings = self.calculate_passed_display(product_fk, relevant_scif)
