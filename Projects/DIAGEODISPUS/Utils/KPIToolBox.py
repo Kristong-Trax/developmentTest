@@ -90,8 +90,8 @@ class DIAGEODISPUSToolBox:
         #     # relevant_products.append()
         relevant_products = self.all_products[self.all_products['Competition Group'].isin(relevant_brands)][
             'product_fk'].drop_duplicates().values
-        Log.info("Relevant products type: {}".format(type(relevant_products[0])))
-        Log.info("manual_collection_number type: {}".format(type(self.manual_collection_number['product_fk'][0])))
+        # Log.info("Relevant products type: {}".format(type(relevant_products[0])))
+        # Log.info("manual_collection_number type: {}".format(type(self.manual_collection_number['product_fk'][0])))
         relevant_products = self.manual_collection_number[(self.manual_collection_number['product_fk'].isin(
             relevant_products))]['product_fk'].drop_duplicates().values
         sku_results = pd.DataFrame(columns=['sku', 'brand', 'num_of_cases'])
@@ -108,7 +108,7 @@ class DIAGEODISPUSToolBox:
                 sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
                     display_bottles), float(case_pack))
             except Exception as err:
-                Log.error('{}'.format(err))
+                Log.info('{} for product {}'.format(err, product))
                 continue
         # sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
         # for row in sku_results.itertuples():
