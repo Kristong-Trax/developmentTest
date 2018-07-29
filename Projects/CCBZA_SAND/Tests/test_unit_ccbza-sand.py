@@ -33,7 +33,7 @@
 # import os
 # import pandas as pd
 # from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, \
-#     SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE, TARGET, SKU, POS, OTHER
+#     SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE, TARGET, SKU, POS, OTHER, MAX_SCORE
 #
 #
 # class TestCCBZA_SAND(MockingTestCase):
@@ -318,6 +318,7 @@
 #         tool_box.calculate_survey(atomic_kpis)
 #         atomics_list = atomic_kpis[ATOMIC_KPI_NAME].values
 #         atomic_scores_list = map(lambda x: float(x), atomic_kpis[SCORE].values)
+#         max_score_list = atomic_scores_list
 #         print atomic_scores_list
 #         for i in xrange(len(tool_box.kpi_results_data)):
 #             result = tool_box.kpi_results_data.iloc[i]
@@ -325,6 +326,7 @@
 #             self.assertEquals(result[KPI_NAME], kpi[KPI_NAME])
 #             self.assertEquals(result[ATOMIC_KPI_NAME], atomics_list[i])
 #             self.assertEquals(result[SCORE], atomic_scores_list[i])
+#             self.assertEquals(result[MAX_SCORE], max_score_list[i])
 #
 #         # self.assertEquals(tool_box.kpi_results_data[SET_NAME].values[0], 'COOLERS & MERCHANDISING')
 #         # self.assertEquals(tool_box.kpi_results_data[KPI_NAME].values[0], 'Coolers')
@@ -341,6 +343,7 @@
 #         tool_box.calculate_survey(atomic_kpis)
 #         atomics_list = atomic_kpis[ATOMIC_KPI_NAME].values
 #         atomic_scores_list = [0]
+#         max_score_list = [10]
 #         for i in xrange(len(tool_box.kpi_results_data)):
 #             result = tool_box.kpi_results_data.iloc[i]
 #             self.assertEquals(result[SET_NAME], 'COOLERS & MERCHANDISING')
@@ -436,6 +439,7 @@
 #         atomic_kpis = tool_box.get_atomic_kpis_data(kpi_type, kpi)
 #         atomics_list = atomic_kpis[ATOMIC_KPI_NAME].values
 #         expected_atomic_scores_list = [10]
+#         max_score_list = [10]
 #         tool_box.calculate_count(atomic_kpis)
 #         for i in xrange(len(tool_box.kpi_results_data)):
 #             result = tool_box.kpi_results_data.iloc[i]
@@ -443,6 +447,7 @@
 #             self.assertEquals(result[KPI_NAME], kpi[KPI_NAME])
 #             self.assertEquals(result[ATOMIC_KPI_NAME], atomics_list[i])
 #             self.assertEquals(result[SCORE], expected_atomic_scores_list[i])
+#             self.assertEquals(result[MAX_SCORE], max_score_list[i])
 #
 #     def test_calculate_count_adds_relevant_score_to_results_container_where_conditions_are_not_met(self):
 #         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
@@ -455,6 +460,7 @@
 #         atomics_list = atomic_kpis[ATOMIC_KPI_NAME].values
 #         expected_atomic_scores_list = [0]
 #         tool_box.calculate_count(atomic_kpis)
+#         max_score_list = [10]
 #         # print tool_box.kpi_results_data
 #         for i in xrange(len(tool_box.kpi_results_data)):
 #             result = tool_box.kpi_results_data.iloc[i]
@@ -462,6 +468,7 @@
 #             self.assertEquals(result[KPI_NAME], kpi[KPI_NAME])
 #             self.assertEquals(result[ATOMIC_KPI_NAME], atomics_list[i])
 #             self.assertEquals(result[SCORE], expected_atomic_scores_list[i])
+#             self.assertEquals(result[MAX_SCORE], max_score_list[i])
 #
 #     def test_get_sos_calculation_parameters(self):
 #         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
