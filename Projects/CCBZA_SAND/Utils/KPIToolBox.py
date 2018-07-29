@@ -356,8 +356,6 @@ class CCBZA_SANDToolBox:
             max_score = atomic_kpi[SCORE]
             is_by_scene = self.is_by_scene(atomic_kpi)
             atomic_result = 0
-            # filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),  # add product type??
-            #            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
             calculation_filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
             calculation_filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
             list_of_scenes = calculation_filters['scene_fk']
@@ -367,43 +365,38 @@ class CCBZA_SANDToolBox:
                     scene_result = 0
                     calculation_filters['scene_fk'] = scene
                     scif = self.scif.copy()
-                    scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
-                    if not scene_scif.empty:
-                        scene_result = self.get_price_result(scene_scif, target, scene=scene)
+                    matches = self.match_product_in_scene.copy()
+                    merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
+                    scene_df = merged_df[self.tools.get_filter_condition(merged_df, **calculation_filters)]
+                    if not scene_df.empty:
+                        scene_result = self.get_price_result(scene_df, target)
                     session_results.append(scene_result)
                     # write scene result to DB
                 if session_results:
                     atomic_result = 100 if all(session_results) else 0
-                        # unique_skus_list = scene_scif['item_id'].unique().tolist()
-                        # price_filters = {'scene_fk': scene, 'product_fk': unique_skus_list}
-                        # matches = self.match_product_in_scene.copy()
-                        # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
-                        # # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)][['scene_fk', 'product_fk', 'price']]
-                        # if target:
-                        #     scene_result = self.calculate_price_vs_target(relevant_matches, unique_skus_list, target)
-                        # else:
-                        #     scene_result = self.calculate_price_presence(relevant_matches, unique_skus_list)
             else:
                 scif = self.scif.copy()
-                filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
-                if not filtered_scif.empty:
-                    atomic_result = self.get_price_result(filtered_scif, target)
+                matches = self.match_product_in_scene.copy()
+                merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
+                filtered_df = merged_df[self.tools.get_filter_condition(merged_df, **calculation_filters)]
+                if not filtered_df.empty:
+                    atomic_result = self.get_price_result(filtered_df, target)
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write session result to DB
 
-    def get_price_result(self, scif, target, scene=None):
-        result = 0
-        unique_skus_list = scif['item_id'].unique().tolist()
-        price_filters = {'product_fk': unique_skus_list}
-        if scene:
-            price_filters.update({'scene_fk': scene})
-        matches = self.match_product_in_scene.copy()
-        relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
+    def get_price_result(self, matches_scif_df, target):
+        # result = 0
+        unique_skus_list = matches_scif_df['product_fk'].unique().tolist()
+        # price_filters = {'product_fk': unique_skus_list}
+        # if scene:
+        #     price_filters.update({'scene_fk': scene})
+        # matches = self.match_product_in_scene.copy()
+        # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
         if target:
-            result = self.calculate_price_vs_target(relevant_matches, unique_skus_list, target)
+            result = self.calculate_price_vs_target(matches_scif_df, unique_skus_list, target)
         else:
-            result = self.calculate_price_presence(relevant_matches, unique_skus_list)
+            result = self.calculate_price_presence(matches_scif_df, unique_skus_list)
         return result
 
     @staticmethod
@@ -411,7 +404,7 @@ class CCBZA_SANDToolBox:
         price_presence = []
         for sku in skus_list:
             sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
-            is_price = True if any(price is not None for price in sku_prices) else False
+            is_price = True if any([price is not None for price in sku_prices]) else False
             price_presence.append(is_price)
         result = 100 if all(price_presence) else 0
         return result
@@ -422,10 +415,92 @@ class CCBZA_SANDToolBox:
         price_reaching_target = []
         for sku in skus_list:
             sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
-            price_meets_target = True if any(price <= target for price in sku_prices) else False
+            price_meets_target = True if any([(price is not None and price <= target)
+                                              for price in sku_prices]) else False
             price_reaching_target.append(price_meets_target)
         result = 100 if all(price_reaching_target) else 0
         return result
+
+# option w/o merge ************************************
+#     def calculate_price(self, atomic_kpis_data):
+#         for i in xrange(len(atomic_kpis_data)):
+#             atomic_kpi = atomic_kpis_data.iloc[i]
+#             target = atomic_kpi[TARGET]
+#             max_score = atomic_kpi[SCORE]
+#             is_by_scene = self.is_by_scene(atomic_kpi)
+#             atomic_result = 0
+#             # filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),  # add product type??
+#             #            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+#             calculation_filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
+#             calculation_filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
+#             list_of_scenes = calculation_filters['scene_fk']
+#             if is_by_scene:
+#                 session_results = []
+#                 for scene in list_of_scenes:
+#                     scene_result = 0
+#                     calculation_filters['scene_fk'] = scene
+#                     scif = self.scif.copy()
+#                     scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
+#                     if not scene_scif.empty:
+#                         scene_result = self.get_price_result(scene_scif, target, scene=scene)
+#                     session_results.append(scene_result)
+#                     # write scene result to DB
+#                 if session_results:
+#                     atomic_result = 100 if all(session_results) else 0
+#                         # unique_skus_list = scene_scif['item_id'].unique().tolist()
+#                         # price_filters = {'scene_fk': scene, 'product_fk': unique_skus_list}
+#                         # matches = self.match_product_in_scene.copy()
+#                         # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
+#                         # # relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)][['scene_fk', 'product_fk', 'price']]
+#                         # if target:
+#                         #     scene_result = self.calculate_price_vs_target(relevant_matches, unique_skus_list, target)
+#                         # else:
+#                         #     scene_result = self.calculate_price_presence(relevant_matches, unique_skus_list)
+#             else:
+#                 scif = self.scif.copy()
+#                 filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters)]
+#                 if not filtered_scif.empty:
+#                     atomic_result = self.get_price_result(filtered_scif, target)
+#             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
+#             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+#             # write session result to DB
+#
+#     def get_price_result(self, scif, target, scene=None):
+#         result = 0
+#         unique_skus_list = scif['item_id'].unique().tolist()
+#         price_filters = {'product_fk': unique_skus_list}
+#         if scene:
+#             price_filters.update({'scene_fk': scene})
+#         matches = self.match_product_in_scene.copy()
+#         relevant_matches = matches[self.tools.get_filter_condition(matches, **price_filters)]
+#         if target:
+#             result = self.calculate_price_vs_target(relevant_matches, unique_skus_list, target)
+#         else:
+#             result = self.calculate_price_presence(relevant_matches, unique_skus_list)
+#         return result
+#
+#     @staticmethod
+#     def calculate_price_presence(matches, skus_list):
+#         price_presence = []
+#         for sku in skus_list:
+#             sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+#             is_price = True if any(price is not None for price in sku_prices) else False
+#             price_presence.append(is_price)
+#         result = 100 if all(price_presence) else 0
+#         return result
+#
+#     @staticmethod
+#     def calculate_price_vs_target(matches, skus_list, target):
+#         target = float(target)
+#         price_reaching_target = []
+#         for sku in skus_list:
+#             sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+#             price_meets_target = True if any(price <= target for price in sku_prices) else False
+#             price_reaching_target.append(price_meets_target)
+#         result = 100 if all(price_reaching_target) else 0
+#         return result
+# option w/o merge - end code ************************************
+
 
     # def calculate_price(self, atomic_kpis_data):
     #     for i in xrange(len(atomic_kpis_data)):
@@ -557,7 +632,7 @@ class CCBZA_SANDToolBox:
         denom_result = scif[self.tools.get_filter_condition(scif, **filters['denom'])]['facings'].sum()
         return float(numer_result) / denom_result if denom_result != 0 else 0
 
-        #
+
         # numerator_result = self.get_facings_based_on_critera(scif, filters['numerator'])
         # denominator_result = self.get_facings_based_on_critera(scif, filters['denominator'])
         # return float(numerator_result) / denominator_result if denominator_result != 0 else 0
