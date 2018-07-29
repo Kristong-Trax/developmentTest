@@ -1,4 +1,4 @@
-import os
+# import os
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
@@ -14,13 +14,13 @@ __author__ = 'Yasmin'
 class DIAGEOIECalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE',
-                                     'Data', 'Brand Score.xlsx')
+        # template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE',
+        #                              'Data', 'Brand Score.xlsx')
         DIAGEOIEGenerator(self.data_provider, self.output).main_function()
         common = Common(self.data_provider)
-        diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
-        diageo_generator.diageo_global_tap_brand_score_function(template_path)
-        common.commit_results_data_to_new_tables()
+        # diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
+        # diageo_generator.diageo_global_tap_brand_score_function(template_path)
+        # common.commit_results_data_to_new_tables()
         DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
