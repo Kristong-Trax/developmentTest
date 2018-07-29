@@ -25,6 +25,7 @@ class CCRUContract:
         self.static_data_extractor = CCRUTopSKUAssortment(rds_conn=rds_conn)
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
+        self.invalid_stores = []
 
     def __del__(self):
         if os.path.exists(self.temp_path):
@@ -51,13 +52,27 @@ class CCRUContract:
         os.remove(self.temp_path)
         return data
 
+    @staticmethod
+    def parse_template(file_path, rows_to_skip):
+        """
+        This function is taking care of cases that the template has different number of rows to skip.
+        It tries to skip one row and than 2 rows in order to read the data in both cases.
+        :return: A dataframe with the relevant data
+        """
+        data = pd.read_excel(file_path, skiprows=rows_to_skip-1).fillna('')
+        if 'Start Date' not in data.columns:
+            new_columns = data.values[0]
+            data = data[1:]
+            data.columns = new_columns
+        data['Start Date'] = data['Start Date'].astype(str)
+        data['End Date'] = data['End Date'].astype(str)
+        return data
+
     def parse_and_upload_file(self, skiprows=2):
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
         kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
-        raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
-        raw_data['Start Date'] = raw_data['Start Date'].astype(str)
-        raw_data['End Date'] = raw_data['End Date'].astype(str)
+        raw_data = self.parse_template(file_path, skiprows)
         if self.static_data_extractor.STORE_NUMBER not in raw_data.columns:
             Log.warning('File must '
                         'contain a {} header'.format(self.static_data_extractor.STORE_NUMBER))
@@ -67,6 +82,7 @@ class CCRUContract:
             store_id = self.static_data_extractor.get_store_fk(store_number)
             if store_id is None:
                 Log.warning('Store number {} does not exist'.format(store_number))
+                self.invalid_stores.append(store_number)
                 continue
             if store_id not in data_per_store.keys():
                 data_per_store[store_id] = []
@@ -83,6 +99,7 @@ class CCRUContract:
             Log.info('File for store {} was uploaded {}/{}'.format(store_id, x+1, len(data_per_store)))
         if os.path.exists(self.temp_path):
             os.remove(self.temp_path)
+        Log.warning('The following stores were not invalid: {}'.format(self.invalid_stores))
 
     @staticmethod
     def get_kpi_weights(file_path, kpi_row, weight_row):
