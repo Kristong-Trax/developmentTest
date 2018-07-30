@@ -343,7 +343,7 @@ class DIAGEOUSToolBox:
             return None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL])
-        facings = self.calculate_passed_display(product_fk, relevant_scif)
+        facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
         else:
