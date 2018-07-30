@@ -89,6 +89,7 @@ AVAILABILITY_POS = 'Availability POS'
 AVAILABILITY_SKU_FACING_AND = 'Availability SKU facing And'
 AVAILABILITY_SKU_FACING_OR = 'Availability SKU facing Or'
 AVAILABILITY_POSM = 'Availability POSM'
+AVAILABLITY_IF_THEN = 'Availability If Then'
 KO_PRODUCTS = 'KO PRODUCTS'
 GENERAL_FILTERS = 'general_filters'
 KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
@@ -618,12 +619,8 @@ class CCBZA_SANDToolBox:
 
             # constructing queries for DB
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
-            numerator_id = KO_ID
-            denominator_id = self.store_id
-            # identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(atomic_kpi[KPI_NAME]))
-            # identifier_parent['session_fk'] = self.session_info['pk'].values[0]
-            # identifier_parent['store_fk'] = self.store_id
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, score=score,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
+                                           denominator_id = self.store_id,
                                            identifier_result=identifier_parent,
                                            target=survey_max_score, should_enter=True)
 
@@ -806,11 +803,25 @@ class CCBZA_SANDToolBox:
                 score = self.calculate_availability_sku_facing_or(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
                 score = self.calculate_availability_posm(atomic_kpi)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
+                score = self.calculate_avialability_against_competitors(atomic_kpi)
             else:
                 Log.warning('Availablity of type {} is not supported by calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
                 continue
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             # write atomic score (maybe also result) to DB
+
+    def calculate_avialability_against_competitors(self, atomic_kpi):
+        max_score = atomic_kpi[SCORE]
+        is_by_scene = self.is_by_scene(atomic_kpi)
+        calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
+                                                                                        product_types=[SKU, OTHER]),
+                               KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        if is_by_scene:
+            session_results = []
+            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+            for scene in list_of_scenes:
+                pass
 
     # calculated on session level
     def calculate_availability_posm(self, atomic_kpi):
