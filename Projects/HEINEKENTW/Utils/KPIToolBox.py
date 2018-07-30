@@ -62,23 +62,24 @@ class HEINEKENTWToolBox:
         """
         This function calculates the KPI results.
         """
-
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
         self.common.commit_results_data_to_new_tables()
 
-    def category_assortment_calculation(self,lvl3_result):
+        # self.common.commit_results_data_to_new_tables()
+
+    def category_assortment_calculation(self, lvl3_result):
         """
         This function calculates 3 levels of assortment :
         level3 is assortment SKU
         level2 is assortment groups
-        level1 how many groups passed out of all
         """
         if not lvl3_result.empty:
             cat_df = self.scif[['product_fk', 'category_fk']]
             lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
             lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
+
             for result in lvl3_with_cat.itertuples():
                 score = result.in_store * 100
                 # Distrubtion
@@ -116,15 +117,16 @@ class HEINEKENTWToolBox:
                                                               denominator_result=denominator_res,
                                                               result=1 - res, score=(1 - res),
                                                               score_after_actions=1 - res)
+                self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
         return
 
-    def store_assortment_calculation(self,lvl3_result):
+    def store_assortment_calculation(self, lvl3_result):
         """
         This function calculates the KPI results.
         """
 
         for result in lvl3_result.itertuples():
-            score = result.in_store*100
+            score = result.in_store * 100
             # Distrubtion
             self.common.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL1, numerator_id=result.product_fk,
                                                       numerator_result=score,
@@ -132,12 +134,12 @@ class HEINEKENTWToolBox:
                                                       denominator_result=1, score=score)
             # OOS
             self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL1, numerator_id=result.product_fk,
-                                                      numerator_result=100-score,
-                                                      result=100-score, denominator_id=self.store_id,
-                                                      denominator_result=1, score=(100-score), score_after_actions=100-score)
+                                                      numerator_result=100 - score,
+                                                      result=100 - score, denominator_id=self.store_id,
+                                                      denominator_result=1, score=(100 - score),
+                                                      score_after_actions=100 - score)
 
         if not lvl3_result.empty:
-            self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
@@ -147,14 +149,15 @@ class HEINEKENTWToolBox:
                 # Distrubtion
                 self.common.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL2, numerator_id=self.MANUFACTURER_FK,
                                                           denominator_id=self.store_id,
-                                                          numerator_result=result.passes, denominator_result=denominator_res,
-                                                          result=res, score=res,score_after_actions=res)
+                                                          numerator_result=result.passes,
+                                                          denominator_result=denominator_res,
+                                                          result=res, score=res, score_after_actions=res)
 
                 # OOS
                 self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL2,
                                                           numerator_id=self.MANUFACTURER_FK,
-                                                          numerator_result=denominator_res-result.passes,
+                                                          numerator_result=denominator_res - result.passes,
                                                           denominator_id=self.store_id,
                                                           denominator_result=denominator_res,
-                                                          result=1-res, score=1-res, score_after_actions=1-res)
+                                                          result=1 - res, score=1 - res, score_after_actions=1 - res)
         return

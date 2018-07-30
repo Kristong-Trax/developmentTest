@@ -118,6 +118,7 @@ class HEINEKENTWToolBox:
                                                               denominator_id=cat,
                                                               denominator_result=denominator_res,
                                                               result=1-res, score=(1-res),score_after_actions=1-res)
+                self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
         return
 
 
@@ -140,7 +141,6 @@ class HEINEKENTWToolBox:
                                                       denominator_result=1, score=(100-score), score_after_actions=100-score)
 
         if not lvl3_result.empty:
-            self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
