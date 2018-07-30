@@ -18,7 +18,7 @@ class DIAGEOIECalculations(BaseCalculationsScript):
         #                              'Data', 'Brand Score.xlsx')
         DIAGEOIEGenerator(self.data_provider, self.output).main_function()
         common = Common(self.data_provider)
-        diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
+        # diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
         # diageo_generator.diageo_global_tap_brand_score_function(template_path)
         common.commit_results_data_to_new_tables()
         DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
