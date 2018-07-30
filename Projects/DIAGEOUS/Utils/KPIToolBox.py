@@ -45,7 +45,8 @@ class DIAGEOUSToolBox:
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty") &
                                              (self.scif['substitution_product_fk'].isnull())]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
-                                                  (self.all_products['category'] == 'SPIRITS')]
+                                                  (self.all_products['category'] == 'SPIRITS') &
+                                                  (self.all_products['is_active'] == 1)]
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
@@ -291,7 +292,7 @@ class DIAGEOUSToolBox:
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
         brand, sub_brand = self.get_product_details(product_fk)
-        if sub_brand is None:
+        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
             return None
         facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
         if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
@@ -313,6 +314,8 @@ class DIAGEOUSToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
+        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            return None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
@@ -336,9 +339,11 @@ class DIAGEOUSToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
+        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            return None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.SKU])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL])
-        facings = self.calculate_passed_display(product_fk, relevant_scif)
+        facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
         if facings > 0:
             result, passed = Const.DISTRIBUTED, 1
         else:
@@ -472,7 +477,7 @@ class DIAGEOUSToolBox:
         """
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
         manufacturer = self.get_manufacturer(product_fk)
-        sum_scenes_passed = self.calculate_passed_display(product_fk, relevant_products)
+        sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
         if sum_scenes_passed == 0:
             return None
@@ -806,7 +811,7 @@ class DIAGEOUSToolBox:
         """
         Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet).
         :param product_fk:
-        :param relevant_products: relevant scif?
+        :param relevant_products: relevant scif
         :return: number of scenes. int.
         """
         template = self.templates[Const.DISPLAY_TARGET_SHEET]
@@ -824,6 +829,38 @@ class DIAGEOUSToolBox:
             facings = scene_product['facings'].iloc[0]
             sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
         return sum_scenes_passed
+
+    def calculate_passed_display_without_subst(self, product_fk, relevant_products):
+        """
+        Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet),
+        every time it should pass the condition ONLY with the same product_fk (without the similar products).
+        :param product_fk:
+        :param relevant_products: relevant scif
+        :return: number of scenes. int.
+        """
+        template = self.templates[Const.DISPLAY_TARGET_SHEET]
+        sum_scenes_passed, sum_facings = 0, 0
+        product_fk_with_substs = [product_fk]
+        product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
+            'product_fk'].tolist()
+        for product in product_fk_with_substs:
+            for scene in relevant_products['scene_fk'].unique().tolist():
+                scene_products = self.match_product_in_scene[
+                    (self.match_product_in_scene['scene_fk'] == scene) &
+                    (self.match_product_in_scene['product_fk'] == product)]
+                if scene_products.empty:
+                    continue
+                scene_type = self.get_scene_type(scene)
+                minimum_products = template[template[Const.SCENE_TYPE] == scene_type]
+                if minimum_products.empty:
+                    minimum_products = template[template[Const.SCENE_TYPE] == Const.OTHER]
+                minimum_products = minimum_products[Const.MIN_FACINGS].iloc[0]
+                facings = len(scene_products)
+                sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
+        return sum_scenes_passed
+
+    def get_scene_type(self, scene_fk):
+        return self.scif[self.scif['scene_fk'] == scene_fk]['template_name'].iloc[0]
 
     def get_relevant_scenes(self, scene_types):
         """

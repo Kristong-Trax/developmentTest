@@ -26,7 +26,8 @@ class Generator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
+        if self.tool_box.manual_collection_number.empty:
+            Log.warning('Manual collection numbers is empty for this session')
+            return
         self.tool_box.main_calculation()
         self.common.commit_results_data_to_new_tables()
