@@ -68,13 +68,19 @@ class CCBZA_SAND_Queries(object):
             """
 
     @staticmethod
-    def getPlanogramByTemplateName(scene_fk):
+    def get_planogram_results(scenes):
         return """
-               SELECT match_compliance_status
+               SELECT * 
                FROM report.match_planogram_compliance
-               where scene_fk = {}
-               """.format(scene_fk)
+               where scene_fk in {}
+               """.format(scenes)
 
+    @staticmethod
+    def get_kpi_result_values():
+        return """
+                SELECT *
+                FROM static.kpi_result_value
+                """
     # @staticmethod
     # def get_template_fk_by_category_fk():
     #     return """

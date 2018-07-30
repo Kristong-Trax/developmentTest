@@ -108,6 +108,8 @@ OTHER = 'Other'
 MAX_SCORE = 'Max_Score'
 IRRELEVANT = 'Irrelevant'
 EMPTY = 'Empty'
+KO_ID = 1 # to checkout
+
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -118,7 +120,9 @@ class CCBZA_SANDToolBox:
         self.output = output
         self.data_provider = data_provider
 
-        # self.common = Common(self.data_provider)
+        self.common = Common(self.data_provider)
+        self.kpi_static_data = self.common.get_kpi_static_data()
+
         # self.general_tool_box = GENERALToolBox(self.data_provider)
         # self.common_sos = SOS(self.data_provider, self.output)
         # self.common_availability = Availability(self.data_provider)
@@ -133,14 +137,13 @@ class CCBZA_SANDToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.scif = self.get_manufacturer_related_scif()
+        self.scif_KO_only = self.get_manufacturer_related_scif()
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        # self.kpi_static_data = self.common.get_kpi_static_data()
 
         self.kpi_results_queries = []
 
-        self.kpi_static_data = self.get_kpi_static_data()
-        self.new_kpi_static_data = self.get_new_kpi_static_data()
+        # self.kpi_static_data = self.get_kpi_static_data()
+        # self.new_kpi_static_data = self.get_new_kpi_static_data()
         self.kpi_results_data = self.create_kpi_results_container()
         self.store_data = self.get_store_data_by_store_id()
         self.template_path = self.get_template_path()
@@ -149,6 +152,8 @@ class CCBZA_SANDToolBox:
         self.kpi_sets = self.template_data[KPI_TAB][SET_NAME].unique().tolist()
         self.current_kpi_set_name = ''
         self.tools = CCBZA_SAND_GENERALToolBox(self.data_provider, self.output)
+        # self.kpi_result_values = self.get_kpi_result_values_df() # maybe for ps data provider, create mock
+        # self.planogram_results = self.get_planogram_results()
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -165,22 +170,23 @@ class CCBZA_SANDToolBox:
             kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name] # we get the relevant kpis for the set
             for index, kpi in kpi_data.iterrows():
                 kpi_types = self.get_kpi_types_by_kpi(kpi)
+                identifier_result = self.get_identifier_result_kpi(kpi)
                 # atomic_scores = []
                 for kpi_type in kpi_types:
                     atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi) # we get relevant atomics from the sheets
                     if not atomic_kpis_data.empty:
                         if kpi_type == 'Survey':
-                            self.calculate_survey(atomic_kpis_data)
+                            self.calculate_survey(atomic_kpis_data, identifier_result)
                         elif kpi_type == 'Availability':
-                            self.calculate_availability_custom(atomic_kpis_data)
+                            self.calculate_availability_custom(atomic_kpis_data, identifier_result)
                         elif kpi_type == 'Count':
-                            self.calculate_count(atomic_kpis_data)
+                            self.calculate_count(atomic_kpis_data, identifier_result)
                         elif kpi_type == 'Price':
-                            self.calculate_price(atomic_kpis_data)
+                            self.calculate_price(atomic_kpis_data, identifier_result)
                         elif kpi_type == 'SOS':
-                            self.calculate_sos(atomic_kpis_data)
+                            self.calculate_sos(atomic_kpis_data, identifier_result)
                         elif kpi_type == 'Planogram':
-                            self.calculate_planogram_compliance(atomic_kpis_data)
+                            self.calculate_planogram_compliance(atomic_kpis_data, identifier_result)
                         else:
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type.encode('utf8')))
                             continue
@@ -192,8 +198,25 @@ class CCBZA_SANDToolBox:
         # write red_score to db - maybe in KPIGenerator? Will see..
         self.commit_results_data()
 
+    def get_identifier_result_kpi(self, kpi):
+        kpi_name = kpi[KPI_NAME]
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
+                                                       manufacturer_id=KO_ID)
+        return identifier_result
+
+    def get_identifier_result_set(self, set_name):
+        kpi_name = set_name
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
+                                                       manufacturer_id=KO_ID)
+        return identifier_result
+
     def get_store_data_by_store_id(self):
         query = CCBZA_SAND_Queries.get_store_data_by_store_id(self.store_id)
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
+
+    def get_kpi_result_values_df(self):
+        query = CCBZA_SAND_Queries.get_kpi_result_values()
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
 
@@ -220,6 +243,12 @@ class CCBZA_SANDToolBox:
 
     def get_relevant_template_data(self):
         pass
+
+    def get_planogram_results(self):
+        scenes = self.scene_info['scene_fk'].unique().tolist()
+        query = CCBZA_SAND_Queries.get_planogram_results(scenes)
+        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
+        return kpi_static_data
 
     def get_kpi_static_data(self):
         """
@@ -341,7 +370,7 @@ class CCBZA_SANDToolBox:
         #         return None
         return kpi_score
 
-    def calculate_planogram_compliance(self, atomic_kpis_data):
+    def calculate_planogram_compliance(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_score = 0
             atomic_kpi = atomic_kpis_data.iloc[i]
@@ -349,7 +378,7 @@ class CCBZA_SANDToolBox:
             relevant_scenes = self.scif[(self.scif['template_display_name'].isin(template_names))]
             scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
 
-    def calculate_price(self, atomic_kpis_data):
+    def calculate_price(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             target = atomic_kpi[TARGET]
@@ -550,7 +579,7 @@ class CCBZA_SANDToolBox:
     #     session_results = []
     #     for scene in list_of_scenes:
 
-    def calculate_count(self, atomic_kpis_data):
+    def calculate_count(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             max_score = atomic_kpi[SCORE]
@@ -568,7 +597,8 @@ class CCBZA_SANDToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write score to DB
 
-    def calculate_survey(self, atomic_kpis_data):
+
+    def calculate_survey(self, atomic_kpis_data, identifier_parent):
         """
         This function calculates Survey-Question typed Atomics, and writes the result to the DB.
         """
@@ -576,15 +606,27 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE]))
             expected_answers = atomic_kpi[EXPECTED_RESULT]
-            survey_max_score = float(atomic_kpi[SCORE])
+            survey_max_score = atomic_kpi[SCORE]
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
-            atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == atomic_kpi[ATOMIC_KPI_NAME]] # fk from new tables
+            # atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == atomic_kpi[ATOMIC_KPI_NAME]] # fk from new tables
             score = None
             if survey_max_score:
-                score = survey_max_score if survey_answer in expected_answers else 0
+                score = float(survey_max_score) if survey_answer in expected_answers else 0
             else:
                 score = 100 if survey_answer in expected_answers else 0 #check if this is 100 or 1
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+
+            # constructing queries for DB
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            numerator_id = KO_ID
+            denominator_id = self.store_id
+            # identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(atomic_kpi[KPI_NAME]))
+            # identifier_parent['session_fk'] = self.session_info['pk'].values[0]
+            # identifier_parent['store_fk'] = self.store_id
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, score=score,
+                                           identifier_result=identifier_parent,
+                                           target=survey_max_score, should_enter=True)
+
             # append score to db queries - which tables should it be?
             # self.write_to_db_result(atomic_fk, self.LEVEL3, score, score) # verify after...
 
@@ -605,7 +647,7 @@ class CCBZA_SANDToolBox:
                                                                MAX_SCORE: max_score}],
                                                              ignore_index=True)
 
-    def calculate_sos(self, atomic_kpis_data):
+    def calculate_sos(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             max_score = atomic_kpi[SCORE]
@@ -752,7 +794,7 @@ class CCBZA_SANDToolBox:
     #         condition_columns = filter(lambda y: y[0] == condition, map(lambda x: x.split(' '), columns))
     #
 
-    def calculate_availability_custom(self, atomic_kpis_data):
+    def calculate_availability_custom(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             score = 0
