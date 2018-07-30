@@ -57,6 +57,8 @@ class CCRU_SANDContract:
         file_path = parsed_args.file
         kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
         raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
+        raw_data['Start Date'] = raw_data['Start Date'].astype(str)
+        raw_data['End Date'] = raw_data['End Date'].astype(str)
         if self.static_data_extractor.STORE_NUMBER not in raw_data.columns:
             Log.warning('File must '
                         'contain a {} header'.format(self.static_data_extractor.STORE_NUMBER))
