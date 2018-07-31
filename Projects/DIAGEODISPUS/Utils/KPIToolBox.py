@@ -106,11 +106,11 @@ class DIAGEODISPUSToolBox:
                 'Competition Group'].drop_duplicates().values[0]
             sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
                 display_bottles), float(case_pack))
-        # sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
-        # for row in sku_results.itertuples():
-        #     self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
-        #                                               numerator_result=row.num_of_cases, result=row.num_of_cases,
-        #                                               score=row.num_of_cases)
+        sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
+        for row in sku_results.itertuples():
+            self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
+                                                      numerator_result=row.num_of_cases, result=row.num_of_cases,
+                                                      score=row.num_of_cases)
         brand_results = pd.DataFrame(columns=['brand', 'num_of_cases'])
         brand_results['brand'] = sku_results['brand'].drop_duplicates().values
         for brand in sku_results['brand'].drop_duplicates().values:
