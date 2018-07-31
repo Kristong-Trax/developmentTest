@@ -156,6 +156,7 @@ class CCBZA_SANDToolBox:
         self.current_kpi_set_name = ''
         self.tools = CCBZA_SAND_GENERALToolBox(self.data_provider, self.output)
         self.kpi_result_values = self.get_kpi_result_values_df() # maybe for ps data provider, create mock
+        self.kpi_score_values = self.get_kpi_score_values_df()
         # self.planogram_results = self.get_planogram_results()
         self.full_store_type = self.get_full_store_type()
         self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
@@ -164,7 +165,7 @@ class CCBZA_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        # if self.template_data:
+        # if self.template_data?
         red_score = 0
         for kpi_set_name in self.kpi_sets:
             self.current_kpi_set_name = kpi_set_name
@@ -193,7 +194,7 @@ class CCBZA_SANDToolBox:
                         elif kpi_type == 'Planogram':
                             self.calculate_planogram_compliance(atomic_kpis_data, identifier_result)
                         else:
-                            Log.warning("KPI of type '{}' is not supported".format(kpi_type.encode('utf8')))
+                            Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                             continue
                 kpi_result = self.calculate_kpi_result(kpi)
                 #write result to the DB
@@ -223,6 +224,11 @@ class CCBZA_SANDToolBox:
 
     def get_kpi_result_values_df(self):
         query = CCBZA_SAND_Queries.get_kpi_result_values()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
+
+    def get_kpi_score_values_df(self):
+        query = CCBZA_SAND_Queries.get_kpi_score_values()
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
 
@@ -358,6 +364,14 @@ class CCBZA_SANDToolBox:
         pk = None  # I want to stop code - maybe w/o try/except?
         try:
             pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
+        except:
+            Log.error('Value {} does not exist'.format(value))
+        return pk
+
+    def get_kpi_score_value_pk_by_value(self, value):
+        pk = None  # I want to stop code - maybe w/o try/except?
+        try:
+            pk = self.kpi_score_values[self.kpi_score_values['value'] == value]['pk'].values[0]
         except:
             Log.error('Value {} does not exist'.format(value))
         return pk
@@ -629,7 +643,13 @@ class CCBZA_SANDToolBox:
             atomic_result = 100 if any([doors == target for doors in session_door_count]) else 0
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
-            # write score to DB
+
+            # constructing queries for DB
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
+                                           denominator_id=self.store_id,
+                                           identifier_parent=identifier_parent,
+                                           target=int(float(max_score)), should_enter=True)
 
     def calculate_survey(self, atomic_kpis_data, identifier_parent):
         """
@@ -639,28 +659,39 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE]))
             expected_answers = atomic_kpi[EXPECTED_RESULT]
-            survey_max_score = atomic_kpi[SCORE]
+            survey_max_score = float(atomic_kpi[SCORE])
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
             # atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == atomic_kpi[ATOMIC_KPI_NAME]] # fk from new tables
             score = None
             if survey_max_score:
-                score = float(survey_max_score) if survey_answer in expected_answers else 0
+                score = int(survey_max_score) if survey_answer in expected_answers else 0
             else:
                 score = 100 if survey_answer in expected_answers else 0 #check if this is 100 or 1
-            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
 
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             # constructing queries for DB
+            custom_score = self.get_pass_fail(score)
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
-                                           denominator_id=self.store_id,
-                                           identifier_result=identifier_parent,
-                                           target=survey_max_score, should_enter=True)
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                                           denominator_id=self.store_id, result=score,
+                                           identifier_parent=identifier_parent,
+                                           target=int(survey_max_score), should_enter=True)
 
             # append score to db queries - which tables should it be?
             # self.write_to_db_result(atomic_fk, self.LEVEL3, score, score) # verify after...
 
     # def get_kpi_data_by_set_name(self, kpi_set_name):
     #     kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
+
+    def get_pass_fail(self, score):
+        value = 'Failed' if not score else 'Passed'
+        custom_score = self.get_kpi_score_value_pk_by_value(value)
+        return custom_score
+
+    def get_x_v(self, score):
+        value = 'X' if not score else 'V'
+        custom_score = self.get_kpi_score_value_pk_by_value(value)
+        return custom_score
 
     def add_kpi_result_to_kpi_results_container(self, atomic_kpi, score):
         # columns = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
@@ -686,12 +717,24 @@ class CCBZA_SANDToolBox:
             atomic_result = 0
             if not filtered_scif.empty:
                 sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
+                number_of_conditions = len(sos_filters.items())
                 conditions_results = []
                 for condition, filters in sos_filters.items():
                     target = float(filters[condition].pop('target'))/100
-                    ratio = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
-                    conditions_results.append(100 if ratio >= target else 0)
+                    ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
+                    condition_score = 100 if ratio >= target else 0
+                    conditions_results.append(condition_score)
+
                     # write condition result to DB
+                    custom_score = self.get_pass_fail(condition_score)
+                    atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
+                                    else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+                                                   denominator_id=self.store_id, denominator_result=denom_res,
+                                                   result=ratio, score=custom_score,
+                                                   identifier_parent=identifier_parent,
+                                                   target=target, should_enter=True)
                 if conditions_results:
                     atomic_result = 100 if all(conditions_results) else 0
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
@@ -701,12 +744,9 @@ class CCBZA_SANDToolBox:
     def calculate_sos_for_condition(self, scif, filters):
         numer_result = scif[self.tools.get_filter_condition(scif, **filters['numer'])]['facings'].sum()
         denom_result = scif[self.tools.get_filter_condition(scif, **filters['denom'])]['facings'].sum()
-        return float(numer_result) / denom_result if denom_result != 0 else 0
+        ratio = float(numer_result) / denom_result if denom_result != 0 else 0
+        return ratio, numer_result, denom_result
 
-
-        # numerator_result = self.get_facings_based_on_critera(scif, filters['numerator'])
-        # denominator_result = self.get_facings_based_on_critera(scif, filters['denominator'])
-        # return float(numerator_result) / denominator_result if denominator_result != 0 else 0
 
     # def get_facings_based_on_critera(self, scif, filters):
     #     filtered_scif = self.filter_df_based_on_filtering_dictionary(scif, filters)

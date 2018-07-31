@@ -81,6 +81,14 @@ class CCBZA_SAND_Queries(object):
                 SELECT *
                 FROM static.kpi_result_value
                 """
+
+    @staticmethod
+    def get_kpi_score_values():
+        return """
+                    SELECT *
+                    FROM static.kpi_score_value
+                    """
+
     # @staticmethod
     # def get_template_fk_by_category_fk():
     #     return """
