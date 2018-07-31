@@ -576,7 +576,7 @@ class BATRUToolBox:
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']]
                                                , on=['probe_match_fk', 'product_fk', 'scene_fk'])
-        # self.date_attr = self.data_provider._probedata_provider.date_attributes
+        # self.date_attr = self.data_provider._probedata_ provider.date_attributes
         merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                             on=['probe_match_fk', 'product_fk', 'scene_fk'])
         merged_additional_data = pd.DataFrame()
