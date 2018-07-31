@@ -144,10 +144,11 @@ class CUBAUCUBAUToolBox:
 
     def calculate_sos(self, sos_type, kpi_fk, numerator_fk, denominator_fk, subset_filters, pop_filters, context=None):
         ratio = 0
+        df = self.match_product_in_scene.merge(self.scif, how='left', on=['scene_fk', 'product_fk'])
         #  denominator
-        pop_filter = self.common_sos.get_filter_condition(self.match_product_in_scene, **pop_filters)
+        pop_filter = self.common_sos.get_filter_condition(df, **pop_filters)
         #  numerator
-        subset_filter = self.common_sos.get_filter_condition(self.match_product_in_scene, **subset_filters)
+        subset_filter = self.common_sos.get_filter_condition(df, **subset_filters)
         try:
             ratio = self.calculate_sos_by_policy(sos_type, kpi_fk, numerator_fk, denominator_fk,
                                                  subset_filter=subset_filter, pop_filter=pop_filter, context=context)
@@ -157,17 +158,17 @@ class CUBAUCUBAUToolBox:
 
     def calculate_sos_by_policy(self, sos_type, kpi_fk, numerator_fk, denominator_fk,
                                 subset_filter, pop_filter, context=None):
-
-        den_df = self.matches_with_direction[pop_filter]
+        matches = self.matches_with_direction.merge(self.scif, how='left', on=['scene_fk', 'product_fk'])
+        den_df = matches[pop_filter]
         nom_df = den_df[subset_filter]
         if sos_type == 'CUB':
             # IN Top pallet scene type we should include only top facings:
             denominator = den_df.loc[(den_df['template_display_name'] == self.TOP_PALLET) &
                                      (den_df['image_direction'] == 'Top')]['product_fk'].count() + \
-                          den_df.loc[(~den_df['template_display_name'] == self.TOP_PALLET) & (den_df['stacking_layer'] == 1)]['product_fk'].count()
+                          den_df.loc[~(den_df['template_display_name'] == self.TOP_PALLET) & (den_df['stacking_layer'] == 1)]['product_fk'].count()
             numerator = nom_df.loc[(nom_df['template_display_name'] == self.TOP_PALLET) &
                                    (nom_df['image_direction'] == 'Top')]['product_fk'].count() + \
-                          nom_df.loc[(~nom_df['template_display_name'] == self.TOP_PALLET) & (nom_df['stacking_layer'] == 1)]['product_fk'].count()
+                          nom_df.loc[~(nom_df['template_display_name'] == self.TOP_PALLET) & (nom_df['stacking_layer'] == 1)]['product_fk'].count()
         else:
             denominator = den_df['product_fk'].count()
             numerator = nom_df['product_fk'].count()
