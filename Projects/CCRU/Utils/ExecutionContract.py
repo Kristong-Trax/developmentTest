@@ -52,27 +52,13 @@ class CCRUContract:
         os.remove(self.temp_path)
         return data
 
-    @staticmethod
-    def parse_template(file_path, rows_to_skip):
-        """
-        This function is taking care of cases that the template has different number of rows to skip.
-        It tries to skip one row and than 2 rows in order to read the data in both cases.
-        :return: A dataframe with the relevant data
-        """
-        data = pd.read_excel(file_path, skiprows=rows_to_skip-1).fillna('')
-        if 'Start Date' not in data.columns:
-            new_columns = data.values[0]
-            data = data[1:]
-            data.columns = new_columns
-        data['Start Date'] = data['Start Date'].astype(str)
-        data['End Date'] = data['End Date'].astype(str)
-        return data
-
     def parse_and_upload_file(self, skiprows=2):
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
         kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
-        raw_data = self.parse_template(file_path, skiprows)
+        raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
+        raw_data['Start Date'] = raw_data['Start Date'].astype(str)
+        raw_data['End Date'] = raw_data['End Date'].astype(str)
         if self.static_data_extractor.STORE_NUMBER not in raw_data.columns:
             Log.warning('File must '
                         'contain a {} header'.format(self.static_data_extractor.STORE_NUMBER))

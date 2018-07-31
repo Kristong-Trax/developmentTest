@@ -127,7 +127,7 @@ class CCRUTopSKUAssortment:
             # return
 
         if products:
-            current_date = datetime(year=2018, month=06, day=30).date()  # If the product has a custom start_date
+            current_date = datetime(year=2018, month=07, day=28).date()  # If the product has a custom start_date
             # current_date = datetime.now().date()  # If the product should be activated from today
             if immediate_change:
                 deactivate_date = current_date - timedelta(1)
