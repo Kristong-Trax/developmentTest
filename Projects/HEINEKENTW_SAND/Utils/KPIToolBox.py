@@ -72,10 +72,6 @@ class HEINEKENTWToolBox:
         self.store_assortment_calculation(lvl3_result)
         self.common.commit_results_data_to_new_tables()
 
-
-
-        #self.common.commit_results_data_to_new_tables()
-
     def category_assortment_calculation(self,lvl3_result):
         """
         This function calculates 3 levels of assortment :

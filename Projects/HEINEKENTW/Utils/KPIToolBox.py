@@ -37,7 +37,7 @@ class HEINEKENTWToolBox:
     DIST_CATEGORY_LVL2 = 1020
     OOS_CATEGORY_LVL2 = 1021
 
-    MANUFACTURER_FK = 233  # heinken manfucturer
+    MANUFACTURER_FK = 175  # heinken manfucturer
 
     def __init__(self, data_provider, output):
         self.output = output
