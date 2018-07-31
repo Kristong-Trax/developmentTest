@@ -943,6 +943,8 @@ class BATRU_SANDToolBox:
                 # # # # # #  PROS - 5733 # # # # # #
                 # Maybe do: try and this long AND shit
                 # # If empty: just to the regular (what above the # # # # #)
+                ### IMPORTANT --- MOVE IT UPPER! BEFORE THE SECTIONS??
+                # ~~~~~~~~~~~~~~~~~~~~~to ask vitaly ~~~~~~~~~~~~~~~~~~~~
                 # specific_section_products_template = sections_products_template_data.loc[
                 #     (sections_products_template_data['Section'] == str(int(float(section)))) &
                 #     (sections_products_template_data['GEO'] == state_for_calculation) &
