@@ -8,16 +8,21 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+# from KPIUtils.Utils.Helpers.LogHandler import log_handler
+
 __author__ = 'urid'
 
 
 class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
+
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         tool_box = MARSRU_PRODMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
         tool_box.hadle_update_custom_scif()
         jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
-        jg.create_json('MARS KPIs 2018.xlsx', year_filter='2018')
+        jg.create_json('MARS KPIs.xlsx', year_filter='2018')
         tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
@@ -58,10 +63,13 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'marsru-prod'
 #     session_uids = [
-#         '4675635c-1e40-41a2-b11e-6472382df1b0',
-#         'ea0f81e1-eea6-45c9-880f-7a2581a081e7',
-#         '905f5087-8fca-41c3-a901-f9a82e684137',
-#         '3ffaf3e2-de72-4001-af7e-397062b3bd6f'
+#                     '9adc9abb-fec1-4c31-bceb-b3a82e478de6',
+#                     '9b01a642-bd0d-4096-ae25-f21807372508',
+#                     '02f34db9-1aa1-4cac-850c-04aa678e1bb5',
+#                     '032c5820-8070-4ae9-88a6-75624e5b9ce4',
+#                     'f60b05f6-3592-4e36-8abe-25c574f8b24d',
+#                     '10465c02-8105-44d3-8dba-33ef39ed9d4d',
+#
 #     ]
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()

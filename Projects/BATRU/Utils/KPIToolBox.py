@@ -1,4 +1,5 @@
 # coding=utf-8
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -12,7 +13,7 @@ from Projects.BATRU.Utils.ParseTemplates import parse_template
 from Projects.BATRU.Utils.Fetcher import BATRUQueries
 from Projects.BATRU.Utils.GeneralToolBox import BATRUGENERALToolBox
 from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
-from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 
 
 __author__ = 'uri'
@@ -36,7 +37,10 @@ P5_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data'
 POSM_AVAILABILITY = 'POSM Status'
 SHARE_OF = 'Share of Shelf / Assortment'
 PRICE_MONITORING = 'Price Monitoring'
+MOBILE_PRICE_MONITORING = 'Mobile Price Monitoring'
+MOBILE_PRICE_MONITORING_KPI_FK = 5891
 P2_FULFILMENT = 'Price-Monitoring fulfillment (TMR)'
+P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
 P2_RAW_DATA = 'Raw Data'
 P2_SET_PRICE = 'Price Monitoring'
@@ -65,22 +69,6 @@ BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
-
-
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-
-        return wrapper
-
-    return decorator
 
 
 class BATRUToolBox:
@@ -620,7 +608,7 @@ class BATRUToolBox:
                                                                   left_on=['scene_id', 'item_id'],
                                                                   right_on=['scene_fk', 'product_fk'])
         if not merged_additional_data.empty:
-            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], inplace=True)
+            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], how='all', inplace=True)
 
         return merged_additional_data
 
@@ -690,18 +678,20 @@ class BATRUToolBox:
     # P2 KPI
     @kpi_runtime()
     def handle_priority_2(self):
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[
-            0]
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        mobile_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
-            score = self.calculate_fulfilment(monitored_sku)
-            self.calculate_efficiency()
+            score = self.calculate_fulfilment(monitored_sku['ean_code'])
+            efficiency_score = self.calculate_efficiency()
             self.get_raw_data()
-
+            self.set_p2_sku_mobile_results(monitored_sku)
             if score or score == 0:
                 self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
+                self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
+                                        score_2=format(efficiency_score, '.2f'))
 
     def get_sku_monitored(self, state):
         monitored_skus = self.get_custom_template(P2_PATH, 'SKUs')
@@ -711,7 +701,9 @@ class BATRUToolBox:
                 lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
-        extra_df = pd.DataFrame(columns=monitored_skus.columns)
+        # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
+        # extra_df = pd.DataFrame(columns=monitored_skus.columns)
+        extra_df = pd.DataFrame(columns=list(monitored_skus.columns) + [u'leading'])
         for sku in monitored_skus['ean_code'].unique().tolist():
             try:
                 # product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk'].values[0]
@@ -719,7 +711,7 @@ class BATRUToolBox:
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB'.format(sku))
                 continue
-            extra_df = extra_df.append({'State': state, 'ean_code': product_ean_code_lead, 'Required for monitoring': 1}, ignore_index=True)
+            extra_df = extra_df.append({'State': state, 'ean_code': product_ean_code_lead, 'Required for monitoring': 1, 'leading': sku}, ignore_index=True)
 
             # # bundled_products = self.bundle_fk_ean(product_fk)
             # bundled_products = self.get_bundles_by_definitions(
@@ -734,10 +726,11 @@ class BATRUToolBox:
             #     # prod_atts_dict = [state, bundle_product, 1]
             #     # extra_df.append(prod_atts_dict)
 
-        # monitored_skus=monitored_skus.append(extra_df)
+        monitored_skus=monitored_skus.append(extra_df)
         # return monitored_skus['ean_code']
-
-        return extra_df['ean_code'].drop_duplicates()
+        monitored_skus = monitored_skus.fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()][
+            'ean_code']})
+        return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
         """
@@ -753,6 +746,7 @@ class BATRUToolBox:
 
     def calculate_fulfilment(self, monitored_products):
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_FULFILMENT]['kpi_fk'].iloc[0]
+        mobile_kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_MOBILE_FULFILMENT]['kpi_fk'].iloc[0]
         atomic_fk = \
             self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == P2_FULFILMENT]['atomic_kpi_fk'].iloc[0]
         score = self.get_fulfilment(monitored_products)
@@ -761,6 +755,7 @@ class BATRUToolBox:
             return
         else:
             self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
+            self.write_to_db_result(mobile_kpi_fk, round(score, 2), self.LEVEL2)
             self.write_to_db_result(atomic_fk, round(score, 2), self.LEVEL3)
             return score
 
@@ -771,6 +766,7 @@ class BATRUToolBox:
         score = self.get_efficiency()
         self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
         self.write_to_db_result(atomic_fk, round(score, 2), self.LEVEL3)
+        return score
 
     def get_fulfilment(self, monitored_skus):
         """
@@ -817,12 +813,12 @@ class BATRUToolBox:
 
     def get_raw_data(self):
         # raw_data = self.merged_additional_data.dropna(subset=['price_value', 'date_value'])
-        if not self.merged_additional_data.empty:
-            # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
-            self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
-                '%m.%Y')
-        else:
-            self.merged_additional_data['Formatted_Date'] = 0
+        # if not self.merged_additional_data.empty:
+        #     # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
+        #     self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
+        #         '%m.%Y')
+        # else:
+        #     self.merged_additional_data['Formatted_Date'] = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product = row['product_ean_code']
@@ -835,11 +831,22 @@ class BATRUToolBox:
                 product_for_db = bundle_lead
             else:
                 product_for_db = product
-            self.write_to_db_result_for_api(score=row['price_value'], level=self.LEVEL3, level3_score=None,
+
+            if np.isnan(row['price_value']):  # None
+                price_value_for_db = 0
+            else:
+                price_value_for_db = format(row['price_value'], '.2f')
+
+            if isinstance(row['fixed_date'], pd._libs.tslib.NaTType):  # None
+                formatted_date_for_db = '0'
+            else:
+                formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+
+            self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
-            self.write_to_db_result_for_api(score=row['Formatted_Date'], level=self.LEVEL3, level3_score=None,
+            self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_DATE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
@@ -847,6 +854,64 @@ class BATRUToolBox:
         # using P4 save function to save None without problems so will add set name to api.
         self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None,
                                         kpi_set_name=P2_SET_DATE)
+
+    def set_p2_sku_mobile_results(self, monitored_sku):
+        new_products = False
+        set_name = MOBILE_PRICE_MONITORING
+        kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
+        try:
+            existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
+                'product_ean_code'].isin(monitored_sku['leading'].values))]
+            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name][
+                'atomic_kpi_name'].unique().tolist()
+            not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
+            if not_in_db_products.any:
+                self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
+                new_products = True
+        except Exception as e:
+            Log.info('Updating Mobile price sets failed')
+        if new_products:
+            self.kpi_static_data = self.get_kpi_static_data()
+            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
+            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
+        monitored_sku = monitored_sku.drop_duplicates(subset=['leading'], keep='last')
+        for index in xrange(len(monitored_sku)):
+            row = monitored_sku.iloc[index]
+            try:
+                product_name = self.all_products[self.all_products['product_ean_code'] == row.leading][
+                    'product_short_name'].drop_duplicates().values[0]
+            except Exception as e:
+                Log.warning('Product ean {} is not defined in the DB'.format(row.leading))
+                continue
+            try:
+                kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
+                                              (self.kpi_static_data['kpi_set_name'] == set_name)][
+                    'atomic_kpi_fk'].drop_duplicates().values[0]
+                product_fk = self.all_products[self.all_products['product_ean_code'] == row.ean_code][
+                    'product_fk'].drop_duplicates().values[0]
+
+                score = 0 if self.merged_additional_data[self.merged_additional_data['item_id'] == product_fk].empty else 1
+                result = 0
+                result2 = 0
+                if score:
+
+                    result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                        'price_value'].drop_duplicates().values[0]
+                    if np.isnan(result):  # None
+                        result = 0
+                    else:
+                        result = format(result, '.2f')
+
+                    result2 = pd.to_datetime(self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                            'fixed_date'].drop_duplicates().values[0])
+                    if isinstance(result2, pd._libs.tslib.NaTType):  # None
+                        result2 = '0'
+                    else:
+                        result2 = pd.to_datetime(str(result2)).strftime('%m.%Y')
+
+                self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
+            except Exception as e:
+                Log.error('{}'.format(e))
 
     # P3 KPI
     @kpi_runtime()
@@ -938,8 +1003,11 @@ class BATRUToolBox:
                     (self.match_product_in_scene[shelf_number].between(start_shelf, end_shelf))]\
                     .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
-                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
+                if section_shelf_data_all.empty:
+                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    continue
 
+                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
                 if section_shelf_data.empty:
                     Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
                     continue
@@ -1139,7 +1207,7 @@ class BATRUToolBox:
 
         # Store level results
         if self.sas_zone_statuses_dict:
-            sas_zone_score = str(min(self.sas_zone_statuses_dict.values())) + '/' +\
+            sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
                              str(len(self.sas_zone_statuses_dict.values()))
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
@@ -1161,6 +1229,10 @@ class BATRUToolBox:
         :param priorities_section: the priorities from the match template
         :return: true if all the products' facings are right
         """
+
+        if len(priorities_section['Index (Duplications priority)'].unique().tolist()) == 1:
+            return True
+
         products_to_check = section_shelf_data \
             .loc[(section_shelf_data['manufacturer_name'] == BAT) &
                  (section_shelf_data['product_type'].isin([SKU, POSM]))]['product_ean_code_lead'].unique().tolist()
@@ -1289,7 +1361,7 @@ class BATRUToolBox:
 
     def get_absolute_sequence(self, shelf_data):
         if shelf_data.empty:
-            return
+            return pd.DataFrame()
         shelf_data_sequence_dict = {}
         for bay in shelf_data['bay_number'].unique().tolist():
             last_bay_seq = 0
@@ -1600,14 +1672,12 @@ class BATRUToolBox:
             if row['is_set_score'] == '1':
                 set_score = score
 
-            atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[
-                0]
+            atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
             kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].iloc[0]
-            self.write_to_db_result(atomic_fk, result=round(score * 100, 2), score=round(score * 100, 2),
-                                    score_2=round(score, 2), level=self.LEVEL3)
-            self.write_to_db_result(kpi_fk, result=round(score, 2), score_2=round(score, 2), level=self.LEVEL2)
-        self.write_to_db_result(set_fk, result=round(set_score * 100, 2), level=self.LEVEL1)
+            self.write_to_db_result(atomic_fk, result=format(score * 100, '.2f'), score=format(score * 100, '.0f'),
+                                    score_2=format(score, '.2f'), level=self.LEVEL3)
+            self.write_to_db_result(kpi_fk, result=format(score, '.0f'), score_2=format(score, '.2f'), level=self.LEVEL2)
+        self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
 
     def calculate_soa(self, row):
         manufacturer = row['Manufacturer']
@@ -1885,13 +1955,14 @@ class BATRUToolBox:
             else:
                 self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
 
-    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None):
+    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None,
+                           result_2=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
         attributes = self.create_attributes_dict(fk, result, level, score=score, threshold=threshold, score2=score_2,
-                                                 score_3=score_3)
+                                                 score_3=score_3, result_2=result_2)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -1903,7 +1974,8 @@ class BATRUToolBox:
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, fk, result, level, score2=None, score=None, threshold=None, score_3=None):
+    def create_attributes_dict(self, fk, result, level, score2=None, score=None, threshold=None, score_3=None,
+                               result_2=None):
         """
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
@@ -1929,10 +2001,10 @@ class BATRUToolBox:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        result, kpi_fk, fk, threshold, score, score2, score_3)],
+                                        result, kpi_fk, fk, threshold, score, score2, score_3, result_2)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
                                                'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
-                                               'score', 'score_2', 'score_3'])
+                                               'score', 'score_2', 'score_3', 'result_2'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
