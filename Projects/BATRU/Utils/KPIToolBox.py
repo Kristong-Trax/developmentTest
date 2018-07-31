@@ -583,7 +583,7 @@ class BATRUToolBox:
         merged_pricing_data.dropna(subset=['price_value'], inplace=True)
         merged_dates_data.dropna(subset=['original_value'], inplace=True)
 
-        if not merged_pricing_data.empty and not merged_dates_data.empty:
+        if not merged_pricing_data.empty or not merged_dates_data.empty:
             try:
                 merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
                     ['price_value']].median()
@@ -726,7 +726,7 @@ class BATRUToolBox:
             #     # prod_atts_dict = [state, bundle_product, 1]
             #     # extra_df.append(prod_atts_dict)
 
-        monitored_skus=monitored_skus.append(extra_df)
+        monitored_skus = monitored_skus.append(extra_df)
         # return monitored_skus['ean_code']
         monitored_skus = monitored_skus.fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()][
             'ean_code']})
