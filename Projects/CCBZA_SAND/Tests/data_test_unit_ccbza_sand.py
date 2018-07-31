@@ -161,6 +161,11 @@ class DataTestUnitCCBZA_SAND(object):
          '', '', '', '', '5', 'L&T', 'Spaza Affordable', ''],
         index=index_sos_tab)
 
+    kpi_results_values_table = pd.DataFrame.from_records([{'pk': 1, 'value': 'Passed', 'kpi_result_type_fk': 1},
+                                                          {'pk': 2, 'value': 'Failed', 'kpi_result_type_fk': 1},
+                                                          {'pk': 3, 'value': 'V', 'kpi_result_type_fk': 2},
+                                                          {'pk': 4, 'value': 'X', 'kpi_result_type_fk': 2}])
+
 class SCIFDataTestCCBZA_SAND(object):
 
     scif_for_filtering = pd.DataFrame.from_records([

@@ -23,6 +23,7 @@ from Projects.CCBZA_SAND.Utils.Fetcher import CCBZA_SAND_Queries
 from Projects.CCBZA_SAND.Utils.ParseTemplates import parse_template
 from Projects.CCBZA_SAND.Utils.GeneralToolBox import CCBZA_SAND_GENERALToolBox
 from Projects.CCBZA_SAND.Utils.Errors import DataError
+from Projects.CCBZA_SAND.Utils.CustomSceneCommon import CCBZA_SANDSceneCommon
 
 __author__ = 'natalyak'
 
@@ -110,6 +111,7 @@ MAX_SCORE = 'Max_Score'
 IRRELEVANT = 'Irrelevant'
 EMPTY = 'Empty'
 KO_ID = 1 # to checkout
+CORRECT = 1
 
 
 class CCBZA_SANDToolBox:
@@ -122,7 +124,7 @@ class CCBZA_SANDToolBox:
         self.data_provider = data_provider
 
         self.common = Common(self.data_provider)
-        self.kpi_static_data = self.common.get_kpi_static_data()
+        # self.kpi_static_data = self.common.get_kpi_static_data()
 
         # self.general_tool_box = GENERALToolBox(self.data_provider)
         # self.common_sos = SOS(self.data_provider, self.output)
@@ -153,8 +155,10 @@ class CCBZA_SANDToolBox:
         self.kpi_sets = self.template_data[KPI_TAB][SET_NAME].unique().tolist()
         self.current_kpi_set_name = ''
         self.tools = CCBZA_SAND_GENERALToolBox(self.data_provider, self.output)
-        # self.kpi_result_values = self.get_kpi_result_values_df() # maybe for ps data provider, create mock
+        self.kpi_result_values = self.get_kpi_result_values_df() # maybe for ps data provider, create mock
         # self.planogram_results = self.get_planogram_results()
+        self.full_store_type = self.get_full_store_type()
+        self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -197,7 +201,8 @@ class CCBZA_SANDToolBox:
             red_score += set_score
             # write set_score to db - maybe in KPIGenerator? Will see...
         # write red_score to db - maybe in KPIGenerator? Will see..
-        self.commit_results_data()
+        self.common.commit_results_data()
+        self.common_scene.commit_results_data(result_entity='scene')
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -244,6 +249,7 @@ class CCBZA_SANDToolBox:
 
     def get_relevant_template_data(self):
         pass
+
 
     def get_planogram_results(self):
         scenes = self.scene_info['scene_fk'].unique().tolist()
@@ -333,51 +339,78 @@ class CCBZA_SANDToolBox:
         return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
     def calculate_kpi_result(self, kpi):
+        dependency = self.get_kpi_dependency(kpi)
+        if dependency:
+            kpi_scores = []
+            affecting_kpis = self.kpi_results_data[self.kpi_results_data[SET_NAME] == dependency]
+            for index, kpi in affecting_kpis.iterrows():
+                kpi_score, max_score = self.calculate_kpi_score_no_dependency(kpi)
+                kpi_scores.append((kpi_score, max_score))
+            if sum(map(lambda x: x[0], kpi_scores)) == sum(map(lambda x: x[1], kpi_scores)):
+                score = float(kpi[self.full_store_type])
+            else:
+                score = 0
+        else:
+            score, max_score = self.calculate_kpi_score_no_dependency(kpi)
+        return score
+
+    def get_kpi_result_value_pk_by_value(self, value):
+        pk = None  # I want to stop code - maybe w/o try/except?
+        try:
+            pk = self.kpi_result_values[self.kpi_result_values['value'] == value]['pk'].values[0]
+        except:
+            Log.error('Value {} does not exist'.format(value))
+        return pk
+
+    # def calculate_kpi_result(self, kpi):
+        # is_split_score = self.does_kpi_have_split_score(kpi)
+        # kpi_name = kpi[KPI_NAME]
+        # if is_split_score:
+        #     kpi_score = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].sum()
+        # else:
+        #     atomic_scores = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].values.tolist()
+        #     kpi_score = kpi[self.full_store_type] if all(atomic_scores) else 0
+        # return kpi_score
+
+    def calculate_kpi_score_no_dependency(self, kpi):
         is_split_score = self.does_kpi_have_split_score(kpi)
-        store = '{} {}'.format(self.store_data['store_type'].values[0],
-                               self.store_data['additional_attribute_1'].values[0])
         kpi_name = kpi[KPI_NAME]
-        kpi_score = 0
-        # option without dependency
-        if not kpi[KPI_TYPE]:
-            Log.warning('KPI {} is not supported by calculations'.format(kpi[KPI_NAME]))
-            return None
         if is_split_score:
             kpi_score = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].sum()
+            max_score = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][MAX_SCORE].sum()
         else:
             atomic_scores = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].values.tolist()
-            kpi_score = kpi[store] if all(atomic_scores) else 0
-        # dependency = self.get_kpi_dependency(kpi)
-        # if kpi[KPI_TYPE]:
-        #     kpi_name = kpi[KPI_NAME]
-        #     if is_split_score:
-        #         kpi_score = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].sum()
-        #         # filter out relevant atomic scores and add them up
-        #         # kpi_results = self.kpi_results_data.groupby(KPI_NAME).aggregate('sum')
-        #         # pass
-        #     else:
-        #         atomic_scores = self.kpi_results_data[self.kpi_results_data[KPI_NAME] == kpi_name][SCORE].values.tolist()
-        #         kpi_score = kpi[store] if all(atomic_scores) else 0
-        #         # filter out relevant kpi lines
-        #         # see if all the atomics pass
-        #         # take the score from the kpi tab for the relevant store
-        #         # pass
-        # else:
-        #     if dependency:
-        #         if is_split_score:
-        #             pass
-        #     else:
-        #         Log.warning('KPI {} is not supported by calculations'.format(kpi[KPI_NAME]))
-        #         return None
-        return kpi_score
+            kpi_score = float(kpi[self.full_store_type]) if all(atomic_scores) else 0
+            max_score = float(kpi[self.full_store_type])
+        return kpi_score, max_score
+
+    def get_full_store_type(self, ):
+        store_attr_1 = self.store_data['additional_attribute_1'].values[0]
+        if store_attr_1:
+            store = '{} {}'.format(self.store_data['store_type'].values[0],
+                                   self.store_data['additional_attribute_1'].values[0])
+        else:
+            store = self.store_data['store_type'].values[0]
+        return store
 
     def calculate_planogram_compliance(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
-            atomic_score = 0
             atomic_kpi = atomic_kpis_data.iloc[i]
-            template_names = self.split_and_strip(atomic_kpi[TEMPLATE_DISPLAY_NAME])
-            relevant_scenes = self.scif[(self.scif['template_display_name'].isin(template_names))]
-            scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
+            filters = self.get_general_calculation_parameters(atomic_kpi)
+            max_score = atomic_kpi[SCORE]
+            scenes = filters['scene_fk']
+            atomic_score = 0
+            session_results = []
+            for scene in scenes:
+                matches = self.match_product_in_scene.copy()
+                status_tags = matches[matches['scene_fk'] == scene]['compliance_status_fk']
+                scene_result = 100 if all([tag == CORRECT for tag in status_tags]) else 0
+                session_results.append(scene_result)
+            if session_results:
+                atomic_result = 100 if any(session_results) else 0
+                atomic_score = self.calculate_atomic_score(atomic_result, max_score)
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+            # write session result to DB
 
     def calculate_price(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
@@ -598,7 +631,6 @@ class CCBZA_SANDToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write score to DB
 
-
     def calculate_survey(self, atomic_kpis_data, identifier_parent):
         """
         This function calculates Survey-Question typed Atomics, and writes the result to the DB.
@@ -620,7 +652,7 @@ class CCBZA_SANDToolBox:
             # constructing queries for DB
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
-                                           denominator_id = self.store_id,
+                                           denominator_id=self.store_id,
                                            identifier_result=identifier_parent,
                                            target=survey_max_score, should_enter=True)
 
@@ -753,12 +785,28 @@ class CCBZA_SANDToolBox:
             template_names = self.split_and_strip(atomic_kpi[TEMPLATE_NAME])
         except KeyError:
             template_names = None
-        if template_names:
+
+        try:
+            template_display_names = self.split_and_strip(atomic_kpi[TEMPLATE_DISPLAY_NAME])
+        except KeyError:
+            template_display_names = None
+
+        if template_names and template_display_names:
+            relevant_scenes = self.scif[(self.scif['template_name'].isin(template_names)) &
+                                        (self.scif['template_display_name'].isin(template_display_names))]
+        elif template_names:
             relevant_scenes = self.scif[(self.scif['template_name'].isin(template_names))]
+        elif template_display_names:
+            relevant_scenes = self.scif[(self.scif['template_display_name'].isin(template_display_names))]
         else:
             relevant_scenes = self.scif
+        # if template_names:
+        #     relevant_scenes = self.scif[(self.scif['template_name'].isin(template_names))]
+        # else:
+        #     relevant_scenes = self.scif
         scenes_ids_filter = {'scene_fk': relevant_scenes['scene_fk'].unique().tolist()}
         calculation_parameters.update(scenes_ids_filter)
+
         try:
             is_KO_Only = True if atomic_kpi[KO_ONLY] == 'Y' else False
         except:
@@ -813,15 +861,34 @@ class CCBZA_SANDToolBox:
 
     def calculate_avialability_against_competitors(self, atomic_kpi):
         max_score = atomic_kpi[SCORE]
+        score = 0
         is_by_scene = self.is_by_scene(atomic_kpi)
-        calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
-                                                                                        product_types=[SKU, OTHER]),
-                               KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
+                                                                            product_types=[SKU, OTHER]),
+                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         if is_by_scene:
             session_results = []
-            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+            list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
             for scene in list_of_scenes:
-                pass
+                scene_result = 0
+                filters[GENERAL_FILTERS]['scene_fk'] = scene
+                non_ko_filters = filters[GENERAL_FILTERS].copy()
+                non_ko_filters.update(filters[KPI_SPECIFIC_FILTERS]['category'])
+                scif = self.scif.copy()
+                scene_scif = scif[self.tools.get_filter_condition(scif, **non_ko_filters)]
+                non_ko_facings = scene_scif[~scene_scif[MANUFACTURER_NAME] == KO_PRODUCTS]['facings'].sum()
+                if non_ko_facings >= 1:
+                    ko_filters = filters[GENERAL_FILTERS].copy()
+                    ko_filters.update(filters[KPI_SPECIFIC_FILTERS])
+                    removed_filter = ko_filters.pop('manufacturer_except')
+                    scene_scif = self.scif.copy()
+                    ko_facings = scene_scif[self.tools.get_filter_condition(scif, **ko_filters)]['facings'].sum()
+                    scene_result = 100 if ko_facings >= 2 else 0
+                session_results.append(scene_result)
+            if session_results:
+                atomic_result = 100 if all(session_results) else 0
+                score = self.calculate_atomic_score(atomic_result, max_score)
+        return score
 
     # calculated on session level
     def calculate_availability_posm(self, atomic_kpi):
