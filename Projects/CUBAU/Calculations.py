@@ -21,7 +21,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'CUB'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['EEDFFF2B-ED58-4E96-9BA1-378F9B5AF078']
+    sessions = ['52407D63-C856-45AC-949A-C5AAF8C84494']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
