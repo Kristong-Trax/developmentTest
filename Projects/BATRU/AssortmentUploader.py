@@ -127,6 +127,7 @@ class BatruAssortment:
         This function sets an end_date to all of the irrelevant stores in the assortment.
         :param stores_list: List of the stores from the assortment template
         """
+        Log.info("Starting to set an end date for irrelevant stores")
         queries_to_execute = []
         irrelevant_stores = self.store_data.loc[
             ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
@@ -136,6 +137,7 @@ class BatruAssortment:
             query = self.get_store_deactivation_query(store)
             queries_to_execute.append(query)
         self.commit_results(queries_to_execute)
+        Log.info("Done setting end dates for irrelevant stores")
 
     def upload_store_assortment_file(self):
         raw_data = self.parse_assortment_template()
@@ -266,15 +268,15 @@ class BatruAssortment:
     @staticmethod
     def get_deactivation_query(store_fk, product_fk, date):
         query = """update {} set end_date = '{}', is_current = NULL
-                   where store_fk = {} and product_fk in {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, date,
-                                                                                           store_fk, product_fk)
+                   where store_fk = {} and product_fk in {} and end_date is null;"""\
+            .format(STORE_ASSORTMENT_TABLE, date, store_fk, product_fk)
         return query
 
     @staticmethod
     def get_store_deactivation_query(store_fk):
-        current_date = datetime.now().date()- timedelta(3)
-        query = """update {} set end_date = '{}', is_current = NULL
-                   where store_fk = {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, current_date, store_fk)
+        current_date = datetime.now().date() - timedelta(3)
+        query = """update {} set end_date = '{}', is_current = NULL where store_fk = {} and end_date is null;"""\
+            .format(STORE_ASSORTMENT_TABLE, current_date, store_fk)
         return query
 
     @staticmethod
@@ -318,6 +320,7 @@ class BatruAssortment:
             query_num += 1
         rds_conn.db.commit()
         rds_conn, cur = self.connection_ritual()
+        query_num = 0
         for query in queries:
             try:
                 cur.execute(query)
@@ -326,6 +329,11 @@ class BatruAssortment:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
                 continue
+            if query_num > batch_size:
+                query_num = 0
+                rds_conn, cur = self.connection_ritual()
+                rds_conn.db.commit()
+            query_num += 1
         rds_conn.db.commit()
 
 
