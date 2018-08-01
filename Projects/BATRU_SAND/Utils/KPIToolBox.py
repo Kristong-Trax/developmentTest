@@ -938,19 +938,9 @@ class BATRU_SANDToolBox:
                 else:
                     shelf_data = updated_shelf_data_from_bottom
                 section_shelf_data = shelf_data.loc[shelf_data['sequence'].between(start_sequence, end_sequence)]
-                specific_section_products_template = sections_products_template_data.loc[
-                    sections_products_template_data['Section'] == str(int(float(section)))]
-                # # # # # #  PROS - 5733 # # # # # #
-                # Maybe do: try and this long AND shit
-                # # If empty: just to the regular (what above the # # # # #)
-                ### IMPORTANT --- MOVE IT UPPER! BEFORE THE SECTIONS??
-                # ~~~~~~~~~~~~~~~~~~~~~to ask vitaly ~~~~~~~~~~~~~~~~~~~~
-                # specific_section_products_template = sections_products_template_data.loc[
-                #     (sections_products_template_data['Section'] == str(int(float(section)))) &
-                #     (sections_products_template_data['GEO'] == state_for_calculation) &
-                #     (sections_products_template_data['Fixture type'] == fixture) &
-                #     (sections_products_template_data['Cluster'] == self.scif['additional_attribute_3'].values[0])]
-                # # # # # #  PROS - 5733 # # # # # #
+                specific_section_products_template = self.get_relevant_section_products(sections_products_template_data,
+                                                                                        section, state_for_calculation,
+                                                                                        fixture)
                 section_products = specific_section_products_template['product_ean_code'].unique().tolist()
                 section_products_including_bundles = section_products
                 # section_brands_list = self.all_products[
@@ -1139,6 +1129,25 @@ class BATRU_SANDToolBox:
         self.save_level1(SK_RAW_DATA, score=sk_score)
         self.save_level1(SAS, score=sas_zone_score)
         self.save_level1(SAS_RAW_DATA, score=sas_zone_score)
+
+    def get_relevant_section_products(self, raw_data, section, state_for_calculation, fixture):
+        """
+        This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
+        If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
+        :param raw_data: SKU_Lists for sections - sheet data
+        :param section: The current section that been calculated
+        :param state_for_calculation: The state for calculation that has been defined at the beginning of P3
+        :param fixture: The current scene type
+        :return: The relevant product's data for the current section
+        """
+        sec_data = raw_data.loc[(raw_data['Section'] == str(int(float(section)))) &
+                                (raw_data['GEO'] == state_for_calculation) &
+                                (raw_data['Fixture type'] == fixture) &
+                                (raw_data['Cluster'] == self.scif['additional_attribute_3'])]
+
+        if sec_data.empty:
+            sec_data = raw_data.loc[(raw_data['Section'] == str(int(float(section)))) & (raw_data['GEO'] == 'ALL')]
+        return sec_data
 
     def check_repeatness(self, products_to_check, section_shelf_data, priorities_section):
         """
