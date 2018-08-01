@@ -303,7 +303,7 @@ class BatruAssortment:
         After batch_size is reached, the function re-connects the DB and cursor.
         """
         rds_conn, cur = self.connection_ritual()
-        batch_size = 1000
+        batch_size = 500
         query_num = 0
         for query in self.update_queries:
             try:
