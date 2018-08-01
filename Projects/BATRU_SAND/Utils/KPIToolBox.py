@@ -940,6 +940,15 @@ class BATRU_SANDToolBox:
                 section_shelf_data = shelf_data.loc[shelf_data['sequence'].between(start_sequence, end_sequence)]
                 specific_section_products_template = sections_products_template_data.loc[
                     sections_products_template_data['Section'] == str(int(float(section)))]
+                # # # # # #  PROS - 5733 # # # # # #
+                # Maybe do: try and this long AND shit
+                # # If empty: just to the regular (what above the # # # # #)
+                # specific_section_products_template = sections_products_template_data.loc[
+                #     (sections_products_template_data['Section'] == str(int(float(section)))) &
+                #     (sections_products_template_data['GEO'] == state_for_calculation) &
+                #     (sections_products_template_data['Fixture type'] == fixture) &
+                #     (sections_products_template_data['Cluster'] == self.scif['additional_attribute_3'].values[0])]
+                # # # # # #  PROS - 5733 # # # # # #
                 section_products = specific_section_products_template['product_ean_code'].unique().tolist()
                 section_products_including_bundles = section_products
                 # section_brands_list = self.all_products[
