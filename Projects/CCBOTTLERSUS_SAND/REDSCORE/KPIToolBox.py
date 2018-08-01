@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV3.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV1.xlsx')
 
 
@@ -61,7 +61,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
         """
         self.scenes_results = self.scene_calculator.main_calculation()
         main_template = self.templates[Const.KPIS]
-        main_template = main_template[main_template[Const.SHEET].isin([Const.AVAILABILITY, Const.SCENE_AVAILABILITY, Const.SURVEY])]
         session_template = main_template[main_template[Const.SESSION_LEVEL] == Const.V]
         for i, main_line in session_template.iterrows():
             self.calculate_main_kpi(main_line)
@@ -71,7 +70,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
         kpi_name = main_line[Const.KPI_NAME]
         target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
-
         relevant_scif = self.scif
         if kpi_type == Const.SCENE_AVAILABILITY:
             result = self.calculate_scene_availability(main_line)
@@ -82,6 +80,9 @@ class CCBOTTLERSUS_SANDREDToolBox:
             scene_groups = self.does_exist(main_line, Const.SCENE_TYPE_GROUP)
             if scene_groups:
                 relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
+            isnt_dp = False
+            if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP:
+                isnt_dp = True
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
             if target == Const.ALL:
@@ -89,7 +90,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             function = self.get_kpi_function(kpi_type)
             passed_counter = 0
             for i, kpi_line in relevant_template.iterrows():
-                answer = function(kpi_line, relevant_scif)
+                answer = function(kpi_line, relevant_scif, isnt_dp)
                 if answer:
                     passed_counter += 1
             result = passed_counter >= target
@@ -108,7 +109,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, result, display_text)
 
-    def calculate_survey_specific(self, kpi_line, relevant_scif):
+    def calculate_survey_specific(self, kpi_line, relevant_scif, isnt_dp):
         question = kpi_line[Const.Q_TEXT]
         if not question:
             question_id = kpi_line[Const.Q_ID]
@@ -120,16 +121,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
             if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
                 return True
         return False
-
-    @staticmethod
-    def does_exist(kpi_line, column_name):
-        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
-            cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
-                return [cell]
-            elif type(cell) in [unicode, str]:
-                return cell.split(", ")
-        return None
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
         values = self.does_exist(kpi_line, name_in_template)
@@ -146,17 +137,14 @@ class CCBOTTLERSUS_SANDREDToolBox:
             Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
             Const.PREMIUM_SSD: "Premium SSD",
             Const.INNOVATION_BRAND: "Innovation Brand",
-            # Const.SSD_STILL: "att4",
-            # Const.PRODUCT_NAME: "product_name",
-            # Const.PRODUCT_EAN: "product_ean_code",
-            # Const.UNITED_DELIVER: "United Deliver",
         }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
 
-    def calculate_availability(self, kpi_line, relevant_scif):
-        # store_attribute?
+    def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
+        if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
+            return True
         filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
         target = kpi_line[Const.TARGET]
         return filtered_scif['facings'].sum() >= target
@@ -169,67 +157,102 @@ class CCBOTTLERSUS_SANDREDToolBox:
             return True
         return False
 
-    def calculate_sos(self, kpi_line, relevant_scif):
-        # store attribute?
-        names_of_columns = {
-            Const.PACKAGE_TYPE: "manufacturer_name",
-            Const.BRAND: "brand_name",
-            # Const.TRADEMARK: "att2",
-            # Const.PACKAGE_TYPE:
-            Const.SSD_STILL: "att4",
-            Const.UNITED_DELIVER: "United Deliver",
-        }
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        if den_type in self.scif.columns:
-            names_of_columns[Const.DEN_VALUES_1] = den_type
-        elif den_type in self.converters[Const.NAME_IN_TEMP].tolist():
-            names_of_columns[Const.DEN_VALUES_1] = self.converters[self.converters[Const.NAME_IN_TEMP] == den_type][
+    def get_column_name(self, field_name, df):
+        if field_name in df.columns:
+            return field_name
+        if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
+            field_name = self.converters[self.converters[Const.NAME_IN_TEMP].str.upper() == field_name.upper()][
                 Const.NAME_IN_DB].iloc[0]
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        den_sum = relevant_scif['facings'].sum()
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        if num_type in self.scif.columns:
-            names_of_columns[Const.NUM_VALUES_1] = num_type
-        elif num_type in self.converters[Const.NAME_IN_TEMP].tolist():
-            names_of_columns[Const.NUM_VALUES_1] = self.converters[self.converters[Const.NAME_IN_TEMP] == num_type][
-                Const.NAME_IN_DB].iloc[0]
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        num_sum = relevant_scif['facings'].sum()
-        result = num_sum * 100.0 / den_sum
-        return result
+            return field_name
+        return None
 
-    def calculate_sos_maj(self, kpi_line, relevant_scif):
-        # store attribute?
-        names_of_columns = {
-            Const.PACKAGE_TYPE: "manufacturer_name",
-            Const.BRAND: "brand_name",
-            # Const.TRADEMARK: "att2",
-            # Const.PACKAGE_TYPE:
-            Const.SSD_STILL: "att4",
-            Const.UNITED_DELIVER: "United Deliver",
-        }
+    def filter_by_type_value(self, relevant_scif, type_name, value):
+        if type_name == "":
+            return relevant_scif
+        values = value.split(', ')
+        type_name = self.get_column_name(type_name, relevant_scif)
+        if not type_name:
+            return relevant_scif
+        return relevant_scif[relevant_scif[type_name].isin(values)]
+
+    @staticmethod
+    def exclude_scif(exclude_line, relevant_scif):
+        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+
+    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
+        kpi_name = kpi_line[Const.KPI_NAME]
+        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
+            exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
+            relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
+            for i, exc_line in relevant_exclusions.iterrows():
+                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
         den_type = kpi_line[Const.DEN_TYPES_1]
-        if den_type in self.scif.columns:
-            names_of_columns[Const.DEN_VALUES_1] = den_type
-        elif den_type in self.converters[Const.NAME_IN_TEMP].tolist():
-            names_of_columns[Const.DEN_VALUES_1] = self.converters[self.converters[Const.NAME_IN_TEMP] == den_type][
-                Const.NAME_IN_DB].iloc[0]
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        den_sum = relevant_scif['facings'].sum()
+        den_value = kpi_line[Const.DEN_VALUES_1]
+        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
+        if kpi_line[Const.SSD_STILL] != "":
+            relevant_scif = self.filter_by_type_value(relevant_scif, Const.SSD_STILL, kpi_line[Const.SSD_STILL])
         num_type = kpi_line[Const.NUM_TYPES_1]
-        if num_type in self.scif.columns:
-            names_of_columns[Const.NUM_VALUES_1] = num_type
-        elif num_type in self.converters[Const.NAME_IN_TEMP].tolist():
-            names_of_columns[Const.NUM_VALUES_1] = self.converters[self.converters[Const.NAME_IN_TEMP] == num_type][
-                Const.NAME_IN_DB].iloc[0]
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        num_sum = relevant_scif['facings'].sum()
-        result = num_sum * 100.0 / den_sum
-        return result
+        num_value = kpi_line[Const.NUM_VALUES_1]
+        num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
+        if isnt_dp:
+            num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
+        target = float(kpi_line[Const.TARGET]) / 100
+        return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
+
+    def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
+        kpi_name = kpi_line[Const.KPI_NAME]
+        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
+            exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
+            relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
+            for i, exc_line in relevant_exclusions.iterrows():
+                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        den_type = kpi_line[Const.DEN_TYPES_1]
+        den_value = kpi_line[Const.DEN_VALUES_1]
+        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
+        den_type = kpi_line[Const.DEN_TYPES_2]
+        den_value = kpi_line[Const.DEN_VALUES_2]
+        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
+        if kpi_line[Const.MAJ_DOM] == Const.MAJOR:
+            num_type = kpi_line[Const.NUM_TYPES_1]
+            num_value = kpi_line[Const.NUM_VALUES_1]
+            num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
+            num_type = kpi_line[Const.NUM_TYPES_2]
+            num_value = kpi_line[Const.NUM_VALUES_2]
+            num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
+            if isnt_dp:
+                num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
+            target = Const.MAJORITY_TARGET
+            return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
+        if kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
+            if isnt_dp:
+                relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
+            type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
+            values = kpi_line[Const.NUM_VALUES_1].split(', ')
+            max_facings, needed_one = 0, 0
+            values_type = relevant_scif[type_name].unique().tolist()
+            if None in values_type:
+                values_type.remove(None)
+                current_sum = relevant_scif[relevant_scif[type_name].isnull()]['facings'].sum()
+                if current_sum > max_facings:
+                    max_facings = current_sum
+            for value in values_type:
+                current_sum = relevant_scif[relevant_scif[type_name] == value]['facings'].sum()
+                if current_sum > max_facings:
+                    max_facings = current_sum
+                if value in values:
+                    needed_one += current_sum
+            return needed_one >= max_facings
+
+    @staticmethod
+    def does_exist(kpi_line, column_name):
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+            cell = kpi_line[column_name]
+            if type(cell) in [int, float]:
+                return [cell]
+            elif type(cell) in [unicode, str]:
+                return cell.split(", ")
+        return None
 
     def get_kpi_function(self, kpi_type):
         if kpi_type == Const.SURVEY:

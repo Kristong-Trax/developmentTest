@@ -69,6 +69,7 @@ class Const(object):
     NUM_TYPES_2 = "numerator_types 2"
     NUM_VALUES_2 = "numerator_values 2"
     GROUP = "Group"
+    MAJ_DOM = "Majority/Dominant"
 
     # columns of survey:
     Q_TEXT = "question_text"
@@ -90,3 +91,8 @@ class Const(object):
     # constants:
     ALL = "ALL"
     V = "V"
+    DP_MANU = ['Dr Pepper', 'Dr Pepper Snapple Group Inc', 'DPSG']
+    DP = "DP"
+    MAJOR = "majority"
+    DOMINANT = "dominant"
+    MAJORITY_TARGET = 0.5

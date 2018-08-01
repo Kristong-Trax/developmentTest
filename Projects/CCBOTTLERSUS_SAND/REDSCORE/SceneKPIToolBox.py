@@ -1,9 +1,5 @@
-import os
 import pandas as pd
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 
 __author__ = 'Elyashiv'
@@ -43,7 +39,6 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         """
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
-        main_template = main_template[main_template[Const.SHEET].isin([Const.AVAILABILITY, Const.SCENE_AVAILABILITY, Const.SURVEY])]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
         return self.scenes_results
@@ -63,6 +58,9 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
         if scene_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
+        isnt_dp = False
+        if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP:
+            isnt_dp = True
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         if target == Const.ALL:
@@ -71,7 +69,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         for scene_fk in relevant_scif['scene_fk'].unique().tolist():
             passed_counter = 0
             for i, kpi_line in relevant_template.iterrows():
-                answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk])
+                answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
                 if answer:
                     passed_counter += 1
             self.write_to_scene_level(
