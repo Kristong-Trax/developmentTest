@@ -65,6 +65,7 @@ class TestCCBZA_SAND(MockingTestCase):
         # self.common_mock = self.mock_common()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
+        self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
 
     def mock_data_provider(self):
         self.data_provider_mock = MagicMock()
@@ -118,6 +119,11 @@ class TestCCBZA_SAND(MockingTestCase):
         kpi_result_value = self.mock_object('CCBZA_SANDToolBox.get_kpi_result_values_df')
         kpi_result_value.return_value = DataTestUnitCCBZA_SAND.kpi_results_values_table
         return kpi_result_value.return_value
+
+    def mock_kpi_score_value_table(self):
+        kpi_score_value = self.mock_object('CCBZA_SANDToolBox.get_kpi_result_values_df')
+        kpi_score_value.return_value = DataTestUnitCCBZA_SAND.kpi_scores_values_table
+        return kpi_score_value.return_value
 
     # def get_tool_box_with_mocked_template_path(self, path):
     #     # print object.__class__.__name__

@@ -165,6 +165,10 @@ class DataTestUnitCCBZA_SAND(object):
                                                           {'pk': 2, 'value': 'Failed', 'kpi_result_type_fk': 1},
                                                           {'pk': 3, 'value': 'V', 'kpi_result_type_fk': 2},
                                                           {'pk': 4, 'value': 'X', 'kpi_result_type_fk': 2}])
+    kpi_scores_values_table = pd.DataFrame.from_records([{'pk': 1, 'value': 'Passed', 'kpi_result_type_fk': 1},
+                                                          {'pk': 2, 'value': 'Failed', 'kpi_result_type_fk': 1},
+                                                          {'pk': 3, 'value': 'V', 'kpi_result_type_fk': 2},
+                                                          {'pk': 4, 'value': 'X', 'kpi_result_type_fk': 2}])
 
 class SCIFDataTestCCBZA_SAND(object):
 
