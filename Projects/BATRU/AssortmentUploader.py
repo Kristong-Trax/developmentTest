@@ -128,15 +128,13 @@ class BatruAssortment:
         :param stores_list: List of the stores from the assortment template
         """
         Log.info("Starting to set an end date for irrelevant stores")
-        queries_to_execute = []
+        batch_size = 500
         irrelevant_stores = self.store_data.loc[
             ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
         stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
-        for store in stores_to_remove:
-            query = self.get_store_deactivation_query(store)
-            queries_to_execute.append(query)
-        self.commit_results(queries_to_execute)
+        query = self.get_store_deactivation_query(stores_to_remove)
+        self.commit_results([query])
         Log.info("Done setting end dates for irrelevant stores")
 
     def upload_store_assortment_file(self):
@@ -273,10 +271,10 @@ class BatruAssortment:
         return query
 
     @staticmethod
-    def get_store_deactivation_query(store_fk):
-        current_date = datetime.now().date() - timedelta(3)
-        query = """update {} set end_date = '{}', is_current = NULL where store_fk = {} and end_date is null;"""\
-            .format(STORE_ASSORTMENT_TABLE, current_date, store_fk)
+    def get_store_deactivation_query(store_fk_list):
+        current_date = datetime.now().date()
+        query = """update {} set end_date = '{}', is_current = NULL where store_fk in {} and end_date is null;"""\
+            .format(STORE_ASSORTMENT_TABLE, current_date, tuple(store_fk_list))
         return query
 
     @staticmethod
