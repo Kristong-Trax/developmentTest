@@ -5,21 +5,16 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
-from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.DB.CommonV2 import Common as Common2
-
 
 __author__ = 'Elyashiv'
-
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV1.xlsx')
-SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV1.xlsx')
 
 
 class CCBOTTLERSUS_SANDSceneRedToolBox:
 
-    def __init__(self, data_provider, output, templates, common):
+    def __init__(self, data_provider, output, templates, common, toolbox):
         self.output = output
         self.data_provider = data_provider
+        self.toolbox = toolbox
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -31,7 +26,8 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = toolbox.rds_conn
+        self.store_attr = toolbox.store_attr
         self.templates = templates
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
@@ -46,43 +42,37 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
             :return: float - score of the kpi.
         """
         main_template = self.templates[Const.KPIS]
-        main_template = main_template[(main_template[Const.REGION] == self.region) &
-                                      (main_template[Const.STORE_TYPE] == self.store_type) &
-                                      (main_template[Const.SESSION_LEVEL].isnull())]
-        for i, line in main_template.iterrows():
-            self.calculate_main_kpi(line)
+        main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
+        main_template = main_template[main_template[Const.SHEET].isin([Const.AVAILABILITY, Const.SCENE_AVAILABILITY, Const.SURVEY])]
+        for i, main_line in main_template.iterrows():
+            self.calculate_main_kpi(main_line)
         return self.scenes_results
 
-    def write_to_scene_level(self, kpi_name, kpi_fk, scene_fk, result=0):
-        result_dict = {Const.KPI_FK: kpi_fk, Const.KPI_NAME: kpi_name, Const.SCENE_FK: scene_fk, Const.RESULT: result}
+    def write_to_scene_level(self, kpi_name, scene_fk, result=0):
+        result_dict = {Const.KPI_NAME: kpi_name, Const.SCENE_FK: scene_fk, Const.RESULT: result}
         self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
-    def calculate_main_kpi(self, kpi_main_line):
-        kpi_name = kpi_main_line[Const.KPI_NAME]
-        target = kpi_main_line[Const.GROUP_TARGET]
-        kpi_type = kpi_main_line[Const.SHEET]
+    def calculate_main_kpi(self, main_line):
+        kpi_name = main_line[Const.KPI_NAME]
+        target = main_line[Const.GROUP_TARGET]
+        kpi_type = main_line[Const.SHEET]
+        relevant_scif = self.scif
+        scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
+        if scene_types:
+            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+        scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
+        if scene_groups:
+            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         if target == Const.ALL:
             target = len(relevant_template)
-        passed_counter = 0
-        function = self.get_kpi_function(kpi_type)
-        for i, kpi_line in relevant_template.iterrows():
-            answer = function(kpi_line)
-            if answer:
-                passed_counter += 1
-        return passed_counter >= target
-
-    def get_kpi_function(self, kpi_type):
-        if kpi_type == Const.AVAILABILITY:
-            return self.calculate_availability_sku
-        else:
-            return None
-
-    def calculate_availability_sku(self, kpi_line):
-        ssd_still = kpi_line[Const.SSD_STILL]
-        scene_type = kpi_line[Const.SCENE_TYPE]
-        scene_type_group = kpi_line[Const.SCENE_TYPE_GROUP]
-        manu = kpi_line[Const.SSD_STILL]
-        ssd_still = kpi_line[Const.SSD_STILL]
-
+        function = self.toolbox.get_kpi_function(kpi_type)
+        for scene_fk in relevant_scif['scene_fk'].unique().tolist():
+            passed_counter = 0
+            for i, kpi_line in relevant_template.iterrows():
+                answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk])
+                if answer:
+                    passed_counter += 1
+            self.write_to_scene_level(
+                kpi_name=kpi_name, scene_fk=scene_fk, result=passed_counter >= target)

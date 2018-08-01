@@ -8,25 +8,31 @@ class Const(object):
     KPIS = "KPIs"
     AVAILABILITY = "Availability"
     SOS = "SOS"
+    SOS_MAJOR = "SOS_majority"
     SURVEY = "Survey"
     SKU_EXCLUSION = "SKU_Exclusion"
+    CONVERTERS = "converters"
+    SCENE_AVAILABILITY = "Availability_scene"
     SHEETS = [
-        KPIS, AVAILABILITY, SOS, SURVEY, SKU_EXCLUSION
+        KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS
     ]
 
     # generic columns:
     KPI_NAME = "KPI_name"
-    SCENE_TYPE = "scene_type"
-    SCENE_TYPE_GROUP = "scene_type_group"
     PACKAGE_TYPE = "package_type"
     SSD_STILL = "SSD/still"
-    STORE_ATTRIBUTE = "store_attribute"
     TRADEMARK = "trademark"
     TARGET = "target"
+    UNITED_DELIVER = "United Deliver"
+    BRAND = "brand"
 
-    # columns of KPIS
+    # columns of KPIS:
     REGION = "Region"
+    DISPLAY_TEXT = 'display_text'
     STORE_TYPE = "store_type"
+    SCENE_TYPE = "scene_type"
+    SCENE_TYPE_GROUP = "scene_type_group"
+    STORE_ATTRIBUTE = "store_attribute"
     SESSION_LEVEL = "session_level"
     TESTED_GROUP = "tested_group"
     GROUP_TARGET = "group_target"
@@ -39,17 +45,30 @@ class Const(object):
     # columns of AVAILABILITY:
     SCENE_SKU = "scene/SKU"
     MANUFACTURER = "manufacturer"
-    BRAND = "brand"
+    SIZE = "Size"
+    PREMIUM_SSD = "Premium SSD"
+    INNOVATION_BRAND = "Innovation Brand"
+    NUM_SUB_PACKAGES = "Number of Subpackages"
     PRODUCT_NAME = "product_name"
     PRODUCT_EAN = "product_ean_code"
     BRAND_TARGET = "brand_target"
 
     # columns of SOS:
-    DEN_TYPES = "denominator_types"
-    DEN_VALS = "denominator_values"
-    NUM_TYPES = "numerator_types"
-    NUM_VALS = "numerator_values"
     TRADEMARK_CONDITION = "trademark_conditional"
+
+    # columns of sos majority:
+    ORDER = "Order"
+    CONTAINER_MATERIAL = "Container Material"
+    TRANSACTION_PACKAGES = "Transaction packages"
+    DEN_TYPES_1 = "denominator_types 1"
+    DEN_VALUES_1 = "denominator_values 1"
+    DEN_TYPES_2 = "denominator_types 2"
+    DEN_VALUES_2 = "denominator_values 2"
+    NUM_TYPES_1 = "numerator_types 1"
+    NUM_VALUES_1 = "numerator_values 1"
+    NUM_TYPES_2 = "numerator_types 2"
+    NUM_VALUES_2 = "numerator_values 2"
+    GROUP = "Group"
 
     # columns of survey:
     Q_TEXT = "question_text"
@@ -57,14 +76,17 @@ class Const(object):
     ACCEPTED_ANSWER = "accepted_answer"
     REQUIRED_ANSWER = "required_answer"
 
-    # columns of exclusion:
-    ENTITY_TYPES = "entity_types"
-    ENTITY_VALUES = "entity_values"
+    # converters columns:
+    NAME_IN_TEMP = "name_in_template"
+    NAME_IN_DB = "name_in_db"
 
-    # table of scene results
+    # table of scene results:
     SCENE_FK = "scene_fk"
     RESULT = "result"
     KPI_FK = "kpi_fk"
     COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, KPI_FK, RESULT]
+    COLUMNS_OF_SESSION = [KPI_NAME, KPI_FK, RESULT]
 
+    # constants:
     ALL = "ALL"
+    V = "V"
