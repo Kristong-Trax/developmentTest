@@ -112,6 +112,7 @@ IRRELEVANT = 'Irrelevant'
 EMPTY = 'Empty'
 KO_ID = 1 # to check
 CORRECT = 1
+RED_SCORE = 'Red_score_ccbza' # to check
 
 
 class CCBZA_SANDToolBox:
@@ -157,9 +158,11 @@ class CCBZA_SANDToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
         # self.planogram_results = self.get_planogram_results()
         self.full_store_type = self.get_full_store_type()
+        self.set_results = {}
         # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
     def scene_main_calculation(self):
+        # self.common.commit_results_data(result_entity='scene')
         pass
 
     def main_calculation(self, *args, **kwargs):
@@ -171,40 +174,52 @@ class CCBZA_SANDToolBox:
             Log.error('Template data is empty does not exist') # it should interrupt the code!
             return
         red_score = 0
+        red_target = 0
+        identifier_result_red_score = self.get_identifier_result_red_score()
         for kpi_set_name in self.kpi_sets:
             self.current_kpi_set_name = kpi_set_name
             set_score = 0
+            set_target = 0
             kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
+            identifier_result_set = self.get_identifier_result_set(kpi_set_name)
             for index, kpi in kpi_data.iterrows():
                 kpi_types = self.get_kpi_types_by_kpi(kpi)
-                identifier_result = self.get_identifier_result_kpi(kpi)
+                identifier_result_kpi = self.get_identifier_result_kpi(kpi)
                 # atomic_scores = []
                 for kpi_type in kpi_types:
                     atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi)
                     if not atomic_kpis_data.empty:
                         if kpi_type == 'Survey':
-                            self.calculate_survey(atomic_kpis_data, identifier_result)
+                            self.calculate_survey(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Availability':
-                            self.calculate_availability_custom(atomic_kpis_data, identifier_result)
+                            self.calculate_availability_custom(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Count':
-                            self.calculate_count(atomic_kpis_data, identifier_result)
+                            self.calculate_count(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Price':
-                            self.calculate_price(atomic_kpis_data, identifier_result)
+                            self.calculate_price(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'SOS':
-                            self.calculate_sos(atomic_kpis_data, identifier_result)
+                            self.calculate_sos(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Planogram':
-                            self.calculate_planogram_compliance(atomic_kpis_data, identifier_result)
+                            self.calculate_planogram_compliance(atomic_kpis_data, identifier_result_kpi)
                         else:
                             Log.warning("KPI of type '{}' is not supported".format(kpi_type))
                             continue
-                kpi_result = self.calculate_kpi_result(kpi)
-                #write result to the DB
+                kpi_result, kpi_target = self.calculate_kpi_result(kpi, identifier_result_set)
                 set_score += kpi_result
+                set_target += kpi_target
+            set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_set_name)
+            self.common.write_to_db_result(fk=set_kpi_fk, numerator_id=KO_ID, score=set_score,
+                                           denominator_id=self.store_id,
+                                           identifier_parent=identifier_result_red_score,
+                                           target=set_target, should_enter=True)
             red_score += set_score
-            # write set_score to db
+            red_target += set_target
         # write red_score to db
+        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_name(RED_SCORE)
+        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, score=red_score,
+                                       denominator_id=self.store_id,
+                                       target=red_target, should_enter=True)
         self.common.commit_results_data()
-        # self.common_scene.commit_results_data(result_entity='scene')
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -220,6 +235,12 @@ class CCBZA_SANDToolBox:
 
     def get_identifier_result_set(self, set_name):
         kpi_name = set_name
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
+                                                       manufacturer_id=KO_ID)
+        return identifier_result
+
+    def get_identifier_result_red_score(self):
+        kpi_name = RED_SCORE
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
                                                        manufacturer_id=KO_ID)
         return identifier_result
@@ -339,21 +360,27 @@ class CCBZA_SANDToolBox:
     def split_and_strip(string):
         return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
-    def calculate_kpi_result(self, kpi):
+    def calculate_kpi_result(self, kpi, identifier_parent):
         dependency = self.get_kpi_dependency(kpi)
         if dependency:
             kpi_scores = []
             affecting_kpis = self.kpi_results_data[self.kpi_results_data[SET_NAME] == dependency]
             for index, kpi in affecting_kpis.iterrows():
-                kpi_score, max_score = self.calculate_kpi_score_no_dependency(kpi)
-                kpi_scores.append((kpi_score, max_score))
+                kpi_score, max_score_dep = self.calculate_kpi_score_no_dependency(kpi)
+                kpi_scores.append((kpi_score, max_score_dep))
             if sum(map(lambda x: x[0], kpi_scores)) == sum(map(lambda x: x[1], kpi_scores)):
                 score = float(kpi[self.full_store_type])
             else:
                 score = 0
+            max_score = float(kpi[self.full_store_type])
         else:
             score, max_score = self.calculate_kpi_score_no_dependency(kpi)
-        return score
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi[KPI_NAME])
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
+                                       denominator_id=self.store_id,
+                                       identifier_parent=identifier_parent,
+                                       target=max_score, should_enter=True)
+        return score, max_score
 
     def get_kpi_result_value_pk_by_value(self, value):
         pk = None  # I want to stop code - maybe w/o try/except?
