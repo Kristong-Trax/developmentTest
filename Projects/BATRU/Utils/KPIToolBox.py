@@ -1,5 +1,5 @@
 # coding=utf-8
-import numpy as np
+# import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -572,43 +572,38 @@ class BATRUToolBox:
         price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
         date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
         matches = self.data_provider[Data.MATCHES]
-        # self.price_attr = self.data_provider._probedata_provider.prices
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']]
                                                , on=['probe_match_fk', 'product_fk', 'scene_fk'])
-        # self.date_attr = self.data_provider._probedata_ provider.date_attributes
         merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                             on=['probe_match_fk', 'product_fk', 'scene_fk'])
-        merged_additional_data = pd.DataFrame()
+
         merged_pricing_data.dropna(subset=['price_value'], inplace=True)
         merged_dates_data.dropna(subset=['original_value'], inplace=True)
 
-        if not merged_pricing_data.empty or not merged_dates_data.empty:
+        if not merged_pricing_data.empty:
             try:
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
             except Exception as e:
                 merged_pricing_data['price_value'] = 0
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
                 Log.info('There are missing numeric values: {}'.format(e))
+
+        if not merged_dates_data.empty:
             merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
             try:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
             except Exception as e:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
                 Log.info('There is a dates integrity issue: {}'.format(e))
+        else:
+            merged_dates_data['fixed_date'] = None
 
-            merged_additional_data = self.scif.merge(merged_pricing_data, how='left',
-                                                     left_on=['scene_id', 'item_id'],
-                                                     right_on=['scene_fk', 'product_fk'])
-            merged_additional_data = merged_additional_data.merge(merged_dates_data, how='left',
-                                                                  left_on=['scene_id', 'item_id'],
-                                                                  right_on=['scene_fk', 'product_fk'])
-        if not merged_additional_data.empty:
-            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], how='all', inplace=True)
+        merged_additional_data = self.scif\
+            .merge(merged_pricing_data, how='left', left_on=['scene_id', 'item_id'], right_on=['scene_fk', 'product_fk'])\
+            .merge(merged_dates_data, how='left', left_on=['scene_id', 'item_id'], right_on=['scene_fk', 'product_fk'])\
+            .merge(self.all_products, how='left', left_on='item_id', right_on='product_fk', suffixes=['', '_all_products'])
+        #    .dropna(subset=['fixed_date', 'price_value'], how='all')
 
         return merged_additional_data
 
@@ -678,8 +673,10 @@ class BATRUToolBox:
     # P2 KPI
     @kpi_runtime()
     def handle_priority_2(self):
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
-        mobile_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        set_fk = self.kpi_static_data[
+            self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        mobile_set_fk = self.kpi_static_data[
+            self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
@@ -697,39 +694,22 @@ class BATRUToolBox:
         monitored_skus = self.get_custom_template(P2_PATH, 'SKUs')
         states = monitored_skus['State'].tolist()
         if state in states:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(
-                lambda x: pd.Series(x.split(', ')).isin([state]).any())]
+            monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
             monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
-        # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
-        # extra_df = pd.DataFrame(columns=monitored_skus.columns)
         extra_df = pd.DataFrame(columns=list(monitored_skus.columns) + [u'leading'])
         for sku in monitored_skus['ean_code'].unique().tolist():
             try:
-                # product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk'].values[0]
                 product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB'.format(sku))
                 continue
-            extra_df = extra_df.append({'State': state, 'ean_code': product_ean_code_lead, 'Required for monitoring': 1, 'leading': sku}, ignore_index=True)
-
-            # # bundled_products = self.bundle_fk_ean(product_fk)
-            # bundled_products = self.get_bundles_by_definitions(
-            #             product_fk, convert=LEAD2BUNDLE, input_type='product_fk', output_type='product_ean_code')
-            # for bundle_product in bundled_products:
-            #     if self.is_relevant_bundle(sku, bundle_product):
-            #         extra_df = extra_df.append(
-            #             {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1},
-            #             ignore_index=True)
-            #         break
-            #     # prod_atts_dict_list = list(prod_atts_dict)
-            #     # prod_atts_dict = [state, bundle_product, 1]
-            #     # extra_df.append(prod_atts_dict)
+            extra_df = extra_df.append({'State': state, 'ean_code': product_ean_code_lead, 'Required for monitoring': 1, 'leading': product_ean_code_lead}, ignore_index=True)
 
         monitored_skus = monitored_skus.append(extra_df)
-        # return monitored_skus['ean_code']
-        monitored_skus = monitored_skus.fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()][
-            'ean_code']})
+        monitored_skus = monitored_skus\
+            .fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()]['ean_code']})\
+            .drop_duplicates(subset=['leading'], keep='last')
         return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
@@ -789,36 +769,19 @@ class BATRUToolBox:
         """
         gets all the products calculate the percentage of recognized skus out of all skus.
         """
-        # facing_of_recognized = self.merged_additional_data.loc[
-        #     self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]['facings'].sum()
         facing_of_all = self.scif.loc[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
                                       (self.scif['product_type'].isin([OTHER, SKU, POSM]))]['facings'].sum()
         products_eans = self.merged_additional_data.loc[
-            self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME][
+            (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+            (~self.merged_additional_data['fixed_date'].isnull())][
             'product_ean_code'].unique().tolist()
-        # product_with_bundles = products_eans + self.leads_ean_ean(products_eans)
         product_with_bundles = products_eans + self.get_bundles_by_definitions(
             products_eans, convert=BUNDLE2LEAD, input_type='product_ean_code', output_type='product_ean_code')
         facing_of_recognized = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                         (self.scif['product_ean_code'].isin(product_with_bundles))][
-            'facings'].sum()
+                                         (self.scif['product_ean_code'].isin(product_with_bundles))]['facings'].sum()
         return (float(facing_of_recognized) / facing_of_all) * 100 if facing_of_all else 0
-        # filters = {'product_type': ['SKU', 'Other']}
-        # filter_sku_scif = self.merged_additional_data[
-        #     self.tools.get_filter_condition(self.merged_additional_data, **filters)]
-        # total_facing = filter_sku_scif['facings'].sum()
-        # filter_sku_scif = filter_sku_scif.loc[filter_sku_scif['product_type'] == 'SKU']
-        # filter_sku_scif.dropna(subset=['price_value', 'date_value'], inplace=True)
-        # facing_with_data = filter_sku_scif['facings'].sum()
 
     def get_raw_data(self):
-        # raw_data = self.merged_additional_data.dropna(subset=['price_value', 'date_value'])
-        # if not self.merged_additional_data.empty:
-        #     # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
-        #     self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
-        #         '%m.%Y')
-        # else:
-        #     self.merged_additional_data['Formatted_Date'] = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
             product = row['product_ean_code']
@@ -832,12 +795,12 @@ class BATRUToolBox:
             else:
                 product_for_db = product
 
-            if np.isnan(row['price_value']):  # None
+            if pd.isnull(row['price_value']):  # None
                 price_value_for_db = 0
             else:
                 price_value_for_db = format(row['price_value'], '.2f')
 
-            if isinstance(row['fixed_date'], pd._libs.tslib.NaTType):  # None
+            if pd.isnull(row['fixed_date']):  # None
                 formatted_date_for_db = '0'
             else:
                 formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
@@ -852,18 +815,16 @@ class BATRUToolBox:
                                             atomic_kpi_name=product_for_db)
 
         # using P4 save function to save None without problems so will add set name to api.
-        self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None,
-                                        kpi_set_name=P2_SET_DATE)
+        self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None, kpi_set_name=P2_SET_DATE)
 
     def set_p2_sku_mobile_results(self, monitored_sku):
         new_products = False
         set_name = MOBILE_PRICE_MONITORING
         kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
         try:
-            existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
-                'product_ean_code'].isin(monitored_sku['leading'].values))]
-            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name][
-                'atomic_kpi_name'].unique().tolist()
+            existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
+                                              (self.all_products['product_ean_code_lead'].isin(monitored_sku['leading'].values))]
+            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['atomic_kpi_name'].unique().tolist()
             not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
             if not_in_db_products.any:
                 self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
@@ -887,27 +848,27 @@ class BATRUToolBox:
                 kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
                                               (self.kpi_static_data['kpi_set_name'] == set_name)][
                     'atomic_kpi_fk'].drop_duplicates().values[0]
-                product_fk = self.all_products[self.all_products['product_ean_code'] == row.ean_code][
-                    'product_fk'].drop_duplicates().values[0]
 
-                score = 0 if self.merged_additional_data[self.merged_additional_data['item_id'] == product_fk].empty else 1
-                result = 0
-                result2 = 0
-                if score:
+                score = 0 if self.merged_additional_data[(self.merged_additional_data['product_ean_code_lead'] == row.ean_code) &
+                                                         (~self.merged_additional_data['fixed_date'].isnull())].empty else 1
 
-                    result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                        'price_value'].drop_duplicates().values[0]
-                    if np.isnan(result):  # None
-                        result = 0
-                    else:
-                        result = format(result, '.2f')
+                result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                    'price_value'].drop_duplicates()
+                if result.empty:
+                    result = 0
+                elif pd.isnull(result.values[0]):  # None
+                    result = 0
+                else:
+                    result = format(result.values[0], '.2f')
 
-                    result2 = pd.to_datetime(self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                            'fixed_date'].drop_duplicates().values[0])
-                    if isinstance(result2, pd._libs.tslib.NaTType):  # None
-                        result2 = '0'
-                    else:
-                        result2 = pd.to_datetime(str(result2)).strftime('%m.%Y')
+                result2 = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
+                        'fixed_date'].drop_duplicates()
+                if result2.empty:
+                    result2 = '0'
+                elif pd.isnull(result2.values[0]):  # None
+                    result2 = '0'
+                else:
+                    result2 = pd.to_datetime(str(result2.values[0])).strftime('%m.%Y')
 
                 self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
             except Exception as e:
