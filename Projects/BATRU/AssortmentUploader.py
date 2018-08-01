@@ -128,7 +128,6 @@ class BatruAssortment:
         :param stores_list: List of the stores from the assortment template
         """
         Log.info("Starting to set an end date for irrelevant stores")
-        batch_size = 500
         irrelevant_stores = self.store_data.loc[
             ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
