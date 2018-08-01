@@ -52,7 +52,8 @@ class BatruAssortment:
             if invalid_inputs[INVALID_STORES]:
                 Log.warning("The following stores doesn't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
             if invalid_inputs[INVALID_PRODUCTS]:
-                Log.warning("The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+                Log.warning(
+                    "The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
 
     @property
     def rds_connect(self):
@@ -121,10 +122,27 @@ class BatruAssortment:
             data = data.fillna('')
         return data
 
+    def set_end_date_for_irrelevant_assortments(self, stores_list):
+        """
+        This function sets an end_date to all of the irrelevant stores in the assortment.
+        :param stores_list: List of the stores from the assortment template
+        """
+        queries_to_execute = []
+        irrelevant_stores = self.store_data.loc[
+            ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
+        current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
+        stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
+        for store in stores_to_remove:
+            query = self.get_store_deactivation_query(store)
+            queries_to_execute.append(query)
+        self.commit_results(queries_to_execute)
+
     def upload_store_assortment_file(self):
         raw_data = self.parse_assortment_template()
         data = []
-        for store in raw_data[OUTLET_ID].unique().tolist():
+        list_of_stores = raw_data[OUTLET_ID].unique().tolist()
+        self.set_end_date_for_irrelevant_assortments(list_of_stores)
+        for store in list_of_stores:
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
             store_data[store] = store_products
@@ -253,6 +271,13 @@ class BatruAssortment:
         return query
 
     @staticmethod
+    def get_store_deactivation_query(store_fk):
+        current_date = datetime.now().date()- timedelta(3)
+        query = """update {} set end_date = '{}', is_current = NULL
+                   where store_fk = {} and end_date is null""".format(STORE_ASSORTMENT_TABLE, current_date, store_fk)
+        return query
+
+    @staticmethod
     def get_activation_query(store_fk, product_fk, date):
         attributes = pd.DataFrame([(store_fk, product_fk, str(date), 1)],
                                   columns=['store_fk', 'product_fk', 'start_date', 'is_current'])
@@ -308,4 +333,3 @@ if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
     BatruAssortment().upload_assortment()
     # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration
-
