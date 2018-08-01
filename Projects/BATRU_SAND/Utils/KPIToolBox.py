@@ -938,6 +938,7 @@ class BATRU_SANDToolBox:
                 else:
                     shelf_data = updated_shelf_data_from_bottom
                 section_shelf_data = shelf_data.loc[shelf_data['sequence'].between(start_sequence, end_sequence)]
+                # Idan - PROS 5733 - CR - to Update
                 # specific_section_products_template = self.get_relevant_section_products(sections_products_template_data,
                 #                                                                         section, state_for_calculation,
                 #                                                                         fixture)
