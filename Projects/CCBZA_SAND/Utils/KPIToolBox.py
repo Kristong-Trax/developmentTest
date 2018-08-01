@@ -161,9 +161,28 @@ class CCBZA_SANDToolBox:
         self.set_results = {}
         # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
-    def scene_main_calculation(self):
-        # self.common.commit_results_data(result_entity='scene')
-        pass
+    # def scene_main_calculation(self):
+    #     if not self.template_data:
+    #         # raise DataError('Template data is empty does not exist')
+    #         Log.error('Template data is empty')
+    #         return
+    #     session_kpis = self.template_data[KPI_TAB][KPI_NAME].unique().tolist()
+    #     for kpi_name in session_kpis:
+    #         kpi = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == kpi_name]
+    #         kpi_types = self.get_kpi_types_by_kpi(kpi)
+    #         for kpi_type in kpi_types:
+    #             atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi)
+    #             identifier_result_kpi = self.get_identifier_result_kpi(kpi)
+    #             if not atomic_kpis_data.empty:
+    #                 if kpi_type == 'Availability':
+    #                     self.calculate_availability_scene(atomic_kpis_data, identifier_result_kpi)
+    #                 elif kpi_type == 'Price':
+    #                     self.calculate_price_scene(atomic_kpis_data, identifier_result_kpi)
+    #                 else:
+    #                     Log.warning("KPI of type '{}' is not supported by scene calculations".format(kpi_type))
+    #                     continue
+    #     # self.common.commit_results_data(result_entity='scene')
+    #     pass
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -171,7 +190,7 @@ class CCBZA_SANDToolBox:
         """
         if not self.template_data:
             # raise DataError('Template data is empty does not exist')
-            Log.error('Template data is empty does not exist') # it should interrupt the code!
+            Log.error('Template data is empty')
             return
         red_score = 0
         red_target = 0

@@ -156,7 +156,7 @@ class CCBZA_SANDSceneToolBox:
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
 
-    def main_calculation(self, *args, **kwargs):
+    def scene_calculation(self, *args, **kwargs):
         if not self.template_data:
             # raise DataError('Template data is empty does not exist')
             Log.error('Template data is empty does not exist') # it should interrupt the code!
@@ -241,10 +241,10 @@ class CCBZA_SANDSceneToolBox:
         if target:
             result = self.calculate_price_vs_target(matches_scif_df, unique_skus_list, target, atomic_kpi)
         else:
-            result = self.calculate_price_presence(matches_scif_df, unique_skus_list)
+            result = self.calculate_price_presence(matches_scif_df, unique_skus_list, atomic_kpi)
         return result
 
-    def calculate_price_presence(self, matches, skus_list):
+    def calculate_price_presence(self, matches, skus_list, atomic_kpi):
         price_presence = []
         for sku in skus_list:
             sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
@@ -255,13 +255,12 @@ class CCBZA_SANDSceneToolBox:
         return result
 
     def add_scene_price_kpi_to_db(self, result, atomic_kpi, identifier_parent):
-        custom_result = self.get_pass_fail(result)
+        custom_score = self.get_pass_fail(result)
         atomic_name = '{}_scene'.format(atomic_kpi[ATOMIC_KPI_NAME])
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
-                                       denominator_id=self.store_id, result=result_price,
-                                       identifier_parent=identifier_parent,
-                                       target=target_price, should_enter=True)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                                       denominator_id=self.store_id, result=result,
+                                       identifier_parent=identifier_parent, should_enter=True)
 
     def calculate_price_vs_target(self, matches, skus_list, target, atomic_kpi):
         identifier_result = self.get_identfier_result_atomic(atomic_kpi)
@@ -341,14 +340,19 @@ class CCBZA_SANDSceneToolBox:
                 value = value
         return value
 
-    def get_pass_fail(self, score, value_type):
+    def get_pass_fail(self, score):
         value = 'Failed' if not score else 'Passed'
-        custom_value_pk = 0
-        if value_type == SCORE:
-            custom_value_pk = self.get_kpi_score_value_pk_by_value(value)
-        elif value_type == RESULT:
-            custom_value_pk = self.get_kpi_score_value_pk_by_value(value)
-        return custom_value_pk
+        custom_score = self.get_kpi_score_value_pk_by_value(value)
+        return custom_score
+
+    # def get_pass_fail(self, score, value_type):
+    #     value = 'Failed' if not score else 'Passed'
+    #     custom_value_pk = 0
+    #     if value_type == SCORE:
+    #         custom_value_pk = self.get_kpi_score_value_pk_by_value(value)
+    #     elif value_type == RESULT:
+    #         custom_value_pk = self.get_kpi_score_value_pk_by_value(value)
+    #     return custom_value_pk
 
     def get_kpi_score_value_pk_by_value(self, value):
         pk = None  # I want to stop code - maybe w/o try/except?
