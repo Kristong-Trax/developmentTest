@@ -850,40 +850,50 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
             survey_question_code = str(int(p.get('Survey Question_ID_code')))
             survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
-            if not survey_data['selected_option_text'].empty:
+            if not survey_data.empty:
 
                 if p.get('Answer type') == 'Boolean':
                     result = survey_data['selected_option_text'].values[0]
                     if result in d.get('Yes'):
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'TRUE'}
-                    else:
+                        score = 1
+                    elif result in d.get('No'):
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
+                        score = 1
+                    else:
+                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        score = 0
 
                 # elif p.get('Answer type') == 'String':
                 #     result = self.kpi_fetcher.get_survey_answers_codes(survey_question_code, survey_data['selected_option_text'].values[0])
                 #     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+                #     score = 1 if len(result)>0 else 0
 
                 elif p.get('Answer type') in ['List', 'String']:
                     result = []
                     for answer in survey_data['selected_option_text'].unique().tolist():
                         result += [self.kpi_fetcher.get_survey_answers_codes(survey_question_code, answer)]
-
                     result = ','.join([str(r) for r in result])
                     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+                    score = 1 if len(result) > 0 else 0
 
                 elif p.get('Answer type') == 'Int':
                     try:
                         result = int(survey_data['number_value'].values[0])
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+                        score = 1
                     except ValueError as e:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        score = 0
 
                 elif p.get('Answer type') == 'Float':
                     try:
                         result = float(survey_data['number_value'].values[0])
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
+                        score = 1
                     except ValueError as e:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        score = 0
                 else:
                     Log.info('The answer type {} is not defined for surveys'.format(params.get('Answer type')))
                     continue
@@ -903,8 +913,6 @@ class MARSRU_PRODMARSRUKPIToolBox:
     @kpi_runtime()
     def check_price(self, params, scenes=[]):
         for p in params.values()[0]:
-            kpi_total_res = 0
-            score = 0  # default score
             if p.get('Formula') != 'price':
                 continue
             values_list = str(p.get('Values')).split(', ')
