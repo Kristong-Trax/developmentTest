@@ -20,8 +20,12 @@ class CCZACalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('ccza calculations')
 #     Config.init()
 #     project_name = 'ccza'
-#     sessions = ['FF82398A-C85C-4A24-AC34-61D9116B79A9', 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
-#                 'FE8E0E52-9DF1-40BF-81E2-C6F618682806', 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2']
+#     sessions = [
+#                 '48D8D5E7-69D4-4846-A190-9C8F2EB88CA1',
+#                 # 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
+#                 # 'FE8E0E52-9DF1-40BF-81E2-C6F618682806',
+#                 # 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2'
+#     ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         print session
