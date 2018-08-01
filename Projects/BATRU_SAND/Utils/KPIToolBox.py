@@ -938,9 +938,12 @@ class BATRU_SANDToolBox:
                 else:
                     shelf_data = updated_shelf_data_from_bottom
                 section_shelf_data = shelf_data.loc[shelf_data['sequence'].between(start_sequence, end_sequence)]
-                specific_section_products_template = self.get_relevant_section_products(sections_products_template_data,
-                                                                                        section, state_for_calculation,
-                                                                                        fixture)
+                # Idan - PROS 5733 - CR - to Update
+                # specific_section_products_template = self.get_relevant_section_products(sections_products_template_data,
+                #                                                                         section, state_for_calculation,
+                #                                                                         fixture)
+                specific_section_products_template = sections_products_template_data.loc[
+                    sections_products_template_data['Section'] == str(int(float(section)))]
                 section_products = specific_section_products_template['product_ean_code'].unique().tolist()
                 section_products_including_bundles = section_products
                 # section_brands_list = self.all_products[

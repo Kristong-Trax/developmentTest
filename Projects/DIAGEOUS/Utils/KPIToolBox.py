@@ -52,7 +52,7 @@ class DIAGEOUSToolBox:
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         store_type = self.store_info['store_type'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
-        self.on_off = Const.ON if store_type in ('Dining', 'Bar/Nightclub') else Const.OFF
+        self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in ('On-Premise') else Const.OFF
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
@@ -460,7 +460,10 @@ class DIAGEOUSToolBox:
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
-        score = 1 if (diageo_results >= target * den_res) else 0
+        if den_res == 0:
+            score = 0
+        else:
+            score = 1 if (diageo_results >= target * den_res) else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target,
             denominator_result=den_res, result=score, should_enter=True, weight=weight * 100, score=diageo_result,
