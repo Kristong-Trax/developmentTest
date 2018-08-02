@@ -254,7 +254,8 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                if kpi_type not in ['regular block', 'relative', 'category space', 'average shelf', 'eye level']:
+                if kpi_type not in ['regular block', 'relative', 'eye level',
+                                    'hor_vs_vertical', 'sud_orchestration']:
                     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                     continue
 
@@ -1459,7 +1460,7 @@ class PNGAMERICAToolBox:
                             score = 1 if res['regular block'] else 0
                             if kpi_template['kpi type'] == 'hor_vs_vertical':
                                 result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
-                                self.hor_ver_results[kpi_name] = result
+                                self.hor_ver_results[new_kpi_name] = result
                             if kpi_template['kpi type'] == 'block in block':
                                 result = 1 if res['block_of_blocks'] else 0
                             try:
@@ -1501,7 +1502,7 @@ class PNGAMERICAToolBox:
                         score = 1 if res['regular block'] else 0
                         if kpi_template['kpi type'] == 'hor_vs_vertical':
                             result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
-                            self.hor_ver_results[kpi_name] = result
+                            self.hor_ver_results[new_kpi_name] = result
                         if kpi_template['kpi type'] == 'block in block':
                             result = 1 if res['block_of_blocks'] else 0
                         try:
