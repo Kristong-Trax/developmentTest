@@ -254,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                if kpi_type not in ['average shelf']:
+                if kpi_type not in ['regular block', 'relative', 'category space', 'average shelf', 'eye level']:
                     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                     continue
 
@@ -435,8 +435,18 @@ class PNGAMERICAToolBox:
                     block_filters = {'Sub Brand': 'TIDE SIMPLY CLEAN & FRESH'}
                     block_result = self.tools.calculate_block_together_new(include_empty=False,
                                                                            minimum_block_ratio=0.75, **block_filters)
+                    tested_filters_values = kpi_data['Group 1 value'].split(', ')
+                    tested_filters1 = {kpi_data['Group 1 param']: tested_filters_values[0]}
+                    relative_position_result1 = self.tools.calculate_relative_position(tested_filters1, anchor_filters,
+                                                                                      direction_data,
+                                                                                      **general_filters)
+                    tested_filters2 = {kpi_data['Group 1 param']: tested_filters_values[1]}
+                    relative_position_result2 = self.tools.calculate_relative_position(tested_filters2, anchor_filters,
+                                                                                      direction_data,
+                                                                                      **general_filters)
                     if block_result and relative_position_result:
-                        final_result = True
+                        if relative_position_result1 and relative_position_result2:
+                            final_result = True
             else:
                 final_result = relative_position_result
             if final_result:
