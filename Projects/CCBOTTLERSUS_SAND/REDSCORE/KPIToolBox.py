@@ -53,6 +53,8 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.used_scenes = []
         self.red_score = 0
 
+# main functions:
+
     def main_calculation(self, *args, **kwargs):
         """
             :param kwargs: dict - kpi line from the template.
@@ -71,6 +73,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
         relevant_scif = self.scif
+        parent = main_line[Const.CONDITION]
         if kpi_type == Const.SCENE_AVAILABILITY:
             result = self.calculate_scene_availability(main_line)
         else:
@@ -88,16 +91,21 @@ class CCBOTTLERSUS_SANDREDToolBox:
             if target == Const.ALL:
                 target = len(relevant_template)
             function = self.get_kpi_function(kpi_type)
-            passed_counter = 0
-            for i, kpi_line in relevant_template.iterrows():
-                answer = function(kpi_line, relevant_scif, isnt_dp)
-                if answer:
-                    passed_counter += 1
-            result = passed_counter >= target
-        self.write_to_session_level(kpi_name=kpi_name, result=result)
+            if main_line[Const.SAME_PACK] == Const.V:
+                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
+            else:
+                passed_counter = 0
+                for i, kpi_line in relevant_template.iterrows():
+                    answer = function(kpi_line, relevant_scif, isnt_dp)
+                    if answer:
+                        passed_counter += 1
+                result = passed_counter >= target
+        self.write_to_session_level(kpi_name=kpi_name, result=result, parent=parent)
 
-    def write_to_session_level(self, kpi_name, result=0):
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result}
+# write in DF:
+
+    def write_to_session_level(self, kpi_name, result=0, parent=""):
+        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
         self.session_results = self.session_results.append(result_dict, ignore_index=True)
 
     def write_to_all_levels(self, kpi_name, result, display_text, weight, scene_fk=None):
@@ -108,6 +116,8 @@ class CCBOTTLERSUS_SANDREDToolBox:
             self.used_scenes.append(scene_fk)
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, result, display_text)
+
+# survey:
 
     def calculate_survey_specific(self, kpi_line, relevant_scif, isnt_dp):
         question = kpi_line[Const.Q_TEXT]
@@ -121,6 +131,34 @@ class CCBOTTLERSUS_SANDREDToolBox:
             if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
                 return True
         return False
+
+    # availability:
+
+    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
+        size, sub_packages_num = None, None
+        for i, kpi_line in relevant_template.iterrows():
+            if isnt_dp and relevant_template[Const.MANUFACTURER] in Const.DP_MANU:
+                continue
+            filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
+            target = kpi_line[Const.TARGET]
+            if size is None or sub_packages_num is None:
+                size = filtered_scif['size'].sum()
+                sub_packages_num = filtered_scif['number_of_sub_packages'].sum()
+            else:
+                curren_size = filtered_scif['size'].sum()
+                current_sub_packages_num = filtered_scif['number_of_sub_packages'].sum()
+                if curren_size != size or sub_packages_num != current_sub_packages_num:
+                    return False
+            if filtered_scif['facings'].sum() < target:
+                return False
+        return True
+
+    def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
+        if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
+            return True
+        filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
+        target = kpi_line[Const.TARGET]
+        return filtered_scif['facings'].sum() >= target
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
         values = self.does_exist(kpi_line, name_in_template)
@@ -142,12 +180,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
 
-    def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
-        if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-            return True
-        filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-        target = kpi_line[Const.TARGET]
-        return filtered_scif['facings'].sum() >= target
+    # scene availability:
 
     def calculate_scene_availability(self, main_line):
         scene_type = main_line[Const.SCENE_TYPE]
@@ -157,28 +190,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             return True
         return False
 
-    def get_column_name(self, field_name, df):
-        if field_name in df.columns:
-            return field_name
-        if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
-            field_name = self.converters[self.converters[Const.NAME_IN_TEMP].str.upper() == field_name.upper()][
-                Const.NAME_IN_DB].iloc[0]
-            return field_name
-        return None
-
-    def filter_by_type_value(self, relevant_scif, type_name, value):
-        if type_name == "":
-            return relevant_scif
-        values = value.split(', ')
-        type_name = self.get_column_name(type_name, relevant_scif)
-        if not type_name:
-            return relevant_scif
-        return relevant_scif[relevant_scif[type_name].isin(values)]
-
-    @staticmethod
-    def exclude_scif(exclude_line, relevant_scif):
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+    # SOS:
 
     def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
         kpi_name = kpi_line[Const.KPI_NAME]
@@ -200,6 +212,8 @@ class CCBOTTLERSUS_SANDREDToolBox:
         target = float(kpi_line[Const.TARGET]) / 100
         return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
 
+    # SOS majority:
+
     def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
         kpi_name = kpi_line[Const.KPI_NAME]
         if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
@@ -214,35 +228,70 @@ class CCBOTTLERSUS_SANDREDToolBox:
         den_value = kpi_line[Const.DEN_VALUES_2]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
         if kpi_line[Const.MAJ_DOM] == Const.MAJOR:
-            num_type = kpi_line[Const.NUM_TYPES_1]
-            num_value = kpi_line[Const.NUM_VALUES_1]
-            num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-            num_type = kpi_line[Const.NUM_TYPES_2]
-            num_value = kpi_line[Const.NUM_VALUES_2]
-            num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
-            if isnt_dp:
-                num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
-            target = Const.MAJORITY_TARGET
-            return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
-        if kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
-            if isnt_dp:
-                relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
-            type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
-            values = kpi_line[Const.NUM_VALUES_1].split(', ')
-            max_facings, needed_one = 0, 0
-            values_type = relevant_scif[type_name].unique().tolist()
-            if None in values_type:
-                values_type.remove(None)
-                current_sum = relevant_scif[relevant_scif[type_name].isnull()]['facings'].sum()
-                if current_sum > max_facings:
-                    max_facings = current_sum
-            for value in values_type:
-                current_sum = relevant_scif[relevant_scif[type_name] == value]['facings'].sum()
-                if current_sum > max_facings:
-                    max_facings = current_sum
-                if value in values:
-                    needed_one += current_sum
-            return needed_one >= max_facings
+            answer = self.calculate_majority_part(kpi_line, relevant_scif, isnt_dp)
+        elif kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
+            answer = self.calculate_dominant_part(kpi_line, relevant_scif, isnt_dp)
+        else:
+            answer = False
+        return answer
+
+    def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):
+        num_type = kpi_line[Const.NUM_TYPES_1]
+        num_value = kpi_line[Const.NUM_VALUES_1]
+        num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
+        num_type = kpi_line[Const.NUM_TYPES_2]
+        num_value = kpi_line[Const.NUM_VALUES_2]
+        num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
+        if isnt_dp:
+            num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
+        target = Const.MAJORITY_TARGET
+        return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
+
+    def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):
+        if isnt_dp:
+            relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
+        type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
+        values = kpi_line[Const.NUM_VALUES_1].split(', ')
+        max_facings, needed_one = 0, 0
+        values_type = relevant_scif[type_name].unique().tolist()
+        if None in values_type:
+            values_type.remove(None)
+            current_sum = relevant_scif[relevant_scif[type_name].isnull()]['facings'].sum()
+            if current_sum > max_facings:
+                max_facings = current_sum
+        for value in values_type:
+            current_sum = relevant_scif[relevant_scif[type_name] == value]['facings'].sum()
+            if current_sum > max_facings:
+                max_facings = current_sum
+            if value in values:
+                needed_one += current_sum
+        return needed_one >= max_facings
+
+    # helpers:
+
+    def get_column_name(self, field_name, df):
+        if field_name in df.columns:
+            return field_name
+        if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
+            field_name = self.converters[self.converters[Const.NAME_IN_TEMP].str.upper() == field_name.upper()][
+                Const.NAME_IN_DB].iloc[0]
+            return field_name
+        return None
+
+    def filter_by_type_value(self, relevant_scif, type_name, value):
+        if type_name == "":
+            return relevant_scif
+        values = value.split(', ')
+        new_type_name = self.get_column_name(type_name, relevant_scif)
+        if not new_type_name:
+            print "There is no field '{}'".format(type_name)
+            return relevant_scif
+        return relevant_scif[relevant_scif[new_type_name].isin(values)]
+
+    @staticmethod
+    def exclude_scif(exclude_line, relevant_scif):
+        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
 
     @staticmethod
     def does_exist(kpi_line, column_name):
@@ -275,10 +324,13 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.write_session_kpis(main_template)
         self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
+        result_dict = {Const.KPI_NAME: 'red score', Const.RESULT: self.red_score}
+        self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.all_results.to_csv('all {}.csv'.format(self.store_type))
 
     def write_session_kpis(self, main_template):
-        session_template = main_template[main_template[Const.SESSION_LEVEL] == Const.V]
+        session_template = main_template[(main_template[Const.SESSION_LEVEL] == Const.V) &
+                                         (main_template[Const.CONDITION] == "")]
         for i, main_line in session_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             result = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
@@ -298,7 +350,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 kpi_name = main_line[Const.KPI_NAME]
                 kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
                                                   (~(self.scenes_results[Const.SCENE_FK].isin(self.used_scenes)))]
-                true_results = kpi_results[kpi_results[Const.RESULT] == True]
+                true_results = kpi_results[kpi_results[Const.RESULT] > 0]
                 increments = main_line[Const.INCREMENTAL]
                 if ', ' in increments:
                     first_kpi = increments.split(', ')[0]
@@ -307,23 +359,25 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 if true_results.empty:
                     scene_template.loc[scene_template[Const.KPI_NAME] == kpi_name, Const.INCREMENTAL] = ""
                 else:
+                    true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
                     display_text = main_line[Const.DISPLAY_TEXT]
                     weight = main_line[Const.WEIGHT]
                     scene_fk = true_results.iloc[0][Const.SCENE_FK]
-                    self.write_to_all_levels(kpi_name, True, display_text, weight, scene_fk=scene_fk)
+                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
                     scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
             incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
                                               (~(self.scenes_results[Const.SCENE_FK].isin(self.used_scenes)))]
-            true_results = kpi_results[kpi_results[Const.RESULT] == True]
+            true_results = kpi_results[kpi_results[Const.RESULT] > 0]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             if true_results.empty:
                 continue
+            true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
             scene_fk = true_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, True, display_text, weight, scene_fk=scene_fk)
+            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
             scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
@@ -334,7 +388,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             if kpi_results.empty:
                 continue
             scene_fk = kpi_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, False, display_text, weight, scene_fk=scene_fk)
+            self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk)
 
     def write_condition_kpis(self, main_template):
         condition_template = main_template[main_template[Const.CONDITION] != '']
@@ -345,21 +399,23 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 kpi_results = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
             else:
                 kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
-            condition_result = self.all_results[self.all_results[Const.KPI_NAME] == condition]
+            condition_result = self.all_results[(self.all_results[Const.KPI_NAME] == condition) &
+                                                (self.all_results[Const.RESULT] > 0)]
             if condition_result.empty:
                 continue
             condition_result = condition_result.iloc[0]
             condition_scene = condition_result[Const.SCENE_FK]
             if condition_scene:
-                result = kpi_results[kpi_results[Const.SCENE_FK] == condition_scene]
+                results = kpi_results[kpi_results[Const.SCENE_FK] == condition_scene]
             else:
-                result = kpi_results
-            if result.empty:
+                results = kpi_results
+            if results.empty:
                 continue
-            result = result.iloc[0][Const.RESULT]
+            result = results.iloc[0][Const.RESULT]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
-            self.write_to_all_levels(kpi_name, result, display_text, weight)
+            scene_fk = results.iloc[0][Const.SCENE_FK]
+            self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
     def write_to_db(self, kpi_name, result, display_text):
         result_dict = {'display_text': display_text}

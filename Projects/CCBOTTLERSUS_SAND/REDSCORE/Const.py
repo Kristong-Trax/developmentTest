@@ -41,6 +41,7 @@ class Const(object):
     SHEET = "sheet"
     EXCLUSION_SHEET = "exclusion_sheet"
     WEIGHT = "weight"
+    SAME_PACK = "Same Pack"
 
     # columns of AVAILABILITY:
     SCENE_SKU = "scene/SKU"
@@ -85,8 +86,8 @@ class Const(object):
     SCENE_FK = "scene_fk"
     RESULT = "result"
     KPI_FK = "kpi_fk"
-    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, KPI_FK, RESULT]
-    COLUMNS_OF_SESSION = [KPI_NAME, KPI_FK, RESULT]
+    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT]
+    COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
 
     # constants:
     ALL = "ALL"
