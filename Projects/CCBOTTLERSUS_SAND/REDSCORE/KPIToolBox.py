@@ -135,19 +135,20 @@ class CCBOTTLERSUS_SANDREDToolBox:
     # availability:
 
     def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
-        size, sub_packages_num = None, None
+        packages = None
         for i, kpi_line in relevant_template.iterrows():
             if isnt_dp and relevant_template[Const.MANUFACTURER] in Const.DP_MANU:
                 continue
             filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
             target = kpi_line[Const.TARGET]
-            if size is None or sub_packages_num is None:
-                size = filtered_scif['size'].sum()
-                sub_packages_num = filtered_scif['number_of_sub_packages'].sum()
+            sizes = filtered_scif['size'].tolist()
+            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
+            cur_packages = set(zip(sizes, sub_packages_nums))
+            if packages is None:
+                packages = cur_packages
             else:
-                curren_size = filtered_scif['size'].sum()
-                current_sub_packages_num = filtered_scif['number_of_sub_packages'].sum()
-                if curren_size != size or sub_packages_num != current_sub_packages_num:
+                packages = cur_packages & packages
+                if len(packages) == 0:
                     return False
             if filtered_scif['facings'].sum() < target:
                 return False
