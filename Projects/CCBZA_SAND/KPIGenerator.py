@@ -17,7 +17,7 @@ class CCBZA_SANDGenerator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.tool_box = CCBZA_SANDToolBox(self.data_provider, self.output)
-        self.common = Common(data_provider)
+        # self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

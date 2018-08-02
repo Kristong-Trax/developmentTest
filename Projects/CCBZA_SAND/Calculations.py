@@ -3,10 +3,10 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 from Projects.CCBZA_SAND.KPIGenerator import CCBZA_SANDGenerator
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 __author__ = 'natalyak'
 
@@ -23,7 +23,7 @@ class CCBZA_SANDCalculations(BaseCalculationsScript):
 #     project_name = 'ccbza-sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         'fd334fd5-5d8d-449d-989b-0a69f92b829a'
+#         'AD29338A-C2D9-4486-BD94-7B1E32224A11'
 #     ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)

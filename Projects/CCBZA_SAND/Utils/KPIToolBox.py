@@ -24,6 +24,7 @@ from Projects.CCBZA_SAND.Utils.ParseTemplates import parse_template
 from Projects.CCBZA_SAND.Utils.GeneralToolBox import CCBZA_SAND_GENERALToolBox
 from Projects.CCBZA_SAND.Utils.Errors import DataError
 from Projects.CCBZA_SAND.Utils.CustomSceneCommon import CCBZA_SANDSceneCommon
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'natalyak'
 
@@ -98,7 +99,7 @@ KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
 # scif fields
 EAN_CODE = 'product_ean_code'
 BRAND_NAME = 'brand_name'
-POS_BRAND_FIELD = 'brand' # in the labels will need to be changed
+POS_BRAND_FIELD = 'Brand' # in the labels will need to be changed
 PRODUCT_TYPE = 'product_type'
 NUMERIC_FIELDS = ['size']
 MANUFACTURER_NAME = 'manufacturer_name'
@@ -110,9 +111,12 @@ OTHER = 'Other'
 MAX_SCORE = 'Max_Score'
 IRRELEVANT = 'Irrelevant'
 EMPTY = 'Empty'
-KO_ID = 1 # to check
+KO_ID = 11 # to check
 CORRECT = 1
 RED_SCORE = 'Red_score_ccbza' # to check
+GROCERY = 'GROCERY'
+LnT = 'L&T'
+QSR = 'QSR'
 
 
 class CCBZA_SANDToolBox:
@@ -158,9 +162,15 @@ class CCBZA_SANDToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
         # self.planogram_results = self.get_planogram_results()
         self.full_store_type = self.get_full_store_type()
-        self.set_results = {}
+        # self.set_results = {}
+
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.scene_kpi_results = self.ps_data_provider.get_scene_results(
+            self.scene_info['scene_fk'].drop_duplicates().values)
         # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
+#------------------scene calculations-----------------------------#
+    #
     # def scene_main_calculation(self):
     #     if not self.template_data:
     #         # raise DataError('Template data is empty does not exist')
@@ -183,6 +193,42 @@ class CCBZA_SANDToolBox:
     #                     continue
     #     # self.common.commit_results_data(result_entity='scene')
     #     pass
+    #
+    # def calculate_price_scene(self, atomic_kpis_data, identifier_parent):
+    #     for i in xrange(len(atomic_kpis_data)):
+    #         atomic_kpi = atomic_kpis_data.iloc[i]
+    #         is_by_scene = self.is_by_scene(atomic_kpi)
+    #         if is_by_scene:
+    #             target = atomic_kpi[TARGET]
+    #             calculation_filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
+    #             calculation_filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
+    #             scene_result = 0
+    #             scif = self.scif.copy()
+    #             matches = self.match_product_in_scene.copy()
+    #             merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
+    #             scene_df = merged_df[self.tools.get_filter_condition(merged_df, **calculation_filters)]
+    #             if not scene_df.empty:
+    #                 scene_result = self.get_price_result(scene_df, target, atomic_kpi)
+    #                 self.add_scene_atomic_result_to_db(scene_result, atomic_kpi)
+    #
+    #                 # write scene result to DB
+    #
+    # def add_scene_atomic_result_to_db(self, result, atomic_kpi):
+    #     atomic_name = atomic_kpi[ATOMIC_KPI_NAME]
+    #     atomic_name_scene = '{}_scene'.format(atomic_name)
+    #     kpi_fk_scene = self.common.get_kpi_fk_by_kpi_name(atomic_name_scene)
+    #     identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(atomic_name))
+    #     identifier_parent['session_fk'] = self.session_info['pk'].values[0]
+    #     identifier_parent['store_fk'] = self.session_info['store_fk'].values[0]
+    #     custom_score = self.get_pass_fail(result)
+    #     self.common.write_to_db_result(fk=kpi_fk_scene, numerator_id=KO_ID, score=custom_score,
+    #                                    denominator_id=self.store_id,
+    #                                    identifier_parent=identifier_parent,
+    #                                    result=result, should_enter=True)
+    #
+    #
+
+#----------------------session calculations--------------------------#
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -233,12 +279,15 @@ class CCBZA_SANDToolBox:
                                            target=set_target, should_enter=True)
             red_score += set_score
             red_target += set_target
+            if kpi_set_name != 'BONUS POINTS':
+                red_target += set_target
         # write red_score to db
+        red_score_percent = float(red_score) / red_target * 100
         red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_name(RED_SCORE)
         self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, score=red_score,
-                                       denominator_id=self.store_id,
+                                       denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
-        self.common.commit_results_data()
+        # self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -441,7 +490,7 @@ class CCBZA_SANDToolBox:
 
     def get_full_store_type(self, ):
         store_attr_1 = self.store_data['additional_attribute_1'].values[0]
-        if store_attr_1:
+        if store_attr_1 != GROCERY:
             store = '{} {}'.format(self.store_data['store_type'].values[0],
                                    self.store_data['additional_attribute_1'].values[0])
         else:
@@ -519,7 +568,7 @@ class CCBZA_SANDToolBox:
                                                should_enter=True)
 
     def get_price_result(self, matches_scif_df, target, atomic_kpi):
-        unique_skus_list = matches_scif_df['product_fk'].unique().tolist()
+        unique_skus_list = matches_scif_df['item_id'].unique().tolist()
         if target:
             result = self.calculate_price_vs_target(matches_scif_df, unique_skus_list, target, atomic_kpi)
         else:
@@ -530,7 +579,7 @@ class CCBZA_SANDToolBox:
     def calculate_price_presence(matches, skus_list):
         price_presence = []
         for sku in skus_list:
-            sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+            sku_prices = matches[matches['item_id'] == sku]['price'].values.tolist()
             is_price = True if any([price is not None for price in sku_prices]) else False
             price_presence.append(is_price)
         result = 100 if all(price_presence) else 0
@@ -541,7 +590,7 @@ class CCBZA_SANDToolBox:
         target = float(target)
         price_reaching_target = []
         for sku in skus_list:
-            sku_prices = matches[matches['product_fk'] == sku]['price'].values.tolist()
+            sku_prices = matches[matches['item_id'] == sku]['price'].values.tolist()
             price_meets_target = True if any([(price is not None and price <= target)
                                               for price in sku_prices]) else False
             price_reaching_target.append(price_meets_target)
@@ -566,10 +615,13 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             max_score = atomic_kpi[SCORE]
             target = float(atomic_kpi[TARGET])
-            calculation_filters = self.get_general_calculation_parameters(atomic_kpi)
+            filters = self.get_general_calculation_parameters(atomic_kpi)
             session_door_count = []
-            for scene in calculation_filters['scene_fk']:
-                scene_filter = {'scene_fk': scene}
+            list_of_scenes = filters['scene_fk']
+            for scene in list_of_scenes:
+                scene_filter = filters.copy()
+                scene_filter['scene_fk'] = scene
+                # scene_filter = {'scene_fk': scene} # this was replaced with previous 2 lines to filter only KO Products
                 matches = self.match_product_in_scene.copy()
                 relevant_match_prod_in_scene = matches[self.tools.get_filter_condition(matches, **scene_filter)]
                 number_of_bays = len(relevant_match_prod_in_scene['bay_number'].unique())
@@ -590,15 +642,17 @@ class CCBZA_SANDToolBox:
         """
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE]))
-            expected_answers = atomic_kpi[EXPECTED_RESULT]
+            # survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE])) #uncomment when we have the questions - delete next line
+            survey_id = [atomic_kpi[SURVEY_QUESTION_CODE]] # what is the data type of survey Q code?
+            expected_answers = self.split_and_strip(atomic_kpi[EXPECTED_RESULT])
             survey_max_score = atomic_kpi[SCORE]
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
-            score = None
-            if survey_max_score:
-                score = int(float(survey_max_score)) if survey_answer in expected_answers else 0
-            else:
-                score = 100 if survey_answer in expected_answers else 0
+            score = 0
+            if survey_answer:
+                if survey_max_score:
+                    score = int(float(survey_max_score)) if survey_answer in expected_answers else 0
+                else:
+                    score = 100 if survey_answer in expected_answers else 0
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             # constructing queries for DB
             custom_score = self.get_pass_fail(score)
@@ -647,7 +701,8 @@ class CCBZA_SANDToolBox:
                 number_of_conditions = len(sos_filters.items())
                 conditions_results = []
                 for condition, filters in sos_filters.items():
-                    target = float(filters[condition].pop('target'))/100
+                    # target = float(filters[condition].pop('target'))/100
+                    target = float(filters.pop('target')) / 100
                     ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
                     condition_score = 100 if ratio >= target else 0
                     conditions_results.append(condition_score)
@@ -763,7 +818,7 @@ class CCBZA_SANDToolBox:
             if max_score:
                 self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               target=max_score, should_enter=True)
+                                               target=float(max_score), should_enter=True)
             else:
                 custom_score = self.get_pass_fail(score)
                 self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID, result=score,
@@ -821,6 +876,9 @@ class CCBZA_SANDToolBox:
         calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
                                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+
+        removed_field = calculation_filters[GENERAL_FILTERS].pop('manufacturer_name') #for debugging
+
         session_results = []
         for scene in list_of_scenes:
             scene_score = 0
