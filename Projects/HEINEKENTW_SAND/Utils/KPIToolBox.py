@@ -44,6 +44,11 @@ class HEINEKENTWToolBox:
 
     MANUFACTURER_FK = 233  #heinken manfucturer
 
+    DISTRIBUTION= 4
+    OOS=5
+
+
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -84,13 +89,17 @@ class HEINEKENTWToolBox:
             lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
 
             for result in lvl3_with_cat.itertuples():
-                score = result.in_store *100
+                if result.in_store == 1:
+                    score = self.DISTRIBUTION
+                else:
+                    score = self.OOS
                 #Distrubtion
                 self.common.write_to_db_result_new_tables(fk=self.DIST_CATEGORY_LVL1, numerator_id=result.product_fk, numerator_result=score,
-                                                      result=score, denominator_id=result.category_fk, denominator_result=1, score=score, score_after_actions=score)
-                #OOS
-                self.common.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL1, numerator_id=result.product_fk, numerator_result=100-score,
-                                                      result=score, denominator_id=result.category_fk,denominator_result=1, score=100-score, score_after_actions=score)
+                                                          result=score, denominator_id=result.category_fk, denominator_result=1, score=score, score_after_actions=score)
+                if score == self.OOS:
+                    #OOS
+                    self.common.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL1, numerator_id=result.product_fk, numerator_result=score,
+                                                              result=score, denominator_id=result.category_fk,denominator_result=1, score=score, score_after_actions=score)
 
             category_list = cat_df['category_fk'].unique()
             for cat in category_list:
@@ -124,17 +133,21 @@ class HEINEKENTWToolBox:
         """
 
         for result in lvl3_result.itertuples():
-            score = result.in_store*100
+            if result.in_store == 1:
+                score = self.DISTRIBUTION
+            else:
+                score = self.OOS
             # Distrubtion
             self.common.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL1, numerator_id=result.product_fk,
                                                       numerator_result=score,
                                                       result=score, denominator_id=self.store_id,
                                                       denominator_result=1, score=score)
-            # OOS
-            self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL1, numerator_id=result.product_fk,
-                                                      numerator_result=100-score,
-                                                      result=100-score, denominator_id=self.store_id,
-                                                      denominator_result=1, score=(100-score), score_after_actions=100-score)
+            if score == self.OOS:
+                # OOS
+                self.common.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL1, numerator_id=result.product_fk,
+                                                          numerator_result=score,
+                                                          result=score, denominator_id=self.store_id,
+                                                          denominator_result=1, score=score, score_after_actions=score)
 
         if not lvl3_result.empty:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
