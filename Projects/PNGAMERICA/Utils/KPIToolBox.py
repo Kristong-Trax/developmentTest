@@ -254,7 +254,7 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                if kpi_type not in ['regular block', 'relative', 'category space', 'average shelf']:
+                if kpi_type not in ['regular block', 'relative', 'category space', 'average shelf', 'eye level']:
                     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                     continue
 
