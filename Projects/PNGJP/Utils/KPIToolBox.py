@@ -120,10 +120,10 @@ class PNGJPToolBox(PNGJPConsts):
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.match_display_in_scene = self.get_match_display()
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        if self.visit_date >= datetime(2018, 08, 01).date():
+        if self.visit_date >= datetime(2018, 8, 01).date():
             template_name = 'Template.xlsx'
         elif self.visit_date >= datetime(2018, 01, 01).date():
-            template_name = 'Template.xlsx'
+            template_name = 'Template01-07.18.xlsx'
         elif self.visit_date <= datetime(2017, 10, 31).date():
             template_name = 'Template_7-10.xlsx'
         else:
