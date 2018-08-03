@@ -2395,8 +2395,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             cur.execute(query)
         for query in self.kpi_results_queries:
             try:
-                Log.info('query: {}'.format(query))
                 cur.execute(query)
             except:
-                Log.info('Execution failed for the following query: {}'.format(query))
+                Log.error('Execution failed for the following query: {}'.format(query))
         self.rds_conn.db.commit()
