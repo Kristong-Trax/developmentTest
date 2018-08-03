@@ -881,7 +881,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         result += [self.kpi_fetcher.get_survey_answers_codes(survey_question_code, answer)]
                     result = ','.join([str(r) for r in result])
                     self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
-                    score = 100 if len(result) > 0 else None
+                    score = 100 if len(result) > 0 else 0
 
                 elif p.get('Answer type') == 'Int':
                     try:
