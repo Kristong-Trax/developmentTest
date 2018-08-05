@@ -530,29 +530,33 @@ class CCBZA_SANDToolBox:
             atomic_result = 0
             filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
             filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
-            list_of_scenes = filters['scene_fk']
-            if is_by_scene:
-                session_results = []
-                for scene in list_of_scenes:
-                    scene_result = 0
-                    filters['scene_fk'] = scene
+            # list_of_scenes = filters['scene_fk']
+            list_of_scenes = filters.pop('scene_fk')
+            if list_of_scenes:
+                if is_by_scene:
+                    session_results = []
+                    for scene in list_of_scenes:
+                        scene_result = 0
+                        # filters['scene_fk'] = scene # check that it will not find scene_fk in merged df
+                        filters['scene_id'] = scene
+                        scif = self.scif.copy()
+                        matches = self.match_product_in_scene.copy()
+                        merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
+                        scene_df = merged_df[self.tools.get_filter_condition(merged_df, **filters)]
+                        if not scene_df.empty:
+                            scene_result = self.get_price_result(scene_df, target, atomic_kpi)
+                        session_results.append(scene_result)
+                        # write scene result to DB
+                    if session_results:
+                        atomic_result = 100 if all(session_results) else 0
+                else:
                     scif = self.scif.copy()
                     matches = self.match_product_in_scene.copy()
                     merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
-                    scene_df = merged_df[self.tools.get_filter_condition(merged_df, **filters)]
-                    if not scene_df.empty:
-                        scene_result = self.get_price_result(scene_df, target, atomic_kpi)
-                    session_results.append(scene_result)
-                    # write scene result to DB
-                if session_results:
-                    atomic_result = 100 if all(session_results) else 0
-            else:
-                scif = self.scif.copy()
-                matches = self.match_product_in_scene.copy()
-                merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
-                filtered_df = merged_df[self.tools.get_filter_condition(merged_df, **filters)]
-                if not filtered_df.empty:
-                    atomic_result = self.get_price_result(filtered_df, target, atomic_kpi)
+                    filters['scene_id'] = list_of_scenes
+                    filtered_df = merged_df[self.tools.get_filter_condition(merged_df, **filters)]
+                    if not filtered_df.empty:
+                        atomic_result = self.get_price_result(filtered_df, target, atomic_kpi)
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write session result to DB
@@ -692,33 +696,34 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             max_score = atomic_kpi[SCORE]
             general_filters = self.get_general_calculation_parameters(atomic_kpi)
-            scif = self.scif.copy()
-            filtered_scif = scif[self.tools.get_filter_condition(scif, **general_filters)]
             atomic_result = 0
             number_of_conditions = 0
-            if not filtered_scif.empty:
-                sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
-                number_of_conditions = len(sos_filters.items())
-                conditions_results = []
-                for condition, filters in sos_filters.items():
-                    # target = float(filters[condition].pop('target'))/100
-                    target = float(filters.pop('target')) / 100
-                    ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
-                    condition_score = 100 if ratio >= target else 0
-                    conditions_results.append(condition_score)
+            if general_filters['scene_fk']:
+                scif = self.scif.copy()
+                filtered_scif = scif[self.tools.get_filter_condition(scif, **general_filters)]
+                if not filtered_scif.empty:
+                    sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
+                    number_of_conditions = len(sos_filters.items())
+                    conditions_results = []
+                    for condition, filters in sos_filters.items():
+                        # target = float(filters[condition].pop('target'))/100
+                        target = float(filters.pop('target')) / 100
+                        ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
+                        condition_score = 100 if ratio >= target else 0
+                        conditions_results.append(condition_score)
 
-                    # write condition result to DB
-                    custom_score = self.get_pass_fail(condition_score)
-                    atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
-                                    else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
-                    kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
-                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
-                                                   denominator_id=self.store_id, denominator_result=denom_res,
-                                                   result=ratio, score=custom_score,
-                                                   identifier_parent=identifier_parent,
-                                                   target=target, should_enter=True)
-                if conditions_results:
-                    atomic_result = 100 if all(conditions_results) else 0
+                        # write condition result to DB
+                        custom_score = self.get_pass_fail(condition_score)
+                        atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
+                                        else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                        kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
+                        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+                                                       denominator_id=self.store_id, denominator_result=denom_res,
+                                                       result=ratio, score=custom_score,
+                                                       identifier_parent=identifier_parent,
+                                                       target=target, should_enter=True)
+                    if conditions_results:
+                        atomic_result = 100 if all(conditions_results) else 0
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write atomic result to db aggregated conditions- need mobile mock-up grocery
@@ -832,9 +837,9 @@ class CCBZA_SANDToolBox:
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
                                                                             product_types=[SKU, OTHER]),
                    KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
         if is_by_scene:
             session_results = []
-            list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
             for scene in list_of_scenes:
                 scene_result = 0
                 filters[GENERAL_FILTERS]['scene_fk'] = scene
@@ -862,9 +867,11 @@ class CCBZA_SANDToolBox:
         target = atomic_kpi[TARGET]
         calculation_filters = self.get_general_calculation_parameters(atomic_kpi)
         calculation_filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
-        scif = self.scif.copy()
-        facings = scif[self.tools.get_filter_condition(scif, **calculation_filters)]['facings'].sum()
-        atomic_result = 100 if facings >= float(target) else 0
+        atomic_result = 0
+        if calculation_filters['scene_fk']:
+            scif = self.scif.copy()
+            facings = scif[self.tools.get_filter_condition(scif, **calculation_filters)]['facings'].sum()
+            atomic_result = 100 if facings >= float(target) else 0
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
@@ -876,7 +883,6 @@ class CCBZA_SANDToolBox:
         calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
                                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
-
         removed_field = calculation_filters[GENERAL_FILTERS].pop('manufacturer_name') #for debugging
 
         session_results = []
@@ -923,24 +929,25 @@ class CCBZA_SANDToolBox:
                                                                                         product_types=[SKU, OTHER]),
                                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         atomic_result = 0
-        if is_by_scene:
-            session_results = []
-            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
-            for scene in list_of_scenes:
-                calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+        list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+        if list_of_scenes:
+            if is_by_scene:
+                session_results = []
+                for scene in list_of_scenes:
+                    calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+                    scif = self.scif.copy()
+                    scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                    if not scene_scif.empty:
+                        scene_result = self.calculate_availability_result_all_skus(scene_scif, calculation_filters, atomic_kpi)
+                        session_results.append(scene_result)
+                        # write result and score to DB by scene
+                if session_results:
+                    atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+            else:
                 scif = self.scif.copy()
-                scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-                if not scene_scif.empty:
-                    scene_result = self.calculate_availability_result_all_skus(scene_scif, calculation_filters, atomic_kpi)
-                    session_results.append(scene_result)
-                    # write result and score to DB by scene
-            if session_results:
-                atomic_result = 100 if all([result == 100 for result in session_results]) else 0
-        else:
-            scif = self.scif.copy()
-            filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-            if not filtered_scif.empty:
-                atomic_result = self.calculate_availability_result_all_skus(filtered_scif, calculation_filters, atomic_kpi)
+                filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                if not filtered_scif.empty:
+                    atomic_result = self.calculate_availability_result_all_skus(filtered_scif, calculation_filters, atomic_kpi)
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
@@ -951,24 +958,25 @@ class CCBZA_SANDToolBox:
                                                                                         product_types=[SKU, OTHER]),
                                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         atomic_result = 0
-        if is_by_scene:
-            session_results = []
-            list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
-            for scene in list_of_scenes:
-                calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+        list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+        if list_of_scenes:
+            if is_by_scene:
+                session_results = []
+                for scene in list_of_scenes:
+                    calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+                    scif = self.scif.copy()
+                    scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                    if not scene_scif.empty:
+                        scene_result = self.calculate_availability_result_any_sku(scene_scif, calculation_filters, atomic_kpi)
+                        session_results.append(scene_result)
+                        # write result to DB by scene
+                if session_results:
+                    atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+            else:
                 scif = self.scif.copy()
-                scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-                if not scene_scif.empty:
-                    scene_result = self.calculate_availability_result_any_sku(scene_scif, calculation_filters, atomic_kpi)
-                    session_results.append(scene_result)
-                    # write result to DB by scene
-            if session_results:
-                atomic_result = 100 if all([result == 100 for result in session_results]) else 0
-        else:
-            scif = self.scif.copy()
-            filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-            if not filtered_scif.empty:
-                atomic_result = self.calculate_availability_result_any_sku(filtered_scif, calculation_filters, atomic_kpi)
+                filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                if not filtered_scif.empty:
+                    atomic_result = self.calculate_availability_result_any_sku(filtered_scif, calculation_filters, atomic_kpi)
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
@@ -1002,7 +1010,8 @@ class CCBZA_SANDToolBox:
     def calculate_availability_result_all_skus(self, scif, filters, atomic_kpi):
         target = float(atomic_kpi[TARGET])
         calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
-        unique_skus_list = self.split_and_strip(atomic_kpi[EAN_CODE]) if EAN_CODE in calc_filters.keys() \
+        # result = 0
+        unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
             else scif[EAN_CODE].unique().tolist()
         calc_filters[EAN_CODE] = unique_skus_list
         result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
@@ -1011,12 +1020,24 @@ class CCBZA_SANDToolBox:
                         all([sku in unique_skus_list for sku in facings_by_sku.keys()]) else 0
         identifier_result = self.get_identfier_result_atomic(atomic_kpi)
         self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
+        # try:
+        #     unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+        #         else scif[EAN_CODE].unique().tolist()
+        #     calc_filters[EAN_CODE] = unique_skus_list
+        #     result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
+        #     facings_by_sku = self.get_facings_by_item(result_df, unique_skus_list, EAN_CODE)
+        #     result = 100 if all([facing >= target for facing in facings_by_sku.values()]) and \
+        #                     all([sku in unique_skus_list for sku in facings_by_sku.keys()]) else 0
+        #     identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+        #     self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
+        # except KeyError as e:
+        #     Log.info('Scene or session does not have the necessary codes. {}'.format(str(e)))
         return result
 
     def calculate_availability_result_any_sku(self, scif, filters, atomic_kpi):
         target = float(atomic_kpi[TARGET])
         calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
-        unique_skus_list = self.split_and_strip(atomic_kpi[EAN_CODE]) if EAN_CODE in calc_filters.keys() \
+        unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
             else scif[EAN_CODE].unique().tolist()
         calc_filters[EAN_CODE] = unique_skus_list
         result_df = scif[self.tools.get_filter_condition(scif, **filters[KPI_SPECIFIC_FILTERS])]
@@ -1037,6 +1058,7 @@ class CCBZA_SANDToolBox:
     @staticmethod
     def get_facings_by_item(facings_df, iter_list, filter_field):
         facings_by_item = {}
+        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
         for item in iter_list:
             facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
             facings_by_item.update({item: facings})
