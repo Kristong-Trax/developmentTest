@@ -20,7 +20,7 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         tool_box = MARSRU_PRODMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
-        tool_box.hadle_update_custom_scif()
+        tool_box.handle_update_custom_scif()
         jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
         jg.create_json('MARS KPIs.xlsx', year_filter='2018')
         tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
@@ -63,12 +63,14 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'marsru-prod'
 #     session_uids = [
-#                     '9adc9abb-fec1-4c31-bceb-b3a82e478de6',
-#                     '9b01a642-bd0d-4096-ae25-f21807372508',
-#                     '02f34db9-1aa1-4cac-850c-04aa678e1bb5',
-#                     '032c5820-8070-4ae9-88a6-75624e5b9ce4',
-#                     'f60b05f6-3592-4e36-8abe-25c574f8b24d',
-#                     '10465c02-8105-44d3-8dba-33ef39ed9d4d',
+#                     '18f8eaee-5f00-416f-b43b-13a11967f889',
+#                     '5471d957-affe-4023-b94b-b1505fafa473',
+#                     '7a5532fa-38dd-4dbf-8cc1-a5bd76fd0e16',
+#                     '258ed2a5-ef2b-4f99-81df-5a4ce2765a92',
+#                     '6e5c8358-857e-4a0f-9de0-cd640cf0f515',
+#                     '0d354cf1-8d48-4105-b674-7439728376f1',
+#                     '57bcc9fc-fd67-4d7c-93bb-a265d8bd43bf',
+#                     'dbc12bd7-87a8-49e7-aeca-106bf8e80c51',
 #
 #     ]
 #     data_provider = KEngineDataProvider(project_name)
