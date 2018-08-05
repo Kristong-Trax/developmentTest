@@ -103,6 +103,7 @@ POS_BRAND_FIELD = 'Brand' # in the labels will need to be changed
 PRODUCT_TYPE = 'product_type'
 NUMERIC_FIELDS = ['size']
 MANUFACTURER_NAME = 'manufacturer_name'
+ITEM_ID = 'item_id'
 
 #scif values
 SKU = 'SKU'
@@ -806,9 +807,11 @@ class CCBZA_SANDToolBox:
             if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
                 score = self.calculate_availability_brand_strips(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
-                score = self.calculate_availability_sku_facing_and(atomic_kpi)
+                score = self.calculate_availability_sku_and_or(atomic_kpi)
+                # score = self.calculate_availability_sku_facing_and(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
-                score = self.calculate_availability_sku_facing_or(atomic_kpi)
+                score = self.calculate_availability_sku_and_or(atomic_kpi)
+                # score = self.calculate_availability_sku_facing_or(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
                 score = self.calculate_availability_posm(atomic_kpi)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
@@ -823,39 +826,62 @@ class CCBZA_SANDToolBox:
             if max_score:
                 self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               target=float(max_score), should_enter=True)
+                                               should_enter=True, target=float(max_score))
             else:
                 custom_score = self.get_pass_fail(score)
-                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID, result=score,
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               should_enter=True)
+                                               should_enter=True, result=score)
 
     def calculate_avialability_against_competitors(self, atomic_kpi):
         max_score = atomic_kpi[SCORE]
         score = 0
         is_by_scene = self.is_by_scene(atomic_kpi)
-        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
-                                                                            product_types=[SKU, OTHER]),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        # filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
+        #            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])}
+        filters['1'] = {atomic_kpi[TYPE1]: atomic_kpi[VALUE1]}
+        filters['2'] = {atomic_kpi[TYPE2]: atomic_kpi[VALUE2]}
+        filters['3'] = {atomic_kpi[TYPE3]: atomic_kpi[VALUE3]}
         list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
         if is_by_scene:
             session_results = []
             for scene in list_of_scenes:
                 scene_result = 0
-                filters[GENERAL_FILTERS]['scene_fk'] = scene
                 non_ko_filters = filters[GENERAL_FILTERS].copy()
-                non_ko_filters.update(filters[KPI_SPECIFIC_FILTERS]['category'])
-                scif = self.scif.copy()
-                scene_scif = scif[self.tools.get_filter_condition(scif, **non_ko_filters)]
-                non_ko_facings = scene_scif[~scene_scif[MANUFACTURER_NAME] == KO_PRODUCTS]['facings'].sum()
+                non_ko_filters['scene_fk'] = scene
+                non_ko_filters.update(filters['1'])
+                non_ko_filters.update({atomic_kpi[TYPE2]: (atomic_kpi[VALUE2], 0)})
+                # scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **non_ko_filters)]
+                # non_ko_facings = scene_scif['facings'].sum()
+                non_ko_facings = self.scif[self.tools.get_filter_condition(self.scif, **non_ko_filters)]['facings'].sum()
                 if non_ko_facings >= 1:
                     ko_filters = filters[GENERAL_FILTERS].copy()
-                    ko_filters.update(filters[KPI_SPECIFIC_FILTERS])
-                    removed_filter = ko_filters.pop('manufacturer_except')
-                    scene_scif = self.scif.copy()
-                    ko_facings = scene_scif[self.tools.get_filter_condition(scif, **ko_filters)]['facings'].sum()
+                    ko_filters['scene_fk'] = scene
+                    ko_filters.update(filters['1'])
+                    ko_filters.update(filters['2'])
+                    ko_filters.update(filters['3'])
+                    ko_facings = self.scif[self.tools.get_filter_condition(self.scif, **ko_filters)]['facings'].sum()
                     scene_result = 100 if ko_facings >= 2 else 0
                 session_results.append(scene_result)
+                # scene_result=0
+                # filters[GENERAL_FILTERS]['scene_fk'] = scene
+                # non_ko_filters = filters[GENERAL_FILTERS].copy()
+                # non_ko_filters.update(filters[KPI_SPECIFIC_FILTERS]['category'])
+                # scif = self.scif.copy()
+                # scene_scif = scif[self.tools.get_filter_condition(scif, **non_ko_filters)]
+                #
+                # # {'manufacturer':('KO Products', 0)}
+                #
+                # non_ko_facings = scene_scif[~scene_scif[MANUFACTURER_NAME] == KO_PRODUCTS]['facings'].sum()
+                # if non_ko_facings >= 1:
+                #     ko_filters = filters[GENERAL_FILTERS].copy()
+                #     ko_filters.update(filters[KPI_SPECIFIC_FILTERS])
+                #     removed_filter = ko_filters.pop('manufacturer_except')
+                #     scene_scif = self.scif.copy()
+                #     ko_facings = scene_scif[self.tools.get_filter_condition(scif, **ko_filters)]['facings'].sum()
+                #     scene_result = 100 if ko_facings >= 2 else 0
+                # session_results.append(scene_result)
             if session_results:
                 atomic_result = 100 if all(session_results) else 0
                 score = self.calculate_atomic_score(atomic_result, max_score)
@@ -869,8 +895,7 @@ class CCBZA_SANDToolBox:
         calculation_filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
         atomic_result = 0
         if calculation_filters['scene_fk']:
-            scif = self.scif.copy()
-            facings = scif[self.tools.get_filter_condition(scif, **calculation_filters)]['facings'].sum()
+            facings = self.scif[self.tools.get_filter_condition(self.scif, **calculation_filters)]['facings'].sum()
             atomic_result = 100 if facings >= float(target) else 0
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
@@ -889,15 +914,14 @@ class CCBZA_SANDToolBox:
         for scene in list_of_scenes:
             scene_score = 0
             calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
-            scif = self.scif.copy()
-            scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+            scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **calculation_filters[GENERAL_FILTERS])]
             brands_count = scene_scif[~scene_scif[PRODUCT_TYPE].isin([POS, IRRELEVANT, EMPTY])].groupby(BRAND_NAME)[BRAND_NAME].count()
             if not brands_count.empty:
                 scene_brand_strips_df = scene_scif[self.tools.get_filter_condition(scene_scif,
                                                                                    **calculation_filters[KPI_SPECIFIC_FILTERS])]
-                brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)[POS_BRAND_FIELD].count()
+                brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)['facings'].sum()
                 scene_results = self.match_brand_strip_to_brand(brands_count, brand_strips_count, target, scene)
-                scene_score = 100 if all(scene_results) else 0
+                scene_score = 100 if scene_results else 0
             session_results.append(scene_score)
             # write results per scene to DB
         if session_results:
@@ -909,76 +933,142 @@ class CCBZA_SANDToolBox:
         return True if atomic_kpi[BY_SCENE] == 'Y' else False
 
     def match_brand_strip_to_brand(self, brands_series, brand_strips_series, target, scene):
-        scene_results = []
+        # Option 2 - to b kept till deployment in case detailed breakdown of brand availability is necessary
+        # scene_results = []
+        # for brand, count in brands_series.iteritems():
+        #     try:
+        #         if count*int(float(target)) <= brand_strips_series[brand]:
+        #             brand_result = True
+        #         else:
+        #             brand_result = False
+        #     except KeyError:
+        #         Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
+        #         brand_result = False
+        #     scene_results.append(brand_result)
+        # return scene_results
         for brand, count in brands_series.iteritems():
             try:
-                if count*int(float(target)) <= brand_strips_series[brand]:
-                    brand_result = True
-                else:
-                    brand_result = False
+                if not count*int(float(target)) <= brand_strips_series[brand]:
+                    return False
             except KeyError:
                 Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
-                brand_result = False
-            scene_results.append(brand_result)
-        return scene_results
+                return False
+        return True
 
-    def calculate_availability_sku_facing_and(self, atomic_kpi):
+    def calculate_availability_sku_and_or(self, atomic_kpi):
         max_score = atomic_kpi[SCORE]
         is_by_scene = self.is_by_scene(atomic_kpi)
-        calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
-                                                                                        product_types=[SKU, OTHER]),
-                               KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
+                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         atomic_result = 0
-        list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
         if list_of_scenes:
             if is_by_scene:
                 session_results = []
                 for scene in list_of_scenes:
-                    calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
-                    scif = self.scif.copy()
-                    scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                    filters[GENERAL_FILTERS]['scene_fk'] = scene
+                    scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
                     if not scene_scif.empty:
-                        scene_result = self.calculate_availability_result_all_skus(scene_scif, calculation_filters, atomic_kpi)
+                        scene_result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
+                                                                                     filters[KPI_SPECIFIC_FILTERS])
                         session_results.append(scene_result)
                         # write result and score to DB by scene
                 if session_results:
                     atomic_result = 100 if all([result == 100 for result in session_results]) else 0
             else:
-                scif = self.scif.copy()
-                filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+                filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
                 if not filtered_scif.empty:
-                    atomic_result = self.calculate_availability_result_all_skus(filtered_scif, calculation_filters, atomic_kpi)
+                    atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+                                                                                  filters[KPI_SPECIFIC_FILTERS])
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
-    def calculate_availability_sku_facing_or(self, atomic_kpi):
-        max_score = atomic_kpi[SCORE]
-        is_by_scene = self.is_by_scene(atomic_kpi)
-        calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
-                                                                                        product_types=[SKU, OTHER]),
-                               KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
-        atomic_result = 0
-        list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
-        if list_of_scenes:
-            if is_by_scene:
-                session_results = []
-                for scene in list_of_scenes:
-                    calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
-                    scif = self.scif.copy()
-                    scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-                    if not scene_scif.empty:
-                        scene_result = self.calculate_availability_result_any_sku(scene_scif, calculation_filters, atomic_kpi)
-                        session_results.append(scene_result)
-                        # write result to DB by scene
-                if session_results:
-                    atomic_result = 100 if all([result == 100 for result in session_results]) else 0
-            else:
-                scif = self.scif.copy()
-                filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
-                if not filtered_scif.empty:
-                    atomic_result = self.calculate_availability_result_any_sku(filtered_scif, calculation_filters, atomic_kpi)
-        score = self.calculate_atomic_score(atomic_result, max_score)
-        return score
+    def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters):
+        target = float(atomic_kpi[TARGET])
+        result = 0
+        availability_type = atomic_kpi[AVAILABILITY_TYPE]
+        calc_filters = filters.copy()
+        calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+            else scif[EAN_CODE].unique().tolist()
+        result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
+        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, ITEM_ID)
+        if availability_type == AVAILABILITY_SKU_FACING_AND:
+            result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
+            identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
+        elif availability_type == AVAILABILITY_SKU_FACING_OR:
+            result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+        else:
+            Log.warning('Availability of type {} is not supported'.format(availability_type))
+        return result
+
+    @staticmethod
+    def get_facing_number_by_item(facings_df, iter_list, filter_field, result_field=None):
+        facings_by_item = {}
+        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
+        for item in iter_list:
+            key = facings_df[facings_df[filter_field] == item][result_field].values[0] if result_field else item
+            facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
+            facings_by_item.update({key: facings})
+        return facings_by_item
+
+    # def calculate_availability_sku_facing_and(self, atomic_kpi):
+    #     max_score = atomic_kpi[SCORE]
+    #     is_by_scene = self.is_by_scene(atomic_kpi)
+    #     calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
+    #                                                                                     product_types=[SKU, OTHER]),
+    #                            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+    #     atomic_result = 0
+    #     list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+    #     if list_of_scenes:
+    #         if is_by_scene:
+    #             session_results = []
+    #             for scene in list_of_scenes:
+    #                 calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+    #                 scif = self.scif.copy()
+    #                 scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+    #                 if not scene_scif.empty:
+    #                     scene_result = self.calculate_availability_result_all_skus(scene_scif, calculation_filters, atomic_kpi)
+    #                     session_results.append(scene_result)
+    #                     # write result and score to DB by scene
+    #             if session_results:
+    #                 atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+    #         else:
+    #             scif = self.scif.copy()
+    #             filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+    #             if not filtered_scif.empty:
+    #                 atomic_result = self.calculate_availability_result_all_skus(filtered_scif, calculation_filters, atomic_kpi)
+    #     score = self.calculate_atomic_score(atomic_result, max_score)
+    #     return score
+    #
+    # def calculate_availability_sku_facing_or(self, atomic_kpi):
+    #     max_score = atomic_kpi[SCORE]
+    #     is_by_scene = self.is_by_scene(atomic_kpi)
+    #     calculation_filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
+    #                                                                                     product_types=[SKU, OTHER]),
+    #                            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+    #     atomic_result = 0
+    #     list_of_scenes = calculation_filters[GENERAL_FILTERS]['scene_fk']
+    #     if list_of_scenes:
+    #         if is_by_scene:
+    #             session_results = []
+    #             for scene in list_of_scenes:
+    #                 calculation_filters[GENERAL_FILTERS]['scene_fk'] = scene
+    #                 scif = self.scif.copy()
+    #                 scene_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+    #                 if not scene_scif.empty:
+    #                     scene_result = self.calculate_availability_result_any_sku(scene_scif, calculation_filters, atomic_kpi)
+    #                     session_results.append(scene_result)
+    #                     # write result to DB by scene
+    #             if session_results:
+    #                 atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+    #         else:
+    #             scif = self.scif.copy()
+    #             filtered_scif = scif[self.tools.get_filter_condition(scif, **calculation_filters[GENERAL_FILTERS])]
+    #             if not filtered_scif.empty:
+    #                 atomic_result = self.calculate_availability_result_any_sku(filtered_scif, calculation_filters, atomic_kpi)
+    #     score = self.calculate_atomic_score(atomic_result, max_score)
+    #     return score
 
     def get_availability_and_price_calculation_parameters(self, atomic_kpi):
         condition_filters = {}
@@ -995,7 +1085,7 @@ class CCBZA_SANDToolBox:
                                          self.split_and_strip(atomic_kpi[value_col]))
                         condition_filters.update({atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
                     else:
-                        Log.error('condition {} does not have corresponding value column'.format(column)) # should it be error?
+                        Log.info('condition {} does not have corresponding value column'.format(column)) # should it be error?
         return condition_filters
 
     @staticmethod
@@ -1007,44 +1097,33 @@ class CCBZA_SANDToolBox:
                 value = value
         return value
 
-    def calculate_availability_result_all_skus(self, scif, filters, atomic_kpi):
-        target = float(atomic_kpi[TARGET])
-        calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
-        # result = 0
-        unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
-            else scif[EAN_CODE].unique().tolist()
-        calc_filters[EAN_CODE] = unique_skus_list
-        result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
-        facings_by_sku = self.get_facings_by_item(result_df, unique_skus_list, EAN_CODE)
-        result = 100 if all([facing >= target for facing in facings_by_sku.values()]) and \
-                        all([sku in unique_skus_list for sku in facings_by_sku.keys()]) else 0
-        identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-        self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
-        # try:
-        #     unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
-        #         else scif[EAN_CODE].unique().tolist()
-        #     calc_filters[EAN_CODE] = unique_skus_list
-        #     result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
-        #     facings_by_sku = self.get_facings_by_item(result_df, unique_skus_list, EAN_CODE)
-        #     result = 100 if all([facing >= target for facing in facings_by_sku.values()]) and \
-        #                     all([sku in unique_skus_list for sku in facings_by_sku.keys()]) else 0
-        #     identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-        #     self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
-        # except KeyError as e:
-        #     Log.info('Scene or session does not have the necessary codes. {}'.format(str(e)))
-        return result
-
-    def calculate_availability_result_any_sku(self, scif, filters, atomic_kpi):
-        target = float(atomic_kpi[TARGET])
-        calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
-        unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
-            else scif[EAN_CODE].unique().tolist()
-        calc_filters[EAN_CODE] = unique_skus_list
-        result_df = scif[self.tools.get_filter_condition(scif, **filters[KPI_SPECIFIC_FILTERS])]
-        facings = result_df['facings'].sum()
-        result = 100 if facings >= target else 0
-        # I am not sure we will need to write to db by sku in this case - does not make much sense
-        return result
+    # def calculate_availability_result_all_skus(self, scif, filters, atomic_kpi):
+    #     target = float(atomic_kpi[TARGET])
+    #     calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
+    #     # result = 0
+    #     unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+    #         else scif[EAN_CODE].unique().tolist()
+    #     calc_filters[EAN_CODE] = unique_skus_list
+    #     result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
+    #     facings_by_sku = self.get_facings_by_item(result_df, unique_skus_list, EAN_CODE)
+    #     result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
+    #     identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+    #     self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_result)
+    #     return result
+    #
+    # def calculate_availability_result_any_sku(self, scif, filters, atomic_kpi):
+    #     target = float(atomic_kpi[TARGET])
+    #     calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
+    #     unique_skus_list = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+    #         else scif[EAN_CODE].unique().tolist()
+    #     calc_filters[EAN_CODE] = unique_skus_list
+    #     result_df = scif[self.tools.get_filter_condition(scif, **filters[KPI_SPECIFIC_FILTERS])]
+    #     facings_by_sku = self.get_facings_by_item(result_df, unique_skus_list, EAN_CODE)
+    #     result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
+    #     # facings = result_df['facings'].sum()
+    #     # result = 100 if facings >= target else 0
+    #     # I am not sure we will need to write to db by sku in this case - does not make much sense
+    #     return result
 
     def add_sku_availability_kpi_to_db(self, facings_by_sku, atomic_kpi, target, identifier_parent):
         atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
