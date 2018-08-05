@@ -2,8 +2,6 @@ import os
 import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.SceneKPIToolBox import CCBOTTLERSUS_SANDSceneRedToolBox
 from KPIUtils_v2.DB.Common import Common as Common
@@ -11,7 +9,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV1.xlsx')
 
 
@@ -32,7 +30,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.survey = Survey(self.data_provider, self.output)
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.templates = {}
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
@@ -46,7 +43,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
         self.scene_calculator = CCBOTTLERSUS_SANDSceneRedToolBox(
-            data_provider, output, self.templates, self.common, self)
+            data_provider, output, self.templates, self)
         self.scenes_results = None
         self.session_results = pd.DataFrame(columns=Const.COLUMNS_OF_SESSION)
         self.all_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
@@ -57,9 +54,8 @@ class CCBOTTLERSUS_SANDREDToolBox:
 
     def main_calculation(self, *args, **kwargs):
         """
-            :param kwargs: dict - kpi line from the template.
-            the function gets the kpi (level 2) row, and calculates its children.
-            :return: float - score of the kpi.
+            This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
+            and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         self.scenes_results = self.scene_calculator.main_calculation()
         main_template = self.templates[Const.KPIS]
@@ -69,6 +65,11 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.filter_results()
 
     def calculate_main_kpi(self, main_line):
+        """
+        This function gets a line from the main_sheet, transfers it to the match function, and checks all of the
+        KPIs in the same name in the match sheet.
+        :param main_line: series from the template of the main_sheet.
+        """
         kpi_name = main_line[Const.KPI_NAME]
         target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
@@ -105,11 +106,25 @@ class CCBOTTLERSUS_SANDREDToolBox:
 # write in DF:
 
     def write_to_session_level(self, kpi_name, result=0, parent=""):
+        """
+        Writes a result in the DF
+        :param kpi_name: string
+        :param result: boolean
+        :param parent:
+        """
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
         self.session_results = self.session_results.append(result_dict, ignore_index=True)
 
     def write_to_all_levels(self, kpi_name, result, display_text, weight, scene_fk=None):
-        self.red_score += (weight / 100.0) * result
+        """
+        Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
+        :param kpi_name: str
+        :param result: int
+        :param display_text: str
+        :param weight: int/float
+        :param scene_fk: for the scene's kpi
+        """
+        self.red_score += (weight / 100.0) * (result > 0)
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result}
         if scene_fk:
             result_dict[Const.SCENE_FK] = scene_fk
@@ -120,6 +135,13 @@ class CCBOTTLERSUS_SANDREDToolBox:
 # survey:
 
     def calculate_survey_specific(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        returns a survey line if True or False
+        :param kpi_line: line from the survey sheet
+        :param relevant_scif:
+        :param isnt_dp:
+        :return: True or False - if the question gets the needed answer
+        """
         question = kpi_line[Const.Q_TEXT]
         if not question:
             question_id = kpi_line[Const.Q_ID]
@@ -135,6 +157,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
     # availability:
 
     def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
+        """
+        checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
+        at least one common product that has the same size and number of sub_packages.
+        :param relevant_template: all the match lines from the availability sheet.
+        :param relevant_scif: filtered scif
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
+        DP lines
+        :return: boolean
+        """
         packages = None
         for i, kpi_line in relevant_template.iterrows():
             if isnt_dp and relevant_template[Const.MANUFACTURER] in Const.DP_MANU:
@@ -155,6 +186,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        checks if all the lines in the availability sheet passes the KPI (there is at least one product
+        in this relevant scif that has the attributes).
+        :param relevant_scif: filtered scif
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
+        DP lines
+        :param kpi_line: line from the availability sheet
+        :return: boolean
+        """
         if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
             return True
         filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
@@ -162,20 +202,34 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return filtered_scif['facings'].sum() >= target
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
+        """
+        takes scif and filters it from the template
+        :param relevant_scif: the current filtered scif
+        :param kpi_line: line from one sheet (availability for example)
+        :param name_in_template: the column name in the template
+        :param name_in_scif: the column name in SCIF
+        :return:
+        """
         values = self.does_exist(kpi_line, name_in_template)
         if values:
             return relevant_scif[relevant_scif[name_in_scif].isin(values)]
         return relevant_scif
 
     def filter_scif_availability(self, kpi_line, relevant_scif):
+        """
+        calls filter_scif_specific for every column in the template of availability
+        :param kpi_line:
+        :param relevant_scif:
+        :return:
+        """
         names_of_columns = {
             Const.MANUFACTURER: "manufacturer_name",
             Const.BRAND: "brand_name",
             Const.TRADEMARK: "att2",
             Const.SIZE: "size",
             Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            Const.PREMIUM_SSD: "Premium SSD",
-            Const.INNOVATION_BRAND: "Innovation Brand",
+            # Const.PREMIUM_SSD: "Premium SSD",
+            # Const.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
@@ -184,6 +238,11 @@ class CCBOTTLERSUS_SANDREDToolBox:
     # scene availability:
 
     def calculate_scene_availability(self, main_line):
+        """
+        checks if there is one scene that passes the filters
+        :param main_line: line from the main sheet (this KPI has no specific sheet)
+        :return: boolean
+        """
         scene_type = main_line[Const.SCENE_TYPE]
         scene_group = main_line[Const.SCENE_TYPE_GROUP]
         if scene_type in self.scif['template_name'].unique().tolist() \
@@ -194,6 +253,14 @@ class CCBOTTLERSUS_SANDREDToolBox:
     # SOS:
 
     def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        calculates SOS line in the relevant scif.
+        :param kpi_line: line from SOS sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator.
+        :return: boolean
+        """
         kpi_name = kpi_line[Const.KPI_NAME]
         if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
             exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
@@ -211,11 +278,22 @@ class CCBOTTLERSUS_SANDREDToolBox:
         if isnt_dp:
             num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
         target = float(kpi_line[Const.TARGET]) / 100
-        return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
+        percentage = num_scif['facings'].sum() / relevant_scif['facings'].sum() if relevant_scif['facings'].sum() > 0 \
+            else 0
+        return percentage >= target
 
     # SOS majority:
 
     def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        calculates SOS majority line in the relevant scif. Filters the denominator and sends the line to the
+        match function (majority or dominant)
+        :param kpi_line: line from SOS majority sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator (and the denominator of the dominant part).
+        :return: boolean
+        """
         kpi_name = kpi_line[Const.KPI_NAME]
         if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
             exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
@@ -233,10 +311,19 @@ class CCBOTTLERSUS_SANDREDToolBox:
         elif kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
             answer = self.calculate_dominant_part(kpi_line, relevant_scif, isnt_dp)
         else:
+            print "SOS majority does not know '{}' part".format(kpi_line[Const.MAJ_DOM])
             answer = False
         return answer
 
     def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        filters the numerator and checks if the SOS is bigger than 50%.
+        :param kpi_line: line from SOS majority sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator.
+        :return: boolean
+        """
         num_type = kpi_line[Const.NUM_TYPES_1]
         num_value = kpi_line[Const.NUM_VALUES_1]
         num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
@@ -249,6 +336,14 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
 
     def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):
+        """
+        filters the numerator and checks if the given value in the given type is the one with the most facings.
+        :param kpi_line: line from SOS majority sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out.
+        :return: boolean
+        """
         if isnt_dp:
             relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
         type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
@@ -271,6 +366,12 @@ class CCBOTTLERSUS_SANDREDToolBox:
     # helpers:
 
     def get_column_name(self, field_name, df):
+        """
+        checks what the real field name in DttFrame is (if it exists in the DF or exists in the "converter" sheet).
+        :param field_name: str
+        :param df: scif/products
+        :return: real column name (if exists)
+        """
         if field_name in df.columns:
             return field_name
         if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
@@ -280,6 +381,13 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return None
 
     def filter_by_type_value(self, relevant_scif, type_name, value):
+        """
+        filters scif with the type and value
+        :param relevant_scif: current filtered scif
+        :param type_name: str (from the template)
+        :param value: str
+        :return: new scif
+        """
         if type_name == "":
             return relevant_scif
         values = value.split(', ')
@@ -291,11 +399,23 @@ class CCBOTTLERSUS_SANDREDToolBox:
 
     @staticmethod
     def exclude_scif(exclude_line, relevant_scif):
+        """
+        filters products out of the scif
+        :param exclude_line: line from the exclusion sheet
+        :param relevant_scif: current filtered scif
+        :return: new scif
+        """
         exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
         return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
 
     @staticmethod
     def does_exist(kpi_line, column_name):
+        """
+        checks if kpi_line has values in this column, and if it does - returns a list of these values
+        :param kpi_line: line from template
+        :param column_name: str
+        :return: list of values if there are, otherwise None
+        """
         if column_name in kpi_line.keys() and kpi_line[column_name] != "":
             cell = kpi_line[column_name]
             if type(cell) in [int, float]:
@@ -305,6 +425,11 @@ class CCBOTTLERSUS_SANDREDToolBox:
         return None
 
     def get_kpi_function(self, kpi_type):
+        """
+        transfers every kpi to its own function
+        :param kpi_type: value from "sheet" column in the main sheet
+        :return: function
+        """
         if kpi_type == Const.SURVEY:
             return self.calculate_survey_specific
         elif kpi_type == Const.AVAILABILITY:
@@ -319,17 +444,25 @@ class CCBOTTLERSUS_SANDREDToolBox:
             return None
 
     def filter_results(self):
-        self.scenes_results.to_csv('scene {}.csv'.format(self.store_type))
-        self.session_results.to_csv('session {}.csv'.format(self.store_type))
+        """
+        writes all the KPI in the DB: first the session's ones, second the scene's ones and in the end the ones
+        that depends on the previous ones. After all it writes the red score
+        """
+        self.scenes_results.to_csv('scene {}.csv'.format(self.store_type))####
+        self.session_results.to_csv('session {}.csv'.format(self.store_type))####
         main_template = self.templates[Const.KPIS]
         self.write_session_kpis(main_template)
         self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
         result_dict = {Const.KPI_NAME: 'red score', Const.RESULT: self.red_score}
-        self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.all_results.to_csv('all {}.csv'.format(self.store_type))
+        self.all_results = self.all_results.append(result_dict, ignore_index=True)####
+        self.all_results.to_csv('all {}.csv'.format(self.store_type))####
 
     def write_session_kpis(self, main_template):
+        """
+        iterates all the session's KPIs and saves them
+        :param main_template: main_sheet.
+        """
         session_template = main_template[(main_template[Const.SESSION_LEVEL] == Const.V) &
                                          (main_template[Const.CONDITION] == "")]
         for i, main_line in session_template.iterrows():
@@ -342,9 +475,13 @@ class CCBOTTLERSUS_SANDREDToolBox:
             weight = main_line[Const.WEIGHT]
             self.write_to_all_levels(kpi_name, result, display_text, weight)
 
-    def write_scene_kpis(self, main_template):
-        scene_template = main_template[(main_template[Const.SESSION_LEVEL] != Const.V) &
-                                       (main_template[Const.CONDITION] == "")]
+    def write_incremental_kpis(self, scene_template):
+        """
+        lets the incremental KPIs choose their scenes (if they passed).
+        if KPI passed some scenes, we will choose the scene that the children passed
+        :param scene_template: filtered main_sheet
+        :return: the new template (without the KPI written already)
+        """
         incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
         while not incremental_template.empty:
             for i, main_line in incremental_template.iterrows():
@@ -364,9 +501,19 @@ class CCBOTTLERSUS_SANDREDToolBox:
                     display_text = main_line[Const.DISPLAY_TEXT]
                     weight = main_line[Const.WEIGHT]
                     scene_fk = true_results.iloc[0][Const.SCENE_FK]
-                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
+                    self.write_to_all_levels(
+                        kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
                     scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
             incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
+        return scene_template
+
+    def write_regular_scene_kpis(self, scene_template):
+        """
+        lets the regular KPIs choose their scenes (if they passed).
+        Like in the incremental part - if KPI passed some scenes, we will choose the scene that the children passed
+        :param scene_template: filtered main_sheet (only scene KPIs, and without the passed incremental)
+        :return: the new template (without the KPI written already)
+        """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
@@ -378,8 +525,16 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 continue
             true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
             scene_fk = true_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
+            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight,
+                                     scene_fk=scene_fk)
             scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
+        return scene_template
+
+    def write_not_passed_scene_kpis(self, scene_template):
+        """
+        lets the KPIs not passed choose their scenes.
+        :param scene_template: filtered main_sheet (only scene KPIs, and without the passed KPIs)
+        """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
@@ -391,7 +546,25 @@ class CCBOTTLERSUS_SANDREDToolBox:
             scene_fk = kpi_results.iloc[0][Const.SCENE_FK]
             self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk)
 
+    def write_scene_kpis(self, main_template):
+        """
+        iterates every scene_kpi that does not depend on others, and choose the scene they will take:
+        1. the incrementals take their scene (if they passed).
+        2. the regular KPIs that passed choose their scenes.
+        3. the ones that didn't pass choose their random scenes.
+        :param main_template: main_sheet.
+        """
+        scene_template = main_template[(main_template[Const.SESSION_LEVEL] != Const.V) &
+                                       (main_template[Const.CONDITION] == "")]
+        scene_template = self.write_incremental_kpis(scene_template)
+        scene_template = self.write_regular_scene_kpis(scene_template)
+        self.write_not_passed_scene_kpis(scene_template)
+
     def write_condition_kpis(self, main_template):
+        """
+        writes all the KPI that depend on other KPIs by checking if the parent KPI has passed and in which scene.
+        :param main_template: main_sheet
+        """
         condition_template = main_template[main_template[Const.CONDITION] != '']
         for i, main_line in condition_template.iterrows():
             condition = main_line[Const.CONDITION]
@@ -419,6 +592,12 @@ class CCBOTTLERSUS_SANDREDToolBox:
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
     def write_to_db(self, kpi_name, result, display_text):
+        """
+        writes result in the DB
+        :param kpi_name: str
+        :param result:
+        :param display_text: str
+        """
         result_dict = {'display_text': display_text}
         kpi_fk_3 = self.common.get_kpi_fk_by_kpi_name(kpi_name, self.common.LEVEL3)
         result_dict3 = self.common.create_basic_dict(kpi_fk_3, **result_dict)

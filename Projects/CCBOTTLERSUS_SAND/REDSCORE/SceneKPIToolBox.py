@@ -7,7 +7,7 @@ __author__ = 'Elyashiv'
 
 class CCBOTTLERSUS_SANDSceneRedToolBox:
 
-    def __init__(self, data_provider, output, templates, common, toolbox):
+    def __init__(self, data_provider, output, templates, toolbox):
         self.output = output
         self.data_provider = data_provider
         self.toolbox = toolbox
@@ -22,20 +22,13 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = toolbox.rds_conn
         self.store_attr = toolbox.store_attr
         self.templates = templates
-        self.region = self.store_info['region_name'].iloc[0]
-        self.store_type = self.store_info['store_type'].iloc[0]
-        self.common = common
-        self.kpi_static_data_session = self.common.kpi_static_data
         self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self, *args, **kwarg):
         """
-            :param kwargs: dict - kpi line from the template.
-            the function gets the kpi (level 2) row, and calculates its children.
-            :return: float - score of the kpi.
+            This function makes the calculation for the scene's KPI and returns their answers to the session's calc
         """
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
@@ -44,6 +37,14 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         return self.scenes_results
 
     def write_to_scene_level(self, kpi_name, scene_fk, result=False, parent=""):
+        """
+        Writes a result in the DF (and "tells" its parent if it passed)
+        :param kpi_name: string
+        :param scene_fk: for the main script will know which scenes to choose
+        :param result: boolean
+        :param parent: if the kpi is a condition kpi and it passed, we want the parent to know that
+                        because we want the kpi to choose the scene with the most passed children
+        """
         if parent and result:
             self.scenes_results.loc[(self.scenes_results[Const.KPI_NAME] == parent) &
                                     (self.scenes_results[Const.RESULT] > 0) &
@@ -52,6 +53,11 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
     def calculate_main_kpi(self, main_line):
+        """
+        This function gets a line from the main_sheet, transfers it to the match function, and checks all of the
+        KPIs in the same name in the match sheet, scene after scene.
+        :param main_line: series from the template of the main_sheet.
+        """
         kpi_name = main_line[Const.KPI_NAME]
         target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
