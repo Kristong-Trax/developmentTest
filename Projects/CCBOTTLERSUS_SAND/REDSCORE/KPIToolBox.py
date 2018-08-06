@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-
+from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.SceneKPIToolBox import CCBOTTLERSUS_SANDSceneRedToolBox
@@ -38,7 +38,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.store_type = self.store_info['store_type'].iloc[0]
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.common = Common(self.data_provider)
-        self.kpi_static_data_session = self.common.kpi_static_data
+        self.kpi_static_data = self.common.kpi_static_data
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
@@ -71,7 +71,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
         :param main_line: series from the template of the main_sheet.
         """
         kpi_name = main_line[Const.KPI_NAME]
-        target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
         relevant_scif = self.scif
         parent = main_line[Const.CONDITION]
@@ -84,17 +83,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
         if kpi_type == Const.SCENE_AVAILABILITY:
             result = False if relevant_scif.empty else True
         else:
-            isnt_dp = False
-            if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP:
-                isnt_dp = True
+            isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            if target == Const.ALL:
-                target = len(relevant_template)
-            function = self.get_kpi_function(kpi_type)
+            target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL \
+                else main_line[Const.GROUP_TARGET]
             if main_line[Const.SAME_PACK] == Const.V:
                 result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
             else:
+                function = self.get_kpi_function(kpi_type)
                 passed_counter = 0
                 for i, kpi_line in relevant_template.iterrows():
                     answer = function(kpi_line, relevant_scif, isnt_dp)
@@ -124,8 +121,9 @@ class CCBOTTLERSUS_SANDREDToolBox:
         :param weight: int/float
         :param scene_fk: for the scene's kpi
         """
-        self.red_score += (weight / 100.0) * (result > 0)
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result}
+        score = weight * (result > 0)
+        self.red_score += score
+        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score}
         if scene_fk:
             result_dict[Const.SCENE_FK] = scene_fk
             self.used_scenes.append(scene_fk)
@@ -146,6 +144,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         if not question:
             question_id = kpi_line[Const.Q_ID]
             if question_id == "":
+                Log.warning("The template has a survey question without ID or text")
                 return False
             question = ('question_fk', int(question_id))
         answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
@@ -296,7 +295,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         elif kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
             answer = self.calculate_dominant_part(kpi_line, relevant_scif, isnt_dp)
         else:
-            print "SOS majority does not know '{}' part".format(kpi_line[Const.MAJ_DOM])
+            Log.warning("SOS majority does not know '{}' part".format(kpi_line[Const.MAJ_DOM]))
             answer = False
         return answer
 
@@ -424,6 +423,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         elif kpi_type == Const.SOS_MAJOR:
             return self.calculate_sos_maj
         else:
+            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
 
     def filter_results(self):
@@ -437,7 +437,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.write_session_kpis(main_template)
         self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
-        result_dict = {Const.KPI_NAME: 'red score', Const.RESULT: self.red_score * 100}####
+        result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
         self.all_results = self.all_results.append(result_dict, ignore_index=True)####
         self.all_results.to_csv('all {}.csv'.format(self.store_type))####
 

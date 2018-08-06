@@ -59,7 +59,6 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         :param main_line: series from the template of the main_sheet.
         """
         kpi_name = main_line[Const.KPI_NAME]
-        target = main_line[Const.GROUP_TARGET]
         kpi_type = main_line[Const.SHEET]
         relevant_scif = self.scif
         scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
@@ -68,13 +67,10 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
         if scene_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
-        isnt_dp = False
-        if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP:
-            isnt_dp = True
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-        if target == Const.ALL:
-            target = len(relevant_template)
+        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
+        isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
         function = self.toolbox.get_kpi_function(kpi_type)
         parent = main_line[Const.CONDITION]
         for scene_fk in relevant_scif['scene_fk'].unique().tolist():

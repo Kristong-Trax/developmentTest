@@ -34,7 +34,6 @@ class Const(object):
     SCENE_TYPE_GROUP = "scene_type_group"
     STORE_ATTRIBUTE = "store_attribute"
     SESSION_LEVEL = "session_level"
-    TESTED_GROUP = "tested_group"
     GROUP_TARGET = "group_target"
     CONDITION = "condition"
     INCREMENTAL = "incremental"
@@ -50,17 +49,9 @@ class Const(object):
     PREMIUM_SSD = "Premium SSD"
     INNOVATION_BRAND = "Innovation Brand"
     NUM_SUB_PACKAGES = "Number of Subpackages"
-    PRODUCT_NAME = "product_name"
     PRODUCT_EAN = "product_ean_code"
-    BRAND_TARGET = "brand_target"
 
-    # columns of SOS:
-    TRADEMARK_CONDITION = "trademark_conditional"
-
-    # columns of sos majority:
-    ORDER = "Order"
-    CONTAINER_MATERIAL = "Container Material"
-    TRANSACTION_PACKAGES = "Transaction packages"
+    # columns of sos&majority:
     DEN_TYPES_1 = "denominator_types 1"
     DEN_VALUES_1 = "denominator_values 1"
     DEN_TYPES_2 = "denominator_types 2"
@@ -86,7 +77,8 @@ class Const(object):
     SCENE_FK = "scene_fk"
     RESULT = "result"
     KPI_FK = "kpi_fk"
-    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT]
+    SCORE = "score"
+    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
     COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
 
     # constants:
