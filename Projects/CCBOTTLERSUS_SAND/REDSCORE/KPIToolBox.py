@@ -75,15 +75,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
         kpi_type = main_line[Const.SHEET]
         relevant_scif = self.scif
         parent = main_line[Const.CONDITION]
+        scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
+        if scene_types:
+            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+        scene_groups = self.does_exist(main_line, Const.SCENE_TYPE_GROUP)
+        if scene_groups:
+            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
         if kpi_type == Const.SCENE_AVAILABILITY:
-            result = self.calculate_scene_availability(main_line)
+            result = False if relevant_scif.empty else True
         else:
-            scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-            if scene_types:
-                relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-            scene_groups = self.does_exist(main_line, Const.SCENE_TYPE_GROUP)
-            if scene_groups:
-                relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             isnt_dp = False
             if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP:
                 isnt_dp = True
@@ -234,21 +234,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
-
-    # scene availability:
-
-    def calculate_scene_availability(self, main_line):
-        """
-        checks if there is one scene that passes the filters
-        :param main_line: line from the main sheet (this KPI has no specific sheet)
-        :return: boolean
-        """
-        scene_type = main_line[Const.SCENE_TYPE]
-        scene_group = main_line[Const.SCENE_TYPE_GROUP]
-        if scene_type in self.scif['template_name'].unique().tolist() \
-                and scene_group in self.scif['template_group'].unique().tolist():
-            return True
-        return False
 
     # SOS:
 
@@ -434,8 +419,6 @@ class CCBOTTLERSUS_SANDREDToolBox:
             return self.calculate_survey_specific
         elif kpi_type == Const.AVAILABILITY:
             return self.calculate_availability
-        elif kpi_type == Const.SCENE_AVAILABILITY:
-            return self.calculate_scene_availability
         elif kpi_type == Const.SOS:
             return self.calculate_sos
         elif kpi_type == Const.SOS_MAJOR:
@@ -454,7 +437,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.write_session_kpis(main_template)
         self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
-        result_dict = {Const.KPI_NAME: 'red score', Const.RESULT: self.red_score}
+        result_dict = {Const.KPI_NAME: 'red score', Const.RESULT: self.red_score * 100}####
         self.all_results = self.all_results.append(result_dict, ignore_index=True)####
         self.all_results.to_csv('all {}.csv'.format(self.store_type))####
 

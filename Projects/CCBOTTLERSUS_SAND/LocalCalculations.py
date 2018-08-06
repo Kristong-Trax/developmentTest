@@ -4,7 +4,6 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCBOTTLERSUS_SAND.Calculations import Calculations
 
-
 if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus-sand calculations')
     Config.init()
