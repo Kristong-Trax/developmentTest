@@ -78,6 +78,7 @@ VALUE3 = 'value3'
 TEMPLATE_DISPLAY_NAME = 'Template Display Name'
 KO_ONLY = 'KO Only'
 BY_SCENE = 'By Scene'
+BONUS = 'Bonus'
 
 #Other constants
 CONDITION_1 = 'Condition 1'
@@ -118,7 +119,7 @@ RED_SCORE = 'Red_score_ccbza' # to check
 GROCERY = 'GROCERY'
 LnT = 'L&T'
 QSR = 'QSR'
-
+PRODUCT_FK='product_fk'
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -170,7 +171,7 @@ class CCBZA_SANDToolBox:
             self.scene_info['scene_fk'].drop_duplicates().values)
         # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
-#------------------scene calculations-----------------------------#
+#------------------scene calculations-----------------------------
     #
     # def scene_main_calculation(self):
     #     if not self.template_data:
@@ -217,7 +218,7 @@ class CCBZA_SANDToolBox:
     # def add_scene_atomic_result_to_db(self, result, atomic_kpi):
     #     atomic_name = atomic_kpi[ATOMIC_KPI_NAME]
     #     atomic_name_scene = '{}_scene'.format(atomic_name)
-    #     kpi_fk_scene = self.common.get_kpi_fk_by_kpi_name(atomic_name_scene)
+    #     kpi_fk_scene = self.common.get_kpi_fk_by_kpi_type(atomic_name_scene)
     #     identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(atomic_name))
     #     identifier_parent['session_fk'] = self.session_info['pk'].values[0]
     #     identifier_parent['store_fk'] = self.session_info['store_fk'].values[0]
@@ -229,7 +230,7 @@ class CCBZA_SANDToolBox:
     #
     #
 
-#----------------------session calculations--------------------------#
+#----------------------session calculations--------------------------
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -246,11 +247,13 @@ class CCBZA_SANDToolBox:
             self.current_kpi_set_name = kpi_set_name
             set_score = 0
             set_target = 0
+            is_bonus = False
             kpi_data = self.template_data[KPI_TAB][self.template_data[KPI_TAB][SET_NAME] == kpi_set_name]
             identifier_result_set = self.get_identifier_result_set(kpi_set_name)
             for index, kpi in kpi_data.iterrows():
                 kpi_types = self.get_kpi_types_by_kpi(kpi)
                 identifier_result_kpi = self.get_identifier_result_kpi(kpi)
+                is_bonus = self.is_bonus_kpi(kpi)
                 # atomic_scores = []
                 for kpi_type in kpi_types:
                     atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi)
@@ -273,22 +276,25 @@ class CCBZA_SANDToolBox:
                 kpi_result, kpi_target = self.calculate_kpi_result(kpi, identifier_result_set)
                 set_score += kpi_result
                 set_target += kpi_target
-            set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_set_name)
+            set_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_set_name)
             self.common.write_to_db_result(fk=set_kpi_fk, numerator_id=KO_ID, score=set_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_result_red_score,
                                            target=set_target, should_enter=True)
             red_score += set_score
             red_target += set_target
-            if kpi_set_name != 'BONUS POINTS':
+            # if kpi_set_name != 'BONUS POINTS':
+            #     red_target += set_target
+            if not is_bonus:
                 red_target += set_target
+
         # write red_score to db
         red_score_percent = float(red_score) / red_target * 100
-        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_name(RED_SCORE)
+        red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(RED_SCORE)
         self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, score=red_score,
                                        denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -444,7 +450,7 @@ class CCBZA_SANDToolBox:
             max_score = float(kpi[self.full_store_type])
         else:
             score, max_score = self.calculate_kpi_score_no_dependency(kpi)
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi[KPI_NAME])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi[KPI_NAME])
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
                                        denominator_id=self.store_id,
                                        identifier_parent=identifier_parent,
@@ -516,7 +522,7 @@ class CCBZA_SANDToolBox:
                 atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write session result to DB
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_parent,
@@ -561,7 +567,7 @@ class CCBZA_SANDToolBox:
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write session result to DB
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
                 self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
@@ -609,7 +615,7 @@ class CCBZA_SANDToolBox:
         price_score = 100 if (result_price != -1 and result_price <= target_price) else 0
         custom_score = self.get_pass_fail(price_score)
         atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
                                        denominator_id=self.store_id, result=result_price,
                                        identifier_parent=identifier_parent,
@@ -621,21 +627,29 @@ class CCBZA_SANDToolBox:
             max_score = atomic_kpi[SCORE]
             target = float(atomic_kpi[TARGET])
             filters = self.get_general_calculation_parameters(atomic_kpi)
+
+            # matches = self.match_product_in_scene
+            # relevant_matches = matches[self.tools.get_filter_condition(matches, **filters)]
+            # bays_by_scene = relevant_matches[['scene_fk', 'bay_number']].drop_duplicates().groupby(['scene_fk']).count()
+            # atomic_result = 100 if (bays_by_scene == target).any() else 0
+
+            #option 2 - in case scene brdwn is required
             session_door_count = []
             list_of_scenes = filters['scene_fk']
             for scene in list_of_scenes:
                 scene_filter = filters.copy()
                 scene_filter['scene_fk'] = scene
                 # scene_filter = {'scene_fk': scene} # this was replaced with previous 2 lines to filter only KO Products
-                matches = self.match_product_in_scene.copy()
+                matches = self.match_product_in_scene
                 relevant_match_prod_in_scene = matches[self.tools.get_filter_condition(matches, **scene_filter)]
                 number_of_bays = len(relevant_match_prod_in_scene['bay_number'].unique())
                 session_door_count.append(number_of_bays)
             atomic_result = 100 if any([doors == target for doors in session_door_count]) else 0
+
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # constructing queries for DB
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_parent,
@@ -647,8 +661,8 @@ class CCBZA_SANDToolBox:
         """
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            # survey_id = int(float(atomic_kpi[SURVEY_QUESTION_CODE])) #uncomment when we have the questions - delete next line
-            survey_id = [atomic_kpi[SURVEY_QUESTION_CODE]] # what is the data type of survey Q code?
+            survey_id = [int(float(atomic_kpi[SURVEY_QUESTION_CODE]))] #uncomment when we have the questions - delete next line
+            # survey_id = [atomic_kpi[SURVEY_QUESTION_CODE]] # what is the data type of survey Q code?
             expected_answers = self.split_and_strip(atomic_kpi[EXPECTED_RESULT])
             survey_max_score = atomic_kpi[SCORE]
             survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
@@ -661,7 +675,7 @@ class CCBZA_SANDToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             # constructing queries for DB
             custom_score = self.get_pass_fail(score)
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if survey_max_score:
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
                                                denominator_id=self.store_id, result=score,
@@ -714,23 +728,22 @@ class CCBZA_SANDToolBox:
                         conditions_results.append(condition_score)
 
                         # write condition result to DB
-                        custom_score = self.get_pass_fail(condition_score)
-                        atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
-                                        else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
-                        kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
-                        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
-                                                       denominator_id=self.store_id, denominator_result=denom_res,
-                                                       result=ratio, score=custom_score,
-                                                       identifier_parent=identifier_parent,
-                                                       target=target, should_enter=True)
+                        # custom_score = self.get_pass_fail(condition_score)
+                        # atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
+                        #                 else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+                        # self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+                        #                                denominator_id=self.store_id, denominator_result=denom_res,
+                        #                                result=ratio, score=custom_score,
+                        #                                identifier_parent=identifier_parent,
+                        #                                target=target, should_enter=True)
                     if conditions_results:
                         atomic_result = 100 if all(conditions_results) else 0
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write atomic result to db aggregated conditions- need mobile mock-up grocery
-            if number_of_conditions > 1:
-                kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
                                                score=atomic_score, identifier_parent=identifier_parent,
                                                should_enter=True)
 
@@ -822,7 +835,7 @@ class CCBZA_SANDToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             # write atomic score (maybe also result) to DB
             max_score = atomic_kpi[SCORE]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
                 self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
@@ -932,6 +945,9 @@ class CCBZA_SANDToolBox:
     def is_by_scene(self, atomic_kpi):
         return True if atomic_kpi[BY_SCENE] == 'Y' else False
 
+    def is_bonus_kpi(self, kpi):
+        return True if kpi[BONUS] == 'Y' else False
+
     def match_brand_strip_to_brand(self, brands_series, brand_strips_series, target, scene):
         # Option 2 - to b kept till deployment in case detailed breakdown of brand availability is necessary
         # scene_results = []
@@ -991,7 +1007,7 @@ class CCBZA_SANDToolBox:
         calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
             else scif[EAN_CODE].unique().tolist()
         result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
-        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, ITEM_ID)
+        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
         if availability_type == AVAILABILITY_SKU_FACING_AND:
             result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
             identifier_result = self.get_identfier_result_atomic(atomic_kpi)
@@ -1002,14 +1018,18 @@ class CCBZA_SANDToolBox:
             Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
 
-    @staticmethod
-    def get_facing_number_by_item(facings_df, iter_list, filter_field, result_field=None):
+    def get_facing_number_by_item(self, facings_df, iter_list, filter_field, result_field=None):
         facings_by_item = {}
         iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
         for item in iter_list:
-            key = facings_df[facings_df[filter_field] == item][result_field].values[0] if result_field else item
-            facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
-            facings_by_item.update({key: facings})
+            try:
+                key = self.all_products[self.all_products[filter_field] == item][result_field].values[0] if result_field else item
+                # key = facings_df[facings_df[filter_field] == item][result_field].values[0] if result_field else item
+                facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
+                facings_by_item.update({key: facings})
+            except Exception as e:
+                Log.info(str(e))
+                continue
         return facings_by_item
 
     # def calculate_availability_sku_facing_and(self, atomic_kpi):
@@ -1127,7 +1147,7 @@ class CCBZA_SANDToolBox:
 
     def add_sku_availability_kpi_to_db(self, facings_by_sku, atomic_kpi, target, identifier_parent):
         atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(atomic_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
         for sku, facings in facings_by_sku.items():
             custom_score = self.get_x_v(100) if facings >= target else self.get_x_v(0)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
