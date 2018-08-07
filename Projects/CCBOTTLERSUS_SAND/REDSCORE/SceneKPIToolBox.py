@@ -60,7 +60,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif
+        relevant_scif = self.scif[self.scif['scene_id'].isin(self.toolbox.united_scenes)]
         scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]

@@ -29,6 +29,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.united_scenes = self.get_united_scenes() # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.templates = {}
         for sheet in Const.SHEETS:
@@ -72,7 +73,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif
+        relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
         parent = main_line[Const.CONDITION]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
@@ -581,6 +582,9 @@ class CCBOTTLERSUS_SANDREDToolBox:
             weight = main_line[Const.WEIGHT]
             scene_fk = results.iloc[0][Const.SCENE_FK] if Const.SCENE_FK in kpi_results else None
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
+
+    def get_united_scenes(self):
+        return self.scif[self.scif['United Deliver'] == 'Y']['scene_id'].unique().tolist()
 
     def write_to_db(self, kpi_name, result, display_text):
         """
