@@ -15,8 +15,6 @@ from Projects.INBEVBR_SAND.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR_SAND.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR_SAND.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
