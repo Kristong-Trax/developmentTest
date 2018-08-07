@@ -38,3 +38,9 @@ class CCBZA_SANDGenerator:
         #     self.tool_box.main_calculation()
         # else:
         #     Log.warning('No template data is available')
+
+    @log_runtime('Total Calculations', log_start=True)
+    def main_scene_function(self):
+        if self.tool_box.scif.empty:
+            Log.warning('Scene item facts is empty for this session')
+        self.tool_box.scene_main_calculation()

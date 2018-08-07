@@ -17,6 +17,11 @@ class CCBZA_SANDCalculations(BaseCalculationsScript):
         CCBZA_SANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
+    def run_scene_calculations(self):
+        self.timer.start()
+        CCBZA_SANDGenerator(self.data_provider, self.output).main_scene_function()
+        self.timer.stop('KPIGenerator.run_project_calculations')
+
 if __name__ == '__main__':
     LoggerInitializer.init('ccbza-sand calculations')
     Config.init()
@@ -24,6 +29,7 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     sessions = [
         'AD29338A-C2D9-4486-BD94-7B1E32224A11'
+        # 'E6BBF9D5-114E-4176-A35E-B84ABD0C11B5'
     ]
     for session in sessions:
         data_provider.load_session_data(session)
