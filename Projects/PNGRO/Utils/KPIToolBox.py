@@ -455,7 +455,7 @@ class PNGRO_PRODToolBox:
                                                               denominator_result=display_width,
                                                               numerator_id=product,
                                                               denominator_id=display_pd['pk'].values[0],
-                                                              weight=display_weight)
+                                                              target=display_weight)
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name
