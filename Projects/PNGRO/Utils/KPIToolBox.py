@@ -294,6 +294,10 @@ class PNGRO_PRODToolBox:
         type3 = params['Param (3)']
         value3 = params['Param (3) Values']
         target = params['Target Policy']
+        try:
+            target = int(target)/100.0
+        except:
+            Log.info('The target: {} cannot parse to int'.format(str(target)))
 
         numerator_filters = {type1: value1, type2: value2, type3: value3}
         denominator_filters = {type2: value2}
@@ -309,10 +313,10 @@ class PNGRO_PRODToolBox:
             ratio = 0
         else:
             ratio = numerator_width / float(denominator_width)
-        if (ratio * 100) >= int(target):
-            return True, str(ratio), str(int(target)/100.0)
+        if ratio >= target:
+            return True, str(ratio), str(target)
         else:
-            return False, str(ratio), str(int(target)/100.0)
+            return False, str(ratio), str(target)
 
     def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -450,7 +454,8 @@ class PNGRO_PRODToolBox:
                                                               numerator_result=product_width,
                                                               denominator_result=display_width,
                                                               numerator_id=product,
-                                                              denominator_id=display_pd['pk'].values[0])
+                                                              denominator_id=display_pd['pk'].values[0],
+                                                              weight=display_weight)
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name
