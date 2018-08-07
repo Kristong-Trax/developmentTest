@@ -90,27 +90,33 @@ class DIAGEODISPUSToolBox:
         #     # relevant_products.append()
         relevant_products = self.all_products[self.all_products['Competition Group'].isin(relevant_brands)][
             'product_fk'].drop_duplicates().values
+        # Log.info("Relevant products type: {}".format(type(relevant_products[0])))
+        # Log.info("manual_collection_number type: {}".format(type(self.manual_collection_number['product_fk'][0])))
         relevant_products = self.manual_collection_number[(self.manual_collection_number['product_fk'].isin(
             relevant_products))]['product_fk'].drop_duplicates().values
         sku_results = pd.DataFrame(columns=['sku', 'brand', 'num_of_cases'])
         sku_results['sku'] = relevant_products
         for product in relevant_products:
-            display_cases = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
-                    self.manual_collection_number['name'] == self.DISPLAY_CASES)]['value'].drop_duplicates().values[0]
-            display_bottles = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
-                    self.manual_collection_number['name'] == self.DISPLAY_BOTTLES)]['value'].drop_duplicates().values[0]
-            case_pack = self.all_products[self.all_products['product_fk'] == product][self.CASE_PACK].drop_duplicates().values[0]
-            sku_results.loc[sku_results['sku'] == product, 'brand'] = self.all_products[self.all_products['product_fk'] == product][
-                'Competition Group'].drop_duplicates().values[0]
-            sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
-                display_bottles), float(case_pack))
-        # sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
-        # for row in sku_results.itertuples():
-        #     self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
-        #                                               numerator_result=row.num_of_cases, result=row.num_of_cases,
-        #                                               score=row.num_of_cases)
+            try:
+                display_cases = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
+                        self.manual_collection_number['name'] == self.DISPLAY_CASES)]['value'].drop_duplicates().values[0]
+                display_bottles = self.manual_collection_number[(self.manual_collection_number['product_fk'] == product) & (
+                        self.manual_collection_number['name'] == self.DISPLAY_BOTTLES)]['value'].drop_duplicates().values[0]
+                case_pack = self.all_products[self.all_products['product_fk'] == product][self.CASE_PACK].drop_duplicates().values[0]
+                sku_results.loc[sku_results['sku'] == product, 'brand'] = self.all_products[self.all_products['product_fk'] == product][
+                    'Competition Group'].drop_duplicates().values[0]
+                sku_results.loc[sku_results['sku'] == product, 'num_of_cases'] = display_cases + np.divide(float(
+                    display_bottles), float(case_pack))
+            except Exception as err:
+                Log.info('{} for product {}'.format(err, product))
+                continue
+        sku_kpi_fk = self.get_kpi_fk_by_type(self.SKU_PERFORMANCE)
+        for row in sku_results.itertuples():
+            self.common.write_to_db_result_new_tables(fk=sku_kpi_fk, numerator_id=row.sku,
+                                                      numerator_result=row.num_of_cases, result=row.num_of_cases,
+                                                      score=row.num_of_cases)
         brand_results = pd.DataFrame(columns=['brand', 'num_of_cases'])
-        brand_results['brand'] = sku_results['brand'].drop_duplicates().values
+        brand_results['brand'] = sku_results['brand'].dropna().drop_duplicates().values
         for brand in sku_results['brand'].drop_duplicates().values:
             brand_results.loc[brand_results['brand'] == brand, 'num_of_cases'] = sku_results[sku_results['brand'] ==
                                                                                          brand]['num_of_cases'].sum()
