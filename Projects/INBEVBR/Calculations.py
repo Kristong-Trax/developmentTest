@@ -18,7 +18,7 @@ class INBEVBRCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevbr calculations')
 #     Config.init()
-#     project_name = 'inbevbr'
+#     project_name = 'InbevBr'
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()
 #
