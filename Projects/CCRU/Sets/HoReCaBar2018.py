@@ -16,7 +16,7 @@ from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'urid'
 
-HRC_BAR_2018 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)'
+HRC_BAR_2018 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
 HRC_BAR_2018_GAPS = 'Pos 2018 - HoReCa Bar'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
