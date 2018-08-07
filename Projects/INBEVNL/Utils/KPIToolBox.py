@@ -202,7 +202,7 @@ class INBEVNLINBEVBEToolBox:
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVNLINBEVBEQueries.get_oos_messages(self.session_uid)
+        query = INBEVNLINBEVBEQueries.get_oos_messages(self.store_id)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
