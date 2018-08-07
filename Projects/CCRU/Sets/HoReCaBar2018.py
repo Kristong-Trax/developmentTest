@@ -22,6 +22,7 @@ TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
 SPIRITS = 'Spirits 2018 - HoReCa'
 
+
 class CCRUHRCBar2018Calculations:
     def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
         self.k_engine = BaseCalculationsGroup(data_provider, output)
