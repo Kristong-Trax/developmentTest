@@ -41,6 +41,7 @@ class Const(object):
     EXCLUSION_SHEET = "exclusion_sheet"
     WEIGHT = "weight"
     SAME_PACK = "Same Pack"
+    REUSE_SCENE = "reuse_scene"
 
     # columns of AVAILABILITY:
     SCENE_SKU = "scene/SKU"

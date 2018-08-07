@@ -112,7 +112,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
         self.session_results = self.session_results.append(result_dict, ignore_index=True)
 
-    def write_to_all_levels(self, kpi_name, result, display_text, weight, scene_fk=None):
+    def write_to_all_levels(self, kpi_name, result, display_text, weight, scene_fk=None, reuse_scene=False):
         """
         Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
         :param kpi_name: str
@@ -120,13 +120,15 @@ class CCBOTTLERSUS_SANDREDToolBox:
         :param display_text: str
         :param weight: int/float
         :param scene_fk: for the scene's kpi
+        :param reuse_scene: this kpi can use scenes that were used
         """
         score = weight * (result > 0)
         self.red_score += score
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score}
         if scene_fk:
             result_dict[Const.SCENE_FK] = scene_fk
-            self.used_scenes.append(scene_fk)
+            if not reuse_scene:
+                self.used_scenes.append(scene_fk)
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, result, display_text)
 
@@ -469,8 +471,10 @@ class CCBOTTLERSUS_SANDREDToolBox:
         while not incremental_template.empty:
             for i, main_line in incremental_template.iterrows():
                 kpi_name = main_line[Const.KPI_NAME]
-                kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
-                                                  (~(self.scenes_results[Const.SCENE_FK].isin(self.used_scenes)))]
+                reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
+                kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+                if not reuse_scene:
+                    kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
                 true_results = kpi_results[kpi_results[Const.RESULT] > 0]
                 increments = main_line[Const.INCREMENTAL]
                 if ', ' in increments:
@@ -484,8 +488,8 @@ class CCBOTTLERSUS_SANDREDToolBox:
                     display_text = main_line[Const.DISPLAY_TEXT]
                     weight = main_line[Const.WEIGHT]
                     scene_fk = true_results.iloc[0][Const.SCENE_FK]
-                    self.write_to_all_levels(
-                        kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight, scene_fk=scene_fk)
+                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text,
+                                             weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
                     scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
             incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
         return scene_template
@@ -499,8 +503,10 @@ class CCBOTTLERSUS_SANDREDToolBox:
         """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
-            kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
-                                              (~(self.scenes_results[Const.SCENE_FK].isin(self.used_scenes)))]
+            reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
+            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+            if not reuse_scene:
+                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
             true_results = kpi_results[kpi_results[Const.RESULT] > 0]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
@@ -509,7 +515,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
             scene_fk = true_results.iloc[0][Const.SCENE_FK]
             self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight,
-                                     scene_fk=scene_fk)
+                                     scene_fk=scene_fk, reuse_scene=reuse_scene)
             scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
         return scene_template
 
@@ -520,14 +526,16 @@ class CCBOTTLERSUS_SANDREDToolBox:
         """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
-            kpi_results = self.scenes_results[(self.scenes_results[Const.KPI_NAME] == kpi_name) &
-                                              (~(self.scenes_results[Const.SCENE_FK].isin(self.used_scenes)))]
+            reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
+            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+            if not reuse_scene:
+                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             if kpi_results.empty:
                 continue
             scene_fk = kpi_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk)
+            self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
 
     def write_scene_kpis(self, main_template):
         """
@@ -562,7 +570,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 continue
             condition_result = condition_result.iloc[0]
             condition_scene = condition_result[Const.SCENE_FK]
-            if condition_scene:
+            if condition_scene and Const.SCENE_FK in kpi_results:
                 results = kpi_results[kpi_results[Const.SCENE_FK] == condition_scene]
             else:
                 results = kpi_results
@@ -571,7 +579,7 @@ class CCBOTTLERSUS_SANDREDToolBox:
             result = results.iloc[0][Const.RESULT]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
-            scene_fk = results.iloc[0][Const.SCENE_FK]
+            scene_fk = results.iloc[0][Const.SCENE_FK] if Const.SCENE_FK in kpi_results else None
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
     def write_to_db(self, kpi_name, result, display_text):
