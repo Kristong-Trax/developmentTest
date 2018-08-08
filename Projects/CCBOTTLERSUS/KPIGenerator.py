@@ -65,4 +65,4 @@ class CCBOTTLERSUSGenerator:
                 tool_box.main_calculation()
                 tool_box.commit_results()
         except Exception as e:
-            Log.error('failed to calculate CCBOTTLERSUS_SAND RED SCORE :{}'.format(e.message))
+            Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
