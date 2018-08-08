@@ -1144,6 +1144,9 @@ class INBEVNLINBEVBEToolBox:
 
                 product_bundle_name = self.get_bundle_lead(product)
                 if product_bundle_name:
+                    if product_bundle_name != product and product in ass_prod_list \
+                            and product_bundle_name in ass_prod_list:
+                        ass_prod_list.remove(product)
                     bundle_products = self.get_bundle_products(product)
                     product = product_bundle_name
                 else:
