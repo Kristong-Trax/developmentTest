@@ -1,9 +1,23 @@
-# from Trax.Analytics.Calculation.PNGCN_PROD.EmptySpacesKpi import EmptySpaceKpiGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+import os
+import numpy as np
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import PNGCN_SANDShareOfDisplayDataProvider, PNGCN_SANDFields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-import numpy as np
+# from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
 __Author__ = 'Dudi_S'
@@ -606,3 +620,4 @@ def calculate_share_of_display(project_conn, session, data_provider=None):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
+
