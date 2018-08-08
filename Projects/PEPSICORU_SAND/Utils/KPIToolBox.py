@@ -1,15 +1,16 @@
-
+import os
+import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
@@ -17,15 +18,10 @@ from KPIUtils_v2.DB.Common import Common
 
 __author__ = 'idanr'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
 class PEPSICORUToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -45,9 +41,31 @@ class PEPSICORUToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
+        self.sos = SOS(data_provider, output)
+        self.assortment = Assortment(self.data_provider, self.output)
+
+    def generic_share_of_shelf(self):
+        """
+
+        :return:
+        """
+
+
+
+    def calculate_share_of_shelf(self):
+        """
+
+        :return:
+        """
+        scif_categories = dict.fromkeys(self.scif['category'].unique().list())
+        scif_sub_categories = dict.fromkeys(self.scif['sub_category'].unique().list())
+
+        return
+
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
+
         score = 0
         return score

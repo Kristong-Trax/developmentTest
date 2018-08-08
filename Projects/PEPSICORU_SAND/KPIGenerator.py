@@ -1,9 +1,6 @@
-
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.PEPSICORU_SAND.Utils.KPIToolBox import PEPSICORUToolBox
-
-from KPIUtils_v2.DB.CommonV2 import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -18,7 +15,6 @@ class Generator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.tool_box = PEPSICORUToolBox(self.data_provider, self.output)
-        self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
