@@ -6,6 +6,7 @@ from Projects.CCBOTTLERSUS_SAND.REDSCORE.KPIToolBox import CCBOTTLERSUS_SANDREDT
 from KPIUtils_v2.DB.Common import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 
 __author__ = 'Elyashiv'
 
@@ -17,7 +18,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = CCBOTTLERSUS_SANDREDToolBox(self.data_provider, self.output)
+        self.tool_box = CCBOTTLERSUS_SANDREDToolBox(self.data_provider, self.output, Const.SOVI)
         self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)

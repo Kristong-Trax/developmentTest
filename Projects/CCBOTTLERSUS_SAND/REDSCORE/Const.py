@@ -4,6 +4,8 @@ __author__ = 'Elyashiv'
 
 class Const(object):
 
+    SOVI = "SOVI"
+
     # sheets:
     KPIS = "KPIs"
     AVAILABILITY = "Availability"
@@ -13,9 +15,8 @@ class Const(object):
     SKU_EXCLUSION = "SKU_Exclusion"
     CONVERTERS = "converters"
     SCENE_AVAILABILITY = "Availability_scene"
-    SHEETS = [
-        KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS
-    ]
+    SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
+    SHEETS_MANUAL = [KPIS, SURVEY]
 
     # generic columns:
     KPI_NAME = "KPI_name"
@@ -90,3 +91,14 @@ class Const(object):
     MAJOR = "majority"
     DOMINANT = "dominant"
     MAJORITY_TARGET = 0.5
+    NUMERIC_VALUES_TYPES = ['size']
+
+    RED_SCORE = 'Red SCORE'
+    RED_SCORE_INTEG = 'Red SCORE Integration'
+    MANUAL_RED_SCORE = 'Red Score Survey'
+    MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
+
+    MANUAL = "MANUAL"
+
+    CALCULATION_TYPES = [MANUAL, SOVI]
+
