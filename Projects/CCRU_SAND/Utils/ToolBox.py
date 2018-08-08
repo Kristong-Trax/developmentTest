@@ -1246,11 +1246,6 @@ class CCRU_SANDKPIToolBox:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2')
             set_total_res += round(score) * p.get('KPI Weight')
-# Sergey 1 Begin
-            atomic_result = attributes_for_level3['result']
-            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
-                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-# Sergey 1 End
         return set_total_res
 
     def calculate_facings_sos(self, params):
@@ -2864,8 +2859,6 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_top_sku(self):
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
-        if not top_skus:
-            return
         for scene_fk in self.scif['scene_id'].unique():
             scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
