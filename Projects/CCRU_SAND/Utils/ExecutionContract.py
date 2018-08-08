@@ -22,7 +22,7 @@ TEMPLATES_TEMP_PATH = os.getcwd()
 class CCRU_SANDContract:
 
     def __init__(self, rds_conn=None):
-        self.static_data_extractor = CCRU_SANDTopSKUAssortment(rds_conn=rds_conn)
+        self.static_data_extractor = CCRU_SANDTopSKUAssortment()
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
         self.invalid_stores = []
@@ -100,7 +100,7 @@ class CCRU_SANDContract:
         This function gets the arguments from the command line / configuration in case of a local run and manage them.
         :return:
         """
-        parser = argparse.ArgumentParser(description='Execution Contract CCRU')
+        parser = argparse.ArgumentParser(description='Execution Contract CCRU-SAND')
         parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
         parser.add_argument('--file', type=str, required=True, help='The assortment template')
         return parser.parse_args()
@@ -108,6 +108,6 @@ class CCRU_SANDContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init('ccru_sand')
-    Log.init('ccru_sand', 'Execution Contract')
+    Log.init('ccru-sand', 'Execution Contract')
     Config.init()
     CCRU_SANDContract().parse_and_upload_file()
