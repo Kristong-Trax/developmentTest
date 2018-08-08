@@ -636,13 +636,14 @@ class CCBOTTLERSUSREDToolBox:
         :param red_score: boolean for the red score writing to DB
         :param display_text: str
         """
-        mobile_level = self.common_db.LEVEL1 if red_score else self.common_db.LEVEL2
-        integ_level = self.common_db_integ.LEVEL1 if red_score else self.common_db_integ.LEVEL3
-        integ_name = self.RED_SCORE_INTEG if red_score else kpi_name
-        self.common_db.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(kpi_name, mobile_level), score=score, level=mobile_level)
-        self.common_db_integ.write_to_db_result(
-            self.common_db_integ.get_kpi_fk_by_kpi_name(integ_name, integ_level), score=score, level=integ_level)
+        if red_score:
+            self.common_db.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 1), score=score, level=1)
+        else:
+            self.common_db.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
+            self.common_db.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3)
 
     def commit_results(self):
         self.common_db.delete_results_data_by_kpi_set()
