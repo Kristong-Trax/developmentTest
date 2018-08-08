@@ -99,6 +99,5 @@ class Const(object):
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
 
     MANUAL = "MANUAL"
-
     CALCULATION_TYPES = [MANUAL, SOVI]
 

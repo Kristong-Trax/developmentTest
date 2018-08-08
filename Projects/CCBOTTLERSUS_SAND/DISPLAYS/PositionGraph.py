@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class CCBOTTLERSUSBCIPositionGraphs:
+class DISPLAYSPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -35,11 +35,11 @@ class CCBOTTLERSUSBCIPositionGraphs:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.position_graphs = {}
-        self.create_position_graphs()
+
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.Docker)
         return self._rds_conn
 
     @property

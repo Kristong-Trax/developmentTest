@@ -2,7 +2,7 @@
 __author__ = 'Ortal'
 
 
-class CCBOTTLERSUSBCIQueries(object):
+class BCIQueries(object):
 
     def __init__(self):
         pass

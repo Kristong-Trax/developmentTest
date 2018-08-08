@@ -48,12 +48,9 @@ class CCBOTTLERSUS_SANDREDToolBox:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.common_db = Common(self.data_provider, self.RED_SCORE)
         self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
-        # self.common_db.delete_results_data_by_kpi_set()
-        # self.common_db_integ.delete_results_data_by_kpi_set()
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
-        # self.common = Common(self.data_provider)
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
@@ -646,3 +643,9 @@ class CCBOTTLERSUS_SANDREDToolBox:
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, mobile_level), score=score, level=mobile_level)
         self.common_db_integ.write_to_db_result(
             self.common_db_integ.get_kpi_fk_by_kpi_name(integ_name, integ_level), score=score, level=integ_level)
+
+    def commit_results(self):
+        self.common_db.delete_results_data_by_kpi_set()
+        self.common_db_integ.delete_results_data_by_kpi_set()
+        self.common_db.commit_results_data_without_delete()
+        self.common_db_integ.commit_results_data_without_delete()
