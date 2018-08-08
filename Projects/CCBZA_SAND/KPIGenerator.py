@@ -11,7 +11,7 @@ __author__ = 'natalyak'
 
 class CCBZA_SANDGenerator:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output=None):
         self.data_provider = data_provider
         self.output = output
         self.project_name = data_provider.project_name
@@ -39,8 +39,8 @@ class CCBZA_SANDGenerator:
         # else:
         #     Log.warning('No template data is available')
 
-    @log_runtime('Total Calculations', log_start=True)
+    # @log_runtime('Total Calculations', log_start=True)
     def main_scene_function(self):
-        if self.tool_box.scif.empty:
+        if self.tool_box.match_product_in_scene.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.scene_main_calculation()

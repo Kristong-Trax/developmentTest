@@ -39,6 +39,7 @@ class CCBZA_SAND_GENERALToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        # self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] if not self.data_provider.scene_id else None
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
