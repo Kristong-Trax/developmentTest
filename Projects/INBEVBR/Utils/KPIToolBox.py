@@ -238,7 +238,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=number_of_valid_scenes,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_count_atomics(self, atomic_id, atomic_name):
 
@@ -284,7 +284,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name):
 
@@ -327,7 +327,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.STORE_TYPE_TEMPLATE]
