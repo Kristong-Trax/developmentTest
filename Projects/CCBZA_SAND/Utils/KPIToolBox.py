@@ -120,6 +120,7 @@ GROCERY = 'GROCERY'
 LnT = 'L&T'
 QSR = 'QSR'
 PRODUCT_FK='product_fk'
+NON_KPI = 999999
 
 class CCBZA_SANDToolBox:
     LEVEL1 = 1
@@ -627,7 +628,8 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             target = atomic_kpi[TARGET]
             max_score = atomic_kpi[SCORE]
-            is_by_scene = self.is_by_scene(atomic_kpi)
+            # is_by_scene = self.is_by_scene(atomic_kpi)
+            is_by_scene = False
             atomic_result = 0
             filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
             filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
@@ -635,24 +637,33 @@ class CCBZA_SANDToolBox:
             # list_of_scenes = filters['scene_fk']
             list_of_scenes = filters.pop('scene_fk')
             if list_of_scenes:
+                is_by_scene = self.is_by_scene(atomic_kpi)
                 if is_by_scene:
                     # Option1  - major option for scene calculations
+                    session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
+                    if session_results:
+                        atomic_result = 100 if all(session_results) else 0
+                        # writing to DB
+                        identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
+                        self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
+                    else:
+                        is_by_scene = False  # maybe excessive
                     # session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
                     # if session_results:
                     #     atomic_result = 100 if all(session_results) else 0
 
                     # Option2  - to be replaced by scene calculations
-                    session_results = []
-                    for scene in list_of_scenes:
-                        scene_result = 0
-                        filters['scene_id'] = scene
-                        scene_df = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
-                        if not scene_df.empty:
-                            scene_result = self.get_price_result(scene_df, target, atomic_kpi, identifier_result)
-                        session_results.append(scene_result)
-                        # write scene result to DB
-                    if session_results:
-                        atomic_result = 100 if all(session_results) else 0
+                    # session_results = []
+                    # for scene in list_of_scenes:
+                    #     scene_result = 0
+                    #     filters['scene_id'] = scene
+                    #     scene_df = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
+                    #     if not scene_df.empty:
+                    #         scene_result = self.get_price_result(scene_df, target, atomic_kpi, identifier_result)
+                    #     session_results.append(scene_result)
+                    #     # write scene result to DB
+                    # if session_results:
+                    #     atomic_result = 100 if all(session_results) else 0
                 else:
                     filters['scene_id'] = list_of_scenes
                     filtered_df = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
@@ -662,6 +673,32 @@ class CCBZA_SANDToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write session result to DB
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+            # if is_by_scene:
+            #     if max_score:
+            #         self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=KO_ID,
+            #                                        denominator_id=self.store_id,
+            #                                        identifier_result=identifier_result, identifier_parent=identifier_parent,
+            #                                        target=max_score, should_enter=True)
+            #     else:
+            #         custom_score = self.get_pass_fail(atomic_score)
+            #         self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+            #                                        result=atomic_score,
+            #                                        denominator_id=self.store_id, identifier_parent=identifier_parent,
+            #                                        identifier_result=identifier_result,
+            #                                        should_enter=True)
+            # else:
+            #     if max_score:
+            #         self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=KO_ID,
+            #                                        denominator_id=self.store_id, identifier_parent=identifier_parent,
+            #                                        identifier_result=identifier_result,
+            #                                        target=max_score, should_enter=True)
+            #     else:
+            #         custom_score = self.get_pass_fail(atomic_score)
+            #         self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+            #                                        result=atomic_score,
+            #                                        denominator_id=self.store_id, identifier_parent=identifier_parent,
+            #                                        identifier_result=identifier_result,
+            #                                        should_enter=True)
             if max_score:
                 self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=KO_ID,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
@@ -673,6 +710,14 @@ class CCBZA_SANDToolBox:
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                should_enter=True)
+
+    def add_scene_hierarchy_on_session_level(self, atomic_kpi, identifier_result):
+        scene_kpi_no = self.common.get_kpi_fk_by_kpi_type('{}_scene'.format(atomic_kpi[ATOMIC_KPI_NAME]))
+        scene_kpi_fks = self.scene_kpi_results[self.scene_kpi_results['kpi_level_2_fk'] == scene_kpi_no][
+            'pk'].values
+        for scene in scene_kpi_fks:
+            self.common.write_to_db_result(fk=999999, should_enter=True, scene_result_fk=scene, result=scene,
+                                           score = scene_kpi_no, identifier_parent=identifier_result) # fix on Sunday
 
     def get_price_result(self, matches_scif_df, target, atomic_kpi, identifier_parent):
         unique_skus_list = matches_scif_df['item_id'].unique().tolist()
@@ -792,7 +837,7 @@ class CCBZA_SANDToolBox:
         scene_atomic_name = '{}_scene'.format(atomic_kpi[ATOMIC_KPI_NAME])
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(scene_atomic_name)
         session_results = self.scene_kpi_results[(self.scene_kpi_results['scene_fk'].isin(list_of_scenes))&
-                                                 (self.scene_kpi_results['kpi_level_2_fk'] == kpi_fk)]['result'].values
+                                                 (self.scene_kpi_results['kpi_level_2_fk'] == kpi_fk)]['result'].values.tolist()
         return session_results
 
     def get_pass_fail(self, score):
@@ -923,6 +968,7 @@ class CCBZA_SANDToolBox:
             score = 0
             if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
                 score = self.calculate_availability_brand_strips(atomic_kpi)
+                # score = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
                 score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
                 # score = self.calculate_availability_sku_facing_and(atomic_kpi)
@@ -951,6 +997,20 @@ class CCBZA_SANDToolBox:
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                should_enter=True, result=score)
+
+    # always by scene
+    # def get_availability_results_scene_table(self, atomic_kpi, identifier_result):
+    #     score = 0
+    #     max_score = atomic_kpi[SCORE]
+    #     filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
+    #     list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
+    #     session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
+    #     if session_results:
+    #         atomic_result = 100 if all(session_results) else 0
+    #         score = self.calculate_atomic_score(atomic_result, max_score)
+    #         identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
+    #         self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
+    #     return score, identifier_result
 
     #always by scene
     def calculate_avialability_against_competitors(self, atomic_kpi):
