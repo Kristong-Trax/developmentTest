@@ -39,8 +39,9 @@ TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 
 class PNGCN_SANDPNGShareOfDisplay(object):
-    def __init__(self, project_connector, session_uid, data_provider=None):
-        self.session_uid = session_uid
+    def __init__(self, project_connector, scene_id, data_provider=None):
+        # self.session_uid = session_uid
+        self.scene_id = scene_id
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
@@ -48,9 +49,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self.on_ace = True
         else:
             self.on_ace = False
-            self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
+            # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
-        self.log_prefix = 'Share_of_display for session: {}, project {}'.format(self.session_uid,
+        self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
                                                                                 self.project_connector.project_name)
         Log.info(self.log_prefix + ' Starting calculation')
         self.match_display_in_scene = pd.DataFrame({})
@@ -58,7 +59,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.displays = pd.DataFrame({})
         self.valid_facing_product = {}
 
-    def process_session(self):
+    def process_scene(self):
         # try:
         #     Log.debug(self.log_prefix + ' Retrieving data')
         #     self.match_display_in_scene = self._get_match_display_in_scene_data()
@@ -384,6 +385,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             display_visit_summary = self.remove_by_facing(display_visit_summary)
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
+            self.insert_into_kpi_scene_results(display_visit_summary_list_of_dict)
 
     def remove_by_facing(self, df):
         """
@@ -471,6 +473,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         query = ''' select
                         pk as display_fk
                         ,sos_type_fk
+                        ,display_group
                     from
                         static.display;'''
         displays = pd.read_sql_query(query, self.project_connector.db)
@@ -491,7 +494,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         queries = [
             drop_temp_table_query,
             """ create temporary table probedata.t_scenes_to_delete_displays as
-                select pk as scene_fk from probedata.scene where session_uid = '{}';""".format(self.session_uid),
+                select pk as scene_fk from probedata.scene where pk = '{}';""".format(self.scene_id),
             """ delete report.display_item_facts, probedata.display_surface
                 from probedata.t_scenes_to_delete_displays
                  join probedata.display_surface
@@ -570,7 +573,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                             static.display ds on ds.pk = mds.display_fk
                         join
                             probedata.scene sc on sc.pk=mds.scene_fk
-                             and sc.session_uid = \'{}\''''.format(self.session_uid)
+                             and sc.pk = \'{}\''''.format(self.scene_id)
         match_display_in_scene = pd.read_sql_query(query, local_con)
         return match_display_in_scene
 
@@ -595,13 +598,18 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                             static.brand b on b.pk = p.brand_fk
                         join
                             probedata.scene sc on sc.pk = mps.scene_fk
-                             and sc.session_uid = '{0}'
+                             and sc.pk = '{0}'
                         join
                             static.template t on t.pk = sc.template_fk
                              and t.is_recognition = 1
-                    '''.format(self.session_uid)
+                    '''.format(self.scene_id)
         match_product_in_scene = pd.read_sql_query(query, self.project_connector.db)
         return match_product_in_scene
+
+    def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
+        df = pd.DataFrame(display_visit_summary_list_of_dict)
+        res = df.merge(self.displays, on='display_fk')
+        return
 
 
 def calculate_share_of_display(project_conn, session, data_provider=None):
