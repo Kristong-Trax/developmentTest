@@ -10,7 +10,7 @@
 #     Config.init()
 #     project_name = 'heinekentw'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '1A9A4F96-64CE-4589-9F2F-0D1617DE6A23'
+#     session = '338209D4-B3F3-460A-BE36-7264B1BE8F7C'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()
