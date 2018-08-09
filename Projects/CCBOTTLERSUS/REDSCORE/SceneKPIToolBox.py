@@ -74,6 +74,7 @@ class CCBOTTLERSUSSceneRedToolBox:
         function = self.toolbox.get_kpi_function(kpi_type)
         parent = main_line[Const.CONDITION]
         for scene_fk in relevant_scif['scene_fk'].unique().tolist():
+            to_continue = False
             if main_line[Const.SAME_PACK] == Const.V:
                 result = self.toolbox.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
             else:
@@ -82,6 +83,11 @@ class CCBOTTLERSUSSceneRedToolBox:
                     answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
                     if answer:
                         passed_counter += 1
+                    elif answer is None:
+                        to_continue = True
+                        break
                 result = passed_counter >= target
+            if to_continue:
+                continue
             self.write_to_scene_level(
                 kpi_name=kpi_name, scene_fk=scene_fk, result=result, parent=parent)
