@@ -7,7 +7,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import CCBOTTLERSUSREDToolBox
 from Projects.CCBOTTLERSUS.DISPLAYS.KPIToolBox import CCBOTTLERSUSDISPLAYSToolBox
 from Projects.CCBOTTLERSUS.Utils.KPIToolBox import CCBOTTLERSUSBCIKPIToolBox
-from Projects.CCBOTTLERSUS.REDSCORE.Const import CCBOTTLERSUSConst
+from Projects.CCBOTTLERSUS.REDSCORE.Const import Const
 
 __author__ = 'Elyashiv'
 
@@ -60,7 +60,7 @@ class CCBOTTLERSUSGenerator:
     def calculate_red_score(self):
         Log.info('starting calculate_red_score')
         try:
-            for calculation_type in CCBOTTLERSUSConst.CALCULATION_TYPES:
+            for calculation_type in Const.CALCULATION_TYPES:
                 tool_box = CCBOTTLERSUSREDToolBox(self.data_provider, self.output, calculation_type)
                 tool_box.main_calculation()
                 tool_box.commit_results()
