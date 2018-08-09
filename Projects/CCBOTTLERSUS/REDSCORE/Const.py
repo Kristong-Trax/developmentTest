@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class CCBOTTLERSUSConst(object):
+class Const(object):
 
     SOVI = "SOVI"
 
