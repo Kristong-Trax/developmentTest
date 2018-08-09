@@ -50,13 +50,13 @@ class INBEVNLINBEVBEQueries:
         """.format(session_uid)
 
     @staticmethod
-    def get_oos_messages(session_uid):
+    def get_oos_messages(store_fk):
         return """
             SELECT * FROM probedata.oos_exclude oe
             join static.oos_message om on om.pk=oe.oos_message_fk
             join static.oos_message_type omt on omt.pk=om.type
-            where oe.session_uid = '{}';
-        """.format(session_uid)
+            where oe.store_fk = '{}';
+        """.format(store_fk)
 
     @staticmethod
     def get_osa_table(store_fk, visit_date, current_date, status):
