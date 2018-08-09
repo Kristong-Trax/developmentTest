@@ -54,12 +54,13 @@ class PEPSICORUToolBox:
 
     def calculate_share_of_shelf(self):
         """
-
+        This function filters
         :return:
         """
-        scif_categories = dict.fromkeys(self.scif['category'].unique().list())
-        scif_sub_categories = dict.fromkeys(self.scif['sub_category'].unique().list())
-
+        scene_types_dict = dict.fromkeys(self.scif['template_fk'].unique().list())
+        categories_dict = dict.fromkeys(self.scif['category'].unique().list())
+        sub_categories_dict = dict.fromkeys(self.scif['sub_category'].unique().list())
+        # WATCH OUT FROM NONE !
         return
 
     def main_calculation(self, *args, **kwargs):
