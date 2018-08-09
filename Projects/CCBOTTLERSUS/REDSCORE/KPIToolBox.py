@@ -364,6 +364,8 @@ class CCBOTTLERSUSREDToolBox:
         num_type = kpi_line[Const.NUM_TYPES_2]
         num_value = kpi_line[Const.NUM_VALUES_2]
         num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
+        if num_scif.empty:
+            return None
         if isnt_dp:
             num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
         target = Const.MAJORITY_TARGET
