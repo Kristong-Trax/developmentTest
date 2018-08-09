@@ -127,6 +127,7 @@ class INBEVBRToolBox:
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
+        denominator_number_of_total_facings = 0
         count_result = 0
 
         # bring the kpi rows from the sos sheet
@@ -170,7 +171,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=denominator_number_of_total_facings, result=count_result)
 
     def handle_sos_packs_atomics(self,atomic_id, atomic_name):
 
@@ -237,7 +238,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=number_of_valid_scenes,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_count_atomics(self, atomic_id, atomic_name):
 
@@ -264,6 +265,7 @@ class INBEVBRToolBox:
         if count_type == Const.FACING:
             number_of_facings = self.count_of_facings(df, filters)
             count_result = weight if number_of_facings >= target else 0
+            numerator_number_of_facings = number_of_facings
         elif count_type == Const.SCENES:
             secondary_target = row[Const.SECONDARY_TARGET].values[0]
             scene_types_groupby = self.count_of_scenes(df, filters)
@@ -282,7 +284,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name):
 
@@ -325,7 +327,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.STORE_TYPE_TEMPLATE]
