@@ -196,14 +196,15 @@ class CCBZA_SANDToolBox:
                     else:
                         Log.warning("KPI of type '{}' is not supported by scene calculations".format(kpi_type))
                         continue
-        self.common.commit_results_data(result_entity='scene')
+        if not self.common.kpi_results.empty:
+            self.common.commit_results_data(result_entity='scene')
 
     def calculate_price_scene(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            identifier_result = self.get_identifier_result_scene(atomic_kpi)
             is_by_scene = self.is_by_scene(atomic_kpi)
             if is_by_scene:
+                identifier_result = self.get_identifier_result_scene(atomic_kpi)
                 target = atomic_kpi[TARGET]
                 filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
                 filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
@@ -221,9 +222,9 @@ class CCBZA_SANDToolBox:
     def calculate_availability_scene(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            identifier_result = self.get_identifier_result_scene(atomic_kpi)
             is_by_scene = self.is_by_scene(atomic_kpi)
             if is_by_scene:
+                identifier_result = self.get_identifier_result_scene(atomic_kpi)
                 if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
                     self.availability_brand_strips_scene(atomic_kpi, identifier_result)
                 elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
@@ -231,7 +232,7 @@ class CCBZA_SANDToolBox:
                 elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
                     self.availability_and_or_scene(atomic_kpi, identifier_result)
                 elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
-                    self.calculate_avialability_against_competitors(atomic_kpi)
+                    self.availability_against_competitors_scene(atomic_kpi, identifier_result)
                 else:
                     Log.warning(
                         'Availablity of type {} is not supported by scene calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
@@ -305,16 +306,6 @@ class CCBZA_SANDToolBox:
         identifier_result['session_fk'] = self.session_info['pk'].values[0]
         identifier_result['store_fk'] = self.session_info['store_fk'].values[0]
         return identifier_result
-
-    def filter_df_based_on_filtering_dictionary(self, df, filters):
-        filtered_df = df.copy()
-        for column, criteria in filters.items():
-            if column in filtered_df.columns:
-                if isinstance(criteria, list):
-                    filtered_df = filtered_df[filtered_df[column].isin(criteria)]
-                else:
-                    filtered_df = filtered_df[filtered_df[column] == criteria]
-        return filtered_df
 
 #----------------------session calculations--------------------------
 
@@ -966,19 +957,28 @@ class CCBZA_SANDToolBox:
             atomic_kpi = atomic_kpis_data.iloc[i]
             identifier_result = self.get_identfier_result_atomic(atomic_kpi)
             score = 0
-            if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
-                score = self.calculate_availability_brand_strips(atomic_kpi)
-                # score = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
-                score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
-                # score = self.calculate_availability_sku_facing_and(atomic_kpi)
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
-                score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
-                # score = self.calculate_availability_sku_facing_or(atomic_kpi)
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
+            per_scene = self.is_by_scene(atomic_kpi)
+            if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
                 score = self.calculate_availability_posm(atomic_kpi)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
+                # score = self.calculate_availability_brand_strips(atomic_kpi)
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue # ask Israel
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
-                score = self.calculate_avialability_against_competitors(atomic_kpi)
+                # score = self.calculate_avialability_against_competitors(atomic_kpi)
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue # ask Israel
+            elif atomic_kpi[AVAILABILITY_TYPE] in [AVAILABILITY_SKU_FACING_AND, AVAILABILITY_SKU_FACING_OR]:
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
             else:
                 Log.warning('Availablity of type {} is not supported by calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
                 continue
@@ -999,18 +999,245 @@ class CCBZA_SANDToolBox:
                                                should_enter=True, result=score)
 
     # always by scene
-    # def get_availability_results_scene_table(self, atomic_kpi, identifier_result):
-    #     score = 0
-    #     max_score = atomic_kpi[SCORE]
-    #     filters = self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])
-    #     list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
-    #     session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
-    #     if session_results:
-    #         atomic_result = 100 if all(session_results) else 0
-    #         score = self.calculate_atomic_score(atomic_result, max_score)
-    #         identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
-    #         self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
-    #     return score, identifier_result
+    def get_availability_results_scene_table(self, atomic_kpi, identifier_result):
+        score = 0
+        max_score = atomic_kpi[SCORE]
+        filters = self.get_general_calculation_parameters(atomic_kpi)
+        list_of_scenes = filters['scene_fk']
+        if list_of_scenes:
+            session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
+            if session_results:
+                atomic_result = 100 if all(session_results) else 0
+                score = self.calculate_atomic_score(atomic_result, max_score)
+                identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
+                self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
+        return score, identifier_result
+
+    # calculated on session level
+    def calculate_availability_posm(self, atomic_kpi):
+        max_score = atomic_kpi[SCORE]
+        target = atomic_kpi[TARGET]
+        filters = self.get_general_calculation_parameters(atomic_kpi)
+        filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
+        atomic_result = 0
+        if filters['scene_fk']:
+            facings = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['facings'].sum()
+            atomic_result = 100 if facings >= float(target) else 0
+        score = self.calculate_atomic_score(atomic_result, max_score)
+        return score
+
+    def is_by_scene(self, atomic_kpi):
+        return True if atomic_kpi[BY_SCENE] == 'Y' else False
+
+    def is_bonus_kpi(self, kpi):
+        return True if kpi[BONUS] == 'Y' else False
+
+    def match_brand_strip_to_brand(self, brands_series, brand_strips_series, target, scene):
+        # Option 2 - to b kept till deployment in case detailed breakdown of brand availability is necessary
+        # scene_results = []
+        # for brand, count in brands_series.iteritems():
+        #     try:
+        #         if count*int(float(target)) <= brand_strips_series[brand]:
+        #             brand_result = True
+        #         else:
+        #             brand_result = False
+        #     except KeyError:
+        #         Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
+        #         brand_result = False
+        #     scene_results.append(brand_result)
+        # return scene_results
+        for brand, count in brands_series.iteritems():
+            try:
+                if not count*int(float(target)) <= brand_strips_series[brand]:
+                    return False
+            except KeyError:
+                Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
+                return False
+        return True
+
+    def calculate_availability_sku_and_or(self, atomic_kpi, identifier_parent):
+        max_score = atomic_kpi[SCORE]
+        # is_by_scene = self.is_by_scene(atomic_kpi)
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
+                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        atomic_result = 0
+        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
+        if list_of_scenes:
+            filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+            if not filtered_scif.empty:
+                atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+                                                                              filters[KPI_SPECIFIC_FILTERS],
+                                                                              identifier_parent,
+                                                                              is_by_scene=False)
+            # if is_by_scene:
+            #     #Option 1 - retrieve using scene results from the kpi_scene_results
+            #     # session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
+            #     # if session_results:
+            #     #     atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+            #
+            #     # Option 2 - calculate scene results
+            #     session_results = []
+            #     for scene in list_of_scenes:
+            #         filters[GENERAL_FILTERS]['scene_fk'] = scene
+            #         scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+            #         if not scene_scif.empty:
+            #             scene_result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
+            #                                                                          filters[KPI_SPECIFIC_FILTERS],
+            #                                                                          identifier_parent,
+            #                                                                          is_by_scene=True)
+            #             session_results.append(scene_result)
+            #             # write result and score to DB by scene
+            #     if session_results:
+            #         atomic_result = 100 if all([result == 100 for result in session_results]) else 0
+            # else:
+            #     filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+            #     if not filtered_scif.empty:
+            #         atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+            #                                                                       filters[KPI_SPECIFIC_FILTERS],
+            #                                                                       identifier_parent,
+            #                                                                       is_by_scene=False)
+        score = self.calculate_atomic_score(atomic_result, max_score)
+        return score
+
+    def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene):
+        target = float(atomic_kpi[TARGET])
+        result = 0
+        availability_type = atomic_kpi[AVAILABILITY_TYPE]
+        calc_filters = filters.copy()
+        calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+            else scif[EAN_CODE].unique().tolist()
+        result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
+        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
+        if availability_type == AVAILABILITY_SKU_FACING_AND:
+            result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
+            # identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
+        elif availability_type == AVAILABILITY_SKU_FACING_OR:
+            result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+        else:
+            Log.warning('Availability of type {} is not supported'.format(availability_type))
+        return result
+
+#--------------------------------utility functions-----------------------------------#
+
+    def get_facing_number_by_item(self, facings_df, iter_list, filter_field, result_field=None):
+        facings_by_item = {}
+        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
+        for item in iter_list:
+            try:
+                key = self.all_products[self.all_products[filter_field] == item][result_field].values[0] if result_field else item
+                # key = facings_df[facings_df[filter_field] == item][result_field].values[0] if result_field else item
+                facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
+                facings_by_item.update({key: facings})
+            except Exception as e:
+                Log.info(str(e))
+                continue
+        return facings_by_item
+
+    def get_availability_and_price_calculation_parameters(self, atomic_kpi):
+        condition_filters = {}
+        relevant_columns = filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values)
+        for column in relevant_columns:
+            if atomic_kpi[column]:
+                if column.startswith('type'):
+                    condition_number = str(column.strip('type'))
+                    matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
+                                                relevant_columns)
+                    value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+                    if value_col:
+                        value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
+                                         self.split_and_strip(atomic_kpi[value_col]))
+                        condition_filters.update({atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
+                    # else:
+                    #     Log.info('condition {} does not have corresponding value column'.format(column)) # should it be error?
+        return condition_filters
+
+    @staticmethod
+    def get_string_or_number(field, value):
+        if field in NUMERIC_FIELDS:
+            try:
+                value = float(value)
+            except:
+                value = value
+        return value
+
+    def add_sku_availability_kpi_to_db(self, facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene):
+        if not is_by_scene:
+            atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+            for sku, facings in facings_by_sku.items():
+                custom_score = self.get_x_v(100) if facings >= target else self.get_x_v(0)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
+                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                                               should_enter=True)
+
+    @staticmethod
+    def get_facings_by_item(facings_df, iter_list, filter_field):
+        facings_by_item = {}
+        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
+        for item in iter_list:
+            facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
+            facings_by_item.update({item: facings})
+        return facings_by_item
+
+    def check_brand_strip(self, brand, df, target):
+        pass
+
+    @staticmethod
+    def calculate_atomic_score(atomic_result, max_score):
+        if max_score:
+            score = float(max_score) if atomic_result == 100 else 0
+        else:
+            score = atomic_result
+        return score
+
+    def string_or_list(self, string):
+        string_to_list = self.split_and_strip(string)
+        if len(string_to_list) == 1:
+            return string
+        else:
+            return string_to_list
+
+    def reflect_result_by_sku(self):
+        pass
+
+#-----------------functions not used for the time-being but could be used in future---------------#
+
+    # always by scene
+    def calculate_availability_brand_strips(self, atomic_kpi):
+        score = 0
+        max_score = atomic_kpi[SCORE]
+        target = atomic_kpi[TARGET]
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
+        # removed_field = filters[GENERAL_FILTERS].pop('manufacturer_name') #for debugging
+
+        #Option 1 - implement by scene calculations
+        # if list_of_scenes:
+        #     session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
+        #     if session_results:
+        #         atomic_result = 100 if all(session_results) else 0
+        #         score = self.calculate_atomic_score(atomic_result, max_score)
+
+        #Option 2- to imitate scene calculations
+        session_results = []
+        for scene in list_of_scenes:
+            scene_score = 0
+            filters[GENERAL_FILTERS]['scene_fk'] = scene
+            scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+            brands_count = scene_scif[~scene_scif[PRODUCT_TYPE].isin([POS, IRRELEVANT, EMPTY])].groupby(BRAND_NAME)[BRAND_NAME].count()
+            if not brands_count.empty:
+                scene_brand_strips_df = scene_scif[self.tools.get_filter_condition(scene_scif,
+                                                                                   **filters[KPI_SPECIFIC_FILTERS])]
+                brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)['facings'].sum()
+                scene_results = self.match_brand_strip_to_brand(brands_count, brand_strips_count, target, scene)
+                scene_score = 100 if scene_results else 0
+            session_results.append(scene_score)
+        if session_results:
+            atomic_result = 100 if all(session_results) else 0
+            score = self.calculate_atomic_score(atomic_result, max_score)
+        return score
 
     #always by scene
     def calculate_avialability_against_competitors(self, atomic_kpi):
@@ -1059,156 +1286,19 @@ class CCBZA_SANDToolBox:
             Log.info("Calculation of kpi {} by session is not supported".format(atomic_kpi[ATOMIC_KPI_NAME]))
         return score
 
-    # calculated on session level
-    def calculate_availability_posm(self, atomic_kpi):
-        max_score = atomic_kpi[SCORE]
-        target = atomic_kpi[TARGET]
-        filters = self.get_general_calculation_parameters(atomic_kpi)
-        filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
-        atomic_result = 0
-        if filters['scene_fk']:
-            facings = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['facings'].sum()
-            atomic_result = 100 if facings >= float(target) else 0
-        score = self.calculate_atomic_score(atomic_result, max_score)
-        return score
+    @staticmethod
+    def filter_df_based_on_filtering_dictionary(df, filters):
+        filtered_df = df.copy()
+        for column, criteria in filters.items():
+            if column in filtered_df.columns:
+                if isinstance(criteria, list):
+                    filtered_df = filtered_df[filtered_df[column].isin(criteria)]
+                else:
+                    filtered_df = filtered_df[filtered_df[column] == criteria]
+        return filtered_df
 
-    # always by scene
-    def calculate_availability_brand_strips(self, atomic_kpi):
-        score = 0
-        max_score = atomic_kpi[SCORE]
-        target = atomic_kpi[TARGET]
-        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
-        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
-        # removed_field = filters[GENERAL_FILTERS].pop('manufacturer_name') #for debugging
-
-        #Option 1 - implement by scene calculations
-        # if list_of_scenes:
-        #     session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
-        #     if session_results:
-        #         atomic_result = 100 if all(session_results) else 0
-        #         score = self.calculate_atomic_score(atomic_result, max_score)
-
-        #Option 2- to imitate scene calculations
-        session_results = []
-        for scene in list_of_scenes:
-            scene_score = 0
-            filters[GENERAL_FILTERS]['scene_fk'] = scene
-            scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
-            brands_count = scene_scif[~scene_scif[PRODUCT_TYPE].isin([POS, IRRELEVANT, EMPTY])].groupby(BRAND_NAME)[BRAND_NAME].count()
-            if not brands_count.empty:
-                scene_brand_strips_df = scene_scif[self.tools.get_filter_condition(scene_scif,
-                                                                                   **filters[KPI_SPECIFIC_FILTERS])]
-                brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)['facings'].sum()
-                scene_results = self.match_brand_strip_to_brand(brands_count, brand_strips_count, target, scene)
-                scene_score = 100 if scene_results else 0
-            session_results.append(scene_score)
-        if session_results:
-            atomic_result = 100 if all(session_results) else 0
-            score = self.calculate_atomic_score(atomic_result, max_score)
-        return score
-
-    def is_by_scene(self, atomic_kpi):
-        return True if atomic_kpi[BY_SCENE] == 'Y' else False
-
-    def is_bonus_kpi(self, kpi):
-        return True if kpi[BONUS] == 'Y' else False
-
-    def match_brand_strip_to_brand(self, brands_series, brand_strips_series, target, scene):
-        # Option 2 - to b kept till deployment in case detailed breakdown of brand availability is necessary
-        # scene_results = []
-        # for brand, count in brands_series.iteritems():
-        #     try:
-        #         if count*int(float(target)) <= brand_strips_series[brand]:
-        #             brand_result = True
-        #         else:
-        #             brand_result = False
-        #     except KeyError:
-        #         Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
-        #         brand_result = False
-        #     scene_results.append(brand_result)
-        # return scene_results
-        for brand, count in brands_series.iteritems():
-            try:
-                if not count*int(float(target)) <= brand_strips_series[brand]:
-                    return False
-            except KeyError:
-                Log.info('Brand strip for brand {} does not exist in scene {}'.format(brand, scene))
-                return False
-        return True
-
-    def calculate_availability_sku_and_or(self, atomic_kpi, identifier_parent):
-        max_score = atomic_kpi[SCORE]
-        is_by_scene = self.is_by_scene(atomic_kpi)
-        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
-        atomic_result = 0
-        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
-        if list_of_scenes:
-            if is_by_scene:
-                #Option 1 - retrieve using scene results from the kpi_scene_results
-                # session_results = self.get_atomic_results_all_scenes(atomic_kpi, list_of_scenes)
-                # if session_results:
-                #     atomic_result = 100 if all([result == 100 for result in session_results]) else 0
-
-                # Option 2 - calculate scene results
-                session_results = []
-                for scene in list_of_scenes:
-                    filters[GENERAL_FILTERS]['scene_fk'] = scene
-                    scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
-                    if not scene_scif.empty:
-                        scene_result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
-                                                                                     filters[KPI_SPECIFIC_FILTERS],
-                                                                                     identifier_parent,
-                                                                                     is_by_scene=True)
-                        session_results.append(scene_result)
-                        # write result and score to DB by scene
-                if session_results:
-                    atomic_result = 100 if all([result == 100 for result in session_results]) else 0
-            else:
-                filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
-                if not filtered_scif.empty:
-                    atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
-                                                                                  filters[KPI_SPECIFIC_FILTERS],
-                                                                                  identifier_parent,
-                                                                                  is_by_scene=False)
-        score = self.calculate_atomic_score(atomic_result, max_score)
-        return score
-
-    def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene):
-        target = float(atomic_kpi[TARGET])
-        result = 0
-        availability_type = atomic_kpi[AVAILABILITY_TYPE]
-        calc_filters = filters.copy()
-        calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
-            else scif[EAN_CODE].unique().tolist()
-        result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
-        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
-        if availability_type == AVAILABILITY_SKU_FACING_AND:
-            result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
-            # identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
-        elif availability_type == AVAILABILITY_SKU_FACING_OR:
-            result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
-        else:
-            Log.warning('Availability of type {} is not supported'.format(availability_type))
-        return result
-
-    def get_facing_number_by_item(self, facings_df, iter_list, filter_field, result_field=None):
-        facings_by_item = {}
-        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
-        for item in iter_list:
-            try:
-                key = self.all_products[self.all_products[filter_field] == item][result_field].values[0] if result_field else item
-                # key = facings_df[facings_df[filter_field] == item][result_field].values[0] if result_field else item
-                facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
-                facings_by_item.update({key: facings})
-            except Exception as e:
-                Log.info(str(e))
-                continue
-        return facings_by_item
-
-    # def calculate_availability_sku_facing_and(self, atomic_kpi):
+#-------------obsolete functions---------------------#
+# def calculate_availability_sku_facing_and(self, atomic_kpi):
     #     max_score = atomic_kpi[SCORE]
     #     is_by_scene = self.is_by_scene(atomic_kpi)
     #     filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi,
@@ -1266,33 +1356,6 @@ class CCBZA_SANDToolBox:
     #     score = self.calculate_atomic_score(atomic_result, max_score)
     #     return score
 
-    def get_availability_and_price_calculation_parameters(self, atomic_kpi):
-        condition_filters = {}
-        relevant_columns = filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values)
-        for column in relevant_columns:
-            if atomic_kpi[column]:
-                if column.startswith('type'):
-                    condition_number = str(column.strip('type'))
-                    matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
-                                                relevant_columns)
-                    value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
-                    if value_col:
-                        value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
-                                         self.split_and_strip(atomic_kpi[value_col]))
-                        condition_filters.update({atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
-                    else:
-                        Log.info('condition {} does not have corresponding value column'.format(column)) # should it be error?
-        return condition_filters
-
-    @staticmethod
-    def get_string_or_number(field, value):
-        if field in NUMERIC_FIELDS:
-            try:
-                value = float(value)
-            except:
-                value = value
-        return value
-
     # def calculate_availability_result_all_skus(self, scif, filters, atomic_kpi):
     #     target = float(atomic_kpi[TARGET])
     #     calc_filters = filters[KPI_SPECIFIC_FILTERS].copy()
@@ -1320,43 +1383,3 @@ class CCBZA_SANDToolBox:
     #     # result = 100 if facings >= target else 0
     #     # I am not sure we will need to write to db by sku in this case - does not make much sense
     #     return result
-
-    def add_sku_availability_kpi_to_db(self, facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene):
-        if not is_by_scene:
-            atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
-            for sku, facings in facings_by_sku.items():
-                custom_score = self.get_x_v(100) if facings >= target else self.get_x_v(0)
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
-                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               should_enter=True)
-
-    @staticmethod
-    def get_facings_by_item(facings_df, iter_list, filter_field):
-        facings_by_item = {}
-        iter_list = iter_list if isinstance(iter_list, list) else [iter_list]
-        for item in iter_list:
-            facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
-            facings_by_item.update({item: facings})
-        return facings_by_item
-
-    def check_brand_strip(self, brand, df, target):
-        pass
-
-    @staticmethod
-    def calculate_atomic_score(atomic_result, max_score):
-        if max_score:
-            score = float(max_score) if atomic_result == 100 else 0
-        else:
-            score = atomic_result
-        return score
-
-    def string_or_list(self, string):
-        string_to_list = self.split_and_strip(string)
-        if len(string_to_list) == 1:
-            return string
-        else:
-            return string_to_list
-
-    def reflect_result_by_sku(self):
-        pass
