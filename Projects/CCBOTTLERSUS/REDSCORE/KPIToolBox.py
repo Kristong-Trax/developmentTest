@@ -230,6 +230,8 @@ class CCBOTTLERSUSREDToolBox:
                     return False
             if filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
                 return False
+        if len(packages) > 1:
+            return False
         return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
@@ -301,6 +303,7 @@ class CCBOTTLERSUSREDToolBox:
             relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
             for i, exc_line in relevant_exclusions.iterrows():
                 relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
         den_value = kpi_line[Const.DEN_VALUES_1]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
@@ -334,6 +337,7 @@ class CCBOTTLERSUSREDToolBox:
             relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
             for i, exc_line in relevant_exclusions.iterrows():
                 relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
         den_value = kpi_line[Const.DEN_VALUES_1]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
