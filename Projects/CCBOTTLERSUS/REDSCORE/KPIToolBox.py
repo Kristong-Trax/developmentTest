@@ -494,17 +494,17 @@ class CCBOTTLERSUSREDToolBox:
         writes all the KPI in the DB: first the session's ones, second the scene's ones and in the end the ones
         that depends on the previous ones. After all it writes the red score
         """
-        self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
-        self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
+        # self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
+        # self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
         main_template = self.templates[Const.KPIS]
         self.write_session_kpis(main_template)
         if self.calculation_type == Const.SOVI:
             self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
         self.write_to_db(self.RED_SCORE, self.red_score, red_score=True)
-        result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
-        self.all_results = self.all_results.append(result_dict, ignore_index=True)####
-        self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
+        # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
+        # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
+        # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
 
     def write_session_kpis(self, main_template):
         """
