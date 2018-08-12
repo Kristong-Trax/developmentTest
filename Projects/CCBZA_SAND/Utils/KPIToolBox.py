@@ -370,6 +370,7 @@ class CCBZA_SANDToolBox:
         red_score_percent = float(red_score) / red_target * 100
         red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(RED_SCORE)
         self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, score=red_score,
+                                       identifier_result=identifier_result_red_score,
                                        denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
         self.common.commit_results_data()
@@ -762,6 +763,7 @@ class CCBZA_SANDToolBox:
             filters = self.get_general_calculation_parameters(atomic_kpi)
             atomic_result = 0
             if filters['scene_fk']:
+                filters['scene_id'] = filters.pop('scene_fk')
                 # scif = self.scif
                 # matches = self.match_product_in_scene
                 # merged_df = matches.merge(scif, left_on='product_fk', right_on='item_id', how='left')
@@ -798,11 +800,11 @@ class CCBZA_SANDToolBox:
         """
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
-            survey_id = [int(float(atomic_kpi[SURVEY_QUESTION_CODE]))] #uncomment when we have the questions - delete next line
+            survey_id = [str(int(float(atomic_kpi[SURVEY_QUESTION_CODE])))] #uncomment when we have the questions - delete next line
             # survey_id = [atomic_kpi[SURVEY_QUESTION_CODE]] # what is the data type of survey Q code?
             expected_answers = self.split_and_strip(atomic_kpi[EXPECTED_RESULT])
             survey_max_score = atomic_kpi[SCORE]
-            survey_answer = self.tools.get_survey_answer(('question_fk', survey_id))
+            survey_answer = self.tools.get_survey_answer(('code', survey_id))
             score = 0
             if survey_answer:
                 if survey_max_score:
@@ -888,8 +890,8 @@ class CCBZA_SANDToolBox:
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write atomic result to db aggregated conditions- need mobile mock-up grocery
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if number_of_conditions > 1:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
                                                score=atomic_score, identifier_parent=identifier_parent,
                                                identifier_result=self.get_identfier_result_atomic(atomic_kpi),
@@ -1108,14 +1110,15 @@ class CCBZA_SANDToolBox:
             else scif[EAN_CODE].unique().tolist()
         result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
         facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
-        if availability_type == AVAILABILITY_SKU_FACING_AND:
-            result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
-            # identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
-        elif availability_type == AVAILABILITY_SKU_FACING_OR:
-            result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
-        else:
-            Log.warning('Availability of type {} is not supported'.format(availability_type))
+        if facings_by_sku:
+            if availability_type == AVAILABILITY_SKU_FACING_AND:
+                result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
+                # identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+                self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
+            elif availability_type == AVAILABILITY_SKU_FACING_OR:
+                result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+            else:
+                Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
 
 #--------------------------------utility functions-----------------------------------#
@@ -1130,7 +1133,7 @@ class CCBZA_SANDToolBox:
                 facings = facings_df[facings_df[filter_field] == item]['facings'].sum()
                 facings_by_item.update({key: facings})
             except Exception as e:
-                Log.info(str(e))
+                Log.info('SKU {} is not in the DB. {}'.format(item, str(e)))
                 continue
         return facings_by_item
 
