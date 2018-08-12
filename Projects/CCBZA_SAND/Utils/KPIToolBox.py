@@ -859,6 +859,8 @@ class CCBZA_SANDToolBox:
             general_filters = self.get_general_calculation_parameters(atomic_kpi)
             atomic_result = 0
             number_of_conditions = 0
+            identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+            conditions_details = []
             if general_filters['scene_fk']:
                 scif = self.scif.copy()
                 filtered_scif = scif[self.tools.get_filter_condition(scif, **general_filters)]
@@ -867,35 +869,66 @@ class CCBZA_SANDToolBox:
                     number_of_conditions = len(sos_filters.items())
                     conditions_results = []
                     for condition, filters in sos_filters.items():
-                        # target = float(filters[condition].pop('target'))/100
                         target = float(filters.pop('target')) / 100
                         ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
                         condition_score = 100 if ratio >= target else 0
                         conditions_results.append(condition_score)
+                        conditions_details.append({'ratio': ratio, 'num_res': num_res, 'denom_res': denom_res,
+                                                   'target': target})
 
                         # write condition result to DB
                         custom_score = self.get_pass_fail(condition_score)
-                        atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
-                                        else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
-                        kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
-                        identifier_parent_condition = identifier_parent if number_of_conditions == 1 else \
-                            self.get_identfier_result_atomic(atomic_kpi)
-                        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+                        atomic_name ='{}_{}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                        kpi_fk_cond = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+                        # identifier_parent_condition = self.get_identfier_result_atomic(atomic_kpi)
+                        self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=KO_ID, numerator_result=num_res,
                                                        denominator_id=self.store_id, denominator_result=denom_res,
                                                        result=ratio, score=custom_score,
-                                                       identifier_parent=identifier_parent_condition,
+                                                       identifier_parent=identifier_result,
                                                        target=target, should_enter=True)
+
+                        # custom_score = self.get_pass_fail(condition_score)
+                        # atomic_name = atomic_kpi[ATOMIC_KPI_NAME] if number_of_conditions == 1 \
+                        #                 else '{} {}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+                        # identifier_parent_condition = identifier_parent if number_of_conditions == 1 else \
+                        #     self.get_identfier_result_atomic(atomic_kpi)
+                        # self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+                        #                                denominator_id=self.store_id, denominator_result=denom_res,
+                        #                                result=ratio, score=custom_score,
+                        #                                identifier_parent=identifier_parent_condition,
+                        #                                target=target, should_enter=True)
                     if conditions_results:
                         atomic_result = 100 if all(conditions_results) else 0
+
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
             # write atomic result to db aggregated conditions- need mobile mock-up grocery
-            if number_of_conditions > 1:
+            if number_of_conditions > 0:
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
-                                               score=atomic_score, identifier_parent=identifier_parent,
-                                               identifier_result=self.get_identfier_result_atomic(atomic_kpi),
-                                               should_enter=True)
+                if max_score:
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+                                                   score=atomic_score, identifier_parent=identifier_parent,
+                                                   identifier_result=identifier_result, should_enter=True,
+                                                   target=max_score)
+                else:
+                    custom_score_db = self.get_pass_fail(atomic_score)
+                    numerator_result = conditions_details[0]['num_res'] if number_of_conditions == 1 else 0
+                    denominator_result = conditions_details[0]['denom_res'] if number_of_conditions == 1 else 0
+                    actual_ratio = conditions_details[0]['ratio'] if number_of_conditions == 1 else 0
+                    target_atomic = conditions_details[0]['ratio'] if number_of_conditions == 1 else None
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=numerator_result,
+                                                   denominator_id=self.store_id, denominator_result=denominator_result,
+                                                   result=actual_ratio, score=custom_score_db,
+                                                   identifier_parent=identifier_parent,
+                                                   identifier_result=identifier_result,
+                                                   target=target_atomic, should_enter=True)
+
+                # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+                # self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+                #                                score=atomic_score, identifier_parent=identifier_parent,
+                #                                identifier_result=self.get_identfier_result_atomic(atomic_kpi),
+                #                                should_enter=True)
 
     def calculate_sos_for_condition(self, scif, filters):
         numer_result = scif[self.tools.get_filter_condition(scif, **filters['numer'])]['facings'].sum()
