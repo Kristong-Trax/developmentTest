@@ -196,8 +196,10 @@ class CCBOTTLERSUSREDToolBox:
                 return False
             question = ('question_fk', int(question_id))
         answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
+        min_answer = None if kpi_line[Const.REQUIRED_ANSWER] == '' else True
         for answer in answers:
-            if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
+            if self.survey.check_survey_answer(
+                    survey_text=question, target_answer=answer, min_required_answer=min_answer):
                 return True
         return False
 
@@ -218,6 +220,7 @@ class CCBOTTLERSUSREDToolBox:
             if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
                 continue
             filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
+            filtered_scif = filtered_scif.fillna("NAN")
             target = kpi_line[Const.TARGET]
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
@@ -491,17 +494,17 @@ class CCBOTTLERSUSREDToolBox:
         writes all the KPI in the DB: first the session's ones, second the scene's ones and in the end the ones
         that depends on the previous ones. After all it writes the red score
         """
-        # self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
-        # self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
+        self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
+        self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
         main_template = self.templates[Const.KPIS]
         self.write_session_kpis(main_template)
         if self.calculation_type == Const.SOVI:
             self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
         self.write_to_db(self.RED_SCORE, self.red_score, red_score=True)
-        # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
-        # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
-        # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
+        result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
+        self.all_results = self.all_results.append(result_dict, ignore_index=True)####
+        self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
 
     def write_session_kpis(self, main_template):
         """
