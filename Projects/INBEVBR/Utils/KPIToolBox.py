@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.0 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.1 - KENGINE - AUGUST.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -127,6 +127,7 @@ class INBEVBRToolBox:
 
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
+        denominator_number_of_total_facings = 0
         count_result = 0
 
         # bring the kpi rows from the sos sheet
@@ -170,7 +171,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=denominator_number_of_total_facings, result=count_result)
 
     def handle_sos_packs_atomics(self,atomic_id, atomic_name):
 
@@ -237,7 +238,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=number_of_valid_scenes,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_count_atomics(self, atomic_id, atomic_name):
 
@@ -264,6 +265,7 @@ class INBEVBRToolBox:
         if count_type == Const.FACING:
             number_of_facings = self.count_of_facings(df, filters)
             count_result = weight if number_of_facings >= target else 0
+            numerator_number_of_facings = number_of_facings
         elif count_type == Const.SCENES:
             secondary_target = row[Const.SECONDARY_TARGET].values[0]
             scene_types_groupby = self.count_of_scenes(df, filters)
@@ -282,13 +284,13 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name):
 
         target = 0
         count_result = 0
-        numerator_number_of_facings = 0
+        group_numerator_number_of_facings = 0
         group_score = 0
 
         # bring the kpi rows from the group_count sheet
@@ -309,6 +311,7 @@ class INBEVBRToolBox:
             if count_type == Const.FACING:
                 number_of_facings = self.count_of_facings(self.scif, filters)
                 if number_of_facings >= target:
+                    group_numerator_number_of_facings += number_of_facings
                     group_score += score
                     if group_score >= 100:
                         count_result = weight
@@ -324,8 +327,8 @@ class INBEVBRToolBox:
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+                                           numerator_result=group_numerator_number_of_facings,
+                                           denominator_result=0, result=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.STORE_TYPE_TEMPLATE]
@@ -451,8 +454,8 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=survey_result,
-                                           result=survey_result)
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
+                                           denominator_result=0, result=survey_result)
 
     def handle_prod_seq_atomics(self, atomic_id, atomic_name):
         result = 0
@@ -509,7 +512,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_shelfs,
-                                           denominator_result=target, result=result)
+                                           denominator_result=denominator_shelfs, result=result)
 
     def check_order_prod_seq(self, list_df, filtered_rows, num_of_products):
         shelf_fail = False
@@ -601,7 +604,7 @@ class INBEVBRToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_shelfs,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=denominator_shelfs, result=count_result)
 
     def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
         result = False

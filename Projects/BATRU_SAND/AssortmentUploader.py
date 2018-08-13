@@ -110,15 +110,16 @@ class BATRU_SANDBatruAssortment:
     def parse_assortment_template(self):
         """
         This functions turns the csv into DF
+        It tries to handle all of the possible format situation that I encountered yet (different delimiter and unicode)
         :return: DF that contains the store_number_1 (Outlet ID) and the product_ean_code of the assortments
         """
         data = pd.read_csv(self.file_path, sep='\t')
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
+            data = pd.read_csv(self.file_path)
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
+            data = pd.read_csv(self.file_path, encoding='utf-7')
         data = data.drop_duplicates(subset=data.columns, keep='first')
         data = data.fillna('')
-        if len(data.columns) != 2:
-            data = pd.read_csv(self.file_path)
-            data = data.drop_duplicates(subset=data.columns, keep='first')
-            data = data.fillna('')
         return data
 
     def set_end_date_for_irrelevant_assortments(self, stores_list):

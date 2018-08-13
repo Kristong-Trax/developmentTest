@@ -74,7 +74,7 @@ class CCRU_SANDHypermarket2018Calculations:
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HYPERMARKET2018)
 # Sergey
-        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+#        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
 # Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HYPERMARKET2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
