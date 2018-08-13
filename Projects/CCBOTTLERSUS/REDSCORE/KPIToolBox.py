@@ -196,8 +196,10 @@ class CCBOTTLERSUSREDToolBox:
                 return False
             question = ('question_fk', int(question_id))
         answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
+        min_answer = None if kpi_line[Const.REQUIRED_ANSWER] == '' else True
         for answer in answers:
-            if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
+            if self.survey.check_survey_answer(
+                    survey_text=question, target_answer=answer, min_required_answer=min_answer):
                 return True
         return False
 
@@ -218,6 +220,7 @@ class CCBOTTLERSUSREDToolBox:
             if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
                 continue
             filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
+            filtered_scif = filtered_scif.fillna("NAN")
             target = kpi_line[Const.TARGET]
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
