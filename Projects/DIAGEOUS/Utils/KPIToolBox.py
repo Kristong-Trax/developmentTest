@@ -393,6 +393,8 @@ class DIAGEOUSToolBox:
                                     (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
             result = self.get_score(num_res, den_res)
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if sub_brand_fk == 0:
+                continue
             self.common.write_to_db_result(
                 fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
                 result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
@@ -403,6 +405,8 @@ class DIAGEOUSToolBox:
                 diageo_facings = num_res
                 manufacturer_target = target
             result = self.get_score(num_res, den_res)
+            if manufacturer_fk == 0:
+                continue
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
@@ -456,6 +460,8 @@ class DIAGEOUSToolBox:
                 diageo_result, diageo_results = result, num_res
                 target_manufacturer = target
             result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
+            if manufacturer == 0:
+                continue
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
@@ -482,7 +488,7 @@ class DIAGEOUSToolBox:
         manufacturer = self.get_manufacturer(product_fk)
         sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
-        if sum_scenes_passed == 0:
+        if sum_scenes_passed == 0 or product_fk == 0:
             return None
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
@@ -534,7 +540,7 @@ class DIAGEOUSToolBox:
         our_fks = our_lines['product_fk'].unique().tolist()
         product_fk = our_fks[0]
         product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
-        if product_assortment_line.empty:
+        if product_assortment_line.empty or product_fk == 0:
             return None
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
@@ -549,6 +555,8 @@ class DIAGEOUSToolBox:
                 comp_fks = comp_lines['product_fk'].unique().tolist()
                 comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
                 bench_value = competition[Const.BENCH_VALUE]
+                if type(bench_value) in (unicode, str):
+                    bench_value = float(bench_value.replace("%", "")) / 100
                 target = comp_facings * bench_value
         elif self.does_exist(competition[Const.BENCH_VALUE]):
             target = competition[Const.BENCH_VALUE]
@@ -588,6 +596,8 @@ class DIAGEOUSToolBox:
             if product_facing is None or np.isnan(product_facing):
                 product_facing = 0
             amount_of_facings += product_facing
+            if product_fk == 0:
+                continue
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
                 should_enter=True, identifier_parent=parent_identifier, target=target)
@@ -641,7 +651,7 @@ class DIAGEOUSToolBox:
             return None
         product_fk = product_fk.iloc[0]
         product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
-        if product_assortment_line.empty:
+        if product_assortment_line.empty or product_fk == 0:
             return None
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
@@ -754,7 +764,7 @@ class DIAGEOUSToolBox:
         product_fk = our_line['product_fk'].iloc[0]
         result_dict = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
         our_price = self.calculate_sku_price(product_fk, relevant_scenes, result_dict)
-        if our_price is None:
+        if our_price is None or product_fk == 0:
             return None
         is_competitor = (self.does_exist(comp_ean) and
                          self.does_exist(min_relative) and self.does_exist(max_relative))
@@ -800,7 +810,7 @@ class DIAGEOUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SKU])
         price = self.products_with_prices[(self.products_with_prices['product_fk'] == product_fk) &
                                           (self.products_with_prices['scene_fk'].isin(scenes))]['price_value']
-        if price.empty:
+        if price.empty or product_fk == 0:
             return None
         result = round(price.iloc[0], 1)
         self.common.write_to_db_result(
@@ -997,7 +1007,7 @@ class DIAGEOUSToolBox:
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
         for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
-            if sub_brand is None or np.isnan(sub_brand):
+            if sub_brand is None or np.isnan(sub_brand) or sub_brand == 0:
                 continue
             sub_brand_results = brand_results[(brand_results[Const.BRAND] == brand) &
                                               (brand_results[Const.SUB_BRAND] == sub_brand)]
