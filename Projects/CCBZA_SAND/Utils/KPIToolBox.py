@@ -373,7 +373,7 @@ class CCBZA_SANDToolBox:
                                        identifier_result=identifier_result_red_score,
                                        denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
-        self.common.commit_results_data()
+        # self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -1138,11 +1138,15 @@ class CCBZA_SANDToolBox:
         target = float(atomic_kpi[TARGET])
         result = 0
         availability_type = atomic_kpi[AVAILABILITY_TYPE]
-        calc_filters = filters.copy()
-        calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
-            else scif[EAN_CODE].unique().tolist()
-        result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
-        facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
+        result_df = scif[self.tools.get_filter_condition(scif, **filters)]
+        sku_list = filters[EAN_CODE] if EAN_CODE in filters.keys() else result_df[EAN_CODE].unique().tolist()
+        #     else scif[EAN_CODE].unique().tolist()
+        # calc_filters = filters.copy()
+        # calc_filters[EAN_CODE] = calc_filters[EAN_CODE] if EAN_CODE in calc_filters.keys() \
+        #     else scif[EAN_CODE].unique().tolist()
+        # result_df = scif[self.tools.get_filter_condition(scif, **calc_filters)]
+        # facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
+        facings_by_sku = self.get_facing_number_by_item(result_df, sku_list, EAN_CODE, PRODUCT_FK)
         if facings_by_sku:
             if availability_type == AVAILABILITY_SKU_FACING_AND:
                 result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
