@@ -114,9 +114,9 @@ class BATRU_SANDBatruAssortment:
         :return: DF that contains the store_number_1 (Outlet ID) and the product_ean_code of the assortments
         """
         data = pd.read_csv(self.file_path, sep='\t')
-        if OUTLET_ID not in data.columns() or EAN_CODE not in data.columns():
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
             data = pd.read_csv(self.file_path)
-        if OUTLET_ID not in data.columns() or EAN_CODE not in data.columns():
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
             data = pd.read_csv(self.file_path, encoding='utf-7')
         data = data.drop_duplicates(subset=data.columns, keep='first')
         data = data.fillna('')
