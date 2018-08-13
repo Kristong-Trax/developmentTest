@@ -116,7 +116,10 @@ class PURINAToolBox:
         :return:
         """
 
-        data = self.scif.dropna(subset=[SCIF_SUBSEGMENT, LINEAR_SIZE, SCIF_PRICE])
+        data = self.scif.dropna(subset=[SCIF_SUBSEGMENT, LINEAR_SIZE])
+        if data.empty:
+            Log.info("No relevant purina's products were found in session.")
+            return
 
         subseg_name_list = data[SCIF_SUBSEGMENT].unique()
         for subseg in subseg_name_list:
@@ -153,17 +156,6 @@ class PURINAToolBox:
                     except:
                         print ''
 
-                    prices = by_brand[SCIF_PRICE].unique()
-                    for price_class in prices:
-                        by_prices = by_brand.loc[data[SCIF_PRICE] == price_class]
-                        price_ft = self.cm_to_ft(sum(by_prices[LINEAR_SIZE]))
-                        # write to db under price atomic kpi score with brand name in results
-                        if price_ft:
-                            atomic_fk = self.get_kpi_fk_by_kpi_name(price_class, self.LEVEL3, father=PRICE_KPI,
-                                                                    set_name=PRICE_SET)
-                            self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=price_ft,
-                                                               result=subseg, result_2=mf, result_3=brand)
-
                     sub_cats = by_brand[SCIF_SUB_CATEOGRY].unique()
                     for sub_cat in sub_cats:
                         by_sub_cat = by_brand.loc[data[SCIF_SUB_CATEOGRY] == sub_cat]
@@ -174,7 +166,17 @@ class PURINAToolBox:
                                                                     set_name=SUBSEGMENT_SET)
                             self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=sub_cat_ft,
                                                                result=subseg, result_2=mf, result_3=brand)
-
+                    by_brand = by_brand.dropna(subset=[SCIF_PRICE])
+                    prices = by_brand[SCIF_PRICE].unique()
+                    for price_class in prices:
+                        by_prices = by_brand.loc[data[SCIF_PRICE] == price_class]
+                        price_ft = self.cm_to_ft(sum(by_prices[LINEAR_SIZE]))
+                        # write to db under price atomic kpi score with brand name in results
+                        if price_ft:
+                            atomic_fk = self.get_kpi_fk_by_kpi_name(price_class, self.LEVEL3, father=PRICE_KPI,
+                                                                    set_name=PRICE_SET)
+                            self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=price_ft,
+                                                               result=subseg, result_2=mf, result_3=brand)
     @staticmethod
     def cm_to_ft(cm):
         return cm / 30.48
