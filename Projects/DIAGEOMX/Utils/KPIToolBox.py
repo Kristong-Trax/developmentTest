@@ -37,7 +37,6 @@ def log_runtime(description, log_start=False):
         return wrapper
     return decorator
 
-
 class DIAGEOMXToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
