@@ -16,7 +16,7 @@ from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'urid'
 
-HRCRESTAURANT2018 = 'Pos 2018 - HoReCa (Restaurant/Cafe)'
+HRCRESTAURANT2018 = 'Pos 2018 - HoReCa - Restaurant Cafe'
 HRCRESTAURANT2018_GAPS = 'Pos 2018 - Horeca cafe'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
@@ -69,7 +69,7 @@ class CCRU_SANDHRCRestaurant2018Calculations:
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HRCRESTAURANT2018)
 # Sergey
-        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+#        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
 # Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HRCRESTAURANT2018_GAPS)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
