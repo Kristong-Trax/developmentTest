@@ -64,6 +64,10 @@ class TestCCBZA_SAND(MockingTestCase):
         self.output = MagicMock()
         # self.common_mock = self.mock_common()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
+        self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
+        self.session_info_mock = self.mock_session_info()
+        self.store_assortment_mock = self.mock_store_assortment()
+
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
 
@@ -74,6 +78,15 @@ class TestCCBZA_SAND(MockingTestCase):
         def get_item(key):
             return self.data_provider_data_mock[key] if key in self.data_provider_data_mock else MagicMock()
         self.data_provider_mock.__getitem__.side_effect = get_item
+
+    def mock_ps_data_provider_project_connector(self):
+        return self.mock_object('PsDataProvider.rds_connection', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
+
+    def mock_session_info(self):
+        return self.mock_object('SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
+
+    def mock_store_assortment(self):
+        return self.mock_object('PsDataProvider.get_store_assortment', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
 
     def mock_project_connector(self):
         return self.mock_object('ProjectConnector')
@@ -97,7 +110,7 @@ class TestCCBZA_SAND(MockingTestCase):
     def mock_template_data(self):
         template_data_mock = self.mock_object('CCBZA_SANDToolBox.get_template_data')
         template_data = {}
-        template_path = '{}/Data/Template_L&T_test.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
+        template_path = '{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
         print template_path
         sheet_names = pd.ExcelFile(template_path).sheet_names
         for sheet in sheet_names:
@@ -114,6 +127,10 @@ class TestCCBZA_SAND(MockingTestCase):
 
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
+
+    def mock_scene_kpi_results(self, data):
+        scene_data = self.mock_object('PsDataProvider.get_scene_results', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
+        scene_data.return_value = data
 
     def mock_kpi_result_value_table(self):
         kpi_result_value = self.mock_object('CCBZA_SANDToolBox.get_kpi_result_values_df')
@@ -188,7 +205,7 @@ class TestCCBZA_SAND(MockingTestCase):
         print kpi_sets
         self.assertItemsEqual(kpi_sets, DataTestUnitCCBZA_SAND.kpi_set_names_from_template)
 
-    def test_scif_property_of_tool_box_returns_scif_filtered_by_manufacturer(self):
+    def test_scif_property_of_tool_box_returns_scif_filtered_by_manufacturer(self): # not relevant - to be deleted
         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
         scif = tool_box.scif
@@ -196,7 +213,7 @@ class TestCCBZA_SAND(MockingTestCase):
         self.assertIsInstance(scif, pd.DataFrame)
         self.assertItemsEqual(expected_pk_list, scif['pk'].values)
 
-    def test_scif_property_of_tool_box_returns_empty_scif_if_no_products_by_manufacturer(self):
+    def test_scif_property_of_tool_box_returns_empty_scif_if_no_products_by_manufacturer(self): # not relevant - to be deleted
         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_no_manufacturer)
         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
         scif = tool_box.scif
@@ -204,8 +221,11 @@ class TestCCBZA_SAND(MockingTestCase):
 
     def test_toolbox_properties(self):
         self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
+        self.mock_scene_kpi_results(DataTestUnitCCBZA_SAND.scene_kpi_results_1)
         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
-        print tool_box.kpi_result_values
+        # print tool_box.kpi_result_values
+        # print tool_box.scene_kpi_results
+        print tool_box.template_data['KPI']
         # self.mock_scene_item_facts(SCIFDataTestCCBZA_SAND.scif_for_filtering)
         # print tool_box.scif
         # print tool_box.scif_KO_only
@@ -261,7 +281,6 @@ class TestCCBZA_SAND(MockingTestCase):
         expected_list_after_split = []
         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_empty_string
         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
-        print kpi_types
         self.assertItemsEqual(kpi_types, expected_list_after_split)
         self.assertIsInstance(kpi_types, list)
         self.assertFalse(kpi_types)
@@ -270,7 +289,6 @@ class TestCCBZA_SAND(MockingTestCase):
         expected_list_after_split = ['Availability KPI', 'SOS', 'Count']
         string_to_split = DataTestUnitCCBZA_SAND.kpi_types_name_with_space
         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
-        print kpi_types
         self.assertItemsEqual(kpi_types, expected_list_after_split)
         self.assertIsInstance(kpi_types, list)
         self.assertTrue(kpi_types)
@@ -279,9 +297,52 @@ class TestCCBZA_SAND(MockingTestCase):
         expected_list_after_split = ['200']
         string_to_split = DataTestUnitCCBZA_SAND.string_represented_by_number
         kpi_types = CCBZA_SANDToolBox.split_and_strip(string_to_split)
-        print kpi_types
         self.assertItemsEqual(kpi_types, expected_list_after_split)
         self.assertIsInstance(kpi_types, list)
+
+    def test_string_or_list_returns_string_if_one_value_in_string(self):
+        tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+        expected_result = 'Price'
+        input_value = DataTestUnitCCBZA_SAND.kpi_types_one_value
+        output_value = tool_box.string_or_list(input_value)
+        self.assertEquals(expected_result, output_value)
+        self.assertIsInstance(output_value, str)
+
+    def test_string_or_list_returns_trimmed_list_if_values_separated_by_comma(self):
+        tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+        expected_list = ['Price', 'Survey', 'Availability', 'SOS', 'Count']
+        input_value = DataTestUnitCCBZA_SAND.kpi_types_split_by_comma
+        output_value = tool_box.string_or_list(input_value)
+        self.assertEquals(expected_list, output_value)
+        self.assertIsInstance(output_value, list)
+
+    def test_string_or_list_returns_empty_list_if_empty_input_string(self):
+        tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)
+        input_value = DataTestUnitCCBZA_SAND.kpi_types_empty_string
+        output_value = tool_box.string_or_list(input_value)
+        self.assertFalse(output_value)
+        self.assertIsInstance(output_value, list)
+
+    def test_get_string_or_number_returns_number_if_numeric_field(self):
+        field, input_value = 'size', '200'
+        output_value = CCBZA_SANDToolBox.get_string_or_number(field, input_value)
+        expected_result = 200.0
+        self.assertEquals(expected_result, output_value)
+        self.assertIsInstance(output_value, float)
+
+    def test_get_string_or_number_returns_string_if_numeric_field_but_non_numeric_value(self):
+        field, input_value = 'size', '/200/'
+        output_value = CCBZA_SANDToolBox.get_string_or_number(field, input_value)
+        expected_result = '/200/'
+        self.assertEquals(expected_result, output_value)
+        self.assertIsInstance(output_value, str)
+
+    def test_get_string_or_number_returns_string_if_non_numeric_field(self):
+        field, input_value = 'pack', '200'
+        output_value = CCBZA_SANDToolBox.get_string_or_number(field, input_value)
+        expected_result = '200'
+        self.assertEquals(expected_result, output_value)
+        self.assertIsInstance(output_value, str)
 
     def test_get_atomic_kpis_data_returns_dataframe_with_atomic_kpis_parameters(self):
         tool_box = CCBZA_SANDToolBox(self.data_provider_mock, self.output)

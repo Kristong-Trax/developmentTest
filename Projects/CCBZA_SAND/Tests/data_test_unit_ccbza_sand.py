@@ -6,7 +6,7 @@ from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TA
     ATTRIBUTE_1, ATTRIBUTE_2, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET, SCORE, AVAILABILITY_TYPE, \
     CONDITION_1_NUMERATOR, CONDITION_1_NUMERATOR_TYPE, CONDITION_1_DENOMINATOR, CONDITION_1_DENOMINATOR_TYPE, CONDITION_1_TARGET, \
     CONDITION_2_NUMERATOR, CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE, \
-    CONDITION_2_TARGET, KO_PRODUCTS, TEMPLATE_DISPLAY_NAME, BY_SCENE, KO_ONLY
+    CONDITION_2_TARGET, KO_PRODUCTS, TEMPLATE_DISPLAY_NAME, BY_SCENE, KO_ONLY, BONUS, MAX_SCORE
 
 class DataScores(object):
     SCORES_1 = [(None, 0.15), (100, 0.15), (3, 0.15)]
@@ -17,12 +17,12 @@ class DataScores(object):
     SCORES_6 = [(100, None), (0, None), (100, None)]
 
 class StoreTypes(object):
-    LT_Spaza_Affordable = 'L&T Spaza Affordable'
-    LT_Gen_D_Affordable = 'L&T Gen D Affordable'
-    LT_Spaza_Mainstream = 'L&T Spaza Mainstream'
-    LT_Gen_D_Mainstream = 'L&T Gen D Mainstream'
-    LT_Spaza_Premium = 'L&T Spaza Premium'
-    LT_Gen_D_Premium = 'L&T Gen D Premium'
+    LT_Spaza_Affordable = 'L&T SPAZA AFFORDABLE'
+    LT_Gen_D_Affordable = 'L&T GENERAL DEALER AFFORDABLE'
+    LT_Spaza_Mainstream = 'L&T SPAZA MAINSTREAM'
+    LT_Gen_D_Mainstream = 'L&T GENERAL DEALER MAINSTREAM'
+    LT_Spaza_Premium = 'L&T SPAZA PREMIUM'
+    LT_Gen_D_Premium = 'L&T GENERAL DEALER PREMIUM'
     store_list = [LT_Spaza_Affordable, LT_Gen_D_Affordable, LT_Spaza_Mainstream, LT_Gen_D_Mainstream, LT_Spaza_Premium, LT_Gen_D_Premium]
 
 class DataTestUnitCCBZA_SAND(object):
@@ -80,7 +80,7 @@ class DataTestUnitCCBZA_SAND(object):
 
     store_data = pd.DataFrame.from_records([{
         'store_type': 'L&T',
-        'additional_attribute_1': 'Spaza Affordable',
+        'additional_attribute_1': 'SPAZA AFFORDABLE',
         'additional_attribute_2': 'Gold'
     }])
 
@@ -89,7 +89,7 @@ class DataTestUnitCCBZA_SAND(object):
     ])
 
     required_template_tabs = [KPI_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, PLANOGRAM_TAB]
-    columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]
+    columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY, BONUS]
     columns_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
     columns_price_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_NAME, TYPE1, TYPE2, TYPE3, VALUE1, VALUE2, VALUE3, TARGET,
                          SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2, BY_SCENE, KO_ONLY]
@@ -103,7 +103,7 @@ class DataTestUnitCCBZA_SAND(object):
                          BY_SCENE, KO_ONLY]
     columns_planogram_tab = [KPI_NAME, ATOMIC_KPI_NAME, TEMPLATE_DISPLAY_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
 
-    columns_kpi_results = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE]
+    columns_kpi_results = [SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE, MAX_SCORE]
     kpi_set_names_from_template = ['COOLERS & MERCHANDISING', 'KEY PACK: Availability, Pricing, Activation',
                                    'AVAILABILITY', 'PRICE COMPLIANCE', 'COMBOS & ACTIVATION', 'BONUS POINTS', 'TEST SET']
     kpi_types_split_by_comma = 'Price,Survey,Availability,SOS,Count'
@@ -113,7 +113,7 @@ class DataTestUnitCCBZA_SAND(object):
     kpi_types_name_with_space = 'Availability KPI ,SOS, Count'
     string_represented_by_number = 200
 
-    index_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY]+StoreTypes.store_list
+    index_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY, BONUS]+StoreTypes.store_list
     index_count_tab = [KPI_NAME, TEMPLATE_NAME, ATOMIC_KPI_NAME, TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1,
                        ATTRIBUTE_2, BY_SCENE, KO_ONLY]
     index_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, SCORE, STORE_TYPE,
@@ -125,13 +125,13 @@ class DataTestUnitCCBZA_SAND(object):
                      CONDITION_2_NUMERATOR_TYPE, CONDITION_2_DENOMINATOR, CONDITION_2_DENOMINATOR_TYPE,
                      CONDITION_2_TARGET, SCORE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]
 
-    test_kpi_1_series = pd.Series(['TEST SET', 'TEST KPI 1', 'Survey', 'Y', '', '', '', '', '', '', ''],
+    test_kpi_1_series = pd.Series(['TEST SET', 'TEST KPI 1', 'Survey', 'Y', '', '', '', '', '', '', '', ''],
                                   index=index_kpi_tab)
     avail_and_pricing_all_bonus_kpi_series = pd.Series(['BONUS POINTS', 'Availability and Pricing of ALL Key Packs ',
-                                                        '', 'N', 'KEY PACK: Availability, Pricing, Activation', '', '',
+                                                        '', 'N', 'KEY PACK: Availability, Pricing, Activation', 'Y', 20,'',
                                                         '', '', '', ''], index=index_kpi_tab)
     coolers_kpi_series = pd.Series(['COOLERS & MERCHANDISING', 'Coolers', 'Price, Survey, Availability, SOS, Count',
-                                    'Y', '', '', '', '', '', '', ''], index=index_kpi_tab)
+                                    'Y', '', 'N', '', '', '', '', '', ''], index=index_kpi_tab)
     count_atomic_series = pd.Series(['Coolers', 'CCBSA Cooler, DOC Cooler', 'Min 4 x Cooler Doors', 4, 10,
                                      'L&T', 'Spaza Affordable', 'Gold', 'N', 'Y'], index=index_count_tab)
     count_atomic_template_field_empty = pd.Series(['Coolers', '', 'Min 4 x Cooler Doors', 4, 10,
@@ -169,6 +169,24 @@ class DataTestUnitCCBZA_SAND(object):
                                                           {'pk': 2, 'value': 'Failed', 'kpi_result_type_fk': 1},
                                                           {'pk': 3, 'value': 'V', 'kpi_result_type_fk': 2},
                                                           {'pk': 4, 'value': 'X', 'kpi_result_type_fk': 2}])
+    scene_kpi_results_1 = pd.DataFrame.from_records([{'context_id': None, 'denominator_id': None,  'denominator_result': 0,
+                            'kpi_level_2_fk': 300021, 'numerator_id': 11, 'numerator_result': 0, 'pk': 19, 'result': 0.0,
+                            'scene_fk': 4, 'score': 5.0, 'target': None, 'weight': None},
+                            {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300029,
+                            'numerator_id': 11, 'numerator_result': 0, 'pk': 20, 'result': 0.0, 'scene_fk': 4, 'score': 5.0,
+                            'target': None, 'weight': None},
+                            {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300030,
+                            'numerator_id': 11, 'numerator_result': 0, 'pk': 21, 'result': 0.0, 'scene_fk': 4, 'score': 5.0,
+                            'target': None, 'weight': None},
+                            {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300021,
+                            'numerator_id': 11, 'numerator_result': 0, 'pk': 22, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
+                            'target': None, 'weight': None},
+                            {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300029,
+                            'numerator_id': 11, 'numerator_result': 0, 'pk': 23, 'result': 0.0, 'scene_fk': 5, 'score': 5.0,
+                            'target': None, 'weight': None},
+                            {'context_id': None, 'denominator_id': None, 'denominator_result': 0, 'kpi_level_2_fk': 300030,
+                            'numerator_id': 11, 'numerator_result': 0, 'pk': 24, 'result': 100.0, 'scene_fk': 5, 'score': 4.0,
+                            'target': None, 'weight': None}])
 
 class SCIFDataTestCCBZA_SAND(object):
 

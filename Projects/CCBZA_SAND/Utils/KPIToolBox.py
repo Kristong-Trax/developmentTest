@@ -169,10 +169,15 @@ class CCBZA_SANDToolBox:
         self.full_store_type = self.get_full_store_type()
         # self.set_results = {}
 
-        if not self.data_provider.scene_id:
-            self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-            self.scene_kpi_results = self.ps_data_provider.get_scene_results(
-                self.scene_info['scene_fk'].drop_duplicates().values)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.scene_kpi_results = self.ps_data_provider.get_scene_results(
+            self.scene_info['scene_fk'].drop_duplicates().values)
+
+        # if not self.data_provider.scene_id:
+        #     self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        #     self.scene_kpi_results = self.ps_data_provider.get_scene_results(
+        #         self.scene_info['scene_fk'].drop_duplicates().values)
+
         # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
 #------------------scene calculations-----------------------------
