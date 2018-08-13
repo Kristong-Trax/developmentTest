@@ -1,8 +1,8 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Utils.Logging.Logger import Log
 
@@ -125,7 +125,7 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['cd7adf07-38a7-4b9b-b4cf-28bf73c3c911']
+#     session_uids = ['8630f3ac-b196-4557-bef9-7e9d0246ce8d']
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()
