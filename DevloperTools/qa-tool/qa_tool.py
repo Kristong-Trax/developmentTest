@@ -9,11 +9,13 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
 class qa:
-    def __init__(self, project, config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
+    def __init__(self, project, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
         self._project = project
         self._config_file = config_file
-        self._dbUser = DbUsers.Docker
+        self._dbUser = DbUsers.CalculationEng
         self._env = Config.PROD
+        self.start_date = start_date
+        self.end_date = end_date
         # fetch db data
         self.static_kpi = self._get_static_kpi()
         self.kpi_results = self._get_kpi_results()
@@ -23,7 +25,7 @@ class qa:
     def _get_static_kpi(self):
         connector = ProjectConnector(self._project,self._dbUser)
         try:
-            static = '''SELECT * FROM  static.kpi_level_2'''
+            static = '''SELECT * FROM  static.kpi_level_2;'''
             return pd.read_sql_query(static, connector.db)
         except Exception as e:
             print e.message
@@ -33,7 +35,15 @@ class qa:
     def _get_kpi_results(self):
         connector = ProjectConnector(self._project, self._dbUser)
         try:
-            results = '''SELECT * FROM report.kpi_level_2_results'''
+            results = '''    
+                    SELECT 
+                        *
+                    FROM
+                        report.kpi_level_2_results,
+                        probedata.session
+                    WHERE
+                        probedata.session.pk = report.kpi_level_2_results.session_fk
+                            AND probedata.session.visit_date BETWEEN '{}' AND '{}';'''.format(self.start_date, self.end_date)
             return pd.read_sql_query(results, connector.db)
         except Exception as e:
             print e.message
@@ -95,3 +105,14 @@ class qa:
         self.test_results_in_expected_range()
         self.test_one_result_in_all_sessions()
 
+
+    #TODO
+    # 1.pull data from prod base on dates
+    # 2.plot histogram
+
+if __name__ ==  "__main__":
+    Config.init(app_name='ttt', default_env='prod',
+
+                config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
+
+    qa_tool = qa('diageous', start_date='2018-05-01', end_date='2018-08-01')
