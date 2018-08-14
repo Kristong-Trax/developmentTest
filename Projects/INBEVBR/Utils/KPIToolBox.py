@@ -402,7 +402,7 @@ class INBEVBRToolBox:
     def create_filters_according_to_scif(self, filters):
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
                                 Const.BRAND: 'brand_name',
-                                Const.SUB_BRAND: 'Sub Brand',
+                                Const.SUB_BRAND: 'sub_brand',
                                 Const.CATEGORY: 'category',
                                 Const.SUB_CATEGORY: 'sub_category',
                                 Const.TEMPLATE_NAME: 'template_name',
@@ -701,10 +701,10 @@ class INBEVBRToolBox:
             if product_facings > 0:
                 total_weight += row[Const.WEIGHT]
 
-        if 'Sub Brand' in self.scif.columns:
+        if 'sub_brand' in self.scif.columns:
             for i, row in matching_rows_subbrand.iterrows():
                 subbrand = row[self.state_name_filter]
-                subbrand_facings = self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum()
+                subbrand_facings = self.scif[self.scif['sub_brand'] == subbrand]['facings'].sum()
                 total_facings += subbrand_facings
                 if subbrand_facings > 0:
                     total_weight += row[Const.WEIGHT]
