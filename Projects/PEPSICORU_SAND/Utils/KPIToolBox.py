@@ -51,6 +51,7 @@ class PEPSICORUToolBox:
 
     def get_scene_type_by_category(self, current_category):
         """
+        This function gets a category and return the relevant scene type for the SOS
         :param current_category: One of the product's categories. E.g: Snacks.
         :return: The relevant scene type to the current category
         """
