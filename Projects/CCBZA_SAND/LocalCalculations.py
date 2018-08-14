@@ -39,7 +39,7 @@ if __name__ == '__main__':
 #     output = Output()
 #     CCBZA_SANDCalculations(data_provider, output).run_project_calculations()
 #     scenes = [2]
-    scenes = [4,5,8, 9, 12]
+    scenes = [4, 5, 8, 9, 12]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()

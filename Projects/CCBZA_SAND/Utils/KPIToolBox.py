@@ -8,22 +8,22 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 # from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
+from Projects.CCBZA_SAND.Utils.Common_TEMP import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+# from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 from Projects.CCBZA_SAND.Utils.Fetcher import CCBZA_SAND_Queries
 from Projects.CCBZA_SAND.Utils.ParseTemplates import parse_template
 from Projects.CCBZA_SAND.Utils.GeneralToolBox import CCBZA_SAND_GENERALToolBox
 from Projects.CCBZA_SAND.Utils.Errors import DataError
-from Projects.CCBZA_SAND.Utils.CustomSceneCommon import CCBZA_SANDSceneCommon
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'natalyak'
@@ -132,11 +132,6 @@ class CCBZA_SANDToolBox:
         self.data_provider = data_provider
 
         self.common = Common(self.data_provider)
-        # self.kpi_static_data = self.common.get_kpi_static_data()
-
-        # self.general_tool_box = GENERALToolBox(self.data_provider)
-        # self.common_sos = SOS(self.data_provider, self.output)
-        # self.common_availability = Availability(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -148,27 +143,19 @@ class CCBZA_SANDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.merged_matches_scif = self.get_merged_matches_scif()
-        # self.scif_KO_only = self.get_manufacturer_related_scif()
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
 
         self.kpi_results_queries = []
-        # self.kpi_static_data = self.get_kpi_static_data()
-        # self.new_kpi_static_data = self.get_new_kpi_static_data()
         self.kpi_results_data = self.create_kpi_results_container()
         self.store_data = self.get_store_data_by_store_id()
         self.template_path = self.get_template_path()
         self.template_data = self.get_template_data()
-        # self.kpi_sets = self.kpi_static_data['kpi_set_fk'].unique().tolist()
         self.kpi_sets = self.template_data[KPI_TAB][SET_NAME].unique().tolist()
         self.current_kpi_set_name = ''
         self.tools = CCBZA_SAND_GENERALToolBox(self.data_provider, self.output)
-        # self.tools = CCBZA_SAND_GENERALToolBox(self.data_provider, self.output) if not self.data_provider.scene_id else None
-        self.kpi_result_values = self.get_kpi_result_values_df() # maybe for ps data provider, create mock
+        self.kpi_result_values = self.get_kpi_result_values_df()
         self.kpi_score_values = self.get_kpi_score_values_df()
-        # self.planogram_results = self.get_planogram_results()
         self.full_store_type = self.get_full_store_type()
-        # self.set_results = {}
-
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scene_kpi_results = self.ps_data_provider.get_scene_results(
             self.scene_info['scene_fk'].drop_duplicates().values)
@@ -177,14 +164,18 @@ class CCBZA_SANDToolBox:
         #     self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         #     self.scene_kpi_results = self.ps_data_provider.get_scene_results(
         #         self.scene_info['scene_fk'].drop_duplicates().values)
+        # self.scif_KO_only = self.get_manufacturer_related_scif()
+        # self.kpi_static_data = self.get_kpi_static_data()
+        # self.new_kpi_static_data = self.get_new_kpi_static_data()
+        # self.planogram_results = self.get_planogram_results()
+        # self.set_results = {}
+        # self.kpi_static_data = self.common.get_kpi_static_data()
 
-        # self.common_scene = CCBZA_SANDSceneCommon(self.data_provider, self.scene_info['pk'].unique().tolist())
 
 #------------------scene calculations-----------------------------
 
     def scene_main_calculation(self):
         if not self.template_data:
-            # raise DataError('Template data is empty does not exist')
             Log.error('Template data is empty')
             return
         session_kpis = self.template_data[KPI_TAB][KPI_NAME].unique().tolist()
@@ -714,7 +705,8 @@ class CCBZA_SANDToolBox:
             'pk'].values
         for scene in scene_kpi_fks:
             self.common.write_to_db_result(fk=999999, should_enter=True, scene_result_fk=scene, result=scene,
-                                           score = scene_kpi_no, identifier_parent=identifier_result) # fix on Sunday
+                                           score = scene_kpi_no, identifier_parent=identifier_result,
+                                           switch=True) # fix on Sunday
 
     def get_price_result(self, matches_scif_df, target, atomic_kpi, identifier_parent):
         unique_skus_list = matches_scif_df['item_id'].unique().tolist()
@@ -846,6 +838,16 @@ class CCBZA_SANDToolBox:
     def get_x_v(self, score):
         value = 'X' if not score else 'V'
         custom_score = self.get_kpi_score_value_pk_by_value(value)
+        return custom_score
+
+    def get_pass_fail_result(self, result):
+        value = 'Failed' if not result else 'Passed'
+        custom_score = self.get_kpi_result_value_pk_by_value(value)
+        return custom_score
+
+    def get_x_v_result(self, result):
+        value = 'X' if not result else 'V'
+        custom_score = self.get_kpi_result_value_pk_by_value(value)
         return custom_score
 
     def add_kpi_result_to_kpi_results_container(self, atomic_kpi, score):
@@ -1153,14 +1155,16 @@ class CCBZA_SANDToolBox:
         # facings_by_sku = self.get_facing_number_by_item(result_df, calc_filters[EAN_CODE], EAN_CODE, PRODUCT_FK)
         facings_by_sku = self.get_facing_number_by_item(result_df, sku_list, EAN_CODE, PRODUCT_FK)
         if facings_by_sku:
+            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
             if availability_type == AVAILABILITY_SKU_FACING_AND:
                 result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
                 # identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-                self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
-            elif availability_type == AVAILABILITY_SKU_FACING_OR:
-                result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+                # self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
+            # elif availability_type == AVAILABILITY_SKU_FACING_OR:
             else:
-                Log.warning('Availability of type {} is not supported'.format(availability_type))
+                result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+            # else:
+            #     Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
 
 #--------------------------------utility functions-----------------------------------#
@@ -1211,9 +1215,10 @@ class CCBZA_SANDToolBox:
             atomic_name = '{}_SKU'.format(atomic_kpi[ATOMIC_KPI_NAME])
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
             for sku, facings in facings_by_sku.items():
-                custom_score = self.get_x_v(100) if facings >= target else self.get_x_v(0)
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=custom_score,
-                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                score = 100 if facings >= target else 0
+                custom_result = self.get_x_v_result(100) if facings >= target else self.get_x_v_result(0)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=score, result=custom_result,
+                                               numerator_result=facings, denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                should_enter=True)
 
     @staticmethod

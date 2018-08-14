@@ -337,7 +337,7 @@ class TestCCBZA_SAND(MockingTestCase):
         self.assertEquals(expected_result, output_value)
         self.assertIsInstance(output_value, str)
 
-    def test_get_string_or_number_returns_string_if_non_numeric_field(self):
+    def test_get_string_or_number_returns_string_if_non_numeric_field_numeric_value(self):
         field, input_value = 'pack', '200'
         output_value = CCBZA_SANDToolBox.get_string_or_number(field, input_value)
         expected_result = '200'
