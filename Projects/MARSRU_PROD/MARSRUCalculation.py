@@ -8,20 +8,21 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 
-from KPIUtils.Utils.Helpers.LogHandler import log_handler
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+# from KPIUtils.Utils.Helpers.LogHandler import log_handler
 
 __author__ = 'urid'
 
 
 class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 
-    @log_handler.log_runtime('Total Calculations', log_start=True)
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         tool_box = MARSRU_PRODMARSRUKPIToolBox(self.data_provider, self.output, 'MARS KPIs 2017')
-        tool_box.hadle_update_custom_scif()
+        tool_box.handle_update_custom_scif()
         jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
-        jg.create_json('MARS KPIs 2018.xlsx', year_filter='2018')
+        jg.create_json('MARS KPIs.xlsx', year_filter='2018')
         tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
@@ -61,13 +62,16 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('MARSRU_PROD calculations')
 #     Config.init()
 #     project_name = 'marsru-prod'
-#     session_uids = [  # 'fffd300a-da28-4ca6-bbaf-76202ebc72bf',
-#                     'fec86a78-da2f-4756-9d7a-abf19788864a',
-#                     'ffd38534-ba02-46ec-837f-0f5e1d903d3c',
-#                     '9a4bdacc-5365-4435-aac7-59abee434fa0',
-#                     'ffc36219-421b-4784-afca-932de4999693',
-#                     'ff1bd935-f5bc-4e73-8ea1-b2093db8ae6b',
-#                     'ff340ff1-7601-419e-a942-f49e86a1fce6'
+#     session_uids = [
+#                     '18f8eaee-5f00-416f-b43b-13a11967f889',
+#                     '5471d957-affe-4023-b94b-b1505fafa473',
+#                     '7a5532fa-38dd-4dbf-8cc1-a5bd76fd0e16',
+#                     '258ed2a5-ef2b-4f99-81df-5a4ce2765a92',
+#                     '6e5c8358-857e-4a0f-9de0-cd640cf0f515',
+#                     '0d354cf1-8d48-4105-b674-7439728376f1',
+#                     '57bcc9fc-fd67-4d7c-93bb-a265d8bd43bf',
+#                     'dbc12bd7-87a8-49e7-aeca-106bf8e80c51',
+#
 #     ]
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()

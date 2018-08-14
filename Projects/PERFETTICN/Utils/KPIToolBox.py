@@ -113,7 +113,7 @@ class PERFETTICNToolBox:
                                                               numerator_id=result.assortment_super_group_fk,
                                                               numerator_result=result.passes,
                                                               denominator_result=denominator_res,
-                                                              result=res, score=score)
+                                                              result=(res*100), score=score)
         return
 
 

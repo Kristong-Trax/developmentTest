@@ -15,8 +15,6 @@ from Projects.INBEVBR_SAND.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR_SAND.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR_SAND.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
@@ -25,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v2.7 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.0 - KENGINE.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -55,9 +53,21 @@ class INBEVBRToolBox:
         self.tools = INBEVBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_type_filter = self.store_info['store_type'].values[0].strip()
-        self.region_name_filter = self.store_info['region_name'].values[0].strip()
-        self.state_name_filter = self.store_info['additional_attribute_2'].values[0].strip()
+        try:
+            self.store_type_filter = self.store_info['store_type'].values[0].strip()
+        except:
+            Log.error("there is no store type in the db")
+            return
+        try:
+            self.region_name_filter = self.store_info['region_name'].values[0].strip()
+        except:
+            Log.error("there is no region in the db")
+            return
+        try:
+            self.state_name_filter = self.store_info['additional_attribute_2'].values[0].strip()
+        except:
+            Log.error("there is no state in the db")
+            return
         self.kpi_results_queries = []
         self.survey = Survey(self.data_provider, self.output)
         self.kpi_results_new_tables_queries = []
@@ -142,7 +152,9 @@ class INBEVBRToolBox:
         numerator_number_of_facings = self.count_of_facings(df, filters)
         if numerator_number_of_facings != 0 and count_result == 0:
             if 'manufacturer_name' in filters.keys():
-                del filters['manufacturer_name']
+                for f in ['manufacturer_name', 'brand_name']:
+                    if f in filters:
+                        del filters[f]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else 0
@@ -187,7 +199,7 @@ class INBEVBRToolBox:
         if product_size != "":
             df = self.filter_product_size(df, product_size)
 
-        df_packs = self.count_of_scenes(df, filters)
+        df_packs = self.count_of_scenes_packs(df, filters)
         df_packs = df_packs[df_packs['num_packs'] >= target_packs]
         number_of_valid_scenes = len(df_packs)
 
@@ -334,7 +346,9 @@ class INBEVBRToolBox:
         temp_df = l_df.copy()
         temp_df['size'] = l_df['size'].apply((lambda x: x * 1000))
         filtered_df = pd.concat([temp_df,ml_df])
-        filtered_df = filtered_df[filtered_df['size'] == product_size]
+        product_size = str(product_size)
+        product_size = product_size.split(',')
+        filtered_df = filtered_df[filtered_df['size'].isin(product_size)]
         return filtered_df
 
 
@@ -369,9 +383,8 @@ class INBEVBRToolBox:
                                 Const.MANUFACTURER: 'manufacturer_name',
                                 Const.CONTAINER_TYPE: 'form_factor',
                                 Const.ATT1: 'att1',
-                                Const.FLAVOR: 'flavor',
+                                Const.FLAVOR: 'Flavor',
                                 Const.BEER_TYPE: 'att2'}
-
 
         for key in filters.keys():
             filters[convert_from_scif[key]] = filters.pop(key)
@@ -383,30 +396,28 @@ class INBEVBRToolBox:
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
 
-    def count_of_facings_from_mpis(self, df, filters):
-
-        all_scene_info = pd.merge(self.scene_info, self.data_provider[Data.ALL_TEMPLATES], on='template_fk')
-        df = pd.merge(df, all_scene_info, on="scene_fk")
-        df = df[self.tools.get_filter_condition(df, **filters)]
-        return len(df)
-
-    def count_of_scenes(self, df, filters):
-
+    def count_of_scenes_packs(self, df, filters):
         all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
         df = pd.merge(df, all_scene_info, on="scene_fk")
         df = df[self.tools.get_filter_condition(df, **filters)]
         df = df.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
         return df
 
-    def count_of_scenes_facings(self, df, filters):
+    def count_of_scenes(self, df, filters):
+        facing_data = df[self.tools.get_filter_condition(df, **filters)]
 
+        # filter by scene_id and by template_name (scene type)
+        scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
+        return scene_types_groupby
+
+
+    def count_of_scenes_facings(self, df, filters):
         all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
         df = pd.merge(df, all_scene_info, on="scene_fk")
         df = df[self.tools.get_filter_condition(df, **filters)]
         df['face_count'] = df['face_count'].fillna(1)
         df = df.groupby(['template_name', 'scene_fk'])['face_count'].sum().reset_index()
         return df
-
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
@@ -484,7 +495,7 @@ class INBEVBRToolBox:
 
         target = temp_row[Const.TARGET]
         weight = temp_row[Const.WEIGHT]
-        if ((numerator_shelfs / denominator_shelfs) * 100 >= target):
+        if ((denominator_shelfs != 0) and ((numerator_shelfs / denominator_shelfs) * 100 >= target)):
             result = weight
 
         if result == 0:
@@ -576,7 +587,7 @@ class INBEVBRToolBox:
 
         target = matching_row[Const.TARGET].values[0]
         weight = matching_row[Const.WEIGHT].values[0]
-        if ((numerator_shelfs / denominator_shelfs) * 100 >= target):
+        if ((denominator_shelfs != 0) and ((numerator_shelfs / denominator_shelfs) * 100 >= target)):
             count_result = weight
 
         if result == 0:
@@ -658,6 +669,8 @@ class INBEVBRToolBox:
         elif len(matching_rows_subbrand) > 0:
             limit = matching_rows_sku.iloc[0][Const.LIMIT_SCORE]
 
+
+
         for i, row in matching_rows_sku.iterrows():
             product = row[self.state_name_filter]
             if self.scif[self.scif['product_name'] == product]['facings'].sum() > 0:
@@ -668,7 +681,7 @@ class INBEVBRToolBox:
             if self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum() > 0:
                 total_weight += row[Const.WEIGHT]
 
-        if limit > total_weight:
+        if limit < total_weight:
             total_weight = limit
 
         try:
