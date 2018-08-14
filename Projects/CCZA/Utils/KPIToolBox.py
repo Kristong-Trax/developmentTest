@@ -317,7 +317,7 @@ class CCZAToolBox:
             checking if the shelf is sorted like the brands list.
             :return: 100 if it's fine, 0 otherwise.
         """
-        progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'SPRITE',
+        progression_list = ['COCA-COLA', 'COCA-COLA Life', 'COKE ZERO', 'COKE LIGHT', 'TAB', 'SPRITE',
                             'Sprite Zero', 'FANTA ORANGE', 'FANTA ZERO']
 
         filtered_scif = self.scif[

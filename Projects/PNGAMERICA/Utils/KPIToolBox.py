@@ -254,7 +254,8 @@ class PNGAMERICAToolBox:
                 # category = kpi_data['category'].values[0]
                 category = row['category']
 
-                # if kpi_type not in ['orchestrated']:
+                # if kpi_type not in ['regular block', 'relative', 'eye level',
+                #                     'hor_vs_vertical', 'sud_orchestration']:
                 #     # ['category space', 'orchestrated', 'linear feet', 'count of', 'average shelf']
                 #     continue
 
@@ -435,8 +436,18 @@ class PNGAMERICAToolBox:
                     block_filters = {'Sub Brand': 'TIDE SIMPLY CLEAN & FRESH'}
                     block_result = self.tools.calculate_block_together_new(include_empty=False,
                                                                            minimum_block_ratio=0.75, **block_filters)
+                    tested_filters_values = kpi_data['Group 1 value'].split(', ')
+                    tested_filters1 = {kpi_data['Group 1 param']: tested_filters_values[0]}
+                    relative_position_result1 = self.tools.calculate_relative_position(tested_filters1, anchor_filters,
+                                                                                      direction_data,
+                                                                                      **general_filters)
+                    tested_filters2 = {kpi_data['Group 1 param']: tested_filters_values[1]}
+                    relative_position_result2 = self.tools.calculate_relative_position(tested_filters2, anchor_filters,
+                                                                                      direction_data,
+                                                                                      **general_filters)
                     if block_result and relative_position_result:
-                        final_result = True
+                        if relative_position_result1 and relative_position_result2:
+                            final_result = True
             else:
                 final_result = relative_position_result
             if final_result:
@@ -1449,7 +1460,7 @@ class PNGAMERICAToolBox:
                             score = 1 if res['regular block'] else 0
                             if kpi_template['kpi type'] == 'hor_vs_vertical':
                                 result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
-                                self.hor_ver_results[kpi_name] = result
+                                self.hor_ver_results[new_kpi_name] = result
                             if kpi_template['kpi type'] == 'block in block':
                                 result = 1 if res['block_of_blocks'] else 0
                             try:
@@ -1491,7 +1502,7 @@ class PNGAMERICAToolBox:
                         score = 1 if res['regular block'] else 0
                         if kpi_template['kpi type'] == 'hor_vs_vertical':
                             result = 'VERTICAL' if res['vertical'] else 'HORIZONTAL'
-                            self.hor_ver_results[kpi_name] = result
+                            self.hor_ver_results[new_kpi_name] = result
                         if kpi_template['kpi type'] == 'block in block':
                             result = 1 if res['block_of_blocks'] else 0
                         try:
@@ -2203,7 +2214,7 @@ class PNGAMERICAToolBox:
         for brand in assortment_brands:
             brand_categories = self.all_products[self.all_products['brand_name'] == brand]['category'].unique().tolist()
             if not set(brand_categories) & set(CATEGORY_OSA_MAPPING.keys()) or not set(brand_categories) & set(
-                    self.scif['template_group'].unique().tolist()):
+                    SUPPORTED_CATEGORIES):
                 continue
             current_brand_assortment = self.all_products[
                 (self.all_products['product_fk'].isin(current_store_assortment)) &
@@ -2340,6 +2351,8 @@ class PNGAMERICAToolBox:
             try:
                 product_info = self.all_products[self.all_products['product_fk'] == product]
                 category = product_info.category.values[0]
+                if category not in SUPPORTED_CATEGORIES:
+                    continue
                 brand = product_info.brand_name.values[0]
                 ean_code = self.get_product_ean_code(product_info)
                 if is_d_void:

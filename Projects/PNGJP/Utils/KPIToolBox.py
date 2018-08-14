@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 # from timeit import default_timer as timer
-
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -120,8 +120,10 @@ class PNGJPToolBox(PNGJPConsts):
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.match_display_in_scene = self.get_match_display()
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        if self.visit_date >= datetime(2018, 01, 01).date():
+        if self.visit_date >= datetime(2018, 8, 01).date():
             template_name = 'Template.xlsx'
+        elif self.visit_date >= datetime(2018, 01, 01).date():
+            template_name = 'Template01-07.18.xlsx'
         elif self.visit_date <= datetime(2017, 10, 31).date():
             template_name = 'Template_7-10.xlsx'
         else:
@@ -231,6 +233,7 @@ class PNGJPToolBox(PNGJPConsts):
                     target = targets_data[self.store_type]
         return target
 
+    @kpi_runtime(kpi_desc='category_calculation')
     def category_calculation(self, category):
 
         self.calculation_per_entity(category)
@@ -907,6 +910,7 @@ class PNGJPToolBox(PNGJPConsts):
                 filters['template_name'] = template_names
         return filters
 
+    @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
     def hadle_update_custom_scif(self):
         """
         This function updates the custom scif of PS with oos and assortment values for each product in each scene.

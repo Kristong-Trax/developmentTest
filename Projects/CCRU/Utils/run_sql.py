@@ -12,10 +12,18 @@ class CCRURunSql:
         self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
 
     def run_it(self):
-        statement_1 = """
-                        DELETE FROM `static`.`atomic_kpi` WHERE `pk`>='4695';
+        statement_1 = \
+                        """
+                        UPDATE `static`.`kpi` SET `display_text`='Cooler: Max 26' WHERE `pk` in ('2511','2535','2557','2621','2655','2686');
 
-                                               """
+                        """
+
+        # """
+        # UPDATE `static`.`atomic_kpi` SET `name`='Cooler: Max 26', `description`='Cooler: Max 26', `display_text`='Cooler: Max 26' WHERE `pk` in ('3262','3392','3511','3889','3998','4178');
+        #
+        # UPDATE `static`.`kpi` SET `display_text`='Cooler: Max 26' WHERE `pk` in ('2511','2535','2557','2621','2655','2686');
+        #
+        # """
 
         cur = self.aws_conn.db.cursor()
         cur.execute(statement_1)
@@ -29,3 +37,6 @@ if __name__ == '__main__':
         print 'start project: ' + str(project)
         sql_to_run = CCRURunSql(project)
         sql_to_run.run_it()
+
+
+

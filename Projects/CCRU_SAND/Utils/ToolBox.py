@@ -2864,22 +2864,25 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_top_sku(self):
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
+        if not top_skus:
+            return
+        in_assortment = True
         for scene_fk in self.scif['scene_id'].unique():
             scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
-            for product_fk in top_skus:
-                correlated_products = self.top_sku.get_correlated_products(top_skus[product_fk])
-                product_group_facings = 0
-                for correlated in correlated_products:
-                    product_group_facings += facings_data.pop(correlated, 0)
-                if product_fk not in facings_data:
-                    facings_data[product_fk] = 0
-                facings_data[product_fk] += product_group_facings
-            for product_fk in facings_data.keys():
-                in_assortment = True if product_fk in top_skus else False
-                distributed = True if facings_data[product_fk] > 0 else False
-                query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, product_fk,
-                                                           in_assortment, distributed)
+            for anchor_product_fk in top_skus['product_fks'].keys():
+                min_facings = top_skus['min_facings'][anchor_product_fk]
+                distributed = False
+                for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
+                    product_fk = int(product_fk)
+                    if product_fk in facings_data.keys():
+                        facings = facings_data[product_fk]
+                    else:
+                        facings = 0
+                    if facings >= min_facings:
+                        distributed = True
+                query = self.top_sku.get_custom_scif_query(
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
     def insert_scores_level2(self, result, score, kpi_name):

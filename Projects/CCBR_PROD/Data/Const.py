@@ -43,6 +43,7 @@ class Const(object):
     PRODUCT = 'Product'
     EXPECTED_RESULT = "Expected Result"
     NUMERIC = "Numeric"
+    STRING = "STRING"
     MEASUREMENT_UNIT = "Measurement Unit"
     WEIGHT = 'Weight'
     EXCLUDE_MANUFACTURER = 'Exclude manufacturer'

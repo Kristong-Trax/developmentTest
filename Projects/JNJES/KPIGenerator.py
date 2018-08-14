@@ -1,6 +1,5 @@
 
 from Trax.Utils.Logging.Logger import Log
-
 from Projects.JNJES.Utils.KPIToolBox import JNJESToolBox, log_runtime
 
 __author__ = 'nissand'

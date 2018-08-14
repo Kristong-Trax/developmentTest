@@ -443,7 +443,14 @@ class PNGAMERICAGENERALToolBox:
         #         return False
         number_of_products = len(
             self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
-        min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
+        if 'category' in filters.keys():
+            if filters['category'] in ['FEM CARE', 'AI']:
+                min_shelf, max_shelf, min_ignore, max_ignore = 'num. of shelves min', 'num. of shelves max', \
+                                                               'num. ignored from top', 'num. ignored from bottom'
+            else:
+                min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
+        else:
+            min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
         number_of_eye_level_scenes = 0
         number_of_eye_level_entities = 0
         total_filtered_attributes = 0

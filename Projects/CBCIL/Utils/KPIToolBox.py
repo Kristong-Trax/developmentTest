@@ -340,12 +340,18 @@ class CBCILCBCIL_ToolBox(object):
         except:
             params2 = map(unicode.strip, params[self.PARAMS_VALUE_2].split(','))
 
+        try:
+            params3 = map(float, params[self.PARAMS_VALUE_3].split(','))
+        except:
+            params3 = map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))
+
+
         result = {self.TARGET: params[self.TARGET],
                   self.SPLIT_SCORE: params[self.SPLIT_SCORE],
                   'filters': {
                      '1': {params[self.PARAMS_TYPE_1]: map(unicode.strip, params[self.PARAMS_VALUE_1].split(','))},
                      '2': {params[self.PARAMS_TYPE_2]: params2},
-                     '3': {params[self.PARAMS_TYPE_3]: map(unicode.strip, params[self.PARAMS_VALUE_3].split(','))},
+                     '3': {params[self.PARAMS_TYPE_3]: params3},
                      'All': general_filters}
                   }
         return result
@@ -455,15 +461,28 @@ class CBCILCBCIL_ToolBox(object):
             shelf_number = int(general_filters.get(self.TARGET, 1))
             shelf_numbers = range(shelf_number + 1)[1:]
             if shelf_numbers:
-                filters = params['1'].copy()
-                filters.update(params['2'])
-                filters.update(params['3'])
-                filters.update(params['All'])
-                filters.update({'shelf_number': shelf_numbers})
-                result = self.match_product_in_scene[self.tools.get_filter_condition(self.match_product_in_scene, **filters)]
-                result = result['shelf_number'].unique().tolist()
-                if len(result) == len(shelf_numbers):
-                    return 100
+                session_results = []
+                for scene in params['All']['scene_id']:
+                    scene_result = 0
+                    scif_filters = {'scene_fk': scene}
+                    scif_filters.update(params['1'])
+                    scif_filters.update(params['2'])
+                    scif = self.scif.copy()
+                    scene_skus = scif[self.tools.get_filter_condition(scif, **scif_filters)]['product_fk'].unique().tolist()
+                    if scene_skus:
+                        matches_filters = {'scene_fk': scene}
+                        matches_filters.update({'product_fk': scene_skus})
+                        matches_filters.update({'shelf_number': shelf_numbers})
+                        matches = self.match_product_in_scene.copy()
+                        result = matches[self.tools.get_filter_condition(matches, **matches_filters)]
+                        if not result.empty:
+                            shelf_facings_result = result.groupby('shelf_number')['scene_fk'].count().values.tolist()
+                            if len(shelf_facings_result) == len(shelf_numbers):
+                                target_facings_per_shelf = params['3']['facings'][0]
+                                scene_result = 100 if all([facing >= target_facings_per_shelf
+                                                           for facing in shelf_facings_result]) else 0
+                    session_results.append(scene_result)
+                return 100 if all(session_results) else 0
         return 0
 
     def calculate_availability_by_sequence(self, **general_filters):
