@@ -49,40 +49,58 @@ class PEPSICORUToolBox:
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.general_tool_box = GENERALToolBox(data_provider)
 
+    def get_scene_type_by_category(self, current_category):
+        """
+        :param current_category: One of the product's categories. E.g: Snacks.
+        :return: The relevant scene type to the current category
+        """
+        if current_category == Const.SNACKS:
+            return Const.MAIN_SHELF_SNACKS
+        elif current_category == Const.BEVERAGES:
+            return Const.MAIN_SHELF_BEVERAGES
+        else:
+            return Const.MAIN_SHELF_JUICES
+
+
+
     @log_runtime('Share of shelf pepsicoRU')
     def calculate_share_of_shelf(self):
         """
         This function filters
         :return:
         """
-        filtered_df = self.scif
-        locations = self.scif[Const.TEMPLATE_GROUP].unique().tolist() #todo: change template group?
-        for location in locations:
-            filter_loc_param = {Const.TEMPLATE_GROUP: location}
-            filtered_by_loc = filtered_df[self.general_tool_box.get_filter_condition(filtered_df, **filter_loc_param)]
-            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_LOCATION)
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
-            # self.sos_results[facings_kpi_fk] = [numerator, denominator]
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
-
-            for category in self.categories_to_calculate:
-                filter_cat_param = {Const.CATEGORY: category}
-                filtered_df_by_cat = filtered_by_loc[
-                    self.general_tool_box.get_filter_condition(filtered_by_loc, **filter_cat_param)]
-                facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
-                linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
-            for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
-                filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat}
-                filtered_df_by_sub_cat = filtered_by_loc[
-                    self.general_tool_box.get_filter_condition(filtered_by_loc, **filter_sub_cat_param)]
-                facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
-                linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
-            for brand in self.scif[Const.BRAND_NAME]:
-                filter_brand_param = {Const.BRAND_NAME: brand}
-                filtered_df_by_sub_cat = filtered_by_loc[
-                    self.general_tool_box.get_filter_condition(filtered_by_loc, **filter_brand_param)]
-                facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND)
-                linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND)
+        # Filtering Main Shelf scene types
+        relevant_scene_types = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
+                                Const.MAIN_SHELF in scene_type]
+        filtered_df = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_scene_types)]
+        #####################################################################
+        # locations = self.scif[Const.TEMPLATE_GROUP].unique().tolist() #todo: change template group?
+        # for location in locations:
+        #     filter_loc_param = {Const.TEMPLATE_GROUP: location}
+        #     filtered_by_loc = filtered_df[self.general_tool_box.get_filter_condition(filtered_df, **filter_loc_param)]
+        #     facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_LOCATION)
+        #     linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
+        #     # self.sos_results[facings_kpi_fk] = [numerator, denominator]
+        #     linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
+        ######################################################################
+        for category in self.categories_to_calculate:
+            filter_cat_param = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
+            filtered_df_by_cat = filtered_df[
+                self.general_tool_box.get_filter_condition(filtered_df, **filter_cat_param)]
+            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
+            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
+        for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
+            filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat}
+            filtered_df_by_sub_cat = filtered_df[
+                self.general_tool_box.get_filter_condition(filtered_df, **filter_sub_cat_param)]
+            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
+            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
+        for brand in self.scif[Const.BRAND_NAME]:
+            filter_brand_param = {Const.BRAND_NAME: brand}
+            filtered_df_by_sub_cat = filtered_df[
+                self.general_tool_box.get_filter_condition(filtered_df, **filter_brand_param)]
+            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND)
+            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND)
 
         return
 

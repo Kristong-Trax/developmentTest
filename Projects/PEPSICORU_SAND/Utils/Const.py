@@ -4,15 +4,20 @@ __author__ = 'Idanr'
 
 class Const(object):
     # Categories
-    SNACKS = 'snacks'
-    BEVERAGES = 'beverages'
-    JUICES = 'juices'
+    SNACKS = 'SNACK'
+    BEVERAGES = 'BEVERAGE'
+    JUICES = 'JUICE'
 
     # Filters
-    TEMPLATE_GROUP = 'template_group'
+    TEMPLATE_GROUP = 'template_group' #DELETE?
+    TEMPLATE_NAME = 'template_name'
     CATEGORY = 'category'
     SUB_CATEGORY = 'sub_category'
     BRAND_NAME = 'brand_name'
+    MAIN_SHELF = 'Main Shelf'
+    MAIN_SHELF_SNACKS = 'Main Shelf snacks'
+    MAIN_SHELF_BEVERAGES = 'Main Shelf beverages'
+    MAIN_SHELF_JUICES = 'Main Shelf juices'
 
     # KPI Names
     FACINGS_MANUFACTURER = 'FACINGS_SOS_BY_MANUFACTURER'
