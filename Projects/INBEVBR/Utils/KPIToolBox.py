@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.1 - KENGINE - AUGUST.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.2 - KENGINE - AUGUST.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -276,7 +276,6 @@ class INBEVBRToolBox:
         # if count_type == Const.FACING:
         number_of_facings = self.count_of_facings(df, filters)
         count_result = weight if number_of_facings >= target else 0
-        numerator_number_of_facings = number_of_facings
         if count_type == Const.SCENES:
             secondary_target = row[Const.SECONDARY_TARGET].values[0]
             scene_types_groupby = self.count_of_scenes(df, filters)
@@ -298,7 +297,7 @@ class INBEVBRToolBox:
                                            denominator_result=0, result=count_result)
         elif result_type == 2:
             self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings, denominator_id=2,
+                                           numerator_result=number_of_facings, denominator_id=2,
                                            denominator_result=0, result=count_result)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name):

@@ -14,7 +14,7 @@ class INBEVBRCalculations(BaseCalculationsScript):
         INBEVBRGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevbr calculations')
 #     Config.init()
@@ -24,9 +24,10 @@ class INBEVBRCalculations(BaseCalculationsScript):
 #
 #     # second report
 #     list_sessions = [
-#         '9e7c9731-e9b3-4b1b-9796-5f415c0ce83d',
-#         '7d8e122e-31e3-49c3-9cca-068acd809e4c',
-#         '55a30d55-ca09-4233-8578-22df4a32b563',
+#         'f1169d5e-7bc0-4dc0-bc1c-678dbd36276d',
+#         'ebeaf3fa-ca89-4876-b76e-4788cac3a60d',
+#         '38a402f2-7d0f-4755-a587-75b5b5ddfe21',
+#         '725c4ac1-7a42-4c78-a186-7f25ba93536d',
 #
 #     ]
 #
