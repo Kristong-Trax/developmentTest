@@ -8,10 +8,10 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CUBAU.Utils.Fetcher import CUBAUCUBAUQueries
 from Projects.CUBAU.Utils.GeneralToolBox import CUBAUCUBAUGENERALToolBox
 from KPIUtils.DB.Common import Common
 from KPIUtils.Calculations.SOS import SOS
+from Projects.CUBAU.Utils.Fetcher import CUBAUCUBAUQueries
 
 __author__ = 'Shani'
 
@@ -68,6 +68,7 @@ class CUBAUCUBAUToolBox:
         self.kpi_results_queries = []
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.store_type = data_provider.store_type
+        self.matches_with_direction = self.get_match_product_in_scene_with_direction()
 
     def main_calculation(self):
         """
@@ -143,10 +144,12 @@ class CUBAUCUBAUToolBox:
 
     def calculate_sos(self, sos_type, kpi_fk, numerator_fk, denominator_fk, subset_filters, pop_filters, context=None):
         ratio = 0
+        df = self.match_product_in_scene.merge(self.scif, how='left', on=['scene_fk', 'product_fk'])
+        df = df.drop(['facings'], axis=1)
         #  denominator
-        pop_filter = self.common_sos.get_filter_condition(self.scif, **pop_filters)
+        pop_filter = self.common_sos.get_filter_condition(df, **pop_filters)
         #  numerator
-        subset_filter = self.common_sos.get_filter_condition(self.scif, **subset_filters)
+        subset_filter = self.common_sos.get_filter_condition(df, **subset_filters)
         try:
             ratio = self.calculate_sos_by_policy(sos_type, kpi_fk, numerator_fk, denominator_fk,
                                                  subset_filter=subset_filter, pop_filter=pop_filter, context=context)
@@ -156,16 +159,20 @@ class CUBAUCUBAUToolBox:
 
     def calculate_sos_by_policy(self, sos_type, kpi_fk, numerator_fk, denominator_fk,
                                 subset_filter, pop_filter, context=None):
-        den_df = self.scif[pop_filter]
+        matches = self.matches_with_direction.merge(self.scif, how='left', on=['scene_fk', 'product_fk'])
+        den_df = matches[pop_filter]
         nom_df = den_df[subset_filter]
         if sos_type == 'CUB':
-            denominator = den_df.loc[den_df['template_display_name'] == self.TOP_PALLET]['facings'].sum() + \
-                          den_df.loc[~(den_df['template_display_name'] == self.TOP_PALLET)]['facings_ign_stack'].sum()
-            numerator = nom_df.loc[nom_df['template_display_name'] == self.TOP_PALLET]['facings'].sum() + \
-                          nom_df.loc[~(nom_df['template_display_name'] == self.TOP_PALLET)]['facings_ign_stack'].sum()
+            # IN Top pallet scene type we should include only top facings:
+            denominator = den_df.loc[(den_df['template_display_name'] == self.TOP_PALLET) &
+                                     (den_df['image_direction'] == 'Top')]['product_fk'].count() + \
+                          den_df.loc[~(den_df['template_display_name'] == self.TOP_PALLET) & (den_df['stacking_layer'] == 1)]['product_fk'].count()
+            numerator = nom_df.loc[(nom_df['template_display_name'] == self.TOP_PALLET) &
+                                   (nom_df['image_direction'] == 'Top')]['product_fk'].count() + \
+                          nom_df.loc[~(nom_df['template_display_name'] == self.TOP_PALLET) & (nom_df['stacking_layer'] == 1)]['product_fk'].count()
         else:
-            denominator = den_df['facings'].sum()
-            numerator = nom_df['facings'].sum()
+            denominator = den_df['product_fk'].count()
+            numerator = nom_df['product_fk'].count()
         if denominator != 0:
             ratio = (numerator / float(denominator))
             self.common.write_to_db_result_new_tables(kpi_fk, numerator_fk, numerator, round(ratio, 2), denominator_fk,
@@ -187,8 +194,10 @@ class CUBAUCUBAUToolBox:
                                                    (self.scif['product_fk'] == product)]['facings'].values[0]
                 elif template_name == self.TOP_PALLET:
                     if self.store_type == self.OFF_PREMISE:
-                        facings_cub_share = self.scif[(self.scif['scene_id'] == scene) &
-                                                (self.scif['product_fk'] == product)]['facings'].values[0]
+                        facings_cub_share = self.matches_with_direction[(self.matches_with_direction['scene_fk'] == scene) &
+                                                (self.matches_with_direction['product_fk'] == product) &
+                                                                        (self.matches_with_direction[
+                                                                            'image_direction'] == 'Top')]['product_fk'].count()
                 else:
                     if self.store_type == self.OFF_PREMISE:
                         facings_cub_share = self.scif[(self.scif['scene_id'] == scene) &
@@ -201,4 +210,11 @@ class CUBAUCUBAUToolBox:
                                                   mha_oos=None, length_mm_custom=None)
         self.common.commit_custom_scif()
         return
+
+    def get_match_product_in_scene_with_direction(self):
+        query = CUBAUCUBAUQueries.get_facings_by_direction(self.session_uid)
+        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        products_per_direction = pd.read_sql_query(query, local_con.db)
+        matches_with_direction = self.match_product_in_scene.merge(products_per_direction, left_on='scene_match_fk', right_on='match_product_fk')
+        return matches_with_direction
 
