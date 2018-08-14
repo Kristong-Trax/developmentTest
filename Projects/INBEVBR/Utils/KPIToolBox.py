@@ -128,7 +128,7 @@ class INBEVBRToolBox:
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
         denominator_number_of_total_facings = 0
-        count_result = 0
+        count_result = -1
 
         # bring the kpi rows from the sos sheet
         rows = self.sos_sheet.loc[self.sos_sheet[Const.KPI_ID] == atomic_id]
@@ -149,16 +149,16 @@ class INBEVBRToolBox:
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
         numerator_number_of_facings = self.count_of_facings(df, filters)
-        if numerator_number_of_facings != 0 and count_result == 0:
+        if numerator_number_of_facings != 0 and count_result == -1:
             if 'manufacturer_name' in filters.keys():
                 for f in ['manufacturer_name', 'brand_name']:
                     if f in filters:
                         del filters[f]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-                count_result = weight if percentage >= target else 0
+                count_result = weight if percentage >= target else -1
 
-        if count_result == 0:
+        if count_result == -1:
             return
 
         try:
@@ -402,7 +402,7 @@ class INBEVBRToolBox:
     def create_filters_according_to_scif(self, filters):
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
                                 Const.BRAND: 'brand_name',
-                                Const.SUB_BRAND: 'Sub Brand',
+                                Const.SUB_BRAND: 'sub_brand',
                                 Const.CATEGORY: 'category',
                                 Const.SUB_CATEGORY: 'sub_category',
                                 Const.TEMPLATE_NAME: 'template_name',
@@ -447,12 +447,9 @@ class INBEVBRToolBox:
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
-        rows = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
+        row = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
 
-        # get a the correct rows
-        row = self.find_row(rows)
-
-        if row == -1:
+        if row.empty:
             return
         else:
             # find the answer to the survey in session
@@ -704,10 +701,10 @@ class INBEVBRToolBox:
             if product_facings > 0:
                 total_weight += row[Const.WEIGHT]
 
-        if 'Sub Brand' in self.scif.columns:
+        if 'sub_brand' in self.scif.columns:
             for i, row in matching_rows_subbrand.iterrows():
                 subbrand = row[self.state_name_filter]
-                subbrand_facings = self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum()
+                subbrand_facings = self.scif[self.scif['sub_brand'] == subbrand]['facings'].sum()
                 total_facings += subbrand_facings
                 if subbrand_facings > 0:
                     total_weight += row[Const.WEIGHT]
