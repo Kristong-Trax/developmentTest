@@ -111,7 +111,8 @@ class Summary:
             anchor_filters = {kpi_data['Anchor Entity Type']:kpi_data['Anchor Entity Value']}
         else:
             anchor_filters = None
-        adjacencies = self.cub_tools.calculate_adjacency_relativeness(tested_filters, direction_data, entity_to_return, anchor_filters,
+        if not self.scif.empty:
+            adjacencies = self.cub_tools.calculate_adjacency_relativeness(tested_filters, direction_data, entity_to_return, anchor_filters,
                                                                            **general_filters)
         if adjacencies:
             total_result = 0
