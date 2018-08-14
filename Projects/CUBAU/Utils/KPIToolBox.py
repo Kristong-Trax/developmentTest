@@ -145,6 +145,7 @@ class CUBAUCUBAUToolBox:
     def calculate_sos(self, sos_type, kpi_fk, numerator_fk, denominator_fk, subset_filters, pop_filters, context=None):
         ratio = 0
         df = self.match_product_in_scene.merge(self.scif, how='left', on=['scene_fk', 'product_fk'])
+        df = df.drop(['facings'], axis=1)
         #  denominator
         pop_filter = self.common_sos.get_filter_condition(df, **pop_filters)
         #  numerator
