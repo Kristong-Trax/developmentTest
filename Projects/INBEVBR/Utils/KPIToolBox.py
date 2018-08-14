@@ -128,8 +128,6 @@ class INBEVBRToolBox:
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
         denominator_number_of_total_facings = 0
-        df_denominator_scenes = pd.DataFrame()
-        df_numirator_scenes = pd.DataFrame()
         count_result = 0
 
         # bring the kpi rows from the sos sheet
@@ -142,7 +140,6 @@ class INBEVBRToolBox:
 
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
-        result_type = row[Const.RESULT_TYPE].values[0]
         df = self.scif.copy()
 
         product_size = row[Const.PRODUCT_SIZE].values[0]
@@ -153,13 +150,10 @@ class INBEVBRToolBox:
         filters = self.get_filters_from_row(row.squeeze())
         numerator_number_of_facings = self.count_of_facings(df, filters)
         if numerator_number_of_facings != 0 and count_result == 0:
-            df_numirator_scenes = self.count_of_scenes(df,filters)
-            df_numirator_scenes = df_numirator_scenes.rename(columns={'facings': 'facings_nom'})
             if 'manufacturer_name' in filters.keys():
                 for f in ['manufacturer_name', 'brand_name']:
                     if f in filters:
                         del filters[f]
-                df_denominator_scenes = self.count_of_scenes(df, filters)
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else 0
@@ -167,28 +161,15 @@ class INBEVBRToolBox:
         if count_result == 0:
             return
 
-        if df_denominator_scenes.empty or df_denominator_scenes.empty:
-            return
-        scene_types_groupby = pd.merge(df_numirator_scenes, df_denominator_scenes, how='left', on='scene_id')
-        df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
-                                                  scene_types_groupby['facings']) * 100 >= target]
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        if result_type == 1:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings, denominator_id=3,
-                                           denominator_result=denominator_number_of_total_facings, result=count_result)
-        elif result_type == 2:
-            number_of_valid_scenes = len(df_target_filtered)
-            number_of_not_valid_scenes = len(set(self.scene_info['scene_fk'].drop_duplicates())) - number_of_valid_scenes
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                               numerator_result=number_of_valid_scenes, denominator_id=3,
-                                               denominator_result=number_of_not_valid_scenes,
-                                               result=count_result)
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                       numerator_result=numerator_number_of_facings, denominator_id=3,
+                                       denominator_result=denominator_number_of_total_facings, result=count_result)
 
     def handle_sos_packs_atomics(self,atomic_id, atomic_name):
 
@@ -265,7 +246,7 @@ class INBEVBRToolBox:
             self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
                                                numerator_result=count_of_total_facings,
                                                denominator_result=0, result=count_result)
-        else:
+        elif result_type == 3:
             self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
                                            numerator_result=number_of_valid_scenes,
                                            denominator_result=0, result=count_result)
@@ -696,6 +677,7 @@ class INBEVBRToolBox:
 
     def handle_prod_weight_atomics(self, atomic_id, atomic_name):
         total_weight = 0
+        total_facings = 0
         limit = 100
 
         # bring the kpi rows in the PROD_SEQ_2 sheet
@@ -716,16 +698,19 @@ class INBEVBRToolBox:
             limit = matching_rows_sku.iloc[0][Const.LIMIT_SCORE]
 
 
-
         for i, row in matching_rows_sku.iterrows():
             product = row[self.state_name_filter]
-            if self.scif[self.scif['product_name'] == product]['facings'].sum() > 0:
+            product_facings = self.scif[self.scif['product_name'] == product]['facings'].sum()
+            total_facings += product_facings
+            if product_facings > 0:
                 total_weight += row[Const.WEIGHT]
 
         if 'Sub Brand' in self.scif.columns:
             for i, row in matching_rows_subbrand.iterrows():
                 subbrand = row[self.state_name_filter]
-                if self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum() > 0:
+                subbrand_facings = self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum()
+                total_facings += subbrand_facings
+                if subbrand_facings > 0:
                     total_weight += row[Const.WEIGHT]
 
         if limit < total_weight:
@@ -738,7 +723,7 @@ class INBEVBRToolBox:
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=total_weight, denominator_id=2,
+                                           numerator_result=total_facings, denominator_id=2,
                                            denominator_result=limit, result=total_weight)
 
     def get_new_kpi_static_data(self):
