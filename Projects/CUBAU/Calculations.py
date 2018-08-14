@@ -21,7 +21,7 @@ class CUBAUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'cubau'
 #     data_provider = KEngineDataProvider(project_name)
-#     sessions = ['802B2BC2-211E-4F70-8445-771D8970ED76', 'B983D7E7-E756-4748-BF14-5084C7FF13A4']
+#     sessions = ['FFCC3673-858B-4B41-9644-B7C57DD4B441']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
