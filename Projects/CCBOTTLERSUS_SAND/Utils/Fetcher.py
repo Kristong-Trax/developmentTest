@@ -2,7 +2,7 @@
 __author__ = 'Ortal'
 
 
-class BCICCBOTTLERSUS_SANDQueries(object):
+class BCIQueries(object):
 
     def __init__(self):
         pass

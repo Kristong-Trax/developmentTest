@@ -1,7 +1,6 @@
 
 __author__ = 'ilays'
 
-
 class INBEVBRQueries(object):
 
     @staticmethod
@@ -14,12 +13,6 @@ class INBEVBRQueries(object):
             left join static.kpi kpi on kpi.pk = api.kpi_fk
             join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
         """
-
-    # @staticmethod
-    # def get_delete_session_results_query(session_uid):
-    #     return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
-    #             "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
-    #             "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
 
     @staticmethod
     def get_new_kpi_data():

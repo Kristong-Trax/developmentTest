@@ -807,7 +807,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
                 a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
                 b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
                 if sorted(a_products.tolist()) == sorted(b_products.tolist()):
-                    return False
+                    continue
             except:
                 pass
             if a_target:
