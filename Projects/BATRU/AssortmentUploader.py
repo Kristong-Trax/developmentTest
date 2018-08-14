@@ -133,8 +133,9 @@ class BatruAssortment:
             ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
         stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
-        query = self.get_store_deactivation_query(stores_to_remove)
-        self.commit_results([query])
+        if stores_to_remove:
+            query = self.get_store_deactivation_query(stores_to_remove)
+            self.commit_results([query])
         Log.info("Done setting end dates for irrelevant stores")
 
     def upload_store_assortment_file(self):
