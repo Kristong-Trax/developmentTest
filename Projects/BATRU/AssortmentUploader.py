@@ -142,7 +142,7 @@ class BatruAssortment:
         raw_data = self.parse_assortment_template()
         data = []
         list_of_stores = raw_data[OUTLET_ID].unique().tolist()
-        self.set_end_date_for_irrelevant_assortments(list_of_stores)
+        # self.set_end_date_for_irrelevant_assortments(list_of_stores)
         for store in list_of_stores:
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
@@ -302,27 +302,28 @@ class BatruAssortment:
         After batch_size is reached, the function re-connects the DB and cursor.
         """
         rds_conn, cur = self.connection_ritual()
-        batch_size = 100
+        batch_size = 1000
         query_num = 0
         for query in self.update_queries:
             try:
                 cur.execute(query)
+                self.rds_conn.db.commit()
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.info('Updating failed to DB failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
                 continue
             if query_num > batch_size:
                 query_num = 0
-                rds_conn, cur = self.connection_ritual()
                 rds_conn.db.commit()
+                rds_conn, cur = self.connection_ritual()
             query_num += 1
-        rds_conn.db.commit()
         rds_conn, cur = self.connection_ritual()
         query_num = 0
         for query in queries:
             try:
                 cur.execute(query)
+                self.rds_conn.db.commit()
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
@@ -331,7 +332,6 @@ class BatruAssortment:
             if query_num > batch_size:
                 query_num = 0
                 rds_conn, cur = self.connection_ritual()
-                rds_conn.db.commit()
             query_num += 1
         rds_conn.db.commit()
 
