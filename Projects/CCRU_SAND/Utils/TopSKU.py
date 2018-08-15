@@ -347,7 +347,7 @@ class CCRU_SANDTopSKUAssortment:
         rds_conn, cur = self.connection_ritual()
         query_num = 0
         for query in queries:
-            print query
+            # print query
             try:
                 cur.execute(query)
             except Exception as e:
