@@ -39,6 +39,6 @@ class PNGAMERICAGenerator:
         # self.tool_box.calculate_auto_assortment_compliance()
         # self.tool_box.calculate_auto_assortment_compliance_per_category()
 
-        # self.tool_box.calculate_auto_assortment_compliance_per_brand()
+        self.tool_box.calculate_auto_assortment_compliance_per_brand()
 
         self.tool_box.commit_results_data()
