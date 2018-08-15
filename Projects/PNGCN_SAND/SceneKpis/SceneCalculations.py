@@ -39,9 +39,11 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = '9F7FABB6-AF7C-4A24-A073-83971068A453'
+    session = '78A1F5E7-A28A-4ED2-9D69-F233DB081099'
 
-    scenes = [5421556]
+    scenes = [5410946]
+    # 5410927,5410946,5410962,5410975,5410992,5411003,5411020,5411045,5411064,5411082,5411106,5411115,
+    #           5411184,5411220,5411263]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()

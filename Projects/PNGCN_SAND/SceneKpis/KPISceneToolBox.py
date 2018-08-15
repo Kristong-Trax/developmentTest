@@ -7,8 +7,6 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import PNGCN_SANDShareOfDisplayDataProvider, PNGCN_SANDFields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-# from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -37,9 +35,10 @@ FOUR_SIDED_TOTAL_DISPLAYS = ['Total 1 4-sided display', 'Total 2 4-sided display
 PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
+DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
 
 class PNGCN_SANDPNGShareOfDisplay(object):
-    def __init__(self, project_connector, scene_id, data_provider=None):
+    def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
         self.scene_id = scene_id
         self.project_connector = project_connector
@@ -58,6 +57,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.match_product_in_scene = pd.DataFrame({})
         self.displays = pd.DataFrame({})
         self.valid_facing_product = {}
+        self.common = common
 
     def process_scene(self):
         # try:
@@ -280,6 +280,15 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.project_connector.connect_rds()
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
+
+    def get_display_group(self, display_group):
+        query = '''select pk
+                    from static.custom_entity
+                        where name = '{}';'''.format(display_group)
+
+        display_group_fk = pd.read_sql_query(query, self.project_connector.db)
+        return display_group_fk.pk[0]
+
 
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
@@ -607,8 +616,15 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         return match_product_in_scene
 
     def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_KPI_NAME)
         df = pd.DataFrame(display_visit_summary_list_of_dict)
-        res = df.merge(self.displays, on='display_fk')
+        df.product_size = df.product_size.round(2)
+        final_df = df.groupby(['display_group', 'product_fk'])['product_size', 'facings'].sum().reset_index()
+        for index, row in final_df.iterrows():
+            display_group_fk = self.get_display_group(row['display_group'])
+            ean_code = self.get_ean_code(row['product_fk'])
+            self.common.write_to_db_result(fk = kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
+                                          result=row['product_size'], score=row['facings'], by_scene=True)
         return
 
 

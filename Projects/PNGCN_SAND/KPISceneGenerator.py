@@ -19,7 +19,7 @@ class SceneGenerator:
         self.scene_id = self.data_provider.scene_id
         self.common = Common(data_provider)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.scene_tool_box = PNGCN_SANDPNGShareOfDisplay(self.rds_conn, self.scene_id, self.data_provider)
+        self.scene_tool_box = PNGCN_SANDPNGShareOfDisplay(self.rds_conn, self.common, self.scene_id, self.data_provider)
 
 
     @log_runtime('Total Calculations', log_start=True)
@@ -29,5 +29,5 @@ class SceneGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         self.scene_tool_box.process_scene()
-        # self.common.commit_results_data(result_entity='scene')
+        self.common.commit_results_data(result_entity='scene')
 
