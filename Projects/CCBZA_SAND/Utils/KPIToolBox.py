@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import re
+from fractions import gcd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -79,6 +80,7 @@ TEMPLATE_DISPLAY_NAME = 'Template Display Name'
 KO_ONLY = 'KO Only'
 BY_SCENE = 'By Scene'
 BONUS = 'Bonus'
+QUESTION_TYPE = 'Question type'
 
 #Other constants
 CONDITION_1 = 'Condition 1'
@@ -93,6 +95,7 @@ AVAILABILITY_SKU_FACING_AND = 'Availability SKU facing And'
 AVAILABILITY_SKU_FACING_OR = 'Availability SKU facing Or'
 AVAILABILITY_POSM = 'Availability POSM'
 AVAILABLITY_IF_THEN = 'Availability If Then'
+AVAILABILITY_SKU_FACING_OR_MIN = 'Availability SKU facing Or min'
 KO_PRODUCTS = 'KO PRODUCTS'
 GENERAL_FILTERS = 'general_filters'
 KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
@@ -160,6 +163,14 @@ class CCBZA_SANDToolBox:
         self.scene_kpi_results = self.ps_data_provider.get_scene_results(
             self.scene_info['scene_fk'].drop_duplicates().values)
 
+        self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
+                                             AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
+                                             AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
+                                             AVAILABILITY_POS: self.get_availability_results_scene_table}
+        self.availability_router = {AVAILABILITY_SKU_FACING_AND: self.calculate_availability_sku_and_or,
+                                    AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
+                                    AVAILABILITY_POSM: self.calculate_availability_posm,
+                                    AVAILABILITY_SKU_FACING_OR_MIN: self.calculate_availability_min_facings_unique_list}
         # if not self.data_provider.scene_id:
         #     self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         #     self.scene_kpi_results = self.ps_data_provider.get_scene_results(
@@ -325,9 +336,9 @@ class CCBZA_SANDToolBox:
                     atomic_kpis_data = self.get_atomic_kpis_data(kpi_type, kpi)
                     if not atomic_kpis_data.empty:
                         if kpi_type == 'Survey':
-                            self.calculate_survey(atomic_kpis_data, identifier_result_kpi)
+                            self.calculate_survey_new(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Availability':
-                            self.calculate_availability_session(atomic_kpis_data, identifier_result_kpi)
+                            self.calculate_availability_session_new(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Count':
                             self.calculate_count(atomic_kpis_data, identifier_result_kpi)
                         elif kpi_type == 'Price':
@@ -358,7 +369,7 @@ class CCBZA_SANDToolBox:
                                        identifier_result=identifier_result_red_score,
                                        denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
-        self.common.commit_results_data()
+        # self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -701,6 +712,63 @@ class CCBZA_SANDToolBox:
                                            identifier_parent=identifier_parent,
                                            target=int(float(max_score)), should_enter=True)
 
+    def calculate_survey_new(self, atomic_kpis_data, identifier_parent):
+        """
+        This function calculates Survey-Question typed Atomics, and writes the result to the DB.
+        """
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            survey_ids = map(lambda x: str(int(float(x))), self.split_and_strip(atomic_kpi[SURVEY_QUESTION_CODE]))
+            # score = 0
+            atomic_result = 0
+            max_score = atomic_kpi[SCORE]
+            expected_answers = atomic_kpi[EXPECTED_RESULT]
+            if atomic_kpi[QUESTION_TYPE] == 'Text':
+                expected_answers = self.split_and_strip(expected_answers)
+                survey_answers = []
+                for id in survey_ids:
+                    survey_answers.append(self.tools.get_survey_answer(('code', [id])))
+                if survey_answers:
+                    if all([answer in expected_answers for answer in survey_answers]):
+                        atomic_result = 100
+            elif atomic_kpi[QUESTION_TYPE] == 'Numeric':
+                if expected_answers:
+                    try:
+                        expected_answers = map(lambda x: int(float(x)), expected_answers.split(':'))
+                        survey_answers = []
+                        for id in survey_ids:
+                            answer = self.tools.get_survey_answer(('code', [id]))
+                            try:
+                                survey_answers.append(int(float(answer)))
+                            except ValueError as e:
+                                Log.error('Survey kpi: {}, error: {}'.format(atomic_kpi[ATOMIC_KPI_NAME], str(e)))
+                        if survey_answers and len(survey_answers) == len(expected_answers):
+                            if all([answer is not None for answer in survey_answers]):
+                                reduced_survey_answers = map(lambda x: x/reduce(gcd, survey_answers), survey_answers)
+                                if expected_answers == reduced_survey_answers:
+                                    atomic_result = 100
+                    except Exception as e:
+                        Log.error('Survey kpi: {}, input error: {}'.format(atomic_kpi[ATOMIC_KPI_NAME], str(e)))
+            else:
+                Log.error('Survey of type {} is not supported'.format(QUESTION_TYPE))
+                continue
+            score = self.calculate_atomic_score(atomic_result, max_score)
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+
+            custom_score = self.get_pass_fail(score)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+            if max_score:
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                                               denominator_id=self.store_id, result=score,
+                                               identifier_parent=identifier_parent,
+                                               target=int(float(max_score)), should_enter=True)
+            else:
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                                               denominator_id=self.store_id, result=score,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
+
+
     def calculate_survey(self, atomic_kpis_data, identifier_parent):
         """
         This function calculates Survey-Question typed Atomics, and writes the result to the DB.
@@ -887,6 +955,46 @@ class CCBZA_SANDToolBox:
                 filters[condition]['numer'].update(filters[condition]['denom'])
         return filters
 
+    def calculate_availability_session_new(self, atomic_kpis_data, identifier_parent):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+            score = 0
+            per_scene = self.is_by_scene(atomic_kpi)
+            avail_type = atomic_kpi[AVAILABILITY_TYPE]
+            if per_scene:
+                try:
+                    score, identifier_result = self.availability_by_scene_router[avail_type](atomic_kpi, identifier_result)
+                except Exception as e:
+                    Log.info('Availability not found for scene. Proceeding to session')
+                    try:
+                        score = self.availability_router[avail_type](atomic_kpi, identifier_result)
+                    except Exception as e:
+                        Log.error('Availability type {} is not supported. kpi: {}'.format(avail_type,
+                                                                                          atomic_kpi[ATOMIC_KPI_NAME]))
+                        continue # ask Israel
+            else:
+                try:
+                    score = self.availability_router[avail_type](atomic_kpi, identifier_result)
+                except Exception as e:
+                    Log.error('Availability type {} is not supported by calculation. {}'.format(avail_type, str(e)))
+
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+            max_score = atomic_kpi[SCORE]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+            if max_score:
+                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
+                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                                               identifier_result=identifier_result, result=score,
+                                               should_enter=True, target=float(max_score))
+            else:
+                custom_score = self.get_pass_fail(score)
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                                               identifier_result=identifier_result,
+                                               should_enter=True, result=score)
+
+
     def calculate_availability_session(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
@@ -894,7 +1002,9 @@ class CCBZA_SANDToolBox:
             score = 0
             per_scene = self.is_by_scene(atomic_kpi)
             if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
-                score = self.calculate_availability_posm(atomic_kpi)
+                score = self.calculate_availability_posm(atomic_kpi, identifier_result)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR_MIN:
+                score = self.calculate_availability_min_facings_unique_list(atomic_kpi, identifier_result)
             elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
                 if per_scene:
                     score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
@@ -906,7 +1016,7 @@ class CCBZA_SANDToolBox:
                     score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
                 else:
                     Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
-                    continue # ask Israel
+                    continue
             elif atomic_kpi[AVAILABILITY_TYPE] in [AVAILABILITY_SKU_FACING_AND, AVAILABILITY_SKU_FACING_OR]:
                 if per_scene:
                     score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
@@ -947,7 +1057,7 @@ class CCBZA_SANDToolBox:
         return score, identifier_result
 
     # calculated on session level
-    def calculate_availability_posm(self, atomic_kpi):
+    def calculate_availability_posm(self, atomic_kpi, identifier_parent):
         max_score = atomic_kpi[SCORE]
         target = atomic_kpi[TARGET]
         filters = self.get_general_calculation_parameters(atomic_kpi)
@@ -975,6 +1085,24 @@ class CCBZA_SANDToolBox:
                 return False
         return True
 
+    #only on session level
+    def calculate_availability_min_facings_unique_list(self, atomic_kpi, identifier_parent):
+        max_score = atomic_kpi[SCORE]
+        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
+                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+        atomic_result = 0
+        list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
+        if list_of_scenes:
+            target_facings = float(filters[KPI_SPECIFIC_FILTERS].pop('facings'))
+            filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+            if not filtered_scif.empty:
+                atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+                                                                              filters[KPI_SPECIFIC_FILTERS],
+                                                                              identifier_parent, is_by_scene=False,
+                                                                              or_min_facings=target_facings)
+        score = self.calculate_atomic_score(atomic_result, max_score)
+        return score
+
     def calculate_availability_sku_and_or(self, atomic_kpi, identifier_parent):
         max_score = atomic_kpi[SCORE]
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
@@ -991,7 +1119,7 @@ class CCBZA_SANDToolBox:
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
-    def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene):
+    def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene, or_min_facings=None):
         target = float(atomic_kpi[TARGET])
         result = 0
         availability_type = atomic_kpi[AVAILABILITY_TYPE]
@@ -1002,10 +1130,13 @@ class CCBZA_SANDToolBox:
             self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
             if availability_type == AVAILABILITY_SKU_FACING_AND:
                 result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
-            else:
+            elif availability_type == AVAILABILITY_SKU_FACING_OR:
                 result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
-            # else:
-            #     Log.warning('Availability of type {} is not supported'.format(availability_type))
+            elif availability_type == AVAILABILITY_SKU_FACING_OR_MIN:
+                count_skus_meeting_target = sum([facings >= or_min_facings for facings in facings_by_sku.values()])
+                result = 100 if count_skus_meeting_target >= target else 0
+            else:
+                Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
 
 #--------------------------------utility functions-----------------------------------#
