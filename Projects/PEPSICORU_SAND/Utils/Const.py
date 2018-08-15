@@ -11,6 +11,7 @@ class Const(object):
     # Filters
     TEMPLATE_GROUP = 'template_group' #DELETE?
     TEMPLATE_NAME = 'template_name'
+    MANUFACTURER_NAME = 'manufacturer_name'
     CATEGORY = 'category'
     SUB_CATEGORY = 'sub_category'
     BRAND_NAME = 'brand_name'
@@ -18,6 +19,15 @@ class Const(object):
     MAIN_SHELF_SNACKS = 'Main Shelf snacks'
     MAIN_SHELF_BEVERAGES = 'Main Shelf beverages'
     MAIN_SHELF_JUICES = 'Main Shelf juices'
+    PEPSICO = 'PepsiCo'
+
+    # SOS plaster
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
+    EXCLUDE_EMPTY = False
+    INCLUDE_EMPTY = True
+    EMPTY = 'Empty'
 
     # KPI Names
     FACINGS_MANUFACTURER = 'FACINGS_SOS_BY_MANUFACTURER'
@@ -30,4 +40,10 @@ class Const(object):
     LINEAR_CATEGORY = 'LINEAR_SOS_BY_CATEGORY'
     LINEAR_SUB_CATEGORY = 'LINEAR_SOS_BY_SUB_CATEGORY'
     LINEAR_BRAND = 'LINEAR_SOS_BY_BRAND'
+
+    # Saving to DB
+    NOMINATOR_ID = 'nominator_id'
+    DENOMINATOR_ID = 'denominator_id'
+    RESULT = 'result'
+    SCORE = 'score'
 

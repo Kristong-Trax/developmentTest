@@ -4,7 +4,8 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
+from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.PEPSICORU_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -15,7 +16,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import  GENERALToolBox
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'idanr'
 
@@ -43,13 +44,14 @@ class PEPSICORUToolBox:
         self.kpi_results_queries = []
         self.sos_results = {}
 
-
-        self.categories_to_calculate = [Const.SNACKS, Const.BEVERAGES, Const.JUICES] #TODO a function.
+        self.k_engine = BaseCalculationsGroup(data_provider, output)
+        self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.sos = SOS(data_provider, output, self.rds_conn)
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
-        self.general_tool_box = GENERALToolBox(data_provider)
+        self.toolbox = GENERALToolBox(data_provider)
 
-    def get_scene_type_by_category(self, current_category):
+    @staticmethod
+    def get_scene_type_by_category(current_category):
         """
         This function gets a category and return the relevant scene type for the SOS
         :param current_category: One of the product's categories. E.g: Snacks.
@@ -62,49 +64,60 @@ class PEPSICORUToolBox:
         else:
             return Const.MAIN_SHELF_JUICES
 
+    def get_scene_type_by_sub_cat(self, sub_cat):
+        """
+        This function gets a sub_category and return the relevant scene type for the SOS
+        :param sub_cat: One of the product's sub_categories. E.g: TODO todo todo.
+        :return: The relevant scene type to the current sub_category
+        """
+        current_category = self.scif.loc[self.scif[Const.SUB_CATEGORY] == sub_cat][Const.CATEGORY].values[0]
+        return self.get_scene_type_by_category(current_category)
 
+    def get_relevant_categories_for_session(self):
+        """
+        This function returns a list of the relevant categories according to the scene_types in the session
+        :return: List of the relevant categories
+        """
+        relevant_categories = set()
+        scene_types = self.scif[Const.TEMPLATE_NAME].unique().tolist()
+        for scene_type in scene_types:
+            if Const.SNACKS in scene_type.upper():
+                relevant_categories.add(Const.SNACKS)
+            elif Const.BEVERAGES in scene_type.upper():
+                relevant_categories.add(Const.BEVERAGES)
+            else:
+                relevant_categories.add(Const.JUICES)
+        return list(relevant_categories)
 
     @log_runtime('Share of shelf pepsicoRU')
-    def calculate_share_of_shelf(self):
+    def share_of_shelf_calculator(self):
         """
-        This function filters
+        The function filters only the relevant scene (type = Main Shelf in category) and calculates the linear SOS and
+        the facing SOS for each level (Manufacturer, Category, Sub-Category, Brand).
         :return:
         """
-        # Filtering Main Shelf scene types
-        relevant_scene_types = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
-                                Const.MAIN_SHELF in scene_type]
-        filtered_df = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_scene_types)]
-        #####################################################################
-        # locations = self.scif[Const.TEMPLATE_GROUP].unique().tolist() #todo: change template group?
-        # for location in locations:
-        #     filter_loc_param = {Const.TEMPLATE_GROUP: location}
-        #     filtered_by_loc = filtered_df[self.general_tool_box.get_filter_condition(filtered_df, **filter_loc_param)]
-        #     facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_LOCATION)
-        #     linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
-        #     # self.sos_results[facings_kpi_fk] = [numerator, denominator]
-        #     linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_LOCATION)
-        ######################################################################
+        filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
+
         for category in self.categories_to_calculate:
-            filter_cat_param = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
-            filtered_df_by_cat = filtered_df[
-                self.general_tool_box.get_filter_condition(filtered_df, **filter_cat_param)]
-            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
+            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
+            # Calculate Facings SOS
+            nominator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
+            facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
+
+            # Calculate Linear SOS
+            nominator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
+            linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
         for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
-            filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat}
-            filtered_df_by_sub_cat = filtered_df[
-                self.general_tool_box.get_filter_condition(filtered_df, **filter_sub_cat_param)]
+            filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat,
+                                    Const.TEMPLATE_NAME: self.get_scene_type_by_sub_cat(sub_cat)}
             facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
             linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
         for brand in self.scif[Const.BRAND_NAME]:
             filter_brand_param = {Const.BRAND_NAME: brand}
-            filtered_df_by_sub_cat = filtered_df[
-                self.general_tool_box.get_filter_condition(filtered_df, **filter_brand_param)]
             facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND)
             linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND)
 
         return
-
 
     def get_relevant_session_categories(self):
         """
@@ -119,7 +132,63 @@ class PEPSICORUToolBox:
         """
         This function calculates the KPI results.
         """
-        self.assortment_calculation()
         session_categories = self.get_relevant_session_categories()
         score = 0
         return score
+
+
+###################################### Plaster ######################################
+
+
+    def calculate_share_space_length(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        filtered_matches = \
+            self.match_product_in_scene[self.toolbox.get_filter_condition(self.match_product_in_scene, **filters)]
+        space_length = filtered_matches['width_mm_advance'].sum()
+        return space_length
+
+    def calculate_linear_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The numerator, denominator and ratio score.
+        """
+        if include_empty == Const.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (Const.EMPTY, Const.EXCLUDE_FILTER)
+
+        numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
+        denominator_width = self.calculate_share_space_length(**general_filters)
+
+        if denominator_width == 0:
+            return 0, 0
+        else:
+            return numerator_width, denominator_width, (numerator_width / float(denominator_width))
+
+    def calculate_share_facings(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total number of the relevant facings occupy.
+        """
+        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        sum_of_facings = filtered_scif['width_mm_advance'].sum()
+        return sum_of_facings
+
+    def calculate_facings_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The numerator, denominator and ratio score.
+        """
+        if include_empty == Const.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (Const.EMPTY, Const.EXCLUDE_FILTER)
+        numerator_counter = self.calculate_share_facings(**dict(sos_filters, **general_filters))
+        denominator_counter = self.calculate_share_facings(**general_filters)
+        if denominator_counter == 0:
+            return 0, 0
+        else:
+            return numerator_counter, denominator_counter, (numerator_counter / float(denominator_counter))
