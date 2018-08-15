@@ -267,6 +267,19 @@ class CCRU_SANDCCHKPIFetcher:
 
         return res[0]
 
+    def get_external_session_id(self, session_uid):
+        query = """
+                SELECT external_session_id
+                FROM probedata.session ss
+                WHERE ss.session_uid = '{}';
+                """.format(session_uid)
+
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()[0]
+
+        return res[0]
+
     # @staticmethod
     # def get_table_update_query(entries, table, condition):
     #     if table == 'report.kpi_results':

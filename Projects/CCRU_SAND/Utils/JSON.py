@@ -79,6 +79,26 @@ class CCRU_SANDJsonGenerator:
         self.project_kpi_dict['gaps'] = final_json
         return
 
+    def create_equipment_json(self, file_name, sheet_name=None):
+        if sheet_name:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name), sheetname=str(sheet_name))
+        else:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name))
+        output = file_input.to_json(orient='records')
+        final_json = json.loads(output)
+        self.project_kpi_dict['equipment'] = final_json
+        return
+
+    def create_contract_json(self, file_name, sheet_name=None):
+        if sheet_name:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name), sheetname=str(sheet_name))
+        else:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name))
+        output = file_input.to_json(orient='records')
+        final_json = json.loads(output)
+        self.project_kpi_dict['contract'] = final_json
+        return
+
     @staticmethod
     def remove_none_values_from_json(json_data):
         """

@@ -24,12 +24,14 @@ __author__ = 'urid'
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
 CONDITIONAL_PROPORTIONAL = 'CONDITIONAL PROPORTIONAL'
+AVERAGE = 'AVERAGE'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 KPI_CONVERSION_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPIConvesion2018.xlsx')
 TARGET_EXECUTION = 'Target Execution 2018'
+EQUIPMENT_SET_NAME = 'Equipment Execution 2018'
 CONTRACT_SET_NAME = 'Contract Execution 2018'
 CCH_INTEGRATION = 'CCH Integration'
 
@@ -70,6 +72,7 @@ class CCRU_SANDKPIToolBox:
             self.set_name = self.get_set(self.visit_date)
         else:
             self.set_name = set_name
+        self.pos_set_name = self.set_name
         self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                   self.set_name, self.products)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
@@ -90,6 +93,7 @@ class CCRU_SANDKPIToolBox:
         self.kpi_score_level2 = {}
         self.kpi_facts_hidden = []
         self.kpi_facts_hidden_calculated = []
+        self.external_session_id = self.kpi_fetcher.get_external_session_id(self.session_uid)
 
     def change_set(self, set_name):
         self.set_name = set_name
@@ -2782,6 +2786,102 @@ class CCRU_SANDKPIToolBox:
                 query = insert(attributes.to_dict(), CUSTOM_GAPS_TABLE)
                 self.gaps_queries.append(query)
 
+    def calculate_equipment_execution(self, params):
+
+        log_prefix = 'Equipment KPI: '
+
+        raw_data = self.execution_contract.get_json_file_content(str(self.store_id))
+        if raw_data:
+            Log.info(log_prefix + 'Relevant file for Store ID {} / Number {} is found'.format(self.store_id, self.top_sku.STORE_NUMBER))
+
+        contract_data = None
+        for data in raw_data:
+            start_date = datetime.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
+            end_date = datetime.datetime.now().date() if not data['End Date'] else \
+                datetime.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
+            if start_date <= self.visit_date <= end_date:
+                if contract_data is None or start_date >= contract_data[1]:
+                    contract_data = (data, start_date)
+
+        if contract_data is not None:
+
+            contract_data = contract_data[0]
+            for field in (self.top_sku.STORE_NUMBER, 'Start Date', 'End Date'):
+                contract_data.pop(field, None)
+
+            kpi_conversion = self._get_kpi_conversion()
+
+            sum_of_scores = 0
+            sum_of_weights = 0
+
+            for param in params:
+                if param.get('level') == 2:
+                    children = param.get('Children').replace('\n','').replace(' ', '').split(',')
+                    for param_child in params:
+                        if param_child.get('KPI ID') in children and \
+                            param_child.get('KPI name Eng') in kpi_conversion.keys() and \
+                            kpi_conversion.get(param_child.get('KPI name Eng')) in contract_data.keys():
+
+                kpi = param.get('KPI Name')
+                score = self.kpk_scores[kpi].get('score')
+                kpi_local_name = self.kpk_scores[kpi].get('rus_name')
+                if score is not None:
+                    gap = (100 - score) * param.get('Base Weight')
+                    if gap < 0:
+                        gap = 0
+
+            for kpi_id in contract_data.keys():
+                target, weight = contract_data[kpi_id]
+                if target == '':
+                    continue
+                kpi_name = kpi_conversion.get(int(kpi_id))
+                if kpi_name:
+                    if kpi_name in self.execution_results:
+                        result = self.execution_results[kpi_name].get('result')
+                        score_func = self.execution_results[kpi_name].get('score_func')
+                        try:
+                            if type(target) is unicode and '%' in target:
+                                target = target.replace('%', '')
+                                target = float(target) / 100
+                            target = float(target)
+                            if int(target) == target:
+                                target = int(target)
+                        except ValueError:
+                            target = contract_data[kpi_id]
+                            # score = 100 if result == target else 0
+                        if score_func == PROPORTIONAL:
+                            if target:
+                                score = (result / float(target)) * 100
+                                if score > 100:
+                                    score = 100
+                            else:
+                                score = 0
+                        else:
+                            score = 100 if result >= target else 0
+                        weight = float(weight)
+                        sum_of_scores += score * weight
+                        sum_of_weights += weight
+                        params = {'KPI name Eng': kpi_name}
+                        self.change_set(EQUIPMENT_SET_NAME)
+                        kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] ==
+                                                                  kpi_name]['kpi_fk'].values[0]
+                        attributes_for_level2 = self.create_attributes_for_level2_df(params, score, kpi_fk)
+                        self.write_to_db_result(attributes_for_level2, 'level2')
+                        attributes_for_level3 = self.create_attributes_for_level3_df(params, (score, result, target),
+                                                                                     kpi_fk)
+                        self.write_to_db_result(attributes_for_level3, 'level3')
+                    else:
+                        Log.warning(log_prefix + "KPI '{}' was not calculated".format(kpi_name))
+                else:
+                    Log.warning(log_prefix + 'KPI ID {} cannot be converted'.format(kpi_id))
+            # Saving results for level 1
+            contract_score = 0 if not sum_of_weights else round(sum_of_scores / float(sum_of_weights), 2)
+            attributes_for_table1 = pd.DataFrame([(CONTRACT_SET_NAME, self.session_uid, self.store_id,
+                                                   self.visit_date.isoformat(), contract_score, None)],
+                                                 columns=['kps_name', 'session_uid', 'store_fk', 'visit_date',
+                                                          'score_1', 'kpi_set_fk'])
+            self.write_to_db_result(attributes_for_table1, 'level1', CONTRACT_SET_NAME)
+
     def calculate_contract_execution(self):
         self.change_set(CONTRACT_SET_NAME)
         log_prefix = 'Contract KPI: '
@@ -2859,7 +2959,8 @@ class CCRU_SANDKPIToolBox:
         data = pd.read_excel(KPI_CONVERSION_PATH)
         conversion = {}
         for x, row in data.iterrows():
-            conversion[int(row['KPI ID'])] = row['KPI Name']
+            # conversion[int(row['KPI ID'])] = row['KPI Name']
+            conversion[int(row['KPI Name'])] = row['KPI ID']
         return conversion
 
     def calculate_top_sku(self):
