@@ -293,7 +293,7 @@ class PURINAToolBox:
             try:
                 cur.execute(query)
             except Exception as e:
-                print query
+                Log.info('query {} could not be executed.'.format(query))
         self.rds_conn.db.commit()
 
         self.rds_conn.disconnect_rds()
