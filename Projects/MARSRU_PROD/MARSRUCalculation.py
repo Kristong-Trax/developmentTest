@@ -1,8 +1,8 @@
 import pandas as pd
 
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Projects.MARSRU_PROD.Utils.MARSRUToolBox import MARSRU_PRODMARSRUKPIToolBox
@@ -63,14 +63,7 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'marsru-prod'
 #     session_uids = [
-#                     '18f8eaee-5f00-416f-b43b-13a11967f889',
-#                     '5471d957-affe-4023-b94b-b1505fafa473',
-#                     '7a5532fa-38dd-4dbf-8cc1-a5bd76fd0e16',
-#                     '258ed2a5-ef2b-4f99-81df-5a4ce2765a92',
-#                     '6e5c8358-857e-4a0f-9de0-cd640cf0f515',
-#                     '0d354cf1-8d48-4105-b674-7439728376f1',
-#                     '57bcc9fc-fd67-4d7c-93bb-a265d8bd43bf',
-#                     'dbc12bd7-87a8-49e7-aeca-106bf8e80c51',
+#                     'e80e4a03-e0fb-4987-a5a2-6c1aba7c1b01',
 #
 #     ]
 #     data_provider = KEngineDataProvider(project_name)

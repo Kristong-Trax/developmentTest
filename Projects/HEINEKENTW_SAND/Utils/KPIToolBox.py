@@ -64,7 +64,7 @@ class HEINEKENTWToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.kpi_static_data = self.common.get_kpi_static_data()
+        self.kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_results_queries = []
         self.assortment = Assortment(self.data_provider, self.output)
 
@@ -84,7 +84,7 @@ class HEINEKENTWToolBox:
         level2 is assortment groups
         """
         if not lvl3_result.empty:
-            cat_df = self.scif[['product_fk', 'category_fk']]
+            cat_df = self.all_products[['product_fk', 'category_fk']]
             lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
             lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
 
@@ -101,7 +101,7 @@ class HEINEKENTWToolBox:
                     self.common.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL1, numerator_id=result.product_fk, numerator_result=score,
                                                               result=score, denominator_id=result.category_fk,denominator_result=1, score=score, score_after_actions=score)
 
-            category_list = cat_df['category_fk'].unique()
+            category_list = lvl3_with_cat['category_fk'].unique()
             for cat in category_list:
                 lvl3_result_cat = lvl3_with_cat[lvl3_with_cat["category_fk"] == cat]
                 lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result_cat)
