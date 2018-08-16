@@ -53,7 +53,7 @@ class PEPSICORUToolBox:
         self.toolbox = GENERALToolBox(data_provider)
 
     @staticmethod
-    def get_scene_type_by_category(current_category):
+    def get_main_shelf_by_category(current_category):
         """
         This function gets a category and return the relevant scene type for the SOS
         :param current_category: One of the product's categories. E.g: Snacks.
@@ -73,7 +73,7 @@ class PEPSICORUToolBox:
         :return: The relevant scene type to the current sub_category
         """
         current_category = self.scif.loc[self.scif[Const.SUB_CATEGORY] == sub_cat][Const.CATEGORY].values[0]
-        return self.get_scene_type_by_category(current_category)
+        return self.get_main_shelf_by_category(current_category)
 
     def get_relevant_categories_for_session(self):
         """
@@ -93,18 +93,15 @@ class PEPSICORUToolBox:
 
     def get_relevant_pk_by_name(self, filter_by, filter_param):
         """
-        This function gets a filter name and returns the relevant pk
+        This function gets a filter name and returns the relevant pk.
+        If the filter_by is equal to category it will be the field name because in SCIF there isn't category_name
         :param filter_by: filter by name E.g: 'category', 'brand'.
         :param filter_param: The param to filter by. E.g: if filter_by = 'category', filter_param could be 'Snack'
         :return: The relevant pk
         """
         pk_field = filter_by + Const.FK
-        field_name = filter_by + Const.NAME
-        if filter_by == Const.CATEGORY:
-            return self.scif.loc[self.scif[Const.CATEGORY] == filter_param][pk_field].values[0]
-        else:
-            return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
-
+        field_name = filter_by + Const.NAME if filter_by != Const.CATEGORY else Const.CATEGORY
+        return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
 
     @log_runtime('Share of shelf pepsicoRU')
     def share_of_shelf_calculator(self):
@@ -113,29 +110,42 @@ class PEPSICORUToolBox:
         the facing SOS for each level (Manufacturer, Category, Sub-Category, Brand).
         :return:
         """
+        # Level 1
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
-
+        # Calculate Facings SOS
+        numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param)
+        facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
+        self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
+                                       numerator_result=numerator_score, denominator_id=self.store_id,
+                                       denominator_result=denominator_score, result=result, score=result) #todo check !
+        # Calculate Linear SOS
+        facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
+        numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param)
+        self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
+                                       numerator_result=numerator_score, denominator_id=self.store_id,
+                                       denominator_result=denominator_score, result=result, score=result)
+        # Level 2
         for category in self.categories_to_calculate:
-            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
+            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_main_shelf_by_category(category)}
             # Calculate Facings SOS
             numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
-            facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
+            facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
             numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
-            linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
+            linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY_SOS)
             self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
-
-        for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
+        # Level 3
+        for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist(): #todo: a function to calculate sub categories only by the categoires in the scene_types ????
             filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat,
                                     Const.TEMPLATE_NAME: self.get_scene_type_by_sub_cat(sub_cat)}
             # Calculate Facings SOS
-            sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
+            sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
             numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param,
                                                                                     filter_sub_cat_param)
             current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
@@ -145,19 +155,19 @@ class PEPSICORUToolBox:
             # Calculate Linear SOS
             numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param,
                                                                                    filter_sub_cat_param)
-            linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
+            linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS)
             self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
-
+        # Level 4
         for brand in self.scif[Const.BRAND_NAME]:
             filter_brand_param = {Const.BRAND_NAME: brand}
             # Calculate Facings SOS
-            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND)
+            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
 
 
             # Calculate Linear SOS
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND)
+            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
 
         return
 
@@ -170,17 +180,53 @@ class PEPSICORUToolBox:
         # Filter scif???
         return [Const.SNACKS]
 
+    def calculate_count_of_display(self):
+        """
+        This function will calculate the Count of # of Pepsi Displays KPI
+        :return:
+        """
+        # TODO: TARGETS TARGETS TARGETS
+        # Filtering out the main shelves
+        main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
+                        Const.MAIN_SHELF in scene_type]
+        filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
+
+        if not filtered_scif:
+            return
+        # Calculate count of display - store_level
+        display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
+        scene_types_in_store = len(filtered_scif[Const.SCENE_ID].unique())
+        self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.store_id,
+                                       numerator_result=scene_types_in_store, result=scene_types_in_store, score=0)
+
+        # Calculate count of display - category_level
+        display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
+        for category in self.categories_to_calculate:
+            relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
+                               category in scene_type]
+            filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
+            scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_ID].unique())
+            category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
+            self.common.write_to_db_result(fk=scene_types_in_category, numerator_id=category_fk,
+                                           numerator_result=scene_types_in_store, result=scene_types_in_store, score=0)
+
+        # Calculate count of display - scene_level
+        display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
+        for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
+            scene_type_score = len(
+                filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_ID].unique())
+            scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
+            self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=scene_type_fk,
+                                           numerator_result=scene_type_score, result=scene_type_score, score=0)
+
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        session_categories = self.get_relevant_session_categories()
-        score = 0
-        return score
+        return 1
 
 
 ###################################### Plaster ######################################
-
 
     def calculate_share_space_length(self, **filters):
         """
