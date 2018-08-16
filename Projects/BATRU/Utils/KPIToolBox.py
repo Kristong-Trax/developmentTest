@@ -298,7 +298,8 @@ class BATRUToolBox:
                 'product_ean_code'].unique().tolist()
             total_assortment_init.extend(active_products)
             total_assortment = set(total_assortment_init)
-            total_assortment.remove(None)
+            if None in total_assortment:
+                total_assortment.remove(None)
             product_log = {}
             for assortment in [total_assortment, contracted_products]:
                 availability_score_list = {}
