@@ -46,9 +46,5 @@ class Const(object):
     LINEAR_BRAND = 'LINEAR_SOS_BY_BRAND'
 
     # Saving to DB
-    NUMERATOR_ID = 'numerator_id'
-    DENOMINATOR_ID = 'denominator_id'
-    NUMERATOR_RESULT = 'numerator_result'
-    DENOMINATOR_RESULT = 'denominator_result'
     RESULT = 'result'
     SCORE = 'score'

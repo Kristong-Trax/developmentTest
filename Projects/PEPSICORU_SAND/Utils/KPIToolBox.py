@@ -126,14 +126,36 @@ class PEPSICORUToolBox:
             # Calculate Linear SOS
             numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
             linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
+            self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=pepsiCo_fk,
+                                           numerator_result=numerator_score, denominator_id=current_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
+
         for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
             filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat,
                                     Const.TEMPLATE_NAME: self.get_scene_type_by_sub_cat(sub_cat)}
-            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
+            # Calculate Facings SOS
+            sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param,
+                                                                                    filter_sub_cat_param)
+            current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
+            self.common.write_to_db_result(fk=sub_cat_kpi_fk, numerator_id=pepsiCo_fk,
+                                           numerator_result=numerator_score, denominator_id=current_sub_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
+            # Calculate Linear SOS
+            numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param,
+                                                                                   filter_sub_cat_param)
+            linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
+            self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=pepsiCo_fk,
+                                           numerator_result=numerator_score, denominator_id=current_sub_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
+
         for brand in self.scif[Const.BRAND_NAME]:
             filter_brand_param = {Const.BRAND_NAME: brand}
+            # Calculate Facings SOS
             facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND)
+
+
+            # Calculate Linear SOS
             linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND)
 
         return
