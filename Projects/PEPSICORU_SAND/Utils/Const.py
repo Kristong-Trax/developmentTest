@@ -12,14 +12,18 @@ class Const(object):
     TEMPLATE_GROUP = 'template_group' #DELETE?
     TEMPLATE_NAME = 'template_name'
     MANUFACTURER_NAME = 'manufacturer_name'
+    MANUFACTURER = 'manufacturer'
     CATEGORY = 'category'
     SUB_CATEGORY = 'sub_category'
+    BRAND = 'brand'
     BRAND_NAME = 'brand_name'
     MAIN_SHELF = 'Main Shelf'
     MAIN_SHELF_SNACKS = 'Main Shelf snacks'
     MAIN_SHELF_BEVERAGES = 'Main Shelf beverages'
     MAIN_SHELF_JUICES = 'Main Shelf juices'
     PEPSICO = 'PepsiCo'
+    FK = '_fk'
+    NAME = '_name'
 
     # SOS plaster
     EXCLUDE_FILTER = 0
@@ -42,8 +46,9 @@ class Const(object):
     LINEAR_BRAND = 'LINEAR_SOS_BY_BRAND'
 
     # Saving to DB
-    NOMINATOR_ID = 'nominator_id'
+    NUMERATOR_ID = 'numerator_id'
     DENOMINATOR_ID = 'denominator_id'
+    NUMERATOR_RESULT = 'numerator_result'
+    DENOMINATOR_RESULT = 'denominator_result'
     RESULT = 'result'
     SCORE = 'score'
-

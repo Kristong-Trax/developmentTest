@@ -89,6 +89,21 @@ class PEPSICORUToolBox:
                 relevant_categories.add(Const.JUICES)
         return list(relevant_categories)
 
+    def get_relevant_pk_by_name(self, filter_by, filter_param):
+        """
+        This function gets a filter name and returns the relevant pk
+        :param filter_by: filter by name E.g: 'category', 'brand'.
+        :param filter_param: The param to filter by. E.g: if filter_by = 'category', filter_param could be 'Snack'
+        :return: The relevant pk
+        """
+        pk_field = filter_by + Const.FK
+        field_name = filter_by + Const.NAME
+        if filter_by == Const.CATEGORY:
+            return self.scif.loc[self.scif[Const.CATEGORY] == filter_param][pk_field].values[0]
+        else:
+            return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
+
+
     @log_runtime('Share of shelf pepsicoRU')
     def share_of_shelf_calculator(self):
         """
@@ -97,15 +112,19 @@ class PEPSICORUToolBox:
         :return:
         """
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
+        pepsiCo_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
 
         for category in self.categories_to_calculate:
             filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
             # Calculate Facings SOS
-            nominator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
             facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
-
+            current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
+            self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=pepsiCo_fk,
+                                           numerator_result=numerator_score, denominator_id=current_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
-            nominator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
+            numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
             linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
         for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist():
             filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat,
