@@ -1,9 +1,21 @@
-# from Trax.Analytics.Calculation.PNGCN_PROD.EmptySpacesKpi import EmptySpaceKpiGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+import os
+import numpy as np
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_SAND.ShareOfDisplay.ExcludeDataProvider import PNGCN_SANDShareOfDisplayDataProvider, PNGCN_SANDFields
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-import numpy as np
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
 __Author__ = 'Dudi_S'
@@ -23,10 +35,12 @@ FOUR_SIDED_TOTAL_DISPLAYS = ['Total 1 4-sided display', 'Total 2 4-sided display
 PROMOTION_WALL_DISPLAYS = ['Product Strip']
 TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
+DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
 
 class PNGCN_SANDPNGShareOfDisplay(object):
-    def __init__(self, project_connector, session_uid, data_provider=None):
-        self.session_uid = session_uid
+    def __init__(self, project_connector, common, scene_id, data_provider=None):
+        # self.session_uid = session_uid
+        self.scene_id = scene_id
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
@@ -34,17 +48,18 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             self.on_ace = True
         else:
             self.on_ace = False
-            self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
+            # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
-        self.log_prefix = 'Share_of_display for session: {}, project {}'.format(self.session_uid,
+        self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
                                                                                 self.project_connector.project_name)
         Log.info(self.log_prefix + ' Starting calculation')
         self.match_display_in_scene = pd.DataFrame({})
         self.match_product_in_scene = pd.DataFrame({})
         self.displays = pd.DataFrame({})
         self.valid_facing_product = {}
+        self.common = common
 
-    def process_session(self):
+    def process_scene(self):
         try:
             Log.debug(self.log_prefix + ' Retrieving data')
             self.match_display_in_scene = self._get_match_display_in_scene_data()
@@ -246,6 +261,15 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
 
+    def get_display_group(self, display_group):
+        query = '''select pk
+                    from static.custom_entity
+                        where name = '{}';'''.format(display_group)
+
+        display_group_fk = pd.read_sql_query(query, self.project_connector.db)
+        return display_group_fk.pk[0]
+
+
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
         Cross information between display and bays to match_product_in_scene.
@@ -350,6 +374,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             display_visit_summary = self.remove_by_facing(display_visit_summary)
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
+            self.insert_into_kpi_scene_results(display_visit_summary_list_of_dict)
 
     def remove_by_facing(self, df):
         """
@@ -437,6 +462,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         query = ''' select
                         pk as display_fk
                         ,sos_type_fk
+                        ,display_group
                     from
                         static.display;'''
         displays = pd.read_sql_query(query, self.project_connector.db)
@@ -457,7 +483,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         queries = [
             drop_temp_table_query,
             """ create temporary table probedata.t_scenes_to_delete_displays as
-                select pk as scene_fk from probedata.scene where session_uid = '{}';""".format(self.session_uid),
+                select pk as scene_fk from probedata.scene where pk = '{}';""".format(self.scene_id),
             """ delete report.display_item_facts, probedata.display_surface
                 from probedata.t_scenes_to_delete_displays
                  join probedata.display_surface
@@ -536,7 +562,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                             static.display ds on ds.pk = mds.display_fk
                         join
                             probedata.scene sc on sc.pk=mds.scene_fk
-                             and sc.session_uid = \'{}\''''.format(self.session_uid)
+                             and sc.pk = \'{}\''''.format(self.scene_id)
         match_display_in_scene = pd.read_sql_query(query, local_con)
         return match_display_in_scene
 
@@ -561,13 +587,25 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                             static.brand b on b.pk = p.brand_fk
                         join
                             probedata.scene sc on sc.pk = mps.scene_fk
-                             and sc.session_uid = '{0}'
+                             and sc.pk = '{0}'
                         join
                             static.template t on t.pk = sc.template_fk
                              and t.is_recognition = 1
-                    '''.format(self.session_uid)
+                    '''.format(self.scene_id)
         match_product_in_scene = pd.read_sql_query(query, self.project_connector.db)
         return match_product_in_scene
+
+    def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_KPI_NAME)
+        df = pd.DataFrame(display_visit_summary_list_of_dict)
+        df.product_size = df.product_size.round(2)
+        final_df = df.groupby(['display_group', 'product_fk'])['product_size', 'facings'].sum().reset_index()
+        for index, row in final_df.iterrows():
+            if row['product_size'] != 0:
+                display_group_fk = self.get_display_group(row['display_group'])
+                self.common.write_to_db_result(fk = kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
+                                          result=row['product_size'], score=row['facings'], by_scene=True)
+        return
 
 
 def calculate_share_of_display(project_conn, session, data_provider=None):
@@ -586,3 +624,4 @@ def calculate_share_of_display(project_conn, session, data_provider=None):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
+
