@@ -1,12 +1,12 @@
 import pandas as pd
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 from Projects.PNGCN_SAND.KPISceneGenerator import SceneGenerator
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
-from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+# from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 
 
 
@@ -32,17 +32,17 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     data_provider.set_scene_item_facts(scene_item_facts)
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('pngcn-sand calculations')
-    Config.init()
-    project_name = 'pngcn-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'b7b0f0c2-6ee6-438a-982e-d62a80a583df'
-
-    scenes = [5006064]
-    for scene in scenes:
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        SceneCalculations(data_provider).calculate_kpis()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('pngcn-sand calculations')
+#     Config.init()
+#     project_name = 'pngcn-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'b7b0f0c2-6ee6-438a-982e-d62a80a583df'
+#
+#     scenes = [5006064]
+#     for scene in scenes:
+#         data_provider.load_scene_data(session, scene)
+#         output = VanillaOutput()
+#         SceneVanillaCalculations(data_provider, output).run_project_calculations()
+#         save_scene_item_facts_to_data_provider(data_provider, output)
+#         SceneCalculations(data_provider).calculate_kpis()
