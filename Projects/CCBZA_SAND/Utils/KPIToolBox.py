@@ -81,6 +81,7 @@ KO_ONLY = 'KO Only'
 BY_SCENE = 'By Scene'
 BONUS = 'Bonus'
 QUESTION_TYPE = 'Question type'
+MIN_SKU_TARGET = 'Min sku target'
 
 #Other constants
 CONDITION_1 = 'Condition 1'
@@ -163,6 +164,10 @@ class CCBZA_SANDToolBox:
         self.scene_kpi_results = self.ps_data_provider.get_scene_results(
             self.scene_info['scene_fk'].drop_duplicates().values)
 
+        self.availability_for_scene_calc = {AVAILABILITY_POS: self.availability_brand_strips_scene,
+                                            AVAILABILITY_SKU_FACING_AND: self.availability_and_or_scene,
+                                            AVAILABILITY_SKU_FACING_OR: self.availability_and_or_scene,
+                                            AVAILABLITY_IF_THEN: self.availability_against_competitors_scene}
         self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
                                              AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
                                              AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
@@ -220,9 +225,9 @@ class CCBZA_SANDToolBox:
                     scene_df = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
                     if not scene_df.empty:
                         scene_result = self.get_price_result(scene_df, target, atomic_kpi, identifier_result)
-                    self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result) # no scene = > no result
+                    self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
-    def calculate_availability_scene(self, atomic_kpis_data):
+    def calculate_availability_scene_old(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
             is_by_scene = self.is_by_scene(atomic_kpi)
@@ -239,6 +244,19 @@ class CCBZA_SANDToolBox:
                 else:
                     Log.warning(
                         'Availablity of type {} is not supported by scene calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue
+
+    def calculate_availability_scene(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            is_by_scene = self.is_by_scene(atomic_kpi)
+            avail_type = atomic_kpi[AVAILABILITY_TYPE]
+            if is_by_scene:
+                identifier_result = self.get_identifier_result_scene(atomic_kpi)
+                try:
+                    self.availability_for_scene_calc[avail_type](atomic_kpi, identifier_result)
+                except KeyError:
+                    Log.info('Availablity of type {} is not supported by scene calculation'.format(avail_type))
                     continue
 
     def availability_against_competitors_scene(self, atomic_kpi, identifier_result):
@@ -965,19 +983,20 @@ class CCBZA_SANDToolBox:
             if per_scene:
                 try:
                     score, identifier_result = self.availability_by_scene_router[avail_type](atomic_kpi, identifier_result)
-                except Exception as e:
+                except KeyError:
                     Log.info('Availability not found for scene. Proceeding to session')
                     try:
                         score = self.availability_router[avail_type](atomic_kpi, identifier_result)
-                    except Exception as e:
+                    except KeyError:
                         Log.error('Availability type {} is not supported. kpi: {}'.format(avail_type,
                                                                                           atomic_kpi[ATOMIC_KPI_NAME]))
-                        continue # ask Israel
+                        continue
             else:
                 try:
                     score = self.availability_router[avail_type](atomic_kpi, identifier_result)
                 except Exception as e:
                     Log.error('Availability type {} is not supported by calculation. {}'.format(avail_type, str(e)))
+                    continue
 
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
             max_score = atomic_kpi[SCORE]
@@ -1121,6 +1140,7 @@ class CCBZA_SANDToolBox:
 
     def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene, or_min_facings=None):
         target = float(atomic_kpi[TARGET])
+        min_skus = atomic_kpi[MIN_SKU_TARGET]
         result = 0
         availability_type = atomic_kpi[AVAILABILITY_TYPE]
         result_df = scif[self.tools.get_filter_condition(scif, **filters)]
@@ -1131,10 +1151,9 @@ class CCBZA_SANDToolBox:
             if availability_type == AVAILABILITY_SKU_FACING_AND:
                 result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
             elif availability_type == AVAILABILITY_SKU_FACING_OR:
-                result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
-            elif availability_type == AVAILABILITY_SKU_FACING_OR_MIN:
-                count_skus_meeting_target = sum([facings >= or_min_facings for facings in facings_by_sku.values()])
-                result = 100 if count_skus_meeting_target >= target else 0
+                # result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
+                count_skus_meeting_target = sum([facings >= target for facings in facings_by_sku.values()])
+                result = 100 if count_skus_meeting_target >= min_skus else 0
             else:
                 Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
