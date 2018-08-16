@@ -42,6 +42,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.match_display_in_scene = pd.DataFrame({})
         self.match_product_in_scene = pd.DataFrame({})
         self.displays = pd.DataFrame({})
+        self.valid_facing_product = {}
 
     def process_session(self):
         try:
@@ -235,6 +236,16 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
         return
 
+    def get_products_brand(self):
+        query = """
+                select p.pk as product_fk,b.name as brand_name from static_new.product p
+                join static_new.brand b on b.pk = p.brand_fk;
+                """
+        self.project_connector.disconnect_rds()
+        self.project_connector.connect_rds()
+        res = pd.read_sql_query(query, self.project_connector.db)
+        return res
+
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
         Cross information between display and bays to match_product_in_scene.
@@ -310,6 +321,25 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                                                                            'display_size', 'sos_type_fk',
                                                                            'facings', 'template_fk',
                                                                            'in_sos', 'display_fk', ], axis=1)
+
+                # This will check which products are a part of brands that have more then 2 facing in the display
+
+                displays = display_visit_summary['display_surface_fk'].unique()
+                display_data_for_sum = display_visit_by_display_product_enrich_sos_type.drop(['linear', 'tot_linear',
+                        'tot_facings', 'display_size', 'sos_type_fk', 'template_fk', 'in_sos', 'display_fk', ], axis=1)
+                brands = self.get_products_brand()
+                merged_displays = display_data_for_sum.merge(brands, how='left', on='product_fk')
+                for current_display in displays:
+                    self.valid_facing_product[current_display] = []
+                    current_display_products = merged_displays[
+                    merged_displays['display_surface_fk'] == current_display]
+                    brands_in_display = current_display_products['brand_name'].unique()
+                    for brand in brands_in_display:
+                        if current_display_products[current_display_products['brand_name'] == brand]['facings'].sum() > 2:
+                            self.valid_facing_product[current_display].extend(
+                                current_display_products[current_display_products['brand_name'] == brand]['product_fk'])
+
+
                 display_visit_summary = display_facings_for_product.merge(display_visit_summary, how='left',
                                                                           on=['display_surface_fk', 'product_fk'])
                 display_visit_summary['product_size'].fillna(0, inplace=True)
@@ -317,8 +347,22 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 display_visit_summary = display_facings_for_product
                 display_visit_summary['product_size'] = 0
 
+            display_visit_summary = self.remove_by_facing(display_visit_summary)
             display_visit_summary_list_of_dict = display_visit_summary.to_dict('records')
             self._insert_into_display_visit_summary(display_visit_summary_list_of_dict)
+
+    def remove_by_facing(self, df):
+        """
+        This will return a dataframe of products from the visit where the brand has 2 or more then 2 facings.
+        """
+        df['to_remove'] = 1
+        for i in xrange(len(df)):
+            row = df.iloc[i]
+            if row['product_fk'] in self.valid_facing_product.get(row['display_surface_fk'], []):
+                df.ix[i, 'to_remove'] = 0
+        result_df = df[df['to_remove'] == 0]
+        result_df = result_df.drop(['to_remove'], axis=1, )
+        return result_df
 
     def _exclude_sos(self, df):
         """
@@ -352,6 +396,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
     def _insert_into_display_visit_summary(self, display_visit_summary_list_of_dict):
         Log.debug(self.log_prefix + ' Inserting to display_item_facts')
+        self.cur = self.project_connector.db.cursor()
         query = ''' insert into report.display_item_facts
                         (
                             display_surface_fk
@@ -368,6 +413,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             query = query.format(query_line)
         query = query.format(self._get_query_line(display_visit_summary_list_of_dict[-1]))
         self.cur.execute(query)
+        self.project_connector.db.commit()
 
     @staticmethod
     def _get_query_line(display):
@@ -420,6 +466,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                     on report.display_item_facts.display_surface_fk = probedata.display_surface.pk;""",
             drop_temp_table_query
             ]
+        self.project_connector.disconnect_rds()
+        self.project_connector.connect_rds()
+        self.cur = self.project_connector.db.cursor()
         for query in queries:
             self.cur.execute(query)
 
@@ -448,6 +497,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
             query = query.format(query_line)
         query = query.format(self._get_display_surface_query_line(display_surface_dict[-1]))
         self.cur.execute(query)
+        self.project_connector.db.commit()
         last_insert_id = self.cur.lastrowid
         row_count = self.cur.rowcount
         if row_count == len(display_surface_dict):

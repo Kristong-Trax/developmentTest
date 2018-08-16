@@ -16,11 +16,12 @@ from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'urid'
 
-HRC_BAR_2018 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)'
+HRC_BAR_2018 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
 HRC_BAR_2018_GAPS = 'Pos 2018 - HoReCa Bar'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
 SPIRITS = 'Spirits 2018 - HoReCa'
+
 
 class CCRU_SANDHRCBar2018Calculations:
     def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
