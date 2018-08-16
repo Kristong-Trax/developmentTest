@@ -19,7 +19,7 @@ class SceneCalculations(SceneBaseClass):
         # self._monitor = None
         # self.timer = self._monitor.Timer('Perform', 'Init Session')
 
-    def calculate_scene_kpis(self):
+    def calculate_kpis(self):
         # self.timer.start()
         self.scene_generator.scene_share_of_display()
         # self.timer.stop('KPIGenerator.run_project_calculations')
@@ -49,4 +49,4 @@ if __name__ == '__main__':
         output = VanillaOutput()
         SceneVanillaCalculations(data_provider, output).run_project_calculations()
         save_scene_item_facts_to_data_provider(data_provider, output)
-        SceneCalculations(data_provider).calculate_scene_kpis()
+        SceneCalculations(data_provider).calculate_kpis()
