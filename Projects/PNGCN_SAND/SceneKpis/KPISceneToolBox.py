@@ -60,49 +60,29 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.common = common
 
     def process_scene(self):
-        # try:
-        #     Log.debug(self.log_prefix + ' Retrieving data')
-        #     self.match_display_in_scene = self._get_match_display_in_scene_data()
-        #     # if there are no display tags there's no need to retrieve the rest of the data.
-        #     if self.match_display_in_scene.empty:
-        #         Log.debug(self.log_prefix + ' No display tags')
-        #         self._delete_previous_data()
-        #
-        #     else:
-        #         self.displays = self._get_displays_data()
-        #         self.match_product_in_scene = self._get_match_product_in_scene_data()
-        #         self._delete_previous_data()
-        #         self._handle_promotion_wall_display()
-        #         self._handle_cube_or_4_sided_display()
-        #         self._handle_table_display()
-        #         self._handle_rest_display()
-        #         if self.on_ace:
-        #             Log.debug(self.log_prefix + ' Committing share of display calculations')
-        #             self.project_connector.db.commit()
-        #         Log.info(self.log_prefix + ' Finished calculation')
-        # except Exception as e:
-        #     Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
-        #     raise e
+        try:
+            Log.debug(self.log_prefix + ' Retrieving data')
+            self.match_display_in_scene = self._get_match_display_in_scene_data()
+            # if there are no display tags there's no need to retrieve the rest of the data.
+            if self.match_display_in_scene.empty:
+                Log.debug(self.log_prefix + ' No display tags')
+                self._delete_previous_data()
 
-        Log.debug(self.log_prefix + ' Retrieving data')
-        self.match_display_in_scene = self._get_match_display_in_scene_data()
-        # if there are no display tags there's no need to retrieve the rest of the data.
-        if self.match_display_in_scene.empty:
-            Log.debug(self.log_prefix + ' No display tags')
-            self._delete_previous_data()
-
-        else:
-            self.displays = self._get_displays_data()
-            self.match_product_in_scene = self._get_match_product_in_scene_data()
-            self._delete_previous_data()
-            self._handle_promotion_wall_display()
-            self._handle_cube_or_4_sided_display()
-            self._handle_table_display()
-            self._handle_rest_display()
-            if self.on_ace:
-                Log.debug(self.log_prefix + ' Committing share of display calculations')
-                self.project_connector.db.commit()
-            Log.info(self.log_prefix + ' Finished calculation')
+            else:
+                self.displays = self._get_displays_data()
+                self.match_product_in_scene = self._get_match_product_in_scene_data()
+                self._delete_previous_data()
+                self._handle_promotion_wall_display()
+                self._handle_cube_or_4_sided_display()
+                self._handle_table_display()
+                self._handle_rest_display()
+                if self.on_ace:
+                    Log.debug(self.log_prefix + ' Committing share of display calculations')
+                    self.project_connector.db.commit()
+                Log.info(self.log_prefix + ' Finished calculation')
+        except Exception as e:
+            Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
+            raise e
 
     def _handle_rest_display(self):
         """
@@ -621,9 +601,9 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         df.product_size = df.product_size.round(2)
         final_df = df.groupby(['display_group', 'product_fk'])['product_size', 'facings'].sum().reset_index()
         for index, row in final_df.iterrows():
-            display_group_fk = self.get_display_group(row['display_group'])
-            ean_code = self.get_ean_code(row['product_fk'])
-            self.common.write_to_db_result(fk = kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
+            if row['product_size'] != 0:
+                display_group_fk = self.get_display_group(row['display_group'])
+                self.common.write_to_db_result(fk = kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
                                           result=row['product_size'], score=row['facings'], by_scene=True)
         return
 

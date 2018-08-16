@@ -45,49 +45,29 @@ class PNGCN_SANDPNGShareOfDisplay(object):
         self.valid_facing_product = {}
 
     def process_session(self):
-        # try:
-        #     Log.debug(self.log_prefix + ' Retrieving data')
-        #     self.match_display_in_scene = self._get_match_display_in_scene_data()
-        #     # if there are no display tags there's no need to retrieve the rest of the data.
-        #     if self.match_display_in_scene.empty:
-        #         Log.debug(self.log_prefix + ' No display tags')
-        #         self._delete_previous_data()
-        #
-        #     else:
-        #         self.displays = self._get_displays_data()
-        #         self.match_product_in_scene = self._get_match_product_in_scene_data()
-        #         self._delete_previous_data()
-        #         self._handle_promotion_wall_display()
-        #         self._handle_cube_or_4_sided_display()
-        #         self._handle_table_display()
-        #         self._handle_rest_display()
-        #         if self.on_ace:
-        #             Log.debug(self.log_prefix + ' Committing share of display calculations')
-        #             self.project_connector.db.commit()
-        #         Log.info(self.log_prefix + ' Finished calculation')
-        # except Exception as e:
-        #     Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
-        #     raise e
+        try:
+            Log.debug(self.log_prefix + ' Retrieving data')
+            self.match_display_in_scene = self._get_match_display_in_scene_data()
+            # if there are no display tags there's no need to retrieve the rest of the data.
+            if self.match_display_in_scene.empty:
+                Log.debug(self.log_prefix + ' No display tags')
+                self._delete_previous_data()
 
-        Log.debug(self.log_prefix + ' Retrieving data')
-        self.match_display_in_scene = self._get_match_display_in_scene_data()
-        # if there are no display tags there's no need to retrieve the rest of the data.
-        if self.match_display_in_scene.empty:
-            Log.debug(self.log_prefix + ' No display tags')
-            self._delete_previous_data()
-
-        else:
-            self.displays = self._get_displays_data()
-            self.match_product_in_scene = self._get_match_product_in_scene_data()
-            self._delete_previous_data()
-            self._handle_promotion_wall_display()
-            self._handle_cube_or_4_sided_display()
-            self._handle_table_display()
-            self._handle_rest_display()
-            if self.on_ace:
-                Log.debug(self.log_prefix + ' Committing share of display calculations')
-                self.project_connector.db.commit()
-            Log.info(self.log_prefix + ' Finished calculation')
+            else:
+                self.displays = self._get_displays_data()
+                self.match_product_in_scene = self._get_match_product_in_scene_data()
+                self._delete_previous_data()
+                self._handle_promotion_wall_display()
+                self._handle_cube_or_4_sided_display()
+                self._handle_table_display()
+                self._handle_rest_display()
+                if self.on_ace:
+                    Log.debug(self.log_prefix + ' Committing share of display calculations')
+                    self.project_connector.db.commit()
+                Log.info(self.log_prefix + ' Finished calculation')
+        except Exception as e:
+            Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
+            raise e
 
     def _handle_rest_display(self):
         """

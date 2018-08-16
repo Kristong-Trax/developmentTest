@@ -1,12 +1,10 @@
 import pandas as pd
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-# from Projects.CCIT.KPIGenerator import Generator
 from Projects.PNGCN_SAND.KPISceneGenerator import SceneGenerator
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-# from Projects.PNGCN_SAND.Calculations import CCBZA_SANDCalculations, CCBZA_SANDSceneCalculations
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 
@@ -39,11 +37,9 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = '78A1F5E7-A28A-4ED2-9D69-F233DB081099'
+    session = 'b7b0f0c2-6ee6-438a-982e-d62a80a583df'
 
-    scenes = [5410946]
-    # 5410927,5410946,5410962,5410975,5410992,5411003,5411020,5411045,5411064,5411082,5411106,5411115,
-    #           5411184,5411220,5411263]
+    scenes = [5006064]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()
