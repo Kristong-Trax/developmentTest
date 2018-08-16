@@ -29,5 +29,5 @@ class SceneGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         self.scene_tool_box.process_scene()
-        self.common.commit_results_data(result_entity='scene')
+
 
