@@ -5,8 +5,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCBOTTLERSUS_SAND.Utils.PositionGraph import CCBOTTLERSUS_SANDBCIPositionGraphs
-from Projects.CCBOTTLERSUS_SAND.Utils.Fetcher import BCICCBOTTLERSUS_SANDQueries
+from Projects.CCBOTTLERSUS_SAND.Utils.PositionGraph import BCIPositionGraphs
+from Projects.CCBOTTLERSUS_SAND.Utils.Fetcher import BCIQueries
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
@@ -17,7 +17,7 @@ KPI_NAME = 'KPI Name'
 
 
 
-class CCBOTTLERSUS_SANDBCIGENERALToolBox:
+class BCIGENERALToolBox:
     """
     MOVED TO Trax.Data.ProfessionalServices.KPIUtils.GeneralToolBox
     """
@@ -45,7 +45,7 @@ class CCBOTTLERSUS_SANDBCIGENERALToolBox:
         self.kpi_static_data = kpi_static_data
         # self.get_atts()
         if geometric_kpi_flag:
-            self.position_graphs = CCBOTTLERSUS_SANDBCIPositionGraphs(self.data_provider)
+            self.position_graphs = BCIPositionGraphs(self.data_provider)
             self.matches = self.position_graphs.match_product_in_scene
 
         else:
@@ -63,7 +63,7 @@ class CCBOTTLERSUS_SANDBCIGENERALToolBox:
     #     This function extracts the static KPI data and saves it into one global data frame.
     #     The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
     #     """
-    #     query = BCICCBOTTLERSUS_SANDQueries.get_product_atts()
+    #     query = BCIQueries.get_product_atts()
     #     product_att4 = pd.read_sql_query(query, self.rds_conn.db)
     #     self.scif = self.scif.merge(product_att4, how='left', left_on='product_ean_code',
     #                                 right_on='product_ean_code')
