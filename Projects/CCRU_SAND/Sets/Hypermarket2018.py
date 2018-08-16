@@ -109,7 +109,7 @@ class CCRU_SANDHypermarket2018Calculations:
 
         self.tool_box.calculate_top_sku()
 
-        jg.create_equipment_json('Equipment Execution 2018.xlsx', HYPERMARKET2018)
+        jg.create_equipment_json('Contract Execution 2018.xlsx', HYPERMARKET2018)
         self.tool_box.calculate_equipment_execution(jg.project_kpi_dict.get('equipment'))
 
         self.tool_box.calculate_contract_execution()
