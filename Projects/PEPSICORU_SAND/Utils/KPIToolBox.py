@@ -42,8 +42,10 @@ class PEPSICORUToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.sos_results = {}
 
+
+        self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
+        self.sos_results = {}
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.sos = SOS(data_provider, output, self.rds_conn)
@@ -112,7 +114,6 @@ class PEPSICORUToolBox:
         :return:
         """
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
-        pepsiCo_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
 
         for category in self.categories_to_calculate:
             filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_scene_type_by_category(category)}
@@ -120,13 +121,13 @@ class PEPSICORUToolBox:
             numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
             facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY)
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
-            self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=pepsiCo_fk,
+            self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
             numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
             linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY)
-            self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=pepsiCo_fk,
+            self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
 
@@ -138,14 +139,14 @@ class PEPSICORUToolBox:
             numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param,
                                                                                     filter_sub_cat_param)
             current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
-            self.common.write_to_db_result(fk=sub_cat_kpi_fk, numerator_id=pepsiCo_fk,
+            self.common.write_to_db_result(fk=sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
             numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param,
                                                                                    filter_sub_cat_param)
             linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY)
-            self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=pepsiCo_fk,
+            self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
 
