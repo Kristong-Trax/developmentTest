@@ -43,7 +43,6 @@ class PEPSICORUToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
-
         self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
         self.sos_results = {}
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -190,9 +189,9 @@ class PEPSICORUToolBox:
         main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
                         Const.MAIN_SHELF in scene_type]
         filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
-
         if not filtered_scif:
             return
+
         # Calculate count of display - store_level
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
         scene_types_in_store = len(filtered_scif[Const.SCENE_ID].unique())
@@ -207,7 +206,7 @@ class PEPSICORUToolBox:
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
             scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_ID].unique())
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
-            self.common.write_to_db_result(fk=scene_types_in_category, numerator_id=category_fk,
+            self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=category_fk,
                                            numerator_result=scene_types_in_store, result=scene_types_in_store, score=0)
 
         # Calculate count of display - scene_level
