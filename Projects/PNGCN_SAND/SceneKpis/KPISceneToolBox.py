@@ -76,12 +76,13 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 self._handle_cube_or_4_sided_display()
                 self._handle_table_display()
                 self._handle_rest_display()
+                self.common.commit_results_data(result_entity='scene')
                 if self.on_ace:
                     Log.debug(self.log_prefix + ' Committing share of display calculations')
                     self.project_connector.db.commit()
                 Log.info(self.log_prefix + ' Finished calculation')
         except Exception as e:
-            Log.error('Share of display calculation for session: \'{0}\' error: {1}'.format(self.session_uid, str(e)))
+            Log.error('Share of display calculation for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
             raise e
 
     def _handle_rest_display(self):
