@@ -2822,8 +2822,9 @@ class CCRU_SANDKPIToolBox:
             for param in params:
                 if param.get('level') == 2 and param.get('KPI Set Type') == 'Equipment':
 
-                    kpi_name = param.get('KPI name Eng')
+                    kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
                     kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                    kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
                     children = param.get('Children').replace('\n','').replace(' ', '').split(',')
 
@@ -2833,6 +2834,8 @@ class CCRU_SANDKPIToolBox:
 
                     for param_child in params:
                         if param_child.get('KPI ID') in children and param_child.get('KPI Set Type') == 'Equipment':
+                            atomic_kpi_name = param_child.get('Channel') + '@' + param_child.get('KPI name Eng')
+                            atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['kpi_fk'].values[0]
                             atomic_kpi_name = param_child.get('KPI name Eng')
                             target, weight = target_data.get(int(kpi_conversion.get(atomic_kpi_name)))
                             target = target if not target else None
@@ -2853,7 +2856,7 @@ class CCRU_SANDKPIToolBox:
                                     score = 100 if result >= target else 0
 
                                 attributes_for_level3 = self.create_attributes_for_level3_df(
-                                    {'KPI name Eng': atomic_kpi_name}, (score, result, target), kpi_fk)
+                                    {'KPI name Eng': atomic_kpi_name}, (score, result, target), kpi_fk, atomic_kpi_fk)
                                 self.write_to_db_result(attributes_for_level3, 'level3')
 
                                 sum_of_scores += score * weight
@@ -2905,9 +2908,6 @@ class CCRU_SANDKPIToolBox:
 
             for param in params:
                 if param.get('KPI Set Type') == 'Contract':
-                    kpi_name = param.get('KPI name Eng')
-                    kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
-                    kpi_weight = param.get('KPI Weight')
                     if param.get('Formula') == 'OSA score':
                         score = self.osa_score
                         result = score
@@ -2916,8 +2916,16 @@ class CCRU_SANDKPIToolBox:
                         result = score
 
                     if score:
+
+                        kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
+                        kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                        kpi_name = param.get('KPI name Eng')
+                        kpi_weight = param.get('KPI Weight')
+
+                        atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == kpi_name]['kpi_fk'].values[0]
+
                         attributes_for_level3 = self.create_attributes_for_level3_df(
-                            {'KPI name Eng': kpi_name}, (score, result, target), kpi_fk)
+                            {'KPI name Eng': kpi_name}, (score, result, target), kpi_fk, atomic_kpi_fk)
                         self.write_to_db_result(attributes_for_level3, 'level3')
 
                         attributes_for_level2 = self.create_attributes_for_level2_df(
@@ -2930,7 +2938,7 @@ class CCRU_SANDKPIToolBox:
 
             if count_of_kpis:
                 score = round(total_score / float(total_weight))
-                attributes_for_table1 = pd.DataFrame([(EQUIPMENT_SET_NAME,
+                attributes_for_table1 = pd.DataFrame([(CONTRACT_SET_NAME,
                                                        self.session_uid,
                                                        self.store_id,
                                                        self.visit_date.isoformat(),
