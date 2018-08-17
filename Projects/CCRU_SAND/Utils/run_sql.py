@@ -14,9 +14,7 @@ class CCRU_SANDRunSql:
     def run_it(self):
         statement_1 = \
                         """
-update static.stores
-set additional_attribute_11 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
-where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
+UPDATE `static`.`kpi_set` SET `name`='Contract Execution 2018 X' WHERE `pk`='56';
 
 
                         """
@@ -36,7 +34,7 @@ where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru_sand']:
+    for project in ['ccru-sand']:
         print 'start project: ' + str(project)
         sql_to_run = CCRU_SANDRunSql(project)
         sql_to_run.run_it()
