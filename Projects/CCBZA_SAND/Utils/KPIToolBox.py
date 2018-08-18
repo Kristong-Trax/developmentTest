@@ -387,7 +387,7 @@ class CCBZA_SANDToolBox:
                                        identifier_result=identifier_result_red_score,
                                        denominator_id=self.store_id, score_after_actions=red_score_percent,
                                        target=red_target, should_enter=True)
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
@@ -535,8 +535,10 @@ class CCBZA_SANDToolBox:
         if dependency:
             kpi_scores = []
             affecting_kpis = self.kpi_results_data[self.kpi_results_data[SET_NAME] == dependency]
-            for index, kpi in affecting_kpis.iterrows():
-                kpi_score, max_score_dep = self.calculate_kpi_score_no_dependency(kpi)
+            for index, affecting_kpi in affecting_kpis.iterrows():
+                aff_kpi_name = affecting_kpi[KPI_NAME]
+                aff_kpi_row = self.template_data[KPI_TAB][self.template_data[KPI_TAB][KPI_NAME] == aff_kpi_name].iloc[0]
+                kpi_score, max_score_dep = self.calculate_kpi_score_no_dependency(aff_kpi_row)
                 kpi_scores.append((kpi_score, max_score_dep))
             if sum(map(lambda x: x[0], kpi_scores)) == sum(map(lambda x: x[1], kpi_scores)):
                 score = float(kpi[self.full_store_type])
