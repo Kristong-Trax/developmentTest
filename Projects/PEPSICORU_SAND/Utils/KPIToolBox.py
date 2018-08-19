@@ -111,6 +111,7 @@ class PEPSICORUToolBox:
         """
         # Level 1
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
+        # TODO : add main shelf !!!!!!!!
         # Calculate Facings SOS
         numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param)
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
@@ -159,14 +160,32 @@ class PEPSICORUToolBox:
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
                                            denominator_result=denominator_score, result=result, score=result)
         # Level 4
-        for brand in self.scif[Const.BRAND_NAME]:
+        for brand in self.scif[self.scif[Const.MANUFACTURER_NAME == Const.PEPSICO]][Const.BRAND_NAME].unique().tolist():
+            relevant_category = self.products.loc[self.products[Const.BRAND_NAME] == brand][Const.CATEGORY].unique()
+            if len(relevant_category) > 1:
+                Log.warning("Several categories fits to the following brand: {}".format(brand))
+                continue
             filter_brand_param = {Const.BRAND_NAME: brand}
+            general_filters = {Const.CATEGORY: relevant_category,
+                               Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
+            brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
+            relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
             # Calculate Facings SOS
-            facings_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
-
+            facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
+                                                                                    general_filters)
+            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
 
             # Calculate Linear SOS
-            linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
+            linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
+                                                                                    general_filters)
+            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_category_fk,
+                                           denominator_result=denominator_score, result=result, score=result)
+
 
         return
 
