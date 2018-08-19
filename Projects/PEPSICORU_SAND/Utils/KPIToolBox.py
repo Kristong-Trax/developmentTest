@@ -111,16 +111,18 @@ class PEPSICORUToolBox:
         """
         # Level 1
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
-        # TODO : add main shelf !!!!!!!!
+        main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
+                        Const.MAIN_SHELF in scene_type]
+        general_filters = {Const.TEMPLATE_NAME : main_shelves}
         # Calculate Facings SOS
-        numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param)
+        numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, **general_filters)
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
         self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
                                        numerator_result=numerator_score, denominator_id=self.store_id,
                                        denominator_result=denominator_score, result=result, score=result) #todo check !
         # Calculate Linear SOS
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
-        numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param)
+        numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, **general_filters)
         self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
                                        numerator_result=numerator_score, denominator_id=self.store_id,
                                        denominator_result=denominator_score, result=result, score=result)
