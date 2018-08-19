@@ -54,12 +54,14 @@ class RinielsenUSSandCalculations(BaseCalculationsScript):
 #         output = Output()
 #         MarsUsCalculations(data_provider, output).run_project_calculations()
 #
-if __name__ == '__main__':
-    LoggerInitializer.init('rinielsenus-sand calculations')
-    Config.init()
-    project_name = 'rinielsenus-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'e6bff9b4-07c7-4e80-93af-63759e103deb'
-    data_provider.load_session_data(session)
-    output = Output()
-    RinielsenUSSandCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('rinielsenus-sand calculations')
+#     Config.init()
+#     project_name = 'rinielsenus-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'fb4ef7f8-e1ae-4a3c-be34-3550ca307c90'
+#     # e6bff9b4-07c7-4e80-93af-63759e103deb
+#     # fb4ef7f8-e1ae-4a3c-be34-3550ca307c90
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     RinielsenUSSandCalculations(data_provider, output).run_project_calculations()

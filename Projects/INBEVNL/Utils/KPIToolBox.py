@@ -299,6 +299,8 @@ class INBEVNLINBEVBEToolBox:
             for delisted_product in self.delisted_products:
                 if delisted_product in updated_ass_prod_list:
                     updated_ass_prod_list.remove(delisted_product)
+                if delisted_product in self.osa_product_dist_dict.keys():
+                    del self.osa_product_dist_dict[delisted_product]
             if not updated_ass_prod_list:
                 set_score = 0
                 target = 0

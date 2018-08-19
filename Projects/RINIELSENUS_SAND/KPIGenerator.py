@@ -1,8 +1,8 @@
 
 from Trax.Utils.Logging.Logger import Log
-from Projects.RINIELSENUS.Utils.KPIToolBox import MarsUsDogMainMealWet
-from Projects.RINIELSENUS.Utils.Utils import log_runtime
-from Projects.RINIELSENUS.PURINA.Utils.KPIToolBox import PURINAToolBox
+from Projects.RINIELSENUS_SAND.Utils.KPIToolBox import MarsUsDogMainMealWet
+from Projects.RINIELSENUS_SAND.Utils.Utils import log_runtime
+from Projects.RINIELSENUS_SAND.PURINA.KPIToolBox import PURINAToolBox
 
 __author__ = 'nethanel'
 

@@ -12,12 +12,16 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 __author__ = 'Elyashiv'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.1.xlsx')
-SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV1.xlsx')
+SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
     "DRUG SOVI RED": "Drug",
     "VALUE SOVI RED": "Value",
+    "United Test - Value SOVI RED": "Value",
+    "United Test - Drug SOVI RED": "Drug",
+    "United Test - CR SOVI RED": "CR&LT",
+    "FSOP - QSR": "QSR",
 }
 
 
@@ -54,8 +58,9 @@ class CCBOTTLERSUSREDToolBox:
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
             for sheet in Const.SHEETS_MANUAL:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
+        self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
         self.common_db = Common(self.data_provider, self.RED_SCORE)
-        # self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in STORE_TYPES: #####
@@ -196,8 +201,10 @@ class CCBOTTLERSUSREDToolBox:
                 return False
             question = ('question_fk', int(question_id))
         answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
+        min_answer = None if kpi_line[Const.REQUIRED_ANSWER] == '' else True
         for answer in answers:
-            if self.survey.check_survey_answer(survey_text=question, target_answer=answer):
+            if self.survey.check_survey_answer(
+                    survey_text=question, target_answer=answer, min_required_answer=min_answer):
                 return True
         return False
 
@@ -218,6 +225,7 @@ class CCBOTTLERSUSREDToolBox:
             if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
                 continue
             filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
+            filtered_scif = filtered_scif.fillna("NAN")
             target = kpi_line[Const.TARGET]
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
@@ -230,6 +238,8 @@ class CCBOTTLERSUSREDToolBox:
                     return False
             if filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
                 return False
+        if len(packages) > 1:
+            return False
         return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
@@ -301,6 +311,7 @@ class CCBOTTLERSUSREDToolBox:
             relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
             for i, exc_line in relevant_exclusions.iterrows():
                 relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
         den_value = kpi_line[Const.DEN_VALUES_1]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
@@ -334,6 +345,7 @@ class CCBOTTLERSUSREDToolBox:
             relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
             for i, exc_line in relevant_exclusions.iterrows():
                 relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
         den_value = kpi_line[Const.DEN_VALUES_1]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
@@ -494,10 +506,25 @@ class CCBOTTLERSUSREDToolBox:
         if self.calculation_type == Const.SOVI:
             self.write_scene_kpis(main_template)
         self.write_condition_kpis(main_template)
-        self.write_to_db(self.RED_SCORE, self.red_score, red_score=True)
+        self.write_missings(main_template)
+        self.write_to_db(self.RED_SCORE, self.red_score)
         # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
         # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
+
+    def write_missings(self, main_template):
+        """
+        write 0 in all the KPIs that didn't get score
+        :param main_template:
+        """
+        for i, main_line in main_template.iterrows():
+            kpi_name = main_line[Const.KPI_NAME]
+            if not self.all_results[self.all_results[Const.KPI_NAME] == kpi_name].empty:
+                continue
+            result = 0
+            display_text = main_line[Const.DISPLAY_TEXT]
+            weight = main_line[Const.WEIGHT]
+            self.write_to_all_levels(kpi_name, result, display_text, weight)
 
     def write_session_kpis(self, main_template):
         """
@@ -649,34 +676,39 @@ class CCBOTTLERSUSREDToolBox:
     def get_score(self, weight):
         return weight / self.weight_factor
 
-    def write_to_db(self, kpi_name, score, red_score=False, display_text=''):
+    def write_to_db(self, kpi_name, score, display_text=''):
         """
         writes result in the DB
         :param kpi_name: str
         :param score: float
-        :param red_score: boolean for the red score writing to DB
         :param display_text: str
         """
-        if red_score:
+        if kpi_name == self.RED_SCORE:
             self.write_to_db_result(
-                self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 1), score=score, level=1)
+                self.common_db.get_kpi_fk_by_kpi_name(self.RED_SCORE, 1), score=score, level=1)
+            if self.common_db_integ:
+                self.write_to_db_result(
+                    self.common_db_integ.get_kpi_fk_by_kpi_name(self.RED_SCORE_INTEG, 1), score=score, level=1,
+                    set_type=Const.MANUAL)
         else:
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3, display_text=display_text)
+            if self.common_db_integ:
+                self.write_to_db_result(self.common_db_integ.get_kpi_fk_by_kpi_name(
+                    kpi_name, 3), score=score, level=3, display_text=kpi_name, set_type=Const.MANUAL)
 
-    def write_to_db_result(self, fk, level, score, **kwargs):
+    def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
         """
         This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
         if kwargs:
             kwargs['score'] = score
-            attributes = self.create_attributes_dict(fk=fk, level=level, **kwargs)
+            attributes = self.create_attributes_dict(fk=fk, level=level, set_type=set_type, **kwargs)
         else:
-            attributes = self.create_attributes_dict(fk=fk, score=score, level=level)
-
+            attributes = self.create_attributes_dict(fk=fk, score=score, set_type=set_type, level=level)
         if level == self.common_db.LEVEL1:
             table = self.common_db.KPS_RESULT
         elif level == self.common_db.LEVEL2:
@@ -686,43 +718,41 @@ class CCBOTTLERSUSREDToolBox:
         else:
             return
         query = insert(attributes, table)
-        self.common_db.kpi_results_queries.append(query)
+        if set_type == Const.SOVI:
+            self.common_db.kpi_results_queries.append(query)
+        else:
+            self.common_db_integ.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, score, fk=None, level=None, display_text=None, **kwargs):
+    def create_attributes_dict(self, score, fk=None, level=None, display_text=None, set_type=Const.SOVI, **kwargs):
         """
         This function creates a data frame with all attributes needed for saving in KPI results tables.
         or
         you can send dict with all values in kwargs
-
         """
-
+        kpi_static_data = self.kpi_static_data if set_type == Const.SOVI else self.kpi_static_data_integ
         if level == self.common_db.LEVEL1:
             if kwargs:
                 kwargs['score'] = score
                 values = [val for val in kwargs.values()]
                 col = [col for col in kwargs.keys()]
-                attributes = pd.DataFrame(values,
-                                          columns=col)
+                attributes = pd.DataFrame(values, columns=col)
             else:
-                kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
-                attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                            format(score, '.2f'), fk)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                                   'kpi_set_fk'])
+                kpi_set_name = kpi_static_data[kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+                attributes = pd.DataFrame(
+                    [(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
+                      format(score, '.2f'), fk)],
+                    columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1', 'kpi_set_fk'])
         elif level == self.common_db.LEVEL2:
             if kwargs:
                 kwargs['score'] = score
                 values = [val for val in kwargs.values()]
                 col = [col for col in kwargs.keys()]
-                attributes = pd.DataFrame(values,
-                                          columns=col)
+                attributes = pd.DataFrame(values, columns=col)
             else:
-                kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
-                                                                                                                    "\\'")
-                attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                            fk, kpi_name, score)],
-                                          columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
-                                                   'score'])
+                kpi_name = kpi_static_data[kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+                attributes = pd.DataFrame(
+                    [(self.session_uid, self.store_id, self.visit_date.isoformat(), fk, kpi_name, score)],
+                    columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.common_db.LEVEL3:
             if kwargs:
                 kwargs['score'] = score
@@ -730,22 +760,24 @@ class CCBOTTLERSUSREDToolBox:
                 col = [col for col in kwargs.keys()]
                 attributes = pd.DataFrame([values], columns=col)
             else:
-                data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-                # atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
+                data = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]
                 kpi_fk = data['kpi_fk'].values[0]
-                kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[
-                    0]
-                attributes = pd.DataFrame([(display_text, self.session_uid, kpi_set_name, self.store_id,
-                                            self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                            score, kpi_fk, fk)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                                   'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
+                kpi_set_name = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+                attributes = pd.DataFrame(
+                    [(display_text, self.session_uid, kpi_set_name, self.store_id, self.visit_date.isoformat(),
+                      datetime.utcnow().isoformat(), score, kpi_fk, fk)],
+                    columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
+                             'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
 
     def commit_results(self):
+        """
+        committing the results in both sets
+        """
         self.common_db.delete_results_data_by_kpi_set()
-        # self.common_db_integ.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
-        # self.common_db_integ.commit_results_data_without_delete()
+        if self.common_db_integ:
+            self.common_db_integ.delete_results_data_by_kpi_set()
+            self.common_db_integ.commit_results_data_without_delete()

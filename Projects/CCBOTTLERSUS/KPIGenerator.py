@@ -25,9 +25,9 @@ class CCBOTTLERSUSGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_bci()
-        self.calculate_manufacturer_displays()
         self.calculate_red_score()
+        # self.calculate_bci()
+        self.calculate_manufacturer_displays()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
@@ -63,8 +63,6 @@ class CCBOTTLERSUSGenerator:
             for calculation_type in Const.CALCULATION_TYPES:
                 tool_box = CCBOTTLERSUSREDToolBox(self.data_provider, self.output, calculation_type)
                 tool_box.main_calculation()
-                if tool_box.red_score > 0:
-                    tool_box.commit_results()
-                    break
+                tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
