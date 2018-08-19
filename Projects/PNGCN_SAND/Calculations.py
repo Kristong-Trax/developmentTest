@@ -16,7 +16,7 @@ class PNGCN_SANDPngCNEmptyCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         tool_box = PNGCN_SANDPNGToolBox(self.data_provider, self.output)
-        tool_box.calculate_share_of_display()
+        # tool_box.calculate_share_of_display()
         if not tool_box.check_validation_of_session():
             Log.info('Session has no relevant scenes')
         elif not tool_box.empty_spaces.keys():
@@ -31,7 +31,7 @@ class PNGCN_SANDPngCNEmptyCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'pngcn-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '0efdaaf3-61ba-47cf-a20a-fbe8709975c6'
+#     session = '2fcf7862-5015-42bc-af7a-114c24a70aff'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PNGCN_SANDPngCNEmptyCalculations(data_provider, output).run_project_calculations()
