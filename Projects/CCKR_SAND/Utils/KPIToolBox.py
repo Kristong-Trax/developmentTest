@@ -67,15 +67,12 @@ class CCKRToolBox:
     def kpi_calc(self):
 
         sum_kpi = 0
-
-
-        relevant_template_fk = self.template_info[self.template_info["additional_attribute_1"] in self.kpi_template['additional_attribute_1']]['template_fk']
-        self.scif[self.scif['template_fk'] in relevant_template_fk]
-
+        relevant_template_fk = self.template_info[self.template_info["additional_attribute_1"].isin(self.kpi_template['additional_attribute_1'].unique())]['template_fk']
+        self.scif = self.scif[self.scif['template_fk'].isin(relevant_template_fk.unique())]
         for row in self.kpi_template_info.iterrows():
             # kpi_fks = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == row[1]['Atomic Kpi Name']]
-            result = self.scif[self.scif['product_ean_code'] == row[1]['SKU EAN Code']]
-            result = 0 if result.empty else result['facings'].sum()
+            result = self.scif[self.scif['product_ean_code'] == str(row[1]['SKU EAN Code'])] #str need to check if its work without
+            result = 0 if result.empty else int(result['facings'].sum())
             result_final = result if result > 0 else None
             score = 100 if result > 0 else None
             self.kpi_res(self.LEVEL3, score, row,result,result_final)
@@ -83,9 +80,9 @@ class CCKRToolBox:
             self.kpi_res(self.LEVEL2, score, row)
             sum_kpi += score  # score_1(level1)
 
-        denominator = 100 * len(self.kpi_template_info.axes[0]) #score_2(level 2)
+        denominator = len(self.kpi_template_info.axes[0]) #score_2(level 2)
 
-        self.kpi_res(self.LEVEL1, sum_kpi, row, denominator)
+        self.kpi_res(self.LEVEL1, sum_kpi/100, row, denominator)
 
     def kpi_res(self, level, score, row, result=None, result_final=None):
 
