@@ -227,7 +227,7 @@ class INBEVBRToolBox:
             count_result = weight
 
         number_of_valid_scenes = len(set(df_target_filtered['scene_fk']).union(set(df_packs['scene_fk'])))
-        number_of_not_valid_scenes = len(self.scene_info['scene_fk'].drop_duplicates())
+        number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
         if count_result == 0:
             return
