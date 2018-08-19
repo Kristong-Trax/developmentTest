@@ -9,23 +9,24 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ccbottlersus'
     sessions = [
-        '7c5284d4-93e0-46e2-a31c-75075d2323e0', # CR&LT
-        '55d5c959-cb08-477b-9f9e-0af4fa9f3795', # DRUG
-        '714f5168-b9d9-4f9b-8f3e-3a0723c68253', # VALUE
+        "55d5c959-cb08-477b-9f9e-0af4fa9f3795",
+        "7c5284d4-93e0-46e2-a31c-75075d2323e0",
+        "714f5168-b9d9-4f9b-8f3e-3a0723c68253",
+        "D8AC45CA-252D-4490-805C-37FF601AC7EC",
+        "a8e23604-4ef0-48c8-bd89-563d8d687441",
+        "b0aabe46-724b-466f-be0d-56caf82d6667",
+        "546AAB1A-259D-4EDA-909E-D8AC9E89D4AD",
+        "D3D3E61E-F595-4D9D-9B5F-7188321420E1",
+        "bc8a1244-a53d-4b2f-9591-fcf57f9d3054",
 
-        "c2b4723f-ea1b-456d-9647-48ef779cfcb8",
-        "9e0cd962-74b6-48ac-ba13-6e674c198ea3",
-        "86997b82-e7e4-4155-91f5-9cd30de7b55c",
-        "402bb0f7-7e58-4532-94a5-21ed2538d2e6",
-        "15283f33-65f7-4abf-91e2-084801ec4c61",
-        "11044558-fc7f-4882-8243-e301528aa5e8",
+        "fb96c8dd-7c4a-4b53-b32a-4d1e5e5bec33",
+        "f7015dbf-1bd8-4574-b75d-0fb25cc561b9",
+        "ee2b0cf4-2153-4e71-937e-27552a057058",
+        "eb67dd5e-dc40-44df-bfd2-f0fe301fa178",
+        "e860b343-4e10-4ca7-9c09-1b416ff5699f",
 
-        "c8a622c9-7f64-4242-b922-4d85fa7d935b",
-        "a620964b-9385-43cf-98c8-25ac7043402b",
-        "6b64188d-4004-4116-90af-f76bf2a9f3d5",
-        "5396fc69-5304-4e77-a18e-828d521666d5",
-        "2047cb29-04a8-49ee-988b-bc70b52cf92a",
-        "0dfe8c86-65b8-43de-93d4-9e417cae0e74",
+        "171ebeab-60f0-4df3-8403-f83bf519f6bd",
+        "FE678C7C-DAF5-4906-9279-2F4490EDD5F9",
     ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
