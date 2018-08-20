@@ -51,7 +51,7 @@ LINEAR_SIZE = u'gross_len_add_stack'
 # gross_len_add_stack
 PURINA_KPI = [SUBSEGMENT_KPI, MANUFACTUR, BRAND]
 NO_SUBSEG = 'OTHER'
-
+PET_FOOD_CATEGORY = 13
 PURINA_SETS = [SUBSEGMENT_SET, PRICE_SET]
 
 class PURINAToolBox:
@@ -117,6 +117,8 @@ class PURINAToolBox:
         """
 
         data = self.scif.dropna(subset=[LINEAR_SIZE])
+        data = data.loc[data['category_fk'] == PET_FOOD_CATEGORY]
+
         if data.empty:
             Log.info("No relevant purina's products were found in session.")
             return
