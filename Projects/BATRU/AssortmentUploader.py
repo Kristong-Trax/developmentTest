@@ -285,15 +285,14 @@ class BATRUBatruAssortment:
         query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
         return query
 
-    def connection_ritual(self):
-        """
-        This function connects to the DB and cursor
-        :return: rds connection and cursor connection
-        """
-        self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        return rds_conn, cur
+    # def connection_ritual(self):
+    #     """
+    #     This function connects to the DB and cursor
+    #     :return: rds connection and cursor connection
+    #     """
+    #     rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+    #     cur = rds_conn.db.cursor()
+    #     return rds_conn, cur
 
     def commit_results(self, queries):
         """
@@ -301,39 +300,45 @@ class BATRUBatruAssortment:
         query_num is the number of queires that were executed in the current batch
         After batch_size is reached, the function re-connects the DB and cursor.
         """
-        rds_conn, cur = self.connection_ritual()
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
         batch_size = 1000
         query_num = 0
         for query in self.update_queries:
             try:
-                cur.execute(query)
-                self.rds_conn.db.commit()
+                cursor.execute(query)
                 print query
             except Exception as e:
-                Log.info('Updating failed to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
+                Log.info('Updating failed to due to: {}'.format(e))
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 continue
             if query_num > batch_size:
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 query_num = 0
-                rds_conn.db.commit()
-                rds_conn, cur = self.connection_ritual()
             query_num += 1
-        rds_conn, cur = self.connection_ritual()
+        self.rds_conn.db.commit()
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
         query_num = 0
         for query in queries:
             try:
-                cur.execute(query)
-                self.rds_conn.db.commit()
+                cursor.execute(query)
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 continue
             if query_num > batch_size:
                 query_num = 0
-                rds_conn, cur = self.connection_ritual()
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
             query_num += 1
-        rds_conn.db.commit()
+        self.rds_conn.db.commit()
 
 
 if __name__ == '__main__':
