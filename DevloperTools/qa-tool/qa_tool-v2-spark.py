@@ -23,7 +23,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
 class qa:
-    def __init__(self, project, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
+    def __init__(self, project, batch_size=100000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
 
         findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
         findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
@@ -33,7 +33,7 @@ class qa:
         self._env = Config.PROD
         self.start_date = start_date
         self.end_date = end_date
-        self.batch_size = 100000
+        self.batch_size = batch_size
         self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g").config("spark.executor.memory", "4g").config("spark.driver.cores", "4").config("spark.driver.maxResultSize", "4").getOrCreate()
         self.connector = ProjectConnector(self._project,self._dbUser)
         # fetch db data
@@ -41,7 +41,6 @@ class qa:
         self.kpi_results = self._get_kpi_results()
         self.merged_kpi_results = self.static_kpi.merge(self.kpi_results, left_on='pk', right_on='kpi_level_2_fk', how='left')
         self.expected = pd.read_csv('expected.csv')
-
 
     def _get_kpi_results_meta_data(self):
         try:
@@ -63,17 +62,6 @@ class qa:
         finally:
             self.connector.disconnect_rds()
 
-
-    def _get_static_kpi(self):
-        connector = ProjectConnector(self._project,self._dbUser)
-        try:
-            static = '''SELECT * FROM  static.kpi_level_2;'''
-            return pd.read_sql_query(static, connector.db)
-        except Exception as e:
-            print e.message
-        finally:
-            connector.disconnect_rds()
-
     def _get_kpi_results(self):
         connector = ProjectConnector(self._project, self._dbUser)
         try:
@@ -91,6 +79,22 @@ class qa:
             print e.message
         finally:
             connector.disconnect_rds()
+
+
+    def _get_static_kpi(self):
+        connector = ProjectConnector(self._project,self._dbUser)
+        try:
+            static = '''SELECT * FROM  static.kpi_level_2;'''
+            return pd.read_sql_query(static, connector.db)
+        except Exception as e:
+            print e.message
+        finally:
+            connector.disconnect_rds()
+
+
+    # def get
+
+
 
     def test_uncalculated_kpi(self):
         """get list of kpi names that doesnt have any result """
