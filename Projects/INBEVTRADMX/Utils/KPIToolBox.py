@@ -378,7 +378,7 @@ class INBEVTRADMXToolBox:
         parsed_template = self.parse_template()
         # get all the unique sets
         # sets = parsed_template['KPI Level 1 Name'].unique()
-        # get the session additional_attribute_4
+        # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
         set_name = self.choose_correct_set_to_calculate(additional_attribute_4,additional_attribute_13, parsed_template)
@@ -392,7 +392,7 @@ class INBEVTRADMXToolBox:
         self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
-    def choose_correct_set_to_calculate(additional_attribute_4,additional_attribute_13, template):
+    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
         """
         choose what is the appropriate set to calculate
         :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
