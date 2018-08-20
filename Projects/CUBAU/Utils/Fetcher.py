@@ -28,3 +28,15 @@ class CUBAUCUBAUQueries(object):
                 select additional_attribute_9 from static.stores
                 where pk = {}
                 """.format(store_fk)
+
+    @staticmethod
+    def get_facings_by_direction(session_uid):
+        return """
+                select m.pk as match_product_fk, image_direction from probedata.match_product_in_scene m
+                join probedata.match_product_in_probe mp on mp.pk=m.probe_match_fk
+                join static_new.product_image pi on pi.pk=mp.product_image_fk
+                join probedata.scene sc on sc.pk=m.scene_fk
+                join probedata.session se on se.session_uid=sc.session_uid
+                join static.template t on t.pk=sc.template_fk
+                where se.session_uid='{}'
+                """.format(session_uid)

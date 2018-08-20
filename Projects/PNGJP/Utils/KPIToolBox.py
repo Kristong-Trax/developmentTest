@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 # from timeit import default_timer as timer
-
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -120,8 +120,10 @@ class PNGJPToolBox(PNGJPConsts):
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.match_display_in_scene = self.get_match_display()
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        if self.visit_date >= datetime(2018, 01, 01).date():
+        if self.visit_date >= datetime(2018, 8, 01).date():
             template_name = 'Template.xlsx'
+        elif self.visit_date >= datetime(2018, 01, 01).date():
+            template_name = 'Template01-07.18.xlsx'
         elif self.visit_date <= datetime(2017, 10, 31).date():
             template_name = 'Template_7-10.xlsx'
         else:
@@ -131,6 +133,8 @@ class PNGJPToolBox(PNGJPConsts):
         self.innovation_assortment = parse_template(self.TEMPLATE_PATH, 'Innovation Assortment')
         self.psku_assortment = parse_template(self.TEMPLATE_PATH, 'PSKU Assortment')
         self.scene_types = parse_template(self.TEMPLATE_PATH, 'Category-Scene_Type')
+        self.GOLDEN_ZONE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'TemplateQualitative.xlsx')
+        self.golden_zone_data_criteria = parse_template(self.GOLDEN_ZONE_PATH, 'Golden Zone Criteria')
         self.category_scene_types = self.get_category_scene_types()
         self._custom_templates = {}
         self.scenes_types_for_categories = {}
@@ -229,6 +233,7 @@ class PNGJPToolBox(PNGJPConsts):
                     target = targets_data[self.store_type]
         return target
 
+    @kpi_runtime(kpi_desc='category_calculation')
     def category_calculation(self, category):
 
         self.calculation_per_entity(category)
@@ -905,6 +910,7 @@ class PNGJPToolBox(PNGJPConsts):
                 filters['template_name'] = template_names
         return filters
 
+    @kpi_runtime(kpi_desc='update_custom_scene_item_facts')
     def hadle_update_custom_scif(self):
         """
         This function updates the custom scif of PS with oos and assortment values for each product in each scene.
@@ -928,15 +934,15 @@ class PNGJPToolBox(PNGJPConsts):
 
         psku_assortment_products = psku_assortment_products.tolist()
         innovation_assortment_products = innovation_assortment_products.tolist()
-        shelves = [4, 5]
+        # shelves = [4, 5]
         all_scenes_in_scif = self.scif[SCENE_FK].unique().tolist()
 
         if all_scenes_in_scif:
-            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].tolist()
+            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].unique().tolist()
             for product in assortment_products:
                 if product in products_in_session:
                     # This means the product in assortment and is not oos. (1,0)
-                    result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
+                    result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
                     length_mm_custom = 1 if result else 0
                     scenes = self.get_scenes_for_product(product)
                     in_assortment_OSA = oos_osa = mha_in_assortment = mha_oos = 0
@@ -947,6 +953,9 @@ class PNGJPToolBox(PNGJPConsts):
                         mha_in_assortment = 1
 
                     for scene in scenes:
+                        # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                        #                                                          ,product_fk=product, scene_fk=scene))
+                        # length_mm_custom = 1 if result else 0
                         self.get_custom_query(scene, product, in_assortment_OSA, oos_osa, mha_in_assortment, mha_oos,
                                               length_mm_custom)
                 else:
@@ -973,10 +982,13 @@ class PNGJPToolBox(PNGJPConsts):
             products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
             for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
                 # The product is not in assortment list and not oos. (0,0)
-                result = int(self.tools.calculate_assortment(shelf_number_from_bottom=shelves, product_fk=product))
+                result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria, product_fk=product))
                 length_mm_custom = 1 if result else 0
                 scenes = self.get_scenes_for_product(product)
                 for scene in scenes:
+                    # result = int(self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria
+                    #                                                              ,product_fk=product, scene_fk=scene))
+                    # length_mm_custom = 1 if result else 0
                     self.get_custom_query(scene, product, 0, 0, 0, 0, length_mm_custom)
 
             self.commit_custom_scif()

@@ -25,6 +25,7 @@ class CCRUContract:
         self.static_data_extractor = CCRUTopSKUAssortment(rds_conn=rds_conn)
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
+        self.invalid_stores = []
 
     def __del__(self):
         if os.path.exists(self.temp_path):
@@ -67,6 +68,7 @@ class CCRUContract:
             store_id = self.static_data_extractor.get_store_fk(store_number)
             if store_id is None:
                 Log.warning('Store number {} does not exist'.format(store_number))
+                self.invalid_stores.append(store_number)
                 continue
             if store_id not in data_per_store.keys():
                 data_per_store[store_id] = []
@@ -83,6 +85,7 @@ class CCRUContract:
             Log.info('File for store {} was uploaded {}/{}'.format(store_id, x+1, len(data_per_store)))
         if os.path.exists(self.temp_path):
             os.remove(self.temp_path)
+        Log.warning('The following stores were not invalid: {}'.format(self.invalid_stores))
 
     @staticmethod
     def get_kpi_weights(file_path, kpi_row, weight_row):

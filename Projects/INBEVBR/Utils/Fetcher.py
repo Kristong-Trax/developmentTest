@@ -1,6 +1,5 @@
 
-__author__ = 'Yasmin'
-
+__author__ = 'ilays'
 
 class INBEVBRQueries(object):
 
@@ -14,29 +13,15 @@ class INBEVBRQueries(object):
             left join static.kpi kpi on kpi.pk = api.kpi_fk
             join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
         """
+
     @staticmethod
-    def get_match_display(session_uid):
+    def get_new_kpi_data():
         return """
-            select sdb.name, m.scene_fk, d.display_name, m.bay_number, m.rect_x, m.rect_y,dt.name as display_type
-            from probedata.match_display_in_scene m
-            join probedata.scene s on s.pk = m.scene_fk
-            join static.display d on d.pk = m.display_fk
-            join static.display_brand sdb on sdb.pk=d.display_brand_fk
-            join static.display_type dt on dt.pk = d.display_type_fk
-            where s.session_uid = '{}'
-        """.format(session_uid)
+            select *
+            from static.kpi_level_2
+        """
 
     @staticmethod
-    def get_state(store_id):
-        return """
-            select st.name as state from static.stores s join static.state st on s.state_fk=st.pk where s.pk = {}
-        """.format(store_id)
-
-
-
-
-    @staticmethod
-    def get_delete_session_results_query(session_uid):
-        return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
-                "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
-                "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
+    def get_delete_session_results_query(session_uid, session_id):
+        return ("delete from report.kpi_level_2_results where session_fk = '{}' and (kpi_level_2_fk "
+                "in (select pk from static.kpi_level_2 where kpi_calculation_stage_fk = '3'));".format(session_id))
