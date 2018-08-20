@@ -50,8 +50,8 @@ LINEAR_SIZE = u'gross_len_add_stack'
 # gross_len_split_stack
 # gross_len_add_stack
 PURINA_KPI = [SUBSEGMENT_KPI, MANUFACTUR, BRAND]
-
-
+NO_SUBSEG = 'OTHER'
+PET_FOOD_CATEGORY = 13
 PURINA_SETS = [SUBSEGMENT_SET, PRICE_SET]
 
 class PURINAToolBox:
@@ -116,15 +116,22 @@ class PURINAToolBox:
         :return:
         """
 
-        data = self.scif.dropna(subset=[SCIF_SUBSEGMENT, LINEAR_SIZE])
+        data = self.scif.dropna(subset=[LINEAR_SIZE])
+        data = data.loc[data['category_fk'] == PET_FOOD_CATEGORY]
+
         if data.empty:
             Log.info("No relevant purina's products were found in session.")
             return
 
         subseg_name_list = data[SCIF_SUBSEGMENT].unique()
         for subseg in subseg_name_list:
-            by_subseg = data.loc[data[SCIF_SUBSEGMENT] == subseg]
-            subseg_ft = self.cm_to_ft(sum(by_subseg[LINEAR_SIZE]))
+            if not subseg:
+                subseg = NO_SUBSEG
+                by_subseg = data.loc[pd.isnull(data[SCIF_SUBSEGMENT])]
+                subseg_ft = self.cm_to_ft(sum(by_subseg[LINEAR_SIZE]))
+            else:
+                by_subseg = data.loc[data[SCIF_SUBSEGMENT] == subseg]
+                subseg_ft = self.cm_to_ft(sum(by_subseg[LINEAR_SIZE]))
             atomic_fk = self.get_kpi_fk_by_kpi_name(subseg, self.LEVEL3, father=SUBSEGMENT_KPI, set_name=SUBSEGMENT_SET)
             self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=subseg_ft)
             atomic_fk = self.get_kpi_fk_by_kpi_name(subseg, self.LEVEL3, father=SUBSEGMENT_KPI, set_name=PRICE_SET)
@@ -314,6 +321,3 @@ class PURINAToolBox:
                 where session_fk = {}""".format(self.session_fk)
         data = pd.read_sql_query(query, local_con.db)
         return data
-
-
-

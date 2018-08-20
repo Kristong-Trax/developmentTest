@@ -1,24 +1,24 @@
 
 import os
 import MySQLdb
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
 from Tests.Data.Templates.ccbottlersus.BCI import bci
 from Tests.Data.TestData.test_data_ccbottlersus_sanity import ProjectsSanityData
-from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSCalculations
+from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
@@ -40,10 +40,10 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.BCIToolBox.get_latest_directory_date_from_cloud',
+    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.CCBOTTLERSUSBCIToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-05-18')
-    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.BCIToolBox.save_latest_templates')
-    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.BCIToolBox.download_template',
+    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.CCBOTTLERSUSBCIToolBox.save_latest_templates')
+    @patch('Projects.CCBOTTLERSUS.Utils.ToolBox.CCBOTTLERSUSBCIToolBox.download_template',
            return_value=bci)
     @seeder.seed(["ccbottlersus_seed"], ProjectsSanityData())
     def test_ccbottlersus_sanity(self, x, y, json):
@@ -53,5 +53,5 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            CCBOTTLERSCalculations(data_provider, output).run_project_calculations()
+            CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
