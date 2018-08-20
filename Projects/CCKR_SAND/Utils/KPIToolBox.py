@@ -54,10 +54,10 @@ class CCKRToolBox:
         file_template = pd.read_excel(
             os.path.join(kpi_path[:- len(base_file)], 'Data', 'CC Korea - Availability KPI_120718.xlsx'),
             sheetname="Template")
-        self.kpi_template_info = pd.DataFrame(kpi_info)
-        self.kpi_metadata = self.data_provider.kpi
-        self.template_info= self.data_provider.templates
-        self.kpi_template=pd.DataFrame(file_template)
+        self.kpi_template_info = pd.DataFrame(kpi_info)  # contains the kpis + ean codes
+        self.kpi_metadata = self.data_provider.kpi   # information about kpis such as (presentation order)
+        self.template_info = self.data_provider.templates  # static data on templates
+        self.kpi_template =pd.DataFrame(file_template)  # relevant template for kpis
 
     def main_calculation(self, *args, **kwargs):
 
@@ -70,8 +70,7 @@ class CCKRToolBox:
         relevant_template_fk = self.template_info[self.template_info["additional_attribute_1"].isin(self.kpi_template['additional_attribute_1'].unique())]['template_fk']
         self.scif = self.scif[self.scif['template_fk'].isin(relevant_template_fk.unique())]
         for row in self.kpi_template_info.iterrows():
-            # kpi_fks = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == row[1]['Atomic Kpi Name']]
-            result = self.scif[self.scif['product_ean_code'] == str(row[1]['SKU EAN Code'])] #str need to check if its work without
+            result = self.scif[self.scif['product_ean_code'] == str(row[1]['SKU EAN Code'])]
             result = 0 if result.empty else int(result['facings'].sum())
             result_final = result if result > 0 else None
             score = 100 if result > 0 else None
