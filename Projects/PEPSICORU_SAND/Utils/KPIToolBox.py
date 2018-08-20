@@ -65,6 +65,23 @@ class PEPSICORUToolBox:
         else:
             return Const.MAIN_SHELF_JUICES
 
+    @staticmethod
+    def get_category_from_template_name(template_name):
+        """
+        This function gets a template name (scene_type) and return it's relevant category.
+        :param template_name: The scene type.
+        :return: category name
+        """
+        if Const.SNACKS in template_name:
+            return Const.SNACKS
+        elif Const.BEVERAGES in template_name:
+            return Const.BEVERAGES
+        elif Const.JUICES in template_name:
+            return Const.JUICES
+        else:
+            Log.warning("Couldn't find a matching category for template name = {}".format(template_name))
+            return None
+
     def get_scene_type_by_sub_cat(self, sub_cat):
         """
         This function gets a sub_category and return the relevant scene type for the SOS
@@ -295,27 +312,35 @@ class PEPSICORUToolBox:
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
         for category in self.categories_to_calculate:
-            current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
                                category in scene_type]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
             scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_ID].unique())
-            display_count_category_level_id = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
-                                                                         category_fk=current_category_fk)
-            self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.store_id,
+            display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+                                                                         category=category)
+            self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=current_category_fk,
                                            numerator_result=scene_types_in_category,
-                                           identifier_result=display_count_category_level_id,
+                                           identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
                                            result=scene_types_in_category, score=0)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
         for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
+            relevant_category = self.get_category_from_template_name(scene_type)
             scene_type_score = len(
                 filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_ID].unique())
             scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
+            display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+                                                                              category_fk=relevant_category)
+            parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+                                                           category_fk=relevant_category)
             self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=scene_type_fk,
-                                           numerator_result=scene_type_score, result=scene_type_score, score=0)
+                                           numerator_result=scene_type_score,
+                                           identifier_result=display_count_scene_level_identifier,
+                                           identifier_parent=parent_identifier,
+                                           result=scene_type_score, score=0)
+
 
     def main_calculation(self, *args, **kwargs):
         """
