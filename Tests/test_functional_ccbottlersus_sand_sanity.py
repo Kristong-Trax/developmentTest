@@ -12,7 +12,7 @@ from mock import patch
 
 from Tests.Data.Templates.ccbottlersus.BCI import bci
 from Tests.Data.TestData.test_data_ccbottlersus_sand_sanity import ProjectsSanityData
-from Projects.CCBOTTLERSUS_SAND.Calculations import CCBOTTLERSUS_SANDCCBOTTLERSCalculations
+from Projects.CCBOTTLERSUS_SAND.Calculations import Calculations
 
 
 __author__ = 'yoava'
@@ -53,5 +53,5 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            CCBOTTLERSUS_SANDCCBOTTLERSCalculations(data_provider, output).run_project_calculations()
+            Calculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
