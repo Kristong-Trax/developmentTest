@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
@@ -183,7 +183,8 @@ class PEPSICORUToolBox:
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             # Calculate Facings SOS
             facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param, **filter_params)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param,
+                                                                                    **filter_params)
             level_2_facings_cat_identifier = self.common.get_dictionary(kpi_fk=facings_cat_kpi_fk,
                                                                         category_fk=current_category_fk)
             self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=self.pepsico_fk,
@@ -193,7 +194,8 @@ class PEPSICORUToolBox:
                                            identifier_parent=facings_level_1_identifier, result=result, score=result)
             # Calculate Linear SOS
             linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY_SOS)
-            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **filter_params)
+            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param,
+                                                                                   **filter_params)
             level_2_linear_cat_identifier = self.common.get_dictionary(kpi_fk=linear_cat_kpi_fk,
                                                                        category_fk=current_category_fk)
             self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
@@ -209,7 +211,8 @@ class PEPSICORUToolBox:
                                     Const.TEMPLATE_NAME: self.get_scene_type_by_sub_cat(sub_cat)}
             # Calculate Facings SOS
             facings_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param, **filter_sub_cat_param)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param,
+                                                                                    **filter_sub_cat_param)
             level_3_facings_sub_cat_identifier = self.common.get_dictionary(kpi_fk=facings_sub_cat_kpi_fk,
                                                                             sub_category_fk=current_sub_category_fk)
             parent_identifier = self.common.get_dictionary(
@@ -220,7 +223,8 @@ class PEPSICORUToolBox:
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
-            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **filter_sub_cat_param)
+            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param,
+                                                                                   **filter_sub_cat_param)
             linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS)
             level_3_linear_sub_cat_identifier = self.common.get_dictionary(kpi_fk=linear_sub_cat_kpi_fk,
                                                                            sub_category_fk=current_sub_category_fk)
@@ -241,7 +245,8 @@ class PEPSICORUToolBox:
             current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
             # Calculate Facings SOS
             facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param, **general_filters)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param,
+                                                                                    **general_filters)
             level_4_facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
                                                                           brand_fk=current_brand_fk)
             parent_identifier = self.common.get_dictionary(
@@ -253,7 +258,8 @@ class PEPSICORUToolBox:
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
             linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param, **general_filters)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
+                                                                                    **general_filters)
             level_4_linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
                                                                          brand_fk=current_brand_fk)
             parent_identifier = self.common.get_dictionary(
