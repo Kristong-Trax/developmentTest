@@ -90,6 +90,18 @@ class PEPSICORUToolBox:
                 relevant_categories.add(Const.JUICES)
         return list(relevant_categories)
 
+    def get_relevant_sub_categories_for_session(self):
+        """
+        This function returns a list of the relevant categories according to the scene_types in the session
+        :return: List of the relevant categories
+        """
+        sub_categories = self.scif[Const.SUB_CATEGORY].unique().tolist()
+        for sub_cat in sub_categories:
+            relevant_category = self.get_attributes_fk_from_filter(Const.SUB_CATEGORY, sub_cat, Const.CATEGORY)
+            if not relevant_category:
+                sub_categories.remove(sub_cat)
+        return sub_categories
+
     def get_relevant_pk_by_name(self, filter_by, filter_param):
         """
         This function gets a filter name and returns the relevant pk.
@@ -99,8 +111,22 @@ class PEPSICORUToolBox:
         :return: The relevant pk
         """
         pk_field = filter_by + Const.FK
-        field_name = filter_by + Const.NAME if filter_by != Const.CATEGORY else Const.CATEGORY
+        field_name = filter_by + Const.NAME if Const.CATEGORY not in filter_by else filter_by
         return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
+
+    def get_attributes_fk_from_filter(self, filter_by, param, attribute_to_get):
+        """
+        This function gets an attribute name and a parameter and return the relevant category_fk to this attribute.
+        For example: The function can get filter_by=sub_category_namwe and param=snacks and return SNACK.
+        :param filter_by: The relevant attribute E.g: brand_name, sub_category_fk
+        :param param: The parameter that fits the attribute: E.g snacks, adrenaline.
+        :param attribute_to_get: Which attribute to return! E.g: brand_fk, category_fk etc.
+        :return: The category fk that match the filter params.
+        """
+        unique_fk = self.products[self.products[filter_by] == param][attribute_to_get].unique()
+        if len(unique_fk) > 1:
+            Log.warning("Several {} match to the following {}: {}".format(attribute_to_get,filter_by, param))
+        return unique_fk[0]
 
     @log_runtime('Share of shelf pepsicoRU')
     def share_of_shelf_calculator(self):
@@ -113,92 +139,107 @@ class PEPSICORUToolBox:
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
         main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
                         Const.MAIN_SHELF in scene_type]
-        general_filters = {Const.TEMPLATE_NAME : main_shelves}
+        general_filters = {Const.TEMPLATE_NAME: main_shelves}
         # Calculate Facings SOS
-        numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, **general_filters)
+        numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param,
+                                                                                **general_filters)
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
+        facings_level_1_identifier = self.common.get_dictionary(kpi_fk=facings_stores_kpi_fk)
         self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
+                                       identifier_result=facings_level_1_identifier,
                                        numerator_result=numerator_score, denominator_id=self.store_id,
-                                       denominator_result=denominator_score, result=result, score=result) #todo check !
+                                       denominator_result=denominator_score, result=result, score=result)
         # Calculate Linear SOS
-        facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
-        numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, **general_filters)
-        self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
+        linear_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
+        linear_level_1_identifier = self.common.get_dictionary(kpi_fk=linear_store_kpi_fk)
+        numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **general_filters)
+        self.common.write_to_db_result(fk=linear_store_kpi_fk, numerator_id=self.pepsico_fk,
+                                       identifier_result=linear_level_1_identifier,
                                        numerator_result=numerator_score, denominator_id=self.store_id,
                                        denominator_result=denominator_score, result=result, score=result)
         # Level 2
         for category in self.categories_to_calculate:
             filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_main_shelf_by_category(category)}
-            # Calculate Facings SOS
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param, filter_params)
-            facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
+            # Calculate Facings SOS
+            facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param, **filter_params)
+            level_2_facings_cat_identifier = self.common.get_dictionary(kpi_fk=facings_cat_kpi_fk,
+                                                                        category_fk=current_category_fk)
             self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
-                                           denominator_result=denominator_score, result=result, score=result)
+                                           denominator_result=denominator_score,
+                                           identifier_result=level_2_facings_cat_identifier,
+                                           identifier_parent=facings_level_1_identifier, result=result, score=result)
             # Calculate Linear SOS
-            numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param, filter_params)
             linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY_SOS)
+            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **filter_params)
+            level_2_linear_cat_identifier = self.common.get_dictionary(kpi_fk=linear_cat_kpi_fk,
+                                                                       category_fk=current_category_fk)
             self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=numerator_score, denominator_id=current_category_fk,
-                                           denominator_result=denominator_score, result=result, score=result)
+                                           denominator_result=denominator_score,
+                                           identifier_result=level_2_linear_cat_identifier,
+                                           identifier_parent=linear_level_1_identifier, result=result, score=result)
         # Level 3
-        for sub_cat in self.scif[Const.SUB_CATEGORY].unique().tolist(): #todo: a function to calculate sub categories only by the categoires in the scene_types ????
+        for sub_cat in self.get_relevant_sub_categories_for_session():
+            curr_category_fk = self.get_attributes_fk_from_filter(Const.SUB_CATEGORY, sub_cat, Const.CATEGORY_FK)
+            current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
             filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat,
                                     Const.TEMPLATE_NAME: self.get_scene_type_by_sub_cat(sub_cat)}
             # Calculate Facings SOS
-            sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_manu_param,
-                                                                                    filter_sub_cat_param)
-            current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
-            self.common.write_to_db_result(fk=sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
+            facings_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param, **filter_sub_cat_param)
+            level_3_facings_sub_cat_identifier = self.common.get_dictionary(kpi_fk=facings_sub_cat_kpi_fk,
+                                                                            sub_category_fk=current_sub_category_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS), category_fk=curr_category_fk)
+            self.common.write_to_db_result(fk=facings_sub_cat_kpi_fk, numerator_id=current_sub_category_fk,
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
+                                           identifier_result=level_3_facings_sub_cat_identifier,
+                                           identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
-            numerator_score, denominator_score, result = self.calculate_linear_sos(filter_manu_param,
-                                                                                   filter_sub_cat_param)
+            numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **filter_sub_cat_param)
             linear_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS)
-            self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
+            level_3_linear_sub_cat_identifier = self.common.get_dictionary(kpi_fk=linear_sub_cat_kpi_fk,
+                                                                           sub_category_fk=current_sub_category_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY_SOS), category_fk=curr_category_fk)
+            self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=current_sub_category_fk,
                                            numerator_result=numerator_score, denominator_id=current_sub_category_fk,
+                                           identifier_result=level_3_linear_sub_cat_identifier,
+                                           identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
         # Level 4
         for brand in self.scif[self.scif[Const.MANUFACTURER_NAME == Const.PEPSICO]][Const.BRAND_NAME].unique().tolist():
-            relevant_category = self.products.loc[self.products[Const.BRAND_NAME] == brand][Const.CATEGORY].unique()
-            if len(relevant_category) > 1:
-                Log.warning("Several categories fits to the following brand: {}".format(brand))
-                continue
+            relevant_category = self.get_attributes_fk_from_filter(Const.BRAND_NAME, brand, Const.CATEGORY)
+            relevant_sub_cat_fk = self.get_attributes_fk_from_filter(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
             filter_brand_param = {Const.BRAND_NAME: brand}
             general_filters = {Const.CATEGORY: relevant_category,
                                Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
-            brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
-            relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
+            current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
             # Calculate Facings SOS
             facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
-                                                                                    general_filters)
-            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=brand_fk,
-                                           numerator_result=numerator_score, denominator_id=relevant_category_fk,
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param, **general_filters)
+            level_4_facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
+                                                                          brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
+            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_3_facings_sub_cat_identifier,
+                                           identifier_parent=linear_level_1_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
-
             # Calculate Linear SOS
             linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
-                                                                                    general_filters)
-            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=brand_fk,
-                                           numerator_result=numerator_score, denominator_id=relevant_category_fk,
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param, **general_filters)
+            self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_3_facings_sub_cat_identifier,
+                                           identifier_parent=linear_level_1_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
-
-
         return
-
-    def get_relevant_session_categories(self):
-        """
-        This functions returns the relevant categories to calculate according to the current scene types
-        :return: list of the categories that needs to be calculate
-        """
-        # todo
-        # Filter scif???
-        return [Const.SNACKS]
 
     def calculate_count_of_display(self):
         """
