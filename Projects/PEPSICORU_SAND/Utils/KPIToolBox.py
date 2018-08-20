@@ -133,6 +133,8 @@ class PEPSICORUToolBox:
         """
         The function filters only the relevant scene (type = Main Shelf in category) and calculates the linear SOS and
         the facing SOS for each level (Manufacturer, Category, Sub-Category, Brand).
+        The identifier for every kpi will be the current kpi_fk and the relevant attribute according to the level
+        E.g sub_category_fk for level 3 or brand_fk for level 4.
         :return:
         """
         # Level 1
@@ -152,7 +154,8 @@ class PEPSICORUToolBox:
         # Calculate Linear SOS
         linear_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
         linear_level_1_identifier = self.common.get_dictionary(kpi_fk=linear_store_kpi_fk)
-        numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param, **general_filters)
+        numerator_score, denominator_score, result = self.calculate_linear_sos(sos_filters=filter_manu_param,
+                                                                               **general_filters)
         self.common.write_to_db_result(fk=linear_store_kpi_fk, numerator_id=self.pepsico_fk,
                                        identifier_result=linear_level_1_identifier,
                                        numerator_result=numerator_score, denominator_id=self.store_id,
@@ -215,7 +218,7 @@ class PEPSICORUToolBox:
         for brand in self.scif[self.scif[Const.MANUFACTURER_NAME == Const.PEPSICO]][Const.BRAND_NAME].unique().tolist():
             relevant_category = self.get_attributes_fk_from_filter(Const.BRAND_NAME, brand, Const.CATEGORY)
             relevant_sub_cat_fk = self.get_attributes_fk_from_filter(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
-            filter_brand_param = {Const.BRAND_NAME: brand}
+            filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
             general_filters = {Const.CATEGORY: relevant_category,
                                Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
             current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
@@ -228,16 +231,20 @@ class PEPSICORUToolBox:
                 kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
             self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
                                            numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
-                                           identifier_result=level_3_facings_sub_cat_identifier,
-                                           identifier_parent=linear_level_1_identifier,
+                                           identifier_result=level_4_facings_brand_identifier,
+                                           identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
             # Calculate Linear SOS
             linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
             numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param, **general_filters)
+            level_4_linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
+                                                                         brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
             self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
                                            numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
-                                           identifier_result=level_3_facings_sub_cat_identifier,
-                                           identifier_parent=linear_level_1_identifier,
+                                           identifier_result=level_4_linear_brand_identifier,
+                                           identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
         return
 
