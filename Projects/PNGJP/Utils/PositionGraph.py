@@ -23,7 +23,7 @@ class PNGJPPositionGraphs:
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
+    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
                           'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
                           'category_local_name', 'shelf_number']
 
