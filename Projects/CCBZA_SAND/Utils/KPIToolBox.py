@@ -227,6 +227,7 @@ class CCBZA_SANDToolBox:
                         scene_result = self.get_price_result(scene_df, target, atomic_kpi, identifier_result)
                     self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
+    #replaced by calculate_availability_scene with router
     def calculate_availability_scene_old(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
@@ -1015,7 +1016,7 @@ class CCBZA_SANDToolBox:
                                                identifier_result=identifier_result,
                                                should_enter=True, result=score)
 
-
+    #replaced by calculate_availability_session_new
     def calculate_availability_session(self, atomic_kpis_data, identifier_parent):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
