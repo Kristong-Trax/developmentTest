@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.2 - KENGINE - AUGUST.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.3 - KENGINE - AUGUST.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -227,7 +227,7 @@ class INBEVBRToolBox:
             count_result = weight
 
         number_of_valid_scenes = len(set(df_target_filtered['scene_fk']).union(set(df_packs['scene_fk'])))
-        number_of_not_valid_scenes = len(self.scene_info['scene_fk'].drop_duplicates())
+        number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
         if count_result == 0:
             return
