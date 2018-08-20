@@ -1,13 +1,13 @@
 
 import os
 import MySQLdb
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
 from mock import patch
 
 from Tests.Data.Templates.ccbottlersus.BCI import bci
@@ -18,7 +18,7 @@ from Projects.CCBOTTLERSUS_SAND.Calculations import Calculations
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
@@ -40,10 +40,10 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.CCBOTTLERSUS_SANDBCIToolBox.get_latest_directory_date_from_cloud',
+    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.BCIToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-05-18')
-    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.CCBOTTLERSUS_SANDBCIToolBox.save_latest_templates')
-    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.CCBOTTLERSUS_SANDBCIToolBox.download_template',
+    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.BCIToolBox.save_latest_templates')
+    @patch('Projects.CCBOTTLERSUS_SAND.Utils.ToolBox.BCIToolBox.download_template',
            return_value=bci)
     @seeder.seed(["ccbottlersus_sand_seed"], ProjectsSanityData())
     def test_ccbottlersus_sand_sanity(self, x, y, json):
