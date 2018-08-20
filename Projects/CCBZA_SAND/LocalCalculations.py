@@ -4,7 +4,8 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.CCBZA_SAND.Calculations import CCBZA_SANDCalculations, CCBZA_SANDSceneCalculations
+# from Projects.CCBZA_SAND.Calculations import CCBZA_SANDCalculations, CCBZA_SANDSceneCalculations
+from Projects.CCBZA_SAND.SceneKpis.SceneCalculations import CCBZA_SANDSceneCalculations
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 
@@ -47,4 +48,4 @@ if __name__ == '__main__':
         output = VanillaOutput()
         SceneVanillaCalculations(data_provider, output).run_project_calculations()
         save_scene_item_facts_to_data_provider(data_provider, output)
-        CCBZA_SANDSceneCalculations(data_provider).run_scene_calculations()
+        CCBZA_SANDSceneCalculations(data_provider).calculate_kpis()
