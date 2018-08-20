@@ -22,7 +22,7 @@ def _parse_arguments():
     return parser.parse_args()
 
 
-class BatruAssortment:
+class BATRUBatruAssortment:
 
     def __init__(self):
         self.parsed_args = _parse_arguments()
@@ -338,5 +338,5 @@ class BatruAssortment:
 
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
-    BatruAssortment().upload_assortment()
+    BATRUBatruAssortment().upload_assortment()
     # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration
