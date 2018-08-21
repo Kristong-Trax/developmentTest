@@ -227,26 +227,6 @@ class CCBZA_SANDToolBox:
                         scene_result = self.get_price_result(scene_df, target, atomic_kpi, identifier_result)
                     self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
-    #replaced by calculate_availability_scene with router
-    def calculate_availability_scene_old(self, atomic_kpis_data):
-        for i in xrange(len(atomic_kpis_data)):
-            atomic_kpi = atomic_kpis_data.iloc[i]
-            is_by_scene = self.is_by_scene(atomic_kpi)
-            if is_by_scene:
-                identifier_result = self.get_identifier_result_scene(atomic_kpi)
-                if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
-                    self.availability_brand_strips_scene(atomic_kpi, identifier_result)
-                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
-                    self.availability_and_or_scene(atomic_kpi, identifier_result)
-                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
-                    self.availability_and_or_scene(atomic_kpi, identifier_result)
-                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
-                    self.availability_against_competitors_scene(atomic_kpi, identifier_result)
-                else:
-                    Log.warning(
-                        'Availablity of type {} is not supported by scene calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
-                    continue
-
     def calculate_availability_scene(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
             atomic_kpi = atomic_kpis_data.iloc[i]
@@ -382,12 +362,11 @@ class CCBZA_SANDToolBox:
             if not is_bonus:
                 red_target += set_target
 
-        red_score_percent = float(red_score) / red_target * 100
+        red_score_percent = float(red_score) / red_target if red_target != 0 else 0
         red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(RED_SCORE)
-        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, score=red_score,
-                                       identifier_result=identifier_result_red_score,
-                                       denominator_id=self.store_id, score_after_actions=red_score_percent,
-                                       target=red_target, should_enter=True)
+        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, result=red_score,
+                                       score=red_score_percent, identifier_result=identifier_result_red_score,
+                                       denominator_id=self.store_id, target=red_target, should_enter=True)
         self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
@@ -1016,53 +995,6 @@ class CCBZA_SANDToolBox:
                                                identifier_result=identifier_result,
                                                should_enter=True, result=score)
 
-    #replaced by calculate_availability_session_new
-    def calculate_availability_session(self, atomic_kpis_data, identifier_parent):
-        for i in xrange(len(atomic_kpis_data)):
-            atomic_kpi = atomic_kpis_data.iloc[i]
-            identifier_result = self.get_identfier_result_atomic(atomic_kpi)
-            score = 0
-            per_scene = self.is_by_scene(atomic_kpi)
-            if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
-                score = self.calculate_availability_posm(atomic_kpi, identifier_result)
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR_MIN:
-                score = self.calculate_availability_min_facings_unique_list(atomic_kpi, identifier_result)
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
-                if per_scene:
-                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
-                else:
-                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
-                    continue
-            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
-                if per_scene:
-                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
-                else:
-                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
-                    continue
-            elif atomic_kpi[AVAILABILITY_TYPE] in [AVAILABILITY_SKU_FACING_AND, AVAILABILITY_SKU_FACING_OR]:
-                if per_scene:
-                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
-                else:
-                    score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
-            else:
-                Log.warning('Availablity of type {} is not supported by calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
-                continue
-            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
-
-            max_score = atomic_kpi[SCORE]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-            if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
-                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               identifier_result=identifier_result, result=score,
-                                               should_enter=True, target=float(max_score))
-            else:
-                custom_score = self.get_pass_fail(score)
-                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
-                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
-                                               identifier_result=identifier_result,
-                                               should_enter=True, result=score)
-
     # always by scene
     def get_availability_results_scene_table(self, atomic_kpi, identifier_result):
         score = 0
@@ -1341,6 +1273,73 @@ class CCBZA_SANDToolBox:
         return filtered_df
 
 #-------------obsolete functions---------------------#
+    #replaced by calculate_availability_scene with router
+    def calculate_availability_scene_old(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            is_by_scene = self.is_by_scene(atomic_kpi)
+            if is_by_scene:
+                identifier_result = self.get_identifier_result_scene(atomic_kpi)
+                if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
+                    self.availability_brand_strips_scene(atomic_kpi, identifier_result)
+                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_AND:
+                    self.availability_and_or_scene(atomic_kpi, identifier_result)
+                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR:
+                    self.availability_and_or_scene(atomic_kpi, identifier_result)
+                elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
+                    self.availability_against_competitors_scene(atomic_kpi, identifier_result)
+                else:
+                    Log.warning(
+                        'Availablity of type {} is not supported by scene calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue
+
+    #replaced by calculate_availability_session_new
+    def calculate_availability_session(self, atomic_kpis_data, identifier_parent):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            identifier_result = self.get_identfier_result_atomic(atomic_kpi)
+            score = 0
+            per_scene = self.is_by_scene(atomic_kpi)
+            if atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POSM:
+                score = self.calculate_availability_posm(atomic_kpi, identifier_result)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_SKU_FACING_OR_MIN:
+                score = self.calculate_availability_min_facings_unique_list(atomic_kpi, identifier_result)
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABILITY_POS:
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue
+            elif atomic_kpi[AVAILABILITY_TYPE] == AVAILABLITY_IF_THEN:
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    Log.error('Availability of type {} is not supported on session level'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                    continue
+            elif atomic_kpi[AVAILABILITY_TYPE] in [AVAILABILITY_SKU_FACING_AND, AVAILABILITY_SKU_FACING_OR]:
+                if per_scene:
+                    score, identifier_result = self.get_availability_results_scene_table(atomic_kpi, identifier_result)
+                else:
+                    score = self.calculate_availability_sku_and_or(atomic_kpi, identifier_result)
+            else:
+                Log.warning('Availablity of type {} is not supported by calculation'.format(atomic_kpi[AVAILABILITY_TYPE]))
+                continue
+            self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
+
+            max_score = atomic_kpi[SCORE]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+            if max_score:
+                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
+                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                                               identifier_result=identifier_result, result=score,
+                                               should_enter=True, target=float(max_score))
+            else:
+                custom_score = self.get_pass_fail(score)
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+                                               denominator_id=self.store_id, identifier_parent=identifier_parent,
+                                               identifier_result=identifier_result,
+                                               should_enter=True, result=score)
+
 # def calculate_availability_sku_facing_and(self, atomic_kpi):
     #     max_score = atomic_kpi[SCORE]
     #     is_by_scene = self.is_by_scene(atomic_kpi)
