@@ -49,19 +49,15 @@ class PEPSICORUSANDToolBox:
         self.main_shelves = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
                              Const.MAIN_SHELF in scene_type]
 
-    @staticmethod
-    def get_main_shelf_by_category(current_category):
+    def get_main_shelf_by_category(self, current_category):
         """
         This function gets a category and return the relevant scene type for the SOS
         :param current_category: One of the product's categories. E.g: Snacks.
         :return: The relevant scene type to the current category
         """
-        if current_category == Const.SNACKS:
-            return Const.MAIN_SHELF_SNACKS
-        elif current_category == Const.BEVERAGES:
-            return Const.MAIN_SHELF_BEVERAGES
-        else:
-            return Const.MAIN_SHELF_JUICES
+        for main_shelf in self.main_shelves:
+            if current_category in main_shelf.upper():
+                return main_shelf
 
     @staticmethod
     def get_category_from_template_name(template_name):
@@ -111,6 +107,8 @@ class PEPSICORUSANDToolBox:
         :return: List of the relevant categories
         """
         sub_categories = self.scif[Const.SUB_CATEGORY].unique().tolist()
+        if None in sub_categories:
+            sub_categories.remove(None)
         for sub_cat in sub_categories:
             relevant_category = self.get_unique_attribute_from_filters(Const.SUB_CATEGORY, sub_cat, Const.CATEGORY)
             if not relevant_category:
@@ -248,7 +246,10 @@ class PEPSICORUSANDToolBox:
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
         # Level 4
-        for brand in self.scif[self.scif[Const.MANUFACTURER_NAME == Const.PEPSICO]][Const.BRAND_NAME].unique().tolist():
+        brands_list = self.scif[self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO][Const.BRAND_NAME].unique().tolist()
+        if None in brands_list:
+            brands_list.remove(None)
+        for brand in brands_list:
             relevant_category = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.CATEGORY)
             relevant_sub_cat_fk = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
             filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
@@ -291,7 +292,7 @@ class PEPSICORUSANDToolBox:
         # TODO: TARGETS TARGETS TARGETS
         # Filtering out the main shelves
         filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
-        if not filtered_scif:
+        if filtered_scif.empty:
             return
 
         # Calculate count of display - store_level
@@ -340,8 +341,8 @@ class PEPSICORUSANDToolBox:
         This function calculates the KPI results.
         """
         self.calculate_share_of_shelf()
-        self.calculate_count_of_display()
-        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        # self.calculate_count_of_display()
+        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
 
 
 ###################################### Plaster ######################################
