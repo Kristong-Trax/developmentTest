@@ -13,7 +13,9 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
+
 __author__ = 'shanim'
+
 
 CONVENIENCE_SMALL_2018 = 'Pos 2018 - MT - Convenience Small'
 TARGET_EXECUTION = 'Target Execution 2018' # todo: is this should be kept the same?
@@ -48,7 +50,7 @@ class CCRUConvenienceSmallCalculations:
             self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
-    @log_handler.log_runtime('Total Calculations', log_start=True)
+    # @log_handler.log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         jg = CCRUJsonGenerator('ccru')
         jg.create_json('Convenience Small PoS 2018.xlsx', CONVENIENCE_SMALL_2018)
@@ -75,7 +77,7 @@ class CCRUConvenienceSmallCalculations:
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 # Sergey
-#        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
 # Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=CONVENIENCE_SMALL_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
@@ -111,6 +113,6 @@ class CCRUConvenienceSmallCalculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
-        calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        # calc_finish_time = datetime.datetime.utcnow()
+        # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
 
