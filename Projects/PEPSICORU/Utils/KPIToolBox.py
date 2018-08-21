@@ -283,6 +283,47 @@ class PEPSICORUToolBox:
                                            denominator_result=denominator_score, result=result, score=result)
         return
 
+        # Level 4
+        brands_list = self.scif[
+            (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & self.scif['template_name'].isin(self.main_shelves)][
+            Const.BRAND_NAME].unique().tolist()
+        if None in brands_list:
+            brands_list.remove(None)
+        for brand in brands_list:
+            relevant_category = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.CATEGORY)
+            relevant_sub_cat_fk = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
+            filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
+            general_filters = {Const.CATEGORY: relevant_category,
+                               Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
+            current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
+            # Calculate Facings SOS
+            facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param,
+                                                                                    **general_filters)
+            level_4_facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
+                                                                          brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
+            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_4_facings_brand_identifier,
+                                           identifier_parent=parent_identifier,
+                                           denominator_result=denominator_score, result=result, score=result)
+            # Calculate Linear SOS
+            linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
+                                                                                    **general_filters)
+            level_4_linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
+                                                                         brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
+            self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_4_linear_brand_identifier,
+                                           identifier_parent=parent_identifier,
+                                           denominator_result=denominator_score, result=result, score=result)
+        return
+
     def calculate_count_of_display(self):
         """
         This function will calculate the Count of # of Pepsi Displays KPI
@@ -307,8 +348,10 @@ class PEPSICORUToolBox:
         for category in self.categories_to_calculate:
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
-                               category in scene_type]
+                               category in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
+            if filtered_scif_by_cat.empty:
+                continue
             scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
@@ -316,7 +359,7 @@ class PEPSICORUToolBox:
                                            numerator_result=scene_types_in_category,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=scene_types_in_category, score=0)
+                                           result=scene_types_in_category, score=scene_types_in_category)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
@@ -340,7 +383,7 @@ class PEPSICORUToolBox:
         This function calculates the KPI results.
         """
         self.calculate_share_of_shelf()
-        # self.calculate_count_of_display()
+        self.calculate_count_of_display()
         # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
 
     ###################################### Plaster ######################################
