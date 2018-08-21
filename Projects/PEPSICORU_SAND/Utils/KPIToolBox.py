@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -23,7 +22,7 @@ __author__ = 'idanr'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
-class PEPSICORUToolBox:
+class PEPSICORUSANDToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -44,11 +43,8 @@ class PEPSICORUToolBox:
         self.kpi_results_queries = []
 
         self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
-        self.sos_results = {}
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
-        self.sos = SOS(data_provider, output, self.rds_conn)
-        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.toolbox = GENERALToolBox(data_provider)
 
     @staticmethod
@@ -131,7 +127,7 @@ class PEPSICORUToolBox:
         filtered_scif = self.scif[self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
         list_of_attribute = filtered_scif[attribute].unique().tolist()
         for attr in list_of_attribute:
-            if filtered_scif[filtered_scif[attribute]==attr].empty:
+            if filtered_scif[filtered_scif[attribute] == attr].empty:
                 list_of_attribute.remove(attr)
         return list_of_attribute
 
@@ -163,7 +159,7 @@ class PEPSICORUToolBox:
         return unique_attr[0]
 
     @log_runtime('Share of shelf pepsicoRU')
-    def share_of_shelf_calculator(self):
+    def calculate_share_of_shelf(self):
         """
         The function filters only the relevant scene (type = Main Shelf in category) and calculates the linear SOS and
         the facing SOS for each level (Manufacturer, Category, Sub-Category, Brand).
@@ -333,21 +329,22 @@ class PEPSICORUToolBox:
                 filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_ID].unique())
             scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
             display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
-                                                                              category_fk=relevant_category)
+                                                                              category=relevant_category)
             parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
-                                                           category_fk=relevant_category)
+                                                           category=relevant_category)
             self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=scene_type_fk,
                                            numerator_result=scene_type_score,
                                            identifier_result=display_count_scene_level_identifier,
                                            identifier_parent=parent_identifier,
                                            result=scene_type_score, score=0)
 
-
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        return 1
+        self.calculate_share_of_shelf()
+        self.calculate_count_of_display()
+        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
 
 
 ###################################### Plaster ######################################
@@ -376,7 +373,7 @@ class PEPSICORUToolBox:
         denominator_width = self.calculate_share_space_length(**general_filters)
 
         if denominator_width == 0:
-            return 0, 0
+            return 0, 0, 0
         else:
             return numerator_width, denominator_width, (numerator_width / float(denominator_width))
 
@@ -401,6 +398,6 @@ class PEPSICORUToolBox:
         numerator_counter = self.calculate_share_facings(**dict(sos_filters, **general_filters))
         denominator_counter = self.calculate_share_facings(**general_filters)
         if denominator_counter == 0:
-            return 0, 0
+            return 0, 0, 0
         else:
             return numerator_counter, denominator_counter, (numerator_counter / float(denominator_counter))
