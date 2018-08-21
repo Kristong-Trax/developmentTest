@@ -1,9 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.BATRU.KPIGenerator import BATRUGenerator
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
@@ -29,16 +29,12 @@ class BATRUCalculations(BaseCalculationsScript):
 #     # data_provider.load_session_data(session)
 #     # output = Output()
 #     # BATRUCalculations(data_provider, output).run_project_calculations()
-#     sessions = ['FD6D023B-3EF2-4D01-8DF2-92C8E101B80D',
-#
-#
-#                 # 'FD6D023B-3EF2-4D01-8DF2-92C8E101B80D',
-#                 # 'e9e6a596-5058-4791-8853-b44da68d5b41',
-#                 # 'ffaa22d4-58a3-4960-a4ee-8bf6fa1d2e24',
-#                 # 'cb9c8b64-6839-4094-a1bb-5416c31cf4e6',
-#                 # 'a82e69c5-e38d-46b3-8043-b5a24c5a96a8',  # incorrect shelves
-#                 # 'fd85b121-8d00-4309-bcb8-07b7b26f873b',
-#                 # 'f1573fa7-1c5f-4935-bd5b-05ff798185f5',
+#     sessions = [
+#                 # 'fa5d21e8-457f-40ae-8d6e-1dbf66febcb7',
+#                 # 'ffa70f4e-d934-412f-855f-0c2b6465c07b',
+#                 # 'FF96883A-43C8-4BD8-A307-5F8DE5C2DD86',
+#                 'ffed8c38-8182-4e89-bbdc-0ea88e3b3eaf',
+#                 'FF27F8F5-A994-4E65-82C2-26ACED5CCB3A',
 #                 ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)

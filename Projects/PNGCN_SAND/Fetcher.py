@@ -55,3 +55,10 @@ class PNGCN_SANDPNGQueries(object):
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
             where s.session_uid = '{}' AND d.is_physical = 1 GROUP BY display_name;"""
+
+    @staticmethod
+    def get_ean_code():
+        return """
+            select ean_code
+            from static_new.product
+            where pk = '{}';"""

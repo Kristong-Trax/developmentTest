@@ -52,15 +52,14 @@ class CCBOTTLERSUSREDToolBox:
             for sheet in Const.SHEETS:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
             self.converters = self.templates[Const.CONVERTERS]
-            self.common_db_integ = None
         else:
             self.TEMPLATE_PATH = SURVEY_TEMPLATE_PATH
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
-            self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
-            self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
             for sheet in Const.SHEETS_MANUAL:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
+        self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
         self.common_db = Common(self.data_provider, self.RED_SCORE)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
