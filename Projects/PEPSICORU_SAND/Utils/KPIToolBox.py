@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -23,7 +22,7 @@ __author__ = 'idanr'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
-class PEPSICORUToolBox:
+class PEPSICORUSANDToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -44,11 +43,8 @@ class PEPSICORUToolBox:
         self.kpi_results_queries = []
 
         self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
-        self.sos_results = {}
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
-        self.sos = SOS(data_provider, output, self.rds_conn)
-        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.toolbox = GENERALToolBox(data_provider)
 
     @staticmethod
@@ -131,7 +127,7 @@ class PEPSICORUToolBox:
         filtered_scif = self.scif[self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
         list_of_attribute = filtered_scif[attribute].unique().tolist()
         for attr in list_of_attribute:
-            if filtered_scif[filtered_scif[attribute]==attr].empty:
+            if filtered_scif[filtered_scif[attribute] == attr].empty:
                 list_of_attribute.remove(attr)
         return list_of_attribute
 
@@ -342,8 +338,7 @@ class PEPSICORUToolBox:
                                            identifier_parent=parent_identifier,
                                            result=scene_type_score, score=0)
 
-
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
