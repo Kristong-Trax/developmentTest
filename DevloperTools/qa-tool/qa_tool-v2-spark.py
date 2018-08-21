@@ -12,21 +12,25 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 import pandas as pd
-
-
-
-
-
+import pyspark.sql.functions as F
+import pyspark
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
 class qa:
-    def __init__(self, project, batch_size=100000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
+    def __init__(self, project, batch_size=80000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
 
         findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
         findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
+        self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g")\
+                                                            .config("spark.executor.memory", "4g")\
+                                                            .config("spark.driver.cores", "4")\
+                                                            .config("spark.driver.maxResultSize", "4")\
+                                                            .config("spark.ssl.enabled","True") \
+                                                            .config("spark.ssl.protocol", "TLSv1.1").getOrCreate()
+
         self._project = project
         self._config_file = config_file
         self._dbUser = DbUsers.CalculationEng
@@ -36,10 +40,27 @@ class qa:
         self.batch_size = batch_size
         self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g").config("spark.executor.memory", "4g").config("spark.driver.cores", "4").config("spark.driver.maxResultSize", "4").getOrCreate()
         self.connector = ProjectConnector(self._project,self._dbUser)
+        self.project_url =  'jdbc:mysql://{}/report'.format(self.connector.project_params['rds_name'])
+
+        #const
+        self.results_query = '''    
+                            (SELECT 
+                                report.kpi_level_2_results.*
+                            FROM
+                                report.kpi_level_2_results,
+                                probedata.session
+                            WHERE
+                                probedata.session.pk = report.kpi_level_2_results.session_fk
+                                    AND probedata.session.visit_date BETWEEN '{}' AND '{}')tmp_kpi_level_2_results '''.format(
+            start_date, end_date)
+
+        self.static_query = '''(SELECT * FROM  static.kpi_level_2 where static.kpi_level_2.kpi_calculation_stage_fk = 3) static_kpi '''
+
+
         # fetch db data
         self.static_kpi = self._get_static_kpi()
         self.kpi_results = self._get_kpi_results()
-        self.merged_kpi_results = self.static_kpi.merge(self.kpi_results, left_on='pk', right_on='kpi_level_2_fk', how='left')
+        self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
         self.expected = pd.read_csv('expected.csv')
 
     def _get_kpi_results_meta_data(self):
@@ -59,49 +80,51 @@ class qa:
             return pd.read_sql_query(meta_results, self.connector.db)
         except Exception as e:
             print e.message
-        finally:
-            self.connector.disconnect_rds()
 
     def _get_kpi_results(self):
-        connector = ProjectConnector(self._project, self._dbUser)
-        try:
-            results = '''    
-                    SELECT 
-                        *
-                    FROM
-                        report.kpi_level_2_results,
-                        probedata.session
-                    WHERE
-                        probedata.session.pk = report.kpi_level_2_results.session_fk
-                            AND probedata.session.visit_date BETWEEN '{}' AND '{}';'''.format(self.start_date, self.end_date)
-            return pd.read_sql_query(results, connector.db)
-        except Exception as e:
-            print e.message
-        finally:
-            connector.disconnect_rds()
 
+        kpi_results_meta_data = self._get_kpi_results_meta_data()
+        lowerBound = kpi_results_meta_data.loc[0]['min']
+        upperBound = kpi_results_meta_data.loc[0]['max']
+        count_of_row = kpi_results_meta_data.loc[0]['count']
+        if (count_of_row / self.batch_size) > 1:
+            number_of_partition = (count_of_row / self.batch_size)
+        else:
+            number_of_partition = 1
+        print "count of rows : " + str(count_of_row)
+        print " number of partition:" + str(number_of_partition)
+        kpi_results = self.spark.read.jdbc(url=self.project_url,
+                                           table=self.results_query,
+                                           properties={"user": self.connector.dbuser.username,
+                                                          "password": self.connector.dbuser.cred,
+                                                          "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                          "lowerBound": "{}".format(lowerBound),
+                                                          "upperBound": "{}".format(upperBound),
+                                                          "numPartitions": "{}".format(number_of_partition),
+                                                          "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+
+        kpi_results.count()
+        return kpi_results
 
     def _get_static_kpi(self):
-        connector = ProjectConnector(self._project,self._dbUser)
-        try:
-            static = '''SELECT * FROM  static.kpi_level_2;'''
-            return pd.read_sql_query(static, connector.db)
-        except Exception as e:
-            print e.message
-        finally:
-            connector.disconnect_rds()
+        static_kpi = self.spark.read.jdbc(url=self.project_url,
+                                          table=self.static_query,
+                                          properties={"user": self.connector.dbuser.username,
+                                                      "password":  self.connector.dbuser.cred,
+                                                      "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
-
-    # def get
+        static_kpi.count()
+        return static_kpi
 
 
 
     def test_uncalculated_kpi(self):
         """get list of kpi names that doesnt have any result """
-        kpi_results2 = self.static_kpi.merge(self.kpi_results, left_on='pk', right_on='kpi_level_2_fk', how='left')
-        kpi_results2 = kpi_results2.loc[kpi_results2['kpi_calculation_stage_fk'] == 3]
+
+        # merged_kpi_results.select("session_fk","client_name","result").filter('result is null').show()
         print '## unclaculated kpi list ##'
-        print kpi_results2[kpi_results2.isnull().result].client_name
+        self.merged_kpi_results.select("client_name").filter('result is null').groupBy("client_name").count().show()
+        self.merged_kpi_results.select("client_name").filter('result is null').groupBy("client_name").count()
 
     def test_invalid_precent_results(self):
         """kpi result should be percent between 0-1 """
@@ -153,12 +176,11 @@ class qa:
 
 
     #TODO
-    # 1.pull data from prod base on dates
     # 2.plot histogram
+    # 3.set a summery report
 
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
-
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-
-    qa_tool = qa('diageous', start_date='2018-05-01', end_date='2018-08-01')
+    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-2')
+    qa_tool.test_uncalculated_kpi()
