@@ -7,6 +7,8 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.PEPSICORU_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common as CommonV1
+
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -28,6 +30,7 @@ class PEPSICORUToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.commonv1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -384,7 +387,7 @@ class PEPSICORUToolBox:
         """
         self.calculate_share_of_shelf()
         self.calculate_count_of_display()
-        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        Assortment(self.data_provider, self.output, common=self.commonv1).main_assortment_calculation()
 
     ###################################### Plaster ######################################
 
