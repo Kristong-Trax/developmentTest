@@ -51,6 +51,7 @@ LINEAR_SIZE = u'gross_len_add_stack'
 # gross_len_add_stack
 PURINA_KPI = [SUBSEGMENT_KPI, MANUFACTUR, BRAND]
 NO_SUBSEG = 'OTHER'
+NO_PRICE = 'OTHER'
 PET_FOOD_CATEGORY = 13
 PURINA_SETS = [SUBSEGMENT_SET, PRICE_SET]
 
@@ -173,11 +174,16 @@ class PURINAToolBox:
                                                                     set_name=SUBSEGMENT_SET)
                             self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=sub_cat_ft,
                                                                result=subseg, result_2=mf, result_3=brand)
-                    by_brand = by_brand.dropna(subset=[SCIF_PRICE])
+                    # by_brand = by_brand.dropna(subset=[SCIF_PRICE])
                     prices = by_brand[SCIF_PRICE].unique()
                     for price_class in prices:
-                        by_prices = by_brand.loc[data[SCIF_PRICE] == price_class]
-                        price_ft = self.cm_to_ft(sum(by_prices[LINEAR_SIZE]))
+                        if not price_class:
+                            price_class = NO_PRICE
+                            by_prices = data.loc[pd.isnull(data[SCIF_PRICE])]
+                            price_ft = self.cm_to_ft(sum(by_prices[LINEAR_SIZE]))
+                        else:
+                            by_prices = by_brand.loc[data[SCIF_PRICE] == price_class]
+                            price_ft = self.cm_to_ft(sum(by_prices[LINEAR_SIZE]))
                         # write to db under price atomic kpi score with brand name in results
                         if price_ft:
                             atomic_fk = self.get_kpi_fk_by_kpi_name(price_class, self.LEVEL3, father=PRICE_KPI,
