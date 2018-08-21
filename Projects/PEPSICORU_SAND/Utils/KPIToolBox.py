@@ -246,7 +246,9 @@ class PEPSICORUSANDToolBox:
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
         # Level 4
-        brands_list = self.scif[self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO][Const.BRAND_NAME].unique().tolist()
+        brands_list = self.scif[
+            (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & self.scif['template_name'].isin(self.main_shelves)][
+            Const.BRAND_NAME].unique().tolist()
         if None in brands_list:
             brands_list.remove(None)
         for brand in brands_list:
@@ -308,8 +310,10 @@ class PEPSICORUSANDToolBox:
         for category in self.categories_to_calculate:
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
-                               category in scene_type]
+                               category in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
+            if filtered_scif_by_cat.empty:
+                continue
             scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
@@ -317,7 +321,7 @@ class PEPSICORUSANDToolBox:
                                            numerator_result=scene_types_in_category,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=scene_types_in_category, score=0)
+                                           result=scene_types_in_category, score=scene_types_in_category)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
@@ -341,8 +345,8 @@ class PEPSICORUSANDToolBox:
         This function calculates the KPI results.
         """
         self.calculate_share_of_shelf()
-        # self.calculate_count_of_display()
-        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        self.calculate_count_of_display()
+        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
 
 
 ###################################### Plaster ######################################
