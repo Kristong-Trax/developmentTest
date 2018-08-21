@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
@@ -17,8 +15,8 @@ class CCRU_SANDRunSql:
         statement_1 = \
                         """
 update static.stores
-set additional_attribute_11 = 'Pos 2018 - HoReCa - Restaurant Cafe'
-where additional_attribute_11 = 'Pos 2018 - HoReCa - Restaurant Café';
+set additional_attribute_11 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
+where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
 
 
                         """
@@ -38,7 +36,7 @@ where additional_attribute_11 = 'Pos 2018 - HoReCa - Restaurant Café';
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru']:
+    for project in ['ccru-sand']:
         print 'start project: ' + str(project)
         sql_to_run = CCRU_SANDRunSql(project)
         sql_to_run.run_it()
