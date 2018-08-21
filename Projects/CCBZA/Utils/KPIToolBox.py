@@ -163,6 +163,7 @@ class CCBZA_ToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scene_kpi_results = self.ps_data_provider.get_scene_results(
             self.scene_info['scene_fk'].drop_duplicates().values)
+        self.ko_id = self.get_ko_pk()
 
         self.availability_for_scene_calc = {AVAILABILITY_POS: self.availability_brand_strips_scene,
                                             AVAILABILITY_SKU_FACING_AND: self.availability_and_or_scene,
@@ -286,18 +287,21 @@ class CCBZA_ToolBox:
             if not brands_count.empty:
                 scene_brand_strips_df = scene_scif[self.tools.get_filter_condition(scene_scif,
                                                                                    **filters[KPI_SPECIFIC_FILTERS])]
-                brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)['facings'].sum()
-                result = self.match_brand_strip_to_brand(brands_count, brand_strips_count, target,
-                                                         self.data_provider.scene_id)
-                scene_result = 100 if result else 0
-            self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)  # no scene = > no result
+                try:
+                    brand_strips_count = scene_brand_strips_df.groupby(POS_BRAND_FIELD)['facings'].sum()
+                    result = self.match_brand_strip_to_brand(brands_count, brand_strips_count, target,
+                                                             self.data_provider.scene_id)
+                    scene_result = 100 if result else 0
+                except Exception as e:
+                    Log.error('KPI {}. {}'.format(atomic_kpi[ATOMIC_KPI_NAME], str(e)))
+            self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
     def add_scene_atomic_result_to_db(self, result, atomic_kpi, identifier_result):
         atomic_name = atomic_kpi[ATOMIC_KPI_NAME]
         atomic_name_scene = '{}_scene'.format(atomic_name)
         kpi_fk_scene = self.common.get_kpi_fk_by_kpi_type(atomic_name_scene)
         custom_score = self.get_pass_fail(result)
-        self.common.write_to_db_result(fk=kpi_fk_scene, numerator_id=KO_ID, score=custom_score,
+        self.common.write_to_db_result(fk=kpi_fk_scene, numerator_id=self.ko_id, score=custom_score,
                                        denominator_id=self.store_id,
                                        identifier_result=identifier_result, should_enter=True,
                                        result=result, by_scene=True)
@@ -353,7 +357,7 @@ class CCBZA_ToolBox:
                 set_score += kpi_result
                 set_target += kpi_target
             set_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_set_name)
-            self.common.write_to_db_result(fk=set_kpi_fk, numerator_id=KO_ID, score=set_score,
+            self.common.write_to_db_result(fk=set_kpi_fk, numerator_id=self.ko_id, score=set_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_result_red_score,
                                            identifier_result=identifier_result_set,
@@ -364,7 +368,7 @@ class CCBZA_ToolBox:
 
         red_score_percent = float(red_score) / red_target if red_target != 0 else 0
         red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(RED_SCORE)
-        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=KO_ID, result=red_score,
+        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=self.ko_id, result=red_score,
                                        score=red_score_percent, identifier_result=identifier_result_red_score,
                                        denominator_id=self.store_id, target=red_target, should_enter=True)
         self.common.commit_results_data()
@@ -372,25 +376,31 @@ class CCBZA_ToolBox:
     def get_identifier_result_kpi(self, kpi):
         kpi_name = kpi[KPI_NAME]
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
-                                                       manufacturer_id=KO_ID)
+                                                       manufacturer_id=self.ko_id)
         return identifier_result
+
+    def get_ko_pk(self):
+        query = CCBZA_Queries.get_manufacturer_pk_by_name(KO_PRODUCTS)
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        ko_pk = query_result['pk'].values[0]
+        return ko_pk
 
     def get_identfier_result_atomic(self, atomic_kpi):
         kpi_name = atomic_kpi[ATOMIC_KPI_NAME]
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
-                                                       manufacturer_id=KO_ID)
+                                                       manufacturer_id=self.ko_id)
         return identifier_result
 
     def get_identifier_result_set(self, set_name):
         kpi_name = set_name
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
-                                                       manufacturer_id=KO_ID)
+                                                       manufacturer_id=self.ko_id)
         return identifier_result
 
     def get_identifier_result_red_score(self):
         kpi_name = RED_SCORE
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
-                                                       manufacturer_id=KO_ID)
+                                                       manufacturer_id=self.ko_id)
         return identifier_result
 
     def get_store_data_by_store_id(self):
@@ -528,7 +538,7 @@ class CCBZA_ToolBox:
         else:
             score, max_score = self.calculate_kpi_score_no_dependency(kpi)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi[KPI_NAME])
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=score,
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=score,
                                        denominator_id=self.store_id,
                                        identifier_parent=identifier_parent,  identifier_result=identifier_result,
                                        target=max_score, should_enter=True)
@@ -590,7 +600,7 @@ class CCBZA_ToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=atomic_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_parent,
                                            target=int(float(max_score)), should_enter=True)
@@ -627,13 +637,13 @@ class CCBZA_ToolBox:
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=KO_ID,
+                self.common.write_to_db_result(fk=kpi_fk, score=atomic_score, numerator_id=self.ko_id,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                target=max_score, should_enter=True)
             else:
                 custom_score = self.get_pass_fail(atomic_score)
-                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID, result=atomic_score,
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=self.ko_id, result=atomic_score,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                should_enter=True)
@@ -707,7 +717,7 @@ class CCBZA_ToolBox:
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=atomic_score,
                                            denominator_id=self.store_id,
                                            identifier_parent=identifier_parent,
                                            target=int(float(max_score)), should_enter=True)
@@ -758,12 +768,12 @@ class CCBZA_ToolBox:
             custom_score = self.get_pass_fail(score)
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                target=int(float(max_score)), should_enter=True)
             else:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
@@ -791,12 +801,12 @@ class CCBZA_ToolBox:
             custom_score = self.get_pass_fail(score)
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if survey_max_score:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                target=int(float(survey_max_score)), should_enter=True)
             else:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                should_enter=True)
@@ -866,7 +876,7 @@ class CCBZA_ToolBox:
                         atomic_name ='{}_{}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
                         kpi_fk_cond = self.common.get_kpi_fk_by_kpi_type(atomic_name)
 
-                        self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=KO_ID, numerator_result=num_res,
+                        self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=self.ko_id, numerator_result=num_res,
                                                        denominator_id=self.store_id, denominator_result=denom_res,
                                                        result=ratio, score=custom_score,
                                                        identifier_parent=identifier_result,
@@ -881,7 +891,7 @@ class CCBZA_ToolBox:
             if number_of_conditions > 0:
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
                 if max_score:
-                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, denominator_id=self.store_id,
                                                    score=atomic_score, identifier_parent=identifier_parent,
                                                    identifier_result=identifier_result, should_enter=True,
                                                    target=max_score)
@@ -891,7 +901,7 @@ class CCBZA_ToolBox:
                     denominator_result = conditions_details[0]['denom_res'] if number_of_conditions == 1 else 0
                     actual_ratio = conditions_details[0]['ratio'] if number_of_conditions == 1 else 0
                     target_atomic = conditions_details[0]['ratio'] if number_of_conditions == 1 else None
-                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=numerator_result,
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, numerator_result=numerator_result,
                                                    denominator_id=self.store_id, denominator_result=denominator_result,
                                                    result=actual_ratio, score=custom_score_db,
                                                    identifier_parent=identifier_parent,
@@ -984,13 +994,13 @@ class CCBZA_ToolBox:
             max_score = atomic_kpi[SCORE]
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
+                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=self.ko_id,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result, result=score,
                                                should_enter=True, target=float(max_score))
             else:
                 custom_score = self.get_pass_fail(score)
-                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=self.ko_id,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                should_enter=True, result=score)
@@ -1078,7 +1088,7 @@ class CCBZA_ToolBox:
         min_skus = atomic_kpi[MIN_SKU_TARGET]
         result = 0
         availability_type = atomic_kpi[AVAILABILITY_TYPE]
-        result_df = scif[self.tools.get_filter_condition(scif, **filters)]
+        result_df = scif[self.tools.get_filter_condition(scif, **filters)] if filters else scif
         sku_list = filters[EAN_CODE] if EAN_CODE in filters.keys() else result_df[EAN_CODE].unique().tolist()
         facings_by_sku = self.get_facing_number_by_item(result_df, sku_list, EAN_CODE, PRODUCT_FK)
         if facings_by_sku:
@@ -1329,13 +1339,13 @@ class CCBZA_ToolBox:
             max_score = atomic_kpi[SCORE]
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=KO_ID,
+                self.common.write_to_db_result(fk=kpi_fk, score=score, numerator_id=self.ko_id,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result, result=score,
                                                should_enter=True, target=float(max_score))
             else:
                 custom_score = self.get_pass_fail(score)
-                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=KO_ID,
+                self.common.write_to_db_result(fk=kpi_fk, score=custom_score, numerator_id=self.ko_id,
                                                denominator_id=self.store_id, identifier_parent=identifier_parent,
                                                identifier_result=identifier_result,
                                                should_enter=True, result=score)
@@ -1466,7 +1476,7 @@ class CCBZA_ToolBox:
     #         self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
     #         # constructing queries for DB
     #         kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-    #         self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, score=atomic_score,
+    #         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=atomic_score,
     #                                        denominator_id=self.store_id,
     #                                        identifier_parent=identifier_parent,
     #                                        target=int(float(max_score)), should_enter=True)
@@ -1500,7 +1510,7 @@ class CCBZA_ToolBox:
     #                     atomic_name ='{}_{}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
     #                     kpi_fk_cond = self.common.get_kpi_fk_by_kpi_type(atomic_name)
     #                     # identifier_parent_condition = self.get_identfier_result_atomic(atomic_kpi)
-    #                     self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=KO_ID, numerator_result=num_res,
+    #                     self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=self.ko_id, numerator_result=num_res,
     #                                                    denominator_id=self.store_id, denominator_result=denom_res,
     #                                                    result=ratio, score=custom_score,
     #                                                    identifier_parent=identifier_result,
@@ -1512,7 +1522,7 @@ class CCBZA_ToolBox:
     #                     # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_name)
     #                     # identifier_parent_condition = identifier_parent if number_of_conditions == 1 else \
     #                     #     self.get_identfier_result_atomic(atomic_kpi)
-    #                     # self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=num_res,
+    #                     # self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, numerator_result=num_res,
     #                     #                                denominator_id=self.store_id, denominator_result=denom_res,
     #                     #                                result=ratio, score=custom_score,
     #                     #                                identifier_parent=identifier_parent_condition,
@@ -1526,7 +1536,7 @@ class CCBZA_ToolBox:
     #         if number_of_conditions > 0:
     #             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
     #             if max_score:
-    #                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+    #                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, denominator_id=self.store_id,
     #                                                score=atomic_score, identifier_parent=identifier_parent,
     #                                                identifier_result=identifier_result, should_enter=True,
     #                                                target=max_score)
@@ -1536,7 +1546,7 @@ class CCBZA_ToolBox:
     #                 denominator_result = conditions_details[0]['denom_res'] if number_of_conditions == 1 else 0
     #                 actual_ratio = conditions_details[0]['ratio'] if number_of_conditions == 1 else 0
     #                 target_atomic = conditions_details[0]['ratio'] if number_of_conditions == 1 else None
-    #                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, numerator_result=numerator_result,
+    #                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, numerator_result=numerator_result,
     #                                                denominator_id=self.store_id, denominator_result=denominator_result,
     #                                                result=actual_ratio, score=custom_score_db,
     #                                                identifier_parent=identifier_parent,
@@ -1544,7 +1554,7 @@ class CCBZA_ToolBox:
     #                                                target=target_atomic, should_enter=True)
     #
     #             # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
-    #             # self.common.write_to_db_result(fk=kpi_fk, numerator_id=KO_ID, denominator_id=self.store_id,
+    #             # self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, denominator_id=self.store_id,
     #             #                                score=atomic_score, identifier_parent=identifier_parent,
     #             #                                identifier_result=self.get_identfier_result_atomic(atomic_kpi),
     #             #                                should_enter=True)
