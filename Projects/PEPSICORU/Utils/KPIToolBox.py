@@ -384,7 +384,7 @@ class PEPSICORUToolBox:
         """
         self.calculate_share_of_shelf()
         self.calculate_count_of_display()
-        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
 
     ###################################### Plaster ######################################
 
