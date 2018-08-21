@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -19,7 +20,7 @@ from KPIUtils_v2.Utils.Parsers import ParseTemplates
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
+from Projects.MARSUAE.Utils.Runner import Results
 
 __author__ = 'israels'
 
@@ -27,7 +28,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability', 'Other']
+SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 class MARSUAEToolBox:
@@ -59,6 +60,7 @@ class MARSUAEToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        # self.channel = self.get_store_channel(self.store_id)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -67,8 +69,9 @@ class MARSUAEToolBox:
         self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.old_kpi_static_data = self.common.get_kpi_static_data()
         for name in SHEETS_NAME:
-            self.kpi_sheets[name] = ParseTemplates.parse_template(TEMPLATE_PATH, sheet_name=name)
-        self.display_data = ParseTemplates.parse_template(TEMPLATE_PATH, 'display weight')
+            parsed_template = ParseTemplates.parse_template(TEMPLATE_PATH, sheet_name=name)
+            # self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == self.channel]
+            self.kpi_sheets[name] = parsed_template
 
     def insert_results_to_old_tables(self):
         kpi_lvls = pd.DataFrame(columns=['level_by_num', 'level_by_name', 'kpis'])
@@ -92,25 +95,31 @@ class MARSUAEToolBox:
         """
         This function calculates the KPI results.
         """
+        Results(self.data_provider).calculate(self.kpi_sheets['KPI'])
         relevant_kpi_res = self.common.get_kpi_fk_by_kpi_type('scene_score')
         scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
         origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()
-        # store_att_1 = self.store_info['additional_attribute_1'].values[0]
-        # multiplier = self.multiplier_template[self.multiplier_template[self.STORE_ATT_1] == store_att_1][
-        #     self.SCORE_MULTIPLIER]
-        # multi_res = origin_res
-        # if not multiplier.empty:
-        #     multi_res = origin_res * multiplier.values[0]
-        manu_fk = self.get_manufacturer_fk(self.CCIT_MANU)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type('store_score')
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_result['session_fk'] = self.session_info['pk'].values[0]
         identifier_result['store_fk'] = self.store_id
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=origin_res,
-                                       denominator_id=self.store_id, result=origin_res, score=origin_res,
-                                       should_enter=False, identifier_result=identifier_result)
+        # self.common.write_to_db_result(fk=kpi_fk, numerator_id=manu_fk, numerator_result=origin_res,
+        #                                denominator_id=self.store_id, result=origin_res, score=origin_res,
+        #                                should_enter=False, identifier_result=identifier_result)
         for scene in scene_kpi_fks:
             self.common.write_to_db_result(fk=self.NON_KPI, should_enter=True, scene_result_fk=scene,
                                            identifier_parent=identifier_result)
         self.insert_results_to_old_tables()
         return
+
+    def get_store_channel(self, store_fk):
+        query = self.get_store_attribute(15, store_fk)
+        att15 = pd.read_sql_query(query, self.rds_conn.db)
+        return att15.values[0][0]
+
+    @staticmethod
+    def get_store_attribute(attribute, store_fk):
+        return """
+                    select additional_attribute_{} from static.stores
+                    where pk = {}
+                    """.format(attribute, store_fk)
