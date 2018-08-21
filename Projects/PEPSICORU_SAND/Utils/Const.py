@@ -10,7 +10,7 @@ class Const(object):
 
     # Filters
     TEMPLATE_NAME = 'template_name'
-    SCENE_ID = 'scene_id'
+    SCENE_FK = 'scene_fk'
     MANUFACTURER_NAME = 'manufacturer_name'
     MANUFACTURER = 'manufacturer'
     CATEGORY = 'category'
@@ -21,9 +21,9 @@ class Const(object):
     TEMPLATE = 'template'
     BRAND_NAME = 'brand_name'
     MAIN_SHELF = 'Main Shelf'
-    MAIN_SHELF_SNACKS = 'Main Shelf snacks'
-    MAIN_SHELF_BEVERAGES = 'Main Shelf beverages'
-    MAIN_SHELF_JUICES = 'Main Shelf juices'
+    MAIN_SHELF_SNACKS = 'Main Shelf Snacks'
+    MAIN_SHELF_BEVERAGES = 'Main Shelf Beverages'
+    MAIN_SHELF_JUICES = 'Main Shelf Juices'
     PEPSICO = 'PepsiCo'
     FK = '_fk'
     NAME = '_name'
