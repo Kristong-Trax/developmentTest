@@ -24,13 +24,17 @@ class Results(object):
         self.kpi_mapping = []
         for i, level_row in level_hierarchy.iterrows():
             columns = list(reversed(level_row.index))
-            self.kpi_mapping = [{'kpi_type': l1, 'depends_on': l2} for l1, l2 in zip(columns, columns[1:])]
-
+            dependents = [{'kpi_type': level_row[l1], 'depends_on': level_row[l2]} for l1, l2 in zip(columns, columns[1:])]
+            dependents.append({'kpi_type': level_row['Level_1'], 'depends_on': []})
+            self.kpi_mapping.append(dependents)
         for calculation in self.kpi_mapping:
-            self.dependencies_graph.add_node(calculation.kpi_type, calculation=calculation)
+            for kpi in calculation:
+                self.dependencies_graph.add_node(kpi['kpi_type'], calculation=kpi)
         for calculation in self.kpi_mapping:
             # for dependency in calculation.depends_on:
-            self.dependencies_graph.add_edge(calculation.depend_on, calculation.kpi_type)
+            for kpi in calculation:
+                if kpi['depends_on']:
+                    self.dependencies_graph.add_edge(kpi['depends_on'], kpi['kpi_type'])
         nx.draw(self.dependencies_graph)
 
     def _create_atomic_result(self, atomic_kpi_name, kpi_name, kpi_set_name, result, score=None, threshold=None,

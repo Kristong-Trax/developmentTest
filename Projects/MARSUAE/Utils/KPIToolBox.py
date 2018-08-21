@@ -29,7 +29,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability']
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template1.xlsx')
 
 class MARSUAEToolBox:
     LEVEL1 = 1
