@@ -2,6 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCUS.MONSTER.Utils.KPIToolBox import MONSTERToolBox
+from Projects.CCUS.XM.Utils.KPIToolBox import CCUSToolBox_XM
 from Projects.CCUS.Utils.CCUSToolBox import log_runtime, CCUSToolBox
 from Projects.CCUS.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 from Projects.CCUS.OBBO.KPIToolBox import OBBOToolBox
@@ -34,6 +35,7 @@ class CCUSGenerator:
         self.calculate_msc_new()
         self.calculate_gold_peak_block()
         self.calculate_special_programs()
+        self.calculate_xm()
 
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
@@ -95,3 +97,9 @@ class CCUSGenerator:
         tool_box = SpecialProgramsToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=32)
+
+    @log_runtime('XM Calculations')
+    def calculate_xm(self):
+        tool_box = CCUSToolBox_XM(self.data_provider, self.output)
+        tool_box.main_calculation()
+        # tool_box.commit_results_data()
