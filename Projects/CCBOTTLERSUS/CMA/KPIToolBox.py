@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.2.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -54,12 +54,8 @@ class CCBOTTLERSUSCMAToolBox:
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
-        main_template = self.templates[Const.KPIS]
-        self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
-                                                   (main_template[Const.STORE_TYPE] == self.store_type)]
-        self.used_scenes = []
-        self.red_score = 0
-        self.weight_factor = self.get_weight_factor()
+        for sheet in Const.SHEETS_CMA:
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
 
     # main functions:
 
@@ -71,7 +67,7 @@ class CCBOTTLERSUSCMAToolBox:
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        self.choose_and_write_results()
+        # self.choose_and_write_results()
 
     def calculate_main_kpi(self, main_line):
         """
@@ -80,7 +76,7 @@ class CCBOTTLERSUSCMAToolBox:
         :param main_line: series from the template of the main_sheet.
         """
         kpi_name = main_line[Const.KPI_NAME]
-        kpi_type = main_line[Const.SHEET]
+        kpi_type = main_line[Const.TYPE]
         relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         result = score = target = None
@@ -88,7 +84,7 @@ class CCBOTTLERSUSCMAToolBox:
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters['template_name'] = scene_types
-        scene_groups = self.does_exist(main_line, Const.SCENE_TYPE_GROUP)
+        scene_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
         if scene_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
@@ -144,11 +140,7 @@ class CCBOTTLERSUSCMAToolBox:
         :param reuse_scene: this kpi can use scenes that were used
         """
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
-        if scene_fk:
-            result_dict[Const.SCENE_FK] = scene_fk
-            if not reuse_scene:
-                self.used_scenes.append(scene_fk)
-        self.all_results = self.all_results.append(result_dict, ignore_index=True)
+        # self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, result=result, threshold=target)
 
     # survey:
@@ -273,20 +265,31 @@ class CCBOTTLERSUSCMAToolBox:
         all the DP products out of the numerator.
         :return: boolean
         """
-        kpi_name = kpi_line[Const.KPI_NAME]
+        # kpi_name = kpi_line[Const.KPI_NAME]
         relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1]
+        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
         # relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
         num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1]
+        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
         # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
         if isnt_dp:
             general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
         target = self.get_sos_targets(self.store_id)
         general_filters[den_type] = den_value
+        if kpi_line[Const.DEN_TYPES_2]:
+            den_type_2 = kpi_line[Const.DEN_TYPES_2]
+            den_value_2 = kpi_line[Const.DEN_VALUES_2].split(',')
+            general_filters[den_type_2] = den_value_2
         sos_filters = {num_type: num_value}
+        if kpi_line[Const.NUM_TYPES_2]:
+            num_type_2 = kpi_line[Const.NUM_TYPES_2]
+            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
+            sos_filters[num_type_2] = num_value_2
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+        sos_value *= 100
+        sos_value = round(sos_value, 2)
+
         if target:
             score = (sos_value / float(target))*100 if sos_value else 0
         else:
@@ -473,9 +476,9 @@ class CCBOTTLERSUSCMAToolBox:
         # self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
         main_template = self.templates[Const.KPIS]
         self.write_session_kpis(main_template)
-        self.write_condition_kpis(main_template)
-        self.write_missings(main_template)
-        self.write_to_db(self.RED_SCORE, self.red_score)
+        # self.write_condition_kpis(main_template)
+        # self.write_missings(main_template)
+        self.write_to_db(CMA_COMPLIANCE, 0)
         # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
         # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
@@ -499,10 +502,10 @@ class CCBOTTLERSUSCMAToolBox:
         iterates all the session's KPIs and saves them
         :param main_template: main_sheet.
         """
-        session_template = main_template[main_template[Const.CONDITION] == ""]
-        if self.calculation_type == Const.SOVI:
-            session_template = session_template[session_template[Const.SESSION_LEVEL] == Const.V]
-        for i, main_line in session_template.iterrows():
+        # session_template = main_template[main_template[Const.CONDITION] == ""]
+        # if self.calculation_type == Const.SOVI:
+        #     session_template = session_template[session_template[Const.SESSION_LEVEL] == Const.V]
+        for i, main_line in main_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             result = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
             if result.empty:
@@ -656,7 +659,7 @@ class CCBOTTLERSUSCMAToolBox:
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3, display_text=kpi_name,
+            self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3,
             threshold=threshold, result=result)
 
     def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
@@ -666,9 +669,9 @@ class CCBOTTLERSUSCMAToolBox:
         """
         if kwargs:
             kwargs['score'] = score
-            attributes = self.create_attributes_dict(fk=fk, level=level, set_type=set_type, **kwargs)
+            attributes = self.create_attributes_dict(fk=fk, level=level, **kwargs)
         else:
-            attributes = self.create_attributes_dict(fk=fk, score=score, set_type=set_type, level=level)
+            attributes = self.create_attributes_dict(fk=fk, score=score, level=level)
         if level == self.common_db.LEVEL1:
             table = self.common_db.KPS_RESULT
         elif level == self.common_db.LEVEL2:
@@ -678,10 +681,8 @@ class CCBOTTLERSUSCMAToolBox:
         else:
             return
         query = insert(attributes, table)
-        if set_type == Const.SOVI:
-            self.common_db.kpi_results_queries.append(query)
-        else:
-            self.common_db_integ.kpi_results_queries.append(query)
+        self.common_db.kpi_results_queries.append(query)
+
 
     def create_attributes_dict(self, score, fk=None, level=None, display_text=None, set_type=Const.SOVI, **kwargs):
         """
@@ -714,15 +715,18 @@ class CCBOTTLERSUSCMAToolBox:
                     [(self.session_uid, self.store_id, self.visit_date.isoformat(), fk, kpi_name, score)],
                     columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.common_db.LEVEL3:
+            data = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]
+            kpi_fk = data['kpi_fk'].values[0]
+            kpi_set_name = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            display_text = data['kpi_name'].values[0]
             if kwargs:
-                kwargs['score'] = score
+                kwargs = self.add_additional_data_to_attributes(kwargs, score, kpi_set_name, kpi_fk, fk,
+                                                                datetime.utcnow().isoformat(), display_text)
+
                 values = tuple([val for val in kwargs.values()])
                 col = [col for col in kwargs.keys()]
                 attributes = pd.DataFrame([values], columns=col)
             else:
-                data = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]
-                kpi_fk = data['kpi_fk'].values[0]
-                kpi_set_name = kpi_static_data[kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
                 attributes = pd.DataFrame(
                     [(display_text, self.session_uid, kpi_set_name, self.store_id, self.visit_date.isoformat(),
                       datetime.utcnow().isoformat(), score, kpi_fk, fk)],
@@ -732,12 +736,25 @@ class CCBOTTLERSUSCMAToolBox:
             attributes = pd.DataFrame()
         return attributes.to_dict()
 
+    def add_additional_data_to_attributes(self, kwargs_dict, score, kpi_set_name, kpi_fk, fk, calc_time, display_text):
+        kwargs_dict['score'] = score
+        kwargs_dict['kps_name'] = kpi_set_name
+        kwargs_dict['kpi_fk'] = kpi_fk
+        kwargs_dict['atomic_kpi_fk'] = fk
+        kwargs_dict['calculation_time'] = calc_time
+        kwargs_dict['session_uid'] = self.session_uid
+        kwargs_dict['store_fk'] = self.store_id
+        kwargs_dict['visit_date'] = self.visit_date.isoformat()
+        kwargs_dict['display_text'] = display_text
+
+        return kwargs_dict
+
     def commit_results(self):
         """
         committing the results in both sets
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
-        if self.common_db_integ:
-            self.common_db_integ.delete_results_data_by_kpi_set()
-            self.common_db_integ.commit_results_data_without_delete()
+        # if self.common_db_integ:
+        #     self.common_db_integ.delete_results_data_by_kpi_set()
+        #     self.common_db_integ.commit_results_data_without_delete()
