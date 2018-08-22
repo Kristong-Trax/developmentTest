@@ -573,12 +573,14 @@ class CCBZA_ToolBox:
         return kpi_score, max_score
 
     def get_full_store_type(self, ):
-        store_attr_1 = self.store_data['additional_attribute_1'].values[0]
-        if store_attr_1 != GROCERY:
+        # store_attr_1 = self.store_data['additional_attribute_1'].values[0]
+        store_type = self.store_data['store_type'].values[0]
+        if store_type != GROCERY:
             store = '{} {}'.format(self.store_data['store_type'].values[0],
                                    self.store_data['additional_attribute_1'].values[0])
         else:
             store = self.store_data['store_type'].values[0]
+        print store
         return store
 
     def calculate_planogram_compliance(self, atomic_kpis_data, identifier_parent):

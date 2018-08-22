@@ -563,8 +563,9 @@ class CCBZA_SANDToolBox:
         return kpi_score, max_score
 
     def get_full_store_type(self, ):
-        store_attr_1 = self.store_data['additional_attribute_1'].values[0]
-        if store_attr_1 != GROCERY:
+        # store_attr_1 = self.store_data['additional_attribute_1'].values[0]
+        store_type = self.store_data['store_type'].values[0]
+        if store_type != GROCERY:
             store = '{} {}'.format(self.store_data['store_type'].values[0],
                                    self.store_data['additional_attribute_1'].values[0])
         else:
@@ -1078,7 +1079,7 @@ class CCBZA_SANDToolBox:
         min_skus = atomic_kpi[MIN_SKU_TARGET]
         result = 0
         availability_type = atomic_kpi[AVAILABILITY_TYPE]
-        result_df = scif[self.tools.get_filter_condition(scif, **filters)]
+        result_df = scif[self.tools.get_filter_condition(scif, **filters)] if filters else scif
         sku_list = filters[EAN_CODE] if EAN_CODE in filters.keys() else result_df[EAN_CODE].unique().tolist()
         facings_by_sku = self.get_facing_number_by_item(result_df, sku_list, EAN_CODE, PRODUCT_FK)
         if facings_by_sku:
