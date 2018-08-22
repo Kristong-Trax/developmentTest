@@ -1,3 +1,4 @@
+import os
 import sys
 import MySQLdb
 import pandas as pd
@@ -19,18 +20,19 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
+SUMMERY_FILE = "test_restuls.html"
+
 class qa:
-    def __init__(self, project, batch_size=80000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
+    def __init__(self, project, batch_size=300000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
 
         findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
         findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
         self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g")\
                                                             .config("spark.executor.memory", "4g")\
                                                             .config("spark.driver.cores", "4")\
-                                                            .config("spark.driver.maxResultSize", "4")\
+                                                            .config("spark.driver.maxResultSize", "4g")\
                                                             .config("spark.ssl.enabled","True") \
                                                             .config("spark.ssl.protocol", "TLSv1.1").getOrCreate()
-
         self._project = project
         self._config_file = config_file
         self._dbUser = DbUsers.CalculationEng
@@ -53,9 +55,7 @@ class qa:
                                 probedata.session.pk = report.kpi_level_2_results.session_fk
                                     AND probedata.session.visit_date BETWEEN '{}' AND '{}')tmp_kpi_level_2_results '''.format(
             start_date, end_date)
-
         self.static_query = '''(SELECT * FROM  static.kpi_level_2 where static.kpi_level_2.kpi_calculation_stage_fk = 3) static_kpi '''
-
 
         # fetch db data
         self.static_kpi = self._get_static_kpi()
@@ -84,8 +84,8 @@ class qa:
     def _get_kpi_results(self):
 
         kpi_results_meta_data = self._get_kpi_results_meta_data()
-        lowerBound = kpi_results_meta_data.loc[0]['min']
-        upperBound = kpi_results_meta_data.loc[0]['max']
+        lower_bound = kpi_results_meta_data.loc[0]['min']
+        upper_bound = kpi_results_meta_data.loc[0]['max']
         count_of_row = kpi_results_meta_data.loc[0]['count']
         if (count_of_row / self.batch_size) > 1:
             number_of_partition = (count_of_row / self.batch_size)
@@ -98,8 +98,8 @@ class qa:
                                            properties={"user": self.connector.dbuser.username,
                                                           "password": self.connector.dbuser.cred,
                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
-                                                          "lowerBound": "{}".format(lowerBound),
-                                                          "upperBound": "{}".format(upperBound),
+                                                          "lowerBound": "{}".format(lower_bound),
+                                                          "upperBound": "{}".format(upper_bound),
                                                           "numPartitions": "{}".format(number_of_partition),
                                                           "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
@@ -116,30 +116,64 @@ class qa:
         static_kpi.count()
         return static_kpi
 
-
-
     def test_uncalculated_kpi(self):
         """get list of kpi names that doesnt have any result """
 
-        # merged_kpi_results.select("session_fk","client_name","result").filter('result is null').show()
-        print '## unclaculated kpi list ##'
-        self.merged_kpi_results.select("client_name").filter('result is null').groupBy("client_name").count().show()
-        self.merged_kpi_results.select("client_name").filter('result is null').groupBy("client_name").count()
+        filtered = self.merged_kpi_results.filter('result is null')
+        df = filtered.groupBy("client_name", "result").count().withColumnRenamed('count', 'result_count')
+        df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session count"))
+        test_results = df.join(df2, df2.client_name == df.client_name)
 
-    def test_invalid_precent_results(self):
+        print '## uncalculated kpi list ##'
+        test_results.show(1000, False)
+        test_results_pandas = test_results.toPandas()
+        test_results_pandas.to_csv("results/uncalculated_kpi_list.csv")
+        return test_results_pandas.to_html()
+
+    def test_invalid_percent_results(self):
         """kpi result should be percent between 0-1 """
-        res = self.merged_kpi_results.loc[(self.merged_kpi_results['kpi_calculation_stage_fk'] == 3) & (self.merged_kpi_results['is_percent'] == 1)]
+        total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
+        filtered = self.merged_kpi_results.filter('is_percent = 1 and result < 0 or result > 1')
+        df = filtered.groupBy("client_name").count() \
+                                            .withColumnRenamed('count', 'result_count') \
+                                            .withColumnRenamed('client_name', 'name')
+        df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
+        test_results = df.join(df2, df2.client_name == df.name)
+        test_results.select('client_name', 'result_count', "session_count", ((F.col('session_count') / total_sessions) * 100) \
+                    .alias("session_count%")).show(1000, False)
 
-        print '##  kpi result should be percent between 0-1 ##'
-        print res[(res.result > 1) | (res.result < 0)][['session_fk','client_name' ,'result']]
+        test_results_pandas = test_results.toPandas()
+        test_results_pandas.to_csv("results/invalid_percent_results_list.csv")
+
+        return test_results_pandas.to_html()
 
     def test_result_is_zero(self):
         """ kpi with results is 0 """
 
-        res = self.merged_kpi_results.loc[(self.merged_kpi_results['kpi_calculation_stage_fk'] == 3)]
-        print "## % results with 0 ##"
-        print len(res[res.result == 0].pk_x) / float(len(res.pk_x)) * 100
-        print res[(res.result == 0)][['session_fk', 'client_name', 'result']]
+        total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
+
+        filtered = self.merged_kpi_results.filter('result == 0')
+        df = filtered.groupBy('client_name').count().withColumnRenamed('count', 'results_zero_count').withColumnRenamed(
+            'client_name', 'name')
+        df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
+        df3 = self.merged_kpi_results.groupBy('client_name').count().withColumnRenamed('count', 'total_count') \
+            .withColumnRenamed('client_name', 'name2')
+        test_results = df.join(df2, df2.client_name == df.name).join(df3, df3.name2 == df.name)
+        # test_results2 = df.join(test_results, test_results.client_name == df.name)
+        test_results.select('client_name', \
+                             'results_zero_count', \
+                             # 'total_count',\
+                             # "session_count",\
+                             ((F.col('results_zero_count') / F.col('total_count')) * 100).alias(
+                                 "results%(out of all results)"), \
+                             ((F.col('session_count') / total_sessions) * 100).alias(
+                                 "session_count%(out of all sessions)") \
+                             ).show(1000, False)
+
+        test_results_pandas = test_results.toPandas()
+        test_results_pandas.to_csv("results/test_result_is_zero.csv")
+
+        return test_results_pandas.to_html()
 
     def test_results_in_expected_range(self):
         """ show list or results that are not in the expected range"""
@@ -166,21 +200,61 @@ class qa:
                 print res.count().get_values()
 
 
-
     def run_all_tests(self):
-        self.test_invalid_precent_results()
-        self.test_uncalculated_kpi()
-        self.test_result_is_zero()
-        self.test_results_in_expected_range()
-        self.test_one_result_in_all_sessions()
+
+        with open(SUMMERY_FILE, 'a') as file:
+            file.write(self.test_invalid_percent_results())
+            file.write(self.test_uncalculated_kpi())
+            file.write(self.test_result_is_zero())
+            file.write(self.test_results_in_expected_range())
+            file.write(self.test_one_result_in_all_sessions())
 
 
     #TODO
     # 2.plot histogram
-    # 3.set a summery report
+    # 3.set a summery reports
+    # 4.total of rows
+    # do not include blade - results in all level filter out  (low priorty )    `
+    # show for each count uniqe count of sessions
+    # results by category for kpi category
+    # histogram by category per kpier
+    # add std results  for each kpi
+    # inecluded status fk on session = 1
+
+    def get_statistics(self):
+
+        stats = """ 
+                <p>
+                <br>
+                   +---------------------------+    <br>
+                    Project Name:  {project}  <br>
+                    Dates:  {start_date} - {end_date}  <br>    
+                    Total Results: {total_results}   <br>    
+                    Total Sessions: {total_sessions}   <br>    
+                    Total Kpi: {total_kpi}   <br>       
+                   +---------------------------+  <br>
+                </p>
+
+              """.format(project=self._project,
+                         start_date=self.start_date,
+                         end_date=self.end_date,
+                         total_results=self.merged_kpi_results.select("result").count(),
+                         total_sessions=self.merged_kpi_results.select("session_fk").distinct().count(),
+                         total_kpi=self.static_kpi.select("client_name").distinct().count())
+
+        print stats
+        with open(SUMMERY_FILE, 'a') as file:
+            file.write(stats)
+
 
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-2')
+    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-02')
+    if not os.path.exists("results"):
+        os.mkdir("results")
+
+    qa_tool.get_statistics()
     qa_tool.test_uncalculated_kpi()
+    qa_tool.test_result_is_zero()
+    qa_tool.test_invalid_percent_results()
