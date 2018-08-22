@@ -36,7 +36,7 @@ where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru_sand']:
+    for project in ['ccru-sand']:
         print 'start project: ' + str(project)
         sql_to_run = CCRU_SANDRunSql(project)
         sql_to_run.run_it()

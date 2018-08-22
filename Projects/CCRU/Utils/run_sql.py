@@ -14,7 +14,10 @@ class CCRURunSql:
     def run_it(self):
         statement_1 = \
                         """
-                        UPDATE `static`.`kpi` SET `display_text`='Cooler: Max 26' WHERE `pk` in ('2511','2535','2557','2621','2655','2686');
+update static.stores
+set additional_attribute_11 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
+where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
+
 
                         """
 
@@ -33,7 +36,7 @@ class CCRURunSql:
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['ccru-sand']:
+    for project in ['ccru']:
         print 'start project: ' + str(project)
         sql_to_run = CCRURunSql(project)
         sql_to_run.run_it()

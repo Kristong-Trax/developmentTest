@@ -413,7 +413,7 @@ class CCRU_SANDTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU-SAND')
+    LoggerInitializer.init('Top SKU CCRU_SAND')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration
