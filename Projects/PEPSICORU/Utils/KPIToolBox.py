@@ -7,6 +7,8 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.PEPSICORU_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common as CommonV1
+
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -28,6 +30,7 @@ class PEPSICORUToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.commonv1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -41,25 +44,22 @@ class PEPSICORUToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-
         self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.toolbox = GENERALToolBox(data_provider)
+        self.main_shelves = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
+                             Const.MAIN_SHELF in scene_type]
 
-    @staticmethod
-    def get_main_shelf_by_category(current_category):
+    def get_main_shelf_by_category(self, current_category):
         """
         This function gets a category and return the relevant scene type for the SOS
         :param current_category: One of the product's categories. E.g: Snacks.
         :return: The relevant scene type to the current category
         """
-        if current_category == Const.SNACKS:
-            return Const.MAIN_SHELF_SNACKS
-        elif current_category == Const.BEVERAGES:
-            return Const.MAIN_SHELF_BEVERAGES
-        else:
-            return Const.MAIN_SHELF_JUICES
+        for main_shelf in self.main_shelves:
+            if current_category in main_shelf.upper():
+                return main_shelf
 
     @staticmethod
     def get_category_from_template_name(template_name):
@@ -109,6 +109,8 @@ class PEPSICORUToolBox:
         :return: List of the relevant categories
         """
         sub_categories = self.scif[Const.SUB_CATEGORY].unique().tolist()
+        if None in sub_categories:
+            sub_categories.remove(None)
         for sub_cat in sub_categories:
             relevant_category = self.get_unique_attribute_from_filters(Const.SUB_CATEGORY, sub_cat, Const.CATEGORY)
             if not relevant_category:
@@ -122,9 +124,8 @@ class PEPSICORUToolBox:
         :param attribute: The attribute you would like to get. E.g: brand_name, category etc.
         :return: List of the relevant categories
         """
-        main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
-                        Const.MAIN_SHELF in scene_type]
-        filtered_scif = self.scif[self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
+
+        filtered_scif = self.scif[self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
         list_of_attribute = filtered_scif[attribute].unique().tolist()
         for attr in list_of_attribute:
             if filtered_scif[filtered_scif[attribute] == attr].empty:
@@ -169,9 +170,7 @@ class PEPSICORUToolBox:
         """
         # Level 1
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
-        main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
-                        Const.MAIN_SHELF in scene_type]
-        general_filters = {Const.TEMPLATE_NAME: main_shelves}
+        general_filters = {Const.TEMPLATE_NAME: self.main_shelves}
         # Calculate Facings SOS
         numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_manu_param,
                                                                                 **general_filters)
@@ -249,7 +248,51 @@ class PEPSICORUToolBox:
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
         # Level 4
-        for brand in self.scif[self.scif[Const.MANUFACTURER_NAME == Const.PEPSICO]][Const.BRAND_NAME].unique().tolist():
+        brands_list = self.scif[self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO][Const.BRAND_NAME].unique().tolist()
+        if None in brands_list:
+            brands_list.remove(None)
+        for brand in brands_list:
+            relevant_category = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.CATEGORY)
+            relevant_sub_cat_fk = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
+            filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
+            general_filters = {Const.CATEGORY: relevant_category,
+                               Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
+            current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
+            # Calculate Facings SOS
+            facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param,
+                                                                                    **general_filters)
+            level_4_facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
+                                                                          brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
+            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_4_facings_brand_identifier,
+                                           identifier_parent=parent_identifier,
+                                           denominator_result=denominator_score, result=result, score=result)
+            # Calculate Linear SOS
+            linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
+            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
+                                                                                    **general_filters)
+            level_4_linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
+                                                                         brand_fk=current_brand_fk)
+            parent_identifier = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
+            self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
+                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
+                                           identifier_result=level_4_linear_brand_identifier,
+                                           identifier_parent=parent_identifier,
+                                           denominator_result=denominator_score, result=result, score=result)
+        return
+
+        # Level 4
+        brands_list = self.scif[
+            (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & self.scif['template_name'].isin(self.main_shelves)][
+            Const.BRAND_NAME].unique().tolist()
+        if None in brands_list:
+            brands_list.remove(None)
+        for brand in brands_list:
             relevant_category = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.CATEGORY)
             relevant_sub_cat_fk = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
             filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
@@ -291,15 +334,13 @@ class PEPSICORUToolBox:
         """
         # TODO: TARGETS TARGETS TARGETS
         # Filtering out the main shelves
-        main_shelves = [scene_type for scene_type in self.scif.loc[Const.TEMPLATE_NAME].unique().tolist() if
-                        Const.MAIN_SHELF in scene_type]
-        filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(main_shelves)]
-        if not filtered_scif:
+        filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
+        if filtered_scif.empty:
             return
 
         # Calculate count of display - store_level
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
-        scene_types_in_store = len(filtered_scif[Const.SCENE_ID].unique())
+        scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
         self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.store_id,
                                        numerator_result=scene_types_in_store,
                                        identifier_result=display_count_store_level_fk,
@@ -310,23 +351,25 @@ class PEPSICORUToolBox:
         for category in self.categories_to_calculate:
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
-                               category in scene_type]
+                               category in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
-            scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_ID].unique())
+            if filtered_scif_by_cat.empty:
+                continue
+            scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
             self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=category_fk,
                                            numerator_result=scene_types_in_category,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=scene_types_in_category, score=0)
+                                           result=scene_types_in_category, score=scene_types_in_category)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
         for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
             relevant_category = self.get_category_from_template_name(scene_type)
             scene_type_score = len(
-                filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_ID].unique())
+                filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_FK].unique())
             scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
             display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                               category=relevant_category)
@@ -344,10 +387,9 @@ class PEPSICORUToolBox:
         """
         self.calculate_share_of_shelf()
         self.calculate_count_of_display()
-        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        Assortment(self.data_provider, self.output, common=self.commonv1).main_assortment_calculation()
 
-
-###################################### Plaster ######################################
+    ###################################### Plaster ######################################
 
     def calculate_share_space_length(self, **filters):
         """
@@ -355,8 +397,8 @@ class PEPSICORUToolBox:
         :return: The total shelf width (in mm) the relevant facings occupy.
         """
         filtered_matches = \
-            self.match_product_in_scene[self.toolbox.get_filter_condition(self.match_product_in_scene, **filters)]
-        space_length = filtered_matches['width_mm_advance'].sum()
+            self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        space_length = filtered_matches['net_len_add_stack'].sum()
         return space_length
 
     def calculate_linear_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
@@ -375,7 +417,7 @@ class PEPSICORUToolBox:
         if denominator_width == 0:
             return 0, 0, 0
         else:
-            return numerator_width, denominator_width, (numerator_width / float(denominator_width))
+            return numerator_width / 1000, denominator_width / 1000, (numerator_width / float(denominator_width))
 
     def calculate_share_facings(self, **filters):
         """
@@ -383,7 +425,7 @@ class PEPSICORUToolBox:
         :return: The total number of the relevant facings occupy.
         """
         filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
-        sum_of_facings = filtered_scif['width_mm_advance'].sum()
+        sum_of_facings = filtered_scif['facings'].sum()
         return sum_of_facings
 
     def calculate_facings_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
