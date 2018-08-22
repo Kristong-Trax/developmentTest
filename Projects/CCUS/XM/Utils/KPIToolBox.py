@@ -56,14 +56,16 @@ class CCUSToolBox_XM:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.ps_data = PsDataProvider(self.data_provider, self.output, assortment_filter=store_number_1)
-        self.state = self.ps_data.get_state_name()
-        self.sub_brands = self.ps_data.get_custom_entities(1002)
-        self.result_values = self.ps_data.get_result_values()
-        self.products_with_prices = self.ps_data.get_products_prices()
-        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output, assortment_filter=store_number_1)
+        self.store_areas = self.ps_data_provider.get_store_area_df()
+        self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
+        self.state = self.ps_data_provider.get_state_name()
+        self.sub_brands = self.ps_data_provider.get_custom_entities(1002)
+        self.result_values = self.ps_data_provider.get_result_values()
+        self.products_with_prices = self.ps_data_provider.get_products_prices()
+        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data_provider)
         if self.on_off == Const.ON:
-            self.sales_data = self.ps_data.get_sales_data()
+            self.sales_data = self.ps_data_provider.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
                                                                    target_answer=Const.SURVEY_ANSWER)
         else:
