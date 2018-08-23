@@ -29,7 +29,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability']
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 class MARSUAEToolBox:
     LEVEL1 = 1
@@ -70,8 +70,7 @@ class MARSUAEToolBox:
         self.old_kpi_static_data = self.common.get_kpi_static_data()
         for name in SHEETS_NAME:
             parsed_template = ParseTemplates.parse_template(TEMPLATE_PATH, sheet_name=name)
-            # self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == self.channel]
-            self.kpi_sheets[name] = parsed_template
+            self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == 'Impulse']
 
     def insert_results_to_old_tables(self):
         kpi_lvls = pd.DataFrame(columns=['level_by_num', 'level_by_name', 'kpis'])

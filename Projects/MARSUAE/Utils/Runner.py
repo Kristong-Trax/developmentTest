@@ -25,8 +25,8 @@ class Results(object):
         graph = pydot.Dot(graph_type='digraph')
 
         self.kpi_mapping = []
+        columns = list(reversed(level_hierarchy.columns))
         for i, level_row in level_hierarchy.iterrows():
-            columns = list(reversed(level_row.index))
             dependents = [{'kpi_type': level_row[l1], 'depends_on': level_row[l2]} for l1, l2 in zip(columns, columns[1:])]
             dependents.append({'kpi_type': level_row['Level_1'], 'depends_on': []})
             for kpi in dependents:
