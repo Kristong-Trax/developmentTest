@@ -770,7 +770,7 @@ class CCBZA_ToolBox:
             custom_score = self.get_pass_fail(score)
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                target=int(float(max_score)), should_enter=True)
