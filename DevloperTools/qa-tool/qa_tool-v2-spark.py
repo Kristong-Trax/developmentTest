@@ -139,12 +139,13 @@ class qa:
                                             .withColumnRenamed('client_name', 'name')
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
         test_results = df.join(df2, df2.client_name == df.name)
-        test_results.select('client_name', 'result_count', "session_count", ((F.col('session_count') / total_sessions) * 100) \
-                    .alias("session_count%")).show(1000, False)
 
-        test_results_pandas = test_results.toPandas()
+        test_results_pandas = test_results.select('client_name', \
+                                                  'result_count', \
+                                                  "session_count", \
+                                                  ((F.col('session_count') / total_sessions) * 100).alias("session_count%"))\
+                                                   .toPandas()
         test_results_pandas.to_csv("results/invalid_percent_results_list.csv")
-
         return test_results_pandas.to_html()
 
     def test_result_is_zero(self):
@@ -160,7 +161,7 @@ class qa:
             .withColumnRenamed('client_name', 'name2')
         test_results = df.join(df2, df2.client_name == df.name).join(df3, df3.name2 == df.name)
         # test_results2 = df.join(test_results, test_results.client_name == df.name)
-        test_results.select('client_name', \
+        test_results_pandas = test_results.select('client_name', \
                              'results_zero_count', \
                              # 'total_count',\
                              # "session_count",\
@@ -168,11 +169,14 @@ class qa:
                                  "results%(out of all results)"), \
                              ((F.col('session_count') / total_sessions) * 100).alias(
                                  "session_count%(out of all sessions)") \
-                             ).show(1000, False)
-
-        test_results_pandas = test_results.toPandas()
+                             ).toPandas()
         test_results_pandas.to_csv("results/test_result_is_zero.csv")
+        return test_results_pandas.to_html()
 
+
+    def test_results_stdev(self):
+        test_results_pandas = self.merged_kpi_results.groupBy('client_name').agg({"result": "stddev"}).toPandas()
+        test_results_pandas.to_csv("results/test_results_stdev.csv")
         return test_results_pandas.to_html()
 
     def test_results_in_expected_range(self):
@@ -201,13 +205,22 @@ class qa:
 
 
     def run_all_tests(self):
-
         with open(SUMMERY_FILE, 'a') as file:
+            file.write("<p> test_invalid_percent_results</p>")
             file.write(self.test_invalid_percent_results())
+
+            file.write("<p> test_uncalculated_kpi</p>")
             file.write(self.test_uncalculated_kpi())
+
+            file.write("<p> test_result_is_zero</p>")
             file.write(self.test_result_is_zero())
-            file.write(self.test_results_in_expected_range())
-            file.write(self.test_one_result_in_all_sessions())
+
+            file.write("<p> test_result_is_zero</p>")
+            file.write(self.test_results_stdev())
+
+
+            # file.write(self.test_results_in_expected_range())
+            # file.write(self.test_one_result_in_all_sessions())
 
 
     #TODO
@@ -250,11 +263,9 @@ class qa:
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-02')
+    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-30')
     if not os.path.exists("results"):
         os.mkdir("results")
 
     qa_tool.get_statistics()
-    qa_tool.test_uncalculated_kpi()
-    qa_tool.test_result_is_zero()
-    qa_tool.test_invalid_percent_results()
+    qa_tool.run_all_tests()
