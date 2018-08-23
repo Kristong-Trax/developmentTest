@@ -1,7 +1,11 @@
 import re
 import os
 import shutil
+
+
 __author__ = 'Nimrod'
+
+
 class MoveCodeToINTEG:
     def __init__(self, src_project, dest_project):
         self.src_project = src_project.upper()
@@ -11,6 +15,7 @@ class MoveCodeToINTEG:
         self.projects_path = "{}/Projects/".format(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.classes_names = {}
+
     def validate_projects(self):
         if 'INTEG' in self.src_project or 'INTEG' in self.dest_project:
             return True
@@ -20,6 +25,7 @@ class MoveCodeToINTEG:
             return True
         else:
             return False
+
     def copy_project(self):
         src_path = self.projects_path + self.src_project + "/"
         dest_path = self.projects_path + self.dest_project + "/"
@@ -30,6 +36,7 @@ class MoveCodeToINTEG:
         self.change_new_project_files(dest_path, change_class_names=False)
         # changing all the classes' names
         self.change_new_project_files(dest_path, change_class_names=True)
+
     def change_new_project_files(self, path, change_class_names):
         if os.path.isdir(path):
             files = os.listdir(path)
@@ -53,6 +60,7 @@ class MoveCodeToINTEG:
                                 class_name.replace(self.src_project, "")
                     with open(file_path, 'w') as content:
                         content.write(new_content)
+
     def change_file_references(self, original_content, change_class_names):
         new_content = []
         classes_names = []
@@ -73,6 +81,7 @@ class MoveCodeToINTEG:
             new_content.append(line)
         new_content = "\n".join(new_content)
         return new_content, classes_names
+
     def get_case_sensitive_replacement(self, appearance):
         if appearance == self.src_project.upper():
             return self.dest_project.upper()
@@ -80,6 +89,8 @@ class MoveCodeToINTEG:
             return self.dest_project.lower()
         else:
             return self.dest_project.capitalize()
+
+
 if __name__ == '__main__':
     a = MoveCodeToINTEG("CCRU", "CCRU_SAND")
     a.copy_project()
