@@ -14,6 +14,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.CCRU_SAND.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.ExecutionContract import CCRU_SANDContract
@@ -452,6 +453,7 @@ class CCRU_SANDKPIToolBox:
                 relevant_scenes.append(scene)
         return relevant_scenes
 
+    @kpi_runtime()
     def check_number_of_facings_given_answer_to_survey(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -487,6 +489,7 @@ class CCRU_SANDKPIToolBox:
 
         return set_total_res
 
+    @kpi_runtime()
     def check_answer_to_survey_level3(self, params):
         d = {'Yes': u'Да', 'No': u'Нет'}
         score = 0
@@ -509,6 +512,7 @@ class CCRU_SANDKPIToolBox:
             Log.warning('No survey data for this session')
         return score
 
+    @kpi_runtime()
     def check_availability(self, params):
         """
         This function is used to calculate availability given a set pf parameters
@@ -682,6 +686,7 @@ class CCRU_SANDKPIToolBox:
 
         return object_facings
 
+    @kpi_runtime()
     def calculate_number_facings_near_food(self, params, all_params):
         total_res = 0
         if 'depends on' in params.keys():
@@ -953,6 +958,7 @@ class CCRU_SANDKPIToolBox:
     #     Log.info('Calculation finished')
     #     return set_total_res
 
+    @kpi_runtime()
     def check_number_of_scenes_with_target(self, params):
         scenes = None
         if 'depends on' in params.keys():
@@ -971,6 +977,7 @@ class CCRU_SANDKPIToolBox:
                 kpi_total_res += 1
         return kpi_total_res
 
+    @kpi_runtime()
     def check_number_of_scenes(self, params):
         """
         This function is used to calculate number of scenes
@@ -1078,6 +1085,7 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_db_result(attributes_for_level3, 'level3')
         return set_total_res
 
+    @kpi_runtime()
     def check_number_of_doors(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -1219,6 +1227,7 @@ class CCRU_SANDKPIToolBox:
 
         return set_total_res
 
+    @kpi_runtime()
     def facings_sos(self, params):
         """
         This function is used to calculate facing share of shelf
@@ -1372,6 +1381,7 @@ class CCRU_SANDKPIToolBox:
 
         return score
 
+    @kpi_runtime()
     def check_share_of_cch(self, params):
         """
         This function calculates number of SKUs per single scene type
@@ -1554,6 +1564,7 @@ class CCRU_SANDKPIToolBox:
                 sum_of_passed_scenes += 1
         return sum_of_passed_scenes
 
+    @kpi_runtime()
     def check_number_of_skus_per_door_range(self, params):
         """
         This function calculates number of SKUs per single scene type
@@ -1801,6 +1812,7 @@ class CCRU_SANDKPIToolBox:
         facings = self.calculate_availability(params)
         return float(facings) / 40
 
+    @kpi_runtime()
     def customer_cooler_doors(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -1818,6 +1830,7 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
         return set_total_res
 
+    @kpi_runtime()
     def check_sum_atomics(self, params):
         """
 
@@ -1900,6 +1913,7 @@ class CCRU_SANDKPIToolBox:
                 self.insert_scores_level2(kpi_total, score, kpi_name)
         return set_total_res
 
+    @kpi_runtime()
     def check_atomic_passed(self, params):
         """
 
@@ -1974,6 +1988,7 @@ class CCRU_SANDKPIToolBox:
                 self.insert_scores_level2(kpi_total, score, kpi_name)
         return set_total_res
 
+    @kpi_runtime()
     def check_atomic_passed_on_the_same_scene(self, params):
         set_total_res = 0
         self.passed_scenes_per_kpi = {}
@@ -2171,6 +2186,7 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_db_result(attributes_for_level4, 'level4')
         return total_res
 
+    @kpi_runtime()
     def check_weighted_average(self, params):
         """
 
@@ -2224,6 +2240,7 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_db_result(attributes_for_level2, 'level2')
         return set_total_res
 
+    @kpi_runtime()
     def calculate_number_of_scenes_no_tagging(self, params, level = None):
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
@@ -2398,6 +2415,7 @@ class CCRU_SANDKPIToolBox:
         return
 
 # Sergey Begin
+    @kpi_runtime()
     def prepare_hidden_set(self, params):
         # table3 = pd.DataFrame([])  # for debugging
 
@@ -2749,6 +2767,7 @@ class CCRU_SANDKPIToolBox:
 
         return df['channel'][0]
 
+    @kpi_runtime()
     def calculate_gaps(self, params):
         for param in params:
             kpi = param.get('KPI Name')
@@ -2789,6 +2808,7 @@ class CCRU_SANDKPIToolBox:
                 query = insert(attributes.to_dict(), CUSTOM_GAPS_TABLE)
                 self.gaps_queries.append(query)
 
+    @kpi_runtime()
     def calculate_equipment_execution(self, params):
 
         log_prefix = 'Equipment KPI: '
@@ -2961,6 +2981,7 @@ class CCRU_SANDKPIToolBox:
             conversion[int(row['KPI Name'])] = row['KPI ID']
         return conversion
 
+    @kpi_runtime()
     def calculate_top_sku(self):
 
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
@@ -3004,6 +3025,7 @@ class CCRU_SANDKPIToolBox:
         self.kpi_score_level2[key_score] = score
         return
 
+    @kpi_runtime()
     def check_kpi_scores(self, params):
         set_total_res = 0
         for p in params.values()[0]:

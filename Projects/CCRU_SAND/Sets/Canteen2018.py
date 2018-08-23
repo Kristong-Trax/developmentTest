@@ -13,18 +13,17 @@ from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 from KPIUtils.Utils.Helpers.LogHandler import log_handler
 
+
 __author__ = 'urid'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
+
 CANTEEN_2018 = 'Pos 2018 - Canteen'
 TARGET_EXECUTION = 'Target Execution 2018'
 MARKETING = 'Marketing 2017'
 
 
 class CCRU_SANDCanteen2018Calculations:
-    def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
+    def __init__(self, data_provider, output, ps_data_provider):  # All relevant session data with KPI static info will trigger the KPI calculation
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -49,7 +48,7 @@ class CCRU_SANDCanteen2018Calculations:
             self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
-    @log_handler.log_runtime('Total Calculations', log_start=True)
+    # @log_handler.log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         jg = CCRU_SANDJsonGenerator('ccru_sand')
         jg.create_json('Canteen PoS 2018.xlsx', CANTEEN_2018)
@@ -76,7 +75,7 @@ class CCRU_SANDCanteen2018Calculations:
                                                                                                   'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 # Sergey
-#        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
 # Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=CANTEEN_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
@@ -111,8 +110,8 @@ class CCRU_SANDCanteen2018Calculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
-        calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Calculation time took {}'.format(calc_finish_time-calc_start_time))
+        # calc_finish_time = datetime.datetime.utcnow()
+        # Log.info('Calculation time took {}'.format(calc_finish_time-calc_start_time))
 
 
 

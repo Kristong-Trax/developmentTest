@@ -605,7 +605,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**scene_filters)
 
         for scene in relevant_scenes:
-            adjacency = self.adjacency.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
+            adjacency = self.tools.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
                                                            allowed_filter_without_other, a_target, b_target, target)
             if adjacency:
                 direction = params.get('Direction', 'All').values[0]

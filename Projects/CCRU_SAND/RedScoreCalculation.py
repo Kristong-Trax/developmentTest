@@ -30,6 +30,7 @@ from Projects.CCRU_SAND.Sets.Petrol2018 import CCRU_SANDPetrol2018Calculations
 
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -64,6 +65,8 @@ QSR_2018 = 'Pos 2018 - QSR'
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
+
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         ps_data = PsDataProvider(self.data_provider, self.output)
@@ -115,16 +118,14 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
             elif kpi_set_name == QSR_2018:
                 CCRU_SANDQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
             elif test_store.values[0] == "Y":
-                Log.info('Session store "{}" is a test store'.format(
-                    tool_box.session_info.store_type))
+                Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
             else:
-                Log.error('Session store "{}" is not set to calculation'.format(
-                    tool_box.session_info.store_type))  # todo add all supported store types
+                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'.format(tool_box.store_id, kpi_set_name))
 
         else:
             Log.info('Promo session, no calculation implied')
 
-        self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
+        # self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
 
 if __name__ == '__main__':

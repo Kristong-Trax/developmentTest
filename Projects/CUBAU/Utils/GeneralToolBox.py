@@ -646,65 +646,65 @@ class CUBAUCUBAUGENERALToolBox:
         blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
         return blocks, graph
 
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=1, result_by_scene=False, vertical=False, **filters):
-        """
-        :param vertical: if needed to check vertical block by average shelf
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
-                                False - The result is True if at least one scene has a block, False - otherwise.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: see 'result_by_scene' above.
-        """
-        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-        if len(relevant_scenes) == 0:
-            if result_by_scene:
-                return 0, 0
-            else:
-                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return True
-        number_of_blocked_scenes = 0
-        cluster_ratios = []
-        for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
-            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **filters)
-
-            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
-            for cluster in clusters:
-                relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                if len(new_relevant_vertices) > 0:
-                    cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                else:
-                    cluster_ratio = 0
-                cluster_ratios.append(cluster_ratio)
-                if cluster_ratio >= minimum_block_ratio:
-                    if result_by_scene:
-                        number_of_blocked_scenes += 1
-                        break
-                    else:
-                        if minimum_block_ratio == 1:
-                            return True
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(cluster)
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return {'block': True, 'shelves': len(
-                                    set(scene_graph.vs['shelf_number']))}
-                            return cluster_ratio, scene_graph
-        if result_by_scene:
-            return number_of_blocked_scenes, len(relevant_scenes)
-        else:
-            if minimum_block_ratio == 1:
-                return False
-            elif cluster_ratios:
-                return max(cluster_ratios)
-            else:
-                return None
+    # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+    #                              minimum_block_ratio=1, result_by_scene=False, vertical=False, **filters):
+    #     """
+    #     :param vertical: if needed to check vertical block by average shelf
+    #     :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+    #     :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+    #     :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+    #                                 in order for KPI to pass (if ratio=1, then only one block is allowed).
+    #     :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+    #                             False - The result is True if at least one scene has a block, False - otherwise.
+    #     :param filters: These are the parameters which the blocks are checked for.
+    #     :return: see 'result_by_scene' above.
+    #     """
+    #     filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+    #     if len(relevant_scenes) == 0:
+    #         if result_by_scene:
+    #             return 0, 0
+    #         else:
+    #             Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+    #             return True
+    #     number_of_blocked_scenes = 0
+    #     cluster_ratios = []
+    #     for scene in relevant_scenes:
+    #         scene_graph = self.position_graphs.get(scene).copy()
+    #         clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
+    #                                                       include_empty=include_empty, **filters)
+    #
+    #         new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
+    #         for cluster in clusters:
+    #             relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+    #             if len(new_relevant_vertices) > 0:
+    #                 cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+    #             else:
+    #                 cluster_ratio = 0
+    #             cluster_ratios.append(cluster_ratio)
+    #             if cluster_ratio >= minimum_block_ratio:
+    #                 if result_by_scene:
+    #                     number_of_blocked_scenes += 1
+    #                     break
+    #                 else:
+    #                     if minimum_block_ratio == 1:
+    #                         return True
+    #                     else:
+    #                         all_vertices = {v.index for v in scene_graph.vs}
+    #                         non_cluster_vertices = all_vertices.difference(cluster)
+    #                         scene_graph.delete_vertices(non_cluster_vertices)
+    #                         if vertical:
+    #                             return {'block': True, 'shelves': len(
+    #                                 set(scene_graph.vs['shelf_number']))}
+    #                         return cluster_ratio, scene_graph
+    #     if result_by_scene:
+    #         return number_of_blocked_scenes, len(relevant_scenes)
+    #     else:
+    #         if minimum_block_ratio == 1:
+    #             return False
+    #         elif cluster_ratios:
+    #             return max(cluster_ratios)
+    #         else:
+    #             return None
 
     def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
         """
@@ -879,49 +879,49 @@ class CUBAUCUBAUGENERALToolBox:
             positions.append(match_name)
         return positions
 
-    # def get_filter_condition(self, df, **filters):
-    #     """
-    #     :param df: The data frame to be filters.
-    #     :param filters: These are the parameters which the data frame is filtered by.
-    #                    Every parameter would be a tuple of the value and an include/exclude flag.
-    #                    INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCUBAUCUBAUGENERALToolBox.INCLUDE_FILTER)
-    #                    INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
-    #     :return: a filtered Scene Item Facts data frame.
-    #     """
-    #     if not filters:
-    #         return df['pk'].apply(bool)
-    #     if self.facings_field in df.keys():
-    #         filter_condition = (df[self.facings_field] > 0)
-    #     else:
-    #         filter_condition = None
-    #     for field in filters.keys():
-    #         if field in df.keys():
-    #             if isinstance(filters[field], tuple):
-    #                 value, exclude_or_include = filters[field]
-    #             else:
-    #                 value, exclude_or_include = filters[field], self.INCLUDE_FILTER
-    #             if not value:
-    #                 continue
-    #             if not isinstance(value, list):
-    #                 value = [value]
-    #             if exclude_or_include == self.INCLUDE_FILTER:
-    #                 condition = (df[field].isin(value))
-    #             elif exclude_or_include == self.EXCLUDE_FILTER:
-    #                 condition = (~df[field].isin(value))
-    #             elif exclude_or_include == self.CONTAIN_FILTER:
-    #                 condition = (df[field].str.contains(value[0], regex=False))
-    #                 for v in value[1:]:
-    #                     condition |= df[field].str.contains(v, regex=False)
-    #             else:
-    #                 continue
-    #             if filter_condition is None:
-    #                 filter_condition = condition
-    #             else:
-    #                 filter_condition &= condition
-    #         else:
-    #             Log.warning('field {} is not in the Data Frame'.format(field))
-    #
-    #     return filter_condition
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCUBAUCUBAUGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
 
     def separate_location_filters_from_product_filters(self, **filters):
         """
@@ -964,3 +964,176 @@ class CUBAUCUBAUGENERALToolBox:
         elif len(data.keys()) == 1:
             data = data[data.keys()[0]]
         return data
+
+    def calculate_adjacency_relativeness(self, tested_filters, direction_data, entity_to_return, anchor_filters=None,
+                                             **general_filters):
+        """
+        :param tested_filters: The tested SKUs' filters.
+        :param anchor_filters: The anchor SKUs' filters.
+        :param direction_data: The allowed distance between the tested and anchor SKUs.
+                               In form: {'top': 4, 'bottom: 0, 'left': 100, 'right': 0}
+                               Alternative form: {'top': (0, 1), 'bottom': (1, 1000), ...} - As range.
+        :param min_required_to_pass: The number of appearances needed to be True for relative position in order for KPI
+                                     to pass. If all appearances are required: ==a string or a big number.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
+        """
+        filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)][
+            'scene_id'].unique().tolist()
+        if tested_scenes:
+            pass_counter = []
+            for scene in tested_scenes:
+                scene_graph = self.position_graphs.get(scene)
+                all_vertices = {v.index for v in scene_graph.vs}
+                tested_vertices = self.filter_vertices_from_graph(scene_graph, **tested_filters)
+                if anchor_filters:
+                    anchor_vertices = self.filter_vertices_from_graph(scene_graph, **anchor_filters)
+                else:
+                    anchor_vertices = all_vertices.difference(tested_vertices)
+                for tested_vertex in tested_vertices:
+                    for anchor_vertex in anchor_vertices:
+                        moves = {'top': 0, 'bottom': 0, 'left': 0, 'right': 0}
+                        # moves = {'left': 0, 'right': 0}
+                        path = scene_graph.get_shortest_paths(anchor_vertex, tested_vertex, output='epath')
+                        if path:
+                            path = path[0]
+                            for edge in path:
+                                moves[scene_graph.es[edge]['direction']] += 1
+                            if (moves['bottom'] > 0 or moves['top'] > 0):
+                                continue
+                            if self.validate_block_moves(moves, direction_data):
+                                pass_counter.append(scene_graph.vs[anchor_vertex][entity_to_return])
+                        else:
+                            Log.debug('Tested and Anchor have no direct path')
+            return pass_counter
+
+    @staticmethod
+    def validate_block_moves(moves, direction_data):
+        """
+        This function checks whether the distance between the anchor and the tested SKUs fits the requirements.
+        """
+        key = direction_data.keys()
+        direction_data = direction_data if isinstance(direction_data, (list, tuple)) else [direction_data]
+        one_to_pass = {}
+        for data in direction_data:
+            for direction in set(moves.keys()).intersection(key):
+                allowed_moves = data.get(direction, (0, 0))
+                min_move, max_move = allowed_moves if isinstance(allowed_moves, tuple) else (0, allowed_moves)
+                if min_move <= moves[direction] <= max_move:
+                    one_to_pass[direction] = 'T'
+        if one_to_pass:
+            if len(one_to_pass.values()) == 1:
+                moves.pop(one_to_pass.keys()[0])
+                for direction in moves.keys():
+                    min_move, max_move = (0, 0)
+                    if not min_move <= moves[direction] <= max_move:
+                        return False
+                return True
+        return False
+
+    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+                                 minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
+                                 block_products1=None, block_products2=None, vertical=False, biggest_block=False,
+                                 n_cluster=None, **filters):
+
+
+        """
+        :param biggest_block:
+        :param block_products1:
+        :param block_products2:
+        :param block_of_blocks:
+        :param vertical: if needed to check vertical block by average shelf
+        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
+        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+                                False - The result is True if at least one scene has a block, False - otherwise.
+        :param filters: These are the parameters which the blocks are checked for.
+        :return: see 'result_by_scene' above.
+        """
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            if result_by_scene:
+                return 0, 0
+            elif vertical:
+                return False, 0
+            else:
+                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+                return False
+        number_of_blocked_scenes = 0
+        cluster_ratios = []
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            clusters, scene_graph = self.get_scene_blocks(scene_graph,
+                                                          allowed_products_filters=allowed_products_filters,
+                                                          include_empty=include_empty, **filters)
+
+            if block_of_blocks:
+                new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
+                new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
+            else:
+                new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
+            for cluster in clusters:
+                if block_of_blocks:
+                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
+                    if len(new_relevant_vertices1) > 0:
+                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
+                    else:
+                        cluster_ratio1 = 0
+                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
+                    if len(new_relevant_vertices2) > 0:
+                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
+                    else:
+                        cluster_ratio2 = 0
+                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
+                        return True
+                else:
+                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                    if len(new_relevant_vertices) > 0:
+                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                    else:
+                        cluster_ratio = 0
+                    cluster_ratios.append(cluster_ratio)
+                    if biggest_block:
+                        continue
+                    if cluster_ratio >= minimum_block_ratio:
+                        if result_by_scene:
+                            number_of_blocked_scenes += 1
+                            break
+                        else:
+                            all_vertices = {v.index for v in scene_graph.vs}
+                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                            scene_graph.delete_vertices(non_cluster_vertices)
+                            if vertical:
+                                return True, len(
+                                    set(scene_graph.vs['shelf_number']))
+                            return True
+            if n_cluster is not None:
+                copy_of_cluster_ratios = cluster_ratios[:]
+                largest_cluster = max(copy_of_cluster_ratios)  # 39
+                copy_of_cluster_ratios.remove(largest_cluster)
+                if len(copy_of_cluster_ratios) > 0:
+                    second_largest_integer = max(copy_of_cluster_ratios)
+                else:
+                    second_largest_integer = 0
+                cluster_ratio = largest_cluster + second_largest_integer
+                if cluster_ratio >= minimum_block_ratio:
+                    if vertical:
+                        return {'block': True}
+
+            if biggest_block:
+                max_ratio = max(cluster_ratios)
+                biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
+                relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
+                all_vertices = {v.index for v in scene_graph.vs}
+                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                scene_graph.delete_vertices(non_cluster_vertices)
+                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+        if result_by_scene:
+            return number_of_blocked_scenes, len(relevant_scenes)
+        elif vertical:
+            return False, 0
+        else:
+            return False
