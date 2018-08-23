@@ -94,7 +94,8 @@ class DIAGEOUK_SANDToolBox:
         if set_name == 'Relative Position':
             self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
             set_score = self.calculate_relative_position_sets(set_name)
-        elif set_name in ('MPA', 'New Products', 'Local MPA'):
+        # elif set_name in ('MPA', 'New Products', 'Local MPA'):
+        elif set_name in ('Local MPA'):
             set_score = self.calculate_assortment_sets(set_name)
         elif set_name == 'Secondary Displays':
             set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
