@@ -19,7 +19,7 @@ class CCBZA_Calculations(BaseCalculationsScript):
         CCBZA_Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('ccbza calculations')
 #     Config.init()
@@ -27,7 +27,7 @@ class CCBZA_Calculations(BaseCalculationsScript):
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
 #         # 'AD29338A-C2D9-4486-BD94-7B1E32224A11'
-#         '7E03AC82-3C94-44BD-B1F3-4C9BCA522D3B'
+#         '15431CFF-E6FC-4A74-8BF3-338E35710CE2'
 #     ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)
