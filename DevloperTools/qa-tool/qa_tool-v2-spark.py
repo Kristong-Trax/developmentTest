@@ -1,26 +1,17 @@
 import os
-import sys
-import MySQLdb
-import pandas as pd
+
 import matplotlib.pyplot as plt
 import findspark
-from memory_profiler import profile
-
-from pyspark import SparkContext , SQLContext
-from pyspark.sql import SparkSession
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Data.Projects.Connector import ProjectConnector
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
-import pandas as pd
-import pyspark.sql.functions as F
 import pyspark
+import pandas as pd
+from pyspark.sql import SparkSession ,functions as F
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
-SUMMERY_FILE = "test_restuls.html"
+SUMMERY_FILE = "test_results.html"
+
 
 class qa:
     def __init__(self, project, batch_size=300000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
@@ -152,6 +143,8 @@ class qa:
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
         test_results = df.join(df2, df2.client_name == df.name)
 
+        # write  detailed result
+        test_results.write.csv("results/test_invalid_percent_results", header=True)
         test_results_pandas = test_results.select('client_name', \
                                                   'result_count', \
                                                   "session_count", \
@@ -164,27 +157,26 @@ class qa:
         """ kpi with results is 0 """
 
         total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
-
         filtered = self.merged_kpi_results.filter('result == 0')
         df = filtered.groupBy('client_name').count().withColumnRenamed('count', 'results_zero_count').withColumnRenamed(
             'client_name', 'name')
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
         df3 = self.merged_kpi_results.groupBy('client_name').count().withColumnRenamed('count', 'total_count') \
-            .withColumnRenamed('client_name', 'name2')
+                                                                    .withColumnRenamed('client_name', 'name2')
         test_results = df.join(df2, df2.client_name == df.name).join(df3, df3.name2 == df.name)
-        # test_results2 = df.join(test_results, test_results.client_name == df.name)
+
+        # write  detailed result
+        test_results.write.csv("results/test_result_is_zero", header=True)
+
         test_results_pandas = test_results.select('client_name', \
-                             'results_zero_count', \
-                             # 'total_count',\
-                             # "session_count",\
-                             ((F.col('results_zero_count') / F.col('total_count')) * 100).alias(
-                                 "results%(out of all results)"), \
-                             ((F.col('session_count') / total_sessions) * 100).alias(
-                                 "session_count%(out of all sessions)") \
-                             ).toPandas()
+                                                  'results_zero_count', \
+                                                  ((F.col('results_zero_count') / F.col('total_count')) * 100).alias(
+                                                  "results%(out of all results)"), \
+                                                  ((F.col('session_count') / total_sessions) * 100).alias(
+                                                  "session_count%(out of all sessions)") \
+                                                  ).toPandas()
         test_results_pandas.to_csv("results/test_result_is_zero.csv")
         return test_results_pandas.to_html()
-
 
     def test_results_stdev(self):
         test_results_pandas = self.merged_kpi_results.groupBy('client_name').agg(F.stddev('result'), \
@@ -202,21 +194,6 @@ class qa:
                         (self.merged_kpi_results['result'] < row['min']) | (self.merged_kpi_results['result'] > row['max']))]
             print "##### results not in expected range: (" + str(row['min']) + '-' + str(row['max']) + ' )' + row['kpi_name']
             print x[['session_fk', 'client_name', 'result']]
-
-    def test_one_result_in_all_sessions(self):
-        """ print kpi names where there is only 1 results in all sessions """
-
-        for i, row in self.static_kpi[self.static_kpi['kpi_calculation_stage_fk'] == 3].iterrows():
-
-            res = self.merged_kpi_results.loc[self.merged_kpi_results['client_name'] == row['client_name']]
-            if res.empty:
-                pass
-            else:
-                res = res.groupby(['result'])
-
-            if len(res.count().index) < 2:
-                print '## there is only 2 result type for kpi ' + row['client_name']
-                print res.count().get_values()
 
     def test_results_by_category_stddev(self):
         merged_kpi_results_tmp = self.merged_kpi_results.filter('denominator_type_fk = 4')
@@ -244,7 +221,7 @@ class qa:
             file.write("<br> <p> test_result_is_zero</p>")
             file.write(self.test_result_is_zero())
 
-            file.write("<br> <p> test_result_is_zero</p>")
+            file.write("<br> <p> test_results_stddev</p>")
             file.write(self.test_results_stdev())
 
             file.write("<br> <p> test_results_by_category_stddev</p>")
@@ -256,14 +233,7 @@ class qa:
 
 
     #TODO
-    # 2.plot histogram
-    # 3.set a summery reports
-    # 4.total of rows
-    # do not include blade - results in all level filter out  (low priorty )    `
-    # show for each count uniqe count of sessions
-    # results by category for kpi category
-    # histogram by category per kpier
-    # add std results  for each kpi
+    # 2.plot histogram    #
     # inecluded status fk on session = 1
 
     def get_statistics(self):
@@ -290,8 +260,6 @@ class qa:
         print stats
         with open(SUMMERY_FILE, 'a') as file:
             file.write(stats)
-
-
 
 
 if __name__ ==  "__main__":
