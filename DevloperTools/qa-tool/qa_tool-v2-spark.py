@@ -56,10 +56,12 @@ class qa:
                                     AND probedata.session.visit_date BETWEEN '{}' AND '{}')tmp_kpi_level_2_results '''.format(
             start_date, end_date)
         self.static_query = '''(SELECT * FROM  static.kpi_level_2 where static.kpi_level_2.kpi_calculation_stage_fk = 3) static_kpi '''
+        self.categories_query = '''(select * from static_new.category) categories '''
 
         # fetch db data
         self.static_kpi = self._get_static_kpi()
         self.kpi_results = self._get_kpi_results()
+        self.categories_df = self._get_categories()
         self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
         self.expected = pd.read_csv('expected.csv')
 
@@ -115,6 +117,16 @@ class qa:
 
         static_kpi.count()
         return static_kpi
+
+    def _get_categories(self):
+        categories = self.spark.read.jdbc(url=self.project_url,
+                                          table=self.categories_query,
+                                          properties={"user": self.connector.dbuser.username,
+                                                      "password": self.connector.dbuser.cred,
+                                                      "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+
+        categories.count()
+        return categories
 
     def test_uncalculated_kpi(self):
         """get list of kpi names that doesnt have any result """
@@ -175,7 +187,10 @@ class qa:
 
 
     def test_results_stdev(self):
-        test_results_pandas = self.merged_kpi_results.groupBy('client_name').agg({"result": "stddev"}).toPandas()
+        test_results_pandas = self.merged_kpi_results.groupBy('client_name').agg(F.stddev('result'), \
+                                                                         F.mean('result'), \
+                                                                         F.min('result'), \
+                                                                         F.max('result')).orderBy('client_name').toPandas()
         test_results_pandas.to_csv("results/test_results_stdev.csv")
         return test_results_pandas.to_html()
 
@@ -203,20 +218,37 @@ class qa:
                 print '## there is only 2 result type for kpi ' + row['client_name']
                 print res.count().get_values()
 
+    def test_results_by_category_stddev(self):
+        merged_kpi_results_tmp = self.merged_kpi_results.filter('denominator_type_fk = 4')
+        categories_results = merged_kpi_results_tmp.join(self.categories_df,
+                                                         self.categories_df.pk == merged_kpi_results_tmp.denominator_id)
+        test_results_pandas = categories_results.select(categories_results.client_name , \
+                                                        categories_results.name.alias("category_name") , \
+                                                        categories_results.result).groupBy('client_name',"category_name")\
+                                                                    .agg(F.stddev('result'), \
+                                                                         F.mean('result'), \
+                                                                         F.min('result'), \
+                                                                         F.max('result')).orderBy('client_name').toPandas()
+
+        test_results_pandas.to_csv("results/test_results_by_category_stddev.csv")
+        return test_results_pandas.to_html()
 
     def run_all_tests(self):
         with open(SUMMERY_FILE, 'a') as file:
-            file.write("<p> test_invalid_percent_results</p>")
+            file.write("<br> <p> test_invalid_percent_results</p>")
             file.write(self.test_invalid_percent_results())
 
-            file.write("<p> test_uncalculated_kpi</p>")
+            file.write("<br> <p> test_uncalculated_kpi</p>")
             file.write(self.test_uncalculated_kpi())
 
-            file.write("<p> test_result_is_zero</p>")
+            file.write("<br> <p> test_result_is_zero</p>")
             file.write(self.test_result_is_zero())
 
-            file.write("<p> test_result_is_zero</p>")
+            file.write("<br> <p> test_result_is_zero</p>")
             file.write(self.test_results_stdev())
+
+            file.write("<br> <p> test_results_by_category_stddev</p>")
+            file.write(self.test_results_by_category_stddev())
 
 
             # file.write(self.test_results_in_expected_range())
@@ -260,6 +292,8 @@ class qa:
             file.write(stats)
 
 
+
+
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
@@ -267,5 +301,7 @@ if __name__ ==  "__main__":
     if not os.path.exists("results"):
         os.mkdir("results")
 
+    if os.path.isfile(SUMMERY_FILE):
+        os.remove(SUMMERY_FILE)
     qa_tool.get_statistics()
     qa_tool.run_all_tests()
