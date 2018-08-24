@@ -2811,11 +2811,9 @@ class CCRU_SANDKPIToolBox:
     @kpi_runtime()
     def calculate_equipment_execution(self, params):
 
-        log_prefix = 'Equipment KPI: '
-
         target_data_raw = self.execution_contract.get_json_file_content(str(self.store_id))
         if target_data_raw:
-            Log.info(log_prefix + 'Relevant target file for Store ID {} / Number {} was found'.format(self.store_id, self.store_number))
+            Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(self.store_id, self.store_number))
 
         target_data = None
         for data in target_data_raw:

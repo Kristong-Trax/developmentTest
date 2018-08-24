@@ -188,7 +188,7 @@ class AddKPIs(Consts):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('test')
+    LoggerInitializer.init('Add KPIs to static')
     Config.init()
     # docker_user = DbUsers.Docker
     # dbusers_class_path = 'Trax.Utils.Conf.Keys'

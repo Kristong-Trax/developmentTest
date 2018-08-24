@@ -73,7 +73,7 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
         store_area = ps_data.store_area
         tool_box = CCRU_SANDKPIToolBox(self.data_provider, self.output, store_area)
         external_session_id = str(tool_box.external_session_id)
-        if external_session_id.find('EasyMerch-P')<0:
+        if external_session_id.find('EasyMerch-P') < 0:
 
             kpi_set_name = tool_box.set_name
             test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
@@ -133,7 +133,11 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ccru'
     data_provider = KEngineDataProvider(project_name)
-    session_uids = ['BAFEF9A2-1BCF-426B-842F-8C350241B0BD']
+    session_uids = [
+        '67E65291-F138-411C-8CF1-22672E3FCBD7',
+        '368cdc39-482d-4ebd-9895-92eab3addfa3',
+        'B784C9C8-2DEC-4691-BE63-15AE03AB2985',
+    ]
     for session in session_uids:
         data_provider.load_session_data(session)
         output = Output()

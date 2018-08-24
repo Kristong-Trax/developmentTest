@@ -413,8 +413,8 @@ class CCRU_SANDTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU_SAND')
+    LoggerInitializer.init('CCRU_SAND Top SKU targets upload')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
-# # # To run it locally just copy: -e prod --file **your file path** to the configuration
+# # # To run it locally just copy: -e prod --file **your file path** to the configuration parameters
 # # # At the end of the script there are logs with all of the invalid products, store numbers and dates
