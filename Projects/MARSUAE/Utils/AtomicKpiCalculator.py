@@ -17,10 +17,10 @@ class CountCalculation(KpiBaseCalculation):
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
 
 
-class SOSCalculation(KpiBaseCalculation):
+class LinearSOSCalculation(KpiBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'SESSION_PARENT_1'
+        return 'linear SOS'
 
     def calculate(self, params):
 
@@ -55,12 +55,15 @@ class DistributionCalculation(KpiBaseCalculation):
     def calculate(self, params):
         result_kpi = []
         kpi_fk = 1
-        assortment_fk = params['assortment_group']
-        assortment_result = Assortment(self, self._data_provider).calculate_lvl3_assortment()
+        assortment_fk = self.get_assortment_group_fk(params['Assortment group'])
+        assortment_result = Assortment(data_provider=self._data_provider).calculate_lvl3_assortment()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        for i, row in assortment_result.itterows():
+        for i, row in assortment_result.iterrows():
             result_kpi.append(self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'], score=row['in_store']))
         return result_kpi
+
+    def get_assortment_group_fk(self, assortment_name):
+        return 1
 
 
 class AvailabilityHangingStripCalculation(KpiBaseCalculation):

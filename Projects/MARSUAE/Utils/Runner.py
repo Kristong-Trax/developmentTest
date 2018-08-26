@@ -1,15 +1,16 @@
-import pandas as pd
-import numpy as np
+# import pandas as pd
+# import numpy as np
 import networkx as nx
 import pydot
 
 from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityFacingCalculation, \
-    AvailabilityHangingStripCalculation, CountCalculation, DistributionCalculation, SOSCalculation
+    AvailabilityHangingStripCalculation, CountCalculation, DistributionCalculation, LinearSOSCalculation
 
 
 class Results(object):
     def __init__(self, data_provider):
         self._data_provider = data_provider
+        self.kpi_sheets = self._data_provider.kpi_sheets
 
     def calculate_old_tables(self, hierarchy):
         atomic_results = self._get_atomic_results(hierarchy)
@@ -38,8 +39,16 @@ class Results(object):
             if kpi.get('depends_on'):
                 self.dependencies_graph.add_edge(kpi['depends_on'], kpi['kpi_name'])
                 graph.add_edge(pydot.Edge(kpi['depends_on'], kpi['kpi_name']))
-        nx.draw(self.dependencies_graph)
-        graph.write_png('/home/israels/Desktop/example1_graph.png')
+        # nx.draw(self.dependencies_graph)
+        # graph.write_png('/home/israels/Desktop/example1_graph.png')
+
+        kpi_nodes = self.dependencies_graph.node
+        kpi_topological_sort = nx.topological_sort(self.dependencies_graph)
+        kpi_list = [(kpi, kpi_nodes[kpi]['kpi_type']) for kpi in kpi_topological_sort]
+        kpi_list.reverse()
+        for kpi in kpi_list:
+            kpi_neighbors = nx.neighbors(self.dependencies_graph, kpi[0])
+            self._get_atomic_results(kpi, kpi_neighbors)
 
     def _create_atomic_result(self, atomic_kpi_name, kpi_name, kpi_set_name, result, score=None, threshold=None,
                               weight=None):
@@ -50,30 +59,22 @@ class Results(object):
                 'score': score,
                 'weight': weight}
 
-    def _get_atomic_results(self, atomics):
-        atomic_results = {}
-        for atomic in atomics:
-            calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._data_provider)
-            result = {'result': calculation.calculate(atomic),
-                      'set': atomic['set'],
-                      'kpi': atomic['kpi'],
-                      'atomic': atomic['atomic'],
-                      'weight': atomic['weight'],
-                      'target': atomic.setdefault('target', 0)}
-            concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
-            atomic_results[atomic['kpi']] = concat_results
+    def _get_atomic_results(self, atomic, kpi_neighbors):
+        kpi_params = self.get_kpi_params(atomic)
+        calculation = self._kpi_type_calculator_mapping[kpi_params['KPI Type'].iloc[0]](self._data_provider, 1)
+        result = calculation.calculate(kpi_params)
+        # concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
+        # atomic_results[atomic['kpi']] = concat_results
 
-            if not np.isnan(result['result']):
-                self._writer.write_to_db_level_3_result(
-                    atomic_kpi_name=result['atomic'],
-                    kpi_name=result['kpi'],
-                    kpi_set_name=result['set'],
-                    score=None,
-                    threshold=result['target'],
-                    result=result['result'],
-                    weight=result['weight'])
-
-        return atomic_results
+        # if not np.isnan(result['result']):
+        #     self._writer.write_to_db_level_3_result(
+        #         atomic_kpi_name=result['atomic'],
+        #         kpi_name=result['kpi'],
+        #         kpi_set_name=result['set'],
+        #         score=None,
+        #         threshold=result['target'],
+        #         result=result['result'],
+        #         weight=result['weight'])
 
     @property
     def _kpi_type_calculator_mapping(self):
@@ -82,7 +83,7 @@ class Results(object):
             CountCalculation.kpi_type: CountCalculation,
             AvailabilityHangingStripCalculation.kpi_type: AvailabilityHangingStripCalculation,
             AvailabilityFacingCalculation.kpi_type: AvailabilityFacingCalculation,
-            SOSCalculation.kpi_type: SOSCalculation
+            LinearSOSCalculation.kpi_type: LinearSOSCalculation
         }
 
     def _get_set_result(self, kpi_results):
@@ -105,5 +106,9 @@ class Results(object):
             results.append({'score': score, 'set': set_, 'kpi': kpi, 'weight': weight})
             self._writer.write_to_db_level_2_result(kpi, set_, score, weight)
         return results
+
+    def get_kpi_params(self, atomic):
+        kpi_df = self.kpi_sheets[atomic[1]]
+        return kpi_df[kpi_df['Atomic KPI'] == atomic[0]]
 
 

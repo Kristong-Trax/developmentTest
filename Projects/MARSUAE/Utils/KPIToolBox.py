@@ -64,7 +64,8 @@ class MARSUAEToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.kpi_sheets = {}
+        self.data_provider.kpi_sheets = {}
+        self.kpi_sheets = self.data_provider.kpi_sheets
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.old_kpi_static_data = self.common.get_kpi_static_data()
