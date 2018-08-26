@@ -138,7 +138,7 @@ class CCRU_SANDTopSKUAssortment:
                 if anchor_product_fk is None:
                     Log.warning("Anchor product EAN '{}' is not defined in DB".format(anchor_product_ean_code))
                     continue
-                min_facings = data[key]
+                min_facings = int(data[key]) if data[key] else 0
                 for product in product_list:
                     product_fk = self.get_product_fk(product)
                     if product_fk is None:

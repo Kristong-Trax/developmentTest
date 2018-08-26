@@ -68,7 +68,6 @@ class CCRU_SANDKPIToolBox:
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_number = self.kpi_fetcher.get_store_number(self.store_id)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         if set_name is None:
             self.set_name = self.get_set(self.visit_date)
@@ -77,6 +76,7 @@ class CCRU_SANDKPIToolBox:
         self.pos_set_name = self.set_name
         self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                   self.set_name, self.products)
+        self.store_number = self.kpi_fetcher.get_store_number(self.store_id)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
@@ -2821,12 +2821,10 @@ class CCRU_SANDKPIToolBox:
             end_date = datetime.datetime.now().date() if not data['End Date'] else \
                 datetime.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
             if start_date <= self.visit_date <= end_date:
-                if target_data is None or start_date >= target_data[1]:
-                    target_data = (data, start_date)
+                target_data = data
 
         if target_data is not None:
 
-            target_data = target_data[0]
             for field in (self.store_number, 'Start Date', 'End Date'):
                 target_data.pop(field, None)
 
@@ -2851,12 +2849,12 @@ class CCRU_SANDKPIToolBox:
                     count_of_targets = 0
 
                     for param_child in params:
-                        if param_child.get('KPI ID') in children and param_child.get('KPI Set Type') == 'Equipment':
+                        if str(param_child.get('KPI ID')) in children and param_child.get('KPI Set Type') == 'Equipment':
                             atomic_kpi_name = param_child.get('Channel') + '@' + param_child.get('KPI name Eng')
-                            atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['kpi_fk'].values[0]
+                            atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk'].values[0]
                             atomic_kpi_name = param_child.get('KPI name Eng')
-                            target, weight = target_data.get(int(kpi_conversion.get(atomic_kpi_name)))
-                            target = target if not target else None
+                            target, weight = target_data.get(kpi_conversion.get(atomic_kpi_name))
+                            target = target if target else None
                             weight = 1
                             if target:
                                 if type(target) is unicode and '%' in target:
@@ -2868,7 +2866,7 @@ class CCRU_SANDKPIToolBox:
                                 result = self.execution_results.get(atomic_kpi_name).get('result')
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
-                                    score = round(result / float(target) * 100)
+                                    score = int(round(result / float(target) * 100))
                                     score = 100 if score > 100 else score
                                 else:
                                     score = 100 if result >= target else 0
@@ -2882,7 +2880,7 @@ class CCRU_SANDKPIToolBox:
                                 count_of_targets += 1
 
                     if count_of_targets:
-                        score = round(sum_of_scores / float(sum_of_weights))
+                        score = int(round(sum_of_scores / float(sum_of_weights)))
                         attributes_for_level2 = self.create_attributes_for_level2_df(
                             {'KPI name Eng': kpi_name}, score, kpi_fk)
                         self.write_to_db_result(attributes_for_level2, 'level2')
@@ -2892,7 +2890,7 @@ class CCRU_SANDKPIToolBox:
                         count_of_kpis += 1
 
             if count_of_kpis:
-                score = round(total_score / float(total_weight))
+                score = int(round(total_score / float(total_weight)))
                 attributes_for_table1 = pd.DataFrame([(EQUIPMENT_SET_NAME,
                                                        self.session_uid,
                                                        self.store_id,
@@ -2909,11 +2907,13 @@ class CCRU_SANDKPIToolBox:
 
                 self.equipment_execution_score = score
 
+            else:
+                self.equipment_execution_score = None
+
         return
 
     def calculate_contract_execution(self, params):
-        if self.osa_score or self.equipment_execution_score:
-
+        if self.osa_score is not None or self.equipment_execution_score is not None:
             self.change_set(CONTRACT_SET_NAME)
 
             total_score = 0
@@ -2929,18 +2929,20 @@ class CCRU_SANDKPIToolBox:
                     if param.get('Formula') == 'OSA score':
                         score = self.osa_score
                         result = score
-                    elif param.get('Formula') == 'OSA score':
-                        score = self.osa_score
+                        target = 100
+                    elif param.get('Formula') == 'Equipment Execution score':
+                        score = self.equipment_execution_score
                         result = score
+                        target = 100
 
-                    if score:
+                    if score is not None:
 
                         kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
                         kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
-                        kpi_name = param.get('KPI name Eng')
+                        atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
                         kpi_weight = param.get('KPI Weight')
 
-                        atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                        kpi_name = param.get('KPI name Eng')
 
                         attributes_for_level3 = self.create_attributes_for_level3_df(
                             {'KPI name Eng': kpi_name}, (score, result, target), kpi_fk, atomic_kpi_fk)
@@ -2955,7 +2957,7 @@ class CCRU_SANDKPIToolBox:
                         count_of_kpis += 1
 
             if count_of_kpis:
-                score = round(total_score / float(total_weight))
+                score = int(round(total_score / float(total_weight)))
                 attributes_for_table1 = pd.DataFrame([(CONTRACT_SET_NAME,
                                                        self.session_uid,
                                                        self.store_id,
@@ -2976,7 +2978,7 @@ class CCRU_SANDKPIToolBox:
         conversion = {}
         for x, row in data.iterrows():
             # conversion[int(row['KPI ID'])] = row['KPI Name']
-            conversion[int(row['KPI Name'])] = row['KPI ID']
+            conversion[row['KPI Name']] = str(row['KPI ID'])
         return conversion
 
     @kpi_runtime()
@@ -3011,8 +3013,12 @@ class CCRU_SANDKPIToolBox:
                 in_assortment_products[anchor_product_fk] = 1
                 if distributed:
                     distributed_products[anchor_product_fk] = 1
+        if in_assortment_products:
+            score = int(round(len(distributed_products.keys()) / float(len(in_assortment_products.keys())) * 100))
+        else:
+            score = None
 
-        self.osa_score = round(len(distributed_products.keys()) / float(len(in_assortment_products.keys())), 2)
+        self.osa_score = score
 
         return
 

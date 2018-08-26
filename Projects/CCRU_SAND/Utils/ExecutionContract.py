@@ -91,8 +91,8 @@ class CCRU_SANDContract:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
-        kpi_weights = zip(list(pd.read_excel(file_path, header=1).columns)[3:],
-                          list(pd.read_excel(file_path, skipcols=3).iloc[1].values))
+        kpi_weights = zip(list(pd.read_excel(file_path, header=2).columns)[3:],
+                          list(pd.read_excel(file_path, skipcols=3).iloc[0].values))
         kpi_weights = {x[0]: x[1] for x in kpi_weights}
 
         raw_data = pd.read_excel(file_path, skiprows=2).fillna('')
@@ -105,10 +105,11 @@ class CCRU_SANDContract:
         if self.END_DATE not in raw_data.columns:
             Log.error('File must contain a {} column header'.format(self.END_DATE))
             return
+        raw_data[self.STORE_NUMBER] = raw_data[self.STORE_NUMBER].astype(str)
         raw_data[self.START_DATE] = raw_data[self.START_DATE].astype(str)
         raw_data[self.END_DATE] = raw_data[self.END_DATE].astype(str)
 
-        data_per_store = {}
+        target_data_new = {}
         store_number = None
         for x, row in raw_data.iterrows():
             store_number = row[self.STORE_NUMBER]
@@ -117,39 +118,69 @@ class CCRU_SANDContract:
                 Log.warning('Store number {} does not exist in the DB'.format(store_number))
                 self.invalid_stores.append(store_number)
                 continue
-            if store_id not in data_per_store.keys():
-                data_per_store[store_id] = []
+            if store_id not in target_data_new.keys():
+                target_data_new[store_id] = []
             row = row.to_dict()
+            row_to_append = {
+                self.STORE_NUMBER: row[self.STORE_NUMBER],
+                self.START_DATE: row[self.START_DATE],
+                self.END_DATE: row[self.END_DATE]
+            }
             for key in row.keys():
                 if key in kpi_weights:
-                    row[key] = (row[key], kpi_weights[key])
-            data_per_store[store_id].append(row)
+                    row_to_append[str(key)] = [row[key], kpi_weights[key]]
+            target_data_new[store_id].append(row_to_append)
 
-        for x, store_id in enumerate(data_per_store.keys()):
+        for x, store_id in enumerate(target_data_new.keys()):
 
-            target_data_raw = self.get_json_file_content(str(store_id))
-            if target_data_raw:
+            data_new = target_data_new[store_id][0]
+            start_date_new = datetime.datetime.strptime(data_new[self.START_DATE], '%Y-%m-%d').date()
+            end_date_new = datetime.datetime.strptime(data_new[self.END_DATE], '%Y-%m-%d').date()
+            if not start_date_new <= end_date_new:
+                Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
+                            .format(store_id, store_number))
+                continue
+
+            target_data = []
+            target_data_cur = self.get_json_file_content(str(store_id))
+            if target_data_cur:
                 Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
                          .format(store_id, store_number))
-
-            target_data = None
-            for data in target_data_raw:
-                start_date = datetime.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
-                end_date = datetime.datetime.now().date() if not data['End Date'] else \
-                    datetime.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
-                if start_date <= self.visit_date <= end_date:
-                    if target_data is None or start_date >= target_data[1]:
-                        target_data = (data, start_date)
+            for data_cur in target_data_cur:
+                try:
+                    start_date_cur = datetime.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
+                    end_date_cur = datetime.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                except:
+                    Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
+                                .format(store_id, store_number))
+                    continue
+                if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
+                    details_new = data_new.copy()
+                    del details_new[self.START_DATE]
+                    del details_new[self.END_DATE]
+                    details_cur = data_cur.copy()
+                    del details_cur[self.START_DATE]
+                    del details_cur[self.END_DATE]
+                    if details_cur == details_new:
+                        data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                    else:
+                        end_date_cur = start_date_new - datetime.timedelta(days=1)
+                        if start_date_cur <= end_date_cur:
+                            data_cur[self.END_DATE] = str(end_date_cur)
+                            target_data += [data_cur]
+                else:
+                    target_data += [data_cur]
+            target_data += [data_new]
 
             with open(self.temp_path, 'wb') as f:
-                f.write(json.dumps(data_per_store[store_id]))
+                f.write(json.dumps(target_data))
             self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-            Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(data_per_store)))
+            Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
 
         if os.path.exists(self.temp_path):
             os.remove(self.temp_path)
 
-        if not self.invalid_stores:
+        if len(self.invalid_stores) > 0:
             Log.warning('The following Store numbers are not invalid: {}'.format(self.invalid_stores))
 
     @staticmethod
