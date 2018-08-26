@@ -99,6 +99,10 @@ class INBEVCIToolBox:
             if set_name == Const.BRAND_FACING_TARGET:
                 if self.attr5 not in params[Const.ATTR5].split(', '):
                     continue
+                start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
+                end_date = '' if params["End date"] == '' else datetime.strptime(params["End date"],'%Y-%m-%d  %H:%M:%S').date()
+                if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
+                    continue
                 result_dict = self.calculate_brand_facing(params)
             elif set_name == Const.BRAND_COMPARISON:
                 result_dict = self.calculate_brand_comparison(params)

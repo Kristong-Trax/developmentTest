@@ -104,7 +104,7 @@ KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
 # scif fields
 EAN_CODE = 'product_ean_code'
 BRAND_NAME = 'brand_name'
-POS_BRAND_FIELD = 'Brand' # in the labels will need to be changed
+POS_BRAND_FIELD = 'Brand'
 PRODUCT_TYPE = 'product_type'
 NUMERIC_FIELDS = ['size']
 MANUFACTURER_NAME = 'manufacturer_name'
@@ -117,9 +117,9 @@ OTHER = 'Other'
 MAX_SCORE = 'Max_Score'
 IRRELEVANT = 'Irrelevant'
 EMPTY = 'Empty'
-KO_ID = 11 # to check
+KO_ID = 11
 CORRECT = 1
-RED_SCORE = 'Red_score_ccbza' # to check
+RED_SCORE = 'Red_score_ccbza'
 GROCERY = 'GROCERY'
 LnT = 'L&T'
 QSR = 'QSR'
@@ -243,14 +243,14 @@ class CCBZA_ToolBox:
 
     def availability_against_competitors_scene(self, atomic_kpi, identifier_result):
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER])}
-        filters['1'] = {atomic_kpi[TYPE1]: atomic_kpi[VALUE1]}
-        filters['2'] = {atomic_kpi[TYPE2]: atomic_kpi[VALUE2]}
-        filters['3'] = {atomic_kpi[TYPE3]: atomic_kpi[VALUE3]}
+        filters['1'] = {atomic_kpi[TYPE1]: self.split_and_strip(atomic_kpi[VALUE1])}
+        filters['2'] = {atomic_kpi[TYPE2]: self.split_and_strip(atomic_kpi[VALUE2])}
+        filters['3'] = {atomic_kpi[TYPE3]: self.split_and_strip(atomic_kpi[VALUE3])}
         if filters[GENERAL_FILTERS]['scene_fk']:
             scene_result = 0
             non_ko_filters = filters[GENERAL_FILTERS].copy()
             non_ko_filters.update(filters['1'])
-            non_ko_filters.update({atomic_kpi[TYPE2]: (atomic_kpi[VALUE2], 0)})
+            non_ko_filters.update({atomic_kpi[TYPE2]: (self.split_and_strip(atomic_kpi[VALUE2]), 0)})
             non_ko_facings = self.scif[self.tools.get_filter_condition(self.scif, **non_ko_filters)][
                 'facings'].sum()
             if non_ko_facings >= 1:
@@ -512,7 +512,6 @@ class CCBZA_ToolBox:
         for devider in deviders:
             regex += str(devider)+'|'
         regex = regex[0:len(regex)-1]
-        print regex
         result_list = re.split(regex, string)
         return result_list
 
@@ -580,7 +579,6 @@ class CCBZA_ToolBox:
                                    self.store_data['additional_attribute_1'].values[0])
         else:
             store = self.store_data['store_type'].values[0]
-        print store
         return store
 
     def calculate_planogram_compliance(self, atomic_kpis_data, identifier_parent):
@@ -770,7 +768,7 @@ class CCBZA_ToolBox:
             custom_score = self.get_pass_fail(score)
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             if max_score:
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=custom_score,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, score=score,
                                                denominator_id=self.store_id, result=score,
                                                identifier_parent=identifier_parent,
                                                target=int(float(max_score)), should_enter=True)
