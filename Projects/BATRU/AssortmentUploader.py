@@ -304,12 +304,15 @@ class BATRUAssortment:
         cursor = self.rds_conn.db.cursor()
         batch_size = 1000
         query_num = 0
+        failed_queries = []
         for query in self.update_queries:
             try:
                 cursor.execute(query)
                 print query
             except Exception as e:
                 Log.info('Updating failed to due to: {}'.format(e))
+                self.rds_conn.db.commit()
+                failed_queries.append(query)
                 self.rds_conn.connect_rds()
                 cursor = self.rds_conn.db.cursor()
                 continue
@@ -329,6 +332,8 @@ class BATRUAssortment:
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
+                self.rds_conn.db.commit()
+                failed_queries.append(query)
                 self.rds_conn.connect_rds()
                 cursor = self.rds_conn.db.cursor()
                 continue
@@ -339,6 +344,28 @@ class BATRUAssortment:
                 cursor = self.rds_conn.db.cursor()
             query_num += 1
         self.rds_conn.db.commit()
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
+        batch_size = 1
+        query_num = 0
+        for query in failed_queries:
+            try:
+                cursor.execute(query)
+                print query
+            except Exception as e:
+                Log.info('Executing query failed due to: {}'.format(e))
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
+                continue
+            if query_num > batch_size:
+                query_num = 0
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
+            query_num += 1
+        self.rds_conn.db.commit()
+
 
 
 if __name__ == '__main__':

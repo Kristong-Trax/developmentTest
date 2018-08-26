@@ -682,22 +682,23 @@ class BATRU_SANDToolBox:
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
-            score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
-            efficiency_score = self.calculate_efficiency()
-            self.get_raw_data()
-            self.set_p2_sku_mobile_results(monitored_sku)
-            if score or score == 0:
-                self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
-                self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
-                                        score_2=format(efficiency_score, '.2f'))
+            if not self.merged_additional_data.empty:
+                score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
+                efficiency_score = self.calculate_efficiency()
+                self.get_raw_data()
+                self.set_p2_sku_mobile_results(monitored_sku)
+                if score or score == 0:
+                    self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
+                    self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
+                                            score_2=format(efficiency_score, '.2f'))
 
     def get_sku_monitored(self, state):
         monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
         states = monitored_skus_raw['State'].tolist()
         if state in states:
-            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus['State'].str.upper() == 'ALL']
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper() == 'ALL']
         monitored_skus = pd.DataFrame()
         for sku in monitored_skus_raw['ean_code'].unique().tolist():
             try:
