@@ -26,26 +26,20 @@ class CCUSSceneToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_type = self.data_provider.store_type
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.poc_number = 1
 
     def scene_score(self):
-        if self.scene_type in Const.BAY_COUNTS:
-            calculate_function = self.calculate_by_bays
-        elif self.scene_type in Const.SCENE_TYPE_COUNTS:
-            calculate_function = self.calculate_by_scene_types
+        if self.scene_type in Const.DICT_WITH_TYPES.keys():
+            for poc in self.match_product_in_scene[Const.DICT_WITH_TYPES[self.scene_type]].unique().tolist():
+                relevant_match_products = self.match_product_in_scene[self.match_product_in_scene[
+                    Const.DICT_WITH_TYPES[self.scene_type]] == poc]
+                self.count_products(relevant_match_products)
+                self.poc_number += 1
         else:
-            Log.warning("The scene_type {} has no definition".format(self.scene_type))
-            return
-        for i, product in self.scif.iterrows():
-            product_fk = product['product_fk']
-            facings = product['facings']
-            pocs = calculate_function(product_fk)
+            Log.warning("scene_type {} is not supported for points of contact".format(self.scene_type))
 
-    @staticmethod
-    def calculate_by_scene_types(product_fk):
-        return 1
-
-    def calculate_by_bays(self, product_fk):
-        relevant_match_product = self.match_product_in_scene[
-            self.match_product_in_scene['product_fk'] == product_fk]
-        return len(relevant_match_product['bay_number'].unique())
-
+    def count_products(self, relevant_match_products):
+        for product_fk in relevant_match_products['product_fk'].unique().tolist():
+            facings = len(relevant_match_products[relevant_match_products['product_fk'] == product_fk])
+            self.common.write_to_db_result(fk=1, numerator_id=product_fk, numerator_result=facings,
+                                           result=self.poc_number, by_scene=True)
