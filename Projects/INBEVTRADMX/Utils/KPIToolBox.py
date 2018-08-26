@@ -376,8 +376,10 @@ class INBEVTRADMXToolBox:
         """
         # get the template
         parsed_template = self.parse_template()
+
         # get all the unique sets
         # sets = parsed_template['KPI Level 1 Name'].unique()
+
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
