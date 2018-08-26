@@ -1,8 +1,8 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Utils.Logging.Logger import Log
 
@@ -30,6 +30,7 @@ from Projects.CCRU_SAND.Sets.Petrol2018 import CCRU_SANDPetrol2018Calculations
 
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -55,15 +56,17 @@ PETROL_2018 = 'Pos 2018 - Petroleum'
 CBS = 'Pos 2018 - MT - Convenience Big'
 CSS = 'Pos 2018 - MT - Convenience Small'
 HYPERMARKET_2018 = 'Pos 2018 - MT - Hypermarket'
-HRC_RESTAURANT_2018 = 'Pos 2018 - HoReCa (Restaurant/Cafe)'
-HRC_COFFEE_2018 = 'Pos 2018 - HoReCa (Cofee /Tea Shops)'
-HRC_BAR_2018 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)'
+HRC_RESTAURANT_2018 = 'Pos 2018 - HoReCa - Restaurant Cafe'
+HRC_COFFEE_2018 = 'Pos 2018 - HoReCa - Coffee Tea Shops'
+HRC_BAR_2018 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
 FAST_FOOD_2018 = 'Pos 2018 - QSR'
 SUPERMARKET_2018 = 'Pos 2018 - MT - Supermarket'
 QSR_2018 = 'Pos 2018 - QSR'
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
+
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         ps_data = PsDataProvider(self.data_provider, self.output)
@@ -111,13 +114,11 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
         elif kpi_set_name == QSR_2018:
             CCRU_SANDQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
         elif test_store.values[0] == "Y":
-            Log.info('Session store "{}" is a test store'.format(
-                tool_box.session_info.store_type))
+            Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
         else:
-            Log.error('Session store "{}" is not set to calculation'.format(
-                tool_box.session_info.store_type))  # todo add all supported store types
+            Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'.format(tool_box.store_id, kpi_set_name))
 
-        self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
+        # self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
 
 # if __name__ == '__main__':
@@ -125,48 +126,41 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['b91e9d71-59aa-4f0f-9ed6-52a9fa3c717a',
-#                     'BA767F58-C9CE-4856-AE02-847BC2C91615',
-#                     '4fe08643-4b59-46be-9721-bf4623da5136',
-#                     '54E4F8D4-EA57-4AAF-9C68-28C72D725C84',
-#                     'ae6167c7-cc11-475f-85bf-6b61e7eea2e7',
-#                     'F00622E0-3804-4FE5-AAF1-16CDADA29254',
-#                     'EA675273-C613-412D-9730-36CDA35CB034',
-#                     'B5301577-9E6B-46A9-A8C3-1A6BF41C960F',
-#                     '1879669b-2e7a-43e6-9822-9dcc5b00ba81',
-#                     '7085C2F1-A4EF-48C5-B6EF-97E3BBA0F776',
-#                     'bb6ba43d-75e3-4e12-8054-29ec40f9da9c',
-#                     '233EED07-1E74-4970-AB0F-CC52CD9A127C',
-#                     '6d4bfa21-23ea-4a4e-82ce-bbff3c22fd8f',
-#                     '6EB7EFC6-943E-4864-8ADB-3DB5D65F6DC7',
-#                     '7d3a0cf4-1968-4c5b-a964-2e794114c19c',
-#                     '1f4058d5-a7ad-40be-bebd-f90bdf366ad6',
-#                     'EBF5206C-B0E9-48B8-9155-C4FFB380E0E1',
-#                     'B2F56C86-D1AC-4DB7-B6CD-8A41DDE78F26',
-#                     '9E9F3FE8-71AF-474E-809C-9990A77A02D4',
-#                     '7B843A7E-3782-449D-A47A-3CAA626B4EB4',
-#                     'E0485117-9044-408B-92DD-8B08056AA32F',
-#                     'AFB3A1A2-EFC2-4155-823D-399009E11197',
-#                     '877BF06D-6AFA-4126-8ABF-8C71847FB8AA',
-#                     'F30CC7B0-DCCF-486B-BB9B-90C5F4A4EA9E',
-#                     'FE897A16-420E-4376-B604-5A6D1E489F8A',
-#                     '736a9b81-2bb2-46fd-b0b7-2b1448742184',
-#                     '1237cb14-b81f-4a97-9660-a02bb4d8db86',
-#                     'c384fe45-9f83-4206-b06a-837974bf5ee2',
-#                     'EE09990A-B36C-47FF-9317-0C1E640F79C2',
-#                     'ac227123-35c2-4aee-93e8-4f4ede858f79',
-#                     'C99F0438-C381-4652-BD84-3BBB3E851396',
-#                     '8B633DE4-BB8D-4DFA-AB68-49B4EC59583F',
-#                     '3b52184e-47ab-4b3a-bb52-15699a256d9a',
-#                     '5F2EFCF2-8C1F-4879-827D-4B87670DBA17',
-#                     '3ef5be60-0b06-4d63-9d62-97c4ba91561a',
-#                     'A6CCC04D-DB3E-477F-A77F-5729ADD7958A',
-#                     '3991c4e9-a768-45e8-8828-9354f764d3c7',
-#                     'c6c4982e-a46d-4374-91b0-16ec1e17cae5',
-#                     'DE603845-D86E-41A6-8359-20E11E0AA9D4',
-#                     '2885176A-1137-4F92-8257-3E00CBBCAD49',
-#                     '57d81ca1-ea86-41c4-b2ff-65683e519e0a',
-#                     '1e8a6a54-14c0-405f-ab4a-552641f4baf8']
+#     session_uids = [
+#                     # '80ACE99D-74B8-4A8B-B054-CC0BBACD69C5',
+#                     # '8849CA37-1472-45D3-B10E-B7B08B2FD07A',
+#                     # '392D0C3C-BDE7-46C2-B0AE-FF460C0A219F',
+#                     # '6F121346-EDE4-48F4-B3E8-779DB6F32B6E',
+#                     # '13585b79-2310-4882-8b93-8aeaaea1300d',
+#                     # 'c5c7869c-c20d-4d53-ba6f-9496041811c9',
+#                     # '2afbc9aa-b187-49f6-a550-dff24748484e',
+#                     # 'edc0638e-8c7e-4d8f-b466-568233b7f6ce',
+#                     # '2da78f81-e600-4753-a46c-2db332daba38',
+#                     'bc1d30b8-7f7a-4be4-91b9-911f20d33c37',
+#                     # 'FC8ACBD2-34A7-4C47-AE50-A1CA5EC30C28',
+#                     # '285A9D0D-6753-4C17-9AD9-DB61493EA0A3',
+#                     # '58F85A60-0C5B-4265-9F85-C93C375677DC',
+#                     # '9616F82D-DB14-4321-B542-FE3CB832F599',
+#                     # '223128E8-955D-42BD-B802-D5883F99D0A7',
+#                     # '0781CFDE-8232-4F8F-A120-4CB3575278E2',
+#                     # '099CF9CB-BA5F-400A-92BE-3FC1D682E712',
+#                     # '197A5218-1D3E-4F85-BF09-4F028911DF6B',
+#                     # '441ECF0A-2D4E-484E-8EB9-A547B79DD62B',
+#                     # 'E20289C8-AF64-433D-9B0C-4069867C2C6D',
+#                     # '4268F9E2-EE1F-408A-92E1-C86DEF0DC2EF',
+#                     'A2B0EE9D-960A-4180-AACD-D60DE46A0AB7',
+#                     # '5db3f7b7-beb1-4895-8f2e-cc40e7b1a8fa',
+#                     # 'ecc12805-dcb4-442a-9335-007d89d09d18',
+#                     # '5e105808-a74c-4280-886d-c7054bc12fa0',
+#                     # '35115FE8-314A-41F0-B280-0D3288F11CF3',
+#                     # 'CD0DD19D-D87E-46B7-A203-1CBFB05EDE29',
+#                     # 'D31058A3-455F-43ED-8499-CFF58960BD42',
+#                     # 'FB712B01-4647-4672-BB3C-B9675848D72A',
+#                     # '0DB9017A-2951-4BD9-9ABC-D949E079EAA8',
+#                     # '3dc2f71f-d1e9-4b0a-8b14-d3b73ce90096',
+#                     # 'e046340a-7a57-4e4c-9a57-2611a2191fa1',
+#                     # '6c155181-e973-4321-b1ec-6106eb66df12',
+# ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()

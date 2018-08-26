@@ -670,6 +670,8 @@ class SurveyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         survey_answer = self.survey_response[self.survey_response['question_text'].isin([survey_question])]['selected_option_text']
         if not survey_answer.empty and (survey_answer.iloc[0] in survey_excepted_answers):
             return 100
+        elif survey_answer.empty:
+            return np.nan
         return 0
 
     @classproperty

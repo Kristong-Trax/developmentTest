@@ -22,7 +22,7 @@ def _parse_arguments():
     return parser.parse_args()
 
 
-class BATRU_SANDBatruAssortment:
+class BATRU_SANDAssortment:
 
     def __init__(self):
         self.parsed_args = _parse_arguments()
@@ -52,7 +52,8 @@ class BATRU_SANDBatruAssortment:
             if invalid_inputs[INVALID_STORES]:
                 Log.warning("The following stores doesn't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
             if invalid_inputs[INVALID_PRODUCTS]:
-                Log.warning("The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+                Log.warning(
+                    "The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
 
     @property
     def rds_connect(self):
@@ -110,15 +111,16 @@ class BATRU_SANDBatruAssortment:
     def parse_assortment_template(self):
         """
         This functions turns the csv into DF
+        It tries to handle all of the possible format situation that I encountered yet (different delimiter and unicode)
         :return: DF that contains the store_number_1 (Outlet ID) and the product_ean_code of the assortments
         """
         data = pd.read_csv(self.file_path, sep='\t')
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
+            data = pd.read_csv(self.file_path)
+        if OUTLET_ID not in data.columns or EAN_CODE not in data.columns:
+            data = pd.read_csv(self.file_path, encoding='utf-7')
         data = data.drop_duplicates(subset=data.columns, keep='first')
         data = data.fillna('')
-        if len(data.columns) != 2:
-            data = pd.read_csv(self.file_path)
-            data = data.drop_duplicates(subset=data.columns, keep='first')
-            data = data.fillna('')
         return data
 
     def set_end_date_for_irrelevant_assortments(self, stores_list):
@@ -131,15 +133,16 @@ class BATRU_SANDBatruAssortment:
             ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
         stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
-        query = self.get_store_deactivation_query(stores_to_remove)
-        self.commit_results([query])
+        if stores_to_remove:
+            query = self.get_store_deactivation_query(stores_to_remove)
+            self.commit_results([query])
         Log.info("Done setting end dates for irrelevant stores")
 
     def upload_store_assortment_file(self):
         raw_data = self.parse_assortment_template()
         data = []
         list_of_stores = raw_data[OUTLET_ID].unique().tolist()
-        self.set_end_date_for_irrelevant_assortments(list_of_stores)
+        # self.set_end_date_for_irrelevant_assortments(list_of_stores)
         for store in list_of_stores:
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
@@ -282,15 +285,14 @@ class BATRU_SANDBatruAssortment:
         query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
         return query
 
-    def connection_ritual(self):
-        """
-        This function connects to the DB and cursor
-        :return: rds connection and cursor connection
-        """
-        self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        return rds_conn, cur
+    # def connection_ritual(self):
+    #     """
+    #     This function connects to the DB and cursor
+    #     :return: rds connection and cursor connection
+    #     """
+    #     rds_conn = ProjectConnector('batru_sand', DbUsers.CalculationEng)
+    #     cur = rds_conn.db.cursor()
+    #     return rds_conn, cur
 
     def commit_results(self, queries):
         """
@@ -298,42 +300,48 @@ class BATRU_SANDBatruAssortment:
         query_num is the number of queires that were executed in the current batch
         After batch_size is reached, the function re-connects the DB and cursor.
         """
-        rds_conn, cur = self.connection_ritual()
-        batch_size = 500
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
+        batch_size = 1000
         query_num = 0
         for query in self.update_queries:
             try:
-                cur.execute(query)
+                cursor.execute(query)
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
+                Log.info('Updating failed to due to: {}'.format(e))
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 continue
             if query_num > batch_size:
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 query_num = 0
-                rds_conn, cur = self.connection_ritual()
-                rds_conn.db.commit()
             query_num += 1
-        rds_conn.db.commit()
-        rds_conn, cur = self.connection_ritual()
+        self.rds_conn.db.commit()
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
         query_num = 0
         for query in queries:
             try:
-                cur.execute(query)
+                cursor.execute(query)
                 print query
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 continue
             if query_num > batch_size:
                 query_num = 0
-                rds_conn, cur = self.connection_ritual()
-                rds_conn.db.commit()
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
             query_num += 1
-        rds_conn.db.commit()
+        self.rds_conn.db.commit()
 
 
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for Batru')
-    BATRU_SANDBatruAssortment().upload_assortment()
+    BATRU_SANDAssortment().upload_assortment()
     # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration

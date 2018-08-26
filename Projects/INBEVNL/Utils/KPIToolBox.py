@@ -118,12 +118,12 @@ class INBEVNLINBEVBEToolBox:
         self.scene_item_length_mm_dict = {}
         self.osa_scene_item_results = {}
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
-        self.must_have_assortment_score_range = {(0, 70): 0, (71, 90): 15, (90, 101): 30}
-        self.linear_share_of_shelf_score_range = {(0, 95): 0, (95, 100): 15, (100, 103): 25,
+        self.must_have_assortment_score_range = {(0, 69.999): 0, (70, 89.999): 15, (90, 101): 30}
+        self.linear_share_of_shelf_score_range = {(0, 94.999): 0, (95, 99.999): 15, (100, 102.999): 25,
                                                   (103, 500): 30}
-        self.osa_score_range = {(0, 95): 0, (95, 97): 10, (90, 101): 15}
-        self.shelf_level_score_range = {(0, 60): 0, (60, 80): 10, (80, 101): 15}
-        self.product_blocking_score_range = {(0, 60): 0, (60, 80): 5, (80, 101): 10}
+        self.osa_score_range = {(0, 94.999): 0, (95, 96.999): 10, (97, 101): 15}
+        self.shelf_level_score_range = {(0, 59.999): 0, (60, 79.999): 10, (80, 101): 15}
+        self.product_blocking_score_range = {(0, 59.999): 0, (60, 79.999): 5, (80, 101): 10}
         self.products_to_add = []
         self.mha_product_results = {}
         self.has_assortment_list = []
@@ -202,7 +202,7 @@ class INBEVNLINBEVBEToolBox:
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVNLINBEVBEQueries.get_oos_messages(self.session_uid)
+        query = INBEVNLINBEVBEQueries.get_oos_messages(self.store_id)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
@@ -294,12 +294,13 @@ class INBEVNLINBEVBEToolBox:
             self.calculate_osa_assortment_and_oos(products_list, ass_prod_present_in_store, object_type,
                                                   falsely_recognized_prods=falsely_recognized_products_list)
 
-            updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-                (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
+            updated_ass_prod_list = self.get_relevant_assortment_product_list(ass_prod_list)
             updated_ass_prod_list.extend(set(self.extra_bundle_leads))
             for delisted_product in self.delisted_products:
                 if delisted_product in updated_ass_prod_list:
                     updated_ass_prod_list.remove(delisted_product)
+                if delisted_product in self.osa_product_dist_dict.keys():
+                    del self.osa_product_dist_dict[delisted_product]
             if not updated_ass_prod_list:
                 set_score = 0
                 target = 0
@@ -308,9 +309,25 @@ class INBEVNLINBEVBEToolBox:
                              float(len(set(updated_ass_prod_list)))) * 100
                 target = len(set(updated_ass_prod_list))
             self.shelf_impact_score_thresholds[OSA] = target
-        self.shelf_impact_score_results[OSA] = round(sum(self.osa_product_dist_dict.values()), 2)
+            self.shelf_impact_score_results[OSA] = round(sum(self.osa_product_dist_dict.values()), 2)
 
         return round(set_score, 2)
+
+    def get_relevant_assortment_product_list(self, ass_prod_list):
+        """
+        This function was created to take care of cases that in the assortment list there are both product and it's
+        lead.
+        :param ass_prod_list: assortment product list from the DB without the delisted products
+        :return: List of the products that need to be in the assortment
+        """
+        relevant_prod = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
+            (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
+        for prod in relevant_prod:
+            lead = self.get_bundle_lead(prod)
+            if lead in relevant_prod and lead != prod:
+                relevant_prod.remove(prod)
+        return relevant_prod
+
 
     def check_on_shelf_availability_on_scene_level(self, set_name):
         """
@@ -378,6 +395,8 @@ class INBEVNLINBEVBEToolBox:
             product_bundle_name = self.get_bundle_lead(product)
             if product_bundle_name:
                 bundle_products = self.get_bundle_products(product)
+                if product != product_bundle_name and product in products_list and product_bundle_name in products_list:
+                    continue
                 if scene:
                     self.osa_scene_item_results[scene, product] = {'in_assortment': 0, 'oos': 1}
                 if product_bundle_name not in products_list:
@@ -405,11 +424,11 @@ class INBEVNLINBEVBEToolBox:
             else:
                 bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products,
                                                                         session_id=self.session_fk)
-            if (bundle_number_of_skus > 0):
+            if bundle_number_of_skus > 0:
                 dist_score = 1
                 assortment_result = 1
                 oos_result = 0
-            elif (product in falsely_recognized_prods):
+            elif product in falsely_recognized_prods:
                 dist_score = 1
                 assortment_result = 1
                 oos_result = 0
@@ -1144,6 +1163,9 @@ class INBEVNLINBEVBEToolBox:
 
                 product_bundle_name = self.get_bundle_lead(product)
                 if product_bundle_name:
+                    if product_bundle_name != product and product in ass_prod_list \
+                            and product_bundle_name in ass_prod_list:
+                        ass_prod_list.remove(product)
                     bundle_products = self.get_bundle_products(product)
                     product = product_bundle_name
                 else:

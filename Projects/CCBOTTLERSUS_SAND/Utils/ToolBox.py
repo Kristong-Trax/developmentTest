@@ -7,8 +7,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCBOTTLERSUS_SAND.Utils.PositionGraph import CCBOTTLERSUS_SANDBCIPositionGraphs
-from Projects.CCBOTTLERSUS_SAND.Utils.GeneralToolBox import CCBOTTLERSUS_SANDBCIGENERALToolBox
+from Projects.CCBOTTLERSUS_SAND.Utils.PositionGraph import BCIPositionGraphs
+from Projects.CCBOTTLERSUS_SAND.Utils.GeneralToolBox import BCIGENERALToolBox
 
 __author__ = 'ortalk'
 
@@ -24,7 +24,7 @@ UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
 
 
-class CCBOTTLERSUS_SANDBCIToolBox:
+class BCIToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     EXCLUDE_EMPTY = 0
@@ -95,7 +95,7 @@ class CCBOTTLERSUS_SANDBCIToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = CCBOTTLERSUS_SANDBCIGENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
+        self.general_tools = BCIGENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
         self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
@@ -104,7 +104,7 @@ class CCBOTTLERSUS_SANDBCIToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = CCBOTTLERSUS_SANDBCIPositionGraphs(self.data_provider)
+            self._position_graphs = BCIPositionGraphs(self.data_provider)
         return self._position_graphs
 
     @property

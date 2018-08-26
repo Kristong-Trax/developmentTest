@@ -867,7 +867,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
                         score = 0
                     else:
-                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
                         score = 0
 
                 # elif p.get('Answer type') == 'String':
@@ -889,7 +889,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
                         score = 100
                     except ValueError as e:
-                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
                         score = 0
 
                 elif p.get('Answer type') == 'Float':
@@ -898,13 +898,13 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
                         score = 100
                     except ValueError as e:
-                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                        self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
                         score = 0
                 else:
                     Log.info('The answer type {} is not defined for surveys'.format(params.get('Answer type')))
                     continue
             else:
-                self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'null'}
+                self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': 'FALSE'}
                 Log.warning('No survey data with survey response code {} for this session'
                             .format(str(int(p.get('Survey Question_ID_code')))))
 
@@ -2003,7 +2003,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
             other_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(others)))
             target_linear_size = self.calculate_layout_size_by_filters(target_filter)
             others_linear_size = self.calculate_layout_size_by_filters(other_filter)
-            if others_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
+            if target_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
                 result = 'TRUE'
                 score = 100
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
