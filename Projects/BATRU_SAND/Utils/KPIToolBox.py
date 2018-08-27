@@ -867,6 +867,32 @@ class BATRU_SANDToolBox:
             except Exception as e:
                 Log.error('{}'.format(e))
 
+    @staticmethod
+    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture):
+        """
+        This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
+        If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
+        :param raw_data: SKU_Lists for sections - sheet data
+        :param section: The current section that been calculated
+        :param state_for_calculation: The state for calculation that has been defined at the beginning of P3
+        :param fixture: The current scene type
+        :return: The relevant product's data for the current section
+        """
+        # Filter by state
+        section_data = raw_data.loc[(raw_data['State'] == state_for_calculation) | (raw_data['State'] == 'ALL')]
+
+        # Filter by fixture
+        section_data = section_data.loc[(raw_data['Fixture'] == fixture) | (section_data['Fixture'] == 'ALL')]
+
+        # Filter by cluster
+        section_data = section_data.loc[
+            (raw_data['additional_attribute_3'] == fixture) | (section_data['additional_attribute_3'] == 'ALL')]
+
+        # Filter by valid Sections
+        section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
+
+        return section_data
+
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
@@ -995,9 +1021,8 @@ class BATRU_SANDToolBox:
                         )]\
                         .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
                         .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
-
-                    specific_section_products_template = sections_products_template_data\
-                        .loc[sections_products_template_data['Section'] == str(int(float(section)))]
+                    specific_section_products_template = self.get_relevant_section_products(
+                        sections_products_template_data, section, state_for_calculation, fixture)
                     section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
 
                     sku_presence_passed = self.check_sku_presence(specific_section_products_template,
