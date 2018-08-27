@@ -17,6 +17,8 @@ class Const(object):
     SCENE_AVAILABILITY = "Availability_scene"
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
     SHEETS_CMA = [KPIS, SOS]
+    TARGETS = "Targets"
+
 
     # generic columns:
     KPI_NAME = "KPI name"

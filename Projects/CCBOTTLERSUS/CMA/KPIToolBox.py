@@ -50,6 +50,8 @@ class CCBOTTLERSUSCMAToolBox:
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
+        self.program = self.store_info['additional_attribute_14'].iloc[0]
+        self.sales_center = self.store_info['additional_attribute_5'].iloc[0]
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
@@ -299,7 +301,17 @@ class CCBOTTLERSUSCMAToolBox:
 
     # SOS majority:
 
-    def get_sos_targets(self, store):
+    def get_sos_targets(self, kpi_name):
+        # targets_template = self.templates[Const.TARGETS]
+        # store_targets = targets_template.loc[(targets_template['program'] == self.program) &
+        #                                      (targets_template['sales center'] == self.sales_center) &
+        #                                      (targets_template['channel'] == self.store_type)]
+        # filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
+        # if not filtered_targets_to_kpi.empty:
+        #     target = filtered_targets_to_kpi[Const.TARGET].values[0]
+        # else:
+        #     target = None
+        # return target
         return False
 
     def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
