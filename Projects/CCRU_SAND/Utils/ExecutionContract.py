@@ -1,30 +1,34 @@
-
 import os
 import json
-import pandas as pd
 import argparse
-
+import datetime
+import pandas as pd
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 
-from Projects.CCRU_SAND.Utils.TopSKU import CCRU_SANDTopSKUAssortment
-
 
 __author__ = 'Nimrod'
 
+
+PROJECT = 'ccru-sand'
 BUCKET = 'traxuscalc'
-CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
+CLOUD_BASE_PATH = 'CCRU_SAND/KPIData/Contract/'
 TEMPLATES_TEMP_PATH = os.getcwd()
 
 
 class CCRU_SANDContract:
+    STORE_NUMBER = 'Store Number'
+    START_DATE = 'Start Date'
+    END_DATE = 'End Date'
 
     def __init__(self, rds_conn=None):
-        self.static_data_extractor = CCRU_SANDTopSKUAssortment()
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
+        self.stores = {}
         self.invalid_stores = []
 
     def __del__(self):
@@ -36,6 +40,37 @@ class CCRU_SANDContract:
         if not hasattr(self, '_amz_conn'):
             self._amz_conn = StorageFactory.get_connector(BUCKET)
         return self._amz_conn
+
+    @property
+    def rds_conn(self):
+        if not hasattr(self, '_rds_conn'):
+            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+        try:
+            pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
+        except Exception as e:
+            self._rds_conn.disconnect_rds()
+            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+        return self._rds_conn
+
+    @property
+    def store_data(self):
+        if not hasattr(self, '_store_data'):
+            query = "select pk as store_fk, store_number_1 as store_number from static.stores"
+            self._store_data = pd.read_sql_query(query, self.rds_conn.db)
+        return self._store_data
+
+    def get_store_fk(self, store_number):
+        store_number = str(store_number)
+        if store_number in self.stores:
+            store_fk = self.stores[store_number]
+        else:
+            store_fk = self.store_data[self.store_data['store_number'] == store_number]
+            if not store_fk.empty:
+                store_fk = store_fk['store_fk'].values[0]
+                self.stores[store_number] = store_fk
+            else:
+                store_fk = None
+        return store_fk
 
     def get_json_file_content(self, file_name):
         """
@@ -52,62 +87,117 @@ class CCRU_SANDContract:
         os.remove(self.temp_path)
         return data
 
-    def parse_and_upload_file(self, skiprows=2):
+    def parse_and_upload_file(self):
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
-        kpi_weights = self.get_kpi_weights(file_path, kpi_row=skiprows, weight_row=skiprows-1)
-        raw_data = pd.read_excel(file_path, skiprows=skiprows).fillna('')
-        raw_data['Start Date'] = raw_data['Start Date'].astype(str)
-        raw_data['End Date'] = raw_data['End Date'].astype(str)
-        if self.static_data_extractor.STORE_NUMBER not in raw_data.columns:
-            Log.warning('File must '
-                        'contain a {} header'.format(self.static_data_extractor.STORE_NUMBER))
-        data_per_store = {}
+
+        kpi_weights = zip(list(pd.read_excel(file_path, header=2).columns)[3:],
+                          list(pd.read_excel(file_path, skipcols=3).iloc[0].values))
+        kpi_weights = {x[0]: x[1] for x in kpi_weights}
+
+        raw_data = pd.read_excel(file_path, skiprows=2).fillna('')
+        if self.STORE_NUMBER not in raw_data.columns:
+            Log.error('File must contain a {} column header'.format(self.STORE_NUMBER))
+            return
+        if self.START_DATE not in raw_data.columns:
+            Log.error('File must contain a {} column header'.format(self.START_DATE))
+            return
+        if self.END_DATE not in raw_data.columns:
+            Log.error('File must contain a {} column header'.format(self.END_DATE))
+            return
+        raw_data[self.STORE_NUMBER] = raw_data[self.STORE_NUMBER].astype(str)
+        raw_data[self.START_DATE] = raw_data[self.START_DATE].astype(str)
+        raw_data[self.END_DATE] = raw_data[self.END_DATE].astype(str)
+
+        target_data_new = {}
+        store_number = None
         for x, row in raw_data.iterrows():
-            store_number = row[self.static_data_extractor.STORE_NUMBER]
-            store_id = self.static_data_extractor.get_store_fk(store_number)
+            store_number = row[self.STORE_NUMBER]
+            store_id = self.get_store_fk(store_number)
             if store_id is None:
-                Log.warning('Store number {} does not exist'.format(store_number))
+                Log.warning('Store number {} does not exist in the DB'.format(store_number))
                 self.invalid_stores.append(store_number)
                 continue
-            if store_id not in data_per_store.keys():
-                data_per_store[store_id] = []
+            if store_id not in target_data_new.keys():
+                target_data_new[store_id] = []
             row = row.to_dict()
+            row_to_append = {
+                self.STORE_NUMBER: row[self.STORE_NUMBER],
+                self.START_DATE: row[self.START_DATE],
+                self.END_DATE: row[self.END_DATE]
+            }
             for key in row.keys():
                 if key in kpi_weights:
-                    row[key] = (row[key], kpi_weights[key])
-            data_per_store[store_id].append(row)
+                    row_to_append[str(key)] = [row[key], kpi_weights[key]]
+            target_data_new[store_id].append(row_to_append)
 
-        for x, store_id in enumerate(data_per_store.keys()):
+        for x, store_id in enumerate(target_data_new.keys()):
+
+            data_new = target_data_new[store_id][0]
+            start_date_new = datetime.datetime.strptime(data_new[self.START_DATE], '%Y-%m-%d').date()
+            end_date_new = datetime.datetime.strptime(data_new[self.END_DATE], '%Y-%m-%d').date()
+            if not start_date_new <= end_date_new:
+                Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
+                            .format(store_id, store_number))
+                continue
+
+            target_data = []
+            target_data_cur = self.get_json_file_content(str(store_id))
+            if target_data_cur:
+                Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
+                         .format(store_id, store_number))
+            for data_cur in target_data_cur:
+                try:
+                    start_date_cur = datetime.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
+                    end_date_cur = datetime.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                except:
+                    Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
+                                .format(store_id, store_number))
+                    continue
+                if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
+                    details_new = data_new.copy()
+                    del details_new[self.START_DATE]
+                    del details_new[self.END_DATE]
+                    details_cur = data_cur.copy()
+                    del details_cur[self.START_DATE]
+                    del details_cur[self.END_DATE]
+                    if details_cur == details_new:
+                        data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                    else:
+                        end_date_cur = start_date_new - datetime.timedelta(days=1)
+                        if start_date_cur <= end_date_cur:
+                            data_cur[self.END_DATE] = str(end_date_cur)
+                            target_data += [data_cur]
+                else:
+                    target_data += [data_cur]
+            target_data += [data_new]
+
             with open(self.temp_path, 'wb') as f:
-                f.write(json.dumps(data_per_store[store_id]))
+                f.write(json.dumps(target_data))
             self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-            Log.info('File for store {} was uploaded {}/{}'.format(store_id, x+1, len(data_per_store)))
+            Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
+
         if os.path.exists(self.temp_path):
             os.remove(self.temp_path)
-        Log.warning('The following stores were not invalid: {}'.format(self.invalid_stores))
 
-    @staticmethod
-    def get_kpi_weights(file_path, kpi_row, weight_row):
-        conversion = zip(list(pd.read_excel(file_path, header=kpi_row).columns)[3:],
-                         list(pd.read_excel(file_path, skipcols=3).iloc[weight_row-1].values))
-        conversion = {x[0]: x[1] for x in conversion}
-        return conversion
+        if len(self.invalid_stores) > 0:
+            Log.warning('The following Store numbers are not invalid: {}'.format(self.invalid_stores))
 
     @staticmethod
     def parse_arguments():
         """
-        This function gets the arguments from the command line / configuration in case of a local run and manage them.
+        This function gets the arguments from the command line / configuration in case of a local run and manages them.
+        To run it locally just copy: -e prod --file **your file path** to the configuration parameters
         :return:
         """
-        parser = argparse.ArgumentParser(description='Execution Contract CCRU-SAND')
+        parser = argparse.ArgumentParser(description='Execution Contract')
         parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
-        parser.add_argument('--file', type=str, required=True, help='The assortment template')
+        parser.add_argument('--file', type=str, required=True, help='The targets template')
         return parser.parse_args()
 
 
 if __name__ == '__main__':
-    # LoggerInitializer.init('ccru_sand')
-    Log.init('ccru-sand', 'Execution Contract')
+    # LoggerInitializer.init(PROJECT)
+    Log.init(PROJECT, 'CCRU_SAND Execution Contract targets upload')
     Config.init()
     CCRU_SANDContract().parse_and_upload_file()

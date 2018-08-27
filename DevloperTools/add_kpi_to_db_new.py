@@ -65,18 +65,27 @@ class AddKPIs():
                           ('300016',  'SANOFI_MSL_COMPLIANCE_BY_SKU', 'MSL Compliance By SKU', '1.0.0', '1', '999', '1990-01-01', '2150-10-15', 'PS Customer Specific', '3')"""
 
         cur = self.aws_conn.db.cursor()
-        cur.execute(kpi_calculation_stage_query)
-        self.aws_conn.db.commit()
-        cur.execute(kpi_entity_type_query)
-        self.aws_conn.db.commit()
-        # cur.execute(level2_query)
-        # self.aws_conn.db.commit()
+        try:
+            cur.execute(kpi_calculation_stage_query)
+            self.aws_conn.db.commit()
+        except:
+            pass
+        try:
+            cur.execute(kpi_entity_type_query)
+            self.aws_conn.db.commit()
+        except:
+            pass
+        try:
+            cur.execute(level2_query)
+            self.aws_conn.db.commit()
+        except:
+            pass
 
 
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['pngro']:
+    for project in ['sanofing']:
         print 'start project: ' + str(project)
         kpi = AddKPIs(project)
         kpi.add_kpi_level_2()

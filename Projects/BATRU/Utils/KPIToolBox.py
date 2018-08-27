@@ -584,18 +584,18 @@ class BATRUToolBox:
 
         if not merged_pricing_data.empty:
             try:
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].first()
             except Exception as e:
                 merged_pricing_data['price_value'] = 0
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].first()
                 Log.info('There are missing numeric values: {}'.format(e))
 
         if not merged_dates_data.empty:
             merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
             try:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].first()
             except Exception as e:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].first()
                 Log.info('There is a dates integrity issue: {}'.format(e))
         else:
             merged_dates_data['fixed_date'] = None
