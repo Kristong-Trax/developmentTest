@@ -37,7 +37,7 @@ TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
 
-class PNGCN_SANDPNGShareOfDisplay(object):
+class ShareOfDisplay(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
         self.scene_id = scene_id
@@ -608,7 +608,7 @@ class PNGCN_SANDPNGShareOfDisplay(object):
 
 
 def calculate_share_of_display(project_conn, session, data_provider=None):
-    PNGCN_SANDPNGShareOfDisplay(project_conn, session, data_provider).process_session()
+    ShareOfDisplay(project_conn, session, data_provider).process_session()
 
 # if __name__ == '__main__':
 #     # Config.init()
