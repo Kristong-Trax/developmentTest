@@ -18,7 +18,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
-__Author__ = 'Dudi_S'
+__Author__ = 'Dudi_s'
 
 CUBE = 'Cube'
 NON_BRANDED_CUBE = 'Non branded cube'

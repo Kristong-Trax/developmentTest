@@ -39,7 +39,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     data_provider = KEngineDataProvider(project_name)
 #     session = '60393d16-f309-4f74-8708-7fc89e211216'
 #
-#     scenes = [5384339]
+#     scenes = [5384339, ]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()
