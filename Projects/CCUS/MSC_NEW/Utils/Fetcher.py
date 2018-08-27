@@ -50,6 +50,6 @@ class MSC_NEWQueries(object):
     @staticmethod
     def get_product_atts():
         return """
-            SELECT att3, att4, pk as item_id from
+            SELECT att3, att4, pk as product_fk from
             static.product
         """
