@@ -52,8 +52,8 @@ class MSC_NEWGENERALToolBox:
 
         query = MSC_NEWQueries.get_product_atts()
         product_att3 = pd.read_sql_query(query, self.rds_conn.db)
-        self.scif = self.scif.merge(product_att3, how='left', left_on='item_id',
-                                    right_on='item_id')
+        self.scif = self.scif.merge(product_att3, how='left', left_on='product_fk',
+                                    right_on='product_fk')
 
 
     @property
