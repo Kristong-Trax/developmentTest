@@ -15,9 +15,9 @@ class Const(object):
     SKU_EXCLUSION = "SKU_Exclusion"
     CONVERTERS = "converters"
     SCENE_AVAILABILITY = "Availability_scene"
-    SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_CMA = [KPIS, SOS]
     TARGETS = "Targets"
+    SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
+    SHEETS_CMA = [KPIS, SOS, TARGETS]
 
 
     # generic columns:

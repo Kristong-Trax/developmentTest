@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.6.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -56,6 +56,7 @@ class CCBOTTLERSUSCMAToolBox:
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
+        self.total_score = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
 
@@ -69,7 +70,8 @@ class CCBOTTLERSUSCMAToolBox:
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        # self.choose_and_write_results()
+        self.write_to_db_result(
+            self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -99,6 +101,8 @@ class CCBOTTLERSUSCMAToolBox:
                 result, score, target = function(kpi_line, relevant_scif, isnt_dp, general_filters)
         else:
             pass
+        if score > 0:
+            self.total_score += 1
         self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
 
     def calculate_manual_kpi(self, main_line):
@@ -267,7 +271,7 @@ class CCBOTTLERSUSCMAToolBox:
         all the DP products out of the numerator.
         :return: boolean
         """
-        # kpi_name = kpi_line[Const.KPI_NAME]
+        kpi_name = kpi_line[Const.KPI_NAME]
         relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         den_type = kpi_line[Const.DEN_TYPES_1]
         den_value = kpi_line[Const.DEN_VALUES_1].split(',')
@@ -277,7 +281,7 @@ class CCBOTTLERSUSCMAToolBox:
         # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
         if isnt_dp:
             general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
-        target = self.get_sos_targets(self.store_id)
+        target = self.get_sos_targets(kpi_name)
         general_filters[den_type] = den_value
         if kpi_line[Const.DEN_TYPES_2]:
             den_type_2 = kpi_line[Const.DEN_TYPES_2]
@@ -293,26 +297,26 @@ class CCBOTTLERSUSCMAToolBox:
         sos_value = round(sos_value, 2)
 
         if target:
-            score = (sos_value / float(target))*100 if sos_value else 0
+            score = 1 if sos_value >= target*100 else 0
         else:
-            score = sos_value
+            score = 1
             target = 0
         return sos_value, score, target
 
     # SOS majority:
 
     def get_sos_targets(self, kpi_name):
-        # targets_template = self.templates[Const.TARGETS]
-        # store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-        #                                      (targets_template['sales center'] == self.sales_center) &
-        #                                      (targets_template['channel'] == self.store_type)]
-        # filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
-        # if not filtered_targets_to_kpi.empty:
-        #     target = filtered_targets_to_kpi[Const.TARGET].values[0]
-        # else:
-        #     target = None
-        # return target
-        return False
+        targets_template = self.templates[Const.TARGETS]
+        store_targets = targets_template.loc[(targets_template['program'] == self.program) &
+                                             (targets_template['sales center'] == self.sales_center) &
+                                             (targets_template['channel'] == self.store_type)]
+        filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
+        if not filtered_targets_to_kpi.empty:
+            target = filtered_targets_to_kpi[Const.TARGET].values[0]
+        else:
+            target = None
+        return target
+        # return False
 
     def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
         """
