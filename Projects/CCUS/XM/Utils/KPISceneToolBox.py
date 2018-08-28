@@ -19,20 +19,20 @@ class CCUSSceneToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.scene_type = self.templates['template_display_name'].iloc[0]
+        self.template_group = self.templates['template_group'].iloc[0]
         self.scene_id = self.scene_info['scene_fk'][0]
         self.kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POC)
         self.poc_number = 1
 
     def scene_score(self):
-        if self.scene_type in Const.DICT_WITH_TYPES.keys():
-            for poc in self.match_product_in_scene[Const.DICT_WITH_TYPES[self.scene_type]].unique().tolist():
+        if self.template_group in Const.DICT_WITH_TYPES.keys():
+            for poc in self.match_product_in_scene[Const.DICT_WITH_TYPES[self.template_group]].unique().tolist():
                 relevant_match_products = self.match_product_in_scene[self.match_product_in_scene[
-                    Const.DICT_WITH_TYPES[self.scene_type]] == poc]
+                    Const.DICT_WITH_TYPES[self.template_group]] == poc]
                 self.count_products(relevant_match_products)
                 self.poc_number += 1
         else:
-            Log.warning("scene_type {} is not supported for points of contact".format(self.scene_type))
+            Log.warning("scene_type {} is not supported for points of contact".format(self.template_group))
 
     def count_products(self, relevant_match_products):
         for product_fk in relevant_match_products['product_fk'].unique().tolist():

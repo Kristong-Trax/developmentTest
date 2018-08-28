@@ -15,7 +15,6 @@ class SceneGenerator:
         self.common = Common(data_provider)
         self.scene_tool_box = CCUSSceneToolBox(self.data_provider, self.output, self.common)
 
-
     @log_runtime('Total Calculations', log_start=True)
     def scene_score(self):
         """
@@ -26,5 +25,4 @@ class SceneGenerator:
             Log.warning('Match product in scene is empty for this scene')
         else:
             self.scene_tool_box.scene_score()
-            # self.common.commit_results_data(result_entity='scene')
-
+            self.common.commit_results_data(result_entity='scene')
