@@ -1,5 +1,5 @@
 import pandas as pd
-
+import os
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
@@ -17,6 +17,11 @@ class Consts(object):
     ATOMIC_NAME = 'KPI Level 3 Name'
     ATOMIC_DISPLAY_TEXT = 'KPI Level 3 Display Text'
     ATOMIC_WEIGHT = 'KPI Level 3 Weight'
+    SORTING = 'Sorting'
+    KPI_ENG_NAME = 'KPI name Eng'
+    KPI_RUS_NAME = 'KPI name Rus'
+    CHANNEL = 'Channel'
+    PRESENTATION_ORDER = 'presentation_order'
 
 
 class AddKPIs(Consts):
@@ -44,7 +49,7 @@ class AddKPIs(Consts):
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = """
-                select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
+                select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk, api.presentation_order,
                        kpi.display_text as kpi_name, kpi.pk as kpi_fk,
                        kps.name as kpi_set_name, kps.pk as kpi_set_fk
                 from static.atomic_kpi api
@@ -53,6 +58,106 @@ class AddKPIs(Consts):
                 """
         kpi_static_data = pd.read_sql_query(query, self.aws_conn.db)
         return kpi_static_data
+
+    @staticmethod
+    def get_relevant_file_for_set(set_name, data_path):
+        """
+
+        :param set_name: Channel attribute from self.data
+        :param data_path: The directory with the project's templates
+        :return: The relevant filename from the directory
+        """
+        words_to_include = list(['2018', 'POS'])
+        words_to_include.append(set_name.upper())
+        for filename in os.listdir(data_path):
+            if 'SPIRITS' in filename.upper():
+                continue
+            if all(word in filename.upper() for word in words_to_include):
+                return filename
+        Log.error("Couldn't find relevant file for the current set name = {}").format(set_name)
+        return None
+
+    def get_relevant_kpi_data_and_template_data(self):
+        """
+        This functions responsible to access and filter only the relevant data.
+        In order to get the template name it iterates the relevant directory (PROD / SAND) and extract the relevant name
+        In order to get the set name it iterates the relevant unique set name.
+        :return: A tuple of the relevant KPI data and relevant project's template data
+        """
+        if self.project == 'ccru-sand':
+            dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+        else:
+            dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'CCRU', 'Data')
+
+        # Get the relevant project template
+        template_channel_name = self.data[Consts.CHANNEL].values[0]
+        if not template_channel_name:
+            Log.error("The isn't a correct set in Channel attribute in the upload template.")
+            return pd.DataFrame.empty,  pd.DataFrame.empty
+        project_template_name = self.get_relevant_file_for_set(template_channel_name, dir_path)
+        if not project_template_name:
+            return pd.DataFrame.empty, pd.DataFrame.empty
+        path = os.path.join(dir_path, project_template_name)
+        project_current_data = pd.read_excel(path)
+
+        # Get the relevant set name
+        sets_2018 = [set_name for set_name in self.kpi_static_data['kpi_set_name'].unique() if '2018' in set_name]
+        current_set = [set_name for set_name in sets_2018 if
+                       template_channel_name in set_name and 'SPIRITS' not in set_name.upper()]
+        if not current_set:
+            Log.error("Couldn't find relevant set for the current channel name = {}").format(template_channel_name)
+            return pd.DataFrame.empty, pd.DataFrame.empty
+        current_set = current_set[0]
+        # Get the relevant KPI data and project template data
+        relevant_kpi_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == current_set]
+        filtered_project_data = project_current_data[
+            project_current_data[Consts.SORTING].isin(self.data[Consts.SORTING].unique().tolist())]
+        return relevant_kpi_data, filtered_project_data
+
+    def update_atomic_kpi_data(self):
+        """
+        This function updates the kpi name, description and display_text according to the template.
+        It reads the relevant set template, filters the relevant rows that need to be change and than collect and
+        execute the queries in the DB.
+        ** Note 1: It doesn't update the template itself!! **
+        ** Note 2: Use regular excel without any filters!!
+        """
+        queries_to_execute = []
+        update_query = "UPDATE static.atomic_kpi SET name='{}', description='{}', display_text='{}' where pk={};"
+        # Get the data
+        relevant_kpi_data, filtered_project_data = self.get_relevant_kpi_data_and_template_data()
+        if relevant_kpi_data.empty:
+            return
+
+        # Iterate over the uploaded template and create the queries
+        for i in xrange(len(self.data)):
+            row = self.data.iloc[i]
+            new_name = row[Consts.KPI_ENG_NAME].replace('\n', '')
+            display = row[Consts.KPI_RUS_NAME].replace('\n', '')
+            presentation_order = row[Consts.SORTING]
+            old_atomic_df = relevant_kpi_data[relevant_kpi_data[Consts.PRESENTATION_ORDER] == presentation_order]
+            if len(old_atomic_df) > 1:
+                old_atomic_name = filtered_project_data[filtered_project_data[Consts.SORTING] == presentation_order][
+                    Consts.KPI_ENG_NAME].values[0]
+                try:
+                    old_atom_fk = old_atomic_df[old_atomic_df['atomic_kpi_name'] == old_atomic_name][
+                        'atomic_kpi_fk'].values[0]
+                    queries_to_execute.append(
+                        update_query.format(new_name, new_name, display.encode('utf-8'), old_atom_fk))
+                except Exception as e:
+                    print "No KPI defines for name = {}.".format(old_atomic_name)
+                    continue
+            else:
+                old_atom_fk = old_atomic_df['atomic_kpi_fk'].values[0]
+                queries_to_execute.append(update_query.format(new_name, new_name, display.encode('utf-8'), old_atom_fk))
+
+        # Execute the queries
+        if queries_to_execute:
+            cur = self.aws_conn.db.cursor()
+            for query in queries_to_execute:
+                cur.execute(query)
+                print query
+        self.aws_conn.db.commit()
 
     def update_kpi_weights(self):
         """
@@ -197,8 +302,8 @@ if __name__ == '__main__':
     # dbusers_mock.return_value = docker_user
     # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
     # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
-    kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for Contract Execution.xlsx')
-    kpi.add_kpis_from_template()
+    # kpi = AddKPIs('ccru', '/home/idanr/Desktop/super.xlsx')
+    # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
     # kpi.update_atomic_weights()
 
