@@ -86,13 +86,19 @@ class DIAGEOAU_SANDDIAGEOConsts(object):
                              'Category': 'category',
                              'display': 'display_name'}
 
-    KPI_SETS = ['MPA', 'Local MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
-                'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring']
-    KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
-                                      'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA']
+    # KPI_SETS = ['MPA', 'Local MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
+    #             'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring']
+    KPI_SETS = [ 'Secondary', 'Relative Position', 'Brand Blocking',
+                 'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring']
+    KPI_SETS_WITH_PERCENT_AS_SCORE = ['Visible to Customer', 'Relative Position',
+                                      'Brand Blocking', 'Activation Standard', 'Survey Questions']
+
+    # KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
+    #                                   'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA']
     KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
+
 
 class DIAGEOAU_SANDDIAGEOToolBox(DIAGEOAU_SANDDIAGEOConsts):
 

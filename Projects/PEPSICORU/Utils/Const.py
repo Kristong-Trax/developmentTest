@@ -20,7 +20,7 @@ class Const(object):
     BRAND = 'brand'
     TEMPLATE = 'template'
     BRAND_NAME = 'brand_name'
-    MAIN_SHELF = 'Main Shelf'
+    MAIN_SHELF = 'MAIN SHELF'
     MAIN_SHELF_SNACKS = 'Main Shelf Snacks'
     MAIN_SHELF_BEVERAGES = 'Main Shelf Beverages'
     MAIN_SHELF_JUICES = 'Main Shelf Juices'
