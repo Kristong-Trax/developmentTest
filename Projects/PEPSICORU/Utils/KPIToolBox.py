@@ -351,7 +351,7 @@ class PEPSICORUToolBox:
         This function calculates the KPI results.
         """
         self.calculate_share_of_shelf()
-        self.calculate_count_of_display()
+        # self.calculate_count_of_display()
         self.main_assortment_calculation()
 
     ###################################### Plaster ######################################
