@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -48,6 +49,7 @@ class PEPSICORUToolBox:
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.toolbox = GENERALToolBox(data_provider)
+        self.assortment = Assortment(self.data_provider, self.output, common=self.commonv1)
         self.main_shelves = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
                              Const.MAIN_SHELF in scene_type.upper()]
 
@@ -344,14 +346,13 @@ class PEPSICORUToolBox:
                                            identifier_parent=parent_identifier, context_id=scene_type_fk,
                                            result=scene_type_score, score=99999)
 
-
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
         self.calculate_share_of_shelf()
         self.calculate_count_of_display()
-        Assortment(self.data_provider, self.output, common=self.commonv1).main_assortment_calculation()
+        self.main_assortment_calculation()
 
     ###################################### Plaster ######################################
 
@@ -407,3 +408,47 @@ class PEPSICORUToolBox:
             return 0, 0, 0
         else:
             return numerator_counter, denominator_counter, (numerator_counter / float(denominator_counter))
+
+    def main_assortment_calculation(self):
+        """
+        This function calculates the KPI results.
+        I inserted score 4 or 5 in order to present Y or N in the mobile report.
+        """
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        for result in lvl3_result.itertuples():
+            score = result.in_store * 100
+            score = 4 if score > 1 else 5
+            self.commonv1.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store, score,
+                                                        result.assortment_group_fk, 1, score)
+        if not lvl3_result.empty:
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and result.group_target_date <= self.assortment.current_date:
+                    denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.commonv1.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_group_fk,
+                                                            result.passes,
+                                                            res, result.assortment_super_group_fk, denominator_res,
+                                                            score)
+            if not lvl2_result.empty:
+                lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
+                for result in lvl1_result.itertuples():
+                    denominator_res = result.super_group_target
+                    if not result.super_group_target:
+                        denominator_res = result.total
+                    res = np.divide(float(result.passes), float(denominator_res)) * 100
+                    if res >= 100:
+                        score = 100
+                    else:
+                        score = 0
+                    self.commonv1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl1,
+                                                                numerator_id=result.assortment_super_group_fk,
+                                                                numerator_result=result.passes,
+                                                                denominator_result=denominator_res,
+                                                                result=res, score=score)
+        return
