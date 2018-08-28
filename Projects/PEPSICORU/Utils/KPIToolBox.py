@@ -283,7 +283,7 @@ class PEPSICORUToolBox:
                                            identifier_result=level_4_linear_brand_identifier,
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
-            return
+        return
 
     def calculate_count_of_display(self):
         """
