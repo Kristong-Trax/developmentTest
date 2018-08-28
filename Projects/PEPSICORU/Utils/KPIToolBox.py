@@ -5,7 +5,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.PEPSICORU_SAND.Utils.Const import Const
+from Projects.PEPSICORU.Utils.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as CommonV1
 
@@ -49,7 +49,7 @@ class PEPSICORUToolBox:
         self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.toolbox = GENERALToolBox(data_provider)
         self.main_shelves = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
-                             Const.MAIN_SHELF in scene_type]
+                             Const.MAIN_SHELF in scene_type.upper()]
 
     def get_main_shelf_by_category(self, current_category):
         """
@@ -284,48 +284,7 @@ class PEPSICORUToolBox:
                                            identifier_result=level_4_linear_brand_identifier,
                                            identifier_parent=parent_identifier,
                                            denominator_result=denominator_score, result=result, score=result)
-        return
-
-        # Level 4
-        brands_list = self.scif[
-            (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & self.scif['template_name'].isin(self.main_shelves)][
-            Const.BRAND_NAME].unique().tolist()
-        if None in brands_list:
-            brands_list.remove(None)
-        for brand in brands_list:
-            relevant_category = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.CATEGORY)
-            relevant_sub_cat_fk = self.get_unique_attribute_from_filters(Const.BRAND_NAME, brand, Const.SUB_CATEGORY_FK)
-            filter_brand_param = {Const.BRAND_NAME: brand, Const.MANUFACTURER_NAME: Const.PEPSICO}
-            general_filters = {Const.CATEGORY: relevant_category,
-                               Const.TEMPLATE_NAME: self.get_main_shelf_by_category(relevant_category)}
-            current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand)
-            # Calculate Facings SOS
-            facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(sos_filters=filter_brand_param,
-                                                                                    **general_filters)
-            level_4_facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
-                                                                          brand_fk=current_brand_fk)
-            parent_identifier = self.common.get_dictionary(
-                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
-            self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
-                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
-                                           identifier_result=level_4_facings_brand_identifier,
-                                           identifier_parent=parent_identifier,
-                                           denominator_result=denominator_score, result=result, score=result)
-            # Calculate Linear SOS
-            linear_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_BRAND_SOS)
-            numerator_score, denominator_score, result = self.calculate_facings_sos(filter_brand_param,
-                                                                                    **general_filters)
-            level_4_linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
-                                                                         brand_fk=current_brand_fk)
-            parent_identifier = self.common.get_dictionary(
-                kpi_fk=self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_SUB_CATEGORY_SOS), sub_cat=relevant_sub_cat_fk)
-            self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
-                                           numerator_result=numerator_score, denominator_id=relevant_sub_cat_fk,
-                                           identifier_result=level_4_linear_brand_identifier,
-                                           identifier_parent=parent_identifier,
-                                           denominator_result=denominator_score, result=result, score=result)
-        return
+            return
 
     def calculate_count_of_display(self):
         """
