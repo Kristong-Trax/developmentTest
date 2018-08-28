@@ -31,15 +31,12 @@ KPS_RESULT = 'report.kps_results'
 SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
+
 class MARSUAEToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
 
-    CCIT_MANU = 'HBC Italia'
-    MULTIPLIER_SHEET = 'Multiplier'
-    STORE_ATT_1 = 'Store Att1'
-    SCORE_MULTIPLIER = 'Score multiplier'
     NON_KPI = 0
     ATOMIC_KPI_NAME = 'atomic_kpi_name'
     KPI_NAME = 'kpi_name'
@@ -49,6 +46,7 @@ class MARSUAEToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = CommonV2(self.data_provider)
+        self.data_provider.common = self.common
         self.commonV1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid

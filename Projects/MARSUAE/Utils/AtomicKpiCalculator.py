@@ -1,7 +1,9 @@
-
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.KpiStructure.KpiBaseCalculation import KpiBaseCalculation
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from Trax.Utils.DesignPatterns.Decorators import classproperty
+
+# from Projects.MARSUAE.Utils.Const import Const
 
 __author__ = 'israel'
 
@@ -23,7 +25,16 @@ class LinearSOSCalculation(KpiBaseCalculation):
         return 'linear SOS'
 
     def calculate(self, params):
+        common = self._data_provider.common
+        numerator_filters = {params['numerator type']: params['numerator value']}
+        general_filters = {params['denominator type']: params['denominator value']}
+        kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'])
 
+        result = SOS(self._data_provider, output=None).calculate_linear_share_of_shelf(sos_filters=numerator_filters,
+                                                                                       **general_filters)
+        common.write_to_db_result(fk=kpi_fk, result=result, score=result,
+                                  numerator_id=999, numerator_result=numerator_score,
+                                  denominator_id=999, denominator_result=denominator_score)
         return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
@@ -83,7 +94,6 @@ class AvailabilityFacingCalculation(KpiBaseCalculation):
         return 'Availbility facings (basket & Multipack SKUs)'
 
     def calculate(self, params):
-
         return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
