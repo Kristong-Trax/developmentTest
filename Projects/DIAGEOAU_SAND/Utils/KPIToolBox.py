@@ -102,15 +102,16 @@ class DIAGEOAU_SANDToolBox:
         if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
             self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name in ('MPA', 'Local MPA', 'New Products',):
-            set_score = self.calculate_assortment_sets(set_name)
-        elif set_name in ('Relative Position',):
+        # if set_name in ('MPA', 'Local MPA', 'New Products',):
+        #     set_score = self.calculate_assortment_sets(set_name)
+
+        if set_name in ('Relative Position'):
             set_score = self.calculate_relative_position_sets(set_name)
-        elif set_name in ('Brand Blocking',):
+        elif set_name in ('Brand Blocking'):
             set_score = self.calculate_block_together_sets(set_name)
-        elif set_name in ('POSM',):
-            set_score = self.calculate_posm_sets(set_name)
-        elif set_name in ('Brand Pouring',):
+        # elif set_name in ('POSM',):
+        #     set_score = self.calculate_posm_sets(set_name)
+        elif set_name in ('Brand Pouring'):
             set_score = self.calculate_brand_pouring_sets(set_name)
         elif set_name == 'Visible to Customer':
             filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}

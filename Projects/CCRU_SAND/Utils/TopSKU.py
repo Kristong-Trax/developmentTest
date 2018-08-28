@@ -138,7 +138,7 @@ class CCRU_SANDTopSKUAssortment:
                 if anchor_product_fk is None:
                     Log.warning("Anchor product EAN '{}' is not defined in DB".format(anchor_product_ean_code))
                     continue
-                min_facings = data[key]
+                min_facings = int(data[key]) if data[key] else 0
                 for product in product_list:
                     product_fk = self.get_product_fk(product)
                     if product_fk is None:
@@ -413,8 +413,8 @@ class CCRU_SANDTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU_SAND')
+    LoggerInitializer.init('CCRU_SAND Top SKU targets upload')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
-# # # To run it locally just copy: -e prod --file **your file path** to the configuration
+# # # To run it locally just copy: -e prod --file **your file path** to the configuration parameters
 # # # At the end of the script there are logs with all of the invalid products, store numbers and dates
