@@ -124,7 +124,6 @@ class PEPSICORUToolBox:
         :param attribute: The attribute you would like to get. E.g: brand_name, category etc.
         :return: List of the relevant categories
         """
-
         filtered_scif = self.scif[self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
         list_of_attribute = filtered_scif[attribute].unique().tolist()
         for attr in list_of_attribute:
