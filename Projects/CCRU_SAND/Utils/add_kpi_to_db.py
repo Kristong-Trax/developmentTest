@@ -70,8 +70,6 @@ class AddKPIs(Consts):
         words_to_include = list(['2018', 'POS'])
         words_to_include.append(set_name.upper())
         for filename in os.listdir(data_path):
-            if 'SPIRITS' in filename.upper():
-                continue
             if all(word in filename.upper() for word in words_to_include):
                 return filename
         Log.error("Couldn't find relevant file for the current set name = {}").format(set_name)
@@ -92,7 +90,7 @@ class AddKPIs(Consts):
         # Get the relevant project template
         template_channel_name = self.data[Consts.CHANNEL].values[0]
         if not template_channel_name:
-            Log.error("The isn't a correct set in Channel attribute in the upload template.")
+            Log.error("The isn't a correct set in Channel attribute in the uploaded template.")
             return pd.DataFrame.empty,  pd.DataFrame.empty
         project_template_name = self.get_relevant_file_for_set(template_channel_name, dir_path)
         if not project_template_name:
@@ -105,7 +103,7 @@ class AddKPIs(Consts):
         current_set = [set_name for set_name in sets_2018 if
                        template_channel_name in set_name and 'SPIRITS' not in set_name.upper()]
         if not current_set:
-            Log.error("Couldn't find relevant set for the current channel name = {}").format(template_channel_name)
+            Log.error("Couldn't find relevant set for the current channel name = {}".format(template_channel_name))
             return pd.DataFrame.empty, pd.DataFrame.empty
         current_set = current_set[0]
         # Get the relevant KPI data and project template data
@@ -132,8 +130,8 @@ class AddKPIs(Consts):
         # Iterate over the uploaded template and create the queries
         for i in xrange(len(self.data)):
             row = self.data.iloc[i]
-            new_name = row[Consts.KPI_ENG_NAME].replace('\n', '')
-            display = row[Consts.KPI_RUS_NAME].replace('\n', '')
+            new_name = row[Consts.KPI_ENG_NAME].replace('\n', '').strip()
+            display = row[Consts.KPI_RUS_NAME].replace('\n', '').strip()
             presentation_order = row[Consts.SORTING]
             old_atomic_df = relevant_kpi_data[relevant_kpi_data[Consts.PRESENTATION_ORDER] == presentation_order]
             if len(old_atomic_df) > 1:
@@ -145,7 +143,7 @@ class AddKPIs(Consts):
                     queries_to_execute.append(
                         update_query.format(new_name, new_name, display.encode('utf-8'), old_atom_fk))
                 except Exception as e:
-                    print "No KPI defines for name = {}.".format(old_atomic_name)
+                    Log.warning("No KPI defines for name = {}.".format(old_atomic_name))
                     continue
             else:
                 old_atom_fk = old_atomic_df['atomic_kpi_fk'].values[0]
@@ -158,6 +156,7 @@ class AddKPIs(Consts):
                 cur.execute(query)
                 print query
         self.aws_conn.db.commit()
+        Log.info("Total number of executed queries = {}".format(len(queries_to_execute)))
 
     def update_kpi_weights(self):
         """
@@ -304,6 +303,6 @@ if __name__ == '__main__':
     # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = AddKPIs('ccru', '/home/idanr/Desktop/super.xlsx')
     # kpi.update_atomic_kpi_data()
-    # kpi.update_kpi_weights()
-    # kpi.update_atomic_weights()
+    # # kpi.update_kpi_weights()
+    # # kpi.update_atomic_weights()
 
