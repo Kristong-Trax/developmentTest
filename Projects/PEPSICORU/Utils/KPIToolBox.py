@@ -299,10 +299,11 @@ class PEPSICORUToolBox:
         # Calculate count of display - store_level
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
         scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
-        self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.store_id,
+        self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
                                        numerator_result=scene_types_in_store,
+                                       denominator_id=self.store_id, denominator_result=99999,
                                        identifier_result=display_count_store_level_fk,
-                                       result=scene_types_in_store, score=0)
+                                       result=scene_types_in_store, score=99999)
 
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
@@ -316,16 +317,19 @@ class PEPSICORUToolBox:
             scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
-            self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=category_fk,
-                                           numerator_result=scene_types_in_category,
+            self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=scene_types_in_store,
+                                           denominator_id=category_fk, denominator_result=99999,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=scene_types_in_category, score=scene_types_in_category)
+                                           result=scene_types_in_category, score=99999)
+
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
         for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
             relevant_category = self.get_category_from_template_name(scene_type)
+            relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
             scene_type_score = len(
                 filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_FK].unique())
             scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
@@ -333,11 +337,13 @@ class PEPSICORUToolBox:
                                                                               category=relevant_category)
             parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                            category=relevant_category)
-            self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=scene_type_fk,
-                                           numerator_result=scene_type_score,
+            self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=scene_types_in_store,
+                                           denominator_id=relevant_category_fk, denominator_result=99999,
                                            identifier_result=display_count_scene_level_identifier,
-                                           identifier_parent=parent_identifier,
-                                           result=scene_type_score, score=0)
+                                           identifier_parent=parent_identifier, context_id=scene_type_fk,
+                                           result=scene_type_score, score=99999)
+
 
     def main_calculation(self):
         """
