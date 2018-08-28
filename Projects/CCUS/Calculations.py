@@ -15,16 +15,17 @@ class CCUSCalculations(BaseCalculationsScript):
         CCUSGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
+
 if __name__ == '__main__':
     LoggerInitializer.init('ccus calculations')
     Config.init()
     project_name = 'ccus'
     data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
-    session = 'fffec80f-3cfd-44e6-b105-8510e39f27ff'
-    scenes = [2, 3]
+    session = '93527cf7-a84f-4228-80d0-91d7fa13ece8'
+    scenes = [63147, 63148]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         SceneCalculations(data_provider).calculate_kpis()
-    data_provider.load_session_data(session)
-    output = Output()
-    CCUSCalculations(data_provider, output).run_project_calculations()
+    # data_provider.load_session_data(session)
+    # output = Output()
+    # CCUSCalculations(data_provider, output).run_project_calculations()

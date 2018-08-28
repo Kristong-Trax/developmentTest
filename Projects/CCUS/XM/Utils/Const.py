@@ -10,5 +10,7 @@ class Const(object):
     DICT_WITH_TYPES = {
         "Display": "scene_id",
         "Main Beverage": "scene_id",
-        "Coolers": "bay_number",
+        "Cooler": "bay_number",
     }
+
+    POC = "Points of Contact"

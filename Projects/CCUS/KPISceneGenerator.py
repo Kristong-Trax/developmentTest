@@ -26,5 +26,5 @@ class SceneGenerator:
             Log.warning('Match product in scene is empty for this scene')
         else:
             self.scene_tool_box.scene_score()
-            self.common.commit_results_data(result_entity='scene')
+            # self.common.commit_results_data(result_entity='scene')
 
