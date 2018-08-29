@@ -41,7 +41,8 @@ class CCBOTTLERSUSREDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.united_scenes = self.get_united_scenes() # we don't need to check scenes without United products
+        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.united_scenes = self.get_united_scenes()  # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.templates = {}
         self.calculation_type = calculation_type
@@ -65,7 +66,6 @@ class CCBOTTLERSUSREDToolBox:
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
-        # print self.store_type ####
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         main_template = self.templates[Const.KPIS]
