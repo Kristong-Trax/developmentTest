@@ -52,6 +52,7 @@ class PEPSICORUToolBox:
         self.assortment = Assortment(self.data_provider, self.output, common=self.commonv1)
         self.main_shelves = [scene_type for scene_type in self.scif[Const.TEMPLATE_NAME].unique().tolist() if
                              Const.MAIN_SHELF in scene_type.upper()]
+        #TODO TODO TODO TODO TODO TODO TODO
 
     def get_main_shelf_by_category(self, current_category):
         """
@@ -354,7 +355,31 @@ class PEPSICORUToolBox:
         # self.calculate_count_of_display()
         self.main_assortment_calculation()
 
-    ###################################### Plaster ######################################
+    ###################################### Improvement ######################################
+    def calculate_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The numerator facings, denominator facings, numerator linear and denominator linear.
+        """
+        if include_empty == Const.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (Const.EMPTY, Const.EXCLUDE_FILTER)
+        numerator_facings, numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
+        denominator_facings, denominator_linear = self.calculate_share_space(**general_filters)
+        return numerator_facings, denominator_facings, numerator_linear, denominator_linear
+
+    def calculate_share_space(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total number of facings and the shelf width (in mm) according to the filters.
+        """
+        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        sum_of_facings = filtered_scif['facings'].sum()
+        space_length = filtered_scif['net_len_ign_stack'].sum()
+        return sum_of_facings, space_length
+
+    ###################################### Plaster #####################################
 
     def calculate_share_space_length(self, **filters):
         """
