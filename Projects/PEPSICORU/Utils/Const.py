@@ -7,8 +7,11 @@ class Const(object):
     SNACKS = 'SNACK'
     BEVERAGES = 'BEVERAGE'
     JUICES = 'JUICE'
+    LRB = 'LRB'
 
     # Filters
+    ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
+    TEMPLATE_GROUP = 'template_group'
     TEMPLATE_NAME = 'template_name'
     SCENE_FK = 'scene_fk'
     MANUFACTURER_NAME = 'manufacturer_name'
@@ -27,6 +30,7 @@ class Const(object):
     PEPSICO = 'PepsiCo'
     FK = '_fk'
     NAME = '_name'
+
 
     # SOS plaster
     EXCLUDE_FILTER = 0
@@ -52,3 +56,5 @@ class Const(object):
     # Saving to DB
     RESULT = 'result'
     SCORE = 'score'
+    DISTRIBUTION = '4'
+    OOS = '5'
