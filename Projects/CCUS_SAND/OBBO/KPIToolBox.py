@@ -4,13 +4,13 @@ from datetime import datetime
 import pandas as pd
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS_SAND.OBBO.GeneralToolBox import OBBOGENERALToolBox
-from Projects.CCUS_SAND.OBBO.Fetcher import OBBOQueries
+from Projects.CCUS_SAND.OBBO.GeneralToolBox import OBBOGENERALCCUS_SANDToolBox
+from Projects.CCUS_SAND.OBBO.Fetcher import CCUS_SANDOBBOQueries
 from Projects.CCUS_SAND.OBBO.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -36,7 +36,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class OBBOConsts(object):
+class OBBOCCUS_SANDConsts(object):
 
     STORE_TYPE = 'Store Type'
     KPI_NAME = 'KPI Name'
@@ -69,7 +69,7 @@ class OBBOConsts(object):
     SEPARATOR = ','
 
 
-class OBBOToolBox(OBBOConsts):
+class OBBOCCUS_SANDToolBox(OBBOCCUS_SANDConsts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -90,12 +90,12 @@ class OBBOToolBox(OBBOConsts):
                                                                       how='left', on='template_fk', suffixes=['', '_y'])
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.scif = self.get_missing_attributes(self.data_provider[Data.SCENE_ITEM_FACTS])
         self.display_matches = self.get_match_display()
         self.custom_templates = {}
         self.sr_to_templates = self.get_sr_to_templates()
-        self.tools = OBBOGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = OBBOGENERALCCUS_SANDToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -104,7 +104,7 @@ class OBBOToolBox(OBBOConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = OBBOQueries.get_match_display(self.session_uid)
+        query = CCUS_SANDOBBOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -113,12 +113,12 @@ class OBBOToolBox(OBBOConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = OBBOQueries.get_all_kpi_data()
+        query = CCUS_SANDOBBOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
     def get_missing_attributes(self, df):
-        query = OBBOQueries.get_missing_attributes_data()
+        query = CCUS_SANDOBBOQueries.get_missing_attributes_data()
         missing_attributes = pd.read_sql_query(query, self.rds_conn.db)
         merged_df = df.merge(missing_attributes, on='product_fk', how='left', suffixes=['', '_y'])
         return merged_df
@@ -352,7 +352,7 @@ class OBBOToolBox(OBBOConsts):
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = OBBOQueries.get_delete_session_results_query(self.session_uid, self.kpi_static_data)
+        delete_queries = CCUS_SANDOBBOQueries.get_delete_session_results_query(self.session_uid, self.kpi_static_data)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

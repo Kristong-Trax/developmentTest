@@ -2,7 +2,7 @@
 __author__ = 'Shani'
 
 
-class MSCQueries(object):
+class CCUS_SANDMSCQueries(object):
 
     @staticmethod
     def get_all_kpi_data():
@@ -38,6 +38,6 @@ class MSCQueries(object):
     @staticmethod
     def get_product_atts():
         return """
-            SELECT att3, att4, pk as item_id from
+            SELECT att3, att4, product_ean_code from
             static.product
         """
