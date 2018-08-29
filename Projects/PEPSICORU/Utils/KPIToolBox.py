@@ -360,6 +360,32 @@ class PEPSICORUToolBox:
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
 
+    def calculate_share_of_shelf_new(self):
+        """
+        The function filters only the relevant scene (type = Main Shelf in category) and calculates the linear SOS and
+        the facing SOS for each level (Manufacturer, Category, Sub-Category, Brand).
+        The identifier for every kpi will be the current kpi_fk and the relevant attribute according to the level
+        E.g sub_category_fk for level 3 or brand_fk for level 4.
+        :return:
+        """
+        facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
+        filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
+        general_filters = {Const.TEMPLATE_NAME: self.main_shelves}
+        num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
+            sos_filters=filter_manu_param, **general_filters)
+
+        facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
+        for category in self.categories_to_calculate:
+            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_main_shelf_by_category(category)}
+            current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
+            numerator_facings, denominator_facings, numerator_linear, denominator_linear = self.calculate_sos(
+                sos_filters=filter_manu_param, **filter_params)
+
+            for sub_cat in self.get_relevant_sub_categories_for_session(): #TODO CHANGE !!!!!!! GET_SUBCAT FOR CATEGORY
+
+
+
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
