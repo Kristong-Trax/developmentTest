@@ -9,7 +9,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 #from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.CCUS_SAND.Utils.CCUS_SANDToolBox import CCUS_SANDToolBox as CCUS_SANDConsts
+from Projects.CCUS_SAND.Utils.ToolBox import CCUS_SANDToolBox as CCUS_SANDConsts
 
 __author__ = 'Nimrod'
 AVAILABILITY_SETS = 'Dunkin Donuts'
