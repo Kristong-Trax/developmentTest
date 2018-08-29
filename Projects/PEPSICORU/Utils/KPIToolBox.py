@@ -336,7 +336,6 @@ class PEPSICORUToolBox:
                                            identifier_parent=display_count_category_level_fk,
                                            result=scene_types_in_category, score=99999)
 
-
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
         for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
@@ -454,6 +453,11 @@ class PEPSICORUToolBox:
         level3 is assortment SKU
         level2 is assortment groups
         """
+        osa_product_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.OSA_SKU_LEVEL)
+        oos_product_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_SKU_LEVEL)
+        osa_category_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OSA_CATEGORY_LEVEL)
+        oos_category_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_CATEGORY_LEVEL)
+
         if not lvl3_result.empty:
             cat_df = self.all_products[['product_fk', 'category_fk']]
             lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
@@ -464,28 +468,28 @@ class PEPSICORUToolBox:
                     score = Const.DISTRIBUTION
                 else:
                     score = Const.OOS
-                # Distrubtion
-                self.commonv1.write_to_db_result_new_tables(fk=self.DIST_CATEGORY_LVL1, numerator_id=result.product_fk,
+                # Distribution
+                self.commonv1.write_to_db_result_new_tables(fk=osa_product_level_fk, numerator_id=result.product_fk,
                                                             numerator_result=score,
                                                             result=score, denominator_id=result.category_fk,
                                                             denominator_result=1, score=score,
                                                             score_after_actions=score)
                 if score == Const.OOS:
                     # OOS
-                    self.commonv1.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL1,
+                    self.commonv1.write_to_db_result_new_tables(oos_product_level_fk,
                                                                 numerator_id=result.product_fk, numerator_result=score,
                                                                 result=score, denominator_id=result.category_fk,
                                                                 denominator_result=1, score=score,
                                                                 score_after_actions=score)
-
-            for cat in self.categories_to_calculate:
+            category_fk_list = lvl3_with_cat['category_fk'].unique()
+            for cat in category_fk_list:
                 lvl3_result_cat = lvl3_with_cat[lvl3_with_cat["category_fk"] == cat]
                 lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result_cat)
                 for result in lvl2_result.itertuples():
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
-                    # Distrubtion
-                    self.commonv1.write_to_db_result_new_tables(fk=self.DIST_CATEGORY_LVL2,
+                    # Distribution
+                    self.commonv1.write_to_db_result_new_tables(fk=osa_category_level_kpi_fk,
                                                                 numerator_id=self.pepsico_fk,
                                                                 numerator_result=result.passes,
                                                                 denominator_id=cat,
@@ -493,7 +497,7 @@ class PEPSICORUToolBox:
                                                                 result=res, score=res, score_after_actions=res)
 
                     # OOS
-                    self.commonv1.write_to_db_result_new_tables(fk=self.OOS_CATEGORY_LVL2,
+                    self.commonv1.write_to_db_result_new_tables(fk=oos_category_level_kpi_fk,
                                                                 numerator_id=self.pepsico_fk,
                                                                 numerator_result=denominator_res - result.passes,
                                                                 denominator_id=cat,
@@ -507,20 +511,21 @@ class PEPSICORUToolBox:
         """
         This function calculates the KPI results.
         """
-
+        dist_store_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OSA_STORE_LEVEL)
+        oos_store_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_STORE_LEVEL)
         for result in lvl3_result.itertuples():
             if result.in_store == 1:
                 score = Const.DISTRIBUTION
             else:
                 score = Const.OOS
             # Distribution
-            self.commonv1.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL1, numerator_id=result.product_fk,
+            self.commonv1.write_to_db_result_new_tables(fk=dist_store_level_kpi_fk, numerator_id=result.product_fk,
                                                         numerator_result=score,
                                                         result=score, denominator_id=self.store_id,
                                                         denominator_result=1, score=score)
             if score == Const.OOS:
                 # OOS
-                self.commonv1.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL1, numerator_id=result.product_fk,
+                self.commonv1.write_to_db_result_new_tables(fk=oos_store_level_kpi_fk, numerator_id=result.product_fk,
                                                             numerator_result=score,
                                                             result=score, denominator_id=self.store_id,
                                                             denominator_result=1, score=score,
