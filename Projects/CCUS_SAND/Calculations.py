@@ -17,9 +17,9 @@ class CCUS_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('ccus calculations')
+#     LoggerInitializer.init('ccus-sand calculations')
 #     Config.init()
-#     project_name = 'ccus_sand'
+#     project_name = 'ccus-sand'
 #     data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
 #     session_and_scenes = {
 #         "00004868-bde7-4495-9d09-3036d1f26b5b": [863425, 863470, 863543, 863545],
