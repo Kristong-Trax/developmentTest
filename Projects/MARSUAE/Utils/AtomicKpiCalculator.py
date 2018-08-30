@@ -30,14 +30,13 @@ class LinearSOSCalculation(KpiBaseCalculation):
         general_filters = {params['denominator type']: params['denominator value']}
         kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'])
 
-        result = SOS(self._data_provider, output=None).calculate_linear_share_of_shelf(sos_filters=numerator_filters,
-                                                                                       **general_filters)
-        common.write_to_db_result(fk=kpi_fk, result=result, score=result,
-                                  numerator_id=999, numerator_result=numerator_score,
-                                  denominator_id=999, denominator_result=denominator_score)
-        return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
+        sos = SOS(self._data_provider, output=None)
+        result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
+                                                                                        sos_filters=numerator_filters,
+                                                                                        **general_filters)
+        return [self._create_kpi_result(fk=kpi_fk, result=result, score=result,
+                                        numerator_id=999, numerator_result=numerator_result,
+                                        denominator_id=999, denominator_result=denominator_result)]
 
 
 class DistributionSkuCalculation(KpiBaseCalculation):

@@ -11,9 +11,10 @@ class Results(object):
     def __init__(self, data_provider):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
+        self.kpi_results = {}
 
     def calculate_old_tables(self, hierarchy):
-        atomic_results = self._get_atomic_results(hierarchy)
+        atomic_results = self._get_atomic_result(hierarchy)
         kpi_results = self._get_kpi_results(atomic_results)
         set_result = self._get_set_result(kpi_results)
 
@@ -48,7 +49,9 @@ class Results(object):
         kpi_list.reverse()
         for kpi in kpi_list:
             kpi_neighbors = nx.neighbors(self.dependencies_graph, kpi[0])
-            self._get_atomic_results(kpi, kpi_neighbors)
+            result = self._get_atomic_result(kpi, kpi_neighbors)
+            self._data_provider.common.write_to_db_result(result)
+            self.kpi_results.update({result['fk'], result['score']})
 
     def _create_atomic_result(self, atomic_kpi_name, kpi_name, kpi_set_name, result, score=None, threshold=None,
                               weight=None):
@@ -59,10 +62,10 @@ class Results(object):
                 'score': score,
                 'weight': weight}
 
-    def _get_atomic_results(self, atomic, kpi_neighbors):
+    def _get_atomic_result(self, atomic, kpi_neighbors):
         kpi_params = self.get_kpi_params(atomic)
         calculation = self._kpi_type_calculator_mapping[kpi_params['KPI Type'].iloc[0]](self._data_provider, 1)
-        result = calculation.calculate(kpi_params)
+        return calculation.calculate(kpi_params)
         # concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
         # atomic_results[atomic['kpi']] = concat_results
 
