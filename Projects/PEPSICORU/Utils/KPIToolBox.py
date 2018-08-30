@@ -42,6 +42,7 @@ class PEPSICORUToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif = self.scif.loc[~(self.scif[Const.PRODUCT_TYPE] == Const.IRRELEVANT)]    # Vitaly's request
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -68,9 +69,11 @@ class PEPSICORUToolBox:
         :param current_category: One of the product's categories. E.g: Snacks.
         :return: The relevant scene type to the current category
         """
+        main_shelves_for_category = []
         for main_shelf in self.main_shelves:
-            if current_category in main_shelf.upper():
-                return main_shelf
+            if current_category.upper() in main_shelf.upper():
+                main_shelves_for_category.append(main_shelf)
+        return main_shelves_for_category
 
     @staticmethod
     def get_category_from_template_name(template_name):
@@ -103,31 +106,63 @@ class PEPSICORUToolBox:
         This function returns a list of the relevant categories according to the store type.
         The parameter additional_attribute_2 defines the visit type for each store.
         We have 3 types: Visit LRB (Beverages and Juices), Visit Snack and Visit (= All of them).
+        The function is doing intersection between the categories in SCIF and the categories by store type.
         :return: List of the relevant categories
         """
+        categories_in_scif = self.scif[Const.CATEGORY].unique().tolist()
+        if None in categories_in_scif:
+            categories_in_scif.remove(None)
+        if not categories_in_scif:
+            Log.warning("No categories at scene item facts!")
+            return []
+
         store_type = self.scif[Const.ADDITIONAL_ATTRIBUTE_2].unique().tolist()[0]
         if not store_type:
             Log.warning("Invalid additional_attribute_2 for store id = {}".format(self.store_id))
             return []
-        if Const.SNACKS in store_type:
-            return []
-        elif Const.LRB in store_type:
-            return [Const.JUICES, Const.BEVERAGES]
-        return [Const.SNACKS, Const.JUICES, Const.BEVERAGES]
+        if Const.SNACKS.upper() in store_type.upper():
+            snacks_category = [Const.SNACKS]
+            categories_for_session = list(set(snacks_category).intersection(set(categories_in_scif)))
+        elif Const.LRB.upper() in store_type.upper():
+            lrb_categories = [Const.JUICES, Const.BEVERAGES]
+            categories_for_session = list(set(lrb_categories).intersection(set(categories_in_scif)))
+        else:
+            return categories_in_scif
+        if not categories_for_session:
+            Log.warning("There aren't matching categories in scif for this store.")
+        return categories_for_session
 
-    def get_relevant_sub_categories_for_session(self):
+    def get_relevant_sub_categories_for_category(self, category):
         """
         This function returns a list of the relevant categories according to the scene_types in the session
-        :return: List of the relevant categories
+        :param category: The relevant category
+        :return: List of the relevant sub categories for this category
         """
-        sub_categories = self.scif[Const.SUB_CATEGORY].unique().tolist()
+        filtered_scif = self.scif.loc[
+            (self.scif[Const.CATEGORY] == category) & (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & (
+                self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves))]
+        sub_categories = filtered_scif[Const.SUB_CATEGORY].unique().tolist()
         if None in sub_categories:
             sub_categories.remove(None)
-        for sub_cat in sub_categories:
-            relevant_category = self.get_unique_attribute_from_filters(Const.SUB_CATEGORY, sub_cat, Const.CATEGORY)
-            if not relevant_category:
-                sub_categories.remove(sub_cat)
+        if not sub_categories:
+            Log.warning("No relevant sub categories for category = {}".format(category))
         return sub_categories
+
+    def get_relevant_brands_for_sub_category(self, sub_category):
+        """
+        This function returns a list of the relevant categories according to the scene_types in the session
+        :param sub_category: The relevant sub category
+        :return: List of the relevant brands for this category
+        """
+        filtered_scif = self.scif.loc[
+            (self.scif[Const.SUB_CATEGORY] == sub_category) & (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & (
+            self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves))]
+        brands_list = filtered_scif[Const.BRAND_NAME].unique().tolist()
+        if None in brands_list:
+            brands_list.remove(None)
+        if not brands_list:
+            Log.warning("No relevant brands for sub category = {}".format(sub_category))
+        return brands_list
 
     def get_relevant_attributes_for_sos(self, attribute):
         """ # todo todo todo todo todo ?
@@ -368,10 +403,14 @@ class PEPSICORUToolBox:
         E.g sub_category_fk for level 3 or brand_fk for level 4.
         :return:
         """
+
+
+
+        # Get all of KPI fk in advance
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
         facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
-        facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
         facings_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
+        facings_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_BRAND_SOS)
 
         linear_store_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_MANUFACTURER_SOS)
         linear_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.LINEAR_CATEGORY_SOS)
@@ -380,25 +419,107 @@ class PEPSICORUToolBox:
 
         filter_manu_param = {Const.MANUFACTURER_NAME: Const.PEPSICO}
         general_filters = {Const.TEMPLATE_NAME: self.main_shelves}
+        facings_level_1_identifier = self.common.get_dictionary(kpi_fk=facings_stores_kpi_fk)
+        linear_level_1_identifier = self.common.get_dictionary(kpi_fk=linear_store_kpi_fk)
         num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
             sos_filters=filter_manu_param, **general_filters)
 
+        # Facings level 1
+        self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
+                                       identifier_result=facings_level_1_identifier,
+                                       numerator_result=num_facings, denominator_id=self.store_id,
+                                       denominator_result=denom_facings, result=(num_facings / float(denom_facings)))
+        # Linear level 1calculate_share_of_shelf_new
+        self.common.write_to_db_result(fk=linear_store_kpi_fk, numerator_id=self.pepsico_fk,
+                                       identifier_result=linear_level_1_identifier,
+                                       numerator_result=num_linear, denominator_id=self.store_id,
+                                       denominator_result=denom_linear, result=num_linear / float(denom_linear))
 
         for category in self.categories_to_calculate:
-            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: self.get_main_shelf_by_category(category)}
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
-            numerator_facings, denominator_facings, numerator_linear, denominator_linear = self.calculate_sos(
+            main_shelves_for_category = self.get_main_shelf_by_category(category)
+            filter_params = {Const.CATEGORY: category, Const.TEMPLATE_NAME: main_shelves_for_category}
+            facings_cat_identifier = self.common.get_dictionary(kpi_fk=facings_cat_kpi_fk,
+                                                                category_fk=current_category_fk)
+            linear_cat_identifier = self.common.get_dictionary(kpi_fk=linear_cat_kpi_fk,
+                                                               category_fk=current_category_fk)
+            num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
                 sos_filters=filter_manu_param, **filter_params)
 
-            for sub_cat in self.get_relevant_sub_categories_for_session(): #TODO CHANGE !!!!!!! GET_SUBCAT FOR CATEGORY
+            # Facings level 2
+            self.common.write_to_db_result(fk=facings_cat_kpi_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=num_facings, denominator_id=current_category_fk,
+                                           denominator_result=denom_facings,
+                                           identifier_result=facings_cat_identifier,
+                                           identifier_parent=facings_level_1_identifier,
+                                           result=num_facings / float(denom_facings))
+            # Linear level 2
+            self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=num_linear, denominator_id=current_category_fk,
+                                           denominator_result=denom_linear,
+                                           identifier_result=linear_cat_identifier,
+                                           identifier_parent=linear_level_1_identifier,
+                                           result=num_linear / float(denom_linear))
 
+            for sub_cat in self.get_relevant_sub_categories_for_category(category):
+                current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
+                filter_sub_cat_param = {Const.SUB_CATEGORY: sub_cat, Const.CATEGORY: category,
+                                        Const.TEMPLATE_NAME: main_shelves_for_category}
+                facings_sub_cat_identifier = self.common.get_dictionary(kpi_fk=facings_sub_cat_kpi_fk,
+                                                                        sub_category_fk=current_sub_category_fk)
+                linear_sub_cat_identifier = self.common.get_dictionary(kpi_fk=linear_sub_cat_kpi_fk,
+                                                                       sub_category_fk=current_sub_category_fk)
+                num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
+                    sos_filters=filter_manu_param, **filter_sub_cat_param)
 
+                # Facings level 3
+                self.common.write_to_db_result(fk=facings_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
+                                               numerator_result=num_facings, denominator_id=current_sub_category_fk,
+                                               denominator_result=denom_facings,
+                                               identifier_result=facings_sub_cat_identifier,
+                                               identifier_parent=facings_cat_identifier,
+                                               result=num_facings / float(denom_facings))
+                # Linear level 3
+                self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
+                                               numerator_result=num_linear, denominator_id=current_sub_category_fk,
+                                               denominator_result=denom_linear,
+                                               identifier_result=linear_sub_cat_identifier,
+                                               identifier_parent=linear_cat_identifier,
+                                               result=num_linear / float(denom_linear))
 
+                for brand_name in self.get_relevant_brands_for_sub_category(sub_cat):
+                    current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand_name)
+                    filter_sos_brand = {Const.BRAND_NAME: brand_name, Const.SUB_CATEGORY: sub_cat,
+                                          Const.MANUFACTURER_NAME: Const.PEPSICO}
+                    filter_general_brand_param = {Const.SUB_CATEGORY: sub_cat, Const.CATEGORY: category,
+                                                  Const.TEMPLATE_NAME: main_shelves_for_category}
+                    facings_brand_identifier = self.common.get_dictionary(kpi_fk=facings_brand_kpi_fk,
+                                                                          brand_fk=current_brand_fk)
+                    linear_brand_identifier = self.common.get_dictionary(kpi_fk=linear_brand_kpi_fk,
+                                                                         brand_fk=current_brand_fk)
+                    num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
+                        sos_filters=filter_sos_brand, **filter_general_brand_param)
+
+                    # Facings level 4
+                    self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=self.pepsico_fk,
+                                                   numerator_result=num_facings, denominator_id=current_brand_fk,
+                                                   denominator_result=denom_facings,
+                                                   identifier_result=facings_brand_identifier,
+                                                   identifier_parent=facings_sub_cat_identifier,
+                                                   result=num_facings / float(denom_facings))
+                    # Linear level 4
+                    self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=self.pepsico_fk,
+                                                   numerator_result=num_linear, denominator_id=current_brand_fk,
+                                                   denominator_result=denom_linear,
+                                                   identifier_result=linear_brand_identifier,
+                                                   identifier_parent=linear_sub_cat_identifier,
+                                                   result=num_linear / float(denom_linear))
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
+        self.calculate_share_of_shelf_new()
         self.calculate_share_of_shelf()
         # self.calculate_count_of_display()
         self.calculate_assortment()
@@ -412,10 +533,10 @@ class PEPSICORUToolBox:
         :return: The numerator facings, denominator facings, numerator linear and denominator linear.
         """
         if include_empty == Const.EXCLUDE_EMPTY:
-            general_filters['product_type'] = (Const.EMPTY, Const.EXCLUDE_FILTER)
+            general_filters[Const.PRODUCT_TYPE] = (Const.EMPTY, Const.EXCLUDE_FILTER)
         numerator_facings, numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
         denominator_facings, denominator_linear = self.calculate_share_space(**general_filters)
-        return numerator_facings, denominator_facings, numerator_linear, denominator_linear
+        return numerator_facings, denominator_facings, numerator_linear / 1000.0, denominator_linear / 1000.0
 
     def calculate_share_space(self, **filters):
         """
@@ -542,7 +663,7 @@ class PEPSICORUToolBox:
                 self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
         return
 
-    def store_assortment_calculation(self,lvl3_result):
+    def store_assortment_calculation(self, lvl3_result):
         """
         This function calculates the KPI results.
         """

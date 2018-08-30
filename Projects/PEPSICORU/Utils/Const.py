@@ -30,6 +30,8 @@ class Const(object):
     PEPSICO = 'PepsiCo'
     FK = '_fk'
     NAME = '_name'
+    PRODUCT_TYPE = 'product_type'
+    IRRELEVANT = 'Irrelevant'
 
 
     # SOS plaster
