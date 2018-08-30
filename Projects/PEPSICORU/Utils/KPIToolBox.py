@@ -238,6 +238,9 @@ class PEPSICORUToolBox:
         """
         # Notice! store_target is Integer, scene_type_list is a list and the rest are dictionaries
         store_target, category_targets, scene_targets, scene_type_list = self.get_target_for_count_of_displays()
+        if not store_target:
+            Log.warning("No targets were defined for this store (pk = {})".format(self.store_id))
+            return
         # Filtering out the main shelves
         relevant_scenes_dict = self.get_relevant_scene_types_from_list(scene_type_list)
         relevant_template_name_list = relevant_scenes_dict.values()
@@ -256,6 +259,9 @@ class PEPSICORUToolBox:
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
         for category in self.categories_to_calculate:
+            current_category_target = category_targets[category]
+            if not current_category_target:
+                continue
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
             relevant_scenes = [scene_type for scene_type in relevant_template_name_list if
                                category.upper() in scene_type.upper()]
@@ -263,7 +269,6 @@ class PEPSICORUToolBox:
             if filtered_scif_by_cat.empty:
                 continue
             scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
-            current_category_target = category_targets[category]
             result_cat_level = 100 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
                 current_category_target)
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
@@ -278,15 +283,19 @@ class PEPSICORUToolBox:
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
         for scene_type in relevant_scenes_dict.keys():
+            scene_type_target = scene_targets[scene_type]
+            if not scene_type_target:
+                continue
             actual_scene_name = relevant_scenes_dict[scene_type]
             relevant_category = self.get_category_from_template_name(actual_scene_name)
             relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
             scene_type_score = len(
                 filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == actual_scene_name][Const.SCENE_FK].unique())
-            scene_type_target = scene_targets[scene_type]
+
             result_scene_level = 100 if scene_type_score >= scene_type_target else scene_types_in_store / float(
                 scene_type_target)
-            scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, actual_scene_name)
+            scene_type_fk = self.all_templates.loc[self.all_templates[Const.TEMPLATE_NAME] == actual_scene_name][
+                Const.TEMPLATE_FK].values[0]
             display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                               category=relevant_category)
             parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,

@@ -13,6 +13,7 @@ class Const(object):
     ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
     TEMPLATE_GROUP = 'template_group'
     TEMPLATE_NAME = 'template_name'
+    TEMPLATE_FK = 'template_name'
     SCENE_FK = 'scene_fk'
     MANUFACTURER_NAME = 'manufacturer_name'
     MANUFACTURER = 'manufacturer'
