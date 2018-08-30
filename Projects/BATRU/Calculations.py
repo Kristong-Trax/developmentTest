@@ -24,7 +24,7 @@ class BATRUCalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('batru calculations')
 #     Config.init()
 #     project_name = 'batru'
-#     sessions = ['28efe425-009c-49f8-ae5b-9e5c2cd911b9']
+#     sessions = ['00620929-6479-4EBA-84A7-08B899DBE74E']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

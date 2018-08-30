@@ -1,13 +1,13 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS_SAND.Utils.Fetcher import CCUSQueries
-from Projects.CCUS_SAND.Utils.ToolBox import ToolBox
+from Projects.CCUS_SAND.Utils.Fetcher import CCUS_SANDQueries
+from Projects.CCUS_SAND.Utils.ToolBox import CCUS_SANDToolBox
 
 __author__ = 'ortal'
 MAX_PARAMS = 4
@@ -44,7 +44,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class CCUSToolBox:
+class CCUS_SANDCCUS_SANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -59,7 +59,7 @@ class CCUSToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalcAdmin)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].values[0]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -74,7 +74,7 @@ class CCUSToolBox:
         # self.get_atts()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = ToolBox(self.data_provider, output,
+        self.tools = CCUS_SANDToolBox(self.data_provider, output,
                                       kpi_static_data=self.kpi_static_data,
                                       match_display_in_scene=self.match_display_in_scene)
         self.download_time = timedelta(0)
@@ -100,7 +100,7 @@ class CCUSToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = CCUSQueries.get_all_kpi_data()
+        query = CCUS_SANDQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -109,7 +109,7 @@ class CCUSToolBox:
     #     This function extracts the static KPI data and saves it into one global data frame.
     #     The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
     #     """
-    #     query = CCUSQueries.get_product_atts()
+    #     query = CCUS_SANDQueries.get_product_atts()
     #     product_att4 = pd.read_sql_query(query, self.rds_conn.db)
     #     self.scif = self.scif.merge(product_att4, how='left', left_on='product_ean_code',
     #                                 right_on='product_ean_code')
@@ -119,7 +119,7 @@ class CCUSToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = CCUSQueries.get_match_display(self.session_uid)
+        query = CCUS_SANDQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -322,20 +322,28 @@ class CCUSToolBox:
 
     def calculate_count_of_scene(self, param, set_name):
         scif_scenes = self.scif.loc[self.scif['template_group'] == param.get('Template_Group')]
-        scif_scenes = scif_scenes.loc[scif_scenes['store_type'] == param.get('Store_Type')]
-        valuse = {}
-        for i in xrange(1, MAX_PARAMS + 1):
-            if param.get("Param{}".format(i)):
-                valuse[param.get("Param{}".format(i))] = [str(g) for g in param.get("Value{}".format(i)).split(",")]
-        for value in valuse:
-            scif_scenes = scif_scenes.loc[scif_scenes[value].isin(tuple(valuse.get(value)))]
-        scenes = len(scif_scenes['scene_id'].unique().tolist())
-        self.save_level2_and_level3(set_name=set_name, kpi_name=param.get('KPI Name'), result=scenes,
-                                    score=scenes, threshold=0)
+        if not scif_scenes.empty:
+            scif_scenes = scif_scenes.loc[scif_scenes['store_type'] == param.get('Store_Type')]
+            valuse = {}
+            for i in xrange(1, MAX_PARAMS + 1):
+                if param.get("Param{}".format(i)):
+                    valuse[param.get("Param{}".format(i))] = [str(g) for g in param.get("Value{}".format(i)).split(",")]
+            for value in valuse:
+                scif_scenes = scif_scenes.loc[scif_scenes[value].isin(tuple(valuse.get(value)))]
+            scenes = len(scif_scenes['scene_id'].unique().tolist())
+            self.save_level2_and_level3(set_name=set_name, kpi_name=param.get('KPI Name'), result=scenes,
+                                        score=scenes, threshold=0)
 
     def calculate_count_of_display_entity(self, param, set_name):
         scif_scenes = self.scif.loc[self.scif['template_group'] == param.get('Template_Group')]
-        scif_scenes = scif_scenes.loc[scif_scenes[param.get('Param1')] == param.get('Value1')]
+        if not scif_scenes.empty:
+            scif_scenes.dropna(subset=[param.get('Param1')], how='all', inplace=True)
+            if not scif_scenes.empty:
+                scif_scenes = scif_scenes.loc[scif_scenes[param.get('Param1')] == param.get('Value1')]
+        else:
+            self.save_level2_and_level3(set_name=set_name, kpi_name=param.get('KPI Name'), result=0,
+                                        score=0, threshold=0)
+            return
         scenes = scif_scenes['scene_id'].unique().tolist()
         count_displays = 0
         score = 0
@@ -379,7 +387,14 @@ class CCUSToolBox:
 
     def calculate_count_of_display(self, param, set_name):
         scif_scenes = self.scif.loc[self.scif['template_group'] == param.get('Template_Group')]
-        scif_scenes = scif_scenes.loc[scif_scenes[param.get('Param1')] == param.get('Value1')]
+        if not scif_scenes.empty:
+            scif_scenes.dropna(subset=[param.get('Param1')], how='all', inplace=True)
+            if not scif_scenes.empty:
+                scif_scenes = scif_scenes.loc[scif_scenes[param.get('Param1')] == param.get('Value1')]
+        else:
+            self.save_level2_and_level3(set_name=set_name, kpi_name=param.get('KPI Name'), result=0,
+                                        score=0, threshold=0)
+            return
         scenes = scif_scenes['scene_id'].unique().tolist()
         count_displays = 0
         if scenes is not None:
@@ -534,14 +549,14 @@ class CCUSToolBox:
         kpi_pks = tuple()
         atomic_pks = tuple()
         if kpi_set_fk is not None:
-            query = CCUSQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
+            query = CCUS_SANDQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
             kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
             atomic_pks = tuple(kpi_atomic_data['pk'].tolist())
             kpi_data = pd.read_sql_query(query, self.rds_conn.db)
             kpi_pks = tuple(kpi_data['pk'].tolist())
         cur = self.rds_conn.db.cursor()
         if kpi_pks and atomic_pks:
-            delete_queries = CCUSQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
+            delete_queries = CCUS_SANDQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
                                                                           atomic_pks)
             for query in delete_queries:
                 cur.execute(query)
@@ -554,7 +569,7 @@ class CCUSToolBox:
 # import datetime
 #
 # import pandas as pd
-# from Trax.Algo.Calculations.Core.Constants import Fields as Fd
+# from Trax.Algo.Calculations.Core.CCUS_SANDConstants import Fields as Fd
 # from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 # from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -563,7 +578,7 @@ class CCUSToolBox:
 # from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 # from Trax.Utils.Logging.Logger import Log
 #
-# from Projects.CCUS.Fetcher import CCUSKPIFetcher
+# from Projects.CCUS_SAND.Fetcher import CCUSKPIFetcher
 
 # __author__ = 'nimrodp'
 #
@@ -578,7 +593,7 @@ class CCUSToolBox:
 # MAX_SCORE = 100
 #
 #
-# class CCUSKPIToolBox:
+# class CCUSKPICCUS_SANDToolBox:
 #     def __init__(self, data_provider, output, set_name=None):
 #         self.data_provider = data_provider
 #         self.output = output
