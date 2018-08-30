@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.2.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
