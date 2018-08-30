@@ -1070,8 +1070,8 @@ class BATRUToolBox:
                         if sku_sequence_passed:
 
                             # Checking SKU Repeating
-                            if specific_section_products_template['product_ean_code_lead'].tolist() == \
-                                    specific_section_products_template['Index (Duplications priority)'].tolist():
+                            if len(specific_section_products_template['product_ean_code_lead'].tolist()) == \
+                                    len(specific_section_products_template['Index (Duplications priority)'].tolist()):
                                 priorities_section = \
                                     specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
                             else:
@@ -1232,7 +1232,7 @@ class BATRUToolBox:
                 facings = section_shelf_data\
                     .loc[section_shelf_data['product_ean_code_lead'] == product_ean_code]['product_fk'].count()
                 section_facings_histogram\
-                    .append({'priority': priority, 'product_ean_code': product_ean_code, 'facings': facings})
+                    .append({'priority': float(priority), 'product_ean_code': product_ean_code, 'facings': facings})
             else:
                 Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
         section_facings_histogram = pd.DataFrame(section_facings_histogram)
@@ -1240,7 +1240,7 @@ class BATRUToolBox:
         min_max_facings = pd.DataFrame(columns=['priority', 'max', 'min'])
         for current_priority in section_facings_histogram['priority'].unique().tolist():
             current_priority_data = section_facings_histogram[section_facings_histogram['priority'] == current_priority]
-            min_max_facings = min_max_facings.append({'priority': int(current_priority_data['priority'].values[0]),
+            min_max_facings = min_max_facings.append({'priority': float(current_priority_data['priority'].values[0]),
                                                       'max': current_priority_data['facings'].max(),
                                                       'min': current_priority_data['facings'].min()}, ignore_index=True)
         min_max_facings = min_max_facings.sort_values(by='priority', ascending=False)
