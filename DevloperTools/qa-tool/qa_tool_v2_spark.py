@@ -1,20 +1,36 @@
 import os
 
-import matplotlib.pyplot as plt
 import findspark
 import pyspark
 import pandas as pd
+import matplotlib.pyplot as plt
+import shutil
+
 from pyspark.sql import SparkSession ,functions as F
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
-SUMMERY_FILE = "test_results.html"
+
+ROOT_RESULT_FOLDER = "results"
+HISTOGRAM_FOLDER = ROOT_RESULT_FOLDER + "/histogram"
+RAW_DATA = ROOT_RESULT_FOLDER + "/raw"
+SUMMERY_FILE = os.path.join(ROOT_RESULT_FOLDER, "test_results.html")
 
 
 class qa:
     def __init__(self, project, batch_size=300000, start_date=None , end_date=None ,config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config'):
+
+        if os.path.exists("results"):
+            shutil.rmtree(ROOT_RESULT_FOLDER)
+
+        os.mkdir(ROOT_RESULT_FOLDER)
+        os.mkdir(HISTOGRAM_FOLDER)
+        os.mkdir(RAW_DATA)
+
+        # if os.path.isfile(SUMMERY_FILE):
+        #     os.remove(SUMMERY_FILE)
 
         findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
         findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
@@ -130,7 +146,7 @@ class qa:
         print '## uncalculated kpi list ##'
         test_results.show(1000, False)
         test_results_pandas = test_results.toPandas()
-        test_results_pandas.to_csv("results/uncalculated_kpi_list.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/uncalculated_kpi_list.csv")
         return test_results_pandas.to_html()
 
     def test_invalid_percent_results(self):
@@ -144,13 +160,13 @@ class qa:
         test_results = df.join(df2, df2.client_name == df.name)
 
         # write  detailed result
-        test_results.write.csv("results/test_invalid_percent_results", header=True)
+        test_results.write.csv(RAW_DATA + "/test_invalid_percent_results", header=True)
         test_results_pandas = test_results.select('client_name', \
                                                   'result_count', \
                                                   "session_count", \
                                                   ((F.col('session_count') / total_sessions) * 100).alias("session_count%"))\
                                                    .toPandas()
-        test_results_pandas.to_csv("results/invalid_percent_results_list.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/invalid_percent_results_list.csv")
         return test_results_pandas.to_html()
 
     def test_result_is_zero(self):
@@ -166,7 +182,7 @@ class qa:
         test_results = df.join(df2, df2.client_name == df.name).join(df3, df3.name2 == df.name)
 
         # write  detailed result
-        test_results.write.csv("results/test_result_is_zero", header=True)
+        test_results.write.csv( RAW_DATA + "/test_result_is_zero", header=True)
 
         test_results_pandas = test_results.select('client_name', \
                                                   'results_zero_count', \
@@ -175,7 +191,7 @@ class qa:
                                                   ((F.col('session_count') / total_sessions) * 100).alias(
                                                   "session_count%(out of all sessions)") \
                                                   ).toPandas()
-        test_results_pandas.to_csv("results/test_result_is_zero.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_result_is_zero.csv")
         return test_results_pandas.to_html()
 
     def test_results_stdev(self):
@@ -183,7 +199,7 @@ class qa:
                                                                          F.mean('result'), \
                                                                          F.min('result'), \
                                                                          F.max('result')).orderBy('client_name').toPandas()
-        test_results_pandas.to_csv("results/test_results_stdev.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_results_stdev.csv")
         return test_results_pandas.to_html()
 
     def test_results_in_expected_range(self):
@@ -207,10 +223,35 @@ class qa:
                                                                          F.min('result'), \
                                                                          F.max('result')).orderBy('client_name').toPandas()
 
-        test_results_pandas.to_csv("results/test_results_by_category_stddev.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_results_by_category_stddev.csv")
         return test_results_pandas.to_html()
 
+    def gen_kpi_histogram(self, write_to_report=False):
+
+        static = self.static_kpi.toPandas()
+
+        for i, row in static.iterrows():
+            print "*** {} ***".format(row['client_name'])
+            filter = 'result is not null  and client_name = "{}"'.format(row['client_name'])
+            res = self.merged_kpi_results.filter(filter).select('client_name','result').toPandas()
+            # res = kpi.loc[(kpi['client_name'] == row['client_name'])]
+            if not res.empty:
+                res[['client_name', 'result']].hist()
+                plt.title(row['client_name'])
+                plt.savefig(HISTOGRAM_FOLDER + "/" + row['client_name'])
+
+            #TODO add image to html report
+
+
     def run_all_tests(self):
+
+        '''
+        run full test report
+        :return:
+        '''
+
+
+
         with open(SUMMERY_FILE, 'a') as file:
             file.write("<br> <p> test_invalid_percent_results</p>")
             file.write(self.test_invalid_percent_results())
@@ -235,6 +276,7 @@ class qa:
     #TODO
     # 2.plot histogram    #
     # inecluded status fk on session = 1
+    # scene kpi results check the table
 
     def get_statistics(self):
 
@@ -265,11 +307,12 @@ class qa:
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('jnjuk', start_date='2018-07-01', end_date='2018-07-30')
-    if not os.path.exists("results"):
-        os.mkdir("results")
-
-    if os.path.isfile(SUMMERY_FILE):
-        os.remove(SUMMERY_FILE)
+    qa_tool = qa('ccbza', start_date='2018-08-01', end_date='2018-08-30')
+    # if not os.path.exists("results"):
+    #     os.mkdir("results")
+    #
+    # if os.path.isfile(SUMMERY_FILE):
+    #     os.remove(SUMMERY_FILE)
     qa_tool.get_statistics()
     qa_tool.run_all_tests()
+    qa_tool.gen_kpi_histogram()
