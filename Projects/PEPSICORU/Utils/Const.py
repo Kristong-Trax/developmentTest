@@ -32,6 +32,7 @@ class Const(object):
     NAME = '_name'
     PRODUCT_TYPE = 'product_type'
     IRRELEVANT = 'Irrelevant'
+    STORE_NUMBER_1 = 'store_number_1'
 
 
     # SOS plaster

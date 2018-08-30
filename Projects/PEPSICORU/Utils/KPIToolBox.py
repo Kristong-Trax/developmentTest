@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -167,6 +168,7 @@ class PEPSICORUToolBox:
         field_name = filter_by + Const.NAME if Const.CATEGORY not in filter_by else filter_by
         return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
 
+
     def calculate_count_of_display(self):
         """
         This function will calculate the Count of # of Pepsi Displays KPI
@@ -177,6 +179,9 @@ class PEPSICORUToolBox:
         filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
         if filtered_scif.empty:
             return
+
+        targets = pd.read_excel(TEMPLATE_PATH)
+        target_row = targets[targets[Const.STORE_NUMBER_1] == 99999999999999999999999999999999999999999999999999999999]
 
         # Calculate count of display - store_level
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
@@ -239,7 +244,7 @@ class PEPSICORUToolBox:
         E.g sub_category_fk for level 3 or brand_fk for level 4.
         :return:
         """
-        # Get all of KPI fk in advance
+        # Get all of the KPI fk in advance
         facings_stores_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_MANUFACTURER_SOS)
         facings_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_CATEGORY_SOS)
         facings_sub_cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.FACINGS_SUB_CATEGORY_SOS)
@@ -262,7 +267,7 @@ class PEPSICORUToolBox:
                                        identifier_result=facings_level_1_identifier,
                                        numerator_result=num_facings, denominator_id=self.store_id,
                                        denominator_result=denom_facings, result=num_facings / float(denom_facings))
-        # Linear level 1calculate_share_of_shelf_new
+        # Linear level 1
         self.common.write_to_db_result(fk=linear_store_kpi_fk, numerator_id=self.pepsico_fk,
                                        identifier_result=linear_level_1_identifier,
                                        numerator_result=num_linear, denominator_id=self.store_id,
@@ -447,23 +452,23 @@ class PEPSICORUToolBox:
         """
         dist_store_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OSA_STORE_LEVEL)
         oos_store_level_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.OOS_STORE_LEVEL)
-        for result in lvl3_result.itertuples():
-            if result.in_store == 1:
-                score = Const.DISTRIBUTION
-            else:
-                score = Const.OOS
-            # Distribution
-            self.commonv1.write_to_db_result_new_tables(fk=dist_store_level_kpi_fk, numerator_id=result.product_fk,
-                                                        numerator_result=score,
-                                                        result=score, denominator_id=self.store_id,
-                                                        denominator_result=1, score=score)
-            if score == Const.OOS:
-                # OOS
-                self.commonv1.write_to_db_result_new_tables(fk=oos_store_level_kpi_fk, numerator_id=result.product_fk,
-                                                            numerator_result=score,
-                                                            result=score, denominator_id=self.store_id,
-                                                            denominator_result=1, score=score,
-                                                            score_after_actions=score)
+        # for result in lvl3_result.itertuples():
+        #     if result.in_store == 1:
+        #         score = Const.DISTRIBUTION
+        #     else:
+        #         score = Const.OOS
+        #     # Distribution
+        #     self.commonv1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
+        #                                                 numerator_result=score,
+        #                                                 result=score, denominator_id=self.store_id,
+        #                                                 denominator_result=1, score=score)
+        #     if score == Const.OOS:
+        #         # OOS
+        #         self.commonv1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
+        #                                                     numerator_result=score,
+        #                                                     result=score, denominator_id=self.store_id,
+        #                                                     denominator_result=1, score=score,
+        #                                                     score_after_actions=score)
 
         if not lvl3_result.empty:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
@@ -473,14 +478,14 @@ class PEPSICORUToolBox:
                     denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res))
                 # Distribution
-                self.commonv1.write_to_db_result_new_tables(fk=self.DIST_STORE_LVL2, numerator_id=self.pepsico_fk,
+                self.commonv1.write_to_db_result_new_tables(fk=dist_store_level_kpi_fk, numerator_id=self.pepsico_fk,
                                                             denominator_id=self.store_id,
                                                             numerator_result=result.passes,
                                                             denominator_result=denominator_res,
                                                             result=res, score=res, score_after_actions=res)
 
                 # OOS
-                self.commonv1.write_to_db_result_new_tables(fk=self.OOS_STORE_LVL2,
+                self.commonv1.write_to_db_result_new_tables(fk=oos_store_level_kpi_fk,
                                                             numerator_id=self.pepsico_fk,
                                                             numerator_result=denominator_res - result.passes,
                                                             denominator_id=self.store_id,
