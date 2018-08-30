@@ -15,7 +15,7 @@ class MarsUsGenerator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
+        # self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
         self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
 
 

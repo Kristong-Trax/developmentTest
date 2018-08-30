@@ -87,8 +87,8 @@ class PURINAToolBox:
         """
         This function calculates the KPI results.
         """
-        if not self.is_session_purina():
-            return
+        # if not self.is_session_purina():
+        #     return
         # Update all new static KPIs
         self.create_new_static_kpi()
 
@@ -185,7 +185,7 @@ class PURINAToolBox:
                         by_cat = by_brand.loc[pd.isnull(by_brand[SCIF_PRICE])]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
                     else:
-                        by_cat = by_brand.loc[data[SCIF_SUB_CATEOGRY] == cat]
+                        by_cat = by_brand.loc[data[SCIF_CATEOGRY] == cat]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
 
                     kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_name'] == CATEGORY) &
@@ -397,5 +397,8 @@ class PURINAToolBox:
         local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         query = """select category_fk, resolution_fk, exclude_status_fk from probedata.session_category
                 where session_fk = {}""".format(self.session_fk)
+        query = """select c.category_fk, s.resolution_code_fk, s.exclude_status_fk from probedata.session_category c
+                    join probedata.session s on s.pk=c.session_fk
+                  where session_fk = {}""".format(self.session_fk)
         data = pd.read_sql_query(query, local_con.db)
         return data
