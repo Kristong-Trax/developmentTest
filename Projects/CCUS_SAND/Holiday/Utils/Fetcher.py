@@ -1,8 +1,8 @@
 
-__author__ = 'urid'
+__author__ = 'Shani'
 
 
-class XMQueries(object):
+class CCUS_SANDHolidayQueries(object):
 
     # @staticmethod
     # def get_all_kpi_data():

@@ -8,12 +8,12 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-__author__ = 'urid'
+__author__ = 'Nimrod'
 
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class XMPositionGraphs:
+class CCUS_SANDMSC_NEWPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'

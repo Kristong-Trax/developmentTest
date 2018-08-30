@@ -5,13 +5,13 @@ import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.XM.Utils.Fetcher import XMQueries
-from Projects.CCUS.XM.Utils.PositionGraph import XMPositionGraphs
+from Projects.CCUS_SAND.SpecialPrograms.Utils.Fetcher import CCUS_SANDSpecialProgramsQueries
+from Projects.CCUS_SAND.SpecialPrograms.Utils.PositionGraph import CCUS_SANDSpecialProgramsPositionGraphs
 
 __author__ = 'Ortal'
 
 
-class XMGENERALToolBox:
+class SpecialProgramsGENERALCCUS_SANDToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -49,7 +49,7 @@ class XMGENERALToolBox:
 
     def get_atts(self):
 
-        query = XMQueries.get_product_atts()
+        query = CCUS_SANDSpecialProgramsQueries.get_product_atts()
         product_att3 = pd.read_sql_query(query, self.rds_conn.db)
         self.scif = self.scif.merge(product_att3, how='left', left_on='product_ean_code',
                                     right_on='product_ean_code')
@@ -58,7 +58,7 @@ class XMGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = XMPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = CCUS_SANDSpecialProgramsPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -724,7 +724,7 @@ class XMGENERALToolBox:
         :param df: The Data frame to be filters.
         :param filters: These are the parameters which the Data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUMSCGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCCUS_SANDMSCGENERALCCUS_SANDToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts Data frame.
         """
