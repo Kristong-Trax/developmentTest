@@ -5,14 +5,14 @@ import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS_SAND.MSC.Utils.Fetcher import MSCQueries
+from Projects.CCUS_SAND.MSC.Utils.Fetcher import CCUS_SANDMSCQueries
 
-from Projects.CCUS_SAND.MSC.Utils.PositionGraph import MSCPositionGraphs
+from Projects.CCUS_SAND.MSC.Utils.PositionGraph import CCUS_SANDMSCPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class MSCGENERALToolBox:
+class CCUS_SANDMSCGENERALCCUS_SANDToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -50,16 +50,16 @@ class MSCGENERALToolBox:
 
     def get_atts(self):
 
-        query = MSCQueries.get_product_atts()
+        query = CCUS_SANDMSCQueries.get_product_atts()
         product_att3 = pd.read_sql_query(query, self.rds_conn.db)
-        self.scif = self.scif.merge(product_att3, how='left', left_on='item_id',
-                                    right_on='item_id')
+        self.scif = self.scif.merge(product_att3, how='left', left_on='product_ean_code',
+                                    right_on='product_ean_code')
 
 
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = MSCPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = CCUS_SANDMSCPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -725,7 +725,7 @@ class MSCGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUMSCGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUCCUS_SANDMSCGENERALCCUS_SANDToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
