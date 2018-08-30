@@ -1992,15 +1992,24 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 continue
             result = 'FALSE'
             score = 0
+            target_linear_size_total = 0
+            others_linear_size_total = 0
             for values in p.get('Values').split('\nOR\n'):
                 targets, others, percent = values.split('\n')
                 target_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(targets)))
                 other_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(others)))
                 target_linear_size = self.calculate_layout_size_by_filters(target_filter)
                 others_linear_size = self.calculate_layout_size_by_filters(other_filter)
-                if target_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
+                target_linear_size_total += target_linear_size
+                others_linear_size_total += others_linear_size
+                if target_linear_size > 0 and others_linear_size > 0\
+                        and target_linear_size >= float(percent) * others_linear_size:
                     result = 'TRUE'
                     score = 100
+                    break
+            if target_linear_size_total > 0 and others_linear_size_total == 0:
+                result = 'TRUE'
+                score = 100
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))
             self.thresholds_and_results[p.get('#Mars KPI NAME')] = {'result': result}
             # Saving to old tables
