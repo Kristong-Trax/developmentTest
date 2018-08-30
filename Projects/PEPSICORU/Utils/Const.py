@@ -66,3 +66,4 @@ class Const(object):
     SCORE = 'score'
     DISTRIBUTION = '4'
     OOS = '5'
+
