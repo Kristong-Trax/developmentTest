@@ -146,8 +146,8 @@ class PEPSICORUToolBox:
         :return: List of the relevant brands for this category
         """
         filtered_scif = self.scif.loc[
-            (self.scif[Const.SUB_CATEGORY] == sub_category) & (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) & (
-            self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves))]
+            (self.scif[Const.SUB_CATEGORY] == sub_category) & (self.scif[Const.MANUFACTURER_NAME] == Const.PEPSICO) &
+            (self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves))]
         brands_list = filtered_scif[Const.BRAND_NAME].unique().tolist()
         if None in brands_list:
             brands_list.remove(None)
