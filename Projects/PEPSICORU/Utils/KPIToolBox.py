@@ -302,7 +302,6 @@ class PEPSICORUToolBox:
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
-        self.common_v1.commit_results_data_to_new_tables()
 
     @log_runtime('Share of shelf pepsicoRU')
     def calculate_share_of_shelf(self):
