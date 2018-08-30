@@ -32,7 +32,7 @@ class PEPSICORUToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.commonv1 = CommonV1(self.data_provider)
+        self.common_v1 = CommonV1(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -42,6 +42,9 @@ class PEPSICORUToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.visit_type = self.store_info[Const.ADDITIONAL_ATTRIBUTE_2].values[0]
+        self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif.loc[~(self.scif[Const.PRODUCT_TYPE] == Const.IRRELEVANT)]    # Vitaly's request
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -51,8 +54,16 @@ class PEPSICORUToolBox:
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.toolbox = GENERALToolBox(data_provider)
-        self.assortment = Assortment(self.data_provider, self.output, common=self.commonv1)
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.main_shelves = self.get_main_shelves()
+
+    def main_calculation(self):
+        """
+        This function calculates the KPI results.
+        """
+        self.calculate_share_of_shelf()
+        self.calculate_count_of_displays()
+        self.calculate_assortment()
 
     def get_main_shelves(self):
         """
@@ -83,11 +94,11 @@ class PEPSICORUToolBox:
         :param template_name: The scene type.
         :return: category name
         """
-        if Const.SNACKS in template_name:
+        if Const.SNACKS.upper() in template_name.upper():
             return Const.SNACKS
-        elif Const.BEVERAGES in template_name:
+        elif Const.BEVERAGES.upper() in template_name.upper():
             return Const.BEVERAGES
-        elif Const.JUICES in template_name:
+        elif Const.JUICES.upper() in template_name.upper():
             return Const.JUICES
         else:
             Log.warning("Couldn't find a matching category for template name = {}".format(template_name))
@@ -168,72 +179,130 @@ class PEPSICORUToolBox:
         field_name = filter_by + Const.NAME if Const.CATEGORY not in filter_by else filter_by
         return self.scif.loc[self.scif[field_name] == filter_param][pk_field].values[0]
 
+    def get_target_for_count_of_displays(self):
+        """
+        This function reads the project's template and returns the targets for all of the levels.
+        It iterates over the relevant row and aggregate the result per level.
+        :return: target_by_store (int), target_by_category (dict), target_by_scene (dict).
+        Plus it return the scene_type list from the template
+        """
+        targets = pd.read_excel(TEMPLATE_PATH).fillna(0)
+        store_number_1 = self.store_info['store_number_1'].values[0]
+        if not store_number_1:
+            Log.warning("No valid store number 1 for store_fk = {}".format(self.store_id))
+            return
+        targets = targets.loc[targets[Const.STORE_NUMBER_1] == store_number_1]
+        targets = targets.drop([Const.STORE_NAME, Const.STORE_NUMBER_1], axis=1)
+        target_row = (targets.iloc[0])[(targets.iloc[0]) > 0]   # Takes only the ones with target > 0
+        scene_types_from_template = targets.columns.tolist()
+        scene_types_with_targets = target_row.keys().tolist()
+        # Targets by store:
+        store_target = target_row.sum()
 
-    def calculate_count_of_display(self):
+        # Targets by category and scenes:
+        category_targets = {key: 0 for key in self.categories_to_calculate}
+        scene_targets = {key: 0 for key in scene_types_from_template}
+        for scene_type in scene_types_with_targets:
+            for category in category_targets:
+                if category.upper() in scene_type.upper():
+                    category_targets[category] += 1
+            scene_targets[scene_type] += 1
+
+        return store_target, category_targets, scene_targets, scene_types_from_template
+
+    def get_relevant_scene_types_from_list(self, scene_types_from_template):
+        """
+        There's a gap between the actual name and the name is the template because of the visit type.
+        So this function returns the a dictionary the narrows it.
+        :param scene_types_from_template: Scene type list from the template
+        :return: A dictionary where the keys are the names from the templates and values are the actual names
+        """
+        scene_types_dict = dict.fromkeys(scene_types_from_template)
+        relevant_templates_for_visit_type = self.all_templates.loc[
+            (self.all_templates[Const.ADDITIONAL_ATTRIBUTE_2] == self.visit_type) & (
+            ~self.all_templates[Const.TEMPLATE_NAME].isin(self.main_shelves))][Const.TEMPLATE_NAME].unique().tolist()
+        for scene_type in scene_types_from_template:
+            for template in relevant_templates_for_visit_type:
+                if scene_type.upper() in template.upper():
+                    scene_types_dict[scene_type] = template
+        # Remove irrelevant scene types from the dictionary
+        for key in scene_types_dict.keys():
+            if not scene_types_dict[key]:
+                del scene_types_dict[key]
+        return scene_types_dict
+
+    def calculate_count_of_displays(self):
         """
         This function will calculate the Count of # of Pepsi Displays KPI
         :return:
         """
-        # TODO: TARGETS TARGETS TARGETS
+        # Notice! store_target is Integer, scene_type_list is a list and the rest are dictionaries
+        store_target, category_targets, scene_targets, scene_type_list = self.get_target_for_count_of_displays()
         # Filtering out the main shelves
-        filtered_scif = self.scif.loc[~self.scif[Const.TEMPLATE_NAME].isin(self.main_shelves)]
-        if filtered_scif.empty:
-            return
-
-        targets = pd.read_excel(TEMPLATE_PATH)
-        target_row = targets[targets[Const.STORE_NUMBER_1] == 99999999999999999999999999999999999999999999999999999999]
+        relevant_scenes_dict = self.get_relevant_scene_types_from_list(scene_type_list)
+        relevant_template_name_list = relevant_scenes_dict.values()
+        filtered_scif = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_template_name_list)]
 
         # Calculate count of display - store_level
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
         scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
+        result_store_level = 100 if scene_types_in_store >= store_target else scene_types_in_store / float(store_target)
         self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
                                        numerator_result=scene_types_in_store,
-                                       denominator_id=self.store_id, denominator_result=99999,
+                                       denominator_id=self.store_id, denominator_result=store_target,
                                        identifier_result=display_count_store_level_fk,
-                                       result=scene_types_in_store, score=99999)
+                                       result=result_store_level)
 
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
         for category in self.categories_to_calculate:
             category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
-            relevant_scenes = [scene_type for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist() if
-                               category in scene_type.upper()]
+            relevant_scenes = [scene_type for scene_type in relevant_template_name_list if
+                               category.upper() in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
             if filtered_scif_by_cat.empty:
                 continue
-            scene_types_in_category = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
+            scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
+            current_category_target = category_targets[category]
+            result_cat_level = 100 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
+                current_category_target)
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
             self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
-                                           numerator_result=scene_types_in_store,
-                                           denominator_id=category_fk, denominator_result=99999,
+                                           numerator_result=scene_types_in_cate,
+                                           denominator_id=category_fk, denominator_result=current_category_target,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=scene_types_in_category, score=99999)
+                                           result=result_cat_level)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
-        for scene_type in filtered_scif[Const.TEMPLATE_NAME].unique().tolist():
-            relevant_category = self.get_category_from_template_name(scene_type)
+        for scene_type in relevant_scenes_dict.keys():
+            actual_scene_name = relevant_scenes_dict[scene_type]
+            relevant_category = self.get_category_from_template_name(actual_scene_name)
             relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
             scene_type_score = len(
-                filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == scene_type][Const.SCENE_FK].unique())
-            scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, scene_type)
+                filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == actual_scene_name][Const.SCENE_FK].unique())
+            scene_type_target = scene_targets[scene_type]
+            result_scene_level = 100 if scene_type_score >= scene_type_target else scene_types_in_store / float(
+                scene_type_target)
+            scene_type_fk = self.get_relevant_pk_by_name(Const.TEMPLATE, actual_scene_name)
             display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                               category=relevant_category)
             parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                            category=relevant_category)
             self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=scene_types_in_store,
-                                           denominator_id=relevant_category_fk, denominator_result=99999,
+                                           denominator_id=relevant_category_fk, denominator_result=scene_type_target,
                                            identifier_result=display_count_scene_level_identifier,
                                            identifier_parent=parent_identifier, context_id=scene_type_fk,
-                                           result=scene_type_score, score=99999)
+                                           result=result_scene_level)
 
     def calculate_assortment(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
+        self.common_v1.commit_results_data_to_new_tables()
 
     @log_runtime('Share of shelf pepsicoRU')
     def calculate_share_of_shelf(self):
@@ -353,14 +422,6 @@ class PEPSICORUToolBox:
                                                    identifier_parent=linear_sub_cat_identifier,
                                                    result=num_linear / float(denom_linear))
 
-    def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
-        self.calculate_share_of_shelf()
-        # self.calculate_count_of_display()
-        # self.calculate_assortment()
-
     # Utils functions with a slight change from the SDK factory:
 
     def calculate_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
@@ -408,18 +469,18 @@ class PEPSICORUToolBox:
                 else:
                     score = Const.OOS
                 # Distribution
-                self.commonv1.write_to_db_result_new_tables(fk=osa_product_level_fk, numerator_id=result.product_fk,
-                                                            numerator_result=score,
-                                                            result=score, denominator_id=result.category_fk,
-                                                            denominator_result=1, score=score,
-                                                            score_after_actions=score)
+                self.common_v1.write_to_db_result_new_tables(fk=osa_product_level_fk, numerator_id=result.product_fk,
+                                                             numerator_result=score,
+                                                             result=score, denominator_id=result.category_fk,
+                                                             denominator_result=1, score=score,
+                                                             score_after_actions=score)
                 if score == Const.OOS:
                     # OOS
-                    self.commonv1.write_to_db_result_new_tables(oos_product_level_fk,
-                                                                numerator_id=result.product_fk, numerator_result=score,
-                                                                result=score, denominator_id=result.category_fk,
-                                                                denominator_result=1, score=score,
-                                                                score_after_actions=score)
+                    self.common_v1.write_to_db_result_new_tables(oos_product_level_fk,
+                                                                 numerator_id=result.product_fk, numerator_result=score,
+                                                                 result=score, denominator_id=result.category_fk,
+                                                                 denominator_result=1, score=score,
+                                                                 score_after_actions=score)
             category_fk_list = lvl3_with_cat['category_fk'].unique()
             for cat in category_fk_list:
                 lvl3_result_cat = lvl3_with_cat[lvl3_with_cat["category_fk"] == cat]
@@ -428,21 +489,21 @@ class PEPSICORUToolBox:
                     denominator_res = result.total
                     res = np.divide(float(result.passes), float(denominator_res))
                     # Distribution
-                    self.commonv1.write_to_db_result_new_tables(fk=osa_category_level_kpi_fk,
-                                                                numerator_id=self.pepsico_fk,
-                                                                numerator_result=result.passes,
-                                                                denominator_id=cat,
-                                                                denominator_result=denominator_res,
-                                                                result=res, score=res, score_after_actions=res)
+                    self.common_v1.write_to_db_result_new_tables(fk=osa_category_level_kpi_fk,
+                                                                 numerator_id=self.pepsico_fk,
+                                                                 numerator_result=result.passes,
+                                                                 denominator_id=cat,
+                                                                 denominator_result=denominator_res,
+                                                                 result=res, score=res, score_after_actions=res)
 
                     # OOS
-                    self.commonv1.write_to_db_result_new_tables(fk=oos_category_level_kpi_fk,
-                                                                numerator_id=self.pepsico_fk,
-                                                                numerator_result=denominator_res - result.passes,
-                                                                denominator_id=cat,
-                                                                denominator_result=denominator_res,
-                                                                result=1 - res, score=(1 - res),
-                                                                score_after_actions=1 - res)
+                    self.common_v1.write_to_db_result_new_tables(fk=oos_category_level_kpi_fk,
+                                                                 numerator_id=self.pepsico_fk,
+                                                                 numerator_result=denominator_res - result.passes,
+                                                                 denominator_id=cat,
+                                                                 denominator_result=denominator_res,
+                                                                 result=1 - res, score=(1 - res),
+                                                                 score_after_actions=1 - res)
                 self.assortment.LVL2_HEADERS.extend(['passes', 'total'])
         return
 
@@ -458,13 +519,13 @@ class PEPSICORUToolBox:
         #     else:
         #         score = Const.OOS
         #     # Distribution
-        #     self.commonv1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
+        #     self.common_v1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
         #                                                 numerator_result=score,
         #                                                 result=score, denominator_id=self.store_id,
         #                                                 denominator_result=1, score=score)
         #     if score == Const.OOS:
         #         # OOS
-        #         self.commonv1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
+        #         self.common_v1.write_to_db_result_new_tables(fk=?????, numerator_id=result.product_fk,
         #                                                     numerator_result=score,
         #                                                     result=score, denominator_id=self.store_id,
         #                                                     denominator_result=1, score=score,
@@ -478,17 +539,17 @@ class PEPSICORUToolBox:
                     denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res))
                 # Distribution
-                self.commonv1.write_to_db_result_new_tables(fk=dist_store_level_kpi_fk, numerator_id=self.pepsico_fk,
-                                                            denominator_id=self.store_id,
-                                                            numerator_result=result.passes,
-                                                            denominator_result=denominator_res,
-                                                            result=res, score=res, score_after_actions=res)
+                self.common_v1.write_to_db_result_new_tables(fk=dist_store_level_kpi_fk, numerator_id=self.pepsico_fk,
+                                                             denominator_id=self.store_id,
+                                                             numerator_result=result.passes,
+                                                             denominator_result=denominator_res,
+                                                             result=res, score=res, score_after_actions=res)
 
                 # OOS
-                self.commonv1.write_to_db_result_new_tables(fk=oos_store_level_kpi_fk,
-                                                            numerator_id=self.pepsico_fk,
-                                                            numerator_result=denominator_res - result.passes,
-                                                            denominator_id=self.store_id,
-                                                            denominator_result=denominator_res,
-                                                            result=1 - res, score=1 - res, score_after_actions=1 - res)
+                self.common_v1.write_to_db_result_new_tables(fk=oos_store_level_kpi_fk,
+                                                             numerator_id=self.pepsico_fk,
+                                                             numerator_result=denominator_res - result.passes,
+                                                             denominator_id=self.store_id,
+                                                             denominator_result=denominator_res,
+                                                             result=1 - res, score=1 - res, score_after_actions=1 - res)
         return

@@ -32,7 +32,8 @@ class Const(object):
     NAME = '_name'
     PRODUCT_TYPE = 'product_type'
     IRRELEVANT = 'Irrelevant'
-    STORE_NUMBER_1 = 'store_number_1'
+    STORE_NUMBER_1 = 'Store Number 1'
+    STORE_NAME = 'Store Name'
 
 
     # SOS plaster
@@ -65,6 +66,6 @@ class Const(object):
     # Saving to DB
     RESULT = 'result'
     SCORE = 'score'
-    DISTRIBUTION = '4'
-    OOS = '5'
+    DISTRIBUTION = 4
+    OOS = 5
 
