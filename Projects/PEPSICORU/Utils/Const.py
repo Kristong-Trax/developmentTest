@@ -17,6 +17,7 @@ class Const(object):
     SCENE_FK = 'scene_fk'
     MANUFACTURER_NAME = 'manufacturer_name'
     MANUFACTURER = 'manufacturer'
+    MANUFACTURER_FK = 'manufacturer_fk'
     CATEGORY = 'category'
     CATEGORY_FK = 'category_fk'
     SUB_CATEGORY = 'sub_category'

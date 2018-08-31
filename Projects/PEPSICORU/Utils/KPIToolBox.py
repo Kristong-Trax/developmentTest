@@ -50,12 +50,13 @@ class PEPSICORUToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
         self.k_engine = BaseCalculationsGroup(data_provider, output)
-        self.categories_to_calculate = self.get_relevant_categories_for_session()
         self.toolbox = GENERALToolBox(data_provider)
         self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
-        self.main_shelves = self.get_main_shelves()
+        if not self.scif.empty:
+            self.pepsico_fk = self.get_relevant_pk_by_name(Const.MANUFACTURER, Const.PEPSICO)
+            self.categories_to_calculate = self.get_relevant_categories_for_session()
+            self.main_shelves = self.get_main_shelves()
 
     def main_calculation(self):
         """
