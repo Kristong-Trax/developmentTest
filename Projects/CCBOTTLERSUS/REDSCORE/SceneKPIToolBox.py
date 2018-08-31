@@ -22,6 +22,7 @@ class CCBOTTLERSUSSceneRedToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
         self.store_attr = toolbox.store_attr
         self.templates = templates
         self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
