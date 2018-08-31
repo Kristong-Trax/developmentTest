@@ -634,7 +634,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=[], formula=None, values_list=None, object_type=None,
-                               include_stacking = False):
+                               include_stacking=False):
         if not values_list:
             if '*' in str(params.get('Values')):
                 values_list = str(params.get('Values')).split(', *')

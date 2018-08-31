@@ -59,22 +59,19 @@ class MARSRU_PRODMARSRUCalculations(BaseCalculationsScript):
         self.timer.stop('MARSRU_PRODMARSRUCalculations.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('MARSRU_PROD calculations')
-    Config.init()
-    project_name = 'marsru-prod'
-    session_uids = [
-                    'e930601d-8c70-4d80-96d6-aec50966cbfe',
-    ]
-    data_provider = KEngineDataProvider(project_name)
-    output = Output()
-    for session in session_uids:
-        data_provider.load_session_data(session)
-        MARSRU_PRODMARSRUCalculations(data_provider, output).run_project_calculations()
-
-    # jg = MARSRU_PRODMARSRUJsonGenerator('marsru-prod')
-    # jg.create_json('KPI MARS 16.03.17.xlsx')
-    # # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
-    # tb = MARSRU_PRODMARSRUKPIToolBox(data_provider, output, 'MARS KPIs 2017')
-    # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
-    # tb.insert_new_kpis_old(project_name)
+# if __name__ == '__main__':
+#     LoggerInitializer.init('MARSRU_PROD calculations')
+#     Config.init()
+#     project_name = 'marsru-prod'
+#     session_uids = [
+#         # 'e930601d-8c70-4d80-96d6-aec50966cbfe',
+#         'ee67f44d-5fdd-4471-82e6-36a89f7260d6',
+#         '00d40f25-8fdd-4941-961e-9406678aa87f',
+#         '6b763b32-afda-4320-ac11-95ea90fe2823'
+#     ]
+#     data_provider = KEngineDataProvider(project_name)
+#     output = Output()
+#     for session in session_uids:
+#         data_provider.load_session_data(session)
+#         MARSRU_PRODMARSRUCalculations(data_provider, output).run_project_calculations()
+#
