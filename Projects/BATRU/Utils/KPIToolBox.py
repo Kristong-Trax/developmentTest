@@ -1016,12 +1016,12 @@ class BATRUToolBox:
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
                 if section_shelf_data_all.empty:
                     Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
-                    continue
+                    # continue
 
                 section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
                 if section_shelf_data.empty:
                     Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
-                    continue
+                    # continue
 
                 # Initial pass values
                 no_competitors = True
