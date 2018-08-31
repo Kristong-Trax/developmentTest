@@ -10,7 +10,7 @@ sys.path.append('.')
 __author__ = 'ortalk'
 
 
-class DUNKINJsonGenerator:
+class CCUS_SANDDUNKINJsonGenerator:
     def __init__(self, project):
         self.project = project
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
