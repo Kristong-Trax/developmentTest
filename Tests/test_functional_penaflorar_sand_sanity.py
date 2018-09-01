@@ -14,12 +14,13 @@ from Tests.Data.Templates.paneflorar_sand.MPA import mpa
 from Tests.Data.Templates.paneflorar_sand.NewProducts import products
 from Tests.Data.TestData.test_data_penaflorar_sand_sanity import ProjectsSanityData
 from Projects.PENAFLORAR_SAND.Calculations import PENAFLORAR_SANDDIAGEOARCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
