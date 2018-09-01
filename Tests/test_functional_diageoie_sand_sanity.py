@@ -15,12 +15,13 @@ from Tests.Data.Templates.diageoie.MPA import mpa
 from Tests.Data.Templates.diageoie.NewProducts import products
 from Tests.Data.TestData.test_data_diageoie_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOIE_SAND.Calculations import DIAGEOIECalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
