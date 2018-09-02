@@ -176,8 +176,9 @@ class PNGJPGENERALToolBox:
                     assortment += 1
         return assortment
 
-    def calculate_facings_on_golden_zone(self, golden_zone_data, **filters):
+    def calculate_linear_facings_on_golden_zone(self, golden_zone_data, linear=False, **filters):
         total_facings = 0
+        total_linear = 0
         filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         if not filtered_df.empty:
             scenes = filtered_df['scene_fk'].unique().tolist()
@@ -189,8 +190,14 @@ class PNGJPGENERALToolBox:
                     num_shelves = bay_df['shelf_number'].max()
                     golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
                     facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                    linear_on_golden_zone = filtered_bay_df.loc[
+                        (filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)) & (filtered_bay_df['stacking_layer'] == 1)]['width_mm'].sum()
+                    total_linear += linear_on_golden_zone
                     total_facings += facings_on_golden_zone
-        return total_facings
+        if linear:
+            return total_linear
+        else:
+            return total_facings
 
     def get_golden_zone_shelves(self, shelves_num, golden_zone_template):
         """
