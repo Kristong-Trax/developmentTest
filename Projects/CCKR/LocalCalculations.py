@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cckr'
     data_provider = KEngineDataProvider(project_name)
-    session = '4ae2ef36-918a-4de3-bb15-0f8f41554a0e'
+    session = '63832496-6831-11e4-95c2-12e613ba0fea'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
