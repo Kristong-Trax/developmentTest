@@ -148,7 +148,7 @@ class PURINAToolBox:
 
             brands = by_mf['brand_name'].unique()
             for brand in brands:
-                by_brand = by_mf.loc[data['brand_name'] == brand]
+                by_brand = by_mf.loc[by_mf['brand_name'] == brand]
                 brand_ft = self.cm_to_ft(sum(by_brand[LINEAR_SIZE]))
                 kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_name'] == BRAND) &
                                                   (self.kpi_static_data['kpi_set_name'] == PURINA_SET)]['kpi_fk'].values[0]
@@ -172,7 +172,7 @@ class PURINAToolBox:
                         by_cat = by_brand.loc[pd.isnull(by_brand[SCIF_CATEOGRY])]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
                     else:
-                        by_cat = by_brand.loc[data[SCIF_CATEOGRY] == cat]
+                        by_cat = by_brand.loc[by_brand[SCIF_CATEOGRY] == cat]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
 
                     kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_name'] == CATEGORY) &
@@ -199,7 +199,7 @@ class PURINAToolBox:
                             by_sub_cat = by_cat.loc[pd.isnull(by_cat[SCIF_SUB_CATEOGRY])]
                             sub_cat_ft = self.cm_to_ft(sum(by_sub_cat[LINEAR_SIZE]))
                         else:
-                            by_sub_cat = by_cat.loc[data[SCIF_SUB_CATEOGRY] == sub_cat]
+                            by_sub_cat = by_cat.loc[by_cat[SCIF_SUB_CATEOGRY] == sub_cat]
                             sub_cat_ft = self.cm_to_ft(sum(by_sub_cat[LINEAR_SIZE]))
                         # write to db under sub category atomic kpi score with brand name in results
 
