@@ -10,7 +10,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_ccbza_sanity import ProjectsSanityData
-from Projects.CCBZA.Calculations import CCBZACalculations
+from Projects.CCBZA.Calculations import CCBZA_Calculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
@@ -47,5 +47,5 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            CCBZACalculations(data_provider, output).run_project_calculations()
+            CCBZA_Calculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
