@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.3.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -41,7 +41,8 @@ class CCBOTTLERSUSREDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.united_scenes = self.get_united_scenes() # we don't need to check scenes without United products
+        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.united_scenes = self.get_united_scenes()  # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.templates = {}
         self.calculation_type = calculation_type
@@ -52,21 +53,19 @@ class CCBOTTLERSUSREDToolBox:
             for sheet in Const.SHEETS:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
             self.converters = self.templates[Const.CONVERTERS]
-            self.common_db_integ = None
         else:
             self.TEMPLATE_PATH = SURVEY_TEMPLATE_PATH
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
-            self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
-            self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
             for sheet in Const.SHEETS_MANUAL:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
+        self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
         self.common_db = Common(self.data_provider, self.RED_SCORE)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
-        # print self.store_type ####
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         main_template = self.templates[Const.KPIS]
@@ -234,13 +233,9 @@ class CCBOTTLERSUSREDToolBox:
             if packages is None:
                 packages = cur_packages
             else:
-                packages = cur_packages & packages
-                if len(packages) == 0:
-                    return False
-            if filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
+                packages = cur_packages | packages  # this set has all the combinations for the brands in the scene
+            if len(packages) != 1 or filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
                 return False
-        if len(packages) > 1:
-            return False
         return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):

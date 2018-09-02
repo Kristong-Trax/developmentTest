@@ -2,7 +2,7 @@
 __author__ = 'Nimrod'
 
 
-class OBBOQueries(object):
+class CCUS_SANDOBBOQueries(object):
 
     @staticmethod
     def get_all_kpi_data():

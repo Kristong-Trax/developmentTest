@@ -442,20 +442,19 @@ class PNGRO_PRODToolBox:
             display_weight = self.get_display_weight_by_display_name(display)
             display_count = sum(display_pd['count'].tolist())
             general_filters = {'scene_id': display_pd['scene_fk'].tolist()}
-            display_width = self.tools.calculate_share_space_length(**general_filters) * display_weight * display_count
+            display_width = self.tools.calculate_share_space_length(**general_filters)
             for product in self.matches['item_id'].unique().tolist():
                 general_filters.update({'item_id': product})
-                product_width = self.tools.calculate_share_space_length(
-                    **general_filters) * display_weight * display_count
+                product_width = self.tools.calculate_share_space_length(**general_filters)
                 if product_width and display_width:
-                    score = product_width / float(display_width)
+                    score = (product_width / float(display_width)) * display_weight * display_count
                     level_fk = self.get_new_kpi_fk_by_kpi_name('display count')
                     self.common.write_to_db_result_new_tables(fk=level_fk, score=score, result=score,
                                                               numerator_result=product_width,
                                                               denominator_result=display_width,
                                                               numerator_id=product,
                                                               denominator_id=display_pd['pk'].values[0],
-                                                              target=display_weight)
+                                                              target=display_weight * display_count)
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name

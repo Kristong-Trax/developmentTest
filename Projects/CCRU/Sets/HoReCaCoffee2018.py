@@ -1,4 +1,3 @@
-
 import datetime
 
 import pandas as pd
@@ -14,7 +13,9 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
+
 __author__ = 'urid'
+
 
 HRC_COFFEE_2018 = 'Pos 2018 - HoReCa - Coffee Tea Shops'
 HRC_COFFEE_2018_GAPS = 'Pos 2018 - HoReCa Tea'
@@ -24,7 +25,7 @@ SPIRITS = 'Spirits 2018 - HoReCa'
 
 
 class CCRUHRCCoffee2018Calculations:
-    def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
+    def __init__(self, data_provider, output, ps_data_provider):  # All relevant session data with KPI static info will trigger the KPI calculation
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -48,7 +49,7 @@ class CCRUHRCCoffee2018Calculations:
             self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
-    @log_handler.log_runtime('Total Calculations', log_start=True)
+    # @log_handler.log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         jg = CCRUJsonGenerator('ccru')
         jg.create_json('HoReCa Cofee_Tea Shops PoS 2018.xlsx', HRC_COFFEE_2018)
@@ -70,7 +71,7 @@ class CCRUHRCCoffee2018Calculations:
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HRC_COFFEE_2018)
 # Sergey
-#        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
 # Sergey
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HRC_COFFEE_2018_GAPS)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
@@ -106,5 +107,5 @@ class CCRUHRCCoffee2018Calculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
-        calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        # calc_finish_time = datetime.datetime.utcnow()
+        # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
