@@ -103,4 +103,3 @@ class Const(object):
         SOVI,
         MANUAL
     ]
-
