@@ -233,13 +233,9 @@ class CCBOTTLERSUSREDToolBox:
             if packages is None:
                 packages = cur_packages
             else:
-                packages = cur_packages & packages
-                if len(packages) == 0:
-                    return False
-            if filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
+                packages = cur_packages | packages  # this set has all the combinations for the brands in the scene
+            if len(packages) != 1 or filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
                 return False
-        if len(packages) > 1:
-            return False
         return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
