@@ -331,9 +331,13 @@ class NESTLEUKToolBox(NESTLEUKConsts):
         top = matches[(matches['shelf_number'] == shelf_number) &
                   (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
         top = int(top['y_mm']) - (int(top['height_mm']) / 2) # TODO height_mm_net
-        bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
-                         (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
-        bottom = int(bottom['y_mm']) - (int(bottom['height_mm']) / 2) # TODO height_mm_net
+        try:
+            bottom = matches[(matches['shelf_number_from_bottom'] == 2) &
+                             (matches['stacking_layer'] == 1)].sort_values('y_mm', ascending=False).iloc[0]
+            bottom = int(bottom['y_mm']) - (int(bottom['height_mm']) / 2) # TODO height_mm_net
+        except:
+            bottom = matches[matches['shelf_number_from_bottom'] == 1].sort_values('y_mm', ascending=False).iloc[0]
+            bottom = int(bottom['y_mm']) + (int(bottom['height_mm']) / 2)  # TODO height_mm_net
         left = matches.copy().sort_values('x_mm', ascending=True).iloc[0]
         left = int(left['x_mm']) - (int(left['width_mm']) / 2) # TODO width_mm_net
         right = matches.copy().sort_values('x_mm', ascending=False).iloc[0]

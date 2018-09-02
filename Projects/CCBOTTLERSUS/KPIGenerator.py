@@ -4,6 +4,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
+from Projects.CCBOTTLERSUS.CMA.KPIToolBox import CCBOTTLERSUSCMAToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import CCBOTTLERSUSREDToolBox
 from Projects.CCBOTTLERSUS.DISPLAYS.KPIToolBox import CCBOTTLERSUSDISPLAYSToolBox
 from Projects.CCBOTTLERSUS.Utils.KPIToolBox import CCBOTTLERSUSBCIKPIToolBox
@@ -28,6 +29,7 @@ class CCBOTTLERSUSGenerator:
         self.calculate_red_score()
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
+        self.calculate_cma_compliance()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
@@ -66,3 +68,13 @@ class CCBOTTLERSUSGenerator:
                 tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
+
+    @log_runtime('CMA Compliance CCBOTTLERSUSCalculations')
+    def calculate_cma_compliance(self):
+        Log.info('starting calculate_cma_compliance')
+        try:
+            tool_box = CCBOTTLERSUSCMAToolBox(self.data_provider, self.output)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))

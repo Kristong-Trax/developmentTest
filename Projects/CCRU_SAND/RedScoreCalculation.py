@@ -30,6 +30,7 @@ from Projects.CCRU_SAND.Sets.Petrol2018 import CCRU_SANDPetrol2018Calculations
 
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -64,60 +65,67 @@ QSR_2018 = 'Pos 2018 - QSR'
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
+
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         ps_data = PsDataProvider(self.data_provider, self.output)
         store_area = ps_data.store_area
         tool_box = CCRU_SANDKPIToolBox(self.data_provider, self.output, store_area)
-        kpi_set_name = tool_box.set_name
-        test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
-        if kpi_set_name == CANTEEN:
-            CCRU_SANDCanteenCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == PETROL:
-            CCRU_SANDPetrolCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HORECA:
-            CCRU_SANDHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == FT:
-            CCRU_SANDFTCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HYPERMARKET:
-            CCRU_SANDHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERMARKET:
-            CCRU_SANDSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERETTE:
-            CCRU_SANDSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == FAST_FOOD:
-            CCRU_SANDFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+        external_session_id = str(tool_box.external_session_id)
+        if external_session_id.find('EasyMerch-P') < 0:
 
-        elif kpi_set_name == FT2018:
-            CCRU_SANDFT2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CANTEEN_2018:
-            CCRU_SANDCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == PETROL_2018:
-            CCRU_SANDPetrol2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HYPERMARKET_2018:
-            CCRU_SANDHypermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERMARKET_2018:
-            CCRU_SANDSupermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_RESTAURANT_2018:
-            CCRU_SANDHRCRestaurant2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_COFFEE_2018:
-            CCRU_SANDHRCCoffee2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_BAR_2018:
-            CCRU_SANDHRCBar2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CONVENIENCE_BIG_2018:
-            CCRU_SANDConvenienceBigCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CONVENIENCE_SMALL_2018:
-            CCRU_SANDConvenienceSmallCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == QSR_2018:
-            CCRU_SANDQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif test_store.values[0] == "Y":
-            Log.info('Session store "{}" is a test store'.format(
-                tool_box.session_info.store_type))
+            kpi_set_name = tool_box.set_name
+            test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
+
+            if kpi_set_name == CANTEEN:
+                CCRU_SANDCanteenCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == PETROL:
+                CCRU_SANDPetrolCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HORECA:
+                CCRU_SANDHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == FT:
+                CCRU_SANDFTCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HYPERMARKET:
+                CCRU_SANDHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == SUPERMARKET:
+                CCRU_SANDSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == SUPERETTE:
+                CCRU_SANDSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == FAST_FOOD:
+                CCRU_SANDFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+
+            elif kpi_set_name == FT2018:
+                CCRU_SANDFT2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CANTEEN_2018:
+                CCRU_SANDCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == PETROL_2018:
+                CCRU_SANDPetrol2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HYPERMARKET_2018:
+                CCRU_SANDHypermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == SUPERMARKET_2018:
+                CCRU_SANDSupermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_RESTAURANT_2018:
+                CCRU_SANDHRCRestaurant2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_COFFEE_2018:
+                CCRU_SANDHRCCoffee2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_BAR_2018:
+                CCRU_SANDHRCBar2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CONVENIENCE_BIG_2018:
+                CCRU_SANDConvenienceBigCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CONVENIENCE_SMALL_2018:
+                CCRU_SANDConvenienceSmallCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == QSR_2018:
+                CCRU_SANDQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif test_store.values[0] == "Y":
+                Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
+            else:
+                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'.format(tool_box.store_id, kpi_set_name))
+
         else:
-            Log.error('Session store "{}" is not set to calculation'.format(
-                tool_box.session_info.store_type))  # todo add all supported store types
+            Log.info('Promo session, no calculation implied')
 
-        self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
+        # self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
 
 # if __name__ == '__main__':
@@ -125,7 +133,19 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['8630f3ac-b196-4557-bef9-7e9d0246ce8d']
+#     session_uids = [
+#         '42C08E8C-A434-4FDE-841B-66C121E8C568',
+#         '246c80c3-63b9-4a90-b519-ca54416f1079',
+#         '4a9e883e-811e-47e4-bb86-235e55df1875',
+#         '48a19a3d-92b4-4f83-9b77-47ce004ff546',
+#         'ad063eec-6f7c-4a6d-b9ea-aa2610d633e8',
+#         '3480fa35-e83a-4b3a-8c6e-b251f6f0851a',
+#         '2292DF71-FA8E-4AB9-A0C9-125CA9C9423F',
+#         '9661AF7C-9871-4C5B-8533-406C2BD319B8',
+#         'e3b7576d-a193-44c6-9b25-1a402ee14539',
+#         '5bd39786-002b-4645-8867-4a3389b1206e',
+#         '06799C75-F589-48A9-B68A-CB07958E5FD7',
+#     ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()

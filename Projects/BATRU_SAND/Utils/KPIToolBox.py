@@ -1,4 +1,5 @@
 # coding=utf-8
+# import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
@@ -12,6 +13,8 @@ from Projects.BATRU_SAND.Utils.ParseTemplates import parse_template
 from Projects.BATRU_SAND.Utils.Fetcher import BATRU_SANDQueries
 from Projects.BATRU_SAND.Utils.GeneralToolBox import BATRU_SANDGENERALToolBox
 from Projects.BATRU_SAND.Utils.PositionGraph import BATRU_SANDPositionGraphs
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
+
 
 __author__ = 'uri'
 
@@ -22,7 +25,10 @@ MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT = 60
 MAX_CYCLES_FOR_HISTORY_BASED_ASSORTMENT = 3
 EMPTY = 'Empty'
 OTHER = 'Other'
-NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Irrelevant", "Empty")
+IRRELEVANT = 'Irrelevant'
+SKU = 'SKU'
+POSM = 'POS'
+NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
 P3_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
@@ -32,6 +38,7 @@ POSM_AVAILABILITY = 'POSM Status'
 SHARE_OF = 'Share of Shelf / Assortment'
 PRICE_MONITORING = 'Price Monitoring'
 MOBILE_PRICE_MONITORING = 'Mobile Price Monitoring'
+MOBILE_PRICE_MONITORING_KPI_FK = 5891
 P2_FULFILMENT = 'Price-Monitoring fulfillment (TMR)'
 P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
@@ -64,32 +71,16 @@ OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-
-        return wrapper
-
-    return decorator
-
-
 class BATRU_SANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
-    PRESENCE_KPI_NAME = 'SKU presence in SKU_List'
-    SEQUENCE_KPI_NAME = 'SKU sequence'
-    REPEATING_KPI_NAME = 'SKU repeating'
+    SKU_PRESENCE_KPI_NAME = 'SKU presence in SKU_List'
+    SKU_SEQUENCE_KPI_NAME = 'SKU sequence'
+    SKU_REPEATING_KPI_NAME = 'SKU repeating'
     API_SKU_PRESENCE_KPI_NAME = '{fixture};{section_name};SKU presence in SKU_List'
-    API_REPEATING_KPI_NAME = '{fixture};{section_name};SKU repeating'
-    API_SEQUENCE_KPI_NAME = '{fixture};{section_name};SKU sequence'
+    API_SKU_REPEATING_KPI_NAME = '{fixture};{section_name};SKU repeating'
+    API_SKU_SEQUENCE_KPI_NAME = '{fixture};{section_name};SKU sequence'
     API_SECTION_KPI_NAME = '{fixture};{section_name}'
     API_EQUIPMENT_KPI_NAME = 'Equipment:{fixture}'
     API_DISPLAY_KPI_NAME = 'Equipment:{fixture} – Display:{display}'
@@ -111,17 +102,36 @@ class BATRU_SANDToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+
         self.products = self.data_provider[Data.PRODUCTS]
+        self.products = self.products\
+            .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
+                   how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.products['product_ean_code']
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_name_lead'] = self.products['product_name']
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.products['product_fk']
+
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.all_products = self.all_products\
+            .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
+                   how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.all_products['product_ean_code']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_name_lead'] = self.all_products['product_name']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.all_products['product_fk']
+
+        self.templates = self.data_provider[Data.ALL_TEMPLATES]
+
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scene_info = self.data_provider[Data.SCENES_INFO]\
+            .merge(self.templates[['template_fk', 'template_name']], how='left', on='template_fk')
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.merged_additional_data = self.get_additional_product_data()
         self.tools = BATRU_SANDGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.match_display_in_scene = self.tools.get_match_display()
         # self.tools.upload_store_assortment_file(P1_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         new_products = False
@@ -144,9 +154,7 @@ class BATRU_SANDToolBox:
         self.position_graph = BATRU_SANDPositionGraphs(self.data_provider)
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.kpi_results_queries = []
-        self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.section_products = pd.DataFrame([], columns=['section', 'product'])  # todo change this to get_template
-        self.sequences = parse_template(P3_TEMPLATE_PATH, 'Sequence list')
         self.filters_params = {'Template Group': 'template_group', 'Product Name': 'display_name',
                                'KPI Display Name': 'additional_attribute_1'}
         self.posm_in_session = None
@@ -256,8 +264,8 @@ class BATRU_SANDToolBox:
     def encode_column_in_df(df, column_name):
         return df[column_name].str.encode('utf-8')
 
-# P1 KPI
-
+    # P1 KPI
+    @kpi_runtime()
     def handle_priority_1(self):
         set_templates_mapping = {EXIT_TEMPLATE_GROUP: ASSORTMENT_DISTRIBUTION,
                                  ENTRY_TEMPLATE_GROUP: ASSORTMENT_DISTRIBUTION_ENTRY}
@@ -282,15 +290,16 @@ class BATRU_SANDToolBox:
                 'product_ean_code'].unique().tolist()
             total_assortment_init = self.all_products[self.all_products['product_fk'].isin(session_product_fks) &
                                                       (self.all_products['manufacturer_name'] == BAT) &
-                                                      (self.all_products['product_type'] == 'SKU')][
+                                                      (self.all_products['product_type'].isin([SKU, POSM]))][
                 'product_ean_code'].unique().tolist()
-            active_products = self.all_products.loc[(self.all_products['product_type'] == 'SKU') &
+            active_products = self.all_products.loc[(self.all_products['product_type'].isin([SKU, POSM])) &
                                                     (self.all_products['manufacturer_name'] == BAT) &
                                                     (self.all_products['is_active'] == 1)][
                 'product_ean_code'].unique().tolist()
             total_assortment_init.extend(active_products)
             total_assortment = set(total_assortment_init)
-            total_assortment.remove(None)
+            if None in total_assortment:
+                total_assortment.remove(None)
             product_log = {}
             for assortment in [total_assortment, contracted_products]:
                 availability_score_list = {}
@@ -467,7 +476,7 @@ class BATRU_SANDToolBox:
         return pd.read_sql_query(query, self.rds_conn.db)
 
     def get_missing_products_to_api_set(self, set_fk):
-        existing_skus = self.all_products[self.all_products['product_type'] == 'SKU']
+        existing_skus = self.all_products[self.all_products['product_type'].isin([SKU, POSM])]
         set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk][
             'atomic_kpi_name'].unique().tolist()
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk]['kpi_fk'].iloc[0]
@@ -564,43 +573,38 @@ class BATRU_SANDToolBox:
         price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
         date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
         matches = self.data_provider[Data.MATCHES]
-        # self.price_attr = self.data_provider._probedata_provider.prices
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']]
                                                , on=['probe_match_fk', 'product_fk', 'scene_fk'])
-        # self.date_attr = self.data_provider._probedata_provider.date_attributes
         merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                             on=['probe_match_fk', 'product_fk', 'scene_fk'])
-        merged_additional_data = pd.DataFrame()
+
         merged_pricing_data.dropna(subset=['price_value'], inplace=True)
         merged_dates_data.dropna(subset=['original_value'], inplace=True)
 
-        if not merged_pricing_data.empty and not merged_dates_data.empty:
+        if not merged_pricing_data.empty:
             try:
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
             except Exception as e:
                 merged_pricing_data['price_value'] = 0
-                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['price_value']].median()
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['price_value']].median()
                 Log.info('There are missing numeric values: {}'.format(e))
+
+        if not merged_dates_data.empty:
             merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
             try:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
             except Exception as e:
-                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[
-                    ['fixed_date']].min()
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'product_fk'], as_index=False)[['fixed_date']].min()
                 Log.info('There is a dates integrity issue: {}'.format(e))
+        else:
+            merged_dates_data['fixed_date'] = None
 
-            merged_additional_data = self.scif.merge(merged_pricing_data, how='left',
-                                                     left_on=['scene_id', 'item_id'],
-                                                     right_on=['scene_fk', 'product_fk'])
-            merged_additional_data = merged_additional_data.merge(merged_dates_data, how='left',
-                                                                  left_on=['scene_id', 'item_id'],
-                                                                  right_on=['scene_fk', 'product_fk'])
-        if not merged_additional_data.empty:
-            merged_additional_data.dropna(subset=['fixed_date', 'price_value'], inplace=True)
+        merged_additional_data = self.scif\
+            .merge(merged_pricing_data, how='left', left_on=['scene_id', 'item_id'], right_on=['scene_fk', 'product_fk'])\
+            .merge(merged_dates_data, how='left', left_on=['scene_id', 'item_id'], right_on=['scene_fk', 'product_fk'])\
+            .merge(self.all_products, how='left', left_on='item_id', right_on='product_fk', suffixes=['', '_all_products'])
+        #    .dropna(subset=['fixed_date', 'price_value'], how='all')
 
         return merged_additional_data
 
@@ -629,14 +633,14 @@ class BATRU_SANDToolBox:
         in_p, params = self._get_sessions_list_as_params_and_query(session_ids, 'session_id')
         if not template_group:
             query = '''SELECT distinct p.ean_code as product_ean_code FROM reporting.scene_item_facts sif
-                        join static_new.product p on p.pk = sif.item_id and p.type = 'SKU'
+                        join static_new.product p on p.pk = sif.item_id and p.type in('SKU','POS')
                         join probedata.scene sc on sc.pk=sif.scene_id
                         join static.template st on st.pk=sc.template_fk
                        where dist_sc = 1 and session_id in ({})'''.format(
                 ",".join(str(session) for session in session_ids))
         else:
             query = '''SELECT distinct p.ean_code as product_ean_code FROM reporting.scene_item_facts sif
-                        join static_new.product p on p.pk = sif.item_id and p.type = 'SKU'
+                        join static_new.product p on p.pk = sif.item_id and p.type in('SKU','POS')
                         join probedata.scene sc on sc.pk=sif.scene_id
                         join static.template st on st.pk=sc.template_fk
                        where sif.dist_sc = 1 and sif.session_id in ({}) and st.template_group = '{}'
@@ -668,56 +672,42 @@ class BATRU_SANDToolBox:
         return pd.read_sql_query(query, self.rds_conn.db)
 
     # P2 KPI
-
+    @kpi_runtime()
     def handle_priority_2(self):
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
-        mobile_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        set_fk = self.kpi_static_data[
+            self.kpi_static_data['kpi_set_name'] == PRICE_MONITORING]['kpi_set_fk'].iloc[0]
+        mobile_set_fk = self.kpi_static_data[
+            self.kpi_static_data['kpi_set_name'] == MOBILE_PRICE_MONITORING]['kpi_set_fk'].iloc[0]
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
                 self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]
-            score = self.calculate_fulfilment(monitored_sku['ean_code'])
-            efficiency_score = self.calculate_efficiency()
-            self.get_raw_data()
-            self.set_p2_sku_mobile_results(monitored_sku)
-            if score or score == 0:
-                self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
-                self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
-                                        score_2=format(efficiency_score, '.2f'))
+            if not self.merged_additional_data.empty:
+                score = self.calculate_fulfilment(monitored_sku['product_ean_code_lead'])
+                efficiency_score = self.calculate_efficiency()
+                self.get_raw_data()
+                self.set_p2_sku_mobile_results(monitored_sku)
+                if score or score == 0:
+                    self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
+                    self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
+                                            score_2=format(efficiency_score, '.2f'))
 
     def get_sku_monitored(self, state):
-        monitored_skus = self.get_custom_template(P2_PATH, 'SKUs')
-        states = monitored_skus['State'].tolist()
+        monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
+        states = monitored_skus_raw['State'].tolist()
         if state in states:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'].apply(
-                lambda x: pd.Series(x.split(', ')).isin([state]).any())]
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus = monitored_skus.loc[monitored_skus['State'].str.upper() == 'ALL']
-        # monitored_skus = monitored_skus.loc[monitored_skus['State'].isin(['All', state])]
-        # extra_df = pd.DataFrame(columns=monitored_skus.columns)
-        extra_df = pd.DataFrame(columns=list(monitored_skus.columns) + [u'leading'])
-        for sku in monitored_skus['ean_code'].unique().tolist():
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper() == 'ALL']
+        monitored_skus = pd.DataFrame()
+        for sku in monitored_skus_raw['ean_code'].unique().tolist():
             try:
-                product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk'].values[0]
+                product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB'.format(sku))
                 continue
-            # bundled_products = self.bundle_fk_ean(product_fk)
-            bundled_products = self.get_bundles_by_definitions(
-                        product_fk, convert=LEAD2BUNDLE, input_type='product_fk', output_type='product_ean_code')
-            for bundle_product in bundled_products:
-                if self.is_relevant_bundle(sku, bundle_product):
-                    extra_df = extra_df.append(
-                        {'State': state, 'ean_code': bundle_product, 'Required for monitoring': 1, 'leading': sku},
-                        ignore_index=True)
-                    break
-                # prod_atts_dict_list = list(prod_atts_dict)
-                # prod_atts_dict = [state, bundle_product, 1]
-                # extra_df.append(prod_atts_dict)
-
-        monitored_skus = monitored_skus.append(extra_df)
-        monitored_skus = monitored_skus.fillna(value={'leading': monitored_skus[monitored_skus['leading'].isnull()][
-            'ean_code']})
+            monitored_skus = monitored_skus.append({'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
+        monitored_skus = monitored_skus.drop_duplicates(subset=['product_ean_code_lead'], keep='last')
         return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
@@ -740,7 +730,7 @@ class BATRU_SANDToolBox:
         score = self.get_fulfilment(monitored_products)
         if score == -1:
             Log.info('No Monitored products were found.')
-            return
+            return None
         else:
             self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
             self.write_to_db_result(mobile_kpi_fk, round(score, 2), self.LEVEL2)
@@ -758,86 +748,74 @@ class BATRU_SANDToolBox:
 
     def get_fulfilment(self, monitored_skus):
         """
-        gets all the products that are monitored and calculate the percentage of those with additional data in it.
+        gets all the products that are monitored and calculates the percentage of those recognized.
         """
         num_of_all_monitor = len(monitored_skus)
-        # monitored_data = self.merged_additional_data[
-        #     self.merged_additional_data['product_ean_code'].isin(monitored_skus)]
-        # num_of_recognized_monitor = len(monitored_data['product_ean_code'].unique())
-        num_of_recognized_monitor = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                              (self.scif['product_ean_code'].isin(monitored_skus))]['product_ean_code'].drop_duplicates().count()
-        # TODO: perhaps to add check for bundle
-        if num_of_all_monitor:
+        scif = self.scif[self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME]\
+            .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
+        num_of_recognized_monitor = scif[scif['product_ean_code_lead'].isin(monitored_skus)]['product_ean_code_lead']\
+            .drop_duplicates().count()
+        if not (scif.empty or num_of_all_monitor == 0):
             return (float(num_of_recognized_monitor) / num_of_all_monitor) * 100
-        return -1
+        else:
+            return -1
 
     def get_efficiency(self):
         """
-        gets all the products calculate the percentage of recognized skus out of all skus.
+        calculates the percentage of recognized skus out of all skus by facings
         """
-        # facing_of_recognized = self.merged_additional_data.loc[
-        #     self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME]['facings'].sum()
         facing_of_all = self.scif.loc[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                      (self.scif['product_type'].isin(['Other', 'SKU']))]['facings'].sum()
-        products_eans = self.merged_additional_data.loc[
-            self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME][
-            'product_ean_code'].unique().tolist()
-        # product_with_bundles = products_eans + self.leads_ean_ean(products_eans)
-        product_with_bundles = products_eans + self.get_bundles_by_definitions(
-            products_eans, convert=BUNDLE2LEAD, input_type='product_ean_code', output_type='product_ean_code')
+                                      (self.scif['product_type'].isin([OTHER, SKU, POSM]))]['facings'].sum()
+        products_eans_with_leads = \
+            self.merged_additional_data.loc[
+                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+                (~self.merged_additional_data['fixed_date'].isnull())][
+                'product_ean_code'].unique().tolist() +\
+            self.merged_additional_data.loc[
+                (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
+                (~self.merged_additional_data['fixed_date'].isnull())][
+                'product_ean_code_lead'].unique().tolist()
         facing_of_recognized = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME) &
-                                         (self.scif['product_ean_code'].isin(product_with_bundles))][
-            'facings'].sum()
-        return (float(facing_of_recognized) / facing_of_all) * 100 if facing_of_all else 0
-        # filters = {'product_type': ['SKU', 'Other']}
-        # filter_sku_scif = self.merged_additional_data[
-        #     self.tools.get_filter_condition(self.merged_additional_data, **filters)]
-        # total_facing = filter_sku_scif['facings'].sum()
-        # filter_sku_scif = filter_sku_scif.loc[filter_sku_scif['product_type'] == 'SKU']
-        # filter_sku_scif.dropna(subset=['price_value', 'date_value'], inplace=True)
-        # facing_with_data = filter_sku_scif['facings'].sum()
+                                         (self.scif['product_ean_code'].isin(products_eans_with_leads))]['facings'].sum()
+        return (facing_of_recognized / float(facing_of_all)) * 100 if facing_of_all else 0
 
     def get_raw_data(self):
-        # raw_data = self.merged_additional_data.dropna(subset=['price_value', 'date_value'])
-        if not self.merged_additional_data.empty:
-            # self.merged_additional_data['fixed_date'].dt.strftime('%m.%y')
-            self.merged_additional_data['Formatted_Date'] = self.merged_additional_data['fixed_date'].dt.strftime(
-                '%m.%Y')
-        else:
-            self.merged_additional_data['Formatted_Date'] = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
-            product = row['product_ean_code']
-            if product is None:
+            product_for_db = row['product_ean_code_lead']
+            if product_for_db is None:
                 continue
-            # bundle_lead = self.lead_ean_ean_one(product)
-            bundle_lead = self.get_bundles_by_definitions(product, convert=BUNDLE2LEAD, input_type='product_ean_code',
-                                                          output_type='product_ean_code', get_only_one=True)
-            if bundle_lead:
-                product_for_db = bundle_lead
+
+            if pd.isnull(row['price_value']):  # None
+                price_value_for_db = 0
             else:
-                product_for_db = product
-            self.write_to_db_result_for_api(score=row['price_value'], level=self.LEVEL3, level3_score=None,
+                price_value_for_db = format(row['price_value'], '.2f')
+
+            if pd.isnull(row['fixed_date']):  # None
+                formatted_date_for_db = '0'
+            else:
+                formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+
+            self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_PRICE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
-            self.write_to_db_result_for_api(score=row['Formatted_Date'], level=self.LEVEL3, level3_score=None,
+            self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P2_SET_DATE,
                                             kpi_name=P2_RAW_DATA,
                                             atomic_kpi_name=product_for_db)
+
         # using P4 save function to save None without problems so will add set name to api.
-        self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None,
-                                        kpi_set_name=P2_SET_DATE)
+        self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None, kpi_set_name=P2_SET_DATE)
 
     def set_p2_sku_mobile_results(self, monitored_sku):
         new_products = False
-        set_name = 'Mobile Price Monitoring'
-        kpi_fk = 5660
+        set_name = MOBILE_PRICE_MONITORING
+        kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
         try:
-            existing_skus = self.all_products[(self.all_products['product_type'] == 'SKU') & (self.all_products[
-                'product_ean_code'].isin(monitored_sku['leading'].values))]
-            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name][
-                'atomic_kpi_name'].unique().tolist()
+            existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
+                                              (self.all_products['product_ean_code'].isin(monitored_sku['product_ean_code_lead'].values))]
+            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['atomic_kpi_name'].unique().tolist()
             not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
             if not_in_db_products.any:
                 self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
@@ -846,11 +824,12 @@ class BATRU_SANDToolBox:
             Log.info('Updating Mobile price sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
-        monitored_sku = monitored_sku.drop_duplicates(subset=['leading'], keep='last')
+            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
+            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
         for index in xrange(len(monitored_sku)):
             row = monitored_sku.iloc[index]
             try:
-                product_name = self.all_products[self.all_products['product_ean_code'] == row.leading][
+                product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB'.format(row.leading))
@@ -859,244 +838,331 @@ class BATRU_SANDToolBox:
                 kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
                                               (self.kpi_static_data['kpi_set_name'] == set_name)][
                     'atomic_kpi_fk'].drop_duplicates().values[0]
-                product_fk = self.all_products[self.all_products['product_ean_code'] == row.ean_code][
-                    'product_fk'].drop_duplicates().values[0]
-                score = 0 if self.merged_additional_data[self.merged_additional_data['item_id'] == product_fk].empty else 1
-                result = 0
-                result2 = 0
-                if score:
-                    result = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                        'price_value'].drop_duplicates().values[0]
-                    result2 = self.merged_additional_data[self.merged_additional_data['product_ean_code'] == row.ean_code][
-                        'Formatted_Date'].drop_duplicates().values[0]
+
+                score = 0 if self.merged_additional_data[self.merged_additional_data[
+                                                             'product_ean_code_lead'] == row.product_ean_code_lead]\
+                    .empty else 1
+
+                result = self.merged_additional_data[self.merged_additional_data[
+                                                         'product_ean_code_lead'] == row.product_ean_code_lead][
+                    'price_value']
+                if result.empty:
+                    result = 0
+                elif pd.isnull(result.values[0]):  # None
+                    result = 0
+                else:
+                    result = format(result.values[0], '.2f')
+
+                result2 = self.merged_additional_data[self.merged_additional_data[
+                                                          'product_ean_code_lead'] == row.product_ean_code_lead][
+                    'fixed_date']
+                if result2.empty:
+                    result2 = '0'
+                elif pd.isnull(result2.values[0]):  # None
+                    result2 = '0'
+                else:
+                    result2 = pd.to_datetime(str(result2.values[0])).strftime('%m.%Y')
+
                 self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
             except Exception as e:
                 Log.error('{}'.format(e))
 
-    # P3 KPI
+    @staticmethod
+    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture):
+        """
+        This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
+        If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
+        :param raw_data: SKU_Lists for sections - sheet data
+        :param section: The current section that been calculated
+        :param state_for_calculation: The state for calculation that has been defined at the beginning of P3
+        :param fixture: The current scene type
+        :return: The relevant product's data for the current section
+        """
+        # Filter by state
+        section_data = raw_data.loc[(raw_data['State'] == state_for_calculation) | (raw_data['State'] == 'ALL')]
 
+        # Filter by fixture
+        section_data = section_data.loc[(raw_data['Fixture'] == fixture) | (section_data['Fixture'] == 'ALL')]
+
+        # Filter by cluster
+        section_data = section_data.loc[
+            (raw_data['additional_attribute_3'] == fixture) | (section_data['additional_attribute_3'] == 'ALL')]
+
+        # Filter by valid Sections
+        section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
+
+        return section_data
+
+    # P3 KPI
+    @kpi_runtime()
     def handle_priority_3(self):
+
         scenes = self.scif['scene_fk'].unique().tolist()
-        sections_products_template_data = parse_template(P3_TEMPLATE_PATH, 'SKU_Lists for sections')
-        priorities_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')
+
         sections_template_data = parse_template(P3_TEMPLATE_PATH, 'Sections')
-        sas_zone_template_data = parse_template(P3_TEMPLATE_PATH, 'P3 SAS zone')
         sections_template_data['fixture'] = self.encode_column_in_df(sections_template_data, 'fixture')
+
+        sas_zone_template_data = parse_template(P3_TEMPLATE_PATH, 'P3 SAS zone')
         sas_zone_template_data['fixture'] = self.encode_column_in_df(sas_zone_template_data, 'fixture')
+
+        sections_products_template_data = parse_template(P3_TEMPLATE_PATH, 'SKU_Lists for sections')\
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # check product ean codes from the template
+        for product_ean_code in sections_products_template_data['product_ean_code'].unique().tolist():
+            try:
+                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+            except Exception as e:
+                Log.warning('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(product_ean_code))
+
+        priorities_template_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')\
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # check product ean codes from the template
+        for product_ean_code in priorities_template_data['product_ean_code'].unique().tolist():
+            try:
+                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+            except Exception as e:
+                Log.warning('Product ean {} is not defined in the DB for Share priority'.format(product_ean_code))
+
+        sequence_template_data = parse_template(P3_TEMPLATE_PATH, 'Sequence list')\
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # check product ean codes from the template
+        for product_ean_code in sequence_template_data['product_ean_code'].unique().tolist():
+            try:
+                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+            except Exception as e:
+                Log.warning('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
+
         if self.state in sections_template_data['State'].unique().tolist():
             state_for_calculation = self.state
         else:
             state_for_calculation = 'ALL'
+
         for scene in scenes:
+
             if not self.scif.loc[self.scif['scene_fk'] == scene]['template_group'].values[0] == EXIT_TEMPLATE_GROUP:
                 continue
+
             self.sas_zones_scores_dict = {}
             sections_statuses = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
-            fixture = self.templates.loc[
-                self.templates['template_name'] == template_name]['additional_attribute_1'].values[0]
+            fixture = self.templates.loc[self.templates['template_name'] == template_name]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
+
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
+
             relevant_sections_data = sections_template_data.loc[
                 (sections_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
                 (sections_template_data['fixture'] == fixture) &
                 (sections_template_data['State'] == state_for_calculation)]
+            relevant_sections_data[['section_number']] = relevant_sections_data[['section_number']].astype(int)
+
             relevant_sas_zone_data = sas_zone_template_data.loc[
                 (sas_zone_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
                 (sas_zone_template_data['fixture'] == fixture)]
-            scene_products_matrix = self.position_graph.get_entity_matrix(scene, 'product_name')
-            scene_products_matrix_df = self.position_graph.transform_entity_matrix_to_df(scene_products_matrix)
-            relevant_sections_data[['section_number']] = relevant_sections_data[['section_number']].astype(int)
+
+            scene_products_matrix = self.position_graph\
+                .transform_entity_matrix_to_df(self.position_graph.get_entity_matrix(scene, 'product_name'))
+
             if not relevant_sas_zone_data.empty:
-                self.check_sas_zone_in_fixture(scene_products_matrix_df, relevant_sas_zone_data, fixture)
+                self.check_sas_zone_in_fixture(scene_products_matrix, relevant_sas_zone_data, fixture)
+
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
-                last_sequence = 0
-                section_df = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
-                section_name = section_df['section_name'].values[0]
-                start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_df)
-                shelf_data_from_top = self.match_product_in_scene[
-                    (self.match_product_in_scene['scene_fk'] == scene) &
-                    (self.match_product_in_scene['shelf_number'].between(start_shelf, end_shelf))]
-                shelf_data_from_top = shelf_data_from_top.merge(self.all_products, on=['product_fk'])
-                shelf_data_from_bottom = self.match_product_in_scene[
-                    (self.match_product_in_scene['scene_fk'] == scene) &
-                    (self.match_product_in_scene['shelf_number_from_bottom'].between(start_shelf, end_shelf))]
-                shelf_data_from_bottom = shelf_data_from_bottom.merge(self.all_products, on=['product_fk'])
-                if shelf_data_from_bottom.empty or shelf_data_from_top.empty:
-                    Log.info('Section {} has no matching shelves on scene {}'.format(section_name, scene))
-                    continue
-                updated_shelf_data_from_bottom = self.get_absolute_sequence(shelf_data_from_bottom)
-                updated_shelf_data_from_top = self.get_absolute_sequence(shelf_data_from_top)
-                presence = True
-                product_sequence = True
-                empty = False
-                competitor = False
-                misplaced_prods_for_result = []
-                if section_df['Above SAS zone?'].values[0] != 'N':
-                    shelf_data = updated_shelf_data_from_top
+
+                section_data = relevant_sections_data.loc[relevant_sections_data['section_number'] == section]
+                section_name = section_data['section_name'].values[0]
+                start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_data)
+
+                if section_data['Above SAS zone?'].values[0] != 'N':
+                    shelf_number = 'shelf_number'
                 else:
-                    shelf_data = updated_shelf_data_from_bottom
-                section_shelf_data = shelf_data.loc[shelf_data['sequence'].between(start_sequence, end_sequence)]
-                # Idan - PROS 5733 - CR - to Update
-                # specific_section_products_template = self.get_relevant_section_products(sections_products_template_data,
-                #                                                                         section, state_for_calculation,
-                #                                                                         fixture)
-                specific_section_products_template = sections_products_template_data.loc[
-                    sections_products_template_data['Section'] == str(int(float(section)))]
-                section_products = specific_section_products_template['product_ean_code'].unique().tolist()
-                section_products_including_bundles = section_products
-                # section_brands_list = self.all_products[
-                #     self.all_products['product_ean_code'].isin(section_products)]['brand_name'].unique().tolist()
-                for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
+                    shelf_number = 'shelf_number_from_bottom'
 
-                    for section_product in section_products:
-                        try:
-                            section_product_fk = \
-                                self.all_products[self.all_products['product_ean_code'] == section_product][
-                                    'product_fk'].values[0]
-                            # bundled_products = self.bundle_fk_ean(section_product_fk)
-                            bundled_products = self.get_bundles_by_definitions(
-                                section_product_fk, convert=LEAD2BUNDLE, input_type='product_fk',
-                                output_type='product_ean_code')
-                            if bundled_products:
-                                section_products_including_bundles.extend(bundled_products)
-                        except Exception as e:
-                            Log.warning('Product ean {} is not defined in the DB'.format(section_product))
-                    product = shelf_data.loc[shelf_data['sequence'] == sequence]['product_fk'].values[0]
-                    product_ean_code = self.all_products.loc[
-                        self.all_products['product_fk'] == product]['product_ean_code'].values[0]
-                    # bundle_lead = self.lead_fk_ean_one(product)
-                    bundle_lead = self.get_bundles_by_definitions(
-                            product, convert=BUNDLE2LEAD, input_type='product_fk', output_type='product_ean_code',
-                        get_only_one=True)
-                    if self.all_products.loc[self.all_products[
-                        'product_fk'] == product]['product_type'].values[0] in (EMPTY, OTHER):
-                        product_sequence = False
-                    if product_ean_code not in section_products_including_bundles:
-                        if not (self.all_products.loc[self.all_products['product_fk'] == product]['manufacturer_name'].values[0] == BAT or
-                                self.all_products.loc[self.all_products['product_fk'] == product]['product_name'].values[0] in NON_COMPETITOR_PRODUCTS):
-                            competitor = True
-                            presence = False
-                        product_name = self.all_products.loc[self.all_products[
-                                                                 'product_fk'] == product]['product_name'].values[0]
-                        misplaced_prods_for_result.append(product_name)
-                    else:
-                        if bundle_lead is not None:
-                            product_ean_code_for_seq = bundle_lead
-                        else:
-                            product_ean_code_for_seq = product_ean_code
-                        try:
-                            prod_seq_ind = \
-                                self.sequences.loc[self.sequences['product_ean_code'] == product_ean_code_for_seq][
-                                    'index'].values[0]
-                            if not (int(prod_seq_ind) >= int(last_sequence)):
-                                product_sequence = False
-                            last_sequence = prod_seq_ind
-                        except:
-                            Log.warning('Product {} is not configured in template'.format(product_ean_code_for_seq))
-                            product_sequence = False
-                    if self.all_products.loc[self.all_products['product_fk'] == product]['product_type'].values[
-                        0] == EMPTY:
-                        empty = True
-                    if sequence == end_sequence:  # Indication for time for saving results for each section
-                        products_to_check = \
-                            shelf_data.loc[(shelf_data['sequence'].between(start_sequence, end_sequence)) &
-                                           (shelf_data['product_type'] == 'SKU')]['product_fk'].tolist()
-                        if products_to_check:
-                            try:
-                                if specific_section_products_template['Index (Duplications priority)'].iloc[0] == '':
-                                    priorities_section = priorities_data
-                                else:
-                                    priorities_section = specific_section_products_template
-                                repeatness = self.check_repeatness(products_to_check, section_shelf_data,
-                                                                   priorities_section)
-                            except Exception as e:
-                                repeatness = False
-                        else:
-                            repeatness = False
-                        if not competitor:
-                            # presence = self.check_section_presence(section_products_including_bundles,
-                            #                                        section_brands_list,
-                            #                                        specific_section_products_template, scene,
-                            #                                        section_shelf_data)
-                            # Those ^V functions were fixed by other orders
-                            # presence = self.check_section_presence2(specific_section_products_template, scene,
-                            #                                         shelf_data)
-                            presence = self.check_section_presence3(section_products_including_bundles,
-                                                                    specific_section_products_template,
-                                                                    section_shelf_data)
-                        presence_score = 1 if presence else 0
-                        sequence_score_2 = 'N'
-                        sequence_score = 1 if product_sequence else 0
-                        repeatness_score_2 = 'N'
-                        repeatness_score = 1 if repeatness else 0
-                        section_score_2 = 'FAIL'
-                        section_score = 0
-                        result = ','.join(
-                            [product_name.replace("'", "\\'") for product_name in misplaced_prods_for_result])
-                        if not competitor:
-                            status = 1
-                            if presence:
-                                result = None
-                                if presence and empty and not product_sequence:
-                                    status = 2
-                                elif presence and not empty and not product_sequence:
-                                    status = 3
-                                if product_sequence:
-                                    sequence_score_2 = 'Y'
-                                    status = 4
-                                    if repeatness:
-                                        repeatness_score_2 = 'Y'
-                                        status = 5
-                                        section_score_2 = 'PASS'
-                                        section_score = 1
-                        else:
-                            status = 0
-                        misplaced_prods_for_result = []
-                        sections_statuses[section] = status
-                        # Saving to regular set
-                        self.save_level2_and_level3(SK, self.PRESENCE_KPI_NAME, result=result,
-                                                    score=presence_score, score_2=status,
-                                                    level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
-                                                    model_id=section_name)
-                        self.save_level2_and_level3(SK, self.SEQUENCE_KPI_NAME, result=None,
-                                                    score=sequence_score, score_2=sequence_score_2,
-                                                    level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
-                                                    model_id=section_name)
-                        self.save_level2_and_level3(SK, self.REPEATING_KPI_NAME, result=None,
-                                                    score=repeatness_score, score_2=repeatness_score_2,
-                                                    level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
-                                                    model_id=section_name)
-                        self.save_level2_and_level3(SK, section_name, result=None,
-                                                    score=section_score, score_2=section_score_2,
-                                                    level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
+                section_shelf_data = self.match_product_in_scene[
+                    (self.match_product_in_scene['scene_fk'] == scene) &
+                    (self.match_product_in_scene[shelf_number].between(start_shelf, end_shelf))]\
+                    .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
+                section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
+                if section_shelf_data_all.empty:
+                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    continue
 
-                        # Saving to API set
-                        self.write_to_db_result_for_api(score=result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                        kpi_name=SK_RAW_DATA,
-                                                        atomic_kpi_name=self.API_SKU_PRESENCE_KPI_NAME.format(
-                                                            fixture=fixture_name_for_db,
-                                                            section_name=section_name),
-                                                        level3_score=presence_score)
-                        self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                        kpi_name=SK_RAW_DATA,
-                                                        atomic_kpi_name=self.API_SEQUENCE_KPI_NAME.format(
-                                                            fixture=fixture_name_for_db,
-                                                            section_name=section_name),
-                                                        level3_score=sequence_score)
-                        self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                        kpi_name=SK_RAW_DATA,
-                                                        atomic_kpi_name=self.API_REPEATING_KPI_NAME.format(
-                                                            fixture=fixture_name_for_db,
-                                                            section_name=section_name),
-                                                        level3_score=repeatness_score)
-                        self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
-                                                        kpi_name=SK_RAW_DATA,
-                                                        atomic_kpi_name=self.API_SECTION_KPI_NAME.format(
-                                                            fixture=fixture_name_for_db,
-                                                            section_name=section_name),
-                                                        level3_score=section_score)
+                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
+                if section_shelf_data.empty:
+                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    continue
+
+                # Initial pass values
+                no_competitors = True
+                sku_presence_passed = False
+                sku_sequence_passed = False
+                no_empties = False
+                sku_repeating_passed = False
+                misplaced_products = []
+
+                # Checking Competitors
+                if len(section_shelf_data[~((section_shelf_data['manufacturer_name'] == BAT) |
+                                            (section_shelf_data['product_type'].isin([EMPTY])))]['manufacturer_name'].unique().tolist()) > 0:
+                    no_competitors = False
+
+                else:  # No Competitors
+
+                    # Checking SKU Presence
+                    outside_shelf_data = self.match_product_in_scene\
+                        .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
+                    outside_shelf_data = outside_shelf_data[
+                        ~(
+                                (outside_shelf_data['scene_fk'] == scene) &
+                                (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
+                        ) &
+                        (
+                                (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
+                                (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
+                        )]\
+                        .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
+                        .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
+                    specific_section_products_template = self.get_relevant_section_products(
+                        sections_products_template_data, section, state_for_calculation, fixture)
+                    section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
+
+                    sku_presence_passed = self.check_sku_presence(specific_section_products_template,
+                                                                  section_shelf_data, outside_shelf_data)
+
+                    if sku_presence_passed:
+
+                        # Checking SKU Sequence and Empties
+                        last_prod_seq_ind = 0
+                        sku_sequence_passed = True
+                        no_empties = True
+                        for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
+
+                            product_ean_code = section_shelf_data\
+                                .loc[section_shelf_data['sequence'] == sequence]['product_ean_code_lead'].values[0]
+                            product_type = section_shelf_data\
+                                .loc[section_shelf_data['sequence'] == sequence]['product_type'].values[0]
+                            manufacturer_name = section_shelf_data\
+                                .loc[section_shelf_data['sequence'] == sequence]['manufacturer_name'].values[0]
+
+                            if manufacturer_name == BAT and product_type == OTHER:
+                                continue
+
+                            if product_type == EMPTY:
+                                no_empties = False
+
+                            if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
+                                prod_seq_ind = sequence_template_data\
+                                    .loc[sequence_template_data['product_ean_code_lead'] == product_ean_code]['index'].values[0]
+                                if not (int(prod_seq_ind) >= int(last_prod_seq_ind)):
+                                    sku_sequence_passed = False
+                                    break
+                                last_prod_seq_ind = prod_seq_ind
+                            elif manufacturer_name == BAT and product_type in (SKU, POSM):
+                                Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
+                                sku_sequence_passed = False
+                                break
+
+                        if sku_sequence_passed:
+
+                            # Checking SKU Repeating
+                            if specific_section_products_template['product_ean_code_lead'].tolist() == \
+                                    specific_section_products_template['Index (Duplications priority)'].tolist():
+                                priorities_section = \
+                                    specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
+                            else:
+                                priorities_section = \
+                                    priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']]
+
+                            sku_repeating_passed = self.check_sku_repeating(section_shelf_data, priorities_section)
+
+                    else:  # SKU Presence failed
+
+                        # Defining misplaced products
+                        misplaced_products_eans = \
+                            list(set(section_shelf_data['product_ean_code_lead']).difference(section_products))
+                        misplaced_products = \
+                            section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
+                                'product_name'].unique().tolist()
+
+                # Initial score values
+                sku_presence_score = 0
+                sku_sequence_score = 0
+                sku_sequence_score_2 = 'N'
+                sku_repeating_score = 0
+                sku_repeating_score_2 = 'N'
+                section_score = 0
+                section_score_2 = 'FAIL'
+
+                misplaced_products_result = ','.join([product_name.replace("'", "\\'") for product_name in misplaced_products])
+
+                # Defining section scores
+                section_status = 0
+                if no_competitors:
+                    section_status = 1
+
+                    if sku_presence_passed:
+                        sku_presence_score = 1
+                        section_status = 2
+
+                        if sku_sequence_passed:
+                            sku_sequence_score = 1
+                            sku_sequence_score_2 = 'Y'
+                            if not no_empties:
+                                section_status = 3
+                            else:
+                                section_status = 4
+
+                                if sku_repeating_passed:
+                                    sku_repeating_score = 1
+                                    sku_repeating_score_2 = 'Y'
+                                    section_status = 5
+
+                                    section_score = 1
+                                    section_score_2 = 'PASS'
+
+                sections_statuses[section] = section_status
+
+                # Saving to regular set
+                self.save_level2_and_level3(SK, self.SKU_PRESENCE_KPI_NAME, result=misplaced_products_result,
+                                            score=sku_presence_score, score_2=section_status,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, self.SKU_SEQUENCE_KPI_NAME, result=None,
+                                            score=sku_sequence_score, score_2=sku_sequence_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, self.SKU_REPEATING_KPI_NAME, result=None,
+                                            score=sku_repeating_score, score_2=sku_repeating_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db,
+                                            model_id=section_name)
+                self.save_level2_and_level3(SK, section_name, result=None,
+                                            score=section_score, score_2=section_score_2,
+                                            level_3_only=True, level2_name_for_atomic=fixture_name_for_db)
+
+                # Saving to API set
+                self.write_to_db_result_for_api(score=misplaced_products_result, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_PRESENCE_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=sku_presence_score)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_SEQUENCE_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=sku_sequence_score)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SKU_REPEATING_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=sku_repeating_score)
+                self.write_to_db_result_for_api(score=None, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
+                                                kpi_name=SK_RAW_DATA,
+                                                atomic_kpi_name=self.API_SECTION_KPI_NAME.format(
+                                                    fixture=fixture_name_for_db,
+                                                    section_name=section_name),
+                                                level3_score=section_score)
 
             # Equipment level results
             if sections_statuses:
@@ -1109,8 +1175,8 @@ class BATRU_SANDToolBox:
                                             kpi_name=SK_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
-            fixture_sas_zone_score = self.calculate_sas_zone_compliance(fixture_name_for_db, self.sas_zones_scores_dict,
-                                                                        scene)
+
+            fixture_sas_zone_score = self.calculate_sas_zone_compliance(fixture_name_for_db, self.sas_zones_scores_dict, scene)
             self.save_level2_and_level3(SAS, fixture_name_for_db, result=fixture_sas_zone_score, level_2_only=True)
             self.write_to_db_result_for_api(score=None, level=self.LEVEL3,
                                             level3_score=fixture_sas_zone_score, kpi_set_name=SAS_RAW_DATA,
@@ -1120,200 +1186,141 @@ class BATRU_SANDToolBox:
 
         # Store level results
         if self.sas_zone_statuses_dict:
-            sas_zone_score = str(min(self.sas_zone_statuses_dict.values())) + '/' + str(
-                len(self.sas_zone_statuses_dict.values()))
+            sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
+                             str(len(self.sas_zone_statuses_dict.values()))
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
+
         if self.fixtures_statuses_dict:
             sk_score = min(self.fixtures_statuses_dict.values())  # todo validate this assumption
         else:
             sk_score = 0
+
         self.save_level1(SK, score=sk_score)
         self.save_level1(SK_RAW_DATA, score=sk_score)
         self.save_level1(SAS, score=sas_zone_score)
         self.save_level1(SAS_RAW_DATA, score=sas_zone_score)
 
-    def get_relevant_section_products(self, raw_data, section, state_for_calculation, fixture):
-        """
-        This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
-        If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
-        :param raw_data: SKU_Lists for sections - sheet data
-        :param section: The current section that been calculated
-        :param state_for_calculation: The state for calculation that has been defined at the beginning of P3
-        :param fixture: The current scene type
-        :return: The relevant product's data for the current section
-        """
-        sec_data = raw_data.loc[(raw_data['Section'] == str(int(float(section)))) &
-                                (raw_data['GEO'] == state_for_calculation) &
-                                (raw_data['Fixture type'] == fixture) &
-                                (raw_data['Cluster'] == self.scif['additional_attribute_3'])]
-
-        if sec_data.empty:
-            sec_data = raw_data.loc[(raw_data['Section'] == str(int(float(section)))) & (raw_data['GEO'] == 'ALL')]
-        return sec_data
-
-    def check_repeatness(self, products_to_check, section_shelf_data, priorities_section):
+    def check_sku_repeating(self, section_shelf_data, priorities_section):
         """
         The function checks if the section has a product with more facings than other, despite its priority lower
-        :param products_to_check: the relevant products
         :param section_shelf_data: match_product_in_scene relevant data
         :param priorities_section: the priorities from the match template
         :return: true if all the products' facings are right
         """
-        section_facings_histogram = {}
-        for product_to_check in set(products_to_check):
-            section_facings_histogram[product_to_check] = {'facings': section_shelf_data.loc[
-                section_shelf_data['product_fk'] == product_to_check]['product_fk'].count()}
-            # product_to_check_bundle_lead = self.lead_fk_ean_one(product_to_check)
-            product_to_check_bundle_lead = self.get_bundles_by_definitions(
-                product_to_check, convert=BUNDLE2LEAD, input_type='product_fk', output_type='product_ean_code',
-                get_only_one=True)
-            if product_to_check_bundle_lead is not None:
-                product_to_check_ean = product_to_check_bundle_lead
+
+        if len(priorities_section['Index (Duplications priority)'].unique().tolist()) == 1:
+            return True
+
+        products_to_check = section_shelf_data \
+            .loc[(section_shelf_data['manufacturer_name'] == BAT) &
+                 (section_shelf_data['product_type'].isin([SKU, POSM]))]['product_ean_code_lead'].unique().tolist()
+        if not products_to_check:
+            return False
+
+        section_facings_histogram = []
+        for product_ean_code in set(products_to_check):
+            if product_ean_code in priorities_section['product_ean_code_lead'].tolist():
+                priority = priorities_section\
+                    .loc[priorities_section['product_ean_code_lead'] == product_ean_code]['Index (Duplications priority)'].values[0]
+                facings = section_shelf_data\
+                    .loc[section_shelf_data['product_ean_code_lead'] == product_ean_code]['product_fk'].count()
+                section_facings_histogram\
+                    .append({'priority': priority, 'product_ean_code': product_ean_code, 'facings': facings})
             else:
-                product_to_check_ean = self.all_products.loc[self.all_products['product_fk'] == product_to_check][
-                    'product_ean_code'].values[0]
-            section_facings_histogram[product_to_check]['priority'] = float(
-                priorities_section.loc[priorities_section['product_ean_code'] == product_to_check_ean][
-                    'Index (Duplications priority)'].values[0])
-        section_facings_histogram_df = pd.DataFrame.from_dict(section_facings_histogram, orient='index')
+                Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
+        section_facings_histogram = pd.DataFrame(section_facings_histogram)
+
+        min_max_facings = pd.DataFrame(columns=['priority', 'max', 'min'])
+        for current_priority in section_facings_histogram['priority'].unique().tolist():
+            current_priority_data = section_facings_histogram[section_facings_histogram['priority'] == current_priority]
+            min_max_facings = min_max_facings.append({'priority': int(current_priority_data['priority'].values[0]),
+                                                      'max': current_priority_data['facings'].max(),
+                                                      'min': current_priority_data['facings'].min()}, ignore_index=True)
+        min_max_facings = min_max_facings.sort_values(by='priority', ascending=False)
+
         last_priority = 0
         last_min_facings = 0
-        min_max_facings = []
-        for current_priority in section_facings_histogram_df['priority'].unique().tolist():
-            priority_df = section_facings_histogram_df[section_facings_histogram_df['priority'] == current_priority]
-            row = {'priority': current_priority, 'max': priority_df['facings'].max(), 'min': priority_df['facings'].min()}
-            min_max_facings.append(row)
-        min_max_df = pd.DataFrame(min_max_facings)
-        min_max_df = min_max_df.sort_values(by=['priority'], ascending=False)
         is_not_first = False
-        for i, row in min_max_df.iterrows():
+        for i, row in min_max_facings.iterrows():
             current_priority, current_max_facings = row['priority'], row['max']
             if is_not_first:
-                if ((last_priority - current_priority == 1 and current_max_facings > last_min_facings) or (
-                                    last_priority - current_priority > 1 and current_max_facings >= last_min_facings)
-                    ) and not last_min_facings == current_max_facings == 1:
+                if not ((last_priority - current_priority == 1 and current_max_facings <= last_min_facings) or
+                        (last_priority - current_priority > 1 and current_max_facings < last_min_facings) or
+                        (last_min_facings == current_max_facings == 1)):
                     return False
             else:
                 is_not_first = True
             last_priority = current_priority
             last_min_facings = row['min']
+
         return True
 
-    # def check_section_presence(self, section_products, section_brands, section_template, scene, products_on_shelf):
-    #     mandatory_skus = section_template[section_template['Mandatory'] == 'Yes']['product_ean_code'].unique().tolist()
-    #     scenes_to_check_mandatory_skus = self.scif[~(self.scif['scene_fk'] == scene) &
-    #                                                ~(self.scif['template_group'] == ENTRY_TEMPLATE_GROUP)][
-    #         'scene_fk'].unique().tolist()
-    #     products_on_shelf_unique = products_on_shelf['product_ean_code'].unique().tolist()
-    #     mandatory_skus_presence_in_other_scenes = self.scif[(self.scif['scene_fk'].isin(scenes_to_check_mandatory_skus))
-    #                                                         & (self.scif['product_ean_code'].isin(mandatory_skus))]
-    #     presence = True
-    #     if not mandatory_skus_presence_in_other_scenes.empty:
-    #         presence = False
-    #     else:
-    #         if not set(section_products) & set(products_on_shelf_unique):
-    #             brands_on_shelf = self.all_products[self.all_products['product_ean_code'].isin(
-    #                 products_on_shelf_unique)]['brand_name'].unique().tolist()
-    #             manufacturers_on_shelf = self.all_products[
-    #                 self.all_products['product_ean_code'].isin(
-    #                     products_on_shelf_unique)]['manufacturer_name'].unique().tolist()
-    #             if not set(section_brands) & set(brands_on_shelf):
-    #                 if manufacturers_on_shelf and BAT not in manufacturers_on_shelf:
-    #                     return False
-    #         else:
-    #             mandatory_skus_present_in_scene = self.scif[(self.scif['scene_fk'] == scene)
-    #                                                         & (self.scif['product_ean_code'].isin(mandatory_skus))][
-    #                 'product_ean_code'].unique().tolist()
-    #             relevant_products = products_on_shelf_unique + self.get_bundle_lead_by_ean_list(
-    #                 products_on_shelf_unique)
-    #             for mandatory_sku in mandatory_skus_present_in_scene:
-    #                 if mandatory_sku not in relevant_products:
-    #                     return False
-    #             for section_product in set(products_on_shelf_unique) ^ set(mandatory_skus):
-    #                 if section_product not in section_products:
-    #                     return False
-    #     return presence
-    #
-    # def check_section_presence2(self, section_template, scene, shelf_data):
-    #     """
-    #     New function for presence. This function only checks if one of the mandatory products exists in another section
-    #     IN THE SAME scene, and this is the only case presence will be false.
-    #     :param section_template: the match lines for the current section (from the template)
-    #     :param scene: current scene_fk
-    #     :param shelf_data: the data from match_product_in_scene of the current section
-    #     :return: false only if product_fk from the mandatory exists in the list of the products in current
-    #              scene other sessions
-    #     """
-    #     current_section_match_fks = shelf_data['scene_match_fk'].tolist()
-    #     mandatory_skus = section_template[section_template['Mandatory'] == 'Yes'][
-    #         'product_ean_code'].unique().tolist()
-    #     mandatory_product_fks = self.all_products[self.all_products['product_ean_code'].isin(mandatory_skus)][
-    #         'product_fk'].tolist()
-    #     other_sections_product_fks = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
-    #                                                              ~(self.match_product_in_scene['scene_match_fk'].isin(
-    #                                                                  current_section_match_fks))][
-    #         'product_fk'].unique().tolist()
-    #     if set(mandatory_product_fks) & set(other_sections_product_fks):
-    #         return False
-    #     return True
+    def check_sku_presence(self, section_template, products_on_shelf, products_outside):
 
-    def check_section_presence3(self, section_products, section_template, products_on_shelf):
-        mandatory_eans = section_template[section_template['Mandatory'] == 'Yes']['product_ean_code'].unique().tolist()
-        if not mandatory_eans:
-            return True
-        mandatory_fks = self.all_products[self.all_products['product_ean_code'].isin(mandatory_eans)][
-            'product_fk'].unique().tolist()
-        scif_of_exits = self.scif[(self.scif['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
-                                  (self.scif['template_name'] == EXIT_STOCK_NAME)]
-        mandatory_in_section = products_on_shelf[products_on_shelf['product_fk'].isin(mandatory_fks)]
-        if mandatory_in_section.empty:
-            brand_name = self.all_products[self.all_products['product_fk'].isin(mandatory_fks)]['brand_name'].iloc[0]
-            brand_name_in_exits = scif_of_exits[~(scif_of_exits[
-                'product_type'].isin([EMPTY, OTHER]))]['brand_name'].unique().tolist()
-            section_brands = self.all_products[self.all_products[
-                'product_ean_code'].isin(section_products)]['brand_name'].unique().tolist()
-            if brand_name in section_brands:
-                if len(section_brands) > 1:
-                    return False
-                else:
+        if section_template['product_fk_lead'].empty:
+            return False  # Empty template
+
+        products_on_shelf = products_on_shelf[~(products_on_shelf['product_type'].isin([EMPTY, OTHER]))]
+        if products_on_shelf.empty:
+            return False  # Empty section
+
+        mandatory_fks_template = \
+            section_template[section_template['Mandatory'] == 'Yes']['product_fk_lead'].unique().tolist()
+        mandatory_fks_section = \
+            products_on_shelf[products_on_shelf['product_fk_lead'].isin(mandatory_fks_template)]['product_fk_lead'].unique().tolist()
+        if len(mandatory_fks_section) == 0:
+
+            products_outside = products_outside[~(products_outside['product_type'].isin([EMPTY, OTHER]))]
+            mandatory_fks_outside = \
+                products_outside[products_outside['product_fk_lead'].isin(mandatory_fks_template)]['product_fk_lead'].unique().tolist()
+            if len(mandatory_fks_outside) == 0:
+
+                brands_template = \
+                    self.all_products[self.all_products['product_fk_lead'].isin(mandatory_fks_template)][
+                        'brand_name'].unique().tolist()
+                brands_section = products_on_shelf['brand_name'].unique().tolist()
+                if set(brands_template).issuperset(brands_section):
                     return True
+                else:
+
+                    brands_outside = products_outside[products_outside['brand_name'].isin(brands_template)]['brand_name'].unique().tolist()
+                    if len(brands_outside) == 0:
+
+                        manufacturers_section = products_on_shelf['manufacturer_name'].unique().tolist()
+                        if BAT in manufacturers_section and len(manufacturers_section) == 1:
+                            return True
+                        else:
+                            return False
+
+                    else:
+                        return False
+
             else:
-                if brand_name in brand_name_in_exits:
-                    return False
-                else:
-                    return True
-        else:
-            missings = []
-            section_fks = products_on_shelf['product_fk'].unique().tolist()
-            allowed_products_on_shelf = section_template['product_ean_code'].tolist()
-            # allowed_products_on_shelf += self.bundles_ean_ean(allowed_products_on_shelf)
-            allowed_products_on_shelf += self.get_bundles_by_definitions(
-                allowed_products_on_shelf, convert=LEAD2BUNDLE, input_type='product_ean_code',
-                output_type='product_ean_code')
-            allowed_products_on_shelf_fks = self.all_products[
-                self.all_products['product_ean_code'].isin(allowed_products_on_shelf)]['product_fk'].unique().tolist()
-            for section_fk in section_fks:
-                if section_fk not in allowed_products_on_shelf_fks:
-                    return False
-            for mandatory_fk in mandatory_fks:
-                if mandatory_fk not in section_fks:
-                    # mandatory_bundles = self.bundle_fk_fk(mandatory_fk)
-                    mandatory_bundles = self.get_bundles_by_definitions(
-                        mandatory_fk, convert=LEAD2BUNDLE, input_type='product_fk', output_type='product_fk')
-                    if not set(mandatory_bundles) & set(section_fks):
-                        missings += mandatory_bundles
-                        missings.append(mandatory_fk)
-            if len(missings) == 0:
-                return True
-            missings_in_exits = scif_of_exits[scif_of_exits['product_fk'].isin(missings)]
-            if missings_in_exits.empty:
+                return False
+
+        elif len(mandatory_fks_section) == len(mandatory_fks_template):
+
+            products_fks_template = section_template['product_fk_lead'].unique().tolist()
+            products_fks_section = products_on_shelf[~(products_on_shelf['product_type'].isin([EMPTY, OTHER]))][
+                'product_fk_lead'].unique().tolist()
+            if set(products_fks_template).issuperset(products_fks_section):
                 return True
             else:
                 return False
 
-    def check_sas_zone_in_fixture(self, product_matrix, section_df, fixture):
-        start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_df, sas_flag=True)
+        else:
+
+            mandatory_fks_template = filter(lambda x: x not in mandatory_fks_section, mandatory_fks_template)
+            mandatory_fks_outside = products_outside[products_outside['product_fk_lead'].isin(mandatory_fks_template)][
+                'product_fk_lead'].unique().tolist()
+            if len(mandatory_fks_outside) == 0:
+                return True
+            else:
+                return False
+
+    def check_sas_zone_in_fixture(self, product_matrix, section_data, fixture):
+        start_sequence, end_sequence, start_shelf, end_shelf = self.get_section_limits(section_data, sas_flag=True)
         end_shelf += 1
         if start_shelf == 0 and end_shelf == 0:
             no_competitors_in_sas_zone_flag = False
@@ -1323,8 +1330,8 @@ class BATRU_SANDToolBox:
                                                                                start_shelf, end_shelf,
                                                                                start_sequence, end_sequence)
             if no_competitors_in_sas_zone:
-                sas_zone_score = 1
                 no_competitors_in_sas_zone_flag = True
+                sas_zone_score = 1
             else:
                 no_competitors_in_sas_zone_flag = False
                 sas_zone_score = 0
@@ -1333,7 +1340,7 @@ class BATRU_SANDToolBox:
 
     def get_absolute_sequence(self, shelf_data):
         if shelf_data.empty:
-            return
+            return pd.DataFrame()
         shelf_data_sequence_dict = {}
         for bay in shelf_data['bay_number'].unique().tolist():
             last_bay_seq = 0
@@ -1362,23 +1369,23 @@ class BATRU_SANDToolBox:
 
         return fixture_name_for_db
 
-    def get_section_limits(self, section_df, sas_flag=False):
+    def get_section_limits(self, section_data, sas_flag=False):
         if not sas_flag:
-            if section_df['Above SAS zone?'].values[0] == 'Y':
-                start_sequence = int(section_df['start_sequence'].values[0])
-                end_sequence = int(section_df['end_sequence'].values[0])
-                start_shelf = int(section_df['start_shelf_from_top'].values[0])
-                end_shelf = int(section_df['end_shelf_from_top'].values[0])
+            if section_data['Above SAS zone?'].values[0] == 'Y':
+                start_sequence = int(section_data['start_sequence'].values[0])
+                end_sequence = int(section_data['end_sequence'].values[0])
+                start_shelf = int(section_data['start_shelf_from_top'].values[0])
+                end_shelf = int(section_data['end_shelf_from_top'].values[0])
             else:
-                start_sequence = int(section_df['start_sequence'].values[0])
-                end_sequence = int(section_df['end_sequence'].values[0])
-                start_shelf = int(section_df['start_shelf_from_bottom'].values[0])
-                end_shelf = int(section_df['end_shelf_from_bottom'].values[0])
+                start_sequence = int(section_data['start_sequence'].values[0])
+                end_sequence = int(section_data['end_sequence'].values[0])
+                start_shelf = int(section_data['start_shelf_from_bottom'].values[0])
+                end_shelf = int(section_data['end_shelf_from_bottom'].values[0])
         else:
-            start_sequence = int(section_df['start_sequence'].values[0])
-            end_sequence = section_df['end_sequence'].values[0]
-            start_shelf = int(section_df['start_shelf'].values[0])
-            end_shelf = int(section_df['end_shelf'].values[0])
+            start_sequence = int(section_data['start_sequence'].values[0])
+            end_sequence = section_data['end_sequence'].values[0]
+            start_shelf = int(section_data['start_shelf'].values[0])
+            end_shelf = int(section_data['end_shelf'].values[0])
 
         return start_sequence, end_sequence, start_shelf, end_shelf
 
@@ -1400,7 +1407,7 @@ class BATRU_SANDToolBox:
             (bay_data['shelf_number'].between(start_shelf, end_shelf)) &
             (bay_data['sequence'].between(start_seq, end_seq))]
         shelf_rlv_data = shelf_rlv_data.merge(self.all_products, on=['product_name'])
-        if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY, OTHER])][
+        if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY])][
                    'manufacturer_name'].unique().tolist()) == 1 and BAT in shelf_rlv_data[
             'manufacturer_name'].values.tolist():
             return True
@@ -1412,7 +1419,7 @@ class BATRU_SANDToolBox:
             no_competitors_status = sas_zone_scores_dict[fixture]
         else:
             no_competitors_status = 0
-        match_display = self.tools.get_match_display()
+        match_display = self.match_display_in_scene
         match_display['display_name'] = self.encode_column_in_df(match_display, 'display_name')
         scene_match_display = match_display[match_display['scene_fk'] == scene]
         sas_template = parse_template(P3_TEMPLATE_PATH, 'SAS Zone Compliance')
@@ -1471,7 +1478,7 @@ class BATRU_SANDToolBox:
         return status
 
     # P4 KPI
-
+    @kpi_runtime()
     def handle_priority_4(self):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
         posm_template = self.get_custom_template(P4_PATH, 'Availability')
@@ -1512,12 +1519,14 @@ class BATRU_SANDToolBox:
                         self.p4_display_count[equipment] = 1
                         count = self.p4_display_count[equipment]
 
-                    if count != 1:
-                        equipment = '{} # {}'.format(equipment, count)
+                    if count == 1:
+                        equipment_to_db = equipment
+                    else:
+                        equipment_to_db = '{} # {}'.format(equipment, count)
 
                     if not equipment_template.empty:
                         try:
-                            result = self.calculate_passed_equipments(equipment_template, equipment, scene)  # has equipment passed?
+                            result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
                         except IndexError:
                             Log.warning('The KPI is not in the DB yet')
                             result = 0
@@ -1623,7 +1632,7 @@ class BATRU_SANDToolBox:
             return 1
 
     # P5 KPI
-
+    @kpi_runtime()
     def handle_priority_5(self):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == SHARE_OF]['kpi_set_fk'].iloc[0]
         kpi_template = self.get_custom_template(P5_PATH, 'KPIs')
@@ -1642,14 +1651,12 @@ class BATRU_SANDToolBox:
             if row['is_set_score'] == '1':
                 set_score = score
 
-            atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[
-                0]
+            atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
             kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].iloc[0]
-            self.write_to_db_result(atomic_fk, result=round(score * 100, 2), score=round(score * 100, 2),
-                                    score_2=round(score, 2), level=self.LEVEL3)
-            self.write_to_db_result(kpi_fk, result=round(score, 2), score_2=round(score, 2), level=self.LEVEL2)
-        self.write_to_db_result(set_fk, result=round(set_score * 100, 2), level=self.LEVEL1)
+            self.write_to_db_result(atomic_fk, result=format(score * 100, '.2f'), score=format(score * 100, '.0f'),
+                                    score_2=format(score, '.2f'), level=self.LEVEL3)
+            self.write_to_db_result(kpi_fk, result=format(score, '.0f'), score_2=format(score, '.2f'), level=self.LEVEL2)
+        self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
 
     def calculate_soa(self, row):
         manufacturer = row['Manufacturer']

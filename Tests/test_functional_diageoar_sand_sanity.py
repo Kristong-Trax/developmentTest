@@ -12,12 +12,13 @@ from mock import patch
 from Tests.Data.Templates.diageoar_sand_template import diageoar_sand_template
 from Tests.Data.TestData.test_data_diageoar_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOAR_SAND.Calculations import DIAGEOARCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

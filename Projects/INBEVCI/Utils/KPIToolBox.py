@@ -99,6 +99,10 @@ class INBEVCIINBEVCIToolBox:
             if set_name == Const.BRAND_FACING_TARGET:
                 if self.attr5 not in params[Const.ATTR5].split(', '):
                     continue
+                start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
+                end_date = '' if params["End date"] == '' else datetime.strptime(params["End date"], '%Y-%m-%d  %H:%M:%S').date()
+                if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
+                    continue
                 result_dict = self.calculate_brand_facing(params)
             elif set_name == Const.BRAND_COMPARISON:
                 result_dict = self.calculate_brand_comparison(params)
@@ -108,7 +112,7 @@ class INBEVCIINBEVCIToolBox:
                 fk=result_dict['fk'], result=result_dict['result'], score=result_dict['score'],
                 numerator_result=result_dict['numerator_result'], denominator_result=result_dict['denominator_result'],
                 numerator_id=result_dict['numerator_id'], denominator_id=0,
-                denominator_result_after_actions=result_dict["denominator_result_after_actions"])
+                target=result_dict["denominator_result_after_actions"])
         if sum_of_total == 0:
             return 0
         percentage = round(sum_of_passed / float(sum_of_total), 4) * 100
@@ -340,7 +344,7 @@ class INBEVCIINBEVCIToolBox:
                                                       numerator_id=result.assortment_group_fk,
                                                       numerator_result=numerator_res,
                                                       denominator_id=super_group_fk, denominator_result=denominator_res,
-                                                      denominator_result_after_actions=denominator_after_action)
+                                                      target=denominator_after_action)
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
@@ -359,7 +363,7 @@ class INBEVCIINBEVCIToolBox:
                                                       numerator_result=numerator_res,
                                                       denominator_result=denominator_res,
                                                       numerator_id=result.assortment_super_group_fk,
-                                                      denominator_result_after_actions=denominator_after_action)
+                                                      target=denominator_after_action)
 
     def update_targets(self, lvl1_result):
         """
@@ -453,7 +457,7 @@ class INBEVCIINBEVCIToolBox:
             self.common.write_to_db_result_new_tables(fk=row.kpi, result=sos, score=score,
                                                       numerator_result=numerator, numerator_id=numerator_id,
                                                       denominator_id=denominator_id, denominator_result=denominator,
-                                                      denominator_result_after_actions=target)
+                                                      target=target)
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()

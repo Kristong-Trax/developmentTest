@@ -59,17 +59,17 @@ class DISPLAYSPositionGraphs:
     def get_filtered_matches(self, include_stacking=False):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches[matches['status'] == 1]
-        if not include_stacking:
-            matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
-        matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
-                                                                           'scene_id', 'scene_fk']],
-                                how='left', on='scene_fk', suffixes=['', '_4'])
+        scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
+        scene_template = scene_template.merge(self.data_provider.templates[['template_name',
+                                                                            'template_fk', 'location_type']],
+                                              how='left', on='template_fk')
+        scene_template['scene_id'] = scene_template['scene_fk']
+        matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
+        matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches
 

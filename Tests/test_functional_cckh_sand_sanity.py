@@ -10,12 +10,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_cckh_sand_sanity import ProjectsSanityData
 from Projects.CCKH_SAND.Calculations import CCKH_SANDCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

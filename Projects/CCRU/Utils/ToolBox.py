@@ -14,6 +14,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.CCRU.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.ExecutionContract import CCRUContract
@@ -445,6 +446,7 @@ class CCRUKPIToolBox:
                 relevant_scenes.append(scene)
         return relevant_scenes
 
+    @kpi_runtime()
     def check_number_of_facings_given_answer_to_survey(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -480,6 +482,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
+    @kpi_runtime()
     def check_answer_to_survey_level3(self, params):
         d = {'Yes': u'Да', 'No': u'Нет'}
         score = 0
@@ -502,6 +505,7 @@ class CCRUKPIToolBox:
             Log.warning('No survey data for this session')
         return score
 
+    @kpi_runtime()
     def check_availability(self, params):
         """
         This function is used to calculate availability given a set pf parameters
@@ -675,6 +679,7 @@ class CCRUKPIToolBox:
 
         return object_facings
 
+    @kpi_runtime()
     def calculate_number_facings_near_food(self, params, all_params):
         total_res = 0
         if 'depends on' in params.keys():
@@ -946,6 +951,7 @@ class CCRUKPIToolBox:
     #     Log.info('Calculation finished')
     #     return set_total_res
 
+    @kpi_runtime()
     def check_number_of_scenes_with_target(self, params):
         scenes = None
         if 'depends on' in params.keys():
@@ -964,6 +970,7 @@ class CCRUKPIToolBox:
                 kpi_total_res += 1
         return kpi_total_res
 
+    @kpi_runtime()
     def check_number_of_scenes(self, params):
         """
         This function is used to calculate number of scenes
@@ -1071,6 +1078,7 @@ class CCRUKPIToolBox:
                 self.write_to_db_result(attributes_for_level3, 'level3')
         return set_total_res
 
+    @kpi_runtime()
     def check_number_of_doors(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -1212,6 +1220,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
+    @kpi_runtime()
     def facings_sos(self, params):
         """
         This function is used to calculate facing share of shelf
@@ -1246,6 +1255,11 @@ class CCRUKPIToolBox:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2')
             set_total_res += round(score) * p.get('KPI Weight')
+# Sergey 1 Begin
+            atomic_result = attributes_for_level3['result']
+            if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
+                self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
+# Sergey 1 End
         return set_total_res
 
     def calculate_facings_sos(self, params):
@@ -1360,6 +1374,7 @@ class CCRUKPIToolBox:
 
         return score
 
+    @kpi_runtime()
     def check_share_of_cch(self, params):
         """
         This function calculates number of SKUs per single scene type
@@ -1542,6 +1557,7 @@ class CCRUKPIToolBox:
                 sum_of_passed_scenes += 1
         return sum_of_passed_scenes
 
+    @kpi_runtime()
     def check_number_of_skus_per_door_range(self, params):
         """
         This function calculates number of SKUs per single scene type
@@ -1789,6 +1805,7 @@ class CCRUKPIToolBox:
         facings = self.calculate_availability(params)
         return float(facings) / 40
 
+    @kpi_runtime()
     def customer_cooler_doors(self, params):
         set_total_res = 0
         for p in params.values()[0]:
@@ -1806,6 +1823,7 @@ class CCRUKPIToolBox:
                 self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
         return set_total_res
 
+    @kpi_runtime()
     def check_sum_atomics(self, params):
         """
 
@@ -1888,6 +1906,7 @@ class CCRUKPIToolBox:
                 self.insert_scores_level2(kpi_total, score, kpi_name)
         return set_total_res
 
+    @kpi_runtime()
     def check_atomic_passed(self, params):
         """
 
@@ -1962,6 +1981,7 @@ class CCRUKPIToolBox:
                 self.insert_scores_level2(kpi_total, score, kpi_name)
         return set_total_res
 
+    @kpi_runtime()
     def check_atomic_passed_on_the_same_scene(self, params):
         set_total_res = 0
         self.passed_scenes_per_kpi = {}
@@ -2159,6 +2179,7 @@ class CCRUKPIToolBox:
                 self.write_to_db_result(attributes_for_level4, 'level4')
         return total_res
 
+    @kpi_runtime()
     def check_weighted_average(self, params):
         """
 
@@ -2212,6 +2233,7 @@ class CCRUKPIToolBox:
                 self.write_to_db_result(attributes_for_level2, 'level2')
         return set_total_res
 
+    @kpi_runtime()
     def calculate_number_of_scenes_no_tagging(self, params, level = None):
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
@@ -2386,6 +2408,7 @@ class CCRUKPIToolBox:
         return
 
 # Sergey Begin
+    @kpi_runtime()
     def prepare_hidden_set(self, params):
         # table3 = pd.DataFrame([])  # for debugging
 
@@ -2737,6 +2760,7 @@ class CCRUKPIToolBox:
 
         return df['channel'][0]
 
+    @kpi_runtime()
     def calculate_gaps(self, params):
         for param in params:
             kpi = param.get('KPI Name')
@@ -2777,6 +2801,7 @@ class CCRUKPIToolBox:
                 query = insert(attributes.to_dict(), CUSTOM_GAPS_TABLE)
                 self.gaps_queries.append(query)
 
+    @kpi_runtime()
     def calculate_contract_execution(self):
         self.change_set(CONTRACT_SET_NAME)
         log_prefix = 'Contract KPI: '
@@ -2857,24 +2882,28 @@ class CCRUKPIToolBox:
             conversion[int(row['KPI ID'])] = row['KPI Name']
         return conversion
 
+    @kpi_runtime()
     def calculate_top_sku(self):
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
+        if not top_skus:
+            return
+        in_assortment = True
         for scene_fk in self.scif['scene_id'].unique():
             scene_data = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['facings'] > 0)]
             facings_data = scene_data.groupby('product_fk')['facings'].sum().to_dict()
-            for product_fk in top_skus:
-                correlated_products = self.top_sku.get_correlated_products(top_skus[product_fk])
-                product_group_facings = 0
-                for correlated in correlated_products:
-                    product_group_facings += facings_data.pop(correlated, 0)
-                if product_fk not in facings_data:
-                    facings_data[product_fk] = 0
-                facings_data[product_fk] += product_group_facings
-            for product_fk in facings_data.keys():
-                in_assortment = True if product_fk in top_skus else False
-                distributed = True if facings_data[product_fk] > 0 else False
-                query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, product_fk,
-                                                           in_assortment, distributed)
+            for anchor_product_fk in top_skus['product_fks'].keys():
+                min_facings = top_skus['min_facings'][anchor_product_fk]
+                distributed = False
+                for product_fk in top_skus['product_fks'][anchor_product_fk].split(','):
+                    product_fk = int(product_fk)
+                    if product_fk in facings_data.keys():
+                        facings = facings_data[product_fk]
+                    else:
+                        facings = 0
+                    if facings >= min_facings:
+                        distributed = True
+                query = self.top_sku.get_custom_scif_query(
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
     def insert_scores_level2(self, result, score, kpi_name):
@@ -2884,6 +2913,7 @@ class CCRUKPIToolBox:
         self.kpi_score_level2[key_score] = score
         return
 
+    @kpi_runtime()
     def check_kpi_scores(self, params):
         set_total_res = 0
         for p in params.values()[0]:

@@ -32,7 +32,7 @@ class CCUSGenerator:
         self.calculate_programs()
         self.calculate_holiday_programs()
         self.calculate_msc_new()
-        self.calculate_gold_peak_block()
+        #self.calculate_gold_peak_block()
         self.calculate_special_programs()
 
     @log_runtime('Manufacturer Displays Calculations')
@@ -84,11 +84,11 @@ class CCUSGenerator:
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=31)
 
-    @log_runtime('Programs Calculations')
-    def calculate_gold_peak_block(self):
-        tool_box = GOLD_PEAK_BLOCKToolBox(self.data_provider, self.output)
-        tool_box.main_calculation()
-        tool_box.commit_results_data(kpi_set_fk = 30)
+    # @log_runtime('Programs Calculations')
+    # def calculate_gold_peak_block(self):
+    #     tool_box = GOLD_PEAK_BLOCKToolBox(self.data_provider, self.output)
+    #     tool_box.main_calculation()
+    #     tool_box.commit_results_data(kpi_set_fk = 30)
 
     @log_runtime('Special Programs Calculations')
     def calculate_special_programs(self):
