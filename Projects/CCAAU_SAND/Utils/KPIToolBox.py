@@ -66,7 +66,7 @@ class CCAAUToolBox:
         score = 0
         return score
 
-    def calculate_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
+    def calculate_sos(self):
         """
         :param sos_filters:  numerator type =
         :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
@@ -91,8 +91,8 @@ class CCAAUToolBox:
                 general_linear_filters = self.create_dict_filters(linear_exclude_template, self.EXCLUDE_FILTER)
 
                 # include_filters
-                facing_include_template = self.create_dict_filters(facing_exclude_template, self.INCLUDE_FILTER)
-                linear_include_template = self.create_dict_filters(linear_exclude_template, self.INCLUDE_FILTER)
+                facing_include_template = self.create_dict_filters(facing_include_template, self.INCLUDE_FILTER)
+                linear_include_template = self.create_dict_filters(linear_include_template, self.INCLUDE_FILTER)
 
         # sos facing
         ### {"limor": " "}
@@ -101,6 +101,11 @@ class CCAAUToolBox:
 
                 denominator_linear = self.calculate_share_space(**dict(linear_include_template, general_linear_filters))
                 denominator_facings = self.calculate_share_space(**dict(facing_include_template, general_facing_filters))
+
+        filter_2_cond(facing_exclude_template)
+        filter_2_cond(linear_exclude_template)
+        filter_2_cond(facing_include_template)
+        filter_2_cond(linear_include_template)
 
         # denominator_facings, denominator_linear = self.calculate_share_space(**general_filters)
         return numerator_facings, denominator_facings, numerator_linear, denominator_linear
@@ -119,11 +124,12 @@ class CCAAUToolBox:
 
         filters_dict = {}
         template_without_second = template[not template['Param 2'].isnull()]
+        if template_without_second is not None:
+            df[
+                df[template['Param 1']] not in df[template['Value 1']].tolist() and df[
+                    template['Param 2']] not in df[template['Value 2']].tolist()]
 
-        for row in template_without_second:
-            filters_dict[row['Param 1']] = (row['Value 1'].tolist(), parametr)
-
-        return filters_dict
+        return df
 
     def calculate_share_space(self, **filters):
         """
