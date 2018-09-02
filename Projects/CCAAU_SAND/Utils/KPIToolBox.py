@@ -63,8 +63,7 @@ class CCAAUToolBox:
         """
         This function calculates the KPI results.
         """
-        score = 0
-        return score
+        self.calculate_sos()
 
     def calculate_sos(self):
         """
@@ -96,19 +95,26 @@ class CCAAUToolBox:
 
         # sos facing
         ### {"limor": " "}
-                numerator_facings = self.calculate_share_space(**dict(sos_filters,facing_include_template, general_facing_filters))
-                numerator_linear = self.calculate_share_space(**dict(sos_filters,linear_include_template, general_linear_filters))
+
+                self.filter_2_cond(facing_exclude_template)
+                self.filter_2_cond(linear_exclude_template)
+                self.filter_2_cond(facing_include_template)
+                self.filter_2_cond(linear_include_template)
+
+                numerator_facings = self.calculate_share_space(
+                    **dict(sos_filters, facing_include_template, general_facing_filters))
+                numerator_linear = self.calculate_share_space(
+                    **dict(sos_filters, linear_include_template, general_linear_filters))
 
                 denominator_linear = self.calculate_share_space(**dict(linear_include_template, general_linear_filters))
-                denominator_facings = self.calculate_share_space(**dict(facing_include_template, general_facing_filters))
+                denominator_facings = self.calculate_share_space(
+                    **dict(facing_include_template, general_facing_filters))
 
-        filter_2_cond(facing_exclude_template)
-        filter_2_cond(linear_exclude_template)
-        filter_2_cond(facing_include_template)
-        filter_2_cond(linear_include_template)
 
-        # denominator_facings, denominator_linear = self.calculate_share_space(**general_filters)
-        return numerator_facings, denominator_facings, numerator_linear, denominator_linear
+
+
+
+
 
     def create_dict_filters(self, template, parametr):
 
