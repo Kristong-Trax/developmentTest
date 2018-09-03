@@ -152,7 +152,7 @@ class qa:
     def test_invalid_percent_results(self):
         """kpi result should be percent between 0-1 """
         total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
-        filtered = self.merged_kpi_results.filter('is_percent = 1 and result < 0 or result > 1')
+        filtered = self.merged_kpi_results.filter('is_percent = 1 and (result < 0 or result > 1)')
         df = filtered.groupBy("client_name").count() \
                                             .withColumnRenamed('count', 'result_count') \
                                             .withColumnRenamed('client_name', 'name')
@@ -307,7 +307,7 @@ class qa:
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbza', start_date='2018-08-01', end_date='2018-08-30')
+    qa_tool = qa('diageous', start_date='2018-08-01', end_date='2018-08-02')
     # if not os.path.exists("results"):
     #     os.mkdir("results")
     #
