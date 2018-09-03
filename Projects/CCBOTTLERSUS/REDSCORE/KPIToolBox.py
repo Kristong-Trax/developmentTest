@@ -11,16 +11,13 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.4.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
     "DRUG SOVI RED": "Drug",
     "VALUE SOVI RED": "Value",
-    "United Test - Value SOVI RED": "Value",
-    "United Test - Drug SOVI RED": "Drug",
-    "United Test - CR SOVI RED": "CR&LT",
     "FSOP - QSR": "QSR",
 }
 
@@ -388,9 +385,12 @@ class CCBOTTLERSUSREDToolBox:
         all the DP products out.
         :return: boolean
         """
+        type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
         if isnt_dp:
             relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
-        type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
+            if kpi_line[Const.FILTER_IF_NOT_DP] != "":
+                values_out = str(kpi_line[Const.FILTER_IF_NOT_DP]).split(', ')
+                relevant_scif = relevant_scif[~(relevant_scif[type_name].isin(values_out))]
         values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
         if type_name in Const.NUMERIC_VALUES_TYPES:
             values = [float(x) for x in values]
