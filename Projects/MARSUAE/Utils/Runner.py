@@ -3,6 +3,7 @@
 import networkx as nx
 import pydot
 
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityFacingCalculation, \
     AvailabilityHangingStripCalculation, CountCalculation, DistributionCalculation, LinearSOSCalculation
 
@@ -11,6 +12,7 @@ class Results(object):
     def __init__(self, data_provider):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
+        self.common = CommonV2(self._data_provider)
         self.kpi_results = {}
 
     def calculate_old_tables(self, hierarchy):
@@ -64,7 +66,8 @@ class Results(object):
 
     def _get_atomic_result(self, atomic, kpi_neighbors):
         kpi_params = self.get_kpi_params(atomic)
-        calculation = self._kpi_type_calculator_mapping[kpi_params['KPI Type'].iloc[0]](self._data_provider, 1)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic)
+        calculation = self._kpi_type_calculator_mapping[kpi_params['KPI Type'].iloc[0]](self._data_provider, kpi_fk)
         return calculation.calculate(kpi_params)
         # concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
         # atomic_results[atomic['kpi']] = concat_results

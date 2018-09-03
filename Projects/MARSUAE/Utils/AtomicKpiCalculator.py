@@ -28,33 +28,23 @@ class LinearSOSCalculation(KpiBaseCalculation):
         common = self._data_provider.common
         numerator_filters = {params['numerator type']: params['numerator value']}
         general_filters = {params['denominator type']: params['denominator value']}
+        points = params['Points']
         kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'])
 
         sos = SOS(self._data_provider, output=None)
         result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
                                                                                         sos_filters=numerator_filters,
                                                                                         **general_filters)
+        if result >= params['upper threshold']:
+            result = points
+        elif result < params['upper threshold']:
+            result = 0
+        else:
+            result *= points
+
         return [self._create_kpi_result(fk=kpi_fk, result=result, score=result,
                                         numerator_id=999, numerator_result=numerator_result,
                                         denominator_id=999, denominator_result=denominator_result)]
-
-
-class DistributionSkuCalculation(KpiBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'SESSION_PARENT_1'
-
-    def calculate(self, params):
-        result_kpi = []
-        kpi_fk = 1
-        assortment_fk = params['assortment_group']
-        assortment_result = Assortment(self, self._data_provider).calculate_lvl3_assortment()
-        assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        for i, row in assortment_result.itterows():
-            result_kpi.append(self._create_kpi_result(fk=self._kpi_definition_fk,
-                                                      numerator_id=row['product_fk'],
-                                                      score=row['in_store']))
-        return result_kpi
 
 
 class DistributionCalculation(KpiBaseCalculation):
@@ -82,15 +72,35 @@ class AvailabilityHangingStripCalculation(KpiBaseCalculation):
         return 'Availbility hanging strip'
 
     def calculate(self, params):
+        result = 0
+        target = params['minimum products']
+        scif = self._data_provider.scene_item_facts
+        number_of_hanging_strips = scif[scif['template_name'] in params['scene type'].split(',')]
+        if number_of_hanging_strips >= target:
+            result = 100
+        result *= params['Points']
+
+        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
+                                        numerator_id=999, numerator_result=number_of_hanging_strips,
+                                        denominator_id=999, denominator_result=None,
+                                        target=target)]
+
+
+class AvailabilityBasketCalculation(KpiBaseCalculation):
+    @classproperty
+    def kpi_type(self):
+        return 'Availbility basket'
+
+    def calculate(self, params):
         return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
 
 
-class AvailabilityFacingCalculation(KpiBaseCalculation):
+class AvailabilityMultipackCalculation(KpiBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'Availbility facings (basket & Multipack SKUs)'
+        return 'Availbility multipack'
 
     def calculate(self, params):
         return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
