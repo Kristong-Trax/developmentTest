@@ -466,7 +466,6 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters):
-        # shelves = [4, 5]
         params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
@@ -483,7 +482,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
 
         result = int(
-            self.tools.calculate_facings_on_golden_zone(self.golden_zone_data_criteria,
+            self.tools.calculate_linear_facings_on_golden_zone(self.golden_zone_data_criteria,
                                             **kpi_filter))
         score = 0
         threshold = float(params[self.GROUP_GOLDEN_ZONE_THRESHOLD].values[0])
