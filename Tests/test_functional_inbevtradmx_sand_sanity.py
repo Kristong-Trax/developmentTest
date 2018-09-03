@@ -10,7 +10,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_inbevtradmx_sand_sanity import ProjectsSanityData
-from Projects.INBEVTRADMX_SAND.Calculations import Calculations
+from Projects.INBEVTRADMX_SAND.Calculations import INBEVTRADMXCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
@@ -47,5 +47,5 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            Calculations(data_provider, output).run_project_calculations()
+            INBEVTRADMXCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()

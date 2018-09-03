@@ -87,8 +87,8 @@ class PURINAToolBox:
         """
         This function calculates the KPI results.
         """
-        # if not self.is_session_purina():
-        #     return
+        if not self.is_session_purina():
+            return
         # Update all new static KPIs
         self.create_new_static_kpi()
 
@@ -120,22 +120,9 @@ class PURINAToolBox:
             Log.info("No relevant purina's products were found in session.")
             return
 
-        # subseg_name_list = data[SCIF_SUBSEGMENT].unique()
-        # for subseg in subseg_name_list:
-        #     if not subseg:
-        #         subseg = NO_SUBSEG
-        #         by_subseg = data.loc[pd.isnull(data[SCIF_SUBSEGMENT])]
-        #         subseg_ft = self.cm_to_ft(sum(by_subseg[LINEAR_SIZE]))
-        #     else:
-        #         by_subseg = data.loc[data[SCIF_SUBSEGMENT] == subseg]
-        #         subseg_ft = self.cm_to_ft(sum(by_subseg[LINEAR_SIZE]))
-        #     atomic_fk = self.get_kpi_fk_by_kpi_name(subseg, self.LEVEL3, father=SUBSEGMENT_KPI, set_name=SUBSEGMENT_SET)
-        #     self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=subseg_ft)
-        #     atomic_fk = self.get_kpi_fk_by_kpi_name(subseg, self.LEVEL3, father=SUBSEGMENT_KPI, set_name=PRICE_SET)
-        #     self.common.old_write_to_db_result(fk=atomic_fk, level=self.LEVEL3, score=subseg_ft)
-
         # gets all category linear size
 
+        data = data.loc[data['category_fk'] == PET_FOOD_CATEGORY]
         category_ft = self.cm_to_ft(sum(data[LINEAR_SIZE]))
         fk = self.get_kpi_fk_by_kpi_name(PURINA_SET, self.LEVEL1)
         self.common.write_to_db_result(fk, self.LEVEL1, category_ft)
@@ -161,7 +148,7 @@ class PURINAToolBox:
 
             brands = by_mf['brand_name'].unique()
             for brand in brands:
-                by_brand = by_mf.loc[data['brand_name'] == brand]
+                by_brand = by_mf.loc[by_mf['brand_name'] == brand]
                 brand_ft = self.cm_to_ft(sum(by_brand[LINEAR_SIZE]))
                 kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_name'] == BRAND) &
                                                   (self.kpi_static_data['kpi_set_name'] == PURINA_SET)]['kpi_fk'].values[0]
@@ -182,10 +169,10 @@ class PURINAToolBox:
                 for cat in categories:
                     if not cat:
                         cat = OTHER
-                        by_cat = by_brand.loc[pd.isnull(by_brand[SCIF_PRICE])]
+                        by_cat = by_brand.loc[pd.isnull(by_brand[SCIF_CATEOGRY])]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
                     else:
-                        by_cat = by_brand.loc[data[SCIF_CATEOGRY] == cat]
+                        by_cat = by_brand.loc[by_brand[SCIF_CATEOGRY] == cat]
                         cat_ft = self.cm_to_ft(sum(by_cat[LINEAR_SIZE]))
 
                     kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_name'] == CATEGORY) &
@@ -209,10 +196,10 @@ class PURINAToolBox:
                     for sub_cat in sub_cats:
                         if not sub_cat:
                             sub_cat = OTHER
-                            by_sub_cat = by_cat.loc[pd.isnull(by_cat[SCIF_PRICE])]
+                            by_sub_cat = by_cat.loc[pd.isnull(by_cat[SCIF_SUB_CATEOGRY])]
                             sub_cat_ft = self.cm_to_ft(sum(by_sub_cat[LINEAR_SIZE]))
                         else:
-                            by_sub_cat = by_cat.loc[data[SCIF_SUB_CATEOGRY] == sub_cat]
+                            by_sub_cat = by_cat.loc[by_cat[SCIF_SUB_CATEOGRY] == sub_cat]
                             sub_cat_ft = self.cm_to_ft(sum(by_sub_cat[LINEAR_SIZE]))
                         # write to db under sub category atomic kpi score with brand name in results
 
@@ -262,7 +249,7 @@ class PURINAToolBox:
                                                                visit_date=self.visit_date.isoformat(),
                                                                calculation_time=datetime.utcnow().isoformat(),
                                                                kps_name=PURINA_SET,
-                                                               kpi_fk=kpi_fk )
+                                                                kpi_fk=kpi_fk )
                             else:
                                 print 'atomic cannot be saved for price class {}'.format(price_class)
 
@@ -397,8 +384,8 @@ class PURINAToolBox:
         local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         query = """select category_fk, resolution_fk, exclude_status_fk from probedata.session_category
                 where session_fk = {}""".format(self.session_fk)
-        query = """select c.category_fk, s.resolution_code_fk, s.exclude_status_fk from probedata.session_category c
-                    join probedata.session s on s.pk=c.session_fk
-                  where session_fk = {}""".format(self.session_fk)
+        # query = """select c.category_fk, s.resolution_code_fk, s.exclude_status_fk from probedata.session_category c
+        #             join probedata.session s on s.pk=c.session_fk
+        #           where session_fk = {}""".format(self.session_fk)
         data = pd.read_sql_query(query, local_con.db)
         return data

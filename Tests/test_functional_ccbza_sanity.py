@@ -22,28 +22,28 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-    
+
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-    
+
     seeder = Seeder()
-    
+
     def _assert_kpi_results_filled(self):
         connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
+        SELECT * FROM report.kpi_level_2_results
         ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
     @seeder.seed(["ccbza_seed"], ProjectsSanityData())
     def test_ccbza_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['02BCE755-24B6-4021-A4C0-2F38D86D8638']
+        sessions = ['15431CFF-E6FC-4A74-8BF3-338E35710CE2']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
