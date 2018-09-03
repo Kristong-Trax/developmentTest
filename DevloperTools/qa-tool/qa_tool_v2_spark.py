@@ -62,12 +62,25 @@ class qa:
                                 probedata.session.pk = report.kpi_level_2_results.session_fk
                                     AND probedata.session.visit_date BETWEEN '{}' AND '{}')tmp_kpi_level_2_results '''.format(
             start_date, end_date)
+
+        self.scene_results_query = '''    
+                            (SELECT 
+                                report.scene_kpi_results.*
+                            FROM
+                                report.scene_kpi_results,
+                                probedata.session
+                            WHERE
+                                probedata.session.pk = report.scene_kpi_results.session_fk
+                                    AND probedata.session.visit_date BETWEEN '{}' AND '{}')tmp_scene_kpi_results '''.format(
+            start_date, end_date)
+
         self.static_query = '''(SELECT * FROM  static.kpi_level_2 where static.kpi_level_2.kpi_calculation_stage_fk = 3) static_kpi '''
         self.categories_query = '''(select * from static_new.category) categories '''
 
         # fetch db data
         self.static_kpi = self._get_static_kpi()
         self.kpi_results = self._get_kpi_results()
+        # self.kpi_scene_results = self._get_kpi_scene_results()
         self.categories_df = self._get_categories()
         self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
         self.expected = pd.read_csv('expected.csv')
@@ -90,6 +103,24 @@ class qa:
         except Exception as e:
             print e.message
 
+    def _get_kpi_scene_results_meta_data(self):
+        try:
+            meta_results = '''    
+                        SELECT 
+                            count(*) count, 
+                            MIN(probedata.session.pk) min,
+                            MAX(probedata.session.pk) max
+                        FROM
+                            report.scene_kpi_results,
+                            probedata.scene
+                        WHERE
+                            probedata.scene.pk = report.scene_kpi_results.scene_fk
+                                AND probedata.session.visit_date BETWEEN '{}' AND '{}';'''.format(self.start_date, self.end_date)
+
+            return pd.read_sql_query(meta_results, self.connector.db)
+        except Exception as e:
+            print e.message
+
     def _get_kpi_results(self):
 
         kpi_results_meta_data = self._get_kpi_results_meta_data()
@@ -102,18 +133,56 @@ class qa:
             number_of_partition = 1
         print "count of rows : " + str(count_of_row)
         print " number of partition:" + str(number_of_partition)
-        kpi_results = self.spark.read.jdbc(url=self.project_url,
-                                           table=self.results_query,
-                                           properties={"user": self.connector.dbuser.username,
-                                                          "password": self.connector.dbuser.cred,
-                                                          "partitionColumn": "tmp_kpi_level_2_results.session_fk",
-                                                          "lowerBound": "{}".format(lower_bound),
-                                                          "upperBound": "{}".format(upper_bound),
-                                                          "numPartitions": "{}".format(number_of_partition),
-                                                          "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
-        kpi_results.count()
-        return kpi_results
+        if count_of_row > 0:
+            kpi_results = self.spark.read.jdbc(url=self.project_url,
+                                               table=self.results_query,
+                                               properties={"user": self.connector.dbuser.username,
+                                                              "password": self.connector.dbuser.cred,
+                                                              "partitionColumn": "tmp_scene_kpi_results.scene_fk",
+                                                              "lowerBound": "{}".format(lower_bound),
+                                                              "upperBound": "{}".format(upper_bound),
+                                                              "numPartitions": "{}".format(number_of_partition),
+                                                              "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+
+            kpi_results.count()
+            return kpi_results
+
+        else:
+            print("no kpi session results")
+            return None
+
+    def _get_kpi_scene_results(self):
+
+        kpi_results_meta_data = self._get_kpi_scene_results_meta_data()
+        lower_bound = kpi_results_meta_data.loc[0]['min']
+        upper_bound = kpi_results_meta_data.loc[0]['max']
+        count_of_row = kpi_results_meta_data.loc[0]['count']
+        if (count_of_row / self.batch_size) > 1:
+            number_of_partition = (count_of_row / self.batch_size)
+        else:
+            number_of_partition = 1
+        print "count of rows : " + str(count_of_row)
+        print " number of partition:" + str(number_of_partition)
+
+        if count_of_row > 0:
+            kpi_results = self.spark.read.jdbc(url=self.project_url,
+                                               table=self.results_query,
+                                               properties={"user": self.connector.dbuser.username,
+                                                           "password": self.connector.dbuser.cred,
+                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                           "lowerBound": "{}".format(lower_bound),
+                                                           "upperBound": "{}".format(upper_bound),
+                                                           "numPartitions": "{}".format(number_of_partition),
+                                                           "driver": 'com.mysql.jdbc.Driver'}).persist(
+                storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+
+            kpi_results.count()
+            return kpi_results
+        else:
+            print("no scene results")
+            return None
+
 
     def _get_static_kpi(self):
         static_kpi = self.spark.read.jdbc(url=self.project_url,
@@ -150,7 +219,7 @@ class qa:
         return test_results_pandas.to_html()
 
     def test_invalid_percent_results(self):
-        """kpi result should be percent between 0-1 """
+        """kpi result should be percent between 0-1 in"""
         total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
         filtered = self.merged_kpi_results.filter('is_percent = 1 and (result < 0 or result > 1)')
         df = filtered.groupBy("client_name").count() \
@@ -307,7 +376,7 @@ class qa:
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('diageous', start_date='2018-08-01', end_date='2018-08-02')
+    qa_tool = qa('ccbza', start_date='2018-08-16', end_date='2018-08-30')
     # if not os.path.exists("results"):
     #     os.mkdir("results")
     #
