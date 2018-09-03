@@ -6,8 +6,8 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCBOTTLERSUS_SAND.Utils.Fetcher import BCIQueries
-from Projects.CCBOTTLERSUS_SAND.Utils.ToolBox import BCIToolBox
+from Projects.CCBOTTLERSUS_SAND.Utils.Fetcher import CCBOTTLERSUS_SANDBCIQueries
+from Projects.CCBOTTLERSUS_SAND.Utils.ToolBox import CCBOTTLERSUS_SANDBCIToolBox
 
 __author__ = 'ortal'
 MAX_PARAMS = 4
@@ -72,7 +72,7 @@ class BCIKPIToolBox:
         # self.get_atts()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = BCIToolBox(self.data_provider, output,
+        self.tools = CCBOTTLERSUS_SANDBCIToolBox(self.data_provider, output,
                                       kpi_static_data=self.kpi_static_data,
                                       match_display_in_scene=self.match_display_in_scene)
         self.download_time = timedelta(0)
@@ -98,7 +98,7 @@ class BCIKPIToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = BCIQueries.get_all_kpi_data()
+        query = CCBOTTLERSUS_SANDBCIQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -107,7 +107,7 @@ class BCIKPIToolBox:
     #     This function extracts the static KPI data and saves it into one global data frame.
     #     The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
     #     """
-    #     query = BCIQueries.get_product_atts()
+    #     query = CCBOTTLERSUS_SANDBCIQueries.get_product_atts()
     #     product_att4 = pd.read_sql_query(query, self.rds_conn.db)
     #     self.scif = self.scif.merge(product_att4, how='left', left_on='product_ean_code',
     #                                 right_on='product_ean_code')
@@ -117,7 +117,7 @@ class BCIKPIToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = BCIQueries.get_match_display(self.session_uid)
+        query = CCBOTTLERSUS_SANDBCIQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -522,14 +522,14 @@ class BCIKPIToolBox:
         kpi_pks = tuple()
         atomic_pks = tuple()
         if kpi_set_fk is not None:
-            query = BCIQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
+            query = CCBOTTLERSUS_SANDBCIQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
             kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
             atomic_pks = tuple(kpi_atomic_data['pk'].tolist())
             kpi_data = pd.read_sql_query(query, self.rds_conn.db)
             kpi_pks = tuple(kpi_data['pk'].tolist())
         cur = self.rds_conn.db.cursor()
         if kpi_pks and atomic_pks:
-            delete_queries = BCIQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
+            delete_queries = CCBOTTLERSUS_SANDBCIQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
                                                                          atomic_pks)
             for query in delete_queries:
                 cur.execute(query)

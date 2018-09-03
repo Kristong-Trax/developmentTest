@@ -2,7 +2,7 @@
 __author__ = 'Nimrod'
 
 
-class DISPLAYSQueries(object):
+class CCBOTTLERSUS_SANDDISPLAYSQueries(object):
 
     @staticmethod
     def get_all_kpi_data():
