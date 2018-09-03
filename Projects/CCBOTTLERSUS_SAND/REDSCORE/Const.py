@@ -1,10 +1,17 @@
-
+import os
 __author__ = 'Elyashiv'
 
 
 class Const(object):
-
-    SOVI = "SOVI"
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.4.xlsx')
+    SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                        'SurveyTemplateV2.xlsx')
+    STORE_TYPES = {
+        "CR SOVI RED": "CR&LT",
+        "DRUG SOVI RED": "Drug",
+        "VALUE SOVI RED": "Value",
+        "FSOP - QSR": "QSR",
+    }
 
     # sheets:
     KPIS = "KPIs"
@@ -64,6 +71,7 @@ class Const(object):
     NUM_VALUES_2 = "numerator_values 2"
     GROUP = "Group"
     MAJ_DOM = "Majority/Dominant"
+    ADD_IF_NOT_DP = "add if not DP"
 
     # columns of survey:
     Q_TEXT = "question_text"
@@ -98,6 +106,9 @@ class Const(object):
     MANUAL_RED_SCORE = 'Red Score Survey'
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
 
+    SOVI = "SOVI"
     MANUAL = "MANUAL"
-    CALCULATION_TYPES = [MANUAL, SOVI]
-
+    CALCULATION_TYPES = [
+        SOVI,
+        MANUAL
+    ]

@@ -19,6 +19,8 @@ def _parse_arguments():
     parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--project', '-p', type=str, required=True, help='The name of the project')
     parser.add_argument('--file', type=str, required=True, help='The assortment template')
+    parser.add_argument('--date', type=str, required=False, help='Start date YYYY-MM-DD')
+    parser.add_argument('--update', type=str, required=False, help='True - Partial / False - Full')
     return parser.parse_args()
 
 
@@ -29,6 +31,8 @@ class BATRUAssortment:
         self.project = self.parsed_args.project
         self.rds_conn = self.rds_connect
         self.file_path = self.parsed_args.file
+        self.start_date = self.parsed_args.date
+        self.partial_update = self.parsed_args.update
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.current_top_skus = self.get_current_top_skus
@@ -142,7 +146,8 @@ class BATRUAssortment:
         raw_data = self.parse_assortment_template()
         data = []
         list_of_stores = raw_data[OUTLET_ID].unique().tolist()
-        # self.set_end_date_for_irrelevant_assortments(list_of_stores)
+        if not self.partial_update:
+            self.set_end_date_for_irrelevant_assortments(list_of_stores)
         for store in list_of_stores:
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
@@ -151,9 +156,9 @@ class BATRUAssortment:
         for store_data in data:
             self.update_db_from_json(store_data, immediate_change=True)
         queries = self.merge_insert_queries(self.all_queries)
-        Log.info("Queries aggregation is over, starting commiting the assortment")
+        Log.info("Queries aggregation is over, starting committing the assortment")
         self.commit_results(queries)
-        Log.info("Done commiting results")
+        Log.info("Done committing results")
 
     def merge_insert_queries(self, insert_queries):
         """
@@ -177,7 +182,7 @@ class BATRUAssortment:
                                                                                 [group_index:group_index + 10 ** 4])))
         return merged_queries
 
-    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
+    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False, ):
         products = set()
         missing_products = set()
         store_number = data.keys()[0]
@@ -206,7 +211,10 @@ class BATRUAssortment:
             Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
             return
         if products:
-            current_date = datetime.now().date()
+            if self.start_date:
+                current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
+            else:
+                current_date = datetime.now().date()
             if immediate_change:
                 deactivate_date = current_date - timedelta(1)
                 activate_date = current_date
@@ -367,8 +375,7 @@ class BATRUAssortment:
         self.rds_conn.db.commit()
 
 
-
 if __name__ == '__main__':
-    LoggerInitializer.init('Upload assortment for Batru')
+    LoggerInitializer.init('Upload assortment for BATRU')
     BATRUAssortment().upload_assortment()
-    # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration
+    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update True_or_False_partial_update to the configuration
