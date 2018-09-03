@@ -386,12 +386,12 @@ class CCBOTTLERSUSREDToolBox:
         :return: boolean
         """
         type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
+        values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
         if isnt_dp:
             relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
-            if kpi_line[Const.FILTER_IF_NOT_DP] != "":
-                values_out = str(kpi_line[Const.FILTER_IF_NOT_DP]).split(', ')
-                relevant_scif = relevant_scif[~(relevant_scif[type_name].isin(values_out))]
-        values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
+            if kpi_line[Const.ADD_IF_NOT_DP] != "":
+                values_to_add = str(kpi_line[Const.ADD_IF_NOT_DP]).split(', ')
+                values = values + values_to_add
         if type_name in Const.NUMERIC_VALUES_TYPES:
             values = [float(x) for x in values]
         max_facings, needed_one = 0, 0

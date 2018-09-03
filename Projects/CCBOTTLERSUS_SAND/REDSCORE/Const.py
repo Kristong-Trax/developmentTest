@@ -71,7 +71,7 @@ class Const(object):
     NUM_VALUES_2 = "numerator_values 2"
     GROUP = "Group"
     MAJ_DOM = "Majority/Dominant"
-    FILTER_IF_NOT_DP = "filter if not DP"
+    ADD_IF_NOT_DP = "add if not DP"
 
     # columns of survey:
     Q_TEXT = "question_text"
