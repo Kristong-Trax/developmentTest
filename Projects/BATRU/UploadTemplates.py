@@ -1,12 +1,13 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
+
 import os
 import pandas as pd
-# import getpass
+import getpass
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.BATRU.Utils.ParseTemplates import parse_template
 
 __author__ = 'Jasmine'
@@ -458,17 +459,18 @@ class BATRUNewTemplate:
         self.rds_conn.db.commit()
         self.rds_conn.disconnect_rds()
 
-# if __name__ == '__main__':
-#     Config.init()
-#     LoggerInitializer.init('New Batru Template')
-#     project_name = 'batru-sand'
-#     kpi_names = [
-#         # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
-#         # the template in Data/StoreAssortment.csv, activate this line and run it.
-#         # BATRUConst.P4_SET_NAME,
-#         BATRUConst.SK_SET_NAME,
-#         # BATRUConst.SAS_SET_NAME,
-#     ]
-#     for kpi_name in kpi_names:
-#         template = BATRUNewTemplate(project_name, kpi_name)
-#         template.handle_update()
+
+if __name__ == '__main__':
+    Config.init()
+    LoggerInitializer.init('New BATRU Template')
+    project_name = 'batru'
+    kpi_names = [
+        # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
+        # the template in Data/StoreAssortment.csv, activate this line and run it.
+        BATRUConst.P4_SET_NAME,
+        # BATRUConst.SK_SET_NAME,
+        # BATRUConst.SAS_SET_NAME,
+    ]
+    for kpi_name in kpi_names:
+        template = BATRUNewTemplate(project_name, kpi_name)
+        template.handle_update()

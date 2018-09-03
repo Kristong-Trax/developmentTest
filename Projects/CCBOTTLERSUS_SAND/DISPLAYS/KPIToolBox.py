@@ -10,8 +10,8 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCBOTTLERSUS_SAND.DISPLAYS.GeneralToolBox import DISPLAYSGENERALToolBox
-from Projects.CCBOTTLERSUS_SAND.DISPLAYS.Fetcher import DISPLAYSQueries
+from Projects.CCBOTTLERSUS_SAND.DISPLAYS.GeneralToolBox import CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox
+from Projects.CCBOTTLERSUS_SAND.DISPLAYS.Fetcher import CCBOTTLERSUS_SANDDISPLAYSQueries
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -37,7 +37,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class DISPLAYSConsts(object):
+class DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts(object):
 
     KPI_NAME = 'KPI Name'
     SCENE_RECOGNITION = 'SR'
@@ -52,7 +52,7 @@ class DISPLAYSConsts(object):
     SEPARATOR = ','
 
 
-class DISPLAYSToolBox(DISPLAYSConsts):
+class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -75,13 +75,13 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         # self.all_products = self.all_products.merge(self.get_additional_attributes(), on='product_fk', how='left')
         self.match_display_in_scene = self.get_match_display()
-        self.tools = DISPLAYSGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.template_data = parse_template(TEMPLATE_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
 
     # def get_additional_attributes(self):
-    #     query = DISPLAYSQueries.get_attributes_data()
+    #     query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_attributes_data()
     #     attributes = pd.read_sql_query(query, self.rds_conn.db)
     #     return attributes
 
@@ -90,7 +90,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DISPLAYSQueries.get_match_display(self.session_uid)
+        query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         match_display = match_display.merge(self.scif.drop_duplicates(subset=['scene_fk']), on='scene_fk', how='left')
         return match_display
@@ -100,7 +100,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DISPLAYSQueries.get_all_kpi_data()
+        query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -262,14 +262,14 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         kpi_pks = tuple()
         atomic_pks = tuple()
         if kpi_set_fk is not None:
-            query = DISPLAYSQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
+            query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
             kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
             atomic_pks = tuple(kpi_atomic_data['pk'].tolist())
             kpi_data = pd.read_sql_query(query, self.rds_conn.db)
             kpi_pks = tuple(kpi_data['pk'].tolist())
         cur = self.rds_conn.db.cursor()
         if kpi_pks and atomic_pks:
-            delete_queries = DISPLAYSQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
+            delete_queries = CCBOTTLERSUS_SANDDISPLAYSQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
                                                                           atomic_pks)
             for query in delete_queries:
                 cur.execute(query)

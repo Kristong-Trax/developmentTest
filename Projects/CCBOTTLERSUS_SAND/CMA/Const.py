@@ -1,8 +1,8 @@
 
-__author__ = 'Elyashiv'
+__author__ = 'Uri'
 
 
-class Const(object):
+class CCBOTTLERSUS_SANDConst(object):
 
     SOVI = "SOVI"
 
@@ -15,11 +15,13 @@ class Const(object):
     SKU_EXCLUSION = "SKU_Exclusion"
     CONVERTERS = "converters"
     SCENE_AVAILABILITY = "Availability_scene"
+    TARGETS = "Targets"
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_MANUAL = [KPIS, SURVEY]
+    SHEETS_CMA = [KPIS, SOS, TARGETS]
+
 
     # generic columns:
-    KPI_NAME = "KPI_name"
+    KPI_NAME = "KPI name"
     PACKAGE_TYPE = "package_type"
     SSD_STILL = "SSD/still"
     TRADEMARK = "trademark"
@@ -31,7 +33,7 @@ class Const(object):
     REGION = "Region"
     DISPLAY_TEXT = 'display_text'
     STORE_TYPE = "store_type"
-    SCENE_TYPE = "scene_type"
+    SCENE_TYPE = "scene type"
     SCENE_TYPE_GROUP = "scene_type_group"
     STORE_ATTRIBUTE = "store_attribute"
     SESSION_LEVEL = "session_level"
@@ -43,6 +45,8 @@ class Const(object):
     WEIGHT = "weight"
     SAME_PACK = "Same Pack"
     REUSE_SCENE = "reuse_scene"
+    TYPE = "type"
+    TEMPLATE_GROUP = 'template group'
 
     # columns of AVAILABILITY:
     SCENE_SKU = "scene/SKU"
@@ -54,17 +58,16 @@ class Const(object):
     PRODUCT_EAN = "product_ean_code"
 
     # columns of sos&majority:
-    DEN_TYPES_1 = "denominator_types 1"
-    DEN_VALUES_1 = "denominator_values 1"
-    DEN_TYPES_2 = "denominator_types 2"
-    DEN_VALUES_2 = "denominator_values 2"
-    NUM_TYPES_1 = "numerator_types 1"
-    NUM_VALUES_1 = "numerator_values 1"
-    NUM_TYPES_2 = "numerator_types 2"
-    NUM_VALUES_2 = "numerator_values 2"
+    DEN_TYPES_1 = "denominator param 1"
+    DEN_VALUES_1 = "denominator value 1"
+    DEN_TYPES_2 = "denominator param 2"
+    DEN_VALUES_2 = "denominator value 2"
+    NUM_TYPES_1 = "numerator param 1"
+    NUM_VALUES_1 = "numerator value 1"
+    NUM_TYPES_2 = "numerator param 2"
+    NUM_VALUES_2 = "numerator value 2"
     GROUP = "Group"
     MAJ_DOM = "Majority/Dominant"
-    ADD_IF_NOT_DP = "add if not DP"
 
     # columns of survey:
     Q_TEXT = "question_text"
@@ -81,6 +84,7 @@ class Const(object):
     RESULT = "result"
     KPI_FK = "kpi_fk"
     SCORE = "score"
+    THRESHOLD = "threshold"
     COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
     COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
 
@@ -100,7 +104,5 @@ class Const(object):
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
 
     MANUAL = "MANUAL"
-    CALCULATION_TYPES = [
-        SOVI,
-        MANUAL
-    ]
+    CALCULATION_TYPES = [SOVI, MANUAL]
+

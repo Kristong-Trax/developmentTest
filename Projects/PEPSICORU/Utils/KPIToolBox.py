@@ -255,7 +255,7 @@ class PEPSICORUToolBox:
                                        numerator_result=scene_types_in_store,
                                        denominator_id=self.store_id, denominator_result=store_target,
                                        identifier_result=display_count_store_level_fk,
-                                       result=result_store_level)
+                                       result=result_store_level, should_enter=True)
 
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
@@ -279,7 +279,7 @@ class PEPSICORUToolBox:
                                            denominator_id=category_fk, denominator_result=current_category_target,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=display_count_category_level_fk,
-                                           result=result_cat_level)
+                                           result=result_cat_level, should_enter=True)
 
         # Calculate count of display - scene_level
         display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
@@ -306,7 +306,7 @@ class PEPSICORUToolBox:
                                            denominator_id=relevant_category_fk, denominator_result=scene_type_target,
                                            identifier_result=display_count_scene_level_identifier,
                                            identifier_parent=parent_identifier, context_id=scene_type_fk,
-                                           result=result_scene_level)
+                                           result=result_scene_level, should_enter=True)
 
     def calculate_assortment(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
@@ -344,12 +344,14 @@ class PEPSICORUToolBox:
         self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
                                        identifier_result=facings_level_1_identifier,
                                        numerator_result=num_facings, denominator_id=self.store_id,
-                                       denominator_result=denom_facings, result=num_facings / float(denom_facings))
+                                       denominator_result=denom_facings, result=num_facings / float(denom_facings),
+                                       should_enter=True)
         # Linear level 1
         self.common.write_to_db_result(fk=linear_store_kpi_fk, numerator_id=self.pepsico_fk,
                                        identifier_result=linear_level_1_identifier,
                                        numerator_result=num_linear, denominator_id=self.store_id,
-                                       denominator_result=denom_linear, result=num_linear / float(denom_linear))
+                                       denominator_result=denom_linear, result=num_linear / float(denom_linear),
+                                       should_enter=True)
 
         for category in self.categories_to_calculate:
             current_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
@@ -368,14 +370,14 @@ class PEPSICORUToolBox:
                                            denominator_result=denom_facings,
                                            identifier_result=facings_cat_identifier,
                                            identifier_parent=facings_level_1_identifier,
-                                           result=num_facings / float(denom_facings))
+                                           result=num_facings / float(denom_facings), should_enter = True)
             # Linear level 2
             self.common.write_to_db_result(fk=linear_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=num_linear, denominator_id=current_category_fk,
                                            denominator_result=denom_linear,
                                            identifier_result=linear_cat_identifier,
                                            identifier_parent=linear_level_1_identifier,
-                                           result=num_linear / float(denom_linear))
+                                           result=num_linear / float(denom_linear), should_enter = True)
 
             for sub_cat in self.get_relevant_sub_categories_for_category(category):
                 current_sub_category_fk = self.get_relevant_pk_by_name(Const.SUB_CATEGORY, sub_cat)
@@ -394,14 +396,14 @@ class PEPSICORUToolBox:
                                                denominator_result=denom_facings,
                                                identifier_result=facings_sub_cat_identifier,
                                                identifier_parent=facings_cat_identifier,
-                                               result=num_facings / float(denom_facings))
+                                               result=num_facings / float(denom_facings), should_enter = True)
                 # Linear level 3
                 self.common.write_to_db_result(fk=linear_sub_cat_kpi_fk, numerator_id=self.pepsico_fk,
                                                numerator_result=num_linear, denominator_id=current_sub_category_fk,
                                                denominator_result=denom_linear,
                                                identifier_result=linear_sub_cat_identifier,
                                                identifier_parent=linear_cat_identifier,
-                                               result=num_linear / float(denom_linear))
+                                               result=num_linear / float(denom_linear), should_enter = True)
 
                 for brand_name in self.get_relevant_brands_for_sub_category(sub_cat):
                     current_brand_fk = self.get_relevant_pk_by_name(Const.BRAND, brand_name)
@@ -422,14 +424,14 @@ class PEPSICORUToolBox:
                                                    denominator_result=denom_facings,
                                                    identifier_result=facings_brand_identifier,
                                                    identifier_parent=facings_sub_cat_identifier,
-                                                   result=num_facings / float(denom_facings))
+                                                   result=num_facings / float(denom_facings), should_enter=True)
                     # Linear level 4
                     self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=self.pepsico_fk,
                                                    numerator_result=num_linear, denominator_id=current_brand_fk,
                                                    denominator_result=denom_linear,
                                                    identifier_result=linear_brand_identifier,
                                                    identifier_parent=linear_sub_cat_identifier,
-                                                   result=num_linear / float(denom_linear))
+                                                   result=num_linear / float(denom_linear), should_enter=True)
 
     # Utils functions with a slight change from the SDK factory:
 
