@@ -378,4 +378,4 @@ class BATRUAssortment:
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for BATRU')
     BATRUAssortment().upload_assortment()
-    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update True_or_False_partial_update to the configuration
+    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial_update to the configuration
