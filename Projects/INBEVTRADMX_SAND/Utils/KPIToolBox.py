@@ -155,6 +155,7 @@ class INBEVTRADMXToolBox:
             # filter out some product names according to template
             product_names = self.filter_product_names(exclude_skus)
             filters_dict['product_name'] = product_names
+        if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
             relevant_columns.remove('exclude skus')
 
 
