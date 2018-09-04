@@ -11,16 +11,13 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.3.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.4.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
     "DRUG SOVI RED": "Drug",
     "VALUE SOVI RED": "Value",
-    "United Test - Value SOVI RED": "Value",
-    "United Test - Drug SOVI RED": "Drug",
-    "United Test - CR SOVI RED": "CR&LT",
     "FSOP - QSR": "QSR",
 }
 
@@ -122,7 +119,7 @@ class CCBOTTLERSUSREDToolBox:
             target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL \
                 else main_line[Const.GROUP_TARGET]
             if main_line[Const.SAME_PACK] == Const.V:
-                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
+                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp, target)
             else:
                 function = self.get_kpi_function(kpi_type)
                 passed_counter = 0
@@ -210,7 +207,7 @@ class CCBOTTLERSUSREDToolBox:
 
     # availability:
 
-    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
+    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp, target):
         """
         checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
         at least one common product that has the same size and number of sub_packages.
@@ -218,23 +215,22 @@ class CCBOTTLERSUSREDToolBox:
         :param relevant_scif: filtered scif
         :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
         DP lines
+        :param target: how many lines should pass
         :return: boolean
         """
-        packages = None
-        for i, kpi_line in relevant_template.iterrows():
-            if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-                continue
-            filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-            filtered_scif = filtered_scif.fillna("NAN")
-            target = kpi_line[Const.TARGET]
-            sizes = filtered_scif['size'].tolist()
-            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
-            cur_packages = set(zip(sizes, sub_packages_nums))
-            if packages is None:
-                packages = cur_packages
-            else:
-                packages = cur_packages | packages  # this set has all the combinations for the brands in the scene
-            if len(packages) != 1 or filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
+        relevant_scif = relevant_scif.fillna("NAN")
+        sizes = relevant_scif['size'].tolist()
+        sub_packages_nums = relevant_scif['number_of_sub_packages'].tolist()
+        packages = set(zip(sizes, sub_packages_nums))
+        for package in packages:
+            passed_counter = 0
+            filtered_scif = relevant_scif[(relevant_scif['size'] == package[0]) &
+                                          (relevant_scif['number_of_sub_packages'] == package[1])]
+            for i, kpi_line in relevant_template.iterrows():
+                answer = self.calculate_availability(kpi_line, filtered_scif, isnt_dp)
+                if answer:
+                    passed_counter += 1
+            if passed_counter < target:
                 return False
         return True
 
@@ -388,10 +384,13 @@ class CCBOTTLERSUSREDToolBox:
         all the DP products out.
         :return: boolean
         """
-        if isnt_dp:
-            relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
         type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
         values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
+        if isnt_dp:
+            relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
+            if kpi_line[Const.ADD_IF_NOT_DP] != "":
+                values_to_add = str(kpi_line[Const.ADD_IF_NOT_DP]).split(', ')
+                values = values + values_to_add
         if type_name in Const.NUMERIC_VALUES_TYPES:
             values = [float(x) for x in values]
         max_facings, needed_one = 0, 0
