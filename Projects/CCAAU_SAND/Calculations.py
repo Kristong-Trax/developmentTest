@@ -13,4 +13,3 @@ class Calculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-

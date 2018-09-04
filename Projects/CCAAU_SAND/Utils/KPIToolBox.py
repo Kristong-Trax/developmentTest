@@ -50,7 +50,7 @@ class CCAAUToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.template = self.data_provider.all_templates  # templates
-
+        self.kpi_static_data = self.common.get_new_kpi_static_data()
         self.toolbox = GENERALToolBox(data_provider)
         kpi_path = os.path.dirname(os.path.realpath(__file__))
         base_file = os.path.basename(kpi_path)
@@ -72,13 +72,19 @@ class CCAAUToolBox:
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: The numerator facings, denominator facings, numerator linear and denominator linear.
         """
+
+        facing_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'FACINGS_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
+        linear_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'LINEAR_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
+
         facing_exclude_template = self.exclude_filters[self.exclude_filters['KPI'] == 'Share of Shelf by Facing']
         linear_exclude_template = self.exclude_filters[self.exclude_filters['KPI'] == 'Share of Shelf by Linear']
-        facing_include_template = self.exclude_filters[self.Include_filters['KPI'] == 'Share of Shelf by Facing']
-        linear_include_template = self.exclude_filters[self.Include_filters['KPI'] == 'Share of Shelf by Linear']
+        facing_include_template = self.Include_filters[self.Include_filters['KPI'] == 'Share of Shelf by Facing']
+        linear_include_template = self.Include_filters[self.Include_filters['KPI'] == 'Share of Shelf by Linear']
 
         scene_templates = self.scif['template_fk'].unique().tolist()
-        scene_manufactures = self.scif['manfacutre_fk'].unique().tolist()
+        scene_manufactures = self.scif['manufacturer_fk'].unique().tolist()
+
+        df = self.scif
 
         for template in scene_templates:
 
@@ -90,30 +96,32 @@ class CCAAUToolBox:
                 general_linear_filters = self.create_dict_filters(linear_exclude_template, self.EXCLUDE_FILTER)
 
                 # include_filters
-                facing_include_template = self.create_dict_filters(facing_include_template, self.INCLUDE_FILTER)
-                linear_include_template = self.create_dict_filters(linear_include_template, self.INCLUDE_FILTER)
+                facing_include_filters = self.create_dict_filters(facing_include_template, self.INCLUDE_FILTER)
+                linear_include_filters = self.create_dict_filters(linear_include_template, self.INCLUDE_FILTER)
 
         # sos facing
         ### {"limor": " "}
 
-                self.filter_2_cond(facing_exclude_template)
-                self.filter_2_cond(linear_exclude_template)
-                self.filter_2_cond(facing_include_template)
-                self.filter_2_cond(linear_include_template)
+                self.filter_2_cond(df,facing_exclude_template)
+                self.filter_2_cond(df,linear_exclude_template)
+                self.filter_2_cond(df,facing_include_template)
+                self.filter_2_cond(df,linear_include_template)
 
-                numerator_facings = self.calculate_share_space(
+                numerator_facings = self.calculate_share_space(df,
                     **dict(sos_filters, facing_include_template, general_facing_filters))
-                numerator_linear = self.calculate_share_space(
+                numerator_linear = self.calculate_share_space(df,
                     **dict(sos_filters, linear_include_template, general_linear_filters))
 
-                denominator_linear = self.calculate_share_space(**dict(linear_include_template, general_linear_filters))
-                denominator_facings = self.calculate_share_space(
-                    **dict(facing_include_template, general_facing_filters))
+                denominator_linear = self.calculate_share_space(df,**dict(linear_include_filters, general_linear_filters))
+                denominator_facings = self.calculate_share_space(df,
+                    **dict(facing_include_filters, general_facing_filters))
 
-
-
-
-
+                self.common.write_to_db_result_new_tables(facing_kpi_fk,manufacture ,numerator_facings,template,denominator_facings,
+                                                          ((numerator_facings/denominator_facings)*100) ,((numerator_facings/denominator_facings)*100))
+                self.common.write_to_db_result_new_tables(linear_kpi_fk, manufacture, numerator_linear, template,
+                                                          denominator_linear,
+                                                          ((numerator_linear / denominator_linear) * 100),
+                                                          ((numerator_linear / denominator_linear) * 100))
 
 
     def create_dict_filters(self, template, parametr):
@@ -121,28 +129,28 @@ class CCAAUToolBox:
         filters_dict = {}
         template_without_second = template[template['Param 2'].isnull()]
 
-        for row in template_without_second:
-            filters_dict[row['Param 1']] = (row['Value 1'].tolist(), parametr)
+        for row in template_without_second.iterrows():
+            filters_dict[row[1]['Param 1']] = (row[1]['Value 1'].split(','), parametr)
 
         return filters_dict
 
     def filter_2_cond(self,df,template):
 
         filters_dict = {}
-        template_without_second = template[not template['Param 2'].isnull()]
+        template_without_second = template[template['Param 2'].notnull()]
+
         if template_without_second is not None:
-            df[
-                df[template['Param 1']] not in df[template['Value 1']].tolist() and df[
-                    template['Param 2']] not in df[template['Value 2']].tolist()]
+            for row in template_without_second.iterrows():
+                df = df.loc[(~df[row[1]['Param 1']].isin(row[1]['Value 1'].split(',')))| (~df[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
 
         return df
 
-    def calculate_share_space(self, **filters):
+    def calculate_share_space(self,df, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The total number of facings and the shelf width (in mm) according to the filters.
         """
-        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        filtered_scif = df[self.toolbox.get_filter_condition(df, **filters)]
         sum_of_facings = filtered_scif['facings'].sum()
         space_length = filtered_scif['net_len_ign_stack'].sum()
         return sum_of_facings, space_length
