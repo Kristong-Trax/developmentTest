@@ -19,7 +19,7 @@ from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
-from Projects.INBEVTRADMX.Utils import GeoLocation
+from Projects.INBEVTRADMX_SAND.Utils import GeoLocation
 
 __author__ = 'yoava'
 
@@ -56,7 +56,7 @@ class INBEVTRADMXToolBox:
         self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_2.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
+        self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
                                               self.kpi_static_data, self.common)
 
 
@@ -155,6 +155,7 @@ class INBEVTRADMXToolBox:
             # filter out some product names according to template
             product_names = self.filter_product_names(exclude_skus)
             filters_dict['product_name'] = product_names
+        if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
             relevant_columns.remove('exclude skus')
 
 
@@ -452,6 +453,10 @@ class INBEVTRADMXToolBox:
         :return: set name to calculate - assuming each additional attribute 4 matches only 1 set name.
         """
         template = template.dropna(subset=['Store Additional Attribute 4'], axis=0)
+        # Makes sure attribute 4 exist
+        if not additional_attribute_4:
+            return ''
+
         if additional_attribute_13:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
                             (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]

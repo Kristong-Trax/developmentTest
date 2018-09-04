@@ -78,7 +78,7 @@ class CCBOTTLERSUSSceneRedToolBox:
             to_continue = False
             if main_line[Const.SAME_PACK] == Const.V:
                 result = self.toolbox.calculate_availability_with_same_pack(
-                    relevant_template, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
+                    relevant_template, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp, target)
             else:
                 passed_counter = 0
                 for i, kpi_line in relevant_template.iterrows():

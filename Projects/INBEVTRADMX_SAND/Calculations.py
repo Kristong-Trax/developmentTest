@@ -6,7 +6,7 @@ from Projects.INBEVTRADMX_SAND.KPIGenerator import INBEVTRADMXGenerator
 __author__ = 'yoava'
 
 
-class Calculations(BaseCalculationsScript):
+class INBEVTRADMX_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         INBEVTRADMXGenerator(self.data_provider, self.output).main_function()

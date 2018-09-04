@@ -23,7 +23,7 @@ __author__ = 'yoava'
 #     return r * c * 1000
 
 
-class Geo:
+class INBEVTRADMX_SANDGeo:
 
     GEO_THRESHOLD = 100
     LEVEL1 = 1

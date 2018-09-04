@@ -2,7 +2,7 @@
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.INBEVTRADMX_SAND.Calculations import Calculations
+# from Projects.INBEVTRADMX_SAND.Calculations import INBEVTRADMX_SANDCalculations
 #
 #
 # if __name__ == '__main__':
@@ -13,4 +13,4 @@
 #     session = 'fffff255-d0f6-4cdd-bf1f-81c1df465e8f'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     Calculations(data_provider, output).run_project_calculations()
+#     INBEVTRADMX_SANDCalculations(data_provider, output).run_project_calculations()
