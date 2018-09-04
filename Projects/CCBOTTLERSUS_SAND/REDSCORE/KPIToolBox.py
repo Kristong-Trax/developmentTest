@@ -1,11 +1,13 @@
 from datetime import datetime
 import pandas as pd
-from Trax.Utils.Logging.Logger import Log
+# from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.DB.CommonV2 import Common as Common2
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from Projects.CCBOTTLERSUS_SAND.REDSCORE.FunctionsToolBox import FunctionsToolBox
 
 __author__ = 'Elyashiv'
 
@@ -27,8 +29,7 @@ class REDToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
-        self.united_scenes = self.get_united_scenes()  # we don't need to check scenes without United products
-        self.survey = Survey(self.data_provider, self.output)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.calculation_type = calculation_type
         if self.calculation_type == Const.SOVI:
@@ -38,27 +39,31 @@ class REDToolBox:
             for sheet in Const.SHEETS:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
             self.converters = self.templates[Const.CONVERTERS]
+            self.scene_results = self.ps_data_provider.get_scene_results(
+                self.scene_info['scene_fk'].drop_duplicates().values)
         else:
             self.TEMPLATE_PATH = Const.SURVEY_TEMPLATE_PATH
             self.RED_SCORE = Const.MANUAL_RED_SCORE
             self.RED_SCORE_INTEG = Const.MANUAL_RED_SCORE_INTEG
             for sheet in Const.SHEETS_MANUAL:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
+        self.toolbox = FunctionsToolBox(self.data_provider, self.output, self.templates, self.store_attr)
         self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
         self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
         self.common_db = Common(self.data_provider, self.RED_SCORE)
+        self.common_db2 = Common2(self.data_provider, self.RED_SCORE)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in Const.STORE_TYPES:
             self.store_type = Const.STORE_TYPES[self.store_type]
-        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
-        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
-        self.session_results = pd.DataFrame(columns=Const.COLUMNS_OF_SESSION)
-        self.all_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
+        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
+        self.session_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
+        self.all_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
         self.used_scenes = []
         self.red_score = 0
         self.weight_factor = self.get_weight_factor()
@@ -72,7 +77,6 @@ class REDToolBox:
         """
         main_template = self.templates[Const.KPIS]
         if self.calculation_type == Const.SOVI:
-            self.scenes_results = 5#self.scene_calculator.main_calculation()
             session_template = main_template[main_template[Const.SESSION_LEVEL] == Const.V]
             for i, main_line in session_template.iterrows():
                 self.calculate_main_kpi(main_line)
@@ -88,32 +92,17 @@ class REDToolBox:
         :param main_line: series from the template of the main_sheet.
         """
         kpi_name = main_line[Const.KPI_NAME]
-        kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
-        scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
+        relevant_scif = self.scif
+        scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-        scene_groups = self.does_exist(main_line, Const.SCENE_TYPE_GROUP)
+        scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
         if scene_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
-        if kpi_type == Const.SCENE_AVAILABILITY:
+        if main_line[Const.SHEET] == Const.SCENE_AVAILABILITY:
             result = False if relevant_scif.empty else True
         else:
-            isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
-            relevant_template = self.templates[kpi_type]
-            relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL \
-                else main_line[Const.GROUP_TARGET]
-            if main_line[Const.SAME_PACK] == Const.V:
-                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
-            else:
-                function = self.get_kpi_function(kpi_type)
-                passed_counter = 0
-                for i, kpi_line in relevant_template.iterrows():
-                    answer = function(kpi_line, relevant_scif, isnt_dp)
-                    if answer:
-                        passed_counter += 1
-                result = passed_counter >= target
+            result = self.toolbox.calculate_kpi_by_type(main_line, relevant_scif)
         self.write_to_session_level(kpi_name=kpi_name, result=result)
 
     def calculate_manual_kpi(self, main_line):
@@ -129,7 +118,7 @@ class REDToolBox:
             else main_line[Const.GROUP_TARGET]
         passed_counter = 0
         for i, kpi_line in relevant_template.iterrows():
-            answer = self.calculate_survey_specific(kpi_line)
+            answer = self.toolbox.calculate_survey_specific(kpi_line)
             if answer:
                 passed_counter += 1
         result = passed_counter >= target
@@ -165,316 +154,6 @@ class REDToolBox:
                 self.used_scenes.append(scene_fk)
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, display_text=display_text)
-
-    # survey:
-
-    def calculate_survey_specific(self, kpi_line, relevant_scif=None, isnt_dp=None):
-        """
-        returns a survey line if True or False
-        :param kpi_line: line from the survey sheet
-        :param relevant_scif:
-        :param isnt_dp:
-        :return: True or False - if the question gets the needed answer
-        """
-        question = kpi_line[Const.Q_TEXT]
-        if not question:
-            question_id = kpi_line[Const.Q_ID]
-            if question_id == "":
-                Log.warning("The template has a survey question without ID or text")
-                return False
-            question = ('question_fk', int(question_id))
-        answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
-        min_answer = None if kpi_line[Const.REQUIRED_ANSWER] == '' else True
-        for answer in answers:
-            if self.survey.check_survey_answer(
-                    survey_text=question, target_answer=answer, min_required_answer=min_answer):
-                return True
-        return False
-
-    # availability:
-
-    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
-        """
-        checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
-        at least one common product that has the same size and number of sub_packages.
-        :param relevant_template: all the match lines from the availability sheet.
-        :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
-        :return: boolean
-        """
-        packages = None
-        for i, kpi_line in relevant_template.iterrows():
-            if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-                continue
-            filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-            filtered_scif = filtered_scif.fillna("NAN")
-            target = kpi_line[Const.TARGET]
-            sizes = filtered_scif['size'].tolist()
-            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
-            cur_packages = set(zip(sizes, sub_packages_nums))
-            if packages is None:
-                packages = cur_packages
-            else:
-                packages = cur_packages | packages  # this set has all the combinations for the brands in the scene
-            if len(packages) != 1 or filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
-                return False
-        return True
-
-    def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        checks if all the lines in the availability sheet passes the KPI (there is at least one product
-        in this relevant scif that has the attributes).
-        :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
-        :param kpi_line: line from the availability sheet
-        :return: boolean
-        """
-        if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-            return True
-        filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-        target = kpi_line[Const.TARGET]
-        return filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= target
-
-    def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
-        """
-        takes scif and filters it from the template
-        :param relevant_scif: the current filtered scif
-        :param kpi_line: line from one sheet (availability for example)
-        :param name_in_template: the column name in the template
-        :param name_in_scif: the column name in SCIF
-        :return:
-        """
-        values = self.does_exist(kpi_line, name_in_template)
-        if values:
-            if name_in_scif in Const.NUMERIC_VALUES_TYPES:
-                values = [float(x) for x in values]
-            return relevant_scif[relevant_scif[name_in_scif].isin(values)]
-        return relevant_scif
-
-    def filter_scif_availability(self, kpi_line, relevant_scif):
-        """
-        calls filter_scif_specific for every column in the template of availability
-        :param kpi_line:
-        :param relevant_scif:
-        :return:
-        """
-        names_of_columns = {
-            Const.MANUFACTURER: "manufacturer_name",
-            Const.BRAND: "brand_name",
-            Const.TRADEMARK: "att2",
-            Const.SIZE: "size",
-            Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.PREMIUM_SSD: "Premium SSD",
-            # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.INNOVATION_BRAND: "Innovation Brand",
-        }
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        return relevant_scif
-
-    # SOS:
-
-    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        calculates SOS line in the relevant scif.
-        :param kpi_line: line from SOS sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator.
-        :return: boolean
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
-            exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
-            relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
-            for i, exc_line in relevant_exclusions.iterrows():
-                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        if kpi_line[Const.SSD_STILL] != "":
-            relevant_scif = self.filter_by_type_value(relevant_scif, Const.SSD_STILL, kpi_line[Const.SSD_STILL])
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1]
-        num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        if isnt_dp:
-            num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
-        target = float(kpi_line[Const.TARGET]) / 100
-        percentage = num_scif['facings'].sum() / relevant_scif['facings'].sum() if relevant_scif['facings'].sum() > 0 \
-            else 0
-        return percentage >= target
-
-    # SOS majority:
-
-    def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        calculates SOS majority line in the relevant scif. Filters the denominator and sends the line to the
-        match function (majority or dominant)
-        :param kpi_line: line from SOS majority sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator (and the denominator of the dominant part).
-        :return: boolean
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
-            exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
-            relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
-            for i, exc_line in relevant_exclusions.iterrows():
-                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        den_type = kpi_line[Const.DEN_TYPES_2]
-        den_value = kpi_line[Const.DEN_VALUES_2]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        if kpi_line[Const.MAJ_DOM] == Const.MAJOR:
-            answer = self.calculate_majority_part(kpi_line, relevant_scif, isnt_dp)
-        elif kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
-            answer = self.calculate_dominant_part(kpi_line, relevant_scif, isnt_dp)
-        else:
-            Log.warning("SOS majority does not know '{}' part".format(kpi_line[Const.MAJ_DOM]))
-            answer = False
-        return answer
-
-    def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        filters the numerator and checks if the SOS is bigger than 50%.
-        :param kpi_line: line from SOS majority sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator.
-        :return: boolean
-        """
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1]
-        num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        num_type = kpi_line[Const.NUM_TYPES_2]
-        num_value = kpi_line[Const.NUM_VALUES_2]
-        num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
-        if num_scif.empty:
-            return None
-        if isnt_dp:
-            num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
-        target = Const.MAJORITY_TARGET
-        return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
-
-    def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        filters the numerator and checks if the given value in the given type is the one with the most facings.
-        :param kpi_line: line from SOS majority sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out.
-        :return: boolean
-        """
-        type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
-        if isnt_dp:
-            relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
-            if kpi_line[Const.FILTER_IF_NOT_DP] != "":
-                values_out = str(kpi_line[Const.FILTER_IF_NOT_DP]).split(', ')
-                relevant_scif = relevant_scif[~(relevant_scif[type_name].isin(values_out))]
-        values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
-        if type_name in Const.NUMERIC_VALUES_TYPES:
-            values = [float(x) for x in values]
-        max_facings, needed_one = 0, 0
-        values_type = relevant_scif[type_name].unique().tolist()
-        if None in values_type:
-            values_type.remove(None)
-            current_sum = relevant_scif[relevant_scif[type_name].isnull()]['facings'].sum()
-            if current_sum > max_facings:
-                max_facings = current_sum
-        for value in values_type:
-            current_sum = relevant_scif[relevant_scif[type_name] == value]['facings'].sum()
-            if current_sum > max_facings:
-                max_facings = current_sum
-            if value in values:
-                needed_one += current_sum
-        return needed_one >= max_facings
-
-    # helpers:
-
-    def get_column_name(self, field_name, df):
-        """
-        checks what the real field name in DttFrame is (if it exists in the DF or exists in the "converter" sheet).
-        :param field_name: str
-        :param df: scif/products
-        :return: real column name (if exists)
-        """
-        if field_name in df.columns:
-            return field_name
-        if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
-            field_name = self.converters[self.converters[Const.NAME_IN_TEMP].str.upper() == field_name.upper()][
-                Const.NAME_IN_DB].iloc[0]
-            return field_name
-        return None
-
-    def filter_by_type_value(self, relevant_scif, type_name, value):
-        """
-        filters scif with the type and value
-        :param relevant_scif: current filtered scif
-        :param type_name: str (from the template)
-        :param value: str
-        :return: new scif
-        """
-        if type_name == "":
-            return relevant_scif
-        values = value.split(', ')
-        new_type_name = self.get_column_name(type_name, relevant_scif)
-        if not new_type_name:
-            print "There is no field '{}'".format(type_name)
-            return relevant_scif
-        if new_type_name in Const.NUMERIC_VALUES_TYPES:
-            values = [float(x) for x in values]
-        return relevant_scif[relevant_scif[new_type_name].isin(values)]
-
-    @staticmethod
-    def exclude_scif(exclude_line, relevant_scif):
-        """
-        filters products out of the scif
-        :param exclude_line: line from the exclusion sheet
-        :param relevant_scif: current filtered scif
-        :return: new scif
-        """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
-
-    @staticmethod
-    def does_exist(kpi_line, column_name):
-        """
-        checks if kpi_line has values in this column, and if it does - returns a list of these values
-        :param kpi_line: line from template
-        :param column_name: str
-        :return: list of values if there are, otherwise None
-        """
-        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
-            cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
-                return [cell]
-            elif type(cell) in [unicode, str]:
-                return cell.split(", ")
-        return None
-
-    def get_kpi_function(self, kpi_type):
-        """
-        transfers every kpi to its own function
-        :param kpi_type: value from "sheet" column in the main sheet
-        :return: function
-        """
-        if kpi_type == Const.SURVEY:
-            return self.calculate_survey_specific
-        elif kpi_type == Const.AVAILABILITY:
-            return self.calculate_availability
-        elif kpi_type == Const.SOS:
-            return self.calculate_sos
-        elif kpi_type == Const.SOS_MAJOR:
-            return self.calculate_sos_maj
-        else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
-            return None
 
     def choose_and_write_results(self):
         """
@@ -760,6 +439,7 @@ class REDToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
+        self.common_db2.commit_results_data()
         if self.common_db_integ:
             self.common_db_integ.delete_results_data_by_kpi_set()
             self.common_db_integ.commit_results_data_without_delete()

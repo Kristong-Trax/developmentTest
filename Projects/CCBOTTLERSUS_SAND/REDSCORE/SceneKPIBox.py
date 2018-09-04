@@ -8,9 +8,10 @@ __author__ = 'Elyashiv'
 
 class CCBOTTLERSUS_SANDSceneRedToolBox:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
+        self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -29,9 +30,13 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.templates = {}
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.tool_box = FunctionsToolBox(self.data_provider, self.output, self.templates)
+        self.region = self.store_info['region_name'].iloc[0]
+        self.toolbox = FunctionsToolBox(self.data_provider, self.output, self.templates)
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
-        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
+        main_template = self.templates[Const.KPIS]
+        self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
+                                                   (main_template[Const.STORE_TYPE] == self.store_type)]
+        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
 
     def main_calculation(self):
         """
@@ -49,22 +54,23 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         """
         Now we are just writing all the scene results to db
         """
-        self.scenes_results = 5
+        for i, scene_result in self.scenes_results.iterrows():
+            self.common.write_to_db_result(
+                fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME]),
+                result=round(scene_result[Const.RESULT], 2), by_scene=True)
 
-    def write_to_scene_level(self, kpi_name, scene_fk, result=False, parent=""):
+    def write_to_scene_level(self, kpi_name, result=False, parent=""):
         """
         Writes a result in the DF (and "tells" its parent if it passed)
         :param kpi_name: string
-        :param scene_fk: for the main script will know which scenes to choose
         :param result: boolean
         :param parent: if the kpi is a condition kpi and it passed, we want the parent to know that
                         because we want the kpi to choose the scene with the most passed children
         """
         if parent and result:
             self.scenes_results.loc[(self.scenes_results[Const.KPI_NAME] == parent) &
-                                    (self.scenes_results[Const.RESULT] > 0) &
-                                    (self.scenes_results[Const.SCENE_FK] == scene_fk), Const.RESULT] += 1
-        result_dict = {Const.KPI_NAME: kpi_name, Const.SCENE_FK: scene_fk, Const.RESULT: result * 1}
+                                    (self.scenes_results[Const.RESULT] > 0), Const.RESULT] += 1
+        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
         self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
     def calculate_main_kpi(self, main_line):
@@ -73,37 +79,14 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         KPIs in the same name in the match sheet, scene after scene.
         :param main_line: series from the template of the main_sheet.
         """
-        kpi_name = main_line[Const.KPI_NAME]
-        kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.toolbox.united_scenes)]
         scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
-        if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
         scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
-        if scene_groups:
-            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
-        relevant_template = self.templates[kpi_type]
-        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
-        isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
-        function = self.toolbox.get_kpi_function(kpi_type)
+        if (scene_types and self.scif['template_name'].iloc[0] not in scene_types) or \
+                (scene_groups and self.scif['template_group'].iloc[0] not in scene_groups):
+            return
+        kpi_name = main_line[Const.KPI_NAME]
         parent = main_line[Const.CONDITION]
-        for scene_fk in relevant_scif['scene_fk'].unique().tolist():
-            to_continue = False
-            if main_line[Const.SAME_PACK] == Const.V:
-                result = self.toolbox.calculate_availability_with_same_pack(
-                    relevant_template, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
-            else:
-                passed_counter = 0
-                for i, kpi_line in relevant_template.iterrows():
-                    answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
-                    if answer:
-                        passed_counter += 1
-                    elif answer is None:
-                        to_continue = True
-                        break
-                result = passed_counter >= target
-            if to_continue:
-                continue
+        result = self.toolbox.calculate_kpi_by_type(main_line, self.scif)
+        if result is not None:
             self.write_to_scene_level(
-                kpi_name=kpi_name, scene_fk=scene_fk, result=result, parent=parent)
+                kpi_name=kpi_name, result=result, parent=parent)

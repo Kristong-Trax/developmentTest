@@ -88,8 +88,7 @@ class Const(object):
     RESULT = "result"
     KPI_FK = "kpi_fk"
     SCORE = "score"
-    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
-    COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
+    COLUMNS_OF_RESULTS = [KPI_NAME, RESULT]
 
     # constants:
     ALL = "ALL"
