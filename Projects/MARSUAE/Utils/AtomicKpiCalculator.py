@@ -66,43 +66,52 @@ class DistributionCalculation(KpiBaseCalculation):
         return 1
 
 
-class AvailabilityHangingStripCalculation(KpiBaseCalculation):
+class AvailabilityBaseCalculation(KpiBaseCalculation):
+    def calculate(self, params):
+        pass
+
+    @classproperty
+    def kpi_type(self):
+        pass
+
+    def calculate_availability(self, params):
+        result = 0
+        target = params['minimum products']
+        filters = {params['Filter Type']: params['Filter Value'], 'template_name': params['scene type'].split(',')}
+        matches = self._data_provider.matches()
+        matches = matches[self._toolbox.get_filter_condition(matches, filters)]
+        if matches >= target:
+            result = 100
+        result *= params['Points']
+
+        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
+                                        numerator_id=999, numerator_result=matches,
+                                        denominator_id=999, denominator_result=None,
+                                        target=target)]
+
+
+class AvailabilityHangingStripCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
         return 'Availbility hanging strip'
 
     def calculate(self, params):
-        result = 0
-        target = params['minimum products']
-        scif = self._data_provider.scene_item_facts
-        number_of_hanging_strips = scif[scif['template_name'] in params['scene type'].split(',')]
-        if number_of_hanging_strips >= target:
-            result = 100
-        result *= params['Points']
-
-        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
-                                        numerator_id=999, numerator_result=number_of_hanging_strips,
-                                        denominator_id=999, denominator_result=None,
-                                        target=target)]
+        return self.calculate_availability(params=params)
 
 
-class AvailabilityBasketCalculation(KpiBaseCalculation):
+class AvailabilityBasketCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
         return 'Availbility basket'
 
     def calculate(self, params):
-        return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
+        return self.calculate_availability(params=params)
 
 
-class AvailabilityMultipackCalculation(KpiBaseCalculation):
+class AvailabilityMultipackCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
         return 'Availbility multipack'
 
     def calculate(self, params):
-        return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
+        return self.calculate_availability(params=params)
