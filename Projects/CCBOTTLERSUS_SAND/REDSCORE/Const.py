@@ -111,3 +111,4 @@ class Const(object):
         SOVI,
         MANUAL
     ]
+    SCENE_SUFFIX = " - scene"

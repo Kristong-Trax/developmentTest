@@ -24,6 +24,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in Const.STORE_TYPES:
             self.store_type = Const.STORE_TYPES[self.store_type]
@@ -31,8 +32,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.region = self.store_info['region_name'].iloc[0]
-        self.toolbox = FunctionsToolBox(self.data_provider, self.output, self.templates)
-        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
+        self.toolbox = FunctionsToolBox(self.data_provider, self.output, self.templates, self.store_attr)
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
@@ -43,12 +43,13 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
             This function makes the calculation for the scene's KPI and returns their answers to the session's calc
         """
         if self.scif[self.scif['United Deliver'] == 'Y'].empty:  # if it's not united scene we don't need to calculate
-            return
+            return False
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
         self.write_results_to_db()
+        return True
 
     def write_results_to_db(self):
         """
@@ -56,7 +57,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         """
         for i, scene_result in self.scenes_results.iterrows():
             self.common.write_to_db_result(
-                fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME]),
+                fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME] + Const.SCENE_SUFFIX),
                 result=round(scene_result[Const.RESULT], 2), by_scene=True)
 
     def write_to_scene_level(self, kpi_name, result=False, parent=""):

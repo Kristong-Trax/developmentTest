@@ -66,6 +66,8 @@ class REDToolBox:
         self.all_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
         self.used_scenes = []
         self.red_score = 0
+        self.set_fk = self.common_db2.get_kpi_fk_by_kpi_name(self.RED_SCORE)
+        self.set_integ_fk = self.common_db2.get_kpi_fk_by_kpi_name(self.RED_SCORE_INTEG)
         self.weight_factor = self.get_weight_factor()
 
     # main functions:
@@ -345,20 +347,30 @@ class REDToolBox:
         :param display_text: str
         """
         if kpi_name == self.RED_SCORE:
+            self.common_db2.write_to_db_result(
+                fk=self.set_fk, score=score, identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
+            self.common_db2.write_to_db_result(
+                fk=self.set_integ_fk, score=score,
+                identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(self.RED_SCORE, 1), score=score, level=1)
-            if self.common_db_integ:
-                self.write_to_db_result(
-                    self.common_db_integ.get_kpi_fk_by_kpi_name(self.RED_SCORE_INTEG, 1), score=score, level=1,
-                    set_type=Const.MANUAL)
+            self.write_to_db_result(
+                self.common_db_integ.get_kpi_fk_by_kpi_name(self.RED_SCORE_INTEG, 1), score=score, level=1,
+                set_type=Const.MANUAL)
         else:
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+            self.common_db2.write_to_db_result(
+                fk=kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
+                should_enter=True)
+            self.common_db2.write_to_db_result(
+                fk=kpi_fk, score=score, identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk),
+                should_enter=True)
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3, display_text=display_text)
-            if self.common_db_integ:
-                self.write_to_db_result(self.common_db_integ.get_kpi_fk_by_kpi_name(
-                    kpi_name, 3), score=score, level=3, display_text=kpi_name, set_type=Const.MANUAL)
+            self.write_to_db_result(self.common_db_integ.get_kpi_fk_by_kpi_name(
+                kpi_name, 3), score=score, level=3, display_text=kpi_name, set_type=Const.MANUAL)
 
     def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
         """
