@@ -119,7 +119,7 @@ class CCBOTTLERSUSREDToolBox:
             target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL \
                 else main_line[Const.GROUP_TARGET]
             if main_line[Const.SAME_PACK] == Const.V:
-                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
+                result = self.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp, target)
             else:
                 function = self.get_kpi_function(kpi_type)
                 passed_counter = 0
@@ -207,7 +207,7 @@ class CCBOTTLERSUSREDToolBox:
 
     # availability:
 
-    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
+    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp, target):
         """
         checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
         at least one common product that has the same size and number of sub_packages.
@@ -215,23 +215,22 @@ class CCBOTTLERSUSREDToolBox:
         :param relevant_scif: filtered scif
         :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
         DP lines
+        :param target: how many lines should pass
         :return: boolean
         """
-        packages = None
-        for i, kpi_line in relevant_template.iterrows():
-            if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-                continue
-            filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-            filtered_scif = filtered_scif.fillna("NAN")
-            target = kpi_line[Const.TARGET]
-            sizes = filtered_scif['size'].tolist()
-            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
-            cur_packages = set(zip(sizes, sub_packages_nums))
-            if packages is None:
-                packages = cur_packages
-            else:
-                packages = cur_packages | packages  # this set has all the combinations for the brands in the scene
-            if len(packages) != 1 or filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
+        relevant_scif = relevant_scif.fillna("NAN")
+        sizes = relevant_scif['size'].tolist()
+        sub_packages_nums = relevant_scif['number_of_sub_packages'].tolist()
+        packages = set(zip(sizes, sub_packages_nums))
+        for package in packages:
+            passed_counter = 0
+            filtered_scif = relevant_scif[(relevant_scif['size'] == package[0]) &
+                                          (relevant_scif['number_of_sub_packages'] == package[1])]
+            for i, kpi_line in relevant_template.iterrows():
+                answer = self.calculate_availability(kpi_line, filtered_scif, isnt_dp)
+                if answer:
+                    passed_counter += 1
+            if passed_counter < target:
                 return False
         return True
 
