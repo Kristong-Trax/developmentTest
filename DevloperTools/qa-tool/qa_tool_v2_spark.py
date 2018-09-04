@@ -5,6 +5,7 @@ import pyspark
 import pandas as pd
 import matplotlib.pyplot as plt
 import shutil
+import webbrowser
 
 from pyspark.sql import SparkSession ,functions as F
 from Trax.Utils.Conf.Configuration import Config
@@ -295,7 +296,7 @@ class qa:
         test_results_pandas.to_csv(RAW_DATA + "/test_results_by_category_stddev.csv")
         return test_results_pandas.to_html()
 
-    def gen_kpi_histogram(self, write_to_report=False):
+    def gen_kpi_histogram(self):
 
         static = self.static_kpi.toPandas()
 
@@ -307,9 +308,13 @@ class qa:
             if not res.empty:
                 res[['client_name', 'result']].hist()
                 plt.title(row['client_name'])
-                plt.savefig(HISTOGRAM_FOLDER + "/" + row['client_name'])
+                file_name = HISTOGRAM_FOLDER + "/" + row['client_name'].replace("/","_") + ".png"
+                plt.savefig(file_name)
+                plt.close()
 
-            #TODO add image to html report
+                with open(SUMMERY_FILE, 'a') as file:
+                    url = "histogram" + "/" + row['client_name'].replace("/","_") + ".png"
+                    file.write("<img src='{}' >".format(url))
 
 
     def run_all_tests(self):
@@ -319,6 +324,7 @@ class qa:
         :return:
         '''
 
+        self.get_statistics()
 
 
         with open(SUMMERY_FILE, 'a') as file:
@@ -341,6 +347,9 @@ class qa:
             # file.write(self.test_results_in_expected_range())
             # file.write(self.test_one_result_in_all_sessions())
 
+            file.write("<h2>Results Histogram</h2>")
+
+        self.gen_kpi_histogram()
 
     #TODO
     # 2.plot histogram    #
@@ -376,12 +385,7 @@ class qa:
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbza', start_date='2018-08-16', end_date='2018-08-30')
-    # if not os.path.exists("results"):
-    #     os.mkdir("results")
-    #
-    # if os.path.isfile(SUMMERY_FILE):
-    #     os.remove(SUMMERY_FILE)
-    qa_tool.get_statistics()
+    qa_tool = qa('ccbza', start_date='2018-08-30', end_date='2018-08-30')
     qa_tool.run_all_tests()
-    qa_tool.gen_kpi_histogram()
+
+    webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
