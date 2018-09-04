@@ -1,16 +1,16 @@
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
+from Projects.CCBOTTLERSUS_SAND.REDSCORE.FunctionsToolBox import FunctionsToolBox
 
 __author__ = 'Elyashiv'
 
 
 class CCBOTTLERSUS_SANDSceneRedToolBox:
 
-    def __init__(self, data_provider, output, templates, toolbox):
+    def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
-        self.toolbox = toolbox
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -22,19 +22,34 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.store_attr = toolbox.store_attr
-        self.templates = templates
+        self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
+        self.store_type = self.store_info['store_type'].iloc[0]
+        if self.store_type in Const.STORE_TYPES:
+            self.store_type = Const.STORE_TYPES[self.store_type]
+        self.templates = {}
+        for sheet in Const.SHEETS:
+            self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.tool_box = FunctionsToolBox(self.data_provider, self.output, self.templates)
+        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_SCENE)
 
-    def main_calculation(self, *args, **kwarg):
+    def main_calculation(self):
         """
             This function makes the calculation for the scene's KPI and returns their answers to the session's calc
         """
+        if self.scif[self.scif['United Deliver'] == 'Y'].empty:  # if it's not united scene we don't need to calculate
+            return
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        return self.scenes_results
+        self.write_results_to_db()
+
+    def write_results_to_db(self):
+        """
+        Now we are just writing all the scene results to db
+        """
+        self.scenes_results = 5
 
     def write_to_scene_level(self, kpi_name, scene_fk, result=False, parent=""):
         """
@@ -74,14 +89,21 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         function = self.toolbox.get_kpi_function(kpi_type)
         parent = main_line[Const.CONDITION]
         for scene_fk in relevant_scif['scene_fk'].unique().tolist():
+            to_continue = False
             if main_line[Const.SAME_PACK] == Const.V:
-                result = self.toolbox.calculate_availability_with_same_pack(relevant_template, relevant_scif, isnt_dp)
+                result = self.toolbox.calculate_availability_with_same_pack(
+                    relevant_template, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
             else:
                 passed_counter = 0
                 for i, kpi_line in relevant_template.iterrows():
                     answer = function(kpi_line, relevant_scif[relevant_scif['scene_fk'] == scene_fk], isnt_dp)
                     if answer:
                         passed_counter += 1
+                    elif answer is None:
+                        to_continue = True
+                        break
                 result = passed_counter >= target
+            if to_continue:
+                continue
             self.write_to_scene_level(
                 kpi_name=kpi_name, scene_fk=scene_fk, result=result, parent=parent)
