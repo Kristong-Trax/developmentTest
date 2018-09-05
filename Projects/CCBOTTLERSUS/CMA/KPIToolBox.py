@@ -93,7 +93,7 @@ class CCBOTTLERSUSCMAToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
         if kpi_type == Const.SOS:
-            isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
+            isnt_dp = True if self.store_attr != Const.DP else False
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
             function = self.get_kpi_function(kpi_type)
