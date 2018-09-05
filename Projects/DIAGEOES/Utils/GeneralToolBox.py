@@ -7,19 +7,18 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.PNGJP.Utils.PositionGraph import PNGJPPositionGraphs
+from Projects.DIAGEOES.Utils.PositionGraph import DIAGEOESPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class PNGJPGENERALToolBox:
+class DIAGEOESGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
     EXCLUDE_EMPTY = False
     INCLUDE_EMPTY = True
-    EXCLUDE_OTHER = False
 
     STRICT_MODE = ALL = 1000
 
@@ -50,7 +49,7 @@ class PNGJPGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = PNGJPPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = DIAGEOESPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -61,8 +60,6 @@ class PNGJPGENERALToolBox:
                 self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
             if self.ignore_stacking:
                 self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
-            self._match_product_in_scene = pd.merge(self._match_product_in_scene, self.data_provider.probe_groups,
-                                                    on='probe_match_fk')
         return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
@@ -141,15 +138,6 @@ class PNGJPGENERALToolBox:
             availability = len(filtered_df)
         return availability
 
-    def calculate_linear_availability(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
-        """
-        filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
-        linear = filtered_df['gross_len_ign_stack'].sum()
-        return linear
-
     def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1, **filters):
         """
         :param assortment_entity: This is the entity on which the assortment is calculated.
@@ -176,51 +164,12 @@ class PNGJPGENERALToolBox:
                     assortment += 1
         return assortment
 
-    def calculate_linear_facings_on_golden_zone(self, golden_zone_data, linear=False, **filters):
-        total_facings = 0
-        total_linear = 0
-        filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
-        if not filtered_df.empty:
-            scenes = filtered_df['scene_fk'].unique().tolist()
-            for scene in scenes:
-                bays = filtered_df.loc[filtered_df['scene_fk']==scene]['bay_number'].unique().tolist()
-                for bay in bays:
-                    bay_df = self.match_product_in_scene.loc[(self.match_product_in_scene['scene_fk']==scene) & (self.match_product_in_scene['bay_number']==bay)]
-                    filtered_bay_df = filtered_df.loc[filtered_df['bay_number'] == bay]
-                    num_shelves = bay_df['shelf_number'].max()
-                    golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
-                    facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
-                    linear_on_golden_zone = filtered_bay_df.loc[
-                        (filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)) & (filtered_bay_df['stacking_layer'] == 1)]['width_mm'].sum()
-                    total_linear += linear_on_golden_zone
-                    total_facings += facings_on_golden_zone
-        if linear:
-            return total_linear
-        else:
-            return total_facings
-
-    def get_golden_zone_shelves(self, shelves_num, golden_zone_template):
-        """
-        :param shelves_num: num of shelves in specific bay
-        :return: list of eye shelves
-        """
-        data = golden_zone_template.astype(int)
-        res_table = data[(data["No. of shelves max"] >= shelves_num) & (
-            data["No. of shelves min"] <= shelves_num)][["Ignore from bottom",
-                                                                              "Ignore from top"]]
-        if res_table.empty:
-            return []
-        start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
-        end_shelf = shelves_num - res_table['Ignore from top'].iloc[0] + 1
-        final_shelves = range(start_shelf, end_shelf)
-        return final_shelves
-
     def calculate_share_of_shelf(self, sos_filters=None, include_empty=EXCLUDE_EMPTY, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
         :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
         :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: The ratio of the SOS.
+        :return: The ratio of the Facings SOS.
         """
         if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
             general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
@@ -253,26 +202,20 @@ class PNGJPGENERALToolBox:
             ratio = 0
         else:
             ratio = numerator_width / float(denominator_width)
-        return ratio, denominator_width
+        return ratio
 
     def calculate_share_space_length(self, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The total shelf width (in mm) the relevant facings occupy.
         """
-        filtered_matches = self.scif[self.get_filter_condition(self.scif, **filters)]
-        space_length = filtered_matches['gross_len_ign_stack'].sum()
+        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
 
-    def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, list_result=False,
-                                       edge_population=None, category=None, position=None, **filters):
+    def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, **filters):
         """
-        :param edge_population:
-        :param position:
-        :param category:
-        :param list_result:
         :param min_number_of_facings: Minimum number of edge facings for KPI to pass.
-        :param scene_filters: dict with params to filter the matches (ex-anchor of category...)
         :param min_number_of_shelves: Minimum number of different shelves with edge facings for KPI to pass.
         :param filters: This are the parameters which dictate the relevant SKUs for the edge calculation.
         :return: A tuple: (Number of scenes which pass, Total number of relevant scenes)
@@ -281,39 +224,21 @@ class PNGJPGENERALToolBox:
         if len(relevant_scenes) == 0:
             return 0, 0
         number_of_edge_scenes = 0
-        total_edge = pd.DataFrame(columns=self.match_product_in_scene.columns)
         for scene in relevant_scenes:
             edge_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
             matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
-            bay_number_filter = filters.get('bay_number')
-            if bay_number_filter:
-                matches = matches[matches['bay_number'] == bay_number_filter]
-            if category:
-                matches = matches[matches['category'] == category]
-            if edge_population:
-                matches = matches[self.get_filter_condition(matches, **edge_population)]
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
                     shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
-                    if position:
-                        if position == 'left':
-                            edge_facings = edge_facings.append(shelf_matches.iloc[0])
-                        if position == 'right':
-                            edge_facings = edge_facings.append(shelf_matches.iloc[-1])
-                    else:
-                        edge_facings = edge_facings.append(shelf_matches.iloc[0])
-                        if len(edge_facings) > 1:
-                            edge_facings = edge_facings.append(shelf_matches.iloc[-1])
+                    edge_facings = edge_facings.append(shelf_matches.iloc[0])
+                    if len(edge_facings) > 1:
+                        edge_facings = edge_facings.append(shelf_matches.iloc[-1])
             edge_facings = edge_facings[self.get_filter_condition(edge_facings, **filters)]
-            total_edge = total_edge.append(edge_facings)
             if len(edge_facings) >= min_number_of_facings \
                     and len(edge_facings['shelf_number'].unique()) >= min_number_of_shelves:
                 number_of_edge_scenes += 1
-        if list_result:
-            return total_edge
-        else:
-            return number_of_edge_scenes, len(relevant_scenes)
+        return number_of_edge_scenes, len(relevant_scenes)
 
     def calculate_shelf_level_assortment(self, shelves, from_top_or_bottom=TOP, **filters):
         """
@@ -463,6 +388,8 @@ class PNGJPGENERALToolBox:
 
         # removing unnecessary edges
         filtered_scene_graph = graph.copy()
+        if len(filtered_scene_graph.es) == 0:
+            return pass_counter, reject_counter
         edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
         filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
@@ -690,8 +617,7 @@ class PNGJPGENERALToolBox:
                 break
         return validated
 
-    def get_scene_blocks(self, graph, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                         include_other=EXCLUDE_OTHER, **filters):
+    def get_scene_blocks(self, graph, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
         """
         This function is a sub-function for Block Together. It receives a graph and filters and returns a list of
         clusters.
@@ -705,31 +631,17 @@ class PNGJPGENERALToolBox:
         if include_empty == self.EXCLUDE_EMPTY:
             empty_vertices = {v.index for v in graph.vs.select(product_type='Empty')}
             allowed_vertices = set(allowed_vertices).union(empty_vertices)
-        if include_other == self.EXCLUDE_OTHER:
-            empty_vertices = {v.index for v in graph.vs.select(product_type='Other')}
-            allowed_vertices = set(allowed_vertices).union(empty_vertices)
 
         all_vertices = {v.index for v in graph.vs}
         vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
-        # saving identifier to allowed vertices before delete of graph
-        allowed_list_ids = {graph.vs[i]['scene_match_fk'] for i in allowed_vertices}
         graph.delete_vertices(vertices_to_remove)
-        # saving the new vertices id's after delete of vertices
-        new_allowed_vertices = {v.index for v in graph.vs if v['scene_match_fk'] in allowed_list_ids}
         # removing clusters including 'allowed' SKUs only
-        blocks = [block for block in graph.clusters() if set(block).difference(new_allowed_vertices)]
+        blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
         return blocks, graph
 
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
-                                 block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-                                 n_cluster=None, **filters):
+                                 minimum_block_ratio=1, result_by_scene=False, **filters):
         """
-        :param biggest_block:
-        :param block_products1:
-        :param block_products2:
-        :param block_of_blocks:
-        :param vertical: if needed to check vertical block by average shelf
         :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
         :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
@@ -743,11 +655,9 @@ class PNGJPGENERALToolBox:
         if len(relevant_scenes) == 0:
             if result_by_scene:
                 return 0, 0
-            elif vertical:
-                return False, 0
             else:
                 Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return False
+                return True
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
@@ -755,185 +665,220 @@ class PNGJPGENERALToolBox:
             clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
 
-            if block_of_blocks:
-                new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
-                new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
-            else:
-                new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
-            for cluster in clusters:
-                if block_of_blocks:
-                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
-                    if len(new_relevant_vertices1) > 0:
-                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
-                    else:
-                        cluster_ratio1 = 0
-                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
-                    if len(new_relevant_vertices2) > 0:
-                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
-                    else:
-                        cluster_ratio2 = 0
-                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
-                        return True
-                else:
-                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                    if len(new_relevant_vertices) > 0:
-                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                    else:
-                        cluster_ratio = 0
-                    cluster_ratios.append(cluster_ratio)
-                    if biggest_block:
-                        continue
-                    if cluster_ratio >= minimum_block_ratio:
-                        if result_by_scene:
-                            number_of_blocked_scenes += 1
-                            break
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return True, len(
-                                    set(scene_graph.vs['shelf_number']))
-                            return True
-            if n_cluster is not None:
-                copy_of_cluster_ratios = cluster_ratios[:]
-                largest_cluster = max(copy_of_cluster_ratios)  # 39
-                copy_of_cluster_ratios.remove(largest_cluster)
-                if len(copy_of_cluster_ratios) > 0:
-                    second_largest_integer = max(copy_of_cluster_ratios)
-                else:
-                    second_largest_integer = 0
-                cluster_ratio = largest_cluster + second_largest_integer
-                if cluster_ratio >= minimum_block_ratio:
-                    if vertical:
-                        return {'block': True}
-
-            if biggest_block:
-                max_ratio = max(cluster_ratios)
-                biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
-                relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
-                all_vertices = {v.index for v in scene_graph.vs}
-                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                scene_graph.delete_vertices(non_cluster_vertices)
-                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
-            if result_by_scene:
-                return number_of_blocked_scenes, len(relevant_scenes)
-            elif vertical:
-                return False, 0
-            else:
-                return False
-
-    def calculate_block_edges(self, minimum_block_ratio=0.01, allowed_products_filters=None,
-                                          include_empty=EXCLUDE_EMPTY, biggest_block=False, **filters):
-
-
-        """
-        :param minimum_block_ratio:
-        :param number_of_allowed_others: Number of allowed irrelevant facings between two cluster of relevant facings.
-        :param filters: The relevant facings of the block.
-        :return: This function calculates the number of 'flexible blocks' per scene, meaning, blocks which are allowed
-                 to have a given number of irrelevant facings between actual chunks of relevant facings.
-        """
-        edges = []
-        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-        product_list = self._get_group_product_list(filters)
-
-        if len(relevant_scenes) == 0:
-            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(product_list))
-        for scene in relevant_scenes:
-
-            scene_graph = self.position_graphs.get(scene).copy()
-            clusters, scene_graph = self.get_scene_blocks(scene_graph,
-                                                          allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **{'product_fk': product_list})
-            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{'product_fk': product_list})
-
+            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
                 if len(new_relevant_vertices) > 0:
                     cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
                 else:
                     cluster_ratio = 0
+                cluster_ratios.append(cluster_ratio)
                 if cluster_ratio >= minimum_block_ratio:
-                    cluster.sort(reverse=True)
-                    edges = self.get_block_edges(scene_graph.copy().vs[cluster])
-                    if biggest_block:
-                        minimum_block_ratio = cluster_ratio
-                    else:
+                    if result_by_scene:
+                        number_of_blocked_scenes += 1
                         break
-        return edges
+                    else:
+                        if minimum_block_ratio == 1:
+                            return True
+                        else:
+                            all_vertices = {v.index for v in scene_graph.vs}
+                            non_cluster_vertices = all_vertices.difference(cluster)
+                            scene_graph.delete_vertices(non_cluster_vertices)
+                            return cluster_ratio, scene_graph
+        if result_by_scene:
+            return number_of_blocked_scenes, len(relevant_scenes)
+        else:
+            if minimum_block_ratio == 1:
+                return False
+            elif cluster_ratios:
+                return max(cluster_ratios)
+            else:
+                return None
 
-    def get_block_edges(self, graph):
+    def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
+        """
+        :param conditions: A dictionary which contains assortment/availability conditions for filtering the blocks,
+                           in the form of: {entity_type: (0 for assortment or 1 for availability,
+                                                          a list of values =or None=,
+                                                          minimum number of assortment/availability)}.
+                           For example: {'product_ean_code': ('44545345434', 3)}
+        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+        :param min_number_of_blocks: The number of blocks needed in order for the KPI to pass.
+                                     If all appearances are required: == self.ALL.
+        :param filters: These are the parameters which the blocks are checked for.
+        :return: The number of blocks (from all scenes) which match the filters and conditions.
+        """
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+            return False
+
+        number_of_blocks = 0
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            blocks, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=None,
+                                                        include_empty=include_empty, **filters)
+            for block in blocks:
+                entities_data = {entity: [] for entity in conditions.keys()}
+                for vertex in block:
+                    vertex_attributes = scene_graph.vs[vertex].attributes()
+                    for entity in conditions.keys():
+                        entities_data[entity].append(vertex_attributes[entity])
+
+                block_successful = True
+                for entity in conditions.keys():
+                    assortment_or_availability, values, minimum_result = conditions[entity]
+                    if assortment_or_availability == 0:
+                        if values:
+                            result = len(set(entities_data[entity]).intersection(values))
+                        else:
+                            result = len(set(entities_data[entity]))
+                    elif assortment_or_availability == 1:
+                        if values:
+                            result = len([facing for facing in entities_data if facing in values])
+                        else:
+                            result = len(entities_data[entity])
+                    else:
+                        continue
+                    if result < minimum_result:
+                        block_successful = False
+                        break
+                if block_successful:
+                    number_of_blocks += 1
+                    if number_of_blocks >= min_number_of_blocks:
+                        return True
+                else:
+                    if min_number_of_blocks == self.ALL:
+                        return False
+
+        if number_of_blocks >= min_number_of_blocks or min_number_of_blocks == self.ALL:
+            return True
+        return False
+
+    def calculate_flexible_blocks(self, number_of_allowed_others=2, **filters):
+        """
+        :param number_of_allowed_others: Number of allowed irrelevant facings between two cluster of relevant facings.
+        :param filters: The relevant facings of the block.
+        :return: This function calculates the number of 'flexible blocks' per scene, meaning, blocks which are allowed
+                 to have a given number of irrelevant facings between actual chunks of relevant facings.
+        """
+        results = {}
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+            return results
+        for scene in relevant_scenes:
+            scene_graph = self.position_graphs.get(scene).copy()
+            blocks, scene_graph = self.get_scene_blocks(scene_graph, **filters)
+            blocks.sort(key=lambda x: len(x), reverse=True)
+            blocks = [(0, self.get_block_edges(scene_graph.copy().vs[block])) for block in blocks]
+            new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, list(blocks))
+            while len(blocks) != len(new_blocks):
+                blocks = list(new_blocks)
+                new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, blocks)
+            results[scene] = len(new_blocks)
+        return results
+
+    def merge_blocks_into_flexible_blocks(self, filters, scene_id, number_of_allowed_others, blocks):
+        """
+        This function receives blocks' ranges and tries to merge them based on an allowed number of irrelevant facings
+        between them. If it manages to merge two blocks, it removes the original blocks and adds the merged block,
+        and returns the new list immediately (merges at most one pair of blocks in one run).
+        """
+        for block1 in blocks:
+            previous1, range1 = block1
+            for block2 in blocks:
+                previous2, range2 = block2
+
+                if block1 != block2:
+                    top = min(range1[0], range2[0])
+                    right = max(range1[1], range2[1])
+                    bottom = max(range1[2], range2[2])
+                    left = min(range1[3], range2[3])
+
+                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom, left)
+                    previous_others = previous1 + previous2
+
+                    if number_of_others <= number_of_allowed_others + previous_others:
+                        blocks.insert(0, (previous_others + number_of_others, (top, right, bottom, left)))
+                        blocks.remove(block1)
+                        blocks.remove(block2)
+                        return blocks
+        return blocks
+
+    def get_block_edges(self, *block_graphs):
         """
         This function receives one or more vertex data of a block's graph, and returns the range of its edges -
         The far most top, bottom, left and right pixels of its facings.
         """
         top = right = bottom = left = None
+        for graph in block_graphs:
+            max_top = min(graph.get_attribute_values(self.position_graphs.TOP))
+            max_right = max(graph.get_attribute_values(self.position_graphs.RIGHT))
+            max_bottom = max(graph.get_attribute_values(self.position_graphs.BOTTOM))
+            max_left = min(graph.get_attribute_values(self.position_graphs.LEFT))
+            if top is None or max_top < top:
+                top = max_top
+            if right is None or max_right > right:
+                right = max_right
+            if bottom is None or max_bottom > bottom:
+                bottom = max_bottom
+            if left is None or max_left < left:
+                left = max_left
+        return top, right, bottom, left
 
-        top = graph.get_attribute_values('y_mm')
-        top_index = max(xrange(len(top)), key=top.__getitem__)
-        top_height = graph.get_attribute_values('height_mm_advance')[top_index]
-        top = graph.get_attribute_values('y_mm')[top_index]
-        top += top_height / 2
+    def get_number_of_others_in_block_range(self, filters, scene_id, top, right, bottom, left):
+        """
+        This function gets a scene, a range (in pixels) and filters, and checks how many facings are in that range
+         and are not part of the filters.
+        """
+        matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
+                                              (~self.match_product_in_scene['product_type'].isin(['Empty']))]
+        facings_in_range = matches[((matches[self.position_graphs.TOP].between(top, bottom-1)) |
+                                    (matches[self.position_graphs.BOTTOM].between(top+1, bottom))) &
+                                   ((matches[self.position_graphs.LEFT].between(left, right-1)) |
+                                    (matches[self.position_graphs.RIGHT].between(left+1, right)))]
+        relevant_facings_in_range = facings_in_range[self.get_filter_condition(facings_in_range, **filters)]
+        other_facings_in_range = len(facings_in_range) - len(relevant_facings_in_range)
+        return other_facings_in_range
 
-        bottom = graph.get_attribute_values('y_mm')
-        bottom_index = min(xrange(len(bottom)), key=bottom.__getitem__)
-        bottom_height = graph.get_attribute_values('height_mm_advance')[bottom_index]
-        bottom = graph.get_attribute_values('y_mm')[bottom_index]
-        bottom -= bottom_height / 2
-
-        left = graph.get_attribute_values('x_mm')
-        left_index = min(xrange(len(left)), key=left.__getitem__)
-        left_height = graph.get_attribute_values('width_mm_advance')[left_index]
-        left = graph.get_attribute_values('x_mm')[left_index]
-        left -= left_height / 2
-
-        right = graph.get_attribute_values('x_mm')
-        right_index = max(xrange(len(right)), key=right.__getitem__)
-        right_width = graph.get_attribute_values('width_mm_advance')[right_index]
-        right = graph.get_attribute_values('x_mm')[right_index]
-        right += right_width / 2
-
-        # top = min(graph.get_attribute_values(self.position_graphs.RECT_Y))
-        # right = max(graph.get_attribute_values(self.position_graphs.RECT_X))
-        # bottom = max(graph.get_attribute_values(self.position_graphs.RECT_Y))
-        # left = min(graph.get_attribute_values(self.position_graphs.RECT_X))
-        result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}
-        result.update({'shelfs': list(set(graph.get_attribute_values('shelf_number')))})
-        return result
-
-    def calculate_product_unique_position_on_shelf(self, scene_id, shelf_number, **filters):
+    def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
         """
         :param scene_id: The scene ID.
         :param shelf_number: The number of shelf in question (from top).
+        :param include_empty: This dictates whether or not to include empties as valid positions.
         :param filters: These are the parameters which the unique position is checked for.
         :return: The position of the first SKU (from the given filters) to appear in the specific shelf.
         """
         shelf_matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
                                                     (self.match_product_in_scene['shelf_number'] == shelf_number)]
-        if shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
+        if not include_empty:
+            filters['product_type'] = ('Empty', self.EXCLUDE_FILTER)
+        if filters and shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
             Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
             return None
         shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
         shelf_matches = shelf_matches.drop_duplicates(subset=['product_ean_code'])
-        products = shelf_matches[self.get_filter_condition(shelf_matches, **filters)]['product_ean_code'].tolist()
-        for i in xrange(len(shelf_matches)):
-            match = shelf_matches.iloc[i]
-            if match['product_ean_code'] in products:
-                return i + 1
-        return None
+        positions = []
+        for m in xrange(len(shelf_matches)):
+            match = shelf_matches.iloc[m]
+            match_name = 'Empty' if match['product_type'] == 'Empty' else match['product_ean_code']
+            if positions and positions[-1] == match_name:
+                continue
+            positions.append(match_name)
+        return positions
 
     def get_filter_condition(self, df, **filters):
         """
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUPNGJPGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOGTRDIAGEOGTRGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
         if not filters:
-            return df
+            return df['pk'].apply(bool)
         if self.facings_field in df.keys():
             filter_condition = (df[self.facings_field] > 0)
         else:
@@ -972,11 +917,11 @@ class PNGJPGENERALToolBox:
         This function gets scene-item-facts filters of all kinds, extracts the relevant scenes by the location filters,
         and returns them along with the product filters only.
         """
+        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **filters)]['scene_id'].unique()
         location_filters = {}
         for field in filters.keys():
             if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
 
     @staticmethod
@@ -1008,79 +953,3 @@ class PNGJPGENERALToolBox:
         elif len(data.keys()) == 1:
             data = data[data.keys()[0]]
         return data
-
-    def calculate_adjacency(self, filter_group_a, filter_group_b, scene_type_filter, allowed_filter,
-                                allowed_filter_without_other, a_target, b_target, target):
-
-
-        a_product_list = self._get_group_product_list(filter_group_a)
-        b_product_list = self._get_group_product_list(filter_group_b)
-
-        adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                                                 allowed_filter_without_other, a_target, b_target, target)
-        if adjacency:
-            return 100
-        return 0
-
-
-    def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                            allowed_filter_without_other, a_target, b_target, target):
-        a_b_union = list(set(a_product_list) | set(b_product_list))
-
-        a_filter = {'product_fk': a_product_list}
-        b_filter = {'product_fk': b_product_list}
-        a_b_filter = {'product_fk': a_b_union}
-        a_b_filter.update(scene_type_filter)
-
-        matches = self.data_provider.matches
-        relevant_scenes = matches[self.get_filter_condition(matches, **a_b_filter)][
-            'scene_fk'].unique().tolist()
-
-        result = False
-        for scene in relevant_scenes:
-            a_filter_for_block = a_filter.copy()
-            a_filter_for_block.update({'scene_fk': scene})
-            b_filter_for_block = b_filter.copy()
-            b_filter_for_block.update({'scene_fk': scene})
-            try:
-                a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
-                b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
-                if sorted(a_products.tolist()) == sorted(b_products.tolist()):
-                    return False
-            except:
-                pass
-            if a_target:
-                brand_a_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
-                                                                      minimum_block_ratio=a_target,
-                                                                      vertical=False, **a_filter_for_block)
-                if not brand_a_blocked:
-                    continue
-
-            if b_target:
-                brand_b_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
-                                                                      minimum_block_ratio=b_target,
-                                                                      vertical=False, **b_filter_for_block)
-                if not brand_b_blocked:
-                    continue
-
-            a_b_filter_for_block = a_b_filter.copy()
-            a_b_filter_for_block.update({'scene_fk': scene})
-
-            block = self.calculate_block_together(allowed_products_filters=allowed_filter_without_other,
-                                                        minimum_block_ratio=target, block_of_blocks=True,
-                                                        block_products1=a_filter, block_products2=b_filter,
-                                                        **a_b_filter_for_block)
-            if block:
-                return True
-        return result
-
-    def _get_group_product_list(self, filters):
-        products = self.data_provider.products.copy()
-        # filter_.update({'Sub-section': filters['all']['Sub-section']})
-        product_list = products[self.get_filter_condition(products, **filters)]['product_fk'].tolist()
-        return product_list
-
-    def get_products_by_filters(self, return_value='product_name', **filters):
-        if filters:
-            scif = self.data_provider.scene_item_facts
-            return scif[self.get_filter_condition(scif, **filters)][return_value]
