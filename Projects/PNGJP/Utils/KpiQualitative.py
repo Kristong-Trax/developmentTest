@@ -608,7 +608,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**scene_filters)
 
         for scene in relevant_scenes:
-            adjacency = Adjancency.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
+            adjacency = self.tools.calculate_adjacency(group_a, group_b, {'scene_fk': scene}, allowed_filter,
                                                            allowed_filter_without_other, a_target, b_target, target)
             if adjacency:
                 direction = params.get('Direction', 'All').values[0]
@@ -620,8 +620,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     # a = self.scif[self.scif['product_fk'].isin(a)]['product_name'].drop_duplicates()
                     # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
 
-                    edges_a = self.block.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
-                    edges_b = self.block.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
+                    edges_a = self.tools.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
+                    edges_b = self.tools.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
