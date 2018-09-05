@@ -230,7 +230,7 @@ class CCRUTopSKUAssortment:
         :return: A DataFrame with valid products
         """
         raw_data = pd.read_excel(file_path)
-        raw_data = raw_data.drop_duplicates(subset=['Store Number', self.START_DATE, self.END_DATE], keep='first')
+        raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
         raw_data = self.products_validator(raw_data)
