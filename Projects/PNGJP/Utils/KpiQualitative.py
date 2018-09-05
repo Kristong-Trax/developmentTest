@@ -266,31 +266,34 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             entity_filters = filters
 
             for p in xrange(len(entity_kpis)):
-                score = threshold = result = None
-                params = entity_kpis.iloc[p]
-                set_name = params[self.SET_NAME]
-                kpi_type = params[self.KPI_TYPE]
-                scenes_filters = self.get_scenes_filters(params)
-                kpi_filters = dict(scenes_filters, **entity_filters)
+                try:
+                    score = threshold = result = None
+                    params = entity_kpis.iloc[p]
+                    set_name = params[self.SET_NAME]
+                    kpi_type = params[self.KPI_TYPE]
+                    scenes_filters = self.get_scenes_filters(params)
+                    kpi_filters = dict(scenes_filters, **entity_filters)
 
-                if kpi_type == self.GOLDEN_ZONE:
-                    score, result, threshold = self.calculate_golden_zone(kpi, kpi_filters)
+                    if kpi_type == self.GOLDEN_ZONE:
+                        score, result, threshold = self.calculate_golden_zone(kpi, kpi_filters)
 
-                elif kpi_type == self.BLOCK:
-                    score, result, threshold = self.calculate_block(kpi, kpi_filters)
+                    elif kpi_type == self.BLOCK:
+                        score, result, threshold = self.calculate_block(kpi, kpi_filters)
 
-                elif kpi_type == self.ANCHOR:
-                    score, result, threshold = self.calculate_anchor(kpi, kpi_filters)
+                    elif kpi_type == self.ANCHOR:
+                        score, result, threshold = self.calculate_anchor(kpi, kpi_filters)
 
-                elif kpi_type == self.ADJACENCY:
-                    score, result, threshold = self.calculate_adjacency(kpi, kpi_filters)
+                    elif kpi_type == self.ADJACENCY:
+                        score, result, threshold = self.calculate_adjacency(kpi, kpi_filters)
 
-                else:
-                    Log.warning("KPI type '{}' is not supported".format(kpi_type))
-                    continue
+                    else:
+                        Log.warning("KPI type '{}' is not supported".format(kpi_type))
+                        continue
 
-                self.kpi_scores.update({kpi: score})
-                self.write_result(score, result, threshold, kpi, category, set_name, template_data)
+                    self.kpi_scores.update({kpi: score})
+                    self.write_result(score, result, threshold, kpi, category, set_name, template_data)
+                except:
+                    Log.warning("no score/result for '{}'".format(kpi_type))
 
     def category_aggregation_calculation(self, category):
         template_data = self.template_data[(self.template_data['Category Name'] == category) & (self.template_data['Set Name'] == 'Perfect Execution')]
@@ -579,6 +582,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
 
     @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
     def calculate_adjacency(self, kpi, kpi_filters):
+
         score = result = threshold = 0
         params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
@@ -616,8 +620,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     # a = self.scif[self.scif['product_fk'].isin(a)]['product_name'].drop_duplicates()
                     # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
 
-                    edges_a = self.block.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
-                    edges_b = self.block.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
+                    edges_a = self.tools.calculate_block_edges(minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
+                    edges_b = self.tools.calculate_block_edges(minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':
