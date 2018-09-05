@@ -13,7 +13,6 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
-
 ROOT_RESULT_FOLDER = "results"
 HISTOGRAM_FOLDER = ROOT_RESULT_FOLDER + "/histogram"
 RAW_DATA = ROOT_RESULT_FOLDER + "/raw"
@@ -35,7 +34,7 @@ class qa:
 
         findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
         findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
-        self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g")\
+        self.spark = SparkSession.builder.appName("qa_tool").config("spark.driver.memory","4g")\
                                                             .config("spark.executor.memory", "4g")\
                                                             .config("spark.driver.cores", "4")\
                                                             .config("spark.driver.maxResultSize", "4g")\
@@ -48,9 +47,8 @@ class qa:
         self.start_date = start_date
         self.end_date = end_date
         self.batch_size = batch_size
-        self.spark = SparkSession.builder.appName("run_etl").config("spark.driver.memory","4g").config("spark.executor.memory", "4g").config("spark.driver.cores", "4").config("spark.driver.maxResultSize", "4").getOrCreate()
         self.connector = ProjectConnector(self._project,self._dbUser)
-        self.project_url =  'jdbc:mysql://{}/report'.format(self.connector.project_params['rds_name'])
+        self.project_url = 'jdbc:mysql://{}/report'.format(self.connector.project_params['rds_name'])
 
         #const
         self.results_query = '''    
@@ -217,7 +215,7 @@ class qa:
         test_results.show(1000, False)
         test_results_pandas = test_results.toPandas()
         test_results_pandas.to_csv(RAW_DATA + "/uncalculated_kpi_list.csv")
-        return test_results_pandas.to_html()
+        return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_invalid_percent_results(self):
         """kpi result should be percent between 0-1 in"""
@@ -237,7 +235,7 @@ class qa:
                                                   ((F.col('session_count') / total_sessions) * 100).alias("session_count%"))\
                                                    .toPandas()
         test_results_pandas.to_csv(RAW_DATA + "/invalid_percent_results_list.csv")
-        return test_results_pandas.to_html()
+        return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_result_is_zero(self):
         """ kpi with results is 0 """
@@ -262,7 +260,7 @@ class qa:
                                                   "session_count%(out of all sessions)") \
                                                   ).toPandas()
         test_results_pandas.to_csv(RAW_DATA + "/test_result_is_zero.csv")
-        return test_results_pandas.to_html()
+        return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_results_stdev(self):
         test_results_pandas = self.merged_kpi_results.groupBy('client_name').agg(F.stddev('result'), \
@@ -270,7 +268,7 @@ class qa:
                                                                          F.min('result'), \
                                                                          F.max('result')).orderBy('client_name').toPandas()
         test_results_pandas.to_csv(RAW_DATA + "/test_results_stdev.csv")
-        return test_results_pandas.to_html()
+        return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_results_in_expected_range(self):
         """ show list or results that are not in the expected range"""
@@ -294,7 +292,7 @@ class qa:
                                                                          F.max('result')).orderBy('client_name').toPandas()
 
         test_results_pandas.to_csv(RAW_DATA + "/test_results_by_category_stddev.csv")
-        return test_results_pandas.to_html()
+        return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def gen_kpi_histogram(self):
 
@@ -317,44 +315,48 @@ class qa:
                     file.write("<img src='{}' >".format(url))
 
 
-    def run_all_tests(self):
-
-        '''
-        run full test report
-        :return:
-        '''
-
-        self.get_statistics()
-
-
+    def start_html_report(self):
         with open(SUMMERY_FILE, 'a') as file:
-            file.write("<br> <p> test_invalid_percent_results</p>")
-            file.write(self.test_invalid_percent_results())
+            head = '''
+                   <!doctype html>
+                    <html lang="en">
+                      <head>
+                        <!-- Required meta tags -->
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+                    
+                        <!-- Bootstrap CSS -->
+                        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+                       
+                        <!-- --> 
+                        <style>
+                        body {font-family: "Roboto", "Lato", "Helvetica Neue", "Helvetica", "Arial" } ;
+                        
+                        </style>
+                        
+                        
+                        <title>QA Tool Results</title>
+                        
+                        
+                        
+                      </head>
+                      <body>            
+                    '''
+            file.write(head)
 
-            file.write("<br> <p> test_uncalculated_kpi</p>")
-            file.write(self.test_uncalculated_kpi())
-
-            file.write("<br> <p> test_result_is_zero</p>")
-            file.write(self.test_result_is_zero())
-
-            file.write("<br> <p> test_results_stddev</p>")
-            file.write(self.test_results_stdev())
-
-            file.write("<br> <p> test_results_by_category_stddev</p>")
-            file.write(self.test_results_by_category_stddev())
-
-
-            # file.write(self.test_results_in_expected_range())
-            # file.write(self.test_one_result_in_all_sessions())
-
-            file.write("<h2>Results Histogram</h2>")
-
-        self.gen_kpi_histogram()
-
-    #TODO
-    # 2.plot histogram    #
-    # inecluded status fk on session = 1
-    # scene kpi results check the table
+    def end_html_report(self):
+        with open(SUMMERY_FILE, 'a') as file:
+            end = '''
+                      <!-- Optional JavaScript -->
+                        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+                        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+                        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+                      </body>
+                    </html>            
+                                      
+                  '''
+            file.write(end)
 
     def get_statistics(self):
 
@@ -380,6 +382,51 @@ class qa:
         print stats
         with open(SUMMERY_FILE, 'a') as file:
             file.write(stats)
+
+    def run_all_tests(self):
+
+        '''
+        run full test report
+        :return:
+        '''
+
+        self.start_html_report()
+
+        self.get_statistics()
+
+
+        with open(SUMMERY_FILE, 'a') as file:
+            file.write("<div class='container' ")
+            file.write("<br> <h2 class='text-center'> test invalid percent results</h2>")
+            file.write(self.test_invalid_percent_results())
+
+            file.write("<br> <h2 class='text-center'> test uncalculated kpi</h2>")
+            file.write(self.test_uncalculated_kpi())
+
+            file.write("<br> <h2 class='text-center'> test result is zero</h2>")
+            file.write(self.test_result_is_zero())
+
+            file.write("<br> <h2 class='text-center'> test results stddev</h2>")
+            file.write(self.test_results_stdev())
+
+            file.write("<br> <h2 class='text-center'> test results by category stddev</h2>")
+            file.write(self.test_results_by_category_stddev())
+            file.write("</div>")
+
+            # file.write(self.test_results_in_expected_range())
+            # file.write(self.test_one_result_in_all_sessions())
+
+            file.write("<h2 class='text-center'>Results Histogram</h2>")
+
+        self.gen_kpi_histogram()
+
+        self.end_html_report()
+
+    #TODO
+    # scene kpi results
+    # so results by store type
+
+
 
 
 if __name__ ==  "__main__":
