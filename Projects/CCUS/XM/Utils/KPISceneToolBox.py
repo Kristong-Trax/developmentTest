@@ -17,6 +17,9 @@ class CCUSSceneToolBox:
         self.templates = self.data_provider[Data.TEMPLATES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        empties = self.all_products[self.all_products['product_type'] == 'Empty']['product_fk'].unique().tolist()
+        self.match_product_in_scene = self.match_product_in_scene[
+            ~(self.match_product_in_scene['product_fk'].isin(empties))]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.template_group = self.templates['template_group'].iloc[0]
