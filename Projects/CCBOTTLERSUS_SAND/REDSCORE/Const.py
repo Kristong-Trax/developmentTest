@@ -3,7 +3,7 @@ __author__ = 'Elyashiv'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.4.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.5.xlsx')
     SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'SurveyTemplateV2.xlsx')
     STORE_TYPES = {
@@ -88,8 +88,7 @@ class Const(object):
     RESULT = "result"
     KPI_FK = "kpi_fk"
     SCORE = "score"
-    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
-    COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
+    COLUMNS_OF_RESULTS = [KPI_NAME, RESULT]
 
     # constants:
     ALL = "ALL"
@@ -112,3 +111,4 @@ class Const(object):
         SOVI,
         MANUAL
     ]
+    SCENE_SUFFIX = " - scene"
