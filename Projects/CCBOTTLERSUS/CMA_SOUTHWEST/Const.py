@@ -10,6 +10,7 @@ class Const(object):
     KPIS = "KPIs"
     AVAILABILITY = "Availability"
     SOS = "SOS"
+    SHELVES = "shelves"
     SOS_MAJOR = "SOS_majority"
     SURVEY = "Survey"
     SKU_EXCLUSION = "SKU_Exclusion"

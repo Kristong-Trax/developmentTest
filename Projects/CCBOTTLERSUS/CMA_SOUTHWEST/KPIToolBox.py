@@ -28,6 +28,9 @@ CMA_COMPLIANCE = 'CMA Compliance'
 
 
 class CCBOTTLERSUSCMASOUTHWESTToolBox:
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -43,7 +46,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.united_scenes = self.get_united_scenes() # we don't need to check scenes without United products
+        self.scif = self.scif[~(self.scif['product_type'] == 'Irrelevant')]
+        self.sw_scenes = self.get_sw_scenes() # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
@@ -57,6 +61,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         self.total_score = 0
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
 
@@ -81,7 +87,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
+        relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         result = score = target = None
         general_filters = {}
@@ -104,25 +110,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if score > 0:
             self.total_score += 1
         self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-
-    def calculate_manual_kpi(self, main_line):
-        """
-        This function gets a line from the main_sheet, transfers it to the match function, and checks all of the
-        KPIs in the same name in the match sheet.
-        :param main_line: series from the template of the main_sheet.
-        """
-        kpi_name = main_line[Const.KPI_NAME]
-        relevant_template = self.templates[Const.SURVEY]
-        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL \
-            else main_line[Const.GROUP_TARGET]
-        passed_counter = 0
-        for i, kpi_line in relevant_template.iterrows():
-            answer = self.calculate_survey_specific(kpi_line)
-            if answer:
-                passed_counter += 1
-        result = passed_counter >= target
-        self.write_to_session_level(kpi_name=kpi_name, result=result)
 
     # write in DF:
 
@@ -149,64 +136,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, result=result, threshold=target)
 
-    # survey:
-
-    def calculate_survey_specific(self, kpi_line, relevant_scif=None, isnt_dp=None):
-        """
-        returns a survey line if True or False
-        :param kpi_line: line from the survey sheet
-        :param relevant_scif:
-        :param isnt_dp:
-        :return: True or False - if the question gets the needed answer
-        """
-        question = kpi_line[Const.Q_TEXT]
-        if not question:
-            question_id = kpi_line[Const.Q_ID]
-            if question_id == "":
-                Log.warning("The template has a survey question without ID or text")
-                return False
-            question = ('question_fk', int(question_id))
-        answers = kpi_line[Const.ACCEPTED_ANSWER].split(',')
-        min_answer = None if kpi_line[Const.REQUIRED_ANSWER] == '' else True
-        for answer in answers:
-            if self.survey.check_survey_answer(
-                    survey_text=question, target_answer=answer, min_required_answer=min_answer):
-                return True
-        return False
-
     # availability:
-
-    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp):
-        """
-        checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
-        at least one common product that has the same size and number of sub_packages.
-        :param relevant_template: all the match lines from the availability sheet.
-        :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
-        :return: boolean
-        """
-        packages = None
-        for i, kpi_line in relevant_template.iterrows():
-            if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-                continue
-            filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-            filtered_scif = filtered_scif.fillna("NAN")
-            target = kpi_line[Const.TARGET]
-            sizes = filtered_scif['size'].tolist()
-            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
-            cur_packages = set(zip(sizes, sub_packages_nums))
-            if packages is None:
-                packages = cur_packages
-            else:
-                packages = cur_packages & packages
-                if len(packages) == 0:
-                    return False
-            if filtered_scif[filtered_scif['facings'] > 0]['facings'].count() < target:
-                return False
-        if len(packages) > 1:
-            return False
-        return True
 
     def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
         """
@@ -303,104 +233,77 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             target = 0
         return sos_value, score, target
 
-    # SOS majority:
+    # Targets:
 
     def get_sos_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-                                             (targets_template['sales center'] == self.sales_center) &
-                                             (targets_template['channel'] == self.store_type)]
+                                             (targets_template['region'] == self.region)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
             target = filtered_targets_to_kpi[Const.TARGET].values[0]
         else:
             target = None
         return target
-        # return False
 
-    def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        calculates SOS majority line in the relevant scif. Filters the denominator and sends the line to the
-        match function (majority or dominant)
-        :param kpi_line: line from SOS majority sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator (and the denominator of the dominant part).
-        :return: boolean
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
-            exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
-            relevant_exclusions = exclusion_sheet[exclusion_sheet[Const.KPI_NAME] == kpi_name]
-            for i, exc_line in relevant_exclusions.iterrows():
-                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        den_type = kpi_line[Const.DEN_TYPES_2]
-        den_value = kpi_line[Const.DEN_VALUES_2]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        if kpi_line[Const.MAJ_DOM] == Const.MAJOR:
-            answer = self.calculate_majority_part(kpi_line, relevant_scif, isnt_dp)
-        elif kpi_line[Const.MAJ_DOM] == Const.DOMINANT:
-            answer = self.calculate_dominant_part(kpi_line, relevant_scif, isnt_dp)
+    def get_targets(self, kpi_name):
+        targets_template = self.templates[Const.TARGETS]
+        store_targets = targets_template.loc[(targets_template['program'] == self.program) &
+                                             (targets_template['region'] == self.region)]
+        filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
+        if not filtered_targets_to_kpi.empty:
+            target = filtered_targets_to_kpi[Const.TARGET].values[0]
         else:
-            Log.warning("SOS majority does not know '{}' part".format(kpi_line[Const.MAJ_DOM]))
-            answer = False
-        return answer
+            target = None
+        return target
 
-    def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):
+    # Number of shelves
+    def calculate_number_of_shelves(self, kpi_line, relevant_scif, isnt_dp, general_filters):
         """
-        filters the numerator and checks if the SOS is bigger than 50%.
-        :param kpi_line: line from SOS majority sheet.
+        calculates SOS line in the relevant scif.
+        :param kpi_line: line from SOS sheet.
         :param relevant_scif: filtered scif.
         :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
         all the DP products out of the numerator.
         :return: boolean
         """
+        kpi_name = kpi_line[Const.KPI_NAME]
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
+        den_type = kpi_line[Const.DEN_TYPES_1]
+        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
+        # relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
         num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1]
-        num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        num_type = kpi_line[Const.NUM_TYPES_2]
-        num_value = kpi_line[Const.NUM_VALUES_2]
-        num_scif = self.filter_by_type_value(num_scif, num_type, num_value)
-        if num_scif.empty:
-            return None
+        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
+        # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
         if isnt_dp:
-            num_scif = num_scif[~(num_scif['manufacturer_name'].isin(Const.DP_MANU))]
-        target = Const.MAJORITY_TARGET
-        return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
+            general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
+        target = self.get_sos_targets(kpi_name)
+        general_filters[den_type] = den_value
+        if kpi_line[Const.DEN_TYPES_2]:
+            den_type_2 = kpi_line[Const.DEN_TYPES_2]
+            den_value_2 = kpi_line[Const.DEN_VALUES_2].split(',')
+            general_filters[den_type_2] = den_value_2
+        numerator_filters = {num_type: num_value}
+        if kpi_line[Const.NUM_TYPES_2]:
+            num_type_2 = kpi_line[Const.NUM_TYPES_2]
+            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
+            numerator_filters[num_type_2] = num_value_2
+        numerator_facings = self.scif[self.get_filter_condition(self.scif, **numerator_filters)][
+            self.facings_field].sum()
+        denominator_facings = self.scif[self.get_filter_condition(self.scif, **general_filters)][
+            self.facings_field].sum()
+        general_filters['Southwest Deliver'] = 'Y'
+        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **general_filters)]['shelf_number'].unique().count()
 
-    def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):
-        """
-        filters the numerator and checks if the given value in the given type is the one with the most facings.
-        :param kpi_line: line from SOS majority sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out.
-        :return: boolean
-        """
-        if isnt_dp:
-            relevant_scif = relevant_scif[~(relevant_scif['manufacturer_name'].isin(Const.DP_MANU))]
-        type_name = self.get_column_name(kpi_line[Const.NUM_TYPES_1], relevant_scif)
-        values = str(kpi_line[Const.NUM_VALUES_1]).split(', ')
-        if type_name in Const.NUMERIC_VALUES_TYPES:
-            values = [float(x) for x in values]
-        max_facings, needed_one = 0, 0
-        values_type = relevant_scif[type_name].unique().tolist()
-        if None in values_type:
-            values_type.remove(None)
-            current_sum = relevant_scif[relevant_scif[type_name].isnull()]['facings'].sum()
-            if current_sum > max_facings:
-                max_facings = current_sum
-        for value in values_type:
-            current_sum = relevant_scif[relevant_scif[type_name] == value]['facings'].sum()
-            if current_sum > max_facings:
-                max_facings = current_sum
-            if value in values:
-                needed_one += current_sum
-        return needed_one >= max_facings
+        number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
+
+        if target:
+            score = 1 if number_of_shelves_score >= target else 0
+        else:
+            score = 1
+            target = 0
+        return number_of_shelves_score, score, target
 
     # helpers:
 
@@ -471,17 +374,61 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         :param kpi_type: value from "sheet" column in the main sheet
         :return: function
         """
-        if kpi_type == Const.SURVEY:
-            return self.calculate_survey_specific
-        elif kpi_type == Const.AVAILABILITY:
+
+        if kpi_type == Const.AVAILABILITY:
             return self.calculate_availability
         elif kpi_type == Const.SOS:
             return self.calculate_sos
-        elif kpi_type == Const.SOS_MAJOR:
-            return self.calculate_sos_maj
+        elif kpi_type == Const.SHELVES:
+            return self.calculate_number_of_shelves
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
+
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUPNGAMERICAGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
+
 
     def choose_and_write_results(self):
         """
@@ -530,40 +477,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             self.write_to_all_levels(kpi_name, result, display_text, weight)
-
-    def write_incremental_kpis(self, scene_template):
-        """
-        lets the incremental KPIs choose their scenes (if they passed).
-        if KPI passed some scenes, we will choose the scene that the children passed
-        :param scene_template: filtered main_sheet
-        :return: the new template (without the KPI written already)
-        """
-        incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
-        while not incremental_template.empty:
-            for i, main_line in incremental_template.iterrows():
-                kpi_name = main_line[Const.KPI_NAME]
-                reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-                kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
-                if not reuse_scene:
-                    kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
-                true_results = kpi_results[kpi_results[Const.RESULT] > 0]
-                increments = main_line[Const.INCREMENTAL]
-                if ', ' in increments:
-                    first_kpi = increments.split(', ')[0]
-                    others = increments.replace(', '.format(first_kpi), '')
-                    scene_template.loc[scene_template[Const.KPI_NAME] == first_kpi, Const.INCREMENTAL] = others
-                if true_results.empty:
-                    scene_template.loc[scene_template[Const.KPI_NAME] == kpi_name, Const.INCREMENTAL] = ""
-                else:
-                    true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
-                    display_text = main_line[Const.DISPLAY_TEXT]
-                    weight = main_line[Const.WEIGHT]
-                    scene_fk = true_results.iloc[0][Const.SCENE_FK]
-                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text,
-                                             weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
-                    scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
-            incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
-        return scene_template
 
     def write_regular_scene_kpis(self, scene_template):
         """
@@ -653,8 +566,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             scene_fk = results.iloc[0][Const.SCENE_FK] if Const.SCENE_FK in kpi_results else None
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
-    def get_united_scenes(self):
-        return self.scif[self.scif['United Deliver'] == 'Y']['scene_id'].unique().tolist()
+    def get_sw_scenes(self):
+        return self.scif[self.scif['Southwest Deliver'] == 'Y']['scene_id'].unique().tolist()
 
     def get_weight_factor(self):
         sum_weights = self.templates[Const.KPIS][Const.WEIGHT].sum()
