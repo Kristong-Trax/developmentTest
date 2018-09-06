@@ -348,7 +348,12 @@ class INBEVTRADMXToolBox:
             if is_kpi_passed == 1:
                 atomic_kpi_score += curr_weight
             # write result to DB
-            self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed, curr_weight)
+            if kpi_level_3_name == 'Sin Espacios Vacios' and curr_weight == 0 and is_kpi_passed == 1:
+                # atomic_kpi_score = 100
+                self.write_atomic_to_db(kpi_level_3_name, 100, kpi_name, set_name, is_kpi_passed, curr_weight)
+            else:
+                self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed,
+                                        curr_weight)
         return atomic_kpi_score
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
