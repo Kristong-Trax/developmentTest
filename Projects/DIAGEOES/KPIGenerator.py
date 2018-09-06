@@ -24,13 +24,7 @@ class DIAGEOESGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
-        set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
-        calculate_activation_standard = False
-        if self.tool_box.ACTIVATION_STANDARD in set_names:
-            set_names.remove(self.tool_box.ACTIVATION_STANDARD)
-            calculate_activation_standard = True
-        for kpi_set_name in set_names:
-            self.tool_box.main_calculation(set_name=kpi_set_name)
-        if calculate_activation_standard:
-            self.tool_box.calculate_activation_standard()
+        for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
+            score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
+            self.tool_box.write_to_db_result(kpi_set_fk, score, self.tool_box.LEVEL1)
         self.tool_box.commit_results_data()
