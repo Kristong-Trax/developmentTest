@@ -93,12 +93,12 @@ class CCBOTTLERSUSCMAToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
         if kpi_type == Const.SOS:
-            isnt_dp = True if self.store_attr != Const.DP else False
+            isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            function = self.get_kpi_function(kpi_type)
+            kpi_function = self.get_kpi_function(kpi_type)
             for i, kpi_line in relevant_template.iterrows():
-                result, score, target = function(kpi_line, relevant_scif, isnt_dp, general_filters)
+                result, score, target = kpi_function(kpi_line, relevant_scif, isnt_dp, general_filters)
         else:
             pass
         if score > 0:
@@ -279,8 +279,6 @@ class CCBOTTLERSUSCMAToolBox:
         num_type = kpi_line[Const.NUM_TYPES_1]
         num_value = kpi_line[Const.NUM_VALUES_1].split(',')
         # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        if isnt_dp:
-            general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
         target = self.get_sos_targets(kpi_name)
         general_filters[den_type] = den_value
         if kpi_line[Const.DEN_TYPES_2]:
@@ -288,6 +286,8 @@ class CCBOTTLERSUSCMAToolBox:
             den_value_2 = kpi_line[Const.DEN_VALUES_2].split(',')
             general_filters[den_type_2] = den_value_2
         sos_filters = {num_type: num_value}
+        if isnt_dp:
+            sos_filters['manufacturer_name'] = (Const.DP_MANU, 0)
         if kpi_line[Const.NUM_TYPES_2]:
             num_type_2 = kpi_line[Const.NUM_TYPES_2]
             num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
