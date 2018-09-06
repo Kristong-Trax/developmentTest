@@ -289,18 +289,22 @@ class CCRUTopSKUAssortment:
 
                 Log.info("Starting to commit to DB")
 
-                self.commit_results(self.deactivation_queries)
+                queries = []
+
+                queries += self.deactivation_queries
                 self.deactivation_queries_count += len(self.deactivation_queries)
                 self.deactivation_queries = []
 
-                self.commit_results(self.extension_queries)
+                queries += self.extension_queries
                 self.extension_queries_count += len(self.extension_queries)
                 self.extension_queries = []
 
-                self.commit_results(self.merge_insert_queries(self.insert_queries))
+                queries += self.merge_insert_queries(self.insert_queries)
                 self.insert_queries_count += len(self.insert_queries)
                 self.insert_queries = []
-                self.merged_insert_queries = []
+
+                self.commit_results(queries)
+                queries = []
 
                 Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
                 Log.info("Stores processed: {}".format(self.stores_processed))
