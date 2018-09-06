@@ -206,8 +206,10 @@ class PEPSICORUToolBox:
         for scene_type in scene_types_with_targets:
             for category in category_targets:
                 if category.upper() in scene_type.upper():
-                    category_targets[category] += 1
-            scene_targets[scene_type] += 1
+                    # category_targets[category] += 1
+                    category_targets[category] += target_row[scene_type]
+            scene_targets[scene_type] = target_row[scene_type]
+
 
         return store_target, category_targets, scene_targets, scene_types_from_template
 
@@ -247,15 +249,11 @@ class PEPSICORUToolBox:
         relevant_template_name_list = relevant_scenes_dict.values()
         filtered_scif = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_template_name_list)]
 
-        # Calculate count of display - store_level
+
         display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
         scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
-        result_store_level = 100 if scene_types_in_store >= store_target else scene_types_in_store / float(store_target)
-        self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
-                                       numerator_result=scene_types_in_store,
-                                       denominator_id=self.store_id, denominator_result=store_target,
-                                       identifier_result=display_count_store_level_fk,
-                                       result=result_store_level, should_enter=True)
+        identifier_parent_store_level = self.common.get_dictionary(kpi_fk=display_count_store_level_fk)
+        count_store_level = 0
 
         # Calculate count of display - category_level
         display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
@@ -267,18 +265,42 @@ class PEPSICORUToolBox:
             relevant_scenes = [scene_type for scene_type in relevant_template_name_list if
                                category.upper() in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
-            if filtered_scif_by_cat.empty:
-                continue
-            scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
-            result_cat_level = 100 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
-                current_category_target)
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
-            self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
-                                           numerator_result=scene_types_in_cate,
+            # scene_types_in_cate = 0
+            # result_cat_level = 0
+            # if not filtered_scif_by_cat.empty:
+            #     scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
+            #     result_cat_level = 1.0 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
+            #         current_category_target)
+            # self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.pepsico_fk,
+            #                                numerator_result=scene_types_in_cate,
+            #                                denominator_id=category_fk, denominator_result=current_category_target,
+            #                                identifier_result=display_count_category_level_identifier,
+            #                                identifier_parent=identifier_parent_store_level,
+            #                                result=result_cat_level, should_enter=True)
+
+            scene_count_in_cate = 0
+            result_cat_level = 0
+            if not filtered_scif_by_cat.empty:
+                actual_scene_names_in_cate = filtered_scif_by_cat[Const.TEMPLATE_NAME].unique().tolist()
+                reverse_scene_dict = {}
+                for scene_type, actual_scene_name in relevant_scenes_dict.iteritems():
+                    for sc in actual_scene_names_in_cate:
+                        if actual_scene_name == sc:
+                            reverse_scene_dict[actual_scene_name] = scene_type
+                df = filtered_scif_by_cat[[Const.TEMPLATE_NAME, 'scene_id']].drop_duplicates()
+                df['scene_type'] = df[Const.TEMPLATE_NAME].apply(lambda x: reverse_scene_dict.get(x))
+                by_scene_count_in_cat = df.groupby(['scene_type']).count()
+                for i, row in by_scene_count_in_cat.iterrows():
+                    scene_count_in_cate += 1 if row[Const.TEMPLATE_NAME]>=scene_targets[i] else row[Const.TEMPLATE_NAME]
+                result_cat_level = 1.0 if scene_count_in_cate >= current_category_target else scene_count_in_cate / float(
+                        current_category_target)
+            self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=scene_count_in_cate,
                                            denominator_id=category_fk, denominator_result=current_category_target,
                                            identifier_result=display_count_category_level_identifier,
-                                           identifier_parent=display_count_category_level_fk,
+                                           identifier_parent=identifier_parent_store_level,
                                            result=result_cat_level, should_enter=True)
 
         # Calculate count of display - scene_level
@@ -293,20 +315,124 @@ class PEPSICORUToolBox:
             scene_type_score = len(
                 filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == actual_scene_name][Const.SCENE_FK].unique())
 
-            result_scene_level = 100 if scene_type_score >= scene_type_target else scene_types_in_store / float(
+            result_scene_level = 1.0 if scene_type_score >= scene_type_target else scene_type_score / float(
                 scene_type_target)
             scene_type_fk = self.all_templates.loc[self.all_templates[Const.TEMPLATE_NAME] == actual_scene_name][
                 Const.TEMPLATE_FK].values[0]
-            display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
-                                                                              category=relevant_category)
             parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                            category=relevant_category)
             self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=self.pepsico_fk,
-                                           numerator_result=scene_types_in_store,
+                                           numerator_result=scene_type_score,
                                            denominator_id=relevant_category_fk, denominator_result=scene_type_target,
-                                           identifier_result=display_count_scene_level_identifier,
                                            identifier_parent=parent_identifier, context_id=scene_type_fk,
                                            result=result_scene_level, should_enter=True)
+
+            count_store_level += 1 if scene_type_score >= scene_type_target else scene_type_score
+
+        # Calculate count of display - store_level
+        result_store_level = 1.0 if count_store_level >= store_target else count_store_level / float(store_target)
+        self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+                                           numerator_result=count_store_level,
+                                           denominator_id=self.store_id, denominator_result=store_target,
+                                           identifier_result=identifier_parent_store_level,
+                                           result=result_store_level, should_enter=True)
+
+    # def calculate_count_of_displays_old(self):
+    #     """
+    #     This function will calculate the Count of # of Pepsi Displays KPI
+    #     :return:
+    #     """
+    #     # Notice! store_target is Integer, scene_type_list is a list and the rest are dictionaries
+    #     store_target, category_targets, scene_targets, scene_type_list = self.get_target_for_count_of_displays()
+    #     if not store_target:
+    #         Log.warning("No targets were defined for this store (pk = {})".format(self.store_id))
+    #         return
+    #     # Filtering out the main shelves
+    #     relevant_scenes_dict = self.get_relevant_scene_types_from_list(scene_type_list)
+    #     relevant_template_name_list = relevant_scenes_dict.values()
+    #     filtered_scif = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_template_name_list)]
+    #
+    #     # Calculate count of display - store_level
+    #     display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
+    #     scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
+    #     result_store_level = 100 if scene_types_in_store >= store_target else scene_types_in_store / float(store_target)
+    #     # self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+    #     #                                numerator_result=scene_types_in_store,
+    #     #                                denominator_id=self.store_id, denominator_result=store_target,
+    #     #                                identifier_result=display_count_store_level_fk,
+    #     #                                result=result_store_level, should_enter=True)
+    #
+    #     identifier_parent_store_level = self.common.get_dictionary(kpi_fk=display_count_store_level_fk)
+    #     self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+    #                                    numerator_result=scene_types_in_store,
+    #                                    denominator_id=self.store_id, denominator_result=store_target,
+    #                                    identifier_result=identifier_parent_store_level,
+    #                                    result=result_store_level, should_enter=True)
+    #
+    #     # Calculate count of display - category_level
+    #     display_count_category_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_CATEGORY_LEVEL)
+    #     for category in self.categories_to_calculate:
+    #         current_category_target = category_targets[category]
+    #         if not current_category_target:
+    #             continue
+    #         category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, category)
+    #         relevant_scenes = [scene_type for scene_type in relevant_template_name_list if
+    #                            category.upper() in scene_type.upper()]
+    #         filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
+    #         if filtered_scif_by_cat.empty:
+    #             continue
+    #         scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
+    #         result_cat_level = 100 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
+    #             current_category_target)
+    #         display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+    #                                                                              category=category)
+    #         # self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+    #         #                                numerator_result=scene_types_in_cate,
+    #         #                                denominator_id=category_fk, denominator_result=current_category_target,
+    #         #                                identifier_result=display_count_category_level_identifier,
+    #         #                                identifier_parent=display_count_category_level_fk,
+    #         #                                result=result_cat_level, should_enter=True)
+    #         self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
+    #                                        numerator_result=scene_types_in_cate,
+    #                                        denominator_id=category_fk, denominator_result=current_category_target,
+    #                                        identifier_result=display_count_category_level_identifier,
+    #                                        identifier_parent=identifier_parent_store_level,
+    #                                        result=result_cat_level, should_enter=True)
+    #
+    #
+    #     # Calculate count of display - scene_level
+    #     display_count_scene_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_SCENE_LEVEL)
+    #     for scene_type in relevant_scenes_dict.keys():
+    #         scene_type_target = scene_targets[scene_type]
+    #         if not scene_type_target:
+    #             continue
+    #         actual_scene_name = relevant_scenes_dict[scene_type]
+    #         relevant_category = self.get_category_from_template_name(actual_scene_name)
+    #         relevant_category_fk = self.get_relevant_pk_by_name(Const.CATEGORY, relevant_category)
+    #         scene_type_score = len(
+    #             filtered_scif[filtered_scif[Const.TEMPLATE_NAME] == actual_scene_name][Const.SCENE_FK].unique())
+    #
+    #         result_scene_level = 100 if scene_type_score >= scene_type_target else scene_types_in_store / float(
+    #             scene_type_target)
+    #         scene_type_fk = self.all_templates.loc[self.all_templates[Const.TEMPLATE_NAME] == actual_scene_name][
+    #             Const.TEMPLATE_FK].values[0]
+    #         display_count_scene_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+    #                                                                           category=relevant_category)
+    #         # parent_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
+    #         #                                                category=relevant_category)
+    #         # self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=self.pepsico_fk,
+    #         #                                numerator_result=scene_types_in_store,
+    #         #                                denominator_id=relevant_category_fk, denominator_result=scene_type_target,
+    #         #                                identifier_result=display_count_scene_level_identifier,
+    #         #                                identifier_parent=parent_identifier, context_id=scene_type_fk,
+    #         #                                result=result_scene_level, should_enter=True)
+    #
+    #         self.common.write_to_db_result(fk=display_count_scene_level_fk, numerator_id=self.pepsico_fk,
+    #                                        numerator_result=scene_types_in_store,
+    #                                        denominator_id=relevant_category_fk, denominator_result=scene_type_target,
+    #                                        identifier_result=display_count_scene_level_identifier,
+    #                                        identifier_parent=identifier_parent_store_level, context_id=scene_type_fk,
+    #                                        result=result_scene_level, should_enter=True)
 
     def calculate_assortment(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
@@ -419,15 +545,15 @@ class PEPSICORUToolBox:
                         sos_filters=filter_sos_brand, **filter_general_brand_param)
 
                     # Facings level 4
-                    self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=self.pepsico_fk,
-                                                   numerator_result=num_facings, denominator_id=current_brand_fk,
+                    self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
+                                                   numerator_result=num_facings, denominator_id=current_sub_category_fk,
                                                    denominator_result=denom_facings,
                                                    identifier_result=facings_brand_identifier,
                                                    identifier_parent=facings_sub_cat_identifier,
                                                    result=num_facings / float(denom_facings), should_enter=True)
                     # Linear level 4
-                    self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=self.pepsico_fk,
-                                                   numerator_result=num_linear, denominator_id=current_brand_fk,
+                    self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=current_brand_fk,
+                                                   numerator_result=num_linear, denominator_id=current_sub_category_fk,
                                                    denominator_result=denom_linear,
                                                    identifier_result=linear_brand_identifier,
                                                    identifier_parent=linear_sub_cat_identifier,
