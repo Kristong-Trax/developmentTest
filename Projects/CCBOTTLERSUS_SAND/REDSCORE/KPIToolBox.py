@@ -39,8 +39,9 @@ class REDToolBox:
             for sheet in Const.SHEETS:
                 self.templates[sheet] = pd.read_excel(self.TEMPLATE_PATH, sheetname=sheet).fillna('')
             self.converters = self.templates[Const.CONVERTERS]
-            self.scene_results = self.ps_data_provider.get_scene_results(
+            self.scenes_results = self.ps_data_provider.get_scene_results(
                 self.scene_info['scene_fk'].drop_duplicates().values)
+            self.scenes_results = self.scenes_results[[Const.DB_RESULT, Const.DB_SCENE_FK, Const.DB_SCENE_KPI_FK]]
         else:
             self.TEMPLATE_PATH = Const.SURVEY_TEMPLATE_PATH
             self.RED_SCORE = Const.MANUAL_RED_SCORE
@@ -61,7 +62,6 @@ class REDToolBox:
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
-        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
         self.session_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
         self.all_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
         self.used_scenes = []
@@ -134,7 +134,7 @@ class REDToolBox:
         :param kpi_name: string
         :param result: boolean
         """
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
+        result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result * 1}
         self.session_results = self.session_results.append(result_dict, ignore_index=True)
 
     def write_to_all_levels(self, kpi_name, result, display_text, weight, scene_fk=None, reuse_scene=False):
@@ -149,9 +149,9 @@ class REDToolBox:
         """
         score = self.get_score(weight) * (result > 0)
         self.red_score += score
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score}
+        result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result, Const.SCORE: score}
         if scene_fk:
-            result_dict[Const.SCENE_FK] = scene_fk
+            result_dict[Const.DB_SCENE_FK] = scene_fk
             if not reuse_scene:
                 self.used_scenes.append(scene_fk)
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
@@ -202,7 +202,7 @@ class REDToolBox:
             result = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
             if result.empty:
                 continue
-            result = result.iloc[0][Const.RESULT]
+            result = result.iloc[0][Const.DB_RESULT]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             self.write_to_all_levels(kpi_name, result, display_text, weight)
@@ -219,10 +219,11 @@ class REDToolBox:
             for i, main_line in incremental_template.iterrows():
                 kpi_name = main_line[Const.KPI_NAME]
                 reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-                kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+                kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
                 if not reuse_scene:
-                    kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
-                true_results = kpi_results[kpi_results[Const.RESULT] > 0]
+                    kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
+                true_results = kpi_results[kpi_results[Const.DB_RESULT] > 0]
                 increments = main_line[Const.INCREMENTAL]
                 if ', ' in increments:
                     first_kpi = increments.split(', ')[0]
@@ -231,11 +232,11 @@ class REDToolBox:
                 if true_results.empty:
                     scene_template.loc[scene_template[Const.KPI_NAME] == kpi_name, Const.INCREMENTAL] = ""
                 else:
-                    true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
+                    true_results = true_results.sort_values(by=Const.DB_RESULT, ascending=False)
                     display_text = main_line[Const.DISPLAY_TEXT]
                     weight = main_line[Const.WEIGHT]
-                    scene_fk = true_results.iloc[0][Const.SCENE_FK]
-                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text,
+                    scene_fk = true_results.iloc[0][Const.DB_SCENE_FK]
+                    self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.DB_RESULT], display_text,
                                              weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
                     scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
             incremental_template = scene_template[scene_template[Const.INCREMENTAL] != ""]
@@ -251,17 +252,18 @@ class REDToolBox:
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
             if not reuse_scene:
-                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
-            true_results = kpi_results[kpi_results[Const.RESULT] > 0]
+                kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
+            true_results = kpi_results[kpi_results[Const.DB_RESULT] > 0]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             if true_results.empty:
                 continue
-            true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
-            scene_fk = true_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight,
+            true_results = true_results.sort_values(by=Const.DB_RESULT, ascending=False)
+            scene_fk = true_results.iloc[0][Const.DB_SCENE_FK]
+            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.DB_RESULT], display_text, weight,
                                      scene_fk=scene_fk, reuse_scene=reuse_scene)
             scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
         return scene_template
@@ -273,15 +275,16 @@ class REDToolBox:
         """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
             reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
             if not reuse_scene:
-                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
+                kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
             if kpi_results.empty:
                 continue
-            scene_fk = kpi_results.iloc[0][Const.SCENE_FK]
+            scene_fk = kpi_results.iloc[0][Const.DB_SCENE_FK]
             self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
 
     def write_scene_kpis(self, main_template):
@@ -310,23 +313,24 @@ class REDToolBox:
             if self.calculation_type == Const.MANUAL or main_line[Const.SESSION_LEVEL] == Const.V:
                 kpi_results = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
             else:
-                kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
+                kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
             condition_result = self.all_results[(self.all_results[Const.KPI_NAME] == condition) &
-                                                (self.all_results[Const.RESULT] > 0)]
+                                                (self.all_results[Const.DB_RESULT] > 0)]
             if condition_result.empty:
                 continue
             condition_result = condition_result.iloc[0]
-            condition_scene = condition_result[Const.SCENE_FK]
-            if condition_scene and Const.SCENE_FK in kpi_results:
-                results = kpi_results[kpi_results[Const.SCENE_FK] == condition_scene]
+            condition_scene = condition_result[Const.DB_SCENE_FK]
+            if condition_scene and Const.DB_SCENE_FK in kpi_results:
+                results = kpi_results[kpi_results[Const.DB_SCENE_FK] == condition_scene]
             else:
                 results = kpi_results
             if results.empty:
                 continue
-            result = results.iloc[0][Const.RESULT]
+            result = results.iloc[0][Const.DB_RESULT]
             display_text = main_line[Const.DISPLAY_TEXT]
             weight = main_line[Const.WEIGHT]
-            scene_fk = results.iloc[0][Const.SCENE_FK] if Const.SCENE_FK in kpi_results else None
+            scene_fk = results.iloc[0][Const.DB_SCENE_FK] if Const.DB_SCENE_FK in kpi_results else None
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
     def get_united_scenes(self):
