@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class PNGJPPositionGraphs:
+class DIAGEOESPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -23,10 +23,8 @@ class PNGJPPositionGraphs:
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_fk', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'category_local_name', 'shelf_number', TOP, BOTTOM, LEFT, RIGHT, 'x_mm', 'y_mm',
-                          'bay_number', 'width_mm_advance', 'height_mm_advance']
+    ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
+                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider
@@ -47,7 +45,6 @@ class PNGJPPositionGraphs:
     @property
     def match_product_in_scene(self):
         if not hasattr(self, '_match_product_in_scene'):
-            self.rds_conn.connect_rds()
             self._match_product_in_scene = self.get_filtered_matches()
         return self._match_product_in_scene
 
@@ -59,7 +56,7 @@ class PNGJPPositionGraphs:
             self.create_position_graphs(scene_id)
         return self.position_graphs.get(scene_id)
 
-    def get_filtered_matches(self, include_stacking=False):
+    def get_filtered_matches(self):
         matches = self.data_provider[Data.MATCHES]
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
@@ -70,6 +67,7 @@ class PNGJPPositionGraphs:
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
+        matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches
 
@@ -106,7 +104,8 @@ class PNGJPPositionGraphs:
         else:
             scenes = self.match_product_in_scene['scene_fk'].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
+                                                  (self.match_product_in_scene['stacking_layer'] == 1)]
             matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
@@ -231,6 +230,8 @@ class PNGJPPositionGraphs:
             Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
+        if len(graph.es) == 0:
+            return []
         edges_to_remove = graph.es.select(direction_ne='left')
         graph.delete_edges([edge.index for edge in edges_to_remove])
 
