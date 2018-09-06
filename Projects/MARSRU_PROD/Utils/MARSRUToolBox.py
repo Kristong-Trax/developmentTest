@@ -1871,8 +1871,13 @@ class MARSRU_PRODMARSRUKPIToolBox:
                         (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
                         (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
                         (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+                    top_products_outside_golden_shelf = self.match_product_in_scene[
+                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] < min_shelf) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] > max_shelf) &
+                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
 
-                    if len(top_products_on_golden_shelf) < len(top_products_in_store):
+                    if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
                         result = 'FALSE'
                         score = 0
                     else:
