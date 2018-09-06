@@ -24,8 +24,7 @@ class DIAGEOESPositionGraphs:
     STRICT_MODE = 'Strict Mode'
 
     ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
-                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          TOP, BOTTOM, LEFT, RIGHT]
+                          'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider

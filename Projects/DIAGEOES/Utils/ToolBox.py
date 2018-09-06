@@ -9,8 +9,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from KPIUtils.GeneralToolBox import GENERALToolBox
-
+from Projects.DIAGEOES.Utils.GeneralToolBox import DIAGEOESGENERALToolBox
 
 
 __author__ = 'Nimrod'
@@ -28,7 +27,7 @@ GROUP_NAME = 'Group Name'
 PRODUCT_NAME = 'Product Name'
 
 
-class DIAGEOESConsts(object):
+class DIAGEORUConsts(object):
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -78,13 +77,6 @@ class DIAGEOESConsts(object):
     BRAND_NAME = 'Brand Name'
     SUB_BRAND_NAME = 'Brand Variant'
 
-    # Activation Standard
-    ACTIVATION_KPI_NAME = 'KPI Name'
-    ACTIVATION_SET_NAME = 'Set Name'
-    ACTIVATION_TARGET = 'Target'
-    ACTIVATION_SCORE = 'Score'
-    ACTIVATION_WEIGHT = 'Weight'
-
     VISIBILITY_PRODUCTS_FIELD = 'additional_attribute_2'
     BRAND_POURING_FIELD = 'additional_attribute_1'
 
@@ -95,17 +87,17 @@ class DIAGEOESConsts(object):
                              'display': 'display_name'}
 
     KPI_SETS = ['MPA', 'Local MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
-                'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring']
+                'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring',
+                'Visible to Consumer %']
     KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
-                                      'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer']
+                                      'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA',
+                                      'Visible to Consumer %']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer', 'Visible to Consumer %', 'Secondary Displays']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
 
 
-class DIAGEOToolBox(DIAGEOESConsts):
-
-    ACTIVATION_STANDARD = 'Activation Standard'
+class DIAGEOESDIAGEOToolBox(DIAGEORUConsts):
 
     def __init__(self, data_provider, output, **data):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -116,7 +108,7 @@ class DIAGEOToolBox(DIAGEOESConsts):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = GENERALToolBox(data_provider, output, **data)
+        self.general_tools = DIAGEOESGENERALToolBox(data_provider, output, **data)
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
 
@@ -206,8 +198,8 @@ class DIAGEOToolBox(DIAGEOESConsts):
         """
         brand_pouring_status = False
 
-        sub_category = self.scif[(self.scif['brand_name'] == brand) &
-                                 (self.scif['category'] == 'Spirit')]['sub_category'].values[0]
+        sub_category = self.all_products[(self.all_products['brand_name'] == brand) &
+                                         (self.all_products['category'] == 'Spirit')]['sub_category'].values[0]
         filtered_df = self.scif[self.get_filter_condition(self.scif, sub_category=sub_category, **filters)]
         if filtered_df[filtered_df['brand_name'] == brand].empty:
             return False
@@ -358,7 +350,7 @@ class DIAGEOToolBox(DIAGEOESConsts):
                 else:
                     json_data[i][key] = unicode(json_data[i][key]).strip()
                 try:
-                    json_data[i][unicode(key).strip()] = json_data[i].pop(key)
+                    json_data[i][str(key).strip()] = json_data[i].pop(key)
                 except KeyError:
                     continue
         return filter(bool, json_data)

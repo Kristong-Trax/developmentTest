@@ -8,14 +8,14 @@ from Projects.DIAGEOES.KPIGenerator import DIAGEOESGenerator
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 
-__author__ = 'Yasmin'
+__author__ = 'Nimrod'
 
 
 class DIAGEOESCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         common = Common(self.data_provider)
-        # DIAGEOESGenerator(self.data_provider, self.output).main_function()
+        DIAGEOESGenerator(self.data_provider, self.output).main_function()
         DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')

@@ -20,13 +20,3 @@ class DIAGEOESQueries(object):
         return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
-
-    @staticmethod
-    def get_match_display(session_uid):
-        return """
-            select d.display_name
-            from probedata.match_display_in_scene m
-            join probedata.scene s on s.pk = m.scene_fk
-            join static.display d on d.pk = m.display_fk
-            where s.session_uid = '{}'
-        """.format(session_uid)
