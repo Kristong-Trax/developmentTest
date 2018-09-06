@@ -1016,12 +1016,10 @@ class BATRUToolBox:
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
                 if section_shelf_data_all.empty:
                     Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
-                    # continue
-
-                section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
-                if section_shelf_data.empty:
-                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
-                    # continue
+                else:
+                    section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
+                    if section_shelf_data.empty:
+                        Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
 
                 # Initial pass values
                 no_competitors = True
@@ -1031,89 +1029,91 @@ class BATRUToolBox:
                 sku_repeating_passed = False
                 misplaced_products = []
 
-                # Checking Competitors
-                if len(section_shelf_data[~((section_shelf_data['manufacturer_name'] == BAT) |
-                                            (section_shelf_data['product_type'].isin([EMPTY])))]['manufacturer_name'].unique().tolist()) > 0:
-                    no_competitors = False
+                if not section_shelf_data.empty:
 
-                else:  # No Competitors
+                    # Checking Competitors
+                    if len(section_shelf_data[~((section_shelf_data['manufacturer_name'] == BAT) |
+                                                (section_shelf_data['product_type'].isin([EMPTY])))]['manufacturer_name'].unique().tolist()) > 0:
+                        no_competitors = False
 
-                    # Checking SKU Presence
-                    outside_shelf_data = self.match_product_in_scene\
-                        .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
-                    outside_shelf_data = outside_shelf_data[
-                        ~(
-                                (outside_shelf_data['scene_fk'] == scene) &
-                                (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
-                        ) &
-                        (
-                                (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
-                                (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
-                        )]\
-                        .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
-                        .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
+                    else:  # No Competitors
 
-                    specific_section_products_template = self.get_relevant_section_products(
-                        sections_products_template_data, section, state_for_calculation, fixture)
-                    section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
+                        # Checking SKU Presence
+                        outside_shelf_data = self.match_product_in_scene\
+                            .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
+                        outside_shelf_data = outside_shelf_data[
+                            ~(
+                                    (outside_shelf_data['scene_fk'] == scene) &
+                                    (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
+                            ) &
+                            (
+                                    (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
+                                    (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
+                            )]\
+                            .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
+                            .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
 
-                    sku_presence_passed = self.check_sku_presence(specific_section_products_template,
-                                                                  section_shelf_data, outside_shelf_data)
+                        specific_section_products_template = self.get_relevant_section_products(
+                            sections_products_template_data, section, state_for_calculation, fixture)
+                        section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
 
-                    if sku_presence_passed:
+                        sku_presence_passed = self.check_sku_presence(specific_section_products_template,
+                                                                      section_shelf_data, outside_shelf_data)
 
-                        # Checking SKU Sequence and Empties
-                        last_prod_seq_ind = 0
-                        sku_sequence_passed = True
-                        no_empties = True
-                        for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
+                        if sku_presence_passed:
 
-                            product_ean_code = section_shelf_data\
-                                .loc[section_shelf_data['sequence'] == sequence]['product_ean_code_lead'].values[0]
-                            product_type = section_shelf_data\
-                                .loc[section_shelf_data['sequence'] == sequence]['product_type'].values[0]
-                            manufacturer_name = section_shelf_data\
-                                .loc[section_shelf_data['sequence'] == sequence]['manufacturer_name'].values[0]
+                            # Checking SKU Sequence and Empties
+                            last_prod_seq_ind = 0
+                            sku_sequence_passed = True
+                            no_empties = True
+                            for sequence in sorted(section_shelf_data['sequence'].unique().tolist()):
 
-                            if manufacturer_name == BAT and product_type == OTHER:
-                                continue
+                                product_ean_code = section_shelf_data\
+                                    .loc[section_shelf_data['sequence'] == sequence]['product_ean_code_lead'].values[0]
+                                product_type = section_shelf_data\
+                                    .loc[section_shelf_data['sequence'] == sequence]['product_type'].values[0]
+                                manufacturer_name = section_shelf_data\
+                                    .loc[section_shelf_data['sequence'] == sequence]['manufacturer_name'].values[0]
 
-                            if product_type == EMPTY:
-                                no_empties = False
+                                if manufacturer_name == BAT and product_type == OTHER:
+                                    continue
 
-                            if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
-                                prod_seq_ind = sequence_template_data\
-                                    .loc[sequence_template_data['product_ean_code_lead'] == product_ean_code]['index'].values[0]
-                                if not (int(prod_seq_ind) >= int(last_prod_seq_ind)):
+                                if product_type == EMPTY:
+                                    no_empties = False
+
+                                if product_ean_code in sequence_template_data['product_ean_code_lead'].unique().tolist():
+                                    prod_seq_ind = sequence_template_data\
+                                        .loc[sequence_template_data['product_ean_code_lead'] == product_ean_code]['index'].values[0]
+                                    if not (int(prod_seq_ind) >= int(last_prod_seq_ind)):
+                                        sku_sequence_passed = False
+                                        break
+                                    last_prod_seq_ind = prod_seq_ind
+                                elif manufacturer_name == BAT and product_type in (SKU, POSM):
+                                    Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
                                     sku_sequence_passed = False
                                     break
-                                last_prod_seq_ind = prod_seq_ind
-                            elif manufacturer_name == BAT and product_type in (SKU, POSM):
-                                Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
-                                sku_sequence_passed = False
-                                break
 
-                        if sku_sequence_passed:
+                            if sku_sequence_passed:
 
-                            # Checking SKU Repeating
-                            if len(specific_section_products_template['product_ean_code_lead'].tolist()) == \
-                                    len(specific_section_products_template['Index (Duplications priority)'].tolist()):
-                                priorities_section = \
-                                    specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
-                            else:
-                                priorities_section = \
-                                    priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']]
+                                # Checking SKU Repeating
+                                if len(specific_section_products_template['product_ean_code_lead'].tolist()) == \
+                                        len(specific_section_products_template['Index (Duplications priority)'].tolist()):
+                                    priorities_section = \
+                                        specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
+                                else:
+                                    priorities_section = \
+                                        priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']]
 
-                            sku_repeating_passed = self.check_sku_repeating(section_shelf_data, priorities_section)
+                                sku_repeating_passed = self.check_sku_repeating(section_shelf_data, priorities_section)
 
-                    else:  # SKU Presence failed
+                        else:  # SKU Presence failed
 
-                        # Defining misplaced products
-                        misplaced_products_eans = \
-                            list(set(section_shelf_data['product_ean_code_lead']).difference(section_products))
-                        misplaced_products = \
-                            section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
-                                'product_name'].unique().tolist()
+                            # Defining misplaced products
+                            misplaced_products_eans = \
+                                list(set(section_shelf_data['product_ean_code_lead']).difference(section_products))
+                            misplaced_products = \
+                                section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
+                                    'product_name'].unique().tolist()
 
                 # Initial score values
                 sku_presence_score = 0
