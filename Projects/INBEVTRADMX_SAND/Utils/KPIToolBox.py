@@ -465,9 +465,9 @@ class INBEVTRADMXToolBox:
 
     def main_calculation(self):
         # calculate geo
-        # geo_result = self.geo.calculate_geo_location()
-        # self.geo.write_geo_to_db(float(geo_result))
+        geo_result = self.geo.calculate_geo_location()
+        self.geo.write_geo_to_db(float(geo_result))
 
         # calculate from template
         self.calculate_kpi_set_from_template()
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
