@@ -305,7 +305,7 @@ class CCRUTopSKUAssortment:
                 self.stores_processed = []
 
         Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
-                 .format(len(self.deactivation_queries), len(self.extension_queries), len(self.insert_queries)))
+                 .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
         Log.info("Top SKU targets are uploaded!")
 
