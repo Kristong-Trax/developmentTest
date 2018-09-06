@@ -120,7 +120,7 @@ class PEPSICORUToolBox:
             Log.warning("No categories at scene item facts!")
             return []
 
-        store_type = self.scif[Const.ADDITIONAL_ATTRIBUTE_2].unique().tolist()[0]
+        store_type = self.store_info[Const.ADDITIONAL_ATTRIBUTE_2].values[0]
         if not store_type:
             Log.warning("Invalid additional_attribute_2 for store id = {}".format(self.store_id))
             return []
