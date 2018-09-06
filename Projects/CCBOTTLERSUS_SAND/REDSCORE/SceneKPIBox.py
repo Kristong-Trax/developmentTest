@@ -58,7 +58,7 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         for i, scene_result in self.scenes_results.iterrows():
             self.common.write_to_db_result(
                 fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME] + Const.SCENE_SUFFIX),
-                result=round(scene_result[Const.RESULT], 2), by_scene=True)
+                result=round(scene_result[Const.DB_RESULT], 2), by_scene=True)
 
     def write_to_scene_level(self, kpi_name, result=False, parent=""):
         """
@@ -70,8 +70,8 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         """
         if parent and result:
             self.scenes_results.loc[(self.scenes_results[Const.KPI_NAME] == parent) &
-                                    (self.scenes_results[Const.RESULT] > 0), Const.RESULT] += 1
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
+                                    (self.scenes_results[Const.DB_RESULT] > 0), Const.DB_RESULT] += 1
+        result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result * 1}
         self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
     def calculate_main_kpi(self, main_line):
