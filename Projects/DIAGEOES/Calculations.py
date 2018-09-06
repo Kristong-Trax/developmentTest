@@ -8,7 +8,7 @@ from Projects.DIAGEOES.KPIGenerator import DIAGEOESGenerator
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 
-__author__ = 'Yasmin'
+__author__ = 'Nimrod'
 
 
 class DIAGEOESCalculations(BaseCalculationsScript):
@@ -21,12 +21,12 @@ class DIAGEOESCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageoes calculations')
-#     Config.init()
-#     project_name = 'diageoes'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = '065F07D9-B669-45E2-82D5-38C69C2AC9D6'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     DIAGEOESCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('diageoes calculations')
+    Config.init()
+    project_name = 'diageoes'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'F9E5B557-84D2-4334-9814-6B972FA950AF'
+    data_provider.load_session_data(session)
+    output = Output()
+    DIAGEOESCalculations(data_provider, output).run_project_calculations()

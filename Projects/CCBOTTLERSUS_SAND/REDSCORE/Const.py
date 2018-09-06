@@ -3,8 +3,8 @@ __author__ = 'Elyashiv'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.4.xlsx')
-    SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.5.xlsx')
+    SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
                                         'SurveyTemplateV2.xlsx')
     STORE_TYPES = {
         "CR SOVI RED": "CR&LT",
@@ -83,13 +83,13 @@ class Const(object):
     NAME_IN_TEMP = "name_in_template"
     NAME_IN_DB = "name_in_db"
 
-    # table of scene results:
-    SCENE_FK = "scene_fk"
-    RESULT = "result"
+    # tables of results:
+    DB_SCENE_KPI_FK = "kpi_level_2_fk"
+    DB_SCENE_FK = "scene_fk"
+    DB_RESULT = "result"
     KPI_FK = "kpi_fk"
     SCORE = "score"
-    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
-    COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
+    COLUMNS_OF_RESULTS = [KPI_NAME, DB_RESULT]
 
     # constants:
     ALL = "ALL"
@@ -112,3 +112,4 @@ class Const(object):
         SOVI,
         MANUAL
     ]
+    SCENE_SUFFIX = " - scene"

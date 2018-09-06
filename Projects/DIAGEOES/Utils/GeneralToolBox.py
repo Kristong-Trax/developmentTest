@@ -2,15 +2,27 @@
 import xlrd
 import json
 import pandas as pd
-
+import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
+from datetime import datetime
 
 from Projects.DIAGEOES.Utils.PositionGraph import DIAGEOESPositionGraphs
 
 __author__ = 'Nimrod'
 
+BUCKET = 'traxuscalc'
+
+EMPTY = 'Empty'
+POURING_SURVEY_TEXT = 'Are the below brands pouring?'
+UPDATED_DATE_FILE = 'LastUpdated'
+UPDATED_DATE_FORMAT = '%Y-%m-%d'
+CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
+
+KPI_NAME = 'Atomic'
+GROUP_NAME = 'Group Name'
+PRODUCT_NAME = 'Product Name'
 
 class DIAGEOESGENERALToolBox:
 
@@ -26,6 +38,15 @@ class DIAGEOESGENERALToolBox:
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
+
+    DIAGEO = 'Diageo'
+    ASSORTMENT = 'assortment'
+    AVAILABILITY = 'availability'
+
+    RELEVANT_FOR_STORE = 'Y'
+    IRRELEVANT_FOR_STORE = 'N'
+    OR_OTHER_PRODUCTS = 'Or'
+
 
     def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -147,9 +168,15 @@ class DIAGEOESGENERALToolBox:
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            if not filters:
+                filtered_df = self.match_product_in_scene.copy()
+            else:
+                filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         else:
-            filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+            if not filters:
+                filtered_df = self.scif.copy()
+            else:
+                filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if minimum_assortment_for_entity == 1:
             assortment = len(filtered_df[assortment_entity].unique())
         else:
@@ -388,8 +415,6 @@ class DIAGEOESGENERALToolBox:
 
         # removing unnecessary edges
         filtered_scene_graph = graph.copy()
-        if len(filtered_scene_graph.es) == 0:
-            return pass_counter, reject_counter
         edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
         filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
@@ -617,28 +642,6 @@ class DIAGEOESGENERALToolBox:
                 break
         return validated
 
-    def get_scene_blocks(self, graph, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
-        """
-        This function is a sub-function for Block Together. It receives a graph and filters and returns a list of
-        clusters.
-        """
-        relevant_vertices = set(self.filter_vertices_from_graph(graph, **filters))
-        if allowed_products_filters:
-            allowed_vertices = self.filter_vertices_from_graph(graph, **allowed_products_filters)
-        else:
-            allowed_vertices = set()
-
-        if include_empty == self.EXCLUDE_EMPTY:
-            empty_vertices = {v.index for v in graph.vs.select(product_type='Empty')}
-            allowed_vertices = set(allowed_vertices).union(empty_vertices)
-
-        all_vertices = {v.index for v in graph.vs}
-        vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
-        graph.delete_vertices(vertices_to_remove)
-        # removing clusters including 'allowed' SKUs only
-        blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
-        return blocks, graph
-
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, result_by_scene=False, **filters):
         """
@@ -662,9 +665,22 @@ class DIAGEOESGENERALToolBox:
         cluster_ratios = []
         for scene in relevant_scenes:
             scene_graph = self.position_graphs.get(scene).copy()
-            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **filters)
 
+            relevant_vertices = set(self.filter_vertices_from_graph(scene_graph, **filters))
+            if allowed_products_filters:
+                allowed_vertices = self.filter_vertices_from_graph(scene_graph, **allowed_products_filters)
+            else:
+                allowed_vertices = set()
+
+            if include_empty == self.EXCLUDE_EMPTY:
+                empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
+                allowed_vertices = set(allowed_vertices).union(empty_vertices)
+
+            all_vertices = {v.index for v in scene_graph.vs}
+            vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
+            scene_graph.delete_vertices(vertices_to_remove)
+            # removing clusters including 'allowed' SKUs only
+            clusters = [cluster for cluster in scene_graph.clusters() if set(cluster).difference(allowed_vertices)]
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
@@ -694,153 +710,6 @@ class DIAGEOESGENERALToolBox:
                 return max(cluster_ratios)
             else:
                 return None
-
-    def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
-        """
-        :param conditions: A dictionary which contains assortment/availability conditions for filtering the blocks,
-                           in the form of: {entity_type: (0 for assortment or 1 for availability,
-                                                          a list of values =or None=,
-                                                          minimum number of assortment/availability)}.
-                           For example: {'product_ean_code': ('44545345434', 3)}
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param min_number_of_blocks: The number of blocks needed in order for the KPI to pass.
-                                     If all appearances are required: == self.ALL.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: The number of blocks (from all scenes) which match the filters and conditions.
-        """
-        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-        if len(relevant_scenes) == 0:
-            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-            return False
-
-        number_of_blocks = 0
-        for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
-            blocks, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=None,
-                                                        include_empty=include_empty, **filters)
-            for block in blocks:
-                entities_data = {entity: [] for entity in conditions.keys()}
-                for vertex in block:
-                    vertex_attributes = scene_graph.vs[vertex].attributes()
-                    for entity in conditions.keys():
-                        entities_data[entity].append(vertex_attributes[entity])
-
-                block_successful = True
-                for entity in conditions.keys():
-                    assortment_or_availability, values, minimum_result = conditions[entity]
-                    if assortment_or_availability == 0:
-                        if values:
-                            result = len(set(entities_data[entity]).intersection(values))
-                        else:
-                            result = len(set(entities_data[entity]))
-                    elif assortment_or_availability == 1:
-                        if values:
-                            result = len([facing for facing in entities_data if facing in values])
-                        else:
-                            result = len(entities_data[entity])
-                    else:
-                        continue
-                    if result < minimum_result:
-                        block_successful = False
-                        break
-                if block_successful:
-                    number_of_blocks += 1
-                    if number_of_blocks >= min_number_of_blocks:
-                        return True
-                else:
-                    if min_number_of_blocks == self.ALL:
-                        return False
-
-        if number_of_blocks >= min_number_of_blocks or min_number_of_blocks == self.ALL:
-            return True
-        return False
-
-    def calculate_flexible_blocks(self, number_of_allowed_others=2, **filters):
-        """
-        :param number_of_allowed_others: Number of allowed irrelevant facings between two cluster of relevant facings.
-        :param filters: The relevant facings of the block.
-        :return: This function calculates the number of 'flexible blocks' per scene, meaning, blocks which are allowed
-                 to have a given number of irrelevant facings between actual chunks of relevant facings.
-        """
-        results = {}
-        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
-        if len(relevant_scenes) == 0:
-            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-            return results
-        for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
-            blocks, scene_graph = self.get_scene_blocks(scene_graph, **filters)
-            blocks.sort(key=lambda x: len(x), reverse=True)
-            blocks = [(0, self.get_block_edges(scene_graph.copy().vs[block])) for block in blocks]
-            new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, list(blocks))
-            while len(blocks) != len(new_blocks):
-                blocks = list(new_blocks)
-                new_blocks = self.merge_blocks_into_flexible_blocks(filters, scene, number_of_allowed_others, blocks)
-            results[scene] = len(new_blocks)
-        return results
-
-    def merge_blocks_into_flexible_blocks(self, filters, scene_id, number_of_allowed_others, blocks):
-        """
-        This function receives blocks' ranges and tries to merge them based on an allowed number of irrelevant facings
-        between them. If it manages to merge two blocks, it removes the original blocks and adds the merged block,
-        and returns the new list immediately (merges at most one pair of blocks in one run).
-        """
-        for block1 in blocks:
-            previous1, range1 = block1
-            for block2 in blocks:
-                previous2, range2 = block2
-
-                if block1 != block2:
-                    top = min(range1[0], range2[0])
-                    right = max(range1[1], range2[1])
-                    bottom = max(range1[2], range2[2])
-                    left = min(range1[3], range2[3])
-
-                    number_of_others = self.get_number_of_others_in_block_range(filters, scene_id, top, right, bottom, left)
-                    previous_others = previous1 + previous2
-
-                    if number_of_others <= number_of_allowed_others + previous_others:
-                        blocks.insert(0, (previous_others + number_of_others, (top, right, bottom, left)))
-                        blocks.remove(block1)
-                        blocks.remove(block2)
-                        return blocks
-        return blocks
-
-    def get_block_edges(self, *block_graphs):
-        """
-        This function receives one or more vertex data of a block's graph, and returns the range of its edges -
-        The far most top, bottom, left and right pixels of its facings.
-        """
-        top = right = bottom = left = None
-        for graph in block_graphs:
-            max_top = min(graph.get_attribute_values(self.position_graphs.TOP))
-            max_right = max(graph.get_attribute_values(self.position_graphs.RIGHT))
-            max_bottom = max(graph.get_attribute_values(self.position_graphs.BOTTOM))
-            max_left = min(graph.get_attribute_values(self.position_graphs.LEFT))
-            if top is None or max_top < top:
-                top = max_top
-            if right is None or max_right > right:
-                right = max_right
-            if bottom is None or max_bottom > bottom:
-                bottom = max_bottom
-            if left is None or max_left < left:
-                left = max_left
-        return top, right, bottom, left
-
-    def get_number_of_others_in_block_range(self, filters, scene_id, top, right, bottom, left):
-        """
-        This function gets a scene, a range (in pixels) and filters, and checks how many facings are in that range
-         and are not part of the filters.
-        """
-        matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
-                                              (~self.match_product_in_scene['product_type'].isin(['Empty']))]
-        facings_in_range = matches[((matches[self.position_graphs.TOP].between(top, bottom-1)) |
-                                    (matches[self.position_graphs.BOTTOM].between(top+1, bottom))) &
-                                   ((matches[self.position_graphs.LEFT].between(left, right-1)) |
-                                    (matches[self.position_graphs.RIGHT].between(left+1, right)))]
-        relevant_facings_in_range = facings_in_range[self.get_filter_condition(facings_in_range, **filters)]
-        other_facings_in_range = len(facings_in_range) - len(relevant_facings_in_range)
-        return other_facings_in_range
 
     def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
         """
@@ -873,7 +742,7 @@ class DIAGEOESGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOGTRDIAGEOGTRGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOIEDIAGEOIEGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
@@ -917,11 +786,11 @@ class DIAGEOESGENERALToolBox:
         This function gets scene-item-facts filters of all kinds, extracts the relevant scenes by the location filters,
         and returns them along with the product filters only.
         """
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **filters)]['scene_id'].unique()
         location_filters = {}
         for field in filters.keys():
             if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
+        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
 
     @staticmethod
