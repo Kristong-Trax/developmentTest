@@ -290,8 +290,6 @@ class CCRUTopSKUAssortment:
 
             if count_stores_processed % 1 == 0 or count_stores_processed == count_stores_total:
 
-                Log.info("Starting committing to DB")
-
                 queries = []
 
                 queries += self.deactivation_queries
@@ -309,8 +307,9 @@ class CCRUTopSKUAssortment:
                 self.commit_results(queries)
                 queries = []
 
-                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
-                Log.info("Stores processed: {}".format(self.stores_processed))
+            if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
+                Log.info("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
+                # Log.info("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
         Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
