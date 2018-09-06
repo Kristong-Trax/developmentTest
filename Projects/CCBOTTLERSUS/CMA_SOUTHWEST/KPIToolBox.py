@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.6.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v5.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -24,7 +24,7 @@ STORE_TYPES = {
     "United Test - CR SOVI RED": "CR&LT",
     "FSOP - QSR": "QSR",
 }
-CMA_COMPLIANCE = 'CMA Compliance'
+CMA_COMPLIANCE = 'CMA Compliance SW'
 
 
 class CCBOTTLERSUSCMASOUTHWESTToolBox:
@@ -54,11 +54,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
-        self.program = self.store_info['additional_attribute_14'].iloc[0]
+        self.program = self.store_info['additional_attribute_3'].iloc[0]
         self.sales_center = self.store_info['additional_attribute_5'].iloc[0]
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
-        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
+        self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         self.total_score = 0
         self.ignore_stacking = False
@@ -99,12 +99,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
         if kpi_type == Const.SOS:
-            isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
             function = self.get_kpi_function(kpi_type)
             for i, kpi_line in relevant_template.iterrows():
-                result, score, target = function(kpi_line, relevant_scif, isnt_dp, general_filters)
+                result, score, target = function(kpi_line, relevant_scif, general_filters)
         else:
             pass
         if score > 0:
@@ -138,7 +137,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     # availability:
 
-    def calculate_availability(self, kpi_line, relevant_scif, isnt_dp):
+    def calculate_availability(self, kpi_line, relevant_scif):
         """
         checks if all the lines in the availability sheet passes the KPI (there is at least one product
         in this relevant scif that has the attributes).
@@ -148,8 +147,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         :param kpi_line: line from the availability sheet
         :return: boolean
         """
-        if isnt_dp and kpi_line[Const.MANUFACTURER] in Const.DP_MANU:
-            return True
         filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
         target = kpi_line[Const.TARGET]
         return filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= target
@@ -192,7 +189,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     # SOS:
 
-    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp, general_filters):
+    def calculate_sos(self, kpi_line, relevant_scif, general_filters):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -209,9 +206,13 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         num_type = kpi_line[Const.NUM_TYPES_1]
         num_value = kpi_line[Const.NUM_VALUES_1].split(',')
         # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        if isnt_dp:
-            general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
-        target = self.get_sos_targets(kpi_name)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        if kpi_line['range'] == 'Y':
+            upper_limit, lower_limit = self.get_sos_targets(kpi_name, sos_range=True)
+            target = None
+        else:
+            upper_limit, lower_limit = None, None
+            target = self.get_sos_targets(kpi_name)
         general_filters[den_type] = den_value
         if kpi_line[Const.DEN_TYPES_2]:
             den_type_2 = kpi_line[Const.DEN_TYPES_2]
@@ -228,6 +229,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
         if target:
             score = 1 if sos_value >= target*100 else 0
+        elif not target and upper_limit and lower_limit:
+            score = 1 if (lower_limit * 100 <= sos_value <= upper_limit * 100) else 0
         else:
             score = 1
             target = 0
@@ -235,16 +238,24 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     # Targets:
 
-    def get_sos_targets(self, kpi_name):
+    def get_sos_targets(self, kpi_name, sos_range=False):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
                                              (targets_template['region'] == self.region)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
-        if not filtered_targets_to_kpi.empty:
-            target = filtered_targets_to_kpi[Const.TARGET].values[0]
+        if sos_range:
+            if not filtered_targets_to_kpi.empty:
+                upper_limit = filtered_targets_to_kpi['upper limit'].values[0]
+                lower_limit = filtered_targets_to_kpi['lower limit'].values[0]
+            else:
+                upper_limit, lower_limit = None, None
+            return upper_limit, lower_limit
         else:
-            target = None
-        return target
+            if not filtered_targets_to_kpi.empty:
+                target = filtered_targets_to_kpi[Const.TARGET].values[0]
+            else:
+                target = None
+            return target
 
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
@@ -258,7 +269,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         return target
 
     # Number of shelves
-    def calculate_number_of_shelves(self, kpi_line, relevant_scif, isnt_dp, general_filters):
+    def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -275,8 +286,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         num_type = kpi_line[Const.NUM_TYPES_1]
         num_value = kpi_line[Const.NUM_VALUES_1].split(',')
         # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        if isnt_dp:
-            general_filters['manufacturer_name'] = (Const.DP_MANU, 0)
         target = self.get_sos_targets(kpi_name)
         general_filters[den_type] = den_value
         if kpi_line[Const.DEN_TYPES_2]:
