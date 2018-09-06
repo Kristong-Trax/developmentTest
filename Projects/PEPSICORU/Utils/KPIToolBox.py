@@ -248,9 +248,8 @@ class PEPSICORUToolBox:
         relevant_template_name_list = relevant_scenes_dict.values()
         filtered_scif = self.scif.loc[self.scif[Const.TEMPLATE_NAME].isin(relevant_template_name_list)]
 
-        # Calculate count of display - store_level
-        display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
 
+        display_count_store_level_fk = self.common.get_kpi_fk_by_kpi_type(Const.DISPLAY_COUNT_STORE_LEVEL)
         scene_types_in_store = len(filtered_scif[Const.SCENE_FK].unique())
         identifier_parent_store_level = self.common.get_dictionary(kpi_fk=display_count_store_level_fk)
         count_store_level = 0
@@ -307,6 +306,7 @@ class PEPSICORUToolBox:
 
             count_store_level += 1 if scene_type_score >= scene_type_target else scene_type_score
 
+        # Calculate count of display - store_level
         result_store_level = 1.0 if count_store_level >= store_target else count_store_level / float(store_target)
         self.common.write_to_db_result(fk=display_count_store_level_fk, numerator_id=self.pepsico_fk,
                                            numerator_result=count_store_level,
