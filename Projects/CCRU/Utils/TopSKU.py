@@ -254,8 +254,21 @@ class CCRUTopSKUAssortment:
                 store_data[column] = store_raw_data[column]
             data.append(store_data)
 
+        count_stores_total = len(data)
+        count_stores_processed = 0
         for store_data in data:
+
             self.prepare_db_update_from_template(store_data)
+            count_stores_processed += 1
+
+
+
+            Log.info("Starting DB update")
+            queries = []
+            queries += self.deactivation_queries
+            queries += self.extension_queries
+            queries += self.merge_insert_queries(self.insert_queries)
+            self.commit_results(queries)
 
         Log.info("Starting DB update")
         queries = []
