@@ -83,6 +83,7 @@ class ValidateRelations(object):
                 # if not os.path.exists(project_x):
                 #     self.log_errors(project, ['ERROR: The project does not exists'])
                 if os.path.isdir(project_x):
+                    print "***Validating Imports for: {}".format(project_x)
                     p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     if project != 'CCUS':
                         self.log_errors(project, p.stderr.readlines())
