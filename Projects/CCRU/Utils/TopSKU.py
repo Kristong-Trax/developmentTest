@@ -189,8 +189,9 @@ class CCRUTopSKUAssortment:
         """
         for col in raw_data.columns:
             if str(col).count('.'):
-                # Log.warning("Duplicate column {} is encountered in the template and removed from loading".format(col.split('.')[0]))
-                self.duplicate_columns.append(col)
+                # Log.warning("Duplicate column {} is encountered in the template and removed from loading"
+                #             "".format(col.split('.')[0]))
+                self.duplicate_columns.append(col.split('.')[0])
         data = raw_data.drop(self.duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
         products_from_template = data.columns.tolist()
@@ -217,19 +218,19 @@ class CCRUTopSKUAssortment:
         stores_start_date = store_row[self.START_DATE]
         stores_end_date = store_row[self.END_DATE]
         if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
-            Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
+            # Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
             self.invalid_stores.append(store_number_1)
             return False
         if not stores_start_date or not stores_end_date:
-            Log.warning("Missing dates for store number {}".format(store_number_1))
+            # Log.warning("Missing dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if type(stores_start_date) in [str, unicode] or type(stores_end_date) in [str, unicode]:
-            Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
+            # Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if stores_start_date > stores_end_date:
-            Log.warning("Invalid dates for store number {}".format(store_number_1))
+            # Log.warning("Invalid dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
 
@@ -251,7 +252,7 @@ class CCRUTopSKUAssortment:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
-        Log.info("Starting EAN Codes validation")
+        Log.info("Starting template parsing and EAN Codes validation")
         raw_data = self.parse_and_validate(file_path)
         if self.duplicate_columns:
             Log.warning("The following columns are duplicate in the template and will be ignored ({}): "
@@ -263,6 +264,8 @@ class CCRUTopSKUAssortment:
         Log.info("Starting Stores validation")
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
+            if (index_data + 1) % 1000 == 0 or (index_data + 1) == raw_data.shape[0]:
+                Log.info("Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
             if not self.store_row_validator(store_raw_data):
                 continue
             store_data = {}
@@ -287,7 +290,7 @@ class CCRUTopSKUAssortment:
 
             if count_stores_processed % 1 == 0 or count_stores_processed == count_stores_total:
 
-                Log.info("Starting to commit to DB")
+                Log.info("Starting committing to DB")
 
                 queries = []
 
