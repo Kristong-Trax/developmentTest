@@ -282,8 +282,7 @@ class CCRUTopSKUAssortment:
             self.prepare_db_update_from_template(store_data)
             count_stores_processed += 1
 
-            if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.info("Starting writing to DB")
+            if count_stores_processed % 30 == 0 or count_stores_processed == count_stores_total:
                 queries = []
                 queries += self.deactivation_queries
                 queries += self.extension_queries
