@@ -81,8 +81,12 @@ class qa:
         self.kpi_results = self._get_kpi_results()
         # self.kpi_scene_results = self._get_kpi_scene_results()
         self.categories_df = self._get_categories()
-        self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
+        # self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
         self.expected = pd.read_csv('expected.csv')
+
+
+    def _get_merged_session_kpi_result(self):
+        pass
 
     def _get_kpi_results_meta_data(self):
         try:
@@ -138,7 +142,7 @@ class qa:
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
                                                               "password": self.connector.dbuser.cred,
-                                                              "partitionColumn": "tmp_scene_kpi_results.scene_fk",
+                                                              "partitionColumn": "tmp_kpi_level_2_results.session_fk",
                                                               "lowerBound": "{}".format(lower_bound),
                                                               "upperBound": "{}".format(upper_bound),
                                                               "numPartitions": "{}".format(number_of_partition),
@@ -169,7 +173,7 @@ class qa:
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
                                                            "password": self.connector.dbuser.cred,
-                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                           "partitionColumn": "tmp_scene_kpi_results.scene_fk",
                                                            "lowerBound": "{}".format(lower_bound),
                                                            "upperBound": "{}".format(upper_bound),
                                                            "numPartitions": "{}".format(number_of_partition),
@@ -203,17 +207,17 @@ class qa:
         categories.count()
         return categories
 
-    def test_uncalculated_kpi(self):
+    def test_uncalculated_session_kpi(self):
         """get list of kpi names that doesnt have any result """
 
         filtered = self.merged_kpi_results.filter('result is null')
-        df = filtered.groupBy("client_name", "result").count().withColumnRenamed('count', 'result_count')
+        df = filtered.groupBy("client_name", "result").count().withColumnRenamed('count', 'result_count').withColumnRenamed('client_name', 'name')
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session count"))
-        test_results = df.join(df2, df2.client_name == df.client_name)
+        test_results = df.join(df2, df2.client_name == df.name)
 
         print '## uncalculated kpi list ##'
         test_results.show(1000, False)
-        test_results_pandas = test_results.toPandas()
+        test_results_pandas = test_results.select("client_name","session count").toPandas()
         test_results_pandas.to_csv(RAW_DATA + "/uncalculated_kpi_list.csv")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
@@ -241,7 +245,7 @@ class qa:
         """ kpi with results is 0 """
 
         total_sessions = self.merged_kpi_results.select("session_fk").distinct().count()
-        filtered = self.merged_kpi_results.filter('result == 0')
+        filtered = self.merged_kpi_results.filter('result == 0 ')
         df = filtered.groupBy('client_name').count().withColumnRenamed('count', 'results_zero_count').withColumnRenamed(
             'client_name', 'name')
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session_count"))
@@ -363,13 +367,13 @@ class qa:
         stats = """ 
                 <p>
                 <br>
-                   +---------------------------+    <br>
+                   <br>
                     Project Name:  {project}  <br>
                     Dates:  {start_date} - {end_date}  <br>    
                     Total Results: {total_results}   <br>    
                     Total Sessions: {total_sessions}   <br>    
                     Total Kpi: {total_kpi}   <br>       
-                   +---------------------------+  <br>
+                    <br>
                 </p>
 
               """.format(project=self._project,
@@ -390,18 +394,25 @@ class qa:
         :return:
         '''
 
+
         self.start_html_report()
 
-        self.get_statistics()
+        # session kpi tests
+        self.static_kpi = self.static_kpi.filter('session_relevance == 1')
+        self.merged_kpi_results = self.static_kpi.join(self.kpi_results,
+                                                       self.static_kpi.pk == self.kpi_results.kpi_level_2_fk,
+                                                       how='left')
 
 
         with open(SUMMERY_FILE, 'a') as file:
             file.write("<div class='container' ")
+            file.write("<br> <h1 class='text-center'> Session KPI</h1>")
+            self.get_statistics()
             file.write("<br> <h2 class='text-center'> test invalid percent results</h2>")
             file.write(self.test_invalid_percent_results())
 
             file.write("<br> <h2 class='text-center'> test uncalculated kpi</h2>")
-            file.write(self.test_uncalculated_kpi())
+            file.write(self.test_uncalculated_session_kpi())
 
             file.write("<br> <h2 class='text-center'> test result is zero</h2>")
             file.write(self.test_result_is_zero())
@@ -420,19 +431,19 @@ class qa:
 
         self.gen_kpi_histogram()
 
+        # scene kpi tests
+
         self.end_html_report()
 
     #TODO
     # scene kpi results
-    # so results by store type
-
-
+    # input of session list
 
 
 if __name__ ==  "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbza', start_date='2018-08-30', end_date='2018-08-30')
+    qa_tool = qa('diageous', start_date='2018-08-25', end_date='2018-08-30')
     qa_tool.run_all_tests()
 
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
