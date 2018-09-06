@@ -26,7 +26,7 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()
+        # self.calculate_red_score()
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
@@ -35,12 +35,11 @@ class CCBOTTLERSUS_SANDGenerator:
     def calculate_manufacturer_displays(self):
         tool_box = DISPLAYSToolBox(self.data_provider, self.output)
         set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
-        for kpi_set_name in set_names:
-            if kpi_set_name == 'Manufacturer Displays':
-                tool_box.main_calculation()
-                set_fk = tool_box.kpi_static_data[tool_box.kpi_static_data['kpi_set_name'] == kpi_set_name][
-                    'kpi_set_fk'].values[0]
-                tool_box.commit_results_data(kpi_set_fk=set_fk)
+        if 'Manufacturer Displays' in set_names:
+            tool_box.main_calculation()
+            set_fk = tool_box.kpi_static_data[tool_box.kpi_static_data['kpi_set_name'] == 'Manufacturer Displays'][
+                'kpi_set_fk'].values[0]
+            tool_box.commit_results_data(kpi_set_fk=set_fk)
 
     # @log_runtime('Bci CCBOTTLERSUS_SANDCalculations')
     # def calculate_bci(self):
