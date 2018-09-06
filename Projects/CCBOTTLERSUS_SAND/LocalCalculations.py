@@ -1,4 +1,4 @@
-
+import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -33,19 +33,19 @@ if __name__ == '__main__':
         CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
     # session = 'bc8a1244-a53d-4b2f-9591-fcf57f9d3054'
     # scenes = [524228, 524241, 524244,
-    #           524253,
-    #             524260,
-    #             524274,
-    #             524306,
-    #             524317,
-    #             524330,
-    #             524338,
-    #             524343,
-    #             524354,
-    #             524398,
-    #             524420,
-    #             524445,
-    #             524494,
+    #           # 524253,
+    #           #   524260,
+    #           #   524274,
+    #           #   524306,
+    #           #   524317,
+    #           #   524330,
+    #           #   524338,
+    #           #   524343,
+    #           #   524354,
+    #           #   524398,
+    #           #   524420,
+    #           #   524445,
+    #           #   524494,
     #         ]
     # for scene in scenes:
     #     data_provider = KEngineDataProvider(project_name)
