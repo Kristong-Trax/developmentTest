@@ -40,12 +40,17 @@ class BATRU_SANDAssortment:
         self.products = {}
         self.all_queries = []
 
-        if self.start_date:
-            self.current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
-        else:
+        if self.start_date is None:
             self.current_date = datetime.now().date()
+        else:
+            self.current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
         self.deactivate_date = self.current_date - timedelta(1)
         self.activate_date = self.current_date
+
+        if self.partial_update in ('1', 'True', 'Yes', 'Y'):
+            self.partial_update = True
+        else:
+            self.partial_update = False
 
     def upload_assortment(self):
         """
@@ -350,4 +355,4 @@ class BATRU_SANDAssortment:
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for BATRU')
     BATRU_SANDAssortment().upload_assortment()
-    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial_update to the configuration
+    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial/full_update to the configuration
