@@ -31,8 +31,11 @@ class CCRUTopSKUAssortment:
         self.duplicate_columns = []
         self.products = {}
         self.deactivation_queries = []
+        self.deactivation_queries_count = 0
         self.extension_queries = []
+        self.extension_queries_count = 0
         self.insert_queries = []
+        self.insert_queries_count = 0
         self.merged_insert_queries = []
 
     @staticmethod
@@ -283,20 +286,25 @@ class CCRUTopSKUAssortment:
             count_stores_processed += 1
 
             if count_stores_processed % 30 == 0 or count_stores_processed == count_stores_total:
-                queries = []
-                queries += self.deactivation_queries
-                queries += self.extension_queries
-                queries += self.merge_insert_queries(self.insert_queries)
-                self.commit_results(queries)
-                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
-                Log.info("Stores processed: {}".format(self.stores_processed))
-                self.stores_processed = []
+
+                self.commit_results(self.deactivation_queries)
+                self.deactivation_queries_count += len(self.deactivation_queries)
                 self.deactivation_queries = []
+
+                self.commit_results(self.extension_queries)
+                self.extension_queries_count += len(self.extension_queries)
                 self.extension_queries = []
+
+                self.commit_results(self.merge_insert_queries(self.insert_queries))
+                self.insert_queries_count += len(self.insert_queries)
                 self.insert_queries = []
                 self.merged_insert_queries = []
 
-        Log.info("Total Top SKU uploading status: Deactivated = {}, Extended = {}, New = {}"
+                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.info("Stores processed: {}".format(self.stores_processed))
+                self.stores_processed = []
+
+        Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
                  .format(len(self.deactivation_queries), len(self.extension_queries), len(self.insert_queries)))
 
         Log.info("Top SKU targets are uploaded!")
