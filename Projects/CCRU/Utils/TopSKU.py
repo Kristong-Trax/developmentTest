@@ -285,7 +285,9 @@ class CCRUTopSKUAssortment:
             self.prepare_db_update_from_template(store_data)
             count_stores_processed += 1
 
-            if count_stores_processed % 30 == 0 or count_stores_processed == count_stores_total:
+            if count_stores_processed % 1 == 0 or count_stores_processed == count_stores_total:
+
+                Log.info("Starting to commit to DB")
 
                 self.commit_results(self.deactivation_queries)
                 self.deactivation_queries_count += len(self.deactivation_queries)
@@ -373,7 +375,6 @@ class CCRUTopSKUAssortment:
         return rds_conn, cur
 
     def commit_results(self, queries):
-        Log.info("Starting to commit the queries")
         batch_size = 1000
 
         rds_conn, cur = self.connection_ritual()
