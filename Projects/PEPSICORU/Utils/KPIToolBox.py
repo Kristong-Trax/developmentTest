@@ -206,7 +206,8 @@ class PEPSICORUToolBox:
         for scene_type in scene_types_with_targets:
             for category in category_targets:
                 if category.upper() in scene_type.upper():
-                    category_targets[category] += 1
+                    # category_targets[category] += 1
+                    category_targets[category] += target_row[scene_type]
             scene_targets[scene_type] = target_row[scene_type]
 
 
@@ -264,17 +265,39 @@ class PEPSICORUToolBox:
             relevant_scenes = [scene_type for scene_type in relevant_template_name_list if
                                category.upper() in scene_type.upper()]
             filtered_scif_by_cat = filtered_scif.loc[filtered_scif[Const.TEMPLATE_NAME].isin(relevant_scenes)]
-
-            scene_types_in_cate = 0
             display_count_category_level_identifier = self.common.get_dictionary(kpi_fk=display_count_category_level_fk,
                                                                                  category=category)
+            # scene_types_in_cate = 0
+            # result_cat_level = 0
+            # if not filtered_scif_by_cat.empty:
+            #     scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
+            #     result_cat_level = 1.0 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
+            #         current_category_target)
+            # self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.pepsico_fk,
+            #                                numerator_result=scene_types_in_cate,
+            #                                denominator_id=category_fk, denominator_result=current_category_target,
+            #                                identifier_result=display_count_category_level_identifier,
+            #                                identifier_parent=identifier_parent_store_level,
+            #                                result=result_cat_level, should_enter=True)
+
+            scene_count_in_cate = 0
             result_cat_level = 0
             if not filtered_scif_by_cat.empty:
-                scene_types_in_cate = len(filtered_scif_by_cat[Const.SCENE_FK].unique())
-                result_cat_level = 1.0 if scene_types_in_cate >= current_category_target else scene_types_in_cate / float(
-                    current_category_target)
+                actual_scene_names_in_cate = filtered_scif_by_cat[Const.TEMPLATE_NAME].unique().tolist()
+                reverse_scene_dict = {}
+                for scene_type, actual_scene_name in relevant_scenes_dict.iteritems():
+                    for sc in actual_scene_names_in_cate:
+                        if actual_scene_name == sc:
+                            reverse_scene_dict[actual_scene_name] = scene_type
+                df = filtered_scif_by_cat[[Const.TEMPLATE_NAME, 'scene_id']].drop_duplicates()
+                df['scene_type'] = df[Const.TEMPLATE_NAME].apply(lambda x: reverse_scene_dict.get(x))
+                by_scene_count_in_cat = df.groupby(['scene_type']).count()
+                for i, row in by_scene_count_in_cat.iterrows():
+                    scene_count_in_cate += 1 if row[Const.TEMPLATE_NAME]>=scene_targets[i] else row[Const.TEMPLATE_NAME]
+                result_cat_level = 1.0 if scene_count_in_cate >= current_category_target else scene_count_in_cate / float(
+                        current_category_target)
             self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.pepsico_fk,
-                                           numerator_result=scene_types_in_cate,
+                                           numerator_result=scene_count_in_cate,
                                            denominator_id=category_fk, denominator_result=current_category_target,
                                            identifier_result=display_count_category_level_identifier,
                                            identifier_parent=identifier_parent_store_level,
@@ -520,21 +543,6 @@ class PEPSICORUToolBox:
                                                                          brand_fk=current_brand_fk)
                     num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
                         sos_filters=filter_sos_brand, **filter_general_brand_param)
-
-                    # # Facings level 4
-                    # self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=self.pepsico_fk,
-                    #                                numerator_result=num_facings, denominator_id=current_brand_fk,
-                    #                                denominator_result=denom_facings,
-                    #                                identifier_result=facings_brand_identifier,
-                    #                                identifier_parent=facings_sub_cat_identifier,
-                    #                                result=num_facings / float(denom_facings), should_enter=True)
-                    # # Linear level 4
-                    # self.common.write_to_db_result(fk=linear_brand_kpi_fk, numerator_id=self.pepsico_fk,
-                    #                                numerator_result=num_linear, denominator_id=current_brand_fk,
-                    #                                denominator_result=denom_linear,
-                    #                                identifier_result=linear_brand_identifier,
-                    #                                identifier_parent=linear_sub_cat_identifier,
-                    #                                result=num_linear / float(denom_linear), should_enter=True)
 
                     # Facings level 4
                     self.common.write_to_db_result(fk=facings_brand_kpi_fk, numerator_id=current_brand_fk,
