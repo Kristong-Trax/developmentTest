@@ -164,7 +164,7 @@ class BATRU_SANDToolBox:
         self.state = self.get_state()
         self.p4_display_count = {}
 
-#init functions
+# init functions
 
     def encode_data_frames(self):
         self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
@@ -213,8 +213,8 @@ class BATRU_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        self.handle_priority_1()
-        self.handle_priority_2()
+        # self.handle_priority_1()
+        # self.handle_priority_2()
         self.handle_priority_3()
         self.handle_priority_4()
         self.handle_priority_5()
@@ -899,7 +899,7 @@ class BATRU_SANDToolBox:
                 Log.error('{}'.format(e))
 
     @staticmethod
-    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture):
+    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture, attribute_3):
         """
         This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
         If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
@@ -907,6 +907,7 @@ class BATRU_SANDToolBox:
         :param section: The current section that been calculated
         :param state_for_calculation: The state for calculation that has been defined at the beginning of P3
         :param fixture: The current scene type
+        :param attribute_3: The store cluster
         :return: The relevant product's data for the current section
         """
         # Filter by state
@@ -917,7 +918,7 @@ class BATRU_SANDToolBox:
 
         # Filter by cluster
         section_data = section_data.loc[
-            (raw_data['additional_attribute_3'] == fixture) | (section_data['additional_attribute_3'] == 'ALL')]
+            (raw_data['additional_attribute_3'] == attribute_3) | (section_data['additional_attribute_3'] == 'ALL')]
 
         # Filter by valid Sections
         section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
@@ -947,6 +948,8 @@ class BATRU_SANDToolBox:
 
         priorities_template_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')\
             .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        priorities_template_data['Index (Duplications priority)'] = \
+            priorities_template_data['Index (Duplications priority)'].astype(float)
         # check product ean codes from the template
         for product_ean_code in priorities_template_data['product_ean_code'].unique().tolist():
             try:
@@ -967,6 +970,11 @@ class BATRU_SANDToolBox:
             state_for_calculation = self.state
         else:
             state_for_calculation = 'ALL'
+
+        if not self.scif.empty:
+            attribute_3 = self.scif['additional_attribute_3'].values[0]
+        else:
+            attribute_3 = ''
 
         for scene in scenes:
 
@@ -992,10 +1000,16 @@ class BATRU_SANDToolBox:
                 (sas_zone_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
                 (sas_zone_template_data['fixture'] == fixture)]
 
-            scene_products_matrix = self.position_graph\
-                .transform_entity_matrix_to_df(self.position_graph.get_entity_matrix(scene, 'product_name'))
+            try:
+                scene_products_matrix = self.position_graph \
+                    .transform_entity_matrix_to_df(self.position_graph.get_entity_matrix(scene, 'product_name'))
+            except Exception as e:
+                Log.warning("Object 'scene_products_matrix' is not calculated for scene {}, "
+                            "empty scene_products_matrix is returned. Exception: {}"
+                            "".format(scene, e))
+                scene_products_matrix = pd.DataFrame()
 
-            if not relevant_sas_zone_data.empty:
+            if not (relevant_sas_zone_data.empty or scene_products_matrix.empty):
                 self.check_sas_zone_in_fixture(scene_products_matrix, relevant_sas_zone_data, fixture)
 
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
@@ -1054,7 +1068,7 @@ class BATRU_SANDToolBox:
                             .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
 
                         specific_section_products_template = self.get_relevant_section_products(
-                            sections_products_template_data, section, state_for_calculation, fixture)
+                            sections_products_template_data, section, state_for_calculation, fixture, attribute_3)
                         section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
 
                         sku_presence_passed = self.check_sku_presence(specific_section_products_template,
@@ -1097,9 +1111,21 @@ class BATRU_SANDToolBox:
 
                                 # Checking SKU Repeating
                                 if len(specific_section_products_template['product_ean_code_lead'].tolist()) == \
-                                        len(specific_section_products_template['Index (Duplications priority)'].tolist()):
+                                        len(specific_section_products_template[
+                                                specific_section_products_template['Index (Duplications priority)'] != '']
+                                            ['Index (Duplications priority)'].tolist()):
+
+                                    max_priority = \
+                                        priorities_template_data['Index (Duplications priority)'].max()
+
                                     priorities_section = \
                                         specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
+                                    priorities_section['Index (Duplications priority)'] = \
+                                        priorities_section['Index (Duplications priority)'].astype(float)
+                                    priorities_section['Index (Duplications priority)'] = \
+                                        priorities_section['Index (Duplications priority)'] + max_priority + 1
+                                    priorities_section = priorities_section.append(priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']])\
+                                        .drop_duplicates(subset=['product_ean_code_lead', 'Index (Duplications priority)'], keep='first')
                                 else:
                                     priorities_section = \
                                         priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']]
@@ -1262,6 +1288,8 @@ class BATRU_SANDToolBox:
             else:
                 Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
         section_facings_histogram = pd.DataFrame(section_facings_histogram)
+        if section_facings_histogram.empty:
+            return True
 
         min_max_facings = pd.DataFrame(columns=['priority', 'max', 'min'])
         for current_priority in section_facings_histogram['priority'].unique().tolist():
