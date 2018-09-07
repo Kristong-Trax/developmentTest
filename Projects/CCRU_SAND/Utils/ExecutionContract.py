@@ -14,7 +14,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 __author__ = 'Nimrod'
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru_sand'
 BUCKET = 'traxuscalc'
 CLOUD_BASE_PATH = 'CCRU_SAND/KPIData/Contract/'
 TEMPLATES_TEMP_PATH = os.getcwd()
@@ -198,6 +198,6 @@ class CCRU_SANDContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init(PROJECT)
-    Log.init(PROJECT, 'CCRU_SAND Execution Contract targets upload')
+    Log.init(PROJECT, 'CCRU Execution Contract targets upload')
     Config.init()
     CCRU_SANDContract().parse_and_upload_file()
