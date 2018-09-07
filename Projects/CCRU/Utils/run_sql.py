@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
@@ -13,20 +15,18 @@ class CCRURunSql:
 
     def run_it(self):
         statement_1 = \
-                        """
-update static.stores
-set additional_attribute_11 = 'Pos 2018 - HoReCa - Bar Tavern Night Clubs'
-where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
-
-
-                        """
-
-        # """
-        # UPDATE `static`.`atomic_kpi` SET `name`='Cooler: Max 26', `description`='Cooler: Max 26', `display_text`='Cooler: Max 26' WHERE `pk` in ('3262','3392','3511','3889','3998','4178');
-        #
-        # UPDATE `static`.`kpi` SET `display_text`='Cooler: Max 26' WHERE `pk` in ('2511','2535','2557','2621','2655','2686');
-        #
-        # """
+"""
+DELETE FROM `static`.`atomic_kpi` WHERE `pk`>='4656';
+"""
+# """
+# DELETE FROM `static`.`kpi_set` WHERE `pk`>='64';
+# """
+# """
+# DELETE FROM `static`.`kpi` WHERE `pk`>='2843';
+# """
+# """
+# UPDATE `static`.`kpi_set` SET `name`='Contract Execution 2018 X' WHERE `pk`='56';
+# """
 
         cur = self.aws_conn.db.cursor()
         cur.execute(statement_1)
@@ -34,10 +34,10 @@ where additional_attribute_11 = 'Pos 2018 - HoReCa (Bar Tavern/Night Clubs)';
 
 
 if __name__ == '__main__':
-    Log.init('test')
+    Log.init('Run SQL')
     Config.init()
-    for project in ['ccru']:
-        print 'start project: ' + str(project)
+    for project in ['ccru-sand']:
+        print 'Start Project: ' + str(project)
         sql_to_run = CCRURunSql(project)
         sql_to_run.run_it()
 
