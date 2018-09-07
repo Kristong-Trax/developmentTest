@@ -161,8 +161,9 @@ class CCBZA_ToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
         self.full_store_type = self.get_full_store_type()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.scene_kpi_results = self.ps_data_provider.get_scene_results(
-            self.scene_info['scene_fk'].drop_duplicates().values)
+        self.scene_kpi_results = self.get_results_of_scene_level_kpis()
+        # self.scene_kpi_results = self.ps_data_provider.get_scene_results(
+        #     self.scene_info['scene_fk'].drop_duplicates().values)
         self.ko_id = self.get_ko_pk()
 
         self.availability_for_scene_calc = {AVAILABILITY_POS: self.availability_brand_strips_scene,
@@ -378,6 +379,13 @@ class CCBZA_ToolBox:
         identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
                                                        manufacturer_id=self.ko_id)
         return identifier_result
+
+    def get_results_of_scene_level_kpis(self):
+        scene_kpi_results = pd.DataFrame()
+        if not self.scene_info.empty:
+            scene_kpi_results = self.ps_data_provider.get_scene_results(
+                    self.scene_info['scene_fk'].drop_duplicates().values)
+        return scene_kpi_results
 
     def get_ko_pk(self):
         query = CCBZA_Queries.get_manufacturer_pk_by_name(KO_PRODUCTS)
