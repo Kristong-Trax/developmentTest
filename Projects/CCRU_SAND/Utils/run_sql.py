@@ -16,7 +16,7 @@ class CCRU_SANDRunSql:
     def run_it(self):
         statement_1 = \
 """
-DELETE FROM `static`.`atomic_kpi` WHERE `pk`>='4656';
+UPDATE `static`.`kpi_set` SET `name`='Contract Execution 2018 Irrelevant' WHERE `pk`='56';
 """
 # """
 # DELETE FROM `static`.`kpi_set` WHERE `pk`>='64';
@@ -36,7 +36,7 @@ DELETE FROM `static`.`atomic_kpi` WHERE `pk`>='4656';
 if __name__ == '__main__':
     Log.init('Run SQL')
     Config.init()
-    for project in ['ccru-sand']:
+    for project in ['ccru_sand']:
         print 'Start Project: ' + str(project)
         sql_to_run = CCRU_SANDRunSql(project)
         sql_to_run.run_it()
