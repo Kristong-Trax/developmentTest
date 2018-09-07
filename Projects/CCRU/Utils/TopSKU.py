@@ -8,7 +8,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'
@@ -413,7 +413,7 @@ class CCRUTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('CCRU_SAND Top SKU targets upload')
+    LoggerInitializer.init('CCRU Top SKU targets upload')
     ts = CCRUTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration parameters

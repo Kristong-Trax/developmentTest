@@ -82,7 +82,7 @@ class CCRUAddKPIs(CCRUConsts):
         In order to get the set name it iterates the relevant unique set name.
         :return: A tuple of the relevant KPI data and relevant project's template data
         """
-        if self.project == 'ccru-sand':
+        if self.project == 'ccru':
             dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         else:
             dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'CCRU', 'Data')
@@ -302,7 +302,9 @@ if __name__ == '__main__':
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/idanr/Desktop/super.xlsx')
+    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for Contract Execution.xlsx')
+    kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
-    # # kpi.update_kpi_weights()
-    # # kpi.update_atomic_weights()
+    # kpi.update_kpi_weights()
+    # kpi.update_atomic_weights()
 
