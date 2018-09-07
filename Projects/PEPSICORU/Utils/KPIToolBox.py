@@ -294,7 +294,8 @@ class PEPSICORUToolBox:
                     df['scene_type'] = df[Const.TEMPLATE_NAME].apply(lambda x: reverse_scene_dict.get(x))
                     by_scene_count_in_cat = df.groupby(['scene_type']).count()
                     for i, row in by_scene_count_in_cat.iterrows():
-                        scene_count_in_cate += 1 if row[Const.TEMPLATE_NAME]>=scene_targets[i] else row[Const.TEMPLATE_NAME]
+                        scene_count_in_cate += scene_targets[i] if row[Const.TEMPLATE_NAME]>=scene_targets[i] \
+                            else row[Const.TEMPLATE_NAME]
                     result_cat_level = 1.0 if scene_count_in_cate >= current_category_target else scene_count_in_cate / float(
                             current_category_target)
                 self.common.write_to_db_result(fk=display_count_category_level_fk, numerator_id=self.pepsico_fk,
@@ -327,7 +328,7 @@ class PEPSICORUToolBox:
                                                denominator_id=relevant_category_fk, denominator_result=scene_type_target,
                                                identifier_parent=parent_identifier, context_id=scene_type_fk,
                                                result=result_scene_level, should_enter=True)
-                count_store_level += 1 if scene_type_score >= scene_type_target else scene_type_score
+                count_store_level += scene_type_score if scene_type_score >= scene_type_target else scene_type_score
 
             # Calculate count of display - store_level
             result_store_level = 1.0 if count_store_level >= store_target else count_store_level / float(store_target)
