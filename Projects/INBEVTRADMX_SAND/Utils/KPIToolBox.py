@@ -9,6 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as Common2
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -37,6 +38,7 @@ class INBEVTRADMXToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.common2 = Common2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -56,7 +58,7 @@ class INBEVTRADMXToolBox:
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
-                                                   self.kpi_static_data, self.common)
+                                                   self.kpi_static_data, self.common, self.common2)
 
     def parse_template(self):
         """
@@ -365,6 +367,9 @@ class INBEVTRADMXToolBox:
         """
         kpi_set_fk = self.kpi_static_data.kpi_set_fk[self.kpi_static_data.kpi_set_name == set_name].unique()[0]
         self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
+        new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(set_name)
+        self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
+                                        identifier_parent=self.common2.get_dictionary(name=set_name))
 
     def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score):
         """
@@ -378,6 +383,10 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
                                         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
+        new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
+        self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
+                                        identifier_parent=self.common2.get_dictionary(name=set_name),
+                                        identifier_result=self.common2.get_dictionary(name=kpi_name))
 
     def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
@@ -394,12 +403,14 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
                                                (self.kpi_static_data.kpi_name == kpi_name) &
                                                (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-
         attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
         attrs['result'] = {0: atomic_score}
         attrs['kpi_weight'] = {0: curr_weight}
         query = insert(attrs, self.common.KPI_RESULT)
         self.common.kpi_results_queries.append(query)
+        new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
+        self.common2.write_to_db_result(fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True,
+                                        identifier_parent=self.common2.get_dictionary(name=kpi_name))
 
     def calculate_kpi_set_from_template(self):
         """
@@ -471,3 +482,4 @@ class INBEVTRADMXToolBox:
         # calculate from template
         self.calculate_kpi_set_from_template()
         self.common.commit_results_data()
+        self.common2.commit_results_data()

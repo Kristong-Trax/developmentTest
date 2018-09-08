@@ -30,11 +30,12 @@ class INBEVTRADMX_SANDGeo:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data, common):
+    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data, common, common2):
         self.rds_conn = rds_conn
         self.session_uid = session_uid
         self.data_provider = data_provider
         self.common = common
+        self.common2 = common2
         self.kpi_static_data = kpi_static_data
 
     @staticmethod
@@ -120,6 +121,8 @@ class INBEVTRADMX_SANDGeo:
         basic_dict['result'] = geo_result
         geo_score = self.get_geo_score(geo_result)
         self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, geo_score, **basic_dict)
+        new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
+        self.common2.write_to_db_result(fk=new_kpi_fk, result=geo_result, target=self.GEO_THRESHOLD, score=geo_score)
 
     def create_kpi_insert_attributes(self, fk, geo_result, geo_score, level):
         """
