@@ -131,20 +131,10 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('CCRU calculations')
 #     Config.init()
-#     project_name = 'ccru-sand'
+#     project_name = 'ccru_sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     session_uids = [
-#         '42C08E8C-A434-4FDE-841B-66C121E8C568',
-#         '246c80c3-63b9-4a90-b519-ca54416f1079',
-#         '4a9e883e-811e-47e4-bb86-235e55df1875',
-#         '48a19a3d-92b4-4f83-9b77-47ce004ff546',
-#         'ad063eec-6f7c-4a6d-b9ea-aa2610d633e8',
-#         '3480fa35-e83a-4b3a-8c6e-b251f6f0851a',
-#         '2292DF71-FA8E-4AB9-A0C9-125CA9C9423F',
-#         '9661AF7C-9871-4C5B-8533-406C2BD319B8',
-#         'e3b7576d-a193-44c6-9b25-1a402ee14539',
-#         '5bd39786-002b-4645-8867-4a3389b1206e',
-#         '06799C75-F589-48A9-B68A-CB07958E5FD7',
+#         'DAD315B9-30EA-4AA7-B8FA-684115B1F404',
 #     ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)

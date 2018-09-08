@@ -8,13 +8,13 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
 
-PROJECT = 'ccru'
+PROJECT = 'ccru_sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'
 
 
-class CCRUTopSKUAssortment:
+class CCRU_SANDTopSKUAssortment:
     STORE_NUMBER = 'Store Number'
     PRODUCT_EAN_CODE = 'Product EAN'
     START_DATE = 'Start Date'
@@ -312,10 +312,27 @@ class CCRUTopSKUAssortment:
                 # Log.info("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
+        if self.duplicate_columns:
+            Log.warning("The following columns are duplicate in the template and were ignored ({}): "
+                        "{}".format(len(self.duplicate_columns), self.duplicate_columns))
+
+        if self.invalid_products:
+            Log.warning("The following products do not exist in the DB and were ignored ({}): "
+                        "{}".format(len(self.invalid_products), self.invalid_products))
+
+        if self.invalid_stores:
+            Log.warning("The following stores do not exist in the DB and were ignored ({}): "
+                        "{}".format(len(self.invalid_stores), self.invalid_stores))
+
+        if self.stores_with_invalid_dates:
+            Log.warning("The following stores have invalid date period and were ignored ({}): "
+                        "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
+
         Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
                  .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
-        Log.info("Top SKU targets are uploaded!")
+        Log.info("Top SKU targets are uploaded successfully. " +
+                 ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
 
         return
 
@@ -453,7 +470,7 @@ class CCRUTopSKUAssortment:
 
 if __name__ == '__main__':
     LoggerInitializer.init('Top SKU CCRU')
-    ts = CCRUTopSKUAssortment()
+    ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration
 # # # At the end of the script there are logs with all of the invalid products, store numbers and dates

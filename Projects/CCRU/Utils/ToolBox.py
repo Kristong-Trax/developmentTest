@@ -1860,8 +1860,7 @@ class CCRUKPIToolBox:
                         atomic_res = self.check_number_of_scenes_with_target(c)
                     elif c.get("Formula") == "number of coolers with facings target and fullness target":
                         scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
-                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
-                                                                                  proportion_param=0.9)
+                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(c, scenes, proportion_param=0.9)
                     else:
                         # print "sum of atomic KPI result:", c.get("Formula")
                         atomic_res = 0
@@ -2857,6 +2856,8 @@ class CCRUKPIToolBox:
                             target = target if target else None
                             weight = 1
                             if target:
+                                if type(target) is unicode and ',' in target:
+                                    target = target.replace(',', '.')
                                 if type(target) is unicode and '%' in target:
                                     target = target.replace('%', '')
                                     target = float(target) / 100

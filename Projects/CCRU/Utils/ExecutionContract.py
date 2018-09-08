@@ -29,7 +29,10 @@ class CCRUContract:
         self.cloud_path = CLOUD_BASE_PATH
         self.temp_path = os.path.join(TEMPLATES_TEMP_PATH, 'TempFile')
         self.stores = {}
+        self.stores_processed = []
         self.invalid_stores = []
+        self.stores_with_invalid_dates = []
+        self.stores_with_invalid_targets = []
 
     def __del__(self):
         if os.path.exists(self.temp_path):
@@ -88,6 +91,8 @@ class CCRUContract:
         return data
 
     def parse_and_upload_file(self):
+
+        Log.info("Starting template parsing and validation")
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
@@ -109,79 +114,119 @@ class CCRUContract:
         raw_data[self.START_DATE] = raw_data[self.START_DATE].astype(str)
         raw_data[self.END_DATE] = raw_data[self.END_DATE].astype(str)
 
+        Log.info("Starting Stores validation")
         target_data_new = {}
-        store_number = None
+        count_stores_total = raw_data.shape[0]
         for x, row in raw_data.iterrows():
+
             store_number = row[self.STORE_NUMBER]
             store_id = self.get_store_fk(store_number)
             if store_id is None:
-                Log.warning('Store number {} does not exist in the DB'.format(store_number))
-                self.invalid_stores.append(store_number)
-                continue
-            if store_id not in target_data_new.keys():
-                target_data_new[store_id] = []
-            row = row.to_dict()
-            row_to_append = {
-                self.STORE_NUMBER: row[self.STORE_NUMBER],
-                self.START_DATE: row[self.START_DATE],
-                self.END_DATE: row[self.END_DATE]
-            }
-            for key in row.keys():
-                if key in kpi_weights:
-                    row_to_append[str(key)] = [row[key], kpi_weights[key]]
-            target_data_new[store_id].append(row_to_append)
 
+                # Log.warning('Store number {} does not exist in the DB'.format(store_number))
+                self.invalid_stores.append(store_number)
+
+            else:
+
+                if store_id not in target_data_new.keys():
+                    target_data_new[store_id] = []
+                row = row.to_dict()
+                row_to_append = {
+                    self.STORE_NUMBER: row[self.STORE_NUMBER],
+                    self.START_DATE: row[self.START_DATE],
+                    self.END_DATE: row[self.END_DATE]
+                }
+                for key in row.keys():
+                    if key in kpi_weights:
+                        row_to_append[str(key)] = [row[key], kpi_weights[key]]
+                target_data_new[store_id].append(row_to_append)
+
+            count_stores_processed = x + 1
+            if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
+                Log.info("Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
+
+        if self.invalid_stores:
+            Log.warning("The following stores do not exist in the DB and will be ignored ({}): "
+                        "{}".format(len(self.invalid_stores), self.invalid_stores))
+
+        Log.info("Starting data processing")
+        count_stores_total = len(target_data_new.keys())
         for x, store_id in enumerate(target_data_new.keys()):
 
             data_new = target_data_new[store_id][0]
             start_date_new = datetime.datetime.strptime(data_new[self.START_DATE], '%Y-%m-%d').date()
             end_date_new = datetime.datetime.strptime(data_new[self.END_DATE], '%Y-%m-%d').date()
+            store_number = data_new[self.STORE_NUMBER]
+
             if not start_date_new <= end_date_new:
-                Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
-                            .format(store_id, store_number))
-                continue
 
-            target_data = []
-            target_data_cur = self.get_json_file_content(str(store_id))
-            if target_data_cur:
-                Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
-                         .format(store_id, store_number))
-            for data_cur in target_data_cur:
-                try:
-                    start_date_cur = datetime.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
-                    end_date_cur = datetime.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
-                except:
-                    Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
-                                .format(store_id, store_number))
-                    continue
-                if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
-                    details_new = data_new.copy()
-                    del details_new[self.START_DATE]
-                    del details_new[self.END_DATE]
-                    details_cur = data_cur.copy()
-                    del details_cur[self.START_DATE]
-                    del details_cur[self.END_DATE]
-                    if details_cur == details_new:
-                        data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                # Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
+                #             .format(store_id, store_number))
+                self.stores_with_invalid_dates += [store_number]
+
+            else:
+
+                target_data = []
+                target_data_cur = self.get_json_file_content(str(store_id))
+                # if target_data_cur:
+                #     Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
+                #              .format(store_id, store_number))
+                for data_cur in target_data_cur:
+                    try:
+                        start_date_cur = datetime.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
+                        end_date_cur = datetime.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                    except:
+                        # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
+                        #             .format(store_id, store_number))
+                        self.stores_with_invalid_targets += [store_number]
+                        continue
+                    if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
+                        details_new = data_new.copy()
+                        del details_new[self.START_DATE]
+                        del details_new[self.END_DATE]
+                        details_cur = data_cur.copy()
+                        del details_cur[self.START_DATE]
+                        del details_cur[self.END_DATE]
+                        if details_cur == details_new:
+                            data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                        else:
+                            end_date_cur = start_date_new - datetime.timedelta(days=1)
+                            if start_date_cur <= end_date_cur:
+                                data_cur[self.END_DATE] = str(end_date_cur)
+                                target_data += [data_cur]
                     else:
-                        end_date_cur = start_date_new - datetime.timedelta(days=1)
-                        if start_date_cur <= end_date_cur:
-                            data_cur[self.END_DATE] = str(end_date_cur)
-                            target_data += [data_cur]
-                else:
-                    target_data += [data_cur]
-            target_data += [data_new]
+                        target_data += [data_cur]
+                target_data += [data_new]
 
-            with open(self.temp_path, 'wb') as f:
-                f.write(json.dumps(target_data))
-            self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-            Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
+                with open(self.temp_path, 'wb') as f:
+                    f.write(json.dumps(target_data))
+                self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
+                # Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
+
+            count_stores_processed = x + 1
+            self.stores_processed += [store_number]
+            if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
+                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
+                # Log.info("Stores processed: {}".format(self.stores_processed))
+                self.stores_processed = []
 
         if os.path.exists(self.temp_path):
             os.remove(self.temp_path)
 
-        if len(self.invalid_stores) > 0:
-            Log.warning('The following Store numbers are not invalid: {}'.format(self.invalid_stores))
+        if self.invalid_stores:
+            Log.warning("The following stores do not exist in the DB and were ignored ({}): "
+                        "{}".format(len(self.invalid_stores), self.invalid_stores))
+
+        if self.stores_with_invalid_dates:
+            Log.warning("The following stores have invalid date period and were ignored ({}): "
+                        "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
+
+        if self.stores_with_invalid_targets:
+            Log.warning("The following stores have invalid target format and were ignored ({}): "
+                        "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
+
+        Log.info("Execution targets are uploaded successfully. " +
+                 ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
 
     @staticmethod
     def parse_arguments():
