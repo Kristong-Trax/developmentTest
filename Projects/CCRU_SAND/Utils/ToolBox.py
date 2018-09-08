@@ -16,9 +16,9 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
-from Projects.CCRU.Fetcher import CCRUCCHKPIFetcher
-from Projects.CCRU.Utils.ExecutionContract import CCRUContract
-from Projects.CCRU.Utils.TopSKU import CCRUTopSKUAssortment
+from Projects.CCRU_SAND.Fetcher import CCRU_SANDCCHKPIFetcher
+from Projects.CCRU_SAND.Utils.ExecutionContract import CCRU_SANDContract
+from Projects.CCRU_SAND.Utils.TopSKU import CCRU_SANDTopSKUAssortment
 
 __author__ = 'urid'
 
@@ -50,7 +50,7 @@ CCH_INTEGRATION = 'CCH Integration'
 #     return decorator
 
 
-class CCRUKPIToolBox:
+class CCRU_SANDKPIToolBox:
     def __init__(self, data_provider, output, ps_data_provider, set_name=None):
         self.data_provider = data_provider
         self.ps_data_provider = ps_data_provider
@@ -74,7 +74,7 @@ class CCRUKPIToolBox:
         else:
             self.set_name = set_name
         self.pos_set_name = self.set_name
-        self.kpi_fetcher = CCRUCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
+        self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                   self.set_name, self.products)
         self.store_number = self.kpi_fetcher.get_store_number(self.store_id)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
@@ -88,8 +88,8 @@ class CCRUKPIToolBox:
         self.gaps_queries = []
         self.top_sku_queries = []
         self.gap_groups_limit = {'Availability': 2, 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
-        self.execution_contract = CCRUContract(rds_conn=self.rds_conn)
-        self.top_sku = CCRUTopSKUAssortment(rds_conn=self.rds_conn)
+        self.execution_contract = CCRU_SANDContract(rds_conn=self.rds_conn)
+        self.top_sku = CCRU_SANDTopSKUAssortment(rds_conn=self.rds_conn)
         self.execution_results = {}
         self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
         self.kpi_score_level2 = {}
@@ -101,7 +101,7 @@ class CCRUKPIToolBox:
 
     def change_set(self, set_name):
         self.set_name = set_name
-        self.kpi_fetcher = CCRUCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
+        self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                                   self.set_name, self.products)
 
     def rds_connection(self):
