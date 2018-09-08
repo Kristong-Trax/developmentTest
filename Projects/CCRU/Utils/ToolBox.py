@@ -2865,6 +2865,8 @@ class CCRUKPIToolBox:
                                 if int(target) == target:
                                     target = int(target)
                                 result = self.execution_results.get(atomic_kpi_name).get('result')
+                                if not (type(result) is float or type(result) is int):
+                                    result = 0
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
                                     score = int(round(result / float(target) * 100))
