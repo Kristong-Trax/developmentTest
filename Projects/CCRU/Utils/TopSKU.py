@@ -290,8 +290,6 @@ class CCRUTopSKUAssortment:
 
             if count_stores_processed % 1 == 0 or count_stores_processed == count_stores_total:
 
-                Log.info("Starting committing to DB")
-
                 queries = []
 
                 queries += self.deactivation_queries
@@ -309,14 +307,32 @@ class CCRUTopSKUAssortment:
                 self.commit_results(queries)
                 queries = []
 
-                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
-                Log.info("Stores processed: {}".format(self.stores_processed))
+            if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
+                Log.info("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
+                # Log.info("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
+
+        if self.duplicate_columns:
+            Log.warning("The following columns are duplicate in the template and were ignored ({}): "
+                        "{}".format(len(self.duplicate_columns), self.duplicate_columns))
+
+        if self.invalid_products:
+            Log.warning("The following products do not exist in the DB and were ignored ({}): "
+                        "{}".format(len(self.invalid_products), self.invalid_products))
+
+        if self.invalid_stores:
+            Log.warning("The following stores do not exist in the DB and were ignored ({}): "
+                        "{}".format(len(self.invalid_stores), self.invalid_stores))
+
+        if self.stores_with_invalid_dates:
+            Log.warning("The following stores have invalid date period and were ignored ({}): "
+                        "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
         Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
                  .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
-        Log.info("Top SKU targets are uploaded!")
+        Log.info("Top SKU targets are uploaded successfully. " +
+                 ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
 
         return
 

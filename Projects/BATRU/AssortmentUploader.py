@@ -40,12 +40,17 @@ class BATRUAssortment:
         self.products = {}
         self.all_queries = []
 
-        if self.start_date:
-            self.current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
-        else:
+        if self.start_date is None:
             self.current_date = datetime.now().date()
+        else:
+            self.current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
         self.deactivate_date = self.current_date - timedelta(1)
         self.activate_date = self.current_date
+
+        if self.partial_update in ('1', 'True', 'Yes', 'Y'):
+            self.partial_update = True
+        else:
+            self.partial_update = False
 
     def upload_assortment(self):
         """
@@ -61,10 +66,10 @@ class BATRUAssortment:
         if not is_valid:
             Log.warning("Errors were found during the template validation")
             if invalid_inputs[INVALID_STORES]:
-                Log.warning("The following stores doesn't exist in the DB: {}"
+                Log.warning("The following stores don't exist in the DB: {}"
                             "".format(invalid_inputs[INVALID_STORES]))
             if invalid_inputs[INVALID_PRODUCTS]:
-                Log.warning("The following products doesn't exist in the DB: {}"
+                Log.warning("The following products don't exist in the DB: {}"
                             "".format(invalid_inputs[INVALID_PRODUCTS]))
         Log.info("Assortment upload is finished")
 
@@ -111,13 +116,13 @@ class BATRUAssortment:
         valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
             invalid_inputs[INVALID_STORES] = list(set(raw_data[OUTLET_ID].unique()) - set(valid_stores['store_number']))
-            Log.warning("Those stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
+            Log.warning("The following stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
             legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
             invalid_inputs[INVALID_PRODUCTS] = list(set(raw_data[EAN_CODE].unique()) - set(valid_product[EAN_CODE]))
-            Log.warning("Those products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+            Log.warning("The following products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
             legal_template = False
         return legal_template, invalid_inputs
 
@@ -167,7 +172,7 @@ class BATRUAssortment:
             data.append(store_data)
 
             store_counter += 1
-            if store_counter % 100 == 0 or store_counter == len(list_of_stores):
+            if store_counter % 1000 == 0 or store_counter == len(list_of_stores):
                 Log.info("Assortment is prepared for {}/{} stores".format(store_counter, len(list_of_stores)))
 
         Log.info("Updating assortment data in DB")
@@ -182,7 +187,7 @@ class BATRUAssortment:
                 self.all_queries = []
 
             store_counter += 1
-            if store_counter % 100 == 0 or store_counter == len(data):
+            if store_counter % 1000 == 0 or store_counter == len(data):
                 Log.info("Assortment is updated in DB for {}/{} stores".format(store_counter, len(data)))
 
     @staticmethod
@@ -238,7 +243,7 @@ class BATRUAssortment:
                     update_products.add(product_fk)
 
         if missing_products:
-            Log.warning('Some EAN Codes for Store Number {} do not exist in DB: {}.'
+            Log.warning('The following EAN Codes for Store Number {} do not exist in DB: {}.'
                         ''.format(store_number, list(missing_products)))
         queries = []
         current_products = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
@@ -350,4 +355,4 @@ class BATRUAssortment:
 if __name__ == '__main__':
     LoggerInitializer.init('Upload assortment for BATRU')
     BATRUAssortment().upload_assortment()
-    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial_update to the configuration
+    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial/full_update to the configuration
