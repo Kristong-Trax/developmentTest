@@ -2843,6 +2843,7 @@ class CCRUKPIToolBox:
                                     target = int(target)
                                 try:
                                     result = round(float(self.execution_results.get(atomic_kpi_name).get('result')), 2)
+                                    result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
                                 score_func = param_child.get('score_func')
