@@ -213,8 +213,8 @@ class BATRUToolBox:
         """
         This function calculates the KPI results.
         """
-        # self.handle_priority_1()
-        # self.handle_priority_2()
+        self.handle_priority_1()
+        self.handle_priority_2()
         self.handle_priority_3()
         self.handle_priority_4()
         self.handle_priority_5()
