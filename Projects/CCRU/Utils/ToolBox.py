@@ -35,6 +35,7 @@ TARGET_EXECUTION = 'Target Execution 2018'
 EQUIPMENT_SET_NAME = 'Equipment Execution 2018'
 CONTRACT_SET_NAME = 'Contract Execution 2018'
 CCH_INTEGRATION = 'CCH Integration'
+MARKETING = 'Marketing 2017'
 
 # def log_runtime(description, log_start=False):
 #     def decorator(func):
@@ -92,7 +93,6 @@ class CCRUKPIToolBox:
         self.top_sku = CCRUTopSKUAssortment(rds_conn=self.rds_conn)
         self.execution_results = {}
         self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
-        self.kpi_score_level2 = {}
         self.kpi_facts_hidden = []
         self.kpi_facts_hidden_calculated = []
         self.external_session_id = self.kpi_fetcher.get_external_session_id(self.session_uid)
@@ -556,11 +556,10 @@ class CCRUKPIToolBox:
                         # write to DB
                         attributes_for_level3 = self.create_attributes_for_level3_df(child, atomic_score, kpi_fk)
                         self.write_to_db_result(attributes_for_level3, 'level3', kpi_fk)
-# Sergey
+
                         atomic_result = attributes_for_level3['result']
                         if atomic_result.size > 0:
                             atomic_result_total += atomic_result.values[0]
-# Sergey
 
                         if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
                             atomic_scores.append(atomic_score)
@@ -598,13 +597,10 @@ class CCRUKPIToolBox:
             # Saving to old tables
             attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_table2, 'level2', kpi_fk)
-# Sergey 1 Begin
+
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
-# Sergey 1 End
-            if p.get('Target Execution 2018'):  # insert the results that needed for target execution set
-                kpi_name = p.get('KPI name Eng')
-                self.insert_scores_level2(kpi_total_res, score, kpi_name)
+
             if not is_atomic:  # saving also to level3 in case this KPI has only one level
                 attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
@@ -1075,10 +1071,10 @@ class CCRUKPIToolBox:
             if p.get('level') == 2:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
-# Sergey 1 Begin
+
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
-# Sergey 1 End
+
             if not p.get('Children'):
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
@@ -1262,11 +1258,11 @@ class CCRUKPIToolBox:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2')
             set_total_res += round(score) * p.get('KPI Weight')
-# Sergey 1 Begin
+
             atomic_result = attributes_for_level3['result']
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
-# Sergey 1 End
+
         return set_total_res
 
     def calculate_facings_sos(self, params):
@@ -1429,10 +1425,10 @@ class CCRUKPIToolBox:
             self.write_to_db_result(attributes_for_level3, 'level3')
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-# Sergey 1 Begin
+
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
-# Sergey 1 End
+
         return set_total_res
 
     def check_number_of_doors_of_filled_coolers(self, params, function = None, proportion = None):
@@ -1610,10 +1606,10 @@ class CCRUKPIToolBox:
                 self.write_to_db_result(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_db_result(attributes_for_level2, 'level2')
-# Sergey 1 Begin
+
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
-# Sergey 1 End
+
             # set_total_res += round(score) * p.get('KPI Weight')
         return set_total_res
 
@@ -1873,11 +1869,10 @@ class CCRUKPIToolBox:
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_db_result(attributes_for_level3, 'level3')
-# Sergey
+
                     atomic_result = attributes_for_level3['result']
                     if atomic_result.size > 0:
                         atomic_result_total += atomic_result.values[0]
-# Sergey
 
             if p.get('Target'):
                 if p.get('score_func') == 'PROPORTIONAL':
@@ -1903,19 +1898,15 @@ class CCRUKPIToolBox:
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-# Sergey 1 Begin
+
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
-# Sergey 1 End
-            if p.get('Target Execution 2018'):  # insert the results that needed for target execution set
-                kpi_name = p.get('KPI name Eng')
-                self.insert_scores_level2(kpi_total, score, kpi_name)
+
         return set_total_res
 
     @kpi_runtime()
     def check_atomic_passed(self, params):
         """
-
         :param params:
         :return:
         """
@@ -1975,16 +1966,14 @@ class CCRUKPIToolBox:
                 set_total_res += round(score) * p.get('KPI Weight')
             else:
                 set_total_res += score
+
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-# Sergey 1 Begin
+
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, kpi_total, score)
-# Sergey 1 End
-            if p.get('Target Execution 2018'):  # insert the results that needed for target execution set
-                kpi_name = p.get('KPI name Eng')
-                self.insert_scores_level2(kpi_total, score, kpi_name)
+
         return set_total_res
 
     @kpi_runtime()
@@ -2054,10 +2043,10 @@ class CCRUKPIToolBox:
                     else:
                         self.passed_scenes_per_kpi[p.get('KPI name Eng')] = [scene]
                     # break
-# Sergey 1 Begin
+
                 if p.get("KPI ID") in params.values()[2]["SCENE LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), scene, None, score)
-# Sergey 1 End
+
             if relevant_scenes:
                 closest_to_pass_scenes = self.get_max_in_dict(scenes_kpi_info)
                 if len(closest_to_pass_scenes) == 1:
@@ -2126,13 +2115,11 @@ class CCRUKPIToolBox:
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_db_result(attributes_for_level2, 'level2')
-# Sergey 1 Begin
+
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
-# Sergey 1 End
+
         return set_total_res
-
-
 
     def calculate_sub_atomic_passed(self, params, all_params, scenes=[], parent = None, same_scene = None):
         """
@@ -2294,13 +2281,10 @@ class CCRUKPIToolBox:
                     set_total_res += round(score)
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-# Sergey 1 Begin
+
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
-# Sergey 1 End
-                if p.get('Target Execution 2018'): # insert the results that needed for target execution set
-                    kpi_name = p.get('KPI name Eng')
-                    self.insert_scores_level2(number_relevant_scenes, score, kpi_name)
+
                 self.write_to_db_result(attributes_for_level2, 'level2', kpi_fk)
                 # save to level 3
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
@@ -2336,10 +2320,8 @@ class CCRUKPIToolBox:
 
         """
         if level == 'level4':
-# Sergey
             if df['kpi_fk'].values[0] is None:
                 df['atomic_kpi_fk'] = self.kpi_fetcher.get_atomic_kpi_fk(df['name'][0])
-# Sergey
 #            df['atomic_kpi_fk'] = self.kpi_fetcher.get_atomic_kpi_fk(df['name'][0])
             df['kpi_fk'] = df['kpi_fk'][0]
             df_dict = df.to_dict()
@@ -2348,10 +2330,8 @@ class CCRUKPIToolBox:
             query = insert(df_dict, KPI_RESULT)
             self.kpi_results_queries.append(query)
         elif level == 'level3':
-# Sergey
             if df['kpi_fk'].values[0] is None:
                 df['atomic_kpi_fk'] = self.kpi_fetcher.get_atomic_kpi_fk(df['name'][0])
-# Sergey
 #            df['atomic_kpi_fk'] = self.kpi_fetcher.get_atomic_kpi_fk(df['name'][0])
             df['kpi_fk'] = df['kpi_fk'][0]
             df_dict = df.to_dict()
@@ -2360,20 +2340,16 @@ class CCRUKPIToolBox:
             self.kpi_results_queries.append(query)
         elif level == 'level2':
             kpi_name = df['kpk_name'][0].encode('utf-8')
-# Sergey
             if df['kpi_fk'].values[0] is None:
                 df['kpi_fk'] = self.kpi_fetcher.get_kpi_fk(kpi_name)
-# Sergey
 #            df['kpi_fk'] = self.kpi_fetcher.get_kpi_fk(kpi_name)
             df_dict = df.to_dict()
             # df_dict.pop("kpk_name", None)
             query = insert(df_dict, KPK_RESULT)
             self.kpi_results_queries.append(query)
         elif level == 'level1':
-# Sergey
             if df['kpi_set_fk'].values[0] is None:
                 df['kpi_set_fk'] = self.kpi_fetcher.get_kpi_set_fk()
-# Sergey
             # df['kpi_set_fk'] = self.kpi_fetcher.get_kpi_set_fk()
             df_dict = df.to_dict()
             query = insert(df_dict, KPS_RESULT)
@@ -2413,7 +2389,6 @@ class CCRUKPIToolBox:
         self.kpi_facts_hidden.append({"KPI ID": kpi_id, "scene_fk": scene, "result": result, "score": score})
         return
 
-# Sergey Begin
     @kpi_runtime()
     def prepare_hidden_set(self, params):
         # table3 = pd.DataFrame([])  # for debugging
@@ -2594,7 +2569,6 @@ class CCRUKPIToolBox:
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
         return
-# Sergey End
 
     @staticmethod
     def merge_insert_queries(insert_queries):
@@ -2620,7 +2594,9 @@ class CCRUKPIToolBox:
                                                params.get('KPI name Eng').replace("'", "\\'"), score)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk',
                                                       'kpk_name', 'score'])
-        self.kpk_scores[params.get('KPI name Eng')] = {'score': score, 'rus_name': params.get('KPI name Rus')}
+
+        if self.set_name not in (MARKETING, TARGET_EXECUTION, EQUIPMENT_SET_NAME, CONTRACT_SET_NAME, CCH_INTEGRATION):
+            self.kpk_scores[params.get('KPI name Eng')] = {'score': score, 'rus_name': params.get('KPI name Rus')}
 
         return attributes_for_table2
 
@@ -2629,7 +2605,7 @@ class CCRUKPIToolBox:
         This function creates a data frame with all attributes needed for saving in level 3 tables
 
         """
-        result = None
+        result = threshold = None
         if isinstance(score, tuple):
             score, result, threshold = score
         score = round(score)
@@ -2666,8 +2642,9 @@ class CCRUKPIToolBox:
                                                           'atomic_kpi_fk', 'threshold', 'result', 'name'])
 
         if self.set_name == TARGET_EXECUTION:
-            self.execution_results[params.get('KPI name Eng')] = {'result': result,
-                                                                  'score_func': params.get('score_func')}
+            self.execution_results[params.get('KPI name Eng')] = {'score_func': params.get('score_func'),
+                                                                  'result': result,
+                                                                  'score': score}
         return attributes_for_table3
 
     def check_number_of_doors_given_sos(self, params):
@@ -2861,11 +2838,12 @@ class CCRUKPIToolBox:
                                 if type(target) is unicode and '%' in target:
                                     target = target.replace('%', '')
                                     target = float(target) / 100
-                                target = float(target)
+                                target = round(float(target), 2)
                                 if int(target) == target:
                                     target = int(target)
-                                result = self.execution_results.get(atomic_kpi_name).get('result')
-                                if not (type(result) is float or type(result) is int):
+                                try:
+                                    result = round(float(self.execution_results.get(atomic_kpi_name).get('result')), 2)
+                                except:
                                     result = 0
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
@@ -3025,38 +3003,42 @@ class CCRUKPIToolBox:
 
         return
 
-    def insert_scores_level2(self, result, score, kpi_name):
-        key_result = kpi_name + ' result'
-        key_score =  kpi_name + ' score'
-        self.kpi_score_level2[key_result] = result
-        self.kpi_score_level2[key_score] = score
-        return
-
     @kpi_runtime()
     def check_kpi_scores(self, params):
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula') != "Check KPI score":
-                continue
-            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            kpi_name = p.get('KPI name Eng')
-            key_result = kpi_name + ' result'
-            key_score = kpi_name + ' score'
-            if key_score in self.kpi_score_level2.keys():
-                checked_kpi_score = self.kpi_score_level2[key_score]
-                if checked_kpi_score == 100:
-                    kpi_result = self.kpi_score_level2[key_result]
+
+            if p.get('Formula') == "Check KPI score":
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                kpi_name = p.get('KPI name Eng')
+                if kpi_name in self.kpk_scores.keys():
+                    kpi_score = self.kpk_scores[kpi_name].get('score')
+                    kpi_result = kpi_score
                 else:
-                    kpi_result = 0
-                score = self.calculate_score(kpi_result, p)
-                set_total_res += round(score) * p.get('KPI Weight')
-                # saving to DB
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_db_result(attributes_for_level2, 'level2')
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-                self.write_to_db_result(attributes_for_level3, 'level3')
+                    continue
+
+            elif p.get('Formula') == "Number of KPI passed":
+                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                kpi_name = p.get('KPI name Eng')
+                if kpi_name in self.kpk_scores.keys():
+                    kpi_score = self.kpk_scores[kpi_name].get('score')
+                    if kpi_score == 100:
+                        kpi_result = 1
+                    else:
+                        kpi_result = 0
+                else:
+                    continue
+
             else:
-                kpi_result = 0
-                score = self.calculate_score(kpi_result, p)
-                self.create_attributes_for_level3_df(p, score, kpi_fk)
+                continue
+
+            score = self.calculate_score(kpi_result, p)
+            set_total_res += round(score) * p.get('KPI Weight')
+
+            # saving to DB
+            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+            self.write_to_db_result(attributes_for_level2, 'level2')
+            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+            self.write_to_db_result(attributes_for_level3, 'level3')
+
         return set_total_res
