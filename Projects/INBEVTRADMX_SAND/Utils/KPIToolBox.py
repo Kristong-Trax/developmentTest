@@ -369,7 +369,7 @@ class INBEVTRADMXToolBox:
         self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
         new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(set_name)
         self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
-                                        identifier_parent=self.common2.get_dictionary(name=set_name))
+                                        identifier_result=self.common2.get_dictionary(name=set_name))
 
     def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score):
         """
