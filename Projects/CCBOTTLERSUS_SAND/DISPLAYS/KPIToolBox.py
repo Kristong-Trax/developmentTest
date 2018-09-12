@@ -9,7 +9,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.CommonV2 import Common as Common
 
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.GeneralToolBox import CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.Fetcher import CCBOTTLERSUS_SANDDISPLAYSQueries
@@ -59,7 +58,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common_db2):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
         self.data_provider = data_provider
@@ -80,7 +79,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         self.template_data = parse_template(TEMPLATE_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.common = Common(data_provider)
+        self.common = common_db2
 
     # def get_additional_attributes(self):
     #     query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_attributes_data()

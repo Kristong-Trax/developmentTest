@@ -13,8 +13,9 @@ class FunctionsToolBox:
         self.project_name = self.data_provider.project_name
         self.survey = Survey(self.data_provider, self.output)
         self.templates = templates
-        self.converters = self.templates[Const.CONVERTERS]
-        self.exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
+        if Const.CONVERTERS in self.templates:
+            self.converters = self.templates[Const.CONVERTERS]
+            self.exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
         self.store_attr = store_attr
 
     # survey:
