@@ -350,10 +350,8 @@ class PNGCN_SANDPNGShareOfDisplay(object):
                 # This will check which products are a part of brands that have more then 2 facing in the display
 
                 displays = display_visit_summary['display_surface_fk'].unique()
-                display_data_for_sum = display_visit_by_display_product_enrich_sos_type.drop(['linear', 'tot_linear',
-                        'tot_facings', 'display_size', 'sos_type_fk', 'template_fk', 'in_sos', 'display_fk', ], axis=1)
                 brands = self.get_products_brand()
-                merged_displays = display_data_for_sum.merge(brands, how='left', on='product_fk')
+                merged_displays =display_facings_for_product.merge(brands, how='left', on='product_fk')
                 for current_display in displays:
                     self.valid_facing_product[current_display] = []
                     current_display_products = merged_displays[

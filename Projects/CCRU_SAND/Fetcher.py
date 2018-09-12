@@ -226,17 +226,26 @@ class CCRU_SANDCCHKPIFetcher:
                 continue
         return final_target
 
+    def get_store_number(self, store_id):
+        query = """
+                SELECT store_number_1
+                FROM static.stores ss
+                WHERE ss.pk = {};
+                """.format(store_id)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()[0]
+        return res[0]
+
     def get_store_region(self, store_id):
         query = """
                 SELECT region_fk
                 FROM static.stores ss
                 WHERE ss.pk = {};
                 """.format(store_id)
-
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()[0]
-
         return res[0]
 
     def get_attr15_store(self, store_id):
@@ -245,7 +254,6 @@ class CCRU_SANDCCHKPIFetcher:
                 FROM static.stores ss
                 WHERE ss.pk = {};
                 """.format(store_id)
-
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()[0]
@@ -260,11 +268,20 @@ class CCRU_SANDCCHKPIFetcher:
                 FROM static.stores ss
                 WHERE ss.pk = {};
                 """.format(store_id)
-
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         res = cur.fetchall()[0]
+        return res[0]
 
+    def get_external_session_id(self, session_uid):
+        query = """
+                SELECT external_session_id
+                FROM probedata.session ss
+                WHERE ss.session_uid = '{}';
+                """.format(session_uid)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()[0]
         return res[0]
 
     # @staticmethod

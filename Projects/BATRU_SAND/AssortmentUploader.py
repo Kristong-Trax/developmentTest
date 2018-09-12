@@ -19,23 +19,38 @@ def _parse_arguments():
     parser.add_argument('--env', '-e', type=str, help='The environment - dev/int/prod')
     parser.add_argument('--project', '-p', type=str, required=True, help='The name of the project')
     parser.add_argument('--file', type=str, required=True, help='The assortment template')
+    parser.add_argument('--date', type=str, required=False, help='Start date YYYY-MM-DD')
+    parser.add_argument('--update', type=str, required=False, help='True - Partial / False - Full')
     return parser.parse_args()
 
 
-class BATRU_SANDBatruAssortment:
+class BATRU_SANDAssortment:
 
     def __init__(self):
         self.parsed_args = _parse_arguments()
         self.project = self.parsed_args.project
         self.rds_conn = self.rds_connect
         self.file_path = self.parsed_args.file
+        self.start_date = self.parsed_args.date
+        self.partial_update = self.parsed_args.update
         self.store_data = self.get_store_data
         self.all_products = self.get_product_data
         self.current_top_skus = self.get_current_top_skus
         self.stores = {}
         self.products = {}
         self.all_queries = []
-        self.update_queries = []
+
+        if self.start_date is None:
+            self.current_date = datetime.now().date()
+        else:
+            self.current_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
+        self.deactivate_date = self.current_date - timedelta(1)
+        self.activate_date = self.current_date
+
+        if self.partial_update in ('1', 'True', 'Yes', 'Y'):
+            self.partial_update = True
+        else:
+            self.partial_update = False
 
     def upload_assortment(self):
         """
@@ -43,16 +58,20 @@ class BATRU_SANDBatruAssortment:
         It does the validation and then upload the assortment.
         :return:
         """
-        Log.info("Validating the assortment template")
+        Log.info("Parsing and validating the assortment template")
         is_valid, invalid_inputs = self.p1_assortment_validator()
+
+        Log.info("Assortment upload is started")
         self.upload_store_assortment_file()
-        Log.info('Done uploading assortment for Batru')
         if not is_valid:
             Log.warning("Errors were found during the template validation")
             if invalid_inputs[INVALID_STORES]:
-                Log.warning("The following stores doesn't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
+                Log.warning("The following stores don't exist in the DB: {}"
+                            "".format(invalid_inputs[INVALID_STORES]))
             if invalid_inputs[INVALID_PRODUCTS]:
-                Log.warning("The following products doesn't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+                Log.warning("The following products don't exist in the DB: {}"
+                            "".format(invalid_inputs[INVALID_PRODUCTS]))
+        Log.info("Assortment upload is finished")
 
     @property
     def rds_connect(self):
@@ -97,13 +116,13 @@ class BATRU_SANDBatruAssortment:
         valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
             invalid_inputs[INVALID_STORES] = list(set(raw_data[OUTLET_ID].unique()) - set(valid_stores['store_number']))
-            Log.warning("Those stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
+            Log.warning("The following stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
             legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
             invalid_inputs[INVALID_PRODUCTS] = list(set(raw_data[EAN_CODE].unique()) - set(valid_product[EAN_CODE]))
-            Log.warning("Those products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+            Log.warning("The following products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
             legal_template = False
         return legal_template, invalid_inputs
 
@@ -127,42 +146,62 @@ class BATRU_SANDBatruAssortment:
         This function sets an end_date to all of the irrelevant stores in the assortment.
         :param stores_list: List of the stores from the assortment template
         """
-        Log.info("Starting to set an end date for irrelevant stores")
-        irrelevant_stores = self.store_data.loc[
-            ~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
+        Log.info("Closing assortment for stores out of template")
+        irrelevant_stores = self.store_data.loc[~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
         stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
-        query = self.get_store_deactivation_query(stores_to_remove)
-        self.commit_results([query])
-        Log.info("Done setting end dates for irrelevant stores")
+        for store in stores_to_remove:
+            query = [self.get_store_deactivation_query(store, self.deactivate_date)]
+            self.commit_results(query)
+        Log.info("Assortment is closed for ({}) stores".format(len(stores_to_remove)))
 
     def upload_store_assortment_file(self):
         raw_data = self.parse_assortment_template()
         data = []
         list_of_stores = raw_data[OUTLET_ID].unique().tolist()
-        self.set_end_date_for_irrelevant_assortments(list_of_stores)
+
+        if not self.partial_update:
+            self.set_end_date_for_irrelevant_assortments(list_of_stores)
+
+        Log.info("Preparing assortment data for update")
+        store_counter = 0
         for store in list_of_stores:
             store_data = {}
             store_products = raw_data.loc[raw_data[OUTLET_ID] == store][EAN_CODE].tolist()
             store_data[store] = store_products
             data.append(store_data)
-        for store_data in data:
-            self.update_db_from_json(store_data, immediate_change=True)
-        queries = self.merge_insert_queries(self.all_queries)
-        Log.info("Queries aggregation is over, starting commiting the assortment")
-        self.commit_results(queries)
-        Log.info("Done commiting results")
 
-    def merge_insert_queries(self, insert_queries):
+            store_counter += 1
+            if store_counter % 1000 == 0 or store_counter == len(list_of_stores):
+                Log.info("Assortment is prepared for {}/{} stores".format(store_counter, len(list_of_stores)))
+
+        Log.info("Updating assortment data in DB")
+        store_counter = 0
+        for store_data in data:
+
+            self.update_db_from_json(store_data)
+
+            if self.all_queries:
+                queries = self.merge_insert_queries(self.all_queries)
+                self.commit_results(queries)
+                self.all_queries = []
+
+            store_counter += 1
+            if store_counter % 1000 == 0 or store_counter == len(data):
+                Log.info("Assortment is updated in DB for {}/{} stores".format(store_counter, len(data)))
+
+    @staticmethod
+    def merge_insert_queries(queries):
         """
         This function aggregates all of the insert queries
-        :param insert_queries: all of the queries (update and insert) for the assortment
+        :param queries: all of the queries (update and insert) for the assortment
         :return: The merged insert queries
         """
         query_groups = {}
-        for query in insert_queries:
-            if 'update' in query:
-                self.update_queries.append(query)
+        other_queries = []
+        for query in queries:
+            if 'VALUES' not in query:
+                other_queries.append(query)
                 continue
             static_data, inserted_data = query.split('VALUES ')
             if static_data not in query_groups:
@@ -173,19 +212,22 @@ class BATRU_SANDBatruAssortment:
             for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index + 10 ** 4])))
-        return merged_queries
+        return other_queries + merged_queries
 
-    def update_db_from_json(self, data, immediate_change=False, discard_missing_products=False):
-        products = set()
+    def update_db_from_json(self, data):
+        update_products = set()
         missing_products = set()
+
         store_number = data.keys()[0]
         if store_number is None:
-            Log.warning("'{}' is required in data".format(STORE_NUMBER))
+            Log.warning("'{}' column or value is missing".format(STORE_NUMBER))
             return
+
         store_fk = self.get_store_fk(store_number)
         if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
+            Log.warning('Store Number {} does not exist in DB'.format(store_number))
             return
+
         for key in data[store_number]:
             validation = False
             if isinstance(key, (float, int)):
@@ -196,40 +238,31 @@ class BATRU_SANDBatruAssortment:
                 product_ean_code = str(key).split(',')[-1]
                 product_fk = self.get_product_fk(product_ean_code)
                 if product_fk is None:
-                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
                     missing_products.add(product_ean_code)
-                    continue
-                products.add(product_fk)
-        if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
-            return
-        if products:
-            current_date = datetime.now().date()
-            if immediate_change:
-                deactivate_date = current_date - timedelta(1)
-                activate_date = current_date
-            else:
-                deactivate_date = current_date
-                activate_date = current_date + timedelta(1)
-            queries = []
-            current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
-            products_to_deactivate = set(current_skus).difference(products)
-            products_to_activate = set(products).difference(current_skus)
-            # for product_fk in products_to_deactivate:
-            if products_to_deactivate:
-                if len(products_to_deactivate) != 1:
-                    queries.append(
-                        self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
                 else:
-                    queries.append(self.get_deactivation_query(store_fk, '({})'.format(list(products_to_deactivate)[0]),
-                                                               deactivate_date))
-            for product_fk in products_to_activate:
-                queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
-            self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
-                store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
-        else:
-            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
+                    update_products.add(product_fk)
+
+        if missing_products:
+            Log.warning('The following EAN Codes for Store Number {} do not exist in DB: {}.'
+                        ''.format(store_number, list(missing_products)))
+        queries = []
+        current_products = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
+
+        products_to_deactivate = tuple(set(current_products).difference(update_products))
+        products_to_activate = tuple(set(update_products).difference(current_products))
+
+        if products_to_deactivate:
+            if len(products_to_deactivate) == 1:
+                queries.append(self.get_deactivation_query(store_fk, "(" + str(products_to_deactivate[0]) + ")", self.deactivate_date))
+            else:
+                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), self.deactivate_date))
+
+        for product_fk in products_to_activate:
+            queries.append(self.get_activation_query(store_fk, product_fk, self.activate_date))
+
+        self.all_queries.extend(queries)
+        Log.info('Store Number {} - Products to update {}: Deactivated {}, Activated {}'
+                 ''.format(store_number, len(update_products), len(products_to_deactivate), len(products_to_activate)))
 
     def get_store_fk(self, store_number):
         """
@@ -263,17 +296,22 @@ class BATRU_SANDBatruAssortment:
         return product_fk
 
     @staticmethod
-    def get_deactivation_query(store_fk, product_fk, date):
-        query = """update {} set end_date = '{}', is_current = NULL
-                   where store_fk = {} and product_fk in {} and end_date is null;"""\
-            .format(STORE_ASSORTMENT_TABLE, date, store_fk, product_fk)
+    def get_deactivation_query(store_fk, product_fks, date):
+        query = \
+            """
+            update {} set end_date = '{}', is_current = NULL 
+            where store_fk = {} and product_fk in {} and end_date is null;
+            """\
+            .format(STORE_ASSORTMENT_TABLE, date, store_fk, product_fks)
         return query
 
     @staticmethod
-    def get_store_deactivation_query(store_fk_list):
-        current_date = datetime.now().date()
-        query = """update {} set end_date = '{}', is_current = NULL where store_fk in {} and end_date is null;"""\
-            .format(STORE_ASSORTMENT_TABLE, current_date, tuple(store_fk_list))
+    def get_store_deactivation_query(store_fk, date):
+        query = \
+            """
+            update {} set end_date = '{}', is_current = NULL
+            where store_fk = {} and end_date is null;
+            """.format(STORE_ASSORTMENT_TABLE, date, store_fk)
         return query
 
     @staticmethod
@@ -283,58 +321,38 @@ class BATRU_SANDBatruAssortment:
         query = insert(attributes.to_dict(), STORE_ASSORTMENT_TABLE)
         return query
 
-    def connection_ritual(self):
-        """
-        This function connects to the DB and cursor
-        :return: rds connection and cursor connection
-        """
-        self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
-        cur = rds_conn.db.cursor()
-        return rds_conn, cur
-
     def commit_results(self, queries):
         """
         This function commits the results into the DB in batches.
         query_num is the number of queires that were executed in the current batch
         After batch_size is reached, the function re-connects the DB and cursor.
         """
-        rds_conn, cur = self.connection_ritual()
-        batch_size = 500
+        self.rds_conn.connect_rds()
+        cursor = self.rds_conn.db.cursor()
+        batch_size = 1000
         query_num = 0
-        for query in self.update_queries:
-            try:
-                cur.execute(query)
-                print query
-            except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
-                continue
-            if query_num > batch_size:
-                query_num = 0
-                rds_conn, cur = self.connection_ritual()
-                rds_conn.db.commit()
-            query_num += 1
-        rds_conn.db.commit()
-        rds_conn, cur = self.connection_ritual()
-        query_num = 0
+        failed_queries = []
         for query in queries:
             try:
-                cur.execute(query)
-                print query
+                cursor.execute(query)
+                # print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
-                rds_conn, cur = self.connection_ritual()
+                Log.info('Committing to DB failed to due to: {}. Query: {}'.format(e, query))
+                self.rds_conn.db.commit()
+                failed_queries.append(query)
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 continue
             if query_num > batch_size:
+                self.rds_conn.db.commit()
+                self.rds_conn.connect_rds()
+                cursor = self.rds_conn.db.cursor()
                 query_num = 0
-                rds_conn, cur = self.connection_ritual()
-                rds_conn.db.commit()
             query_num += 1
-        rds_conn.db.commit()
+        self.rds_conn.db.commit()
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Upload assortment for Batru')
-    BATRU_SANDBatruAssortment().upload_assortment()
-    # # # To run it locally just copy: -e prod -p batru --file **your file path** to the configuration
+    LoggerInitializer.init('Upload assortment for BATRU')
+    BATRU_SANDAssortment().upload_assortment()
+    # # # To run it locally just copy: -e prod -p batru --file your_file_path --date YYYY-MM-DD_start_date --update 1/0_partial/full_update to the configuration

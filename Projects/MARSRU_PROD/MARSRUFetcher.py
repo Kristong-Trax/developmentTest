@@ -12,6 +12,8 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 MARS = 'Mars'
 OTHER = 'Other'
+EMPTY = 'Empty'
+SKU = 'SKU'
 
 VERTEX_FK_FIELD = 'scene_match_fk'
 
@@ -47,7 +49,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['manufacturer_name'] == MARS) &
-                                           (~self.scif['product_type'].isin([OTHER]))]
+                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset='product_fk')
@@ -57,7 +59,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (self.scif['category'].isin(brand_category))]
+                                           (self.scif['category'].isin(brand_category)) &
+                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset='product_fk')
@@ -65,7 +68,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (~self.scif['product_type'].isin([OTHER]))]
+                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
             merged_dfs = initial_result.merge(self.matches, how='left', on=['product_fk', 'scene_fk'],
                                               suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
@@ -163,50 +166,6 @@ class MARSRU_PRODMARSRUKPIFetcher:
         level1 = pd.read_sql_query(query, self.rds_conn.db)
         kpi_set_fk = level1['kpi_set_fk']
         return kpi_set_fk
-
-    # def get_category_target_by_region(self, category, store_id):
-    #     store_type_dict = {'PoS 2017 - MT - Hypermarket': 'Hypermarket',
-    #                        'PoS 2017 - MT - Supermarket': 'Supermarket',
-    #                        'PoS 2017 - MT - Superette': 'Superette'}
-    #     store_region_fk = self.get_store_region(store_id)
-    #     branch_fk = self.get_store_branch(store_id)
-    #     jg = JsonGenerator('ccru')
-    #     jg.create_targets_json('MT Shelf facings_2017.xlsx')
-    #     targets = jg.project_kpi_dict['cat_targets_by_region']
-    #     final_target = 0
-    #     for row in targets:
-    #         if row.get('branch_fk') == branch_fk and row.get('region_fk') == store_region_fk \
-    #                 and row.get('store_type') == store_type_dict.get(self.set_name):
-    #             final_target = row.get(category)
-    #         else:
-    #             continue
-    #     return final_target
-    #
-    # def get_store_region(self, store_id):
-    #     query = """
-    #             SELECT region_fk
-    #             FROM static.stores ss
-    #             WHERE ss.pk = {};
-    #             """.format(store_id)
-    #
-    #     cur = self.rds_conn.db.cursor()
-    #     cur.execute(query)
-    #     res = cur.fetchall()[0]
-    #
-    #     return res[0]
-    #
-    # def get_store_branch(self, store_id):
-    #     query = """
-    #             SELECT branch_fk
-    #             FROM static.stores ss
-    #             WHERE ss.pk = {};
-    #             """.format(store_id)
-    #
-    #     cur = self.rds_conn.db.cursor()
-    #     cur.execute(query)
-    #     res = cur.fetchall()[0]
-    #
-    #     return res[0]
 
     def get_session_set(self, session_uid):
         query = """
@@ -332,16 +291,6 @@ class MARSRU_PRODMARSRUKPIFetcher:
 
     @staticmethod
     def get_delete_session_results(session_uid):
-        # queries = ["""delete from report.kps_results
-        #                 where kps_name = '{}' and session_uid = '{}'""",
-        #            """delete kpk from report.kpk_results kpk
-        #                 join static.kpi kpi on kpk.kpi_fk = kpi.pk
-        #                 join static.kpi_set kps on kpi.kpi_set_fk = kps.pk
-        #                 where kps.name = '{}' and session_uid = '{}'""",
-        #            """delete atomic_kpi from report.kpi_results atomic_kpi
-        #                 join static.kpi kpi on atomic_kpi.kpi_fk = kpi.pk
-        #                 join static.kpi_set kps on kpi.kpi_set_fk = kps.pk
-        #                 where kps.name = '{}' and session_uid = '{}'"""]
         queries = ["delete from report.kps_results where session_uid = '{}';".format(session_uid),
                    "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
                    "delete from report.kpi_results where session_uid = '{}';".format(session_uid)]

@@ -23,9 +23,10 @@ class PNGJPPositionGraphs:
     FLEXIBLE_MODE = 'Flexible Mode'
     STRICT_MODE = 'Strict Mode'
 
-    ATTRIBUTES_TO_SAVE = ['product_name', 'product_type', 'product_ean_code', 'sub_brand_name',
+    ATTRIBUTES_TO_SAVE = ['scene_match_fk','product_name', 'product_fk', 'product_type', 'product_ean_code', 'sub_brand_name',
                           'brand_name', 'category', 'sub_category', 'manufacturer_name', 'front_facing',
-                          'category_local_name', 'shelf_number']
+                          'category_local_name', 'shelf_number', TOP, BOTTOM, LEFT, RIGHT, 'x_mm', 'y_mm',
+                          'bay_number', 'width_mm_advance', 'height_mm_advance']
 
     def __init__(self, data_provider, flexibility=1, proximity_mode=FLEXIBLE_MODE, rds_conn=None):
         self.data_provider = data_provider

@@ -7,8 +7,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS_SAND.Utils.PositionGraph import CCUSPositionGraphs
-from Projects.CCUS_SAND.Utils.GeneralToolBox import CCUSGENERALToolBox
+from Projects.CCUS_SAND.Utils.PositionGraph import CCUS_SANDPositionGraphs
+from Projects.CCUS_SAND.Utils.GeneralToolBox import CCUS_SANDGENERALCCUS_SANDToolBox
 
 __author__ = 'ortalk'
 
@@ -24,7 +24,7 @@ UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
 
 
-class ToolBox:
+class CCUS_SANDToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     EXCLUDE_EMPTY = 0
@@ -95,7 +95,7 @@ class ToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = CCUSGENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True,
+        self.general_tools = CCUS_SANDGENERALCCUS_SANDToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True,
                                       match_display_in_scene=self.match_display_in_scene)
         self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
@@ -105,7 +105,7 @@ class ToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = CCUSPositionGraphs(self.data_provider)
+            self._position_graphs = CCUS_SANDPositionGraphs(self.data_provider)
         return self._position_graphs
 
     @property
@@ -266,9 +266,9 @@ class ToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = (DIAGEOAUDIAGEOToolBox.DIAGEO,
-                                                                 DIAGEOAUDIAGEOToolBox.INCLUDE_FILTER)
-                       INPUT EXAMPLE (2):   manufacturer_name = DIAGEOAUDIAGEOToolBox.DIAGEO
+                       INPUT EXAMPLE (1):   manufacturer_name = (DIAGEOAUDIAGEOCCUS_SANDToolBox.DIAGEO,
+                                                                 DIAGEOAUDIAGEOCCUS_SANDToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = DIAGEOAUDIAGEOCCUS_SANDToolBox.DIAGEO
         :return: a filtered Scene Item Facts data frame.
         """
         return self.general_tools.get_filter_condition(df, **filters)

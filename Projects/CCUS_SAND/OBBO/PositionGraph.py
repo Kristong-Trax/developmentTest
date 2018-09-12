@@ -4,8 +4,8 @@ import datetime
 import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'Nimrod'
@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class OBBOPositionGraphs:
+class CCUS_SANDOBBOPositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -39,7 +39,7 @@ class OBBOPositionGraphs:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property

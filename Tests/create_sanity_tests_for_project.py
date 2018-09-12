@@ -99,12 +99,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = '%(author)s'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
@@ -211,7 +212,7 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'mychemistau'
+    project_to_test = 'ccbza'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter()
     creator.rds_conn.disconnect_rds()

@@ -1,20 +1,19 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Utils.Logging.Logger import Log
 
-
-from Projects.CCRU.Sets.Canteen import CCRUCanteenCalculations
-from Projects.CCRU.Sets.FT import CCRUFTCalculations
-from Projects.CCRU.Sets.FastFood import CCRUFastFoodCalculations
-from Projects.CCRU.Sets.HoReCa import CCRUHoReCaCalculations
-from Projects.CCRU.Sets.Hypermarket import CCRUHypermarketCalculations
-from Projects.CCRU.Sets.Petrol import CCRUPetrolCalculations
-from Projects.CCRU.Sets.Superette import CCRUSuperetteCalculations
-from Projects.CCRU.Sets.Supermarket import CCRUSupermarketCalculations
+# from Projects.CCRU.Sets.Canteen import CCRUCanteenCalculations
+# from Projects.CCRU.Sets.FT import CCRUFTCalculations
+# from Projects.CCRU.Sets.FastFood import CCRUFastFoodCalculations
+# from Projects.CCRU.Sets.HoReCa import CCRUHoReCaCalculations
+# from Projects.CCRU.Sets.Hypermarket import CCRUHypermarketCalculations
+# from Projects.CCRU.Sets.Petrol import CCRUPetrolCalculations
+# from Projects.CCRU.Sets.Superette import CCRUSuperetteCalculations
+# from Projects.CCRU.Sets.Supermarket import CCRUSupermarketCalculations
 
 from Projects.CCRU.Sets.FT2018 import CCRUFT2018Calculations
 from Projects.CCRU.Sets.Hypermarket2018 import CCRUHypermarket2018Calculations
@@ -30,6 +29,7 @@ from Projects.CCRU.Sets.Petrol2018 import CCRUPetrol2018Calculations
 
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -64,60 +64,68 @@ QSR_2018 = 'Pos 2018 - QSR'
 
 
 class CCRUCalculations(BaseCalculationsScript):
+
+    @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
         self.timer.start()  # use log.time_message
         ps_data = PsDataProvider(self.data_provider, self.output)
         store_area = ps_data.store_area
         tool_box = CCRUKPIToolBox(self.data_provider, self.output, store_area)
-        kpi_set_name = tool_box.set_name
-        test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
-        if kpi_set_name == CANTEEN:
-            CCRUCanteenCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == PETROL:
-            CCRUPetrolCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HORECA:
-            CCRUHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == FT:
-            CCRUFTCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HYPERMARKET:
-            CCRUHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERMARKET:
-            CCRUSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERETTE:
-            CCRUSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == FAST_FOOD:
-            CCRUFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+        external_session_id = str(tool_box.external_session_id)
+        if external_session_id.find('EasyMerch-P') < 0:
 
-        elif kpi_set_name == FT2018:
-            CCRUFT2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CANTEEN_2018:
-            CCRUCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == PETROL_2018:
-            CCRUPetrol2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HYPERMARKET_2018:
-            CCRUHypermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == SUPERMARKET_2018:
-            CCRUSupermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_RESTAURANT_2018:
-            CCRUHRCRestaurant2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_COFFEE_2018:
-            CCRUHRCCoffee2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == HRC_BAR_2018:
-            CCRUHRCBar2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CONVENIENCE_BIG_2018:
-            CCRUConvenienceBigCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == CONVENIENCE_SMALL_2018:
-            CCRUConvenienceSmallCalculations(self.data_provider, self.output, store_area).main_function()
-        elif kpi_set_name == QSR_2018:
-            CCRUQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
-        elif test_store.values[0] == "Y":
-            Log.info('Session store "{}" is a test store'.format(
-                tool_box.session_info.store_type))
+            kpi_set_name = tool_box.set_name
+            test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
+
+            # if kpi_set_name == CANTEEN:
+            #     CCRUCanteenCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == PETROL:
+            #     CCRUPetrolCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HORECA:
+            #     CCRUHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FT:
+            #     CCRUFTCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HYPERMARKET:
+            #     CCRUHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERMARKET:
+            #     CCRUSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERETTE:
+            #     CCRUSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FAST_FOOD:
+            #     CCRUFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+
+            if kpi_set_name == FT2018:
+                CCRUFT2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CANTEEN_2018:
+                CCRUCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == PETROL_2018:
+                CCRUPetrol2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HYPERMARKET_2018:
+                CCRUHypermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == SUPERMARKET_2018:
+                CCRUSupermarket2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_RESTAURANT_2018:
+                CCRUHRCRestaurant2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_COFFEE_2018:
+                CCRUHRCCoffee2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == HRC_BAR_2018:
+                CCRUHRCBar2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CONVENIENCE_BIG_2018:
+                CCRUConvenienceBigCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == CONVENIENCE_SMALL_2018:
+                CCRUConvenienceSmallCalculations(self.data_provider, self.output, store_area).main_function()
+            elif kpi_set_name == QSR_2018:
+                CCRUQsr2018Calculations(self.data_provider, self.output, store_area).main_function()
+            elif test_store.values[0] == "Y":
+                Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
+            else:
+                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'
+                          ''.format(tool_box.store_id, kpi_set_name))
+
         else:
-            Log.error('Session store "{}" is not set to calculation'.format(
-                tool_box.session_info.store_type))  # todo add all supported store types
+            Log.info('Promo session, no Custom KPI calculation implied')
 
-        self.timer.stop('CCRUCalculations.run_project_calculations')
+        # self.timer.stop('CCRUCalculations.run_project_calculations')
 
 
 # if __name__ == '__main__':
@@ -125,17 +133,10 @@ class CCRUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'ccru'
 #     data_provider = KEngineDataProvider(project_name)
-#     session_uids = ['851E8DC4-CC29-4F8E-AFB4-BE3E4C9921B9']
+#     session_uids = [
+#         'DAD315B9-30EA-4AA7-B8FA-684115B1F404',
+#     ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         CCRUCalculations(data_provider, output).run_project_calculations()
-#
-# sessions in 2018 per store type:
-# 'e3d4817b-3654-40a5-9d0a-3fed8f19bcba' --> Pos 2018 - MT - Convenience Big
-# 'a9175991-91b5-4bd6-9b12-78ede2a6a578' --> 'Pos 2018 - MT - Convenience Small'
-# '366e19c9-338d-49ad-b902-f680520f5862' --> Pos 2018 - FT
-# 'C0A94463-627A-48AB-8B7C-B1FE7712F35B' --> Pos 2018 - MT - Hypermarket
-# '38503654-2c64-436f-9064-aeac06d4c966' --> Pos 2018 - MT - Supermarket
-# '5dbdb69e-257b-4dfe-9b42-c07675703167' -->Pos 2018 - Petroleum
-# '95423BDE-F038-488B-A8D4-C7267528785D' --> Pos 2018 - QSR

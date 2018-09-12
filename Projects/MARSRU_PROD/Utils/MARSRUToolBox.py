@@ -634,7 +634,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=[], formula=None, values_list=None, object_type=None,
-                               include_stacking = False):
+                               include_stacking=False):
         if not values_list:
             if '*' in str(params.get('Values')):
                 values_list = str(params.get('Values')).split(', *')
@@ -1860,33 +1860,30 @@ class MARSRU_PRODMARSRUKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             if values_list:
                 if p.get('#Mars KPI NAME') == 2317:
+
+                    top_eans = p.get('Values').split('\n')
+                    top_products_in_store = self.scif[self.scif['product_ean_code'].isin(top_eans)]['product_fk'].unique().tolist()
+
                     min_shelf, max_shelf = values_list.split('-')
                     min_shelf, max_shelf = int(min_shelf), int(max_shelf)
-                    result = 'FALSE'
-                    score = 0
-                    SKUs = p.get('Values').split('\n')
-                    for scene in scenes:
-                        scene_result = True
-                        golden_shelf_match_products = self.match_product_in_scene[
-                            (self.match_product_in_scene['scene_fk'] == scene) &
-                            (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
-                            (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf)]
-                        for SKU in SKUs:
-                            is_sku_in_golden = True
-                            filtered_scif_by_sku = self.scif[self.scif['product_ean_code'] == SKU]
-                            if not filtered_scif_by_sku.empty:
-                                product_fk = filtered_scif_by_sku['product_fk'].iloc[0]
-                                if golden_shelf_match_products[
-                                            golden_shelf_match_products['product_fk'] == product_fk].empty:
-                                    is_sku_in_golden = False
-                                    break
-                            if not is_sku_in_golden:
-                                scene_result = False
-                                break
-                        if scene_result:
-                            result = 'TRUE'
-                            score = 100
-                            break
+                    top_products_on_golden_shelf = self.match_product_in_scene[
+                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+                    top_products_outside_golden_shelf = self.match_product_in_scene[
+                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] < min_shelf) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] > max_shelf) &
+                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+
+                    if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
+                        result = 'FALSE'
+                        score = 0
+                    else:
+                        result = 'TRUE'
+                        score = 100
+
                 elif p.get('#Mars KPI NAME') == 2254:
                     type_value = str(p.get('Type'))
                     values = str(p.get('Values')).split(', ')
@@ -1909,6 +1906,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     else:
                         result = 'FALSE'
                         score = 0
+
                 else:
                     sub_results = []
                     for value in values_list:
@@ -1929,6 +1927,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
                     else:
                         result = 'FALSE'
                         score = 0
+
             else:
                 result = 'FALSE'
                 score = 0
@@ -1998,12 +1997,22 @@ class MARSRU_PRODMARSRUKPIToolBox:
                 continue
             result = 'FALSE'
             score = 0
-            targets, others, percent = p.get('Values').split('\n')
-            target_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(targets)))
-            other_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(others)))
-            target_linear_size = self.calculate_layout_size_by_filters(target_filter)
-            others_linear_size = self.calculate_layout_size_by_filters(other_filter)
-            if target_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
+            target_linear_size_total = 0
+            others_linear_size_total = 0
+            for values in p.get('Values').split('\nOR\n'):
+                targets, others, percent = values.split('\n')
+                target_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(targets)))
+                other_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(others)))
+                target_linear_size = self.calculate_layout_size_by_filters(target_filter)
+                others_linear_size = self.calculate_layout_size_by_filters(other_filter)
+                target_linear_size_total += target_linear_size
+                others_linear_size_total += others_linear_size
+                if target_linear_size > 0 and others_linear_size > 0\
+                        and target_linear_size >= float(percent) * others_linear_size:
+                    result = 'TRUE'
+                    score = 100
+                    break
+            if target_linear_size_total > 0 and others_linear_size_total == 0:
                 result = 'TRUE'
                 score = 100
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('#Mars KPI NAME'))

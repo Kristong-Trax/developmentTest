@@ -4,21 +4,19 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS_SAND.Utils.PositionGraph import CCUSPositionGraphs
-from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
-
+from Trax.Utils.Conf.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+from Projects.CCUS_SAND.Utils.PositionGraph import CCUS_SANDPositionGraphs
 
 __author__ = 'ortalk'
 BUCKET = 'traxuscalc'
 KPI_NAME = 'KPI Name'
 
 
-
-class CCUSGENERALToolBox:
+class CCUS_SANDGENERALCCUS_SANDToolBox:
     """
-    MOVED TO Trax.Data.ProfessionalServices.KPIUtils.GeneralToolBox
+    MOVED TO Trax.Data.ProfessionalServices.KPIUtils.GeneralCCUS_SANDToolBox
     """
 
     EXCLUDE_FILTER = 0
@@ -45,7 +43,7 @@ class CCUSGENERALToolBox:
         self.kpi_static_data = kpi_static_data
         # self.get_atts()
         if geometric_kpi_flag:
-            self.position_graph_data = CCUSPositionGraphs(self.data_provider)
+            self.position_graph_data = CCUS_SANDPositionGraphs(self.data_provider)
             self.matches = self.position_graph_data.match_product_in_scene
             self.position_graph = self.position_graph_data.position_graphs
         else:
@@ -55,7 +53,7 @@ class CCUSGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = CCUSPositionGraphs(self.data_provider)
+            self._position_graphs = CCUS_SANDPositionGraphs(self.data_provider)
         return self._position_graphs
 
     @property
@@ -70,13 +68,13 @@ class CCUSGENERALToolBox:
     #         self._match_product_in_scene = self.position_graph_data.match_product_in_scene
     #     return self._match_product_in_scene
 
-
+    #
     # def get_atts(self):
     #     """
     #     This function extracts the static KPI data and saves it into one global data frame.
     #     The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
     #     """
-    #     query = CCUSQueries.get_product_atts()
+    #     query = CCUS_SANDQueries.get_product_atts()
     #     product_att4 = pd.read_sql_query(query, self.rds_conn.db)
     #     self.scif = self.scif.merge(product_att4, how='left', left_on='product_ean_code',
     #                                 right_on='product_ean_code')
@@ -351,7 +349,7 @@ class CCUSGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALCCUS_SANDToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """

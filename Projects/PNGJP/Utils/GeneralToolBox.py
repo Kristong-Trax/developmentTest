@@ -176,8 +176,9 @@ class PNGJPGENERALToolBox:
                     assortment += 1
         return assortment
 
-    def calculate_facings_on_golden_zone(self, golden_zone_data, **filters):
+    def calculate_linear_facings_on_golden_zone(self, golden_zone_data, linear=False, **filters):
         total_facings = 0
+        total_linear = 0
         filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         if not filtered_df.empty:
             scenes = filtered_df['scene_fk'].unique().tolist()
@@ -189,8 +190,14 @@ class PNGJPGENERALToolBox:
                     num_shelves = bay_df['shelf_number'].max()
                     golden_zone_shelves = self.get_golden_zone_shelves(num_shelves, golden_zone_data)
                     facings_on_golden_zone = len(filtered_bay_df.loc[filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)])
+                    linear_on_golden_zone = filtered_bay_df.loc[
+                        (filtered_bay_df['shelf_number_from_bottom'].isin(golden_zone_shelves)) & (filtered_bay_df['stacking_layer'] == 1)]['width_mm'].sum()
+                    total_linear += linear_on_golden_zone
                     total_facings += facings_on_golden_zone
-        return total_facings
+        if linear:
+            return total_linear
+        else:
+            return total_facings
 
     def get_golden_zone_shelves(self, shelves_num, golden_zone_template):
         """
@@ -704,9 +711,13 @@ class PNGJPGENERALToolBox:
 
         all_vertices = {v.index for v in graph.vs}
         vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
+        # saving identifier to allowed vertices before delete of graph
+        allowed_list_ids = {graph.vs[i]['scene_match_fk'] for i in allowed_vertices}
         graph.delete_vertices(vertices_to_remove)
+        # saving the new vertices id's after delete of vertices
+        new_allowed_vertices = {v.index for v in graph.vs if v['scene_match_fk'] in allowed_list_ids}
         # removing clusters including 'allowed' SKUs only
-        blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
+        blocks = [block for block in graph.clusters() if set(block).difference(new_allowed_vertices)]
         return blocks, graph
 
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
@@ -811,6 +822,85 @@ class PNGJPGENERALToolBox:
                 return False, 0
             else:
                 return False
+
+    def calculate_block_edges(self, minimum_block_ratio=0.01, allowed_products_filters=None,
+                                          include_empty=EXCLUDE_EMPTY, biggest_block=False, **filters):
+
+
+        """
+        :param minimum_block_ratio:
+        :param number_of_allowed_others: Number of allowed irrelevant facings between two cluster of relevant facings.
+        :param filters: The relevant facings of the block.
+        :return: This function calculates the number of 'flexible blocks' per scene, meaning, blocks which are allowed
+                 to have a given number of irrelevant facings between actual chunks of relevant facings.
+        """
+        edges = []
+        filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+        product_list = self._get_group_product_list(filters)
+
+        if len(relevant_scenes) == 0:
+            Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(product_list))
+        for scene in relevant_scenes:
+
+            scene_graph = self.position_graphs.get(scene).copy()
+            clusters, scene_graph = self.get_scene_blocks(scene_graph,
+                                                          allowed_products_filters=allowed_products_filters,
+                                                          include_empty=include_empty, **{'product_fk': product_list})
+            new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{'product_fk': product_list})
+
+            for cluster in clusters:
+                relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                if len(new_relevant_vertices) > 0:
+                    cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                else:
+                    cluster_ratio = 0
+                if cluster_ratio >= minimum_block_ratio:
+                    cluster.sort(reverse=True)
+                    edges = self.get_block_edges(scene_graph.copy().vs[cluster])
+                    if biggest_block:
+                        minimum_block_ratio = cluster_ratio
+                    else:
+                        break
+        return edges
+
+    def get_block_edges(self, graph):
+        """
+        This function receives one or more vertex data of a block's graph, and returns the range of its edges -
+        The far most top, bottom, left and right pixels of its facings.
+        """
+        top = right = bottom = left = None
+
+        top = graph.get_attribute_values('y_mm')
+        top_index = max(xrange(len(top)), key=top.__getitem__)
+        top_height = graph.get_attribute_values('height_mm_advance')[top_index]
+        top = graph.get_attribute_values('y_mm')[top_index]
+        top += top_height / 2
+
+        bottom = graph.get_attribute_values('y_mm')
+        bottom_index = min(xrange(len(bottom)), key=bottom.__getitem__)
+        bottom_height = graph.get_attribute_values('height_mm_advance')[bottom_index]
+        bottom = graph.get_attribute_values('y_mm')[bottom_index]
+        bottom -= bottom_height / 2
+
+        left = graph.get_attribute_values('x_mm')
+        left_index = min(xrange(len(left)), key=left.__getitem__)
+        left_height = graph.get_attribute_values('width_mm_advance')[left_index]
+        left = graph.get_attribute_values('x_mm')[left_index]
+        left -= left_height / 2
+
+        right = graph.get_attribute_values('x_mm')
+        right_index = max(xrange(len(right)), key=right.__getitem__)
+        right_width = graph.get_attribute_values('width_mm_advance')[right_index]
+        right = graph.get_attribute_values('x_mm')[right_index]
+        right += right_width / 2
+
+        # top = min(graph.get_attribute_values(self.position_graphs.RECT_Y))
+        # right = max(graph.get_attribute_values(self.position_graphs.RECT_X))
+        # bottom = max(graph.get_attribute_values(self.position_graphs.RECT_Y))
+        # left = min(graph.get_attribute_values(self.position_graphs.RECT_X))
+        result = {'visual': {'top': top, 'right': right, 'bottom': bottom, 'left': left}}
+        result.update({'shelfs': list(set(graph.get_attribute_values('shelf_number')))})
+        return result
 
     def calculate_product_unique_position_on_shelf(self, scene_id, shelf_number, **filters):
         """
@@ -918,3 +1008,79 @@ class PNGJPGENERALToolBox:
         elif len(data.keys()) == 1:
             data = data[data.keys()[0]]
         return data
+
+    def calculate_adjacency(self, filter_group_a, filter_group_b, scene_type_filter, allowed_filter,
+                                allowed_filter_without_other, a_target, b_target, target):
+
+
+        a_product_list = self._get_group_product_list(filter_group_a)
+        b_product_list = self._get_group_product_list(filter_group_b)
+
+        adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
+                                                 allowed_filter_without_other, a_target, b_target, target)
+        if adjacency:
+            return 100
+        return 0
+
+
+    def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
+                            allowed_filter_without_other, a_target, b_target, target):
+        a_b_union = list(set(a_product_list) | set(b_product_list))
+
+        a_filter = {'product_fk': a_product_list}
+        b_filter = {'product_fk': b_product_list}
+        a_b_filter = {'product_fk': a_b_union}
+        a_b_filter.update(scene_type_filter)
+
+        matches = self.data_provider.matches
+        relevant_scenes = matches[self.get_filter_condition(matches, **a_b_filter)][
+            'scene_fk'].unique().tolist()
+
+        result = False
+        for scene in relevant_scenes:
+            a_filter_for_block = a_filter.copy()
+            a_filter_for_block.update({'scene_fk': scene})
+            b_filter_for_block = b_filter.copy()
+            b_filter_for_block.update({'scene_fk': scene})
+            try:
+                a_products = self.get_products_by_filters('product_fk', **a_filter_for_block)
+                b_products = self.get_products_by_filters('product_fk', **b_filter_for_block)
+                if sorted(a_products.tolist()) == sorted(b_products.tolist()):
+                    return False
+            except:
+                pass
+            if a_target:
+                brand_a_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                      minimum_block_ratio=a_target,
+                                                                      vertical=False, **a_filter_for_block)
+                if not brand_a_blocked:
+                    continue
+
+            if b_target:
+                brand_b_blocked = self.calculate_block_together(allowed_products_filters=allowed_filter,
+                                                                      minimum_block_ratio=b_target,
+                                                                      vertical=False, **b_filter_for_block)
+                if not brand_b_blocked:
+                    continue
+
+            a_b_filter_for_block = a_b_filter.copy()
+            a_b_filter_for_block.update({'scene_fk': scene})
+
+            block = self.calculate_block_together(allowed_products_filters=allowed_filter_without_other,
+                                                        minimum_block_ratio=target, block_of_blocks=True,
+                                                        block_products1=a_filter, block_products2=b_filter,
+                                                        **a_b_filter_for_block)
+            if block:
+                return True
+        return result
+
+    def _get_group_product_list(self, filters):
+        products = self.data_provider.products.copy()
+        # filter_.update({'Sub-section': filters['all']['Sub-section']})
+        product_list = products[self.get_filter_condition(products, **filters)]['product_fk'].tolist()
+        return product_list
+
+    def get_products_by_filters(self, return_value='product_name', **filters):
+        if filters:
+            scif = self.data_provider.scene_item_facts
+            return scif[self.get_filter_condition(scif, **filters)][return_value]

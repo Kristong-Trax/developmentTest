@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import os
 import pandas as pd
@@ -7,6 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
+from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -21,7 +21,7 @@ from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 
 from Projects.INBEVTRADMX_SAND.Utils import GeoLocation
 
-__author__ = 'yoava'
+__author__ = 'yoava_Jasmine_Elyashiv'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -52,11 +52,11 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_2.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.geo = GeoLocation.Geo(self.rds_conn, self.session_uid, self.data_provider,
-                                   self.kpi_static_data, self.common)
+        self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
+                                                   self.kpi_static_data, self.common)
 
     def parse_template(self):
         """
@@ -64,6 +64,8 @@ class INBEVTRADMXToolBox:
         :return: data frame
         """
         template_df = pd.read_excel(self.excel_file_path, sheetname='template')
+        template_df['Store Additional Attribute 4'] = template_df['Store Additional Attribute 4'].fillna('')
+        template_df['Store Additional Attribute 13'] = template_df['Store Additional Attribute 13'].fillna('')
         return template_df
 
     def filter_product_names(self, exclude_skus):
@@ -73,6 +75,29 @@ class INBEVTRADMXToolBox:
         :return: filtered list
         """
         return filter(lambda sku: sku not in exclude_skus, self.scif.product_name.values)
+
+    def calculate_weigthed_availability_score(self, row, relevant_columns):
+        """
+        this method calculates availability score according to columns from the data frame
+        :param row: data frame to calculate from
+        :param relevant_columns: columns to check in the excel file
+        :return: boolean
+        """
+        passed = 0
+        # Gets the scene types
+        scene_types = row['template_name'].split(', ')
+        scenes_num = len(scene_types)
+        # man = row['manufacturer_name']
+        if 'scene_type' in relevant_columns:
+            relevant_columns.remove('scene_type')
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for scene in scene_types:
+            filters_dict.update({'template_name': scene})
+            # call the generic method from KPIUtils_v2
+            if self.availability.calculate_availability(**filters_dict):
+                passed += 1
+        return (passed / float(scenes_num)) * 100 if scenes_num else 0
 
     def calculate_availability_score(self, row, relevant_columns):
         """
@@ -100,7 +125,8 @@ class INBEVTRADMXToolBox:
         self.handle_exclude_skus(filters_dict, relevant_columns, row)
         # fill the dictionary
         for column_value in relevant_columns:
-            if column_value == 'store Additional Attribute 4' or column_value == 'store_type':
+            if column_value == 'Store Additional Attribute 4' or column_value == 'store_type' or \
+                    column_value == 'Store Additional Attribute 13':
                 continue
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
         return filters_dict
@@ -122,6 +148,7 @@ class INBEVTRADMXToolBox:
             # filter out some product names according to template
             product_names = self.filter_product_names(exclude_skus)
             filters_dict['product_name'] = product_names
+        if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
             relevant_columns.remove('exclude skus')
 
     @staticmethod
@@ -161,20 +188,26 @@ class INBEVTRADMXToolBox:
         filters_dict = self.create_sos_filtered_dictionary(relevant_columns, row)
         # reduce the df only to relevant columns
         df = df[filters_dict.keys()]
-
-        ratio = self.calculate_sos_ratio(df, filters_dict)
+        # check if it's invasion KPI for the special case
+        inv = row['KPI Level 3 Name'][:3] == 'Inv'
+        ratio = self.calculate_sos_ratio(df, filters_dict, inv)
         return ratio / facings
 
-    def calculate_sos_ratio(self, df, filters_dict):
+    def calculate_sos_ratio(self, df, filters_dict, inv):
         ratio = 0
         # iterate the data frame
         for i, df_row in df.iterrows():
             # initialize the boolean variable
             bol = True
+            # special case that the customer asked
+            if inv and df_row.product_type == 'Empty':
+                ratio = ratio + self.scif.facings.loc[i]
+                continue
             # iterate the filtered dictionary keys
-            for key in filters_dict.keys():
-                # check if the value in df row in in "key" column is in the filtered dictionary we created before
-                bol &= df_row[key] in filters_dict[key]
+            else:
+                for key in filters_dict.keys():
+                    # check if the value in df row in in "key" column is in the filtered dictionary we created before
+                    bol &= df_row[key] in filters_dict[key]
             # that means success of the inner loop, that all the values matching for this data frame row
             if bol:
                 # accumulate ratio
@@ -249,7 +282,10 @@ class INBEVTRADMXToolBox:
             # calculate kpi level 2 score
             kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
             # write kpi level 2 score to DB
-            self.write_kpi_score_to_db(kpi_name, set_name, kpi_score)
+            try:
+                self.write_kpi_score_to_db(kpi_name, set_name, kpi_score)
+            except:
+                print ''
             # accumulate set score
             set_score += kpi_score
         # finally, write level 1 kpi set score to DB
@@ -287,24 +323,37 @@ class INBEVTRADMXToolBox:
         atomic_kpi_score = 0
         # get column name to consider in calculation
         relevant_columns = map(str.strip, str(row['column names']).split(','))
+        is_kpi_passed = 0
         if self.check_store_type(row, relevant_columns):
             # get weight of current atomic kpi
             curr_weight = row['weights']
             # figure out what type of calculation need to be done
             if row['KPI type'] == 'Product Availability':
-                if self.calculate_availability_score(row, relevant_columns):
-                    atomic_kpi_score += curr_weight
+                if kpi_level_3_name == 'URBAN':
+                    score = self.calculate_weigthed_availability_score(row, relevant_columns)
+                    if score:
+                        atomic_kpi_score = score
+                else:
+                    if self.calculate_availability_score(row, relevant_columns):
+                        is_kpi_passed = 1
             elif row['KPI type'] == 'SOS':
                 ratio = self.calculate_sos_score(row, relevant_columns)
                 if (row['product_type'] == 'Empty') & (ratio <= 0.2):
-                    atomic_kpi_score += curr_weight
+                    is_kpi_passed = 1
                 elif ratio == 1:
-                    atomic_kpi_score += curr_weight
+                    is_kpi_passed = 1
             elif row['KPI type'] == 'Survey':
                 if self.calculate_survey_score(row):
-                    atomic_kpi_score += curr_weight
-        # write result to DB
-        self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name)
+                    is_kpi_passed = 1
+            if is_kpi_passed == 1:
+                atomic_kpi_score += curr_weight
+            # write result to DB
+            if kpi_level_3_name == 'Sin Espacios Vacios' and curr_weight == 0 and is_kpi_passed == 1:
+                # atomic_kpi_score = 100
+                self.write_atomic_to_db(kpi_level_3_name, 100, kpi_name, set_name, is_kpi_passed, curr_weight)
+            else:
+                self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed,
+                                        curr_weight)
         return atomic_kpi_score
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
@@ -330,9 +379,11 @@ class INBEVTRADMXToolBox:
                                         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
 
-    def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name):
+    def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
         this method writes atomic kpi score to static.kpi_results DB
+        :param curr_weight: current weight of atomic kpi
+        :param is_kpi_passed: is this kpi passed
         :param atomic_name: atomic kpi name
         :param atomic_score: the score
         :param kpi_name: name of related kpi
@@ -343,7 +394,12 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
                                                (self.kpi_static_data.kpi_name == kpi_name) &
                                                (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-        self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, atomic_score)
+
+        attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
+        attrs['result'] = {0: atomic_score}
+        attrs['kpi_weight'] = {0: curr_weight}
+        query = insert(attrs, self.common.KPI_RESULT)
+        self.common.kpi_results_queries.append(query)
 
     def calculate_kpi_set_from_template(self):
         """
@@ -354,11 +410,15 @@ class INBEVTRADMXToolBox:
         """
         # get the template
         parsed_template = self.parse_template()
+
         # get all the unique sets
-        sets = parsed_template['KPI Level 1 Name'].unique()
-        # get the session additional_attribute_4
+        # sets = parsed_template['KPI Level 1 Name'].unique()
+
+        # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
-        set_name = self.choose_correct_set_to_calculate(additional_attribute_4, sets)
+        additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
+        set_name = self.choose_correct_set_to_calculate(additional_attribute_4,
+                                                        additional_attribute_13, parsed_template)
         # wrong value in additional attribute 4 - shouldn't calculate
         if set_name == '':
             Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
@@ -369,22 +429,39 @@ class INBEVTRADMXToolBox:
         self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
-    def choose_correct_set_to_calculate(additional_attribute_4, sets):
+    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
         """
         choose what is the appropriate set to calculate
-        :param additional_attribute_4: session additional_attribute_4
-        :param sets: list of optional sets
-        :return: set name to calculate
+        :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
+        :param additional_attribute_4: session additional_attribute_13. if None, will ignore this attribute
+        :return: set name to calculate - assuming each additional attribute 4 matches only 1 set name.
         """
-        if additional_attribute_4 == 'BC':
-            set_name = sets[0]
-        elif additional_attribute_4 == 'BA':
-            set_name = sets[1]
-        elif additional_attribute_4 == 'MODELORAMA':
-            set_name = sets[2]
-        else:
+        template = template.dropna(subset=['Store Additional Attribute 4'], axis=0)
+        # Makes sure attribute 4 exist
+        if not additional_attribute_4:
             return ''
-        return set_name
+
+        if additional_attribute_13:
+            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
+                            (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
+        else:
+            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
+                            (pd.isnull(template['Store Additional Attribute 13']))]
+
+        if sets.empty:
+            return ''
+        else:
+            return sets['KPI Level 1 Name'].values[0]
+
+        # if additional_attribute_4 == 'BC':
+        #     set_name = sets[0]
+        # elif additional_attribute_4 == 'BA':
+        #     set_name = sets[1]
+        # elif additional_attribute_4 == 'MODELORAMA':
+        #     set_name = sets[2]
+        # else:
+        #     return ''
+        # return set_name
 
     def main_calculation(self):
         # calculate geo

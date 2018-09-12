@@ -13,12 +13,13 @@ from mock import patch
 from Tests.Data.Templates.heinikencn.Availability import availability
 from Tests.Data.TestData.test_data_heinekencn_sand_sanity import ProjectsSanityData
 from Projects.HEINEKENCN_SAND.Calculations import HEINEKENCN_SANDCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

@@ -6,12 +6,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS_SAND.DISPLAYS.PositionGraph import DISPLAYSPositionGraphs
+from Projects.CCUS_SAND.DISPLAYS.PositionGraph import CCUS_SANDDISPLAYSPositionGraphs
 
 __author__ = 'Nimrod'
 
 
-class DISPLAYSGENERALToolBox:
+class DISPLAYSGENERALCCUS_SANDToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -48,7 +48,7 @@ class DISPLAYSGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = DISPLAYSPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = CCUS_SANDDISPLAYSPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -706,7 +706,7 @@ class DISPLAYSGENERALToolBox:
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDISPLAYSGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDISPLAYSGENERALCCUS_SANDToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
