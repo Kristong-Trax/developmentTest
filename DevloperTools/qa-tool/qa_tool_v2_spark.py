@@ -81,7 +81,7 @@ class qa:
         self.kpi_results = self._get_kpi_results()
         # self.kpi_scene_results = self._get_kpi_scene_results()
         self.categories_df = self._get_categories()
-        # self.merged_kpi_results = self.static_kpi.join(self.kpi_results, self.static_kpi.pk == self.kpi_results.kpi_level_2_fk, how='left')
+        # self.merged_kpi_results = []
         self.expected = pd.read_csv('expected.csv')
 
 
@@ -141,12 +141,13 @@ class qa:
             kpi_results = self.spark.read.jdbc(url=self.project_url,
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
-                                                              "password": self.connector.dbuser.cred,
-                                                              "partitionColumn": "tmp_kpi_level_2_results.session_fk",
-                                                              "lowerBound": "{}".format(lower_bound),
-                                                              "upperBound": "{}".format(upper_bound),
-                                                              "numPartitions": "{}".format(number_of_partition),
-                                                              "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+                                                           "password": self.connector.dbuser.cred,
+                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                           "lowerBound": "{}".format(lower_bound),
+                                                           "upperBound": "{}".format(upper_bound),
+                                                           "numPartitions": "{}".format(number_of_partition),
+                                                           "driver": 'com.mysql.jdbc.Driver'}) \
+                                            .persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
             kpi_results.count()
             return kpi_results
@@ -186,13 +187,13 @@ class qa:
             print("no scene results")
             return None
 
-
     def _get_static_kpi(self):
         static_kpi = self.spark.read.jdbc(url=self.project_url,
                                           table=self.static_query,
                                           properties={"user": self.connector.dbuser.username,
                                                       "password":  self.connector.dbuser.cred,
-                                                      "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+                                                      "driver": 'com.mysql.jdbc.Driver'})\
+                                    .persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
         static_kpi.count()
         return static_kpi
@@ -202,7 +203,8 @@ class qa:
                                           table=self.categories_query,
                                           properties={"user": self.connector.dbuser.username,
                                                       "password": self.connector.dbuser.cred,
-                                                      "driver": 'com.mysql.jdbc.Driver'}).persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
+                                                      "driver": 'com.mysql.jdbc.Driver'})\
+                                    .persist(storageLevel=pyspark.StorageLevel.MEMORY_AND_DISK)
 
         categories.count()
         return categories
@@ -211,7 +213,9 @@ class qa:
         """get list of kpi names that doesnt have any result """
 
         filtered = self.merged_kpi_results.filter('result is null')
-        df = filtered.groupBy("client_name", "result").count().withColumnRenamed('count', 'result_count').withColumnRenamed('client_name', 'name')
+        df = filtered.groupBy("client_name", "result").count()\
+                                                      .withColumnRenamed('count', 'result_count')\
+                                                      .withColumnRenamed('client_name', 'name')
         df2 = filtered.groupBy("client_name").agg(F.countDistinct("session_fk").alias("session count"))
         test_results = df.join(df2, df2.client_name == df.name)
 
@@ -318,9 +322,9 @@ class qa:
                     url = "histogram" + "/" + row['client_name'].replace("/","_") + ".png"
                     file.write("<img src='{}' >".format(url))
 
-
-    def start_html_report(self):
-        with open(SUMMERY_FILE, 'a') as file:
+    @staticmethod
+    def start_html_report():
+        with open(SUMMERY_FILE, 'a') as report:
             head = '''
                    <!doctype html>
                     <html lang="en">
@@ -346,10 +350,11 @@ class qa:
                       </head>
                       <body>            
                     '''
-            file.write(head)
+            report.write(head)
 
-    def end_html_report(self):
-        with open(SUMMERY_FILE, 'a') as file:
+    @staticmethod
+    def end_html_report():
+        with open(SUMMERY_FILE, 'a') as report:
             end = '''
                       <!-- Optional JavaScript -->
                         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -360,7 +365,7 @@ class qa:
                     </html>            
                                       
                   '''
-            file.write(end)
+            report.write(end)
 
     def get_statistics(self):
 
@@ -394,15 +399,12 @@ class qa:
         :return:
         '''
 
-
         self.start_html_report()
-
         # session kpi tests
         self.static_kpi = self.static_kpi.filter('session_relevance == 1')
         self.merged_kpi_results = self.static_kpi.join(self.kpi_results,
                                                        self.static_kpi.pk == self.kpi_results.kpi_level_2_fk,
                                                        how='left')
-
 
         with open(SUMMERY_FILE, 'a') as file:
             file.write("<div class='container' ")
@@ -440,10 +442,10 @@ class qa:
     # input of session list
 
 
-if __name__ ==  "__main__":
+if __name__ == "__main__":
     Config.init(app_name='ttt', default_env='prod',
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('diageous', start_date='2018-08-25', end_date='2018-08-30')
+    qa_tool = qa('diageous', start_date='2018-08-25', end_date='2018-08-26')
     qa_tool.run_all_tests()
 
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
