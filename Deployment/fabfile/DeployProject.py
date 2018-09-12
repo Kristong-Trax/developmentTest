@@ -59,6 +59,6 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    deploy_instance = ProjectDeploy(project='bimy')
+    deploy_instance = ProjectDeploy(project='bivn')
     deploy_instance.deploy()
     pass
