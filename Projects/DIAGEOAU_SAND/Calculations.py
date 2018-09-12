@@ -21,11 +21,11 @@ class DIAGEOAU_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     # LoggerInitializer.init('diageoau calculations')
-#     # Config.init()
-#     # project_name = 'diageoau-sand'
-#     # data_provider = KEngineDataProvider(project_name)
-#     # session = 'd460b087-e2ed-4791-a443-d4991c037313'
-#     # data_provider.load_session_data(session)
-#     # output = Output()
-#     # DIAGEOAU_SANDCalculations(data_provider, output).run_project_calculations()
+#     LoggerInitializer.init('diageoau calculations')
+#     Config.init()
+#     project_name = 'diageoau-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'bd164c0f-d18b-4a89-a161-8c3d366db40c'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOAU_SANDCalculations(data_provider, output).run_project_calculations()
