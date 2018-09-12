@@ -58,7 +58,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common_db2):
         self.k_engine = BaseCalculationsScript(data_provider, output)
         self.output = output
         self.data_provider = data_provider
@@ -79,6 +79,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         self.template_data = parse_template(TEMPLATE_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.common = common_db2
 
     # def get_additional_attributes(self):
     #     query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_attributes_data()
@@ -161,9 +162,13 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
                             kpi_results[params[self.KPI_NAME]][x*3 + 1] += s
                             kpi_results[params[self.KPI_NAME]][x*3 + 2] += s
         for kpi_name in kpi_results.keys():
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
+            self.common.write_to_db_result(fk=kpi_fk, result=kpi_results[kpi_name][0])
             self.write_to_db_result(kpi_name, 100, level=self.LEVEL2)
             self.write_to_db_result(kpi_name, kpi_results[kpi_name], level=self.LEVEL3)
         self.write_to_db_result('Manufacturer Displays', 100, level=self.LEVEL1)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Manufacturer Displays')
+        self.common.write_to_db_result(fk=kpi_fk, result=100)
 
     def calculate_facing_sos(self, params, display):
         filters = self.get_filters(params)
@@ -204,12 +209,12 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         product_list = self.all_products[self.tools.get_filter_condition(self.all_products, **filters)]
         return set(product_list['product_ean_code'].unique().tolist())
 
-    def write_to_db_result(self, fk, score, level):
+    def write_to_db_result(self, kpi_name, score, level):
         """
         This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
-        attributes = self.create_attributes_dict(fk, score, level)
+        attributes = self.create_attributes_dict(kpi_name, score, level)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:

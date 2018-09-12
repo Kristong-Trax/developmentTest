@@ -1,8 +1,9 @@
 
 import os
+import MySQLdb
+
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
@@ -13,7 +14,7 @@ from Projects.CCRU.RedScoreCalculation import CCRUCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
-__author__ = 'yoava'
+__author__ = 'sergey'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
@@ -42,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_ccru_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['6A8F68EB-9092-4F13-8230-F77CB3452A43']
+        sessions = ['DAD315B9-30EA-4AA7-B8FA-684115B1F404']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
