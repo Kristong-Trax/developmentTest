@@ -6,7 +6,6 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA.Const import Const
 from KPIUtils_v2.DB.Common import Common
-from KPIUtils_v2.DB.CommonV2 import Common as Common2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
@@ -26,7 +25,7 @@ CMA_COMPLIANCE = 'CMA Compliance'
 
 class CMAToolBox:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -45,7 +44,7 @@ class CMAToolBox:
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
-        self.common_db2 = Common2(self.data_provider, CMA_COMPLIANCE)
+        self.common_db2 = common_db2
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_14'].iloc[0]
@@ -118,11 +117,9 @@ class CMAToolBox:
         :param scene_fk: for the scene's kpi
         :param reuse_scene: this kpi can use scenes that were used
         """
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
+        # result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, result=result, threshold=target)
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-        self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, target=target)
 
     # survey:
 
@@ -561,5 +558,5 @@ class CMAToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
-        self.common_db2.commit_results_data()
+        # self.common_db2.commit_results_data()
 
