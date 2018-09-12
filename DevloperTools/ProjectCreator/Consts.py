@@ -345,6 +345,9 @@ __author__ = '%(author)s'
 
 
 class PlanogramComplianceCalculation(PlanogramComplianceBaseClass):
+    def __init__(self, data_provider):
+        super(PlanogramComplianceCalculation, self).__init__(data_provider)
+
     def get_compliance(self):
         pass
 
@@ -357,6 +360,9 @@ __author__ = '%(author)s'
 
 
 class PlanogramFinderCalculation(PlanogramFinderBaseClass):
+    def __init__(self, data_provider):
+        super(PlanogramFinderCalculation, self).__init__(data_provider)
+
     def get_planogram_id(self):
         pass
 """
