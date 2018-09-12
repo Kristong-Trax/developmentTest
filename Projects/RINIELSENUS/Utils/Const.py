@@ -78,6 +78,7 @@ MM_TO_FT_RATIO = 304.8
 SECTION = 'Section'
 SEGMENT_SPT = 'Segment_SPT'
 FACINGS = 'facings_ign_stack'
+USE_PROBES = 'Separate Stitching Group'
 
 TEMPLATE_NAME = 'template_name'
 

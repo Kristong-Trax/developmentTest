@@ -37,9 +37,9 @@ if __name__ == '__main__':
     project_name = 'rinielsenus'
 
     sessions = [
-                # '5687bd59-fd20-423e-8bea-d1b4a28da264',
+                '5687bd59-fd20-423e-8bea-d1b4a28da264',
                 # '0aa034cb-6057-4d62-8150-4b1207491e39',
-                'ae04abb8-a0b2-49a0-a681-60563c5e6efe',
+                # 'ae04abb8-a0b2-49a0-a681-60563c5e6efe',
                 # '0fce09fd-0b33-4495-8e8b-e213aa30e94f',
                 # '11e562a0-928c-4794-9d9b-64cd6544c84d',
                 # '5C8E563C-66B6-405F-865F-22EDCD91C7A1'
