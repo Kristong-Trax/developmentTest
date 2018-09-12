@@ -6,15 +6,14 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Utils.Logging.Logger import Log
 
-
-from Projects.CCRU.Sets.Canteen import CCRUCanteenCalculations
-from Projects.CCRU.Sets.FT import CCRUFTCalculations
-from Projects.CCRU.Sets.FastFood import CCRUFastFoodCalculations
-from Projects.CCRU.Sets.HoReCa import CCRUHoReCaCalculations
-from Projects.CCRU.Sets.Hypermarket import CCRUHypermarketCalculations
-from Projects.CCRU.Sets.Petrol import CCRUPetrolCalculations
-from Projects.CCRU.Sets.Superette import CCRUSuperetteCalculations
-from Projects.CCRU.Sets.Supermarket import CCRUSupermarketCalculations
+# from Projects.CCRU.Sets.Canteen import CCRUCanteenCalculations
+# from Projects.CCRU.Sets.FT import CCRUFTCalculations
+# from Projects.CCRU.Sets.FastFood import CCRUFastFoodCalculations
+# from Projects.CCRU.Sets.HoReCa import CCRUHoReCaCalculations
+# from Projects.CCRU.Sets.Hypermarket import CCRUHypermarketCalculations
+# from Projects.CCRU.Sets.Petrol import CCRUPetrolCalculations
+# from Projects.CCRU.Sets.Superette import CCRUSuperetteCalculations
+# from Projects.CCRU.Sets.Supermarket import CCRUSupermarketCalculations
 
 from Projects.CCRU.Sets.FT2018 import CCRUFT2018Calculations
 from Projects.CCRU.Sets.Hypermarket2018 import CCRUHypermarket2018Calculations
@@ -78,24 +77,24 @@ class CCRUCalculations(BaseCalculationsScript):
             kpi_set_name = tool_box.set_name
             test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
 
-            if kpi_set_name == CANTEEN:
-                CCRUCanteenCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == PETROL:
-                CCRUPetrolCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == HORECA:
-                CCRUHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == FT:
-                CCRUFTCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == HYPERMARKET:
-                CCRUHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == SUPERMARKET:
-                CCRUSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == SUPERETTE:
-                CCRUSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == FAST_FOOD:
-                CCRUFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+            # if kpi_set_name == CANTEEN:
+            #     CCRUCanteenCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == PETROL:
+            #     CCRUPetrolCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HORECA:
+            #     CCRUHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FT:
+            #     CCRUFTCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HYPERMARKET:
+            #     CCRUHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERMARKET:
+            #     CCRUSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERETTE:
+            #     CCRUSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FAST_FOOD:
+            #     CCRUFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
 
-            elif kpi_set_name == FT2018:
+            if kpi_set_name == FT2018:
                 CCRUFT2018Calculations(self.data_provider, self.output, store_area).main_function()
             elif kpi_set_name == CANTEEN_2018:
                 CCRUCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
@@ -120,10 +119,11 @@ class CCRUCalculations(BaseCalculationsScript):
             elif test_store.values[0] == "Y":
                 Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
             else:
-                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'.format(tool_box.store_id, kpi_set_name))
+                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'
+                          ''.format(tool_box.store_id, kpi_set_name))
 
         else:
-            Log.info('Promo session, no calculation implied')
+            Log.info('Promo session, no Custom KPI calculation implied')
 
         # self.timer.stop('CCRUCalculations.run_project_calculations')
 
