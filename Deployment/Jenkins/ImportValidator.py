@@ -95,7 +95,7 @@ class ValidateRelations(object):
                                                                       replace("'", "").
                                                                       replace(" ", ""))
                         print "3"
-                        maindf = maindf.append(res_df)
+                        maindf = maindf.append(res_df, ignore_index=True)
 
             export_df = maindf.drop([COLUMN_PROJECT_NAME, COLUMN_REFERENCED_FOLDER], axis=1)
             if len(maindf) > 0 or len(self.error_file) > 0:
