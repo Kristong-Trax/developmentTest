@@ -73,11 +73,16 @@ class KpiAtomicKpisCalculator(object):
 
     def get_scif_facings_for_scene(self, scene, allowed_filters, **filters):
         scif = self._data_provider.scene_item_facts
+        scene = int(scene['scene_fk'])
         if allowed_filters:
             scif = scif[(scif['product_fk'].isin(allowed_filters)) & (scif['scene_id']==scene)]
         if filters:
             scif = scif[self._tools.get_filter_condition(scif, **filters)]
-        return sum(scif[FACINGS])
+        if not scif.empty:
+            ret = sum(scif[FACINGS])
+        else:
+            ret = 0
+        return ret
 
     def _get_preferred_range_filter(self):
         return {
@@ -245,12 +250,12 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
                 matches = self._tools.match_product_in_scene.copy()
-                for probe in matches[matches['scene_fk']==scene]['probe_group_id'].unique().tolist():
+                for probe in matches[matches['scene_fk']==scene['scene_fk']]['probe_group_id'].unique().tolist():
                     iter_groups.append((probe, scene))
         else:
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
-                iter_groups.append(scene['scene_fk'], scene)
+                iter_groups.append((scene['scene_fk'], scene))
 
         blocked_scenes = 0
         visited = set()
@@ -350,12 +355,12 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
                 matches = self._tools.match_product_in_scene.copy()
-                for probe in matches[matches['scene_fk']==scene]['probe_group_id'].unique().tolist():
+                for probe in matches[matches['scene_fk']==scene['scene_fk']]['probe_group_id'].unique().tolist():
                     iter_groups.append((probe, scene))
         else:
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
-                iter_groups.append(scene['scene_fk'], scene)
+                iter_groups.append((scene['scene_fk'], scene))
 
         blocked_scenes = 0
         visited = set()
@@ -425,12 +430,12 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
                 matches = self._tools.match_product_in_scene.copy()
-                for probe in matches[matches['scene_fk']==scene]['probe_group_id'].unique().tolist():
+                for probe in matches[matches['scene_fk'] == scene['scene_fk']]['probe_group_id'].unique().tolist():
                     iter_groups.append((probe, scene))
         else:
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
-                iter_groups.append(scene['scene_fk'], scene)
+                iter_groups.append((scene['scene_fk'], scene))
 
         blocked_scenes = 0
         visited = set()
@@ -521,12 +526,12 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
                 matches = self._tools.match_product_in_scene.copy()
-                for probe in matches[matches['scene_fk']==scene]['probe_group_id'].unique().tolist():
+                for probe in matches[matches['scene_fk']==scene['scene_fk']]['probe_group_id'].unique().tolist():
                     iter_groups.append((probe, scene))
         else:
             filter_col = 'scene_fk'
             for index, scene in scene_avg_shelf.iterrows():
-                iter_groups.append(scene['scene_fk'], scene)
+                iter_groups.append((scene['scene_fk'], scene))
 
         blocked_scenes = 0
         vertical_blocked_scenes = 0
