@@ -85,16 +85,13 @@ class ValidateRelations(object):
                         print "***Validating Imports for: {}*****".format(project_x)
                         p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE)
-                        print "1"
                         #self.log_errors(project, p.stderr.readlines())
                         result = p.communicate()[0]
-                        print "2"
                         res_df = ValidateRelations.validate_relations(project,
                                                                       result.replace("(", "").
                                                                       replace(")", "").
                                                                       replace("'", "").
                                                                       replace(" ", ""))
-                        print "3"
                         maindf = maindf.append(res_df, ignore_index=True)
 
             export_df = maindf.drop([COLUMN_PROJECT_NAME, COLUMN_REFERENCED_FOLDER], axis=1)
