@@ -81,18 +81,17 @@ class ValidateRelations(object):
             for project in projects:
                 project_x = os.path.join(self.projects_path, project.upper())
                 if os.path.isdir(project_x):
-                    if not project in['CCKH']:
-                        print "***Validating Imports for: {}*****".format(project_x)
-                        p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE)
-                        #self.log_errors(project, p.stderr.readlines())
-                        result = p.communicate()[0]
-                        res_df = ValidateRelations.validate_relations(project,
-                                                                      result.replace("(", "").
-                                                                      replace(")", "").
-                                                                      replace("'", "").
-                                                                      replace(" ", ""))
-                        maindf = maindf.append(res_df, ignore_index=True)
+                    print "***Validating Imports for: {}*****".format(project_x)
+                    p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+                    #self.log_errors(project, p.stderr.readlines())
+                    result = p.communicate()[0]
+                    res_df = ValidateRelations.validate_relations(project,
+                                                                  result.replace("(", "").
+                                                                  replace(")", "").
+                                                                  replace("'", "").
+                                                                  replace(" ", ""))
+                    maindf = maindf.append(res_df, ignore_index=True)
 
             export_df = maindf.drop([COLUMN_PROJECT_NAME, COLUMN_REFERENCED_FOLDER], axis=1)
             if len(maindf) > 0 or len(self.error_file) > 0:
@@ -110,6 +109,13 @@ class ValidateRelations(object):
                 if len(maindf) > 0:
                     pd.set_option('display.width', 1024)
                     pd.set_option('max_colwidth', 800)
+                    first_line = export_df[COLUMN_PYTHON_FILE][0]
+                    index = first_line.find('/Projects')
+                    try:
+                        export_df[COLUMN_PYTHON_FILE] = export_df[COLUMN_PYTHON_FILE].map(lambda x: x[index:])
+                        export_df[COLUMN_REFERRED_FILE] = export_df[COLUMN_REFERRED_FILE].map(lambda x: x[index:])
+                    except Exception as e:
+                        print "Warnning: Result CleanUp have failed. Printing data without Formatting"
                     print export_df.to_string(index=False)
                     print "\n"
                 if self.error_file > 0:
