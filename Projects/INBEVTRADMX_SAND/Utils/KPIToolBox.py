@@ -177,11 +177,6 @@ class INBEVTRADMXToolBox:
         for kpi_name in kpi_names:
             # calculate kpi level 2 score
             kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
-            # write kpi level 2 score to DB
-            try:
-                self.write_kpi_score_to_db(kpi_name, set_name, kpi_score)
-            except:
-                print ''
             # accumulate set score
             set_score += kpi_score
         # finally, write level 1 kpi set score to DB
@@ -205,6 +200,10 @@ class INBEVTRADMXToolBox:
             atomic_kpi_score = self.calculate_atomic_kpi_score(row, kpi_level_3_name, kpi_name, set_name)
             # accumulate kpi level 2 score
             kpi_score += atomic_kpi_score
+        write_to_all_levels = False
+        if len(kpi_df) > 1:  # if there is just one atomic we don't need two levels
+            write_to_all_levels = True
+        self.write_kpi_score_to_db(kpi_name, set_name, kpi_score, write_to_all_levels)
         return kpi_score
 
     def calculate_atomic_kpi_score(self, row, kpi_level_3_name, kpi_name, set_name):
@@ -244,6 +243,7 @@ class INBEVTRADMXToolBox:
             if is_kpi_passed == 1:
                 atomic_kpi_score += curr_weight
             # write result to DB
+                # the customer asked for this specific KPI will write 100 in DB if it passed even if the weight is 0
             if kpi_level_3_name == 'Sin Espacios Vacios' and curr_weight == 0 and is_kpi_passed == 1:
                 # atomic_kpi_score = 100
                 self.write_atomic_to_db(kpi_level_3_name, 100, kpi_name, set_name, is_kpi_passed, curr_weight)
@@ -442,7 +442,6 @@ class INBEVTRADMXToolBox:
         if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
             relevant_columns.remove('exclude skus')
 
-
 # db functions:
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
@@ -458,7 +457,7 @@ class INBEVTRADMXToolBox:
         self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
                                         identifier_result=self.common2.get_dictionary(name=set_name))
 
-    def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score):
+    def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score, write_to_all_levels):
         """
         this method writes kpi score to static.kpk_results DB
         :param kpi_name: name of level 2 kpi
@@ -470,10 +469,11 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
                                         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
-        new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
-        self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
-                                        identifier_parent=self.common2.get_dictionary(name=set_name),
-                                        identifier_result=self.common2.get_dictionary(name=kpi_name))
+        if write_to_all_levels:
+            new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
+            self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
+                                            identifier_parent=self.common2.get_dictionary(name=set_name),
+                                            identifier_result=self.common2.get_dictionary(name=kpi_name))
 
     def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
@@ -495,8 +495,10 @@ class INBEVTRADMXToolBox:
         attrs['kpi_weight'] = {0: curr_weight}
         query = insert(attrs, self.common.KPI_RESULT)
         self.common.kpi_results_queries.append(query)
-        if atomic_name != kpi_name:
-            new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
-            self.common2.write_to_db_result(
-                fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True, score=is_kpi_passed,
-                identifier_parent=self.common2.get_dictionary(name=kpi_name))
+        identifier_parent = self.common2.get_dictionary(name=kpi_name)
+        if atomic_name == kpi_name:
+            identifier_parent = self.common2.get_dictionary(name=set_name)
+        new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
+        self.common2.write_to_db_result(
+            fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True, score=is_kpi_passed,
+            identifier_parent=identifier_parent)
