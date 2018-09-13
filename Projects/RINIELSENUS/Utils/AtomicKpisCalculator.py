@@ -256,7 +256,7 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
         visited = set()
         for filter_val, scene in iter_groups:
             if self.get_scif_facings_for_scene(scene, allowed_filter, **filters) < threshold \
-                                                        and scene['scene_fk'] not in visited:
+                                                        or scene['scene_fk'] in visited:
                 continue
             scene_filters = filters.copy()
             scene_filters.update({filter_val: scene[filter_col]})
@@ -361,7 +361,7 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
         visited = set()
         for filter_val, scene in iter_groups:
             if self.get_scif_facings_for_scene(scene, allowed_filter, **filters) < threshold \
-                                                        and scene['scene_fk'] not in visited:
+                                                        or scene['scene_fk'] in visited:
                 continue
             scene_filters = filters.copy()
             scene_filters.update({filter_val: scene[filter_col]})
@@ -436,7 +436,7 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
         visited = set()
         for filter_val, scene in iter_groups:
             if self.get_scif_facings_for_scene(scene, allowed_filter, **filters) < threshold \
-                                                        and scene['scene_fk'] not in visited:
+                                                        or scene['scene_fk'] in visited:
                 continue
             scene_filters = filters.copy()
             scene_filters.update({filter_val: scene[filter_col]})
@@ -534,7 +534,7 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
         visited_vert = set()
         for filter_val, scene in iter_groups:
             if self.get_scif_facings_for_scene(scene, allowed_filter, **filters) < threshold \
-                and (scene['scene_fk'] not in visited or scene['scene_fk'] not in visited_vert):
+                or (scene['scene_fk'] in visited and scene['scene_fk'] in visited_vert):
                 continue
             scene_filters = filters.copy()
             scene_filters.update({filter_val: scene[filter_col]})
