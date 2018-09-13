@@ -85,7 +85,7 @@ class ValidateRelations(object):
                 if os.path.isdir(project_x):
                     print "***Validating Imports for: {}".format(project_x)
                     p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    if project != 'CCUS':
+                    if not project in['CCUS', 'CCKH']:
                         self.log_errors(project, p.stderr.readlines())
                         result = p.communicate()[0]
                         res_df = ValidateRelations.validate_relations(project,
