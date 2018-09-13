@@ -84,7 +84,7 @@ class ValidateRelations(object):
                     print "***Validating Imports for: {}*****".format(project_x)
                     p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
-                    #self.log_errors(project, p.stderr.readlines())
+                    self.log_errors(project, p.stderr.readlines())
                     result = p.communicate()[0]
                     res_df = ValidateRelations.validate_relations(project,
                                                                   result.replace("(", "").
@@ -95,6 +95,7 @@ class ValidateRelations(object):
 
             export_df = maindf.drop([COLUMN_PROJECT_NAME, COLUMN_REFERENCED_FOLDER], axis=1)
             if len(maindf) > 0 or len(self.error_file) > 0:
+                print ("\n\nImport Validation Errors\n\n")
                 if self.output_path:
                     with open(os.path.join(self.output_path, 'bad_relations.csv'), "wb") as output_file:
                         if len(maindf) > 0:
