@@ -84,7 +84,10 @@ class ValidateRelations(object):
                     print "***Validating Imports for: {}*****".format(project_x)
                     p = subprocess.Popen([self.sfood_home, project_x], stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
-                    self.log_errors(project, p.stderr.readlines())
+                    #self.log_errors(project, p.stderr.readlines())
+                    errors = p.stderr.readlines()
+                    if len(errors) > 0:
+                        print errors
                     result = p.communicate()[0]
                     res_df = ValidateRelations.validate_relations(project,
                                                                   result.replace("(", "").
