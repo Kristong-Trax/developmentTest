@@ -125,13 +125,12 @@ class PEPSICORUToolBox:
             Log.warning("Invalid additional_attribute_2 for store id = {}".format(self.store_id))
             return []
         if Const.SNACKS.upper() in store_type.upper():
-            snacks_category = [Const.SNACKS]
-            categories_for_session = list(set(snacks_category).intersection(set(categories_in_scif)))
+            relevant_categories = [Const.SNACKS]
         elif Const.LRB.upper() in store_type.upper():
-            lrb_categories = [Const.JUICES, Const.BEVERAGES]
-            categories_for_session = list(set(lrb_categories).intersection(set(categories_in_scif)))
+            relevant_categories = [Const.JUICES, Const.BEVERAGES]
         else:
-            return categories_in_scif
+            relevant_categories = [Const.SNACKS, Const.JUICES, Const.BEVERAGES]
+        categories_for_session = list(set(relevant_categories).intersection(set(categories_in_scif)))
         if not categories_for_session:
             Log.warning("There aren't matching categories in scif for this store.")
         return categories_for_session
