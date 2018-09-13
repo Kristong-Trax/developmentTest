@@ -2,6 +2,8 @@
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as Common2
+
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.CCBOTTLERSUS_SAND.CMA.KPIToolBox import CMAToolBox
@@ -18,6 +20,7 @@ class CCBOTTLERSUS_SANDGenerator:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
+        self.common_db = Common2(self.data_provider)
 
     @log_runtime('Total CCBOTTLERSUS_SANDCalculations', log_start=True)
     def main_function(self):
@@ -26,14 +29,15 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        # self.calculate_red_score()
+        self.calculate_red_score()
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
+        self.common_db.commit_results_data()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
-        tool_box = DISPLAYSToolBox(self.data_provider, self.output)
+        tool_box = DISPLAYSToolBox(self.data_provider, self.output, self.common_db)
         set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         if 'Manufacturer Displays' in set_names:
             tool_box.main_calculation()
@@ -62,7 +66,7 @@ class CCBOTTLERSUS_SANDGenerator:
         Log.info('starting calculate_red_score')
         try:
             for calculation_type in Const.CALCULATION_TYPES:
-                tool_box = REDToolBox(self.data_provider, self.output, calculation_type)
+                tool_box = REDToolBox(self.data_provider, self.output, calculation_type, self.common_db)
                 tool_box.main_calculation()
                 tool_box.commit_results()
         except Exception as e:
@@ -72,7 +76,7 @@ class CCBOTTLERSUS_SANDGenerator:
     def calculate_cma_compliance(self):
         Log.info('starting calculate_cma_compliance')
         try:
-            tool_box = CMAToolBox(self.data_provider, self.output)
+            tool_box = CMAToolBox(self.data_provider, self.output, self.common_db)
             tool_box.main_calculation()
             tool_box.commit_results()
         except Exception as e:

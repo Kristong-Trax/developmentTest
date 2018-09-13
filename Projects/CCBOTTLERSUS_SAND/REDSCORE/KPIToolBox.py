@@ -5,7 +5,6 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.DB.CommonV2 import Common as Common2
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.FunctionsToolBox import FunctionsToolBox
 
@@ -14,7 +13,7 @@ __author__ = 'Elyashiv'
 
 class REDToolBox:
 
-    def __init__(self, data_provider, output, calculation_type):
+    def __init__(self, data_provider, output, calculation_type, common_db2):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -53,7 +52,7 @@ class REDToolBox:
         self.common_db_integ = Common(self.data_provider, self.RED_SCORE_INTEG)
         self.kpi_static_data_integ = self.common_db_integ.get_kpi_static_data()
         self.common_db = Common(self.data_provider, self.RED_SCORE)
-        self.common_db2 = Common2(self.data_provider, self.RED_SCORE)
+        self.common_db2 = common_db2
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         if self.store_type in Const.STORE_TYPES:
@@ -362,13 +361,16 @@ class REDToolBox:
                 self.common_db_integ.get_kpi_fk_by_kpi_name(self.RED_SCORE_INTEG, 1), score=score, level=1,
                 set_type=Const.MANUAL)
         else:
-            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+            integ_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+            display_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(display_text)
+            if display_kpi_fk is None:
+                display_kpi_fk = integ_kpi_fk
             self.common_db2.write_to_db_result(
-                fk=kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
+                fk=display_kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
                 should_enter=True)
             self.common_db2.write_to_db_result(
-                fk=kpi_fk, score=score, identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk),
-                should_enter=True)
+                fk=integ_kpi_fk, score=score, should_enter=True,
+                identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
             self.write_to_db_result(
@@ -455,7 +457,7 @@ class REDToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
-        self.common_db2.commit_results_data()
+        # self.common_db2.commit_results_data()
         if self.common_db_integ:
             self.common_db_integ.delete_results_data_by_kpi_set()
             self.common_db_integ.commit_results_data_without_delete()

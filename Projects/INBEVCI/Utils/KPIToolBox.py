@@ -71,10 +71,15 @@ class INBEVCIINBEVCIToolBox:
         self.kpi_results_new_tables_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        self.store_sos_policies = self.get_store_policies()
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
         self.district_name = self.get_district_name()
         self.groups_fk = self.get_groups_fk()
+
+    def get_store_policies(self):
+        query = INBEVCIINBEVCIQueries.get_store_policies()
+        store_policies = pd.read_sql_query(query, self.rds_conn.db)
+        return store_policies
 
     def main_calculation(self, set_name):
         """
@@ -416,9 +421,16 @@ class INBEVCIINBEVCIToolBox:
             for key, value in policies.items():
                 store_info = store_info[store_info[key].isin(value)]
             if not store_info.empty:
+                visit_date = self.visit_date
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy) &
-                                                 (self.store_sos_policies['target_validity_start_date'] <=
-                                                  datetime.date(self.current_date))]
+                                                 (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
+                                                 (self.store_sos_policies['target_validity_end_date'] >= visit_date)]
+
+                stores_with_no_end_date = self.store_sos_policies[
+                                                 (self.store_sos_policies['store_policy'] == row.store_policy) &
+                                                 (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
+                                                 (self.store_sos_policies['target_validity_end_date'].isnull())]
+                stores = stores.append(stores_with_no_end_date)
                 if stores.empty:
                     relevant_stores = stores
                 else:
