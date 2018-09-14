@@ -50,13 +50,13 @@ class MarsUsPositionGraphs:
             self._match_product_in_scene = self.get_filtered_matches()
         return self._match_product_in_scene
 
-    def get(self, scene_id):
+    def get(self, scene_id, probe_id=None):
         """
         This function returns a position graph for a given scene
         """
         if scene_id not in self.position_graphs.keys():
-            self.create_position_graphs(scene_id)
-        return self.position_graphs.get(scene_id)
+            self.create_position_graphs(scene_id, probe_id)
+        return self.position_graphs.get(scene_id, probe_id)
 
     def get_filtered_matches(self):
         matches = self.data_provider[Data.MATCHES]
@@ -68,6 +68,7 @@ class MarsUsPositionGraphs:
                                               how='left', on='template_fk')
         scene_template['scene_id'] = scene_template['scene_fk']
         matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])
+        matches = matches.merge(self.data_provider.probe_groups, how='left', on='probe_match_fk')
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
@@ -98,7 +99,7 @@ class MarsUsPositionGraphs:
         matches = pd.read_sql_query(query, self.rds_conn.db)
         return matches
 
-    def create_position_graphs(self, scene_id=None):
+    def create_position_graphs(self, scene_id=None, probe_id=None):
         """
         This function creates a facings Graph for each scene of the given session.
         """
@@ -107,9 +108,13 @@ class MarsUsPositionGraphs:
             scenes = [scene_id]
         else:
             scenes = self.match_product_in_scene['scene_fk'].unique()
+
         for scene in scenes:
             matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene) &
                                                   (self.match_product_in_scene['stacking_layer'] == 1)]
+            if probe_id is not None:
+                matches = matches[matches['probe_group_id'] == probe_id]
+
             matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []

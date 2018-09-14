@@ -60,7 +60,7 @@ class MarsUsGENERALToolBox:
                 self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
             if self.ignore_stacking:
                 self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
-            self._match_product_in_scene = pd.merge(self._match_product_in_scene, self.data_provider.probe_groups, on='probe_match_fk')
+            # self._match_product_in_scene = pd.merge(self._match_product_in_scene, self.data_provider.probe_groups, on='probe_match_fk')
         return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
@@ -727,6 +727,7 @@ class MarsUsGENERALToolBox:
         :param filters: These are the parameters which the blocks are checked for.
         :return: see 'result_by_scene' above.
         """
+        probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             if result_by_scene:
@@ -737,7 +738,9 @@ class MarsUsGENERALToolBox:
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
+            # scene_graph = self.position_graphs.get(scene).copy()
+            scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
+
             clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
 
