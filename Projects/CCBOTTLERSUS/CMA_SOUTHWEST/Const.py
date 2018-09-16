@@ -17,8 +17,9 @@ class Const(object):
     CONVERTERS = "converters"
     SCENE_AVAILABILITY = "Availability_scene"
     TARGETS = "Targets"
+    FACINGS = 'Facings NTBA'
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_CMA = [KPIS, SOS, TARGETS]
+    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, TARGETS]
 
 
     # generic columns:
@@ -70,6 +71,14 @@ class Const(object):
     GROUP = "Group"
     MAJ_DOM = "Majority/Dominant"
 
+    # Generic Columns
+    A_PARAM = 'Param 1'
+    A_VALUE = 'Value 1'
+    B_PARAM = 'Param 2'
+    B_VALUE = 'Value 2'
+    C_PARAM = 'Param 3'
+    C_VALUE = 'Value 3'
+
     # columns of survey:
     Q_TEXT = "question_text"
     Q_ID = "question_ID"
@@ -88,6 +97,9 @@ class Const(object):
     THRESHOLD = "threshold"
     COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
     COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
+
+    # seperators
+    SEPERATOR = '; '
 
     # constants:
     ALL = "ALL"

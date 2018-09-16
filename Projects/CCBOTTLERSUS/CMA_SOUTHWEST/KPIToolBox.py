@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v5.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v7.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -98,7 +98,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if scene_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
-        if kpi_type == Const.SOS:
+
+        if kpi_type == 'Facings NTBA':
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
             function = self.get_kpi_function(kpi_type)
@@ -268,6 +269,41 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             target = None
         return target
 
+    @staticmethod
+    def get_kpi_line_params(kpi_line):
+        params = {}
+        attribs = list(kpi_line.index)
+        c = 1
+        while 1:
+            if 'Param {}'.format(c) in attribs:
+                params[kpi_line['Param {}'.format(c)]] = kpi_line['Value {}'.format(c)]
+            else:
+                if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
+                    break
+            c += 1
+        return params
+
+    @staticmethod
+    def get_kpi_line_targets(kpi_line):
+        mask = kpi_line.index.str.contains('Target')
+        if mask.any():
+            targets = kpi_line.loc[mask]
+            targets.index = [x.split[Const.SEPERATOR][1].split[' '][0] for x in targets.index]
+            targets = targets.to_dict()
+        else:
+            targets = {}
+        return targets
+
+    def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
+        scenes = relevant_scif['scene_fk'].unique().tolist()
+        numerator_filters = self.get_kpi_line_params(kpi_line)
+        targets = self.get_kpi_line_targets(kpi_line)
+        numerator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)]
+        numerator_facings = numerator_facings[self.facings_field].sum()
+
+        print('asd')
+
+
     # Number of shelves
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
@@ -390,6 +426,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return self.calculate_sos
         elif kpi_type == Const.SHELVES:
             return self.calculate_number_of_shelves
+        elif kpi_type == Const.FACINGS:
+            return self.calculate_facings_ntba
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
