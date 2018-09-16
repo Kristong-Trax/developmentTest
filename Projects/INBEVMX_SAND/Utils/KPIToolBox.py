@@ -13,17 +13,8 @@ from Projects.INBEVMX_SAND.Data.Const import Const
 from Projects.INBEVMX_SAND.Utils.Fetcher import INBEVMXQueries
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.DB.Common import Common
-
-
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 
 __author__ = 'ilays'
@@ -50,6 +41,7 @@ class INBEVMXToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.tools = GENERALToolBox(self.data_provider)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.survey = Survey(self.data_provider, self.output)
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -67,6 +59,11 @@ class INBEVMXToolBox:
         except:
             Log.error("there is no region in the db")
             return
+        try:
+            self.att6_filter = self.store_info['additional_attribute_14'].values[0].strip()
+        except:
+            Log.error("there is no additional attribute 6 in the db")
+            return
         self.sos_target_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
 
@@ -83,15 +80,6 @@ class INBEVMXToolBox:
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
         atomic_name = row[Const.TEMPLATE_ENGLISH_KPI_NAME].strip()
-        store_type_template = row[Const.TEMPLATE_STORE_TYPE].strip()
-
-        # if cell in template is not empty
-        if store_type_template != "":
-            store_types = store_type_template.split(",")
-            store_types = [item.strip() for item in store_types]
-            if self.store_type_filter not in store_types:
-                return
-
         kpi_type = row[Const.TEMPLATE_KPI_TYPE].strip()
         if kpi_type == Const.SOS_TARGET:
             self.handle_sos_target_atomics(atomic_id, atomic_name)
@@ -104,29 +92,25 @@ class INBEVMXToolBox:
         count_result = -1
 
         # bring the kpi rows from the sos sheet
-        rows = self.sos_sheet.loc[self.sos_sheet[Const.KPI_ID] == atomic_id]
+        rows = self.sos_target_sheet.loc[self.sos_target_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
 
         # get a single row
         row = self.find_row(rows)
         if row.empty:
             return
 
-        target = row[Const.TARGET].values[0]
-        weight = row[Const.WEIGHT].values[0]
+        target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
+        weight = row[Const.TEMPLATE_SCORE].values[0]
         df = self.scif.copy()
-
-        product_size = row[Const.PRODUCT_SIZE].values[0]
-        if product_size != "":
-            df = self.filter_product_size(df, product_size)
+        df = pd.merge(self.scif,self.store_info,how="left",left_on="store_id",right_on="store_fk")
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
         numerator_number_of_facings = self.count_of_facings(df, filters)
         if numerator_number_of_facings != 0 and count_result == -1:
             if 'manufacturer_name' in filters.keys():
-                for f in ['manufacturer_name', 'brand_name']:
-                    if f in filters:
-                        del filters[f]
+                deno_manufacturer = row[Const.TEMPLATE_TARGET_PRECENT].values[0].split()
+                filters['manufacturer_name'] = [item.strip() for item in deno_manufacturer]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else -1
@@ -146,14 +130,16 @@ class INBEVMXToolBox:
 
 
     def find_row(self, rows):
-        temp = rows[Const.STORE_TYPE_TEMPLATE]
-        rows_stores_filter = rows[(temp == self.store_type_filter) | (temp == "")]
-        temp = rows_stores_filter[Const.REGION_TEMPLATE]
-        rows_regions_filter = rows_stores_filter[(temp == self.region_name_filter) | (temp == "")]
-        temp = rows_regions_filter[Const.STATE_TEMPLATE]
-        row_result = rows_regions_filter[(temp.apply(lambda r: self.state_name_filter in r.split(",")))
-                                                                                               | (temp == "")]
-        return row_result
+        temp = rows[Const.TEMPLATE_STORE_TYPE]
+        rows_stores_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip()
+                                                                        for item in r.split(",")])) | (temp == "")]
+        temp = rows_stores_filter[Const.TEMPLATE_REGION]
+        rows_regions_filter = rows_stores_filter[(temp.apply(lambda r: self.region_name_filter in [item.strip()
+                                                                        for item in r.split(",")])) | (temp == "")]
+        temp = rows_regions_filter[Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6]
+        rows_att6_filter = rows_regions_filter[(temp.apply(lambda r: self.att6_filter in [item.strip()
+                                                                        for item in r.split(",")])) | (temp == "")]
+        return rows_att6_filter
 
     def get_filters_from_row(self, row):
         filters = dict(row)
@@ -177,12 +163,12 @@ class INBEVMXToolBox:
 
     def create_filters_according_to_scif(self, filters):
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
-                                Const.TEMPLATE_BRAND: 'brand_name',
-                                Const.TEMPLATE_MANUFACTURER_DENOMINATOR: 'manufacturer_name',
-                                Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_6'}
+                                Const.TEMPLATE_MANUFACTURER_NOMINATOR: 'manufacturer_name',
+                                Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_14'}
 
         for key in filters.keys():
-            filters[convert_from_scif[key]] = filters.pop(key)
+            if key in convert_from_scif:
+                filters[convert_from_scif[key]] = filters.pop(key)
         return filters
 
     def count_of_facings(self, df, filters):
@@ -190,29 +176,6 @@ class INBEVMXToolBox:
         facing_data = df[self.tools.get_filter_condition(df, **filters)]
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
-
-    def count_of_scenes_packs(self, df, filters):
-        all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
-        df = pd.merge(df, all_scene_info, on="scene_fk")
-        df = df[self.tools.get_filter_condition(df, **filters)]
-        df = df.groupby(['template_name', 'scene_fk']).size().reset_index(name='num_packs')
-        return df
-
-    def count_of_scenes(self, df, filters):
-        facing_data = df[self.tools.get_filter_condition(df, **filters)]
-
-        # filter by scene_id and by template_name (scene type)
-        scene_types_groupby = facing_data.groupby(['template_name', 'scene_id'])['facings'].sum().reset_index()
-        return scene_types_groupby
-
-
-    def count_of_scenes_facings(self, df, filters):
-        all_scene_info = pd.merge(self.scene_info,self.data_provider[Data.ALL_TEMPLATES],on='template_fk')
-        df = pd.merge(df, all_scene_info, on="scene_fk")
-        df = df[self.tools.get_filter_condition(df, **filters)]
-        df['face_count'] = df['face_count'].fillna(1)
-        df = df.groupby(['template_name', 'scene_fk'])['face_count'].sum().reset_index()
-        return df
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
@@ -222,7 +185,7 @@ class INBEVMXToolBox:
             return
         else:
             # find the answer to the survey in session
-            question_id = row[Const.TEMPLATE_SURVEY_QUESTION_ID]
+            question_id = row[Const.TEMPLATE_SURVEY_QUESTION_ID].values[0]
             question_answer_template = row[Const.TEMPLATE_TARGET_ANSWER].values[0]
 
             survey_result = self.survey.get_survey_answer(('question_fk', question_id))
@@ -235,7 +198,7 @@ class INBEVMXToolBox:
                 condition = row[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
                     if condition == ">=":
-                        second_question_id = row[Const.TEMPLATE_SECOND_SURVEY_ID]
+                        second_question_id = row[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
                         second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
                         survey_result = 1 if survey_result > second_survey_result else -1
             else:
