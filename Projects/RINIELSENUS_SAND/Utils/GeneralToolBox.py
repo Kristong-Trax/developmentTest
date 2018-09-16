@@ -3,7 +3,7 @@ import xlrd
 import json
 import pandas as pd
 
-from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
+from Projects.RINIELSENUS_SAND.Utils.PositionGraph import MarsUsPositionGraphs
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
