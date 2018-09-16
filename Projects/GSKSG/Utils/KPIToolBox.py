@@ -27,6 +27,12 @@ relevant_cols = 'relevant columns'
 template_kpi_type = 'type of condition'
 GENERAL_COLS = ['template_name']
 EXCLUDE = 0
+
+STORE_LVL_1 = 'store_type'
+# chance to additional attribute!!!!!
+# STORE_LVL_2 = 'address_line_1'
+STORE_LVL_2 = 'additional_attribute_2'
+STORE_LVL_3 = 'additional_attribute_1'
 ######################
 
 class GSKSGToolBox:
@@ -55,7 +61,10 @@ class GSKSGToolBox:
 
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
-        self.msl_list = pd.read_excel(self.excel_file_path, sheetname='MSL List')
+        self.msl_list = pd.read_excel(self.excel_file_path,
+                   header=[[0, 1, 2]],
+                   index_col=[0,1],
+                   sheetname='MSL List')
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
                              'presence': self.calculate_presence, 'facings': self.calculate_facings,
                              'Survey': self.calculate_survey, 'No facings': self.calculate_no_facings}
@@ -120,6 +129,10 @@ class GSKSGToolBox:
         if not pd.isnull(row['target']):
             target = row['target']
 
+        store_type = self.store_info[STORE_LVL_1]
+        att1 = self.store_info[STORE_LVL_2]
+        att2 = self.store_info[STORE_LVL_3]
+        # s['GENERAL TRADE']['Minimart/ Provision/ Others']
         return
 
     def calculate_sequence(self, row):
