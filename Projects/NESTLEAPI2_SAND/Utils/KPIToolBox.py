@@ -97,36 +97,41 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
         #     return
         if kpi_set_fk == 2:
             categories = self.scif['category'].unique().tolist()
-            # num_of_all_products = sum(self.scif['facings'])
             for category in categories:
-                filtered_scif = self.scif[self.scif['category'] == category]
-                num_of_products_in_cat = sum(filtered_scif['facings'])
-                filtered_scif = filtered_scif[filtered_scif['manufacturer_name'].str.encode('utf-8') == self.NESTLE]
-                num_of_products_in_cat_and_manufacturer = sum(filtered_scif['facings'])
-                result = 0 if num_of_products_in_cat == 0 \
-                    else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
-                atomic_name = 'sos for category' + '_' + category
-                self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+                filtered_category = self.scif[self.scif['category'] == category]
+                filtered_manufacturer = filtered_category[
+                                            filtered_category['manufacturer_name'].str.encode('utf-8') == self.NESTLE]
+                for mode in ['facings', 'gross_len_add_stack']:
+                    num_of_products_in_cat = sum(filtered_category[mode])
+                    num_of_products_in_cat_and_manufacturer = sum(filtered_manufacturer[mode])
+                    result = 0 if num_of_products_in_cat == 0 \
+                        else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
+                    mode = 'linear' if mode == 'gross_len_add_stack' else mode
+                    atomic_name = 'sos for category_' + mode + '_{}'.format(category)
+                    self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 3:
             brands = self.scif['brand_name'].unique().tolist()
             category_groups = self.scif['category_group_x'].unique().tolist()
             for category_group in category_groups:
                 filtered_scif = self.scif[self.scif['category_group_x'] == category_group]
-                num_of_products_in_cat = sum(filtered_scif['facings'])
-                for brand in brands:
-                    brand_filter = filtered_scif.copy()
-                    brand_filter = brand_filter[brand_filter['brand_name'] == brand]
-                    num_of_products_in_brand = sum(brand_filter['facings'])
-                    result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
-                    atomic_name = 'sos for brand_{}'.format(brand)
-                    self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+                for mode in ['facings', 'gross_len_add_stack']:
+                    num_of_products_in_cat = sum(filtered_scif[mode])
+                    for brand in brands:
+                        brand_filter = filtered_scif.copy()
+                        brand_filter = brand_filter[brand_filter['brand_name'] == brand]
+                        num_of_products_in_brand = sum(brand_filter[mode])
+                        result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
+                        mode = 'linear' if mode == 'gross_len_add_stack' else mode
+                        atomic_name = 'sos ' + mode + ' for brand_{brand} and category_group_{category}'.format(
+                            brand=brand, category=category_group)
+                        self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
             shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]
             products_list = shorted_df['product_ean_code'].unique().tolist()
             for product_ean_code in products_list:
                 filtered_df = shorted_df[shorted_df['product_ean_code'] == product_ean_code ]
                 num_of_facings = sum(filtered_df['facings'])
-                num_of_facings_ign_stack = sum(filtered_df['facings_ign_stack'])
+                # num_of_facings_ign_stack = sum(filtered_df['facings_ign_stack'])
                 display_name = 'SKU EAN Code: ' + product_ean_code
                 self.write_to_db_result(self.LEVEL3, kpi_set_fk, result=num_of_facings, display_text=display_name, score=num_of_facings)
         return
