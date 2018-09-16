@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalculation, \
+from Projects.RINIELSENUS_SAND.Utils.AtomicKpisCalculator import BlockAtomicKpiCalculation, \
     VerticalBlockAtomicKpiCalculation, AnchorAtomicKpiCalculation, ShelfLevelAtomicKpiCalculation, \
     AdjacencyAtomicKpiCalculation, BlockTargetAtomicKpiCalculation, BiggestSceneBlockAtomicKpiCalculation, \
     LinearFairShareAtomicKpiCalculation, LinearPreferredRangeShareAtomicKpiCalculation, \
@@ -15,7 +15,7 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     LinearFairShareDenominatorAtomicKpiCalculation, LinearPreferredRangeShareNumeratorAtomicKpiCalculation, \
     LinearPreferredRangeShareDenominatorAtomicKpiCalculation, ShareOfAssortmentPrNumeratorAtomicKpiCalculation, \
     SequenceSptCalculation
-from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
+from Projects.RINIELSENUS_SAND.Utils.Const import CalculationDependencyCheck
 
 
 class Results(object):
