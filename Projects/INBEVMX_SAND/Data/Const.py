@@ -6,7 +6,7 @@ class Const(object):
 
     # sheet names
     KPIS = 'KPIS'
-    SOS = 'SOS_TARGET'
+    SOS_TARGET = 'SOS_TARGET'
     SURVEY = 'SURVEY'
 
     # count types
