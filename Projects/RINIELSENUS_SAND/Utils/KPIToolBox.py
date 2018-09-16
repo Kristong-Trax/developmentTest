@@ -1,17 +1,17 @@
 import pandas as pd
 
-from Projects.RINIELSENUS.Utils.Const import SET_CATEGORIES, FILTER_NAMING_DICT, \
+from Projects.RINIELSENUS_SAND.Utils.Const import SET_CATEGORIES, FILTER_NAMING_DICT, \
     SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET_2018, SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, \
     SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018, CAT_TREATS_2018, CAT_MAIN_MEAL_DRY_2018, \
     CAT_MAIN_MEAL_WET_2018, DOG_MAIN_MEAL_DRY_2018, DOG_TREATS_2018, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
     SPT_CHANNELS
 
-from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
-from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
-from Projects.RINIELSENUS.Utils.Loader import Definition
-from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates, KPIConsts
-from Projects.RINIELSENUS.Utils.Runner import Results
-from Projects.RINIELSENUS.Utils.Writer import KpiResultsWriter as KpiResultsWriter
+from Projects.RINIELSENUS_SAND.Utils.Fetcher import MarsUsQueries
+from Projects.RINIELSENUS_SAND.Utils.GeneralToolBox import MarsUsGENERALToolBox
+from Projects.RINIELSENUS_SAND.Utils.Loader import Definition
+from Projects.RINIELSENUS_SAND.Utils.ParseTemplates import ParseMarsUsTemplates, KPIConsts
+from Projects.RINIELSENUS_SAND.Utils.Runner import Results
+from Projects.RINIELSENUS_SAND.Utils.Writer import KpiResultsWriter as KpiResultsWriter
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector

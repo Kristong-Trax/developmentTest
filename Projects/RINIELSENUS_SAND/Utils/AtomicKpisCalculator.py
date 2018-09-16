@@ -3,10 +3,10 @@ import abc
 from Trax.Utils.Logging.Logger import Log
 import numpy as np
 import pandas as pd
-from Projects.RINIELSENUS.Utils.Const import TEMPLATE_NAME, DENOMINATOR_FILTER_FIELDS, BLOCK_THRESHOLD, \
+from Projects.RINIELSENUS_SAND.Utils.Const import TEMPLATE_NAME, DENOMINATOR_FILTER_FIELDS, BLOCK_THRESHOLD, \
     FILTER_NAMING_DICT, MM_TO_FT_RATIO
-from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
-from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
+from Projects.RINIELSENUS_SAND.Utils.GeneralToolBox import MarsUsGENERALToolBox
+from Projects.RINIELSENUS_SAND.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 
