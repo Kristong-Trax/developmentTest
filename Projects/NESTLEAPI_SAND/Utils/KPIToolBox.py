@@ -36,7 +36,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class NESTLEAPI_SANDNESTLEAPIToolBox:
+class NESTLEAPIToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
