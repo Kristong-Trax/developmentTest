@@ -67,13 +67,13 @@ class CCAAUToolBox:
         self.common.commit_results_data_to_new_tables()
 
     def calculate_sos(self):
-        """
-        :param sos_filters:  numerator type =
-        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
-        :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: The numerator facings, denominator facings, numerator linear and denominator linear.
-        """
 
+        """
+            This function filtering Data frame - "scene item facts" by the parameters in the template.
+            Sending the filtered data frames to linear Sos calculation and facing Sos calculation
+            Writing the results to the new tables in DB
+
+        """
         facing_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'FACINGS_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
         linear_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'LINEAR_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
         den_facing_exclude_template = self.exclude_filters[(self.exclude_filters['KPI'] == 'Share of Shelf by Facing') & (self.exclude_filters['apply on'] == 'Denominator')]
@@ -84,49 +84,43 @@ class CCAAUToolBox:
         scene_templates = self.scif['template_fk'].unique().tolist()
         scene_manufactures = self.scif['manufacturer_fk'].unique().tolist()
 
-        df = self.scif
+
+        # exclude filters denominator
+        den_general_facing_filters = self.create_dict_filters(den_facing_exclude_template, self.EXCLUDE_FILTER)
+        den_general_linear_filters = self.create_dict_filters(den_linear_exclude_template, self.EXCLUDE_FILTER)
+
+        # exclude filters numerator
+        num_general_facing_filters = self.create_dict_filters(num_facing_exclude_template, self.EXCLUDE_FILTER)
+        num_general_linear_filters = self.create_dict_filters(num_linear_exclude_template, self.EXCLUDE_FILTER)
+
+        df_num_fac = self.filter_2_cond(self.scif, num_facing_exclude_template)
+        df_num_lin = self.filter_2_cond(self.scif, num_linear_exclude_template)
+        df_den_lin = self.filter_2_cond(self.scif, den_facing_exclude_template)
+        df_den_fac = self.filter_2_cond(self.scif, den_linear_exclude_template)
 
         for template in scene_templates:
 
             for manufacture in scene_manufactures:
+
                 sos_filters = {"template_fk": (template, self.INCLUDE_FILTER),
                                "manufacturer_fk": (manufacture, self.INCLUDE_FILTER)}
-                tem_filters={"template_fk": (template, self.INCLUDE_FILTER)}
-
-                # exclude filters denominator
-                den_general_facing_filters = self.create_dict_filters(den_facing_exclude_template, self.EXCLUDE_FILTER)
-                den_general_linear_filters = self.create_dict_filters(den_linear_exclude_template, self.EXCLUDE_FILTER)
-
-
-                # exclude filters denominator
-                num_general_facing_filters = self.create_dict_filters(num_facing_exclude_template, self.EXCLUDE_FILTER)
-                num_general_linear_filters = self.create_dict_filters(num_linear_exclude_template, self.EXCLUDE_FILTER)
-
-                # include_filters
-
-        # sos facing
-        ### {"limor": " "}
-
-                df = self.filter_2_cond(df, num_facing_exclude_template)
+                tem_filters = {"template_fk": (template, self.INCLUDE_FILTER)}
 
                 dict_num_facing = dict(
                     (k, v) for d in [sos_filters, num_general_facing_filters] for k, v in
                     d.items())
-                numerator_facings = self.calculate_share_space(df, dict_num_facing)[0]
+                numerator_facings = self.calculate_share_space(df_num_fac, dict_num_facing)[0]
 
-                df = self.filter_2_cond(df, num_linear_exclude_template)
                 dict_num_linear = dict(
                     (k, v) for d in [sos_filters, num_general_linear_filters] for k, v in d.items())
-                numerator_linear = self.calculate_share_space(df, dict_num_linear)[0]
+                numerator_linear = self.calculate_share_space(df_num_lin, dict_num_linear)[1]
 
-                df = self.filter_2_cond(df, den_facing_exclude_template)
                 dict_den_facing = dict((k, v) for d in [tem_filters, den_general_facing_filters] for k, v in d.items())
-                denominator_facings = self.calculate_share_space(df, dict_den_facing)[0]
-
+                denominator_facings = self.calculate_share_space(df_den_fac, dict_den_facing)[0]
 
                 dict_den_linear = dict(
                     (k, v) for d in [tem_filters, den_general_linear_filters] for k, v in d.items())
-                denominator_linear = self.calculate_share_space(df, dict_den_linear )[0]
+                denominator_linear = self.calculate_share_space(df_den_lin, dict_den_linear)[1]
 
                 score_facing = 0 if denominator_facings == 0 else (numerator_facings/denominator_facings)*100
                 score_linear = 0 if denominator_linear == 0 else (numerator_linear / denominator_linear)*100
@@ -139,6 +133,11 @@ class CCAAUToolBox:
 
 
     def create_dict_filters(self, template, parametr):
+        """
+               :param template : Template of the desired filtering to data frame
+                      parameter : exclude /include
+               :return: Dictionary of filters and parameter : exclude / include by demeaned
+        """
 
         filters_dict = {}
         template_without_second = template[template['Param 2'].isnull()]
@@ -149,7 +148,11 @@ class CCAAUToolBox:
         return filters_dict
 
     def filter_2_cond(self,df,template):
-
+        """
+               :param template: Template of the desired filtering
+                      df : Data frame
+               :return: data frame filtered by entries in the template with 2 conditions
+        """
         filters_dict = {}
         template_without_second = template[template['Param 2'].notnull()]
 
