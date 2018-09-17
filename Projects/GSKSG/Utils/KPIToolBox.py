@@ -114,6 +114,9 @@ class GSKSGToolBox:
         
         return
 
+
+
+    # Todo: Should we just send the presence to facing function?
     def calculate_presence(self, row):
         target = row['target'] if not pd.isnull(row['target']) else 0
         row_filter, general_filters = self.get_filters(row)
