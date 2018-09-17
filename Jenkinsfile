@@ -222,6 +222,8 @@ def sendFailMail(){
                                                          git rev-parse --abbrev-ref HEAD || true
                                                           ''')
 
+    echo "branch: ${branch}"
+
 	if (branch != "master") {
             def email_git = sh (returnStdout: true, script:'''#!/bin/bash
                                                          git log --pretty=format:"%ce" HEAD^..HEAD || true
