@@ -110,6 +110,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if score > 0:
             self.total_score += 1
         self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
+        print(kpi_name, result, score, target)
 
     # write in DF:
 
@@ -270,42 +271,121 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         return target
 
     @staticmethod
-    def get_kpi_line_params(kpi_line):
-        params = {}
+    def get_kpi_line_filters(kpi_line):
+        filters = {}
         attribs = list(kpi_line.index)
         c = 1
         while 1:
-            if 'Param {}'.format(c) in attribs:
-                params[kpi_line['Param {}'.format(c)]] = kpi_line['Value {}'.format(c)]
+            if 'Param {}'.format(c) in attribs and kpi_line['Param {}'.format(c)]:
+                filters[kpi_line['Param {}'.format(c)]] = kpi_line['Value {}'.format(c)].split(',')
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
             c += 1
-        return params
+        return filters
 
     @staticmethod
     def get_kpi_line_targets(kpi_line):
         mask = kpi_line.index.str.contains('Target')
         if mask.any():
             targets = kpi_line.loc[mask]
-            targets.index = [x.split[Const.SEPERATOR][1].split[' '][0] for x in targets.index]
+            targets.index = [x.split(Const.SEPERATOR)[1].split(' ')[0] for x in targets.index]
             targets = targets.to_dict()
         else:
             targets = {}
         return targets
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
+        if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
+            return 1, 1, 0
+
         scenes = relevant_scif['scene_fk'].unique().tolist()
-        numerator_filters = self.get_kpi_line_params(kpi_line)
         targets = self.get_kpi_line_targets(kpi_line)
-        numerator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)]
-        numerator_facings = numerator_facings[self.facings_field].sum()
+        facings_filters = self.get_kpi_line_filters(kpi_line)
+        score = 0
+        passed = 0
 
-        print('asd')
+        for scene in scenes:
+            scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
+            facings = scene_scif[self.get_filter_condition(scene_scif, **facings_filters)][self.facings_field].sum()
+            num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['bay_number'].max()
 
+            if num_bays in targets:
+                target = targets[num_bays]
+            else:
+                target = None
+            if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
+                score += 1
+
+        if score == len(scenes):
+            passed = 1
+        if score > 0:
+            return score/float(len(scenes)), passed, target
+        else:
+            return 1, passed, target
+
+    def calculate_ratio(self, kpi_line, relevant_scif, general_filters):
+        sos_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        scenes = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]['scene_fk'].unique().tolist()
+        us = 0
+        them = 0
+
+        for scene in scenes:
+            sos_filters['scene_fk'] = scene
+            sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+            if sos_value >= .8:
+                us += 1
+            else:
+                them += 1
+        score = us - them
+        passed = 0
+        if us + them % 2 == 0 and score == 0:
+            passed = 1
+        elif us + them % 2 != 0 and abs(score) == 1:
+            passed = 1
+
+        return us/float(them), passed, .5
+
+    def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
+        """
+        calculates SOS line in the relevant scif.
+        :param kpi_line: line from SOS sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator.
+        :return: boolean
+        """
+        kpi_name = kpi_line[Const.KPI_NAME]
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
+        numerator_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        target = self.get_targets(kpi_name)
+
+        numerator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)][
+            self.facings_field].sum()
+        denominator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)][
+            self.facings_field].sum()
+        general_filters['Southwest Deliver'] = 'Y'
+        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
+            unique().count()
+
+        number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
+
+        if target:
+            score = 1 if number_of_shelves_score >= target else 0
+        else:
+            score = 1
+            target = 0
+
+        if 'bonus' in kpi_name:
+            return number_of_shelves_score, score, target
+        else:
+            return number_of_shelves_score, None, None
 
     # Number of shelves
-    def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
+    def old_calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -424,10 +504,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return self.calculate_availability
         elif kpi_type == Const.SOS:
             return self.calculate_sos
-        elif kpi_type == Const.SHELVES:
+        elif kpi_type == Const.SHELVES or kpi_type == Const.SHELVES_BONUS:
             return self.calculate_number_of_shelves
+        elif kpi_type == Const.SHELVES_BONUS:
+            return self.calculate_number_of_shelves_bonus
         elif kpi_type == Const.FACINGS:
             return self.calculate_facings_ntba
+        elif kpi_type == Const.RATIO:
+            return self.calculate_ratio
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None

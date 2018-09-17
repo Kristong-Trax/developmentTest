@@ -11,6 +11,7 @@ class Const(object):
     AVAILABILITY = "Availability"
     SOS = "SOS"
     SHELVES = "shelves"
+    SHELVES_BONUS = "shelves bonus"
     SOS_MAJOR = "SOS_majority"
     SURVEY = "Survey"
     SKU_EXCLUSION = "SKU_Exclusion"
@@ -18,6 +19,7 @@ class Const(object):
     SCENE_AVAILABILITY = "Availability_scene"
     TARGETS = "Targets"
     FACINGS = 'Facings NTBA'
+    RATIO = 'ratio'
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
     SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, TARGETS]
 
@@ -36,7 +38,7 @@ class Const(object):
     DISPLAY_TEXT = 'display_text'
     STORE_TYPE = "store_type"
     SCENE_TYPE = "scene type"
-    SCENE_TYPE_GROUP = "scene_type_group"
+    SCENE_TYPE_GROUP = "template_group"
     STORE_ATTRIBUTE = "store_attribute"
     SESSION_LEVEL = "session_level"
     GROUP_TARGET = "group_target"
@@ -78,6 +80,7 @@ class Const(object):
     B_VALUE = 'Value 2'
     C_PARAM = 'Param 3'
     C_VALUE = 'Value 3'
+    PROGRAM = 'program (Additional Attribute 3)'
 
     # columns of survey:
     Q_TEXT = "question_text"
