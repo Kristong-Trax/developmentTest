@@ -56,7 +56,7 @@ class ParseMarsUsTemplates(object):
 
     @staticmethod
     def _get_template_path(set_name, i):
-        template_name = 'Template_2018_SPT' if i == 0 else 'Template_2018_v2'
+        template_name = 'Template_2018_SPT' if i == 0 else 'Template_2018_v3'
         return os.path.join(TEMPLATE_PATH, '{}.xlsx'.format(template_name))
 
     def parse_template(self, set_name, i):
