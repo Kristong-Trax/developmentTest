@@ -99,20 +99,26 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
 
-        if kpi_type == 'Facings NTBA':
+        if kpi_type == 'shelves bonus':
+            relevant_template = self.templates['shelves']
+        else:
             relevant_template = self.templates[kpi_type]
-            relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            function = self.get_kpi_function(kpi_type)
-            for i, kpi_line in relevant_template.iterrows():
-                result, score, target = function(kpi_line, relevant_scif, general_filters)
+        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
+        function = self.get_kpi_function(kpi_type)
+
+        for i, kpi_line in relevant_template.iterrows():
+            if not self.store_attr or self.store_attr not in main_line[Const.PROGRAM].split(',')\
+                    or relevant_scif.empty:
+                continue
+            result, score, target = function(kpi_line, relevant_scif, general_filters)
+
+            # write in DF:
+            if score > 0:
+                self.total_score += 1
+            self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
+            print(kpi_name, kpi_type, result, score, target)
         else:
             pass
-        if score > 0:
-            self.total_score += 1
-        self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-        print(kpi_name, result, score, target)
-
-    # write in DF:
 
     def write_to_session_level(self, kpi_name, result=0):
         """
@@ -242,13 +248,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     def get_sos_targets(self, kpi_name, sos_range=False):
         targets_template = self.templates[Const.TARGETS]
-        store_targets = targets_template.loc[(targets_template['program'] == self.program) &
+        store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
                                              (targets_template['region'] == self.region)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if sos_range:
             if not filtered_targets_to_kpi.empty:
-                upper_limit = filtered_targets_to_kpi['upper limit'].values[0]
-                lower_limit = filtered_targets_to_kpi['lower limit'].values[0]
+                range = filtered_targets_to_kpi['target'].values[0].split(' - ')
+                upper_limit = int(range[1].replace('%', '').strip())
+                lower_limit = int(range[0].replace('%', '').strip())
             else:
                 upper_limit, lower_limit = None, None
             return upper_limit, lower_limit
@@ -261,7 +268,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
-        store_targets = targets_template.loc[(targets_template['program'] == self.program) &
+        store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
                                              (targets_template['region'] == self.region)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
@@ -297,7 +304,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
         if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
-            return 1, 1, 0
+            return 0, 0, 0
 
         scenes = relevant_scif['scene_fk'].unique().tolist()
         targets = self.get_kpi_line_targets(kpi_line)
@@ -345,7 +352,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         elif us + them % 2 != 0 and abs(score) == 1:
             passed = 1
 
-        return us/float(them), passed, .5
+        if them != 0:
+            score = us/float(them)
+        elif us > 0:
+            score = us
+        else:
+            score = 0
+
+        return score, passed, .5
 
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
@@ -361,15 +375,21 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         numerator_filters = self.get_kpi_line_filters(kpi_line)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
         target = self.get_targets(kpi_name)
+        if isinstance(target, unicode):
+            target = str(target)
+        if isinstance(target, str):
+            target = float(target.split(' ')[0].strip())
 
         numerator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)][
             self.facings_field].sum()
         denominator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)][
             self.facings_field].sum()
         general_filters['Southwest Deliver'] = 'Y'
-        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
-            self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
-            unique().count()
+        # number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
+        #     self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
+        #     unique().count()
+        number_of_shelves_value = self.match_product_in_scene[['scene_fk', 'bay_number', 'shelf_number']]\
+            .drop_duplicates().shape[0]
 
         number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
 
@@ -379,7 +399,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             score = 1
             target = 0
 
-        if 'bonus' in kpi_name:
+        if 'bonus' not in kpi_name:
             return number_of_shelves_score, score, target
         else:
             return number_of_shelves_score, None, None

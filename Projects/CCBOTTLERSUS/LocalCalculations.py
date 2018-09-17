@@ -30,8 +30,8 @@ if __name__ == '__main__':
     # ]
 
     sessions = [
-                '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
-                # '6fc73672-db6a-4ace-9dc1-e0f07ea57c03',
+                # '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
+                '6fc73672-db6a-4ace-9dc1-e0f07ea57c03',
                 # '9DD11D67-61EA-49BC-AEEB-90F005DD0AB1',
                 # '6A165E9D-8F6B-499D-9AB8-98E4C3F27EB0',
                 # 'B3B3954A-61E2-4DF7-BCFF-2DFA7A2AD58E',
@@ -70,6 +70,8 @@ if __name__ == '__main__':
                 # 'd30529f6-21c0-459c-b027-5642f82d0cac',
             ]
     for session in sessions:
+        print('***********************************************************************************')
+        print('_______________________ {} ____________________'.format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()

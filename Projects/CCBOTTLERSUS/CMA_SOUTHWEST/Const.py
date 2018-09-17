@@ -21,7 +21,7 @@ class Const(object):
     FACINGS = 'Facings NTBA'
     RATIO = 'ratio'
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, TARGETS]
+    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, RATIO, TARGETS]
 
 
     # generic columns:
@@ -103,6 +103,7 @@ class Const(object):
 
     # seperators
     SEPERATOR = '; '
+    COMMA = ','
 
     # constants:
     ALL = "ALL"
