@@ -372,8 +372,10 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         kpi_name = kpi_line[Const.KPI_NAME]
         relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
+        relevant_scenes = relevant_scif['scene_fk'].unique().tolist()
         numerator_filters = self.get_kpi_line_filters(kpi_line)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        scene_filters = {'scene_fk': relevant_scenes}
         target = self.get_targets(kpi_name)
         if isinstance(target, unicode):
             target = str(target)
@@ -388,8 +390,9 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         # number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
         #     self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
         #     unique().count()
-        number_of_shelves_value = self.match_product_in_scene[['scene_fk', 'bay_number', 'shelf_number']]\
-            .drop_duplicates().shape[0]
+        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **scene_filters)]\
+                                        [['scene_fk', 'bay_number', 'shelf_number']]\
+                                        .drop_duplicates().shape[0]
 
         number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
 
