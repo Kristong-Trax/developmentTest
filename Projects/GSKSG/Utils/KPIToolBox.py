@@ -107,10 +107,18 @@ class GSKSGToolBox:
             calculation(row)
 
     def calculate_sos(self, row):
+
+
+
+        
         return
 
     def calculate_presence(self, row):
-        return
+        target = row['target'] if not pd.isnull(row['target']) else 0
+        row_filter, general_filters = self.get_filters(row)
+        row_filter.update(general_filters)
+        result = 0 if self.availability.calculate_availability(**row_filter) >= target else 1
+        return result
 
     def calculate_facings(self, row, no_facing=False):
 
@@ -159,7 +167,7 @@ class GSKSGToolBox:
                     value = self.handle_exclude(row[col])
                 if col == 'target':
                     continue
-                elif self.is_string_a_list(row[col]):
+                elif self.is_string_a_list(str(row[col])):
                     value = map(str.strip, str(row[col]).split(','))
                 else:
                     value = [row[col]]
