@@ -31,7 +31,7 @@ EXCLUDE = 0
 STORE_LVL_1 = 'store_type'
 # chance to additional attribute!!!!!
 # STORE_LVL_2 = 'address_line_1'
-STORE_LVL_2 = 'additional_attribute_2'
+STORE_LVL_2 = 'retailer_name'
 STORE_LVL_3 = 'additional_attribute_1'
 ######################
 
@@ -63,8 +63,9 @@ class GSKSGToolBox:
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.msl_list = pd.read_excel(self.excel_file_path,
                    header=[[0, 1, 2]],
-                   index_col=[0,1],
-                   sheetname='MSL List')
+                   index_col=[0],
+                   sheetname='MSL List').dropna()
+
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
                              'presence': self.calculate_presence, 'facings': self.calculate_facings,
                              'Survey': self.calculate_survey, 'No facings': self.calculate_no_facings}
@@ -126,20 +127,41 @@ class GSKSGToolBox:
         return self.calculate_facings(row, no_facing=True)
 
     def calculate_MSL(self, row):
+        """This function gets the relevant assortment, and returns the number of shown is session out of assortment"""
+        # ToDo: use the benchmark as needed if needed.
+
         if not pd.isnull(row['target']):
             target = row['target']
 
-        store_type = self.store_info[STORE_LVL_1]
-        att1 = self.store_info[STORE_LVL_2]
-        att2 = self.store_info[STORE_LVL_3]
-        # s['GENERAL TRADE']['Minimart/ Provision/ Others']
-        return
+        # Gets relevant assortment
+        store_type = self.store_info[STORE_LVL_1].values[0]
+        att1 = self.store_info[STORE_LVL_2].values[0]
+        att2 = self.store_info[STORE_LVL_3].values[0]
+
+        # gets the assortment product's ean codes
+        store_assortment = self.msl_list[store_type][att1][att2]
+        store_assortment = store_assortment[store_assortment == 1]
+        products = store_assortment.keys()
+
+        kpi_filters, general = self.get_filters(row)
+        kpi_filters.update(general)
+        total_products = len(products)
+        exist_products = 0
+        for product in products:
+            # kpi_filters['product_ean_code'] = product
+            kpi_filters['product_name'] = product
+            res = self.availability.calculate_availability(**kpi_filters)
+            if res:
+                exist_products += 1
+
+        return exist_products / total_products if total_products else 0
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
 
         # running sequence kpi, allowing empty spaces, not allowing Irrelevant.
         # assuming should pass in ALL relevant scenes.
+        # If an entity in sequence is missing (less than 1 facing)- will fail.
         result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
         return result
 
@@ -159,7 +181,7 @@ class GSKSGToolBox:
                     value = self.handle_exclude(row[col])
                 if col == 'target':
                     continue
-                elif self.is_string_a_list(row[col]):
+                elif self.is_string_a_list(str(row[col])):
                     value = map(str.strip, str(row[col]).split(','))
                 else:
                     value = [row[col]]
