@@ -228,7 +228,7 @@ def sendFailMail(){
                                                           ''')
             def email = email_git.split()[0]
 
-			echo 'sending mail to ${email}'
+			echo "sending mail to ${email}"
 
 			mail body: "${JOB_NAME} build failed maybe it is your code ? /n plz check the log: error log: ${env.BUILD_URL}" ,
             from: "${mail_from}",
