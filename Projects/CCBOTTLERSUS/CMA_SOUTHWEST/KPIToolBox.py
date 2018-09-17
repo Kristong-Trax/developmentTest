@@ -239,6 +239,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             score = 1 if sos_value >= target*100 else 0
         elif not target and upper_limit and lower_limit:
             score = 1 if (lower_limit * 100 <= sos_value <= upper_limit * 100) else 0
+            target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
             score = 1
             target = 0
@@ -261,7 +262,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return upper_limit, lower_limit
         else:
             if not filtered_targets_to_kpi.empty:
-                target = filtered_targets_to_kpi[Const.TARGET].values[0]
+                target = int(filtered_targets_to_kpi[Const.TARGET].values[0].strip())
             else:
                 target = None
             return target
@@ -296,7 +297,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         mask = kpi_line.index.str.contains('Target')
         if mask.any():
             targets = kpi_line.loc[mask]
-            targets.index = [x.split(Const.SEPERATOR)[1].split(' ')[0] for x in targets.index]
+            targets.index = [int(x.split(Const.SEPERATOR)[1].split(' ')[0]) for x in targets.index]
             targets = targets.to_dict()
         else:
             targets = {}
@@ -316,11 +317,15 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
             facings = scene_scif[self.get_filter_condition(scene_scif, **facings_filters)][self.facings_field].sum()
             num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['bay_number'].max()
-
+            max_given = max(list(targets.keys()))
+            print('Num bays is', num_bays)
             if num_bays in targets:
                 target = targets[num_bays]
+            elif num_bays > max_given:
+                target = targets[max_given]  # if num bays exceeds doors given in targets, use largest option as target
             else:
                 target = None
+
             if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
                 score += 1
 
@@ -345,11 +350,9 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 us += 1
             else:
                 them += 1
-        score = us - them
+
         passed = 0
-        if us + them % 2 == 0 and score == 0:
-            passed = 1
-        elif us + them % 2 != 0 and abs(score) == 1:
+        if us - them >= 0:
             passed = 1
 
         if them != 0:
