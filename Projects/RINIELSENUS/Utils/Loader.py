@@ -98,7 +98,8 @@ class Definition(object):
             'weight': kpi[WEIGHT] / 100,
             'scene_types': str(kpi[RELEVANT_SCENE_TYPES]).split(SEPARATOR),
             'depend_on': kpi[DEPEND_ON],
-            'depend_score': kpi[DEPEND_SCORE]
+            'depend_score': kpi[DEPEND_SCORE],
+            # 'kpi_category': kpi['Target'],
         }
 
     @staticmethod
