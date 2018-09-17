@@ -303,8 +303,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         return targets
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
-        if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
-            return 0, 0, 0
+        # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
+        #     return 0, 0, 0
 
         scenes = relevant_scif['scene_fk'].unique().tolist()
         targets = self.get_kpi_line_targets(kpi_line)
