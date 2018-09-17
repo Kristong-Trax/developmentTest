@@ -11,6 +11,11 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.SOLARBR_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.Common import Common
+from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
+from Trax.Algo.Calculations.Core.Constants import Fields as Fd
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
+from Trax.Algo.Calculations.Core.Utils import Validation
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -33,10 +38,14 @@ SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
 MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template v0.1.xlsx')
 
 
+
 class SOLARBRToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    EXCLUDE_EMPTY = False
+    EXCLUDE_FILTER = 0
+    EMPTY = 'Empty'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -44,6 +53,7 @@ class SOLARBRToolBox:
         self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -64,6 +74,9 @@ class SOLARBRToolBox:
             self.all_products['manufacturer_name'] == 'Coca Cola'].iloc[0]
         self.sos = SOS(self.data_provider, self.output)
         self.total_score = 0
+        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.toolbox = GENERALToolBox(self.data_provider)
+        self.scenes_info = self.data_provider[Data.SCENES_INFO]
         # self.store_type = self.data_provider.store_type
 
 
@@ -76,20 +89,14 @@ class SOLARBRToolBox:
 
     def get_score_template(self):
         for sheet in Const.SHEETS_SCORE:
-            self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"), keep_default_na=False)
+            self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"), keep_default_na=False, encoding = "utf-8")
 
 
     def main_calculation(self, *args, **kwargs):
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        # self.write_to_db_result(
-        #     self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
-        # self.common.write_to_db_result(
-        #     fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=self.round_result(self.total_score),
-        #     denominator_id=self.store_id,
-        #     identifier_result=result, score=self.round_result(self.total_store))
 
 
 
@@ -116,18 +123,13 @@ class SOLARBRToolBox:
                         relevant_template = self.templates[kpi_type]
                         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
 
-                        function = self.get_kpi_function(kpi_type)
-                        for i, kpi_line in relevant_template.iterrows():
-                            result, score = function(kpi_line, general_filters)
+                        if relevant_template["numerator param 1"].all() and relevant_template["denominator param"].all():
+                            function = self.get_kpi_function(kpi_type)
+                            for i, kpi_line in relevant_template.iterrows():
+                                result, score = function(kpi_line, general_filters)
                     else:
                         pass
 
-                    if score > 0:
-                            self.total_score += score
-                    else:
-                        pass
-
-               # self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score)
             else:
                 pass
 
@@ -191,12 +193,34 @@ class SOLARBRToolBox:
 
         score = self.get_score_from_range(kpi_name, sos_value)
 
+        manufacturer_products = self.all_products[
+            self.all_products['manufacturer_name'] == num_value[0]].iloc[0]
 
+        manufacturer_fk = manufacturer_products["manufacturer_fk"]
+
+        all_products = self.all_products[
+            self.all_products['category'] == den_value[0]].iloc[0]
+
+        category_fk = all_products["category_fk"]
+
+
+
+        numerator_res, denominator_res = self.get_numerator_and_denominator(sos_filters, **general_filters)
+
+        self.common.write_to_db_result_new_tables(fk = 1,
+                                                  numerator_id=manufacturer_fk,
+                                                  numerator_result= numerator_res,
+                                                  denominator_id=category_fk,
+                                                  denominator_result= denominator_res,
+                                                  result=sos_value,
+                                                  score= score,
+                                                  score_after_actions= score)
         return sos_value, score
 
     def get_score_from_range(self, kpi_name, sos_value):
         store_type = str(self.store_info["store_type"].iloc[0])
-        score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name) +
+        self.score_templates[store_type] = self.score_templates[store_type].replace(kpi_name, kpi_name.encode("utf-8"))
+        score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +
                                                           '" & Low <= ' + str(sos_value) +
                                                           ' & High >= ' + str(sos_value)+'')
         score = score_range['Score'].iloc[0]
@@ -205,7 +229,7 @@ class SOLARBRToolBox:
 
     def get_kpi_function(self, kpi_type):
         """
-        transfers every kpi to its own function
+        transfers every kpi to its own function    .encode('utf-8')
         :param kpi_type: value from "sheet" column in the main sheet
         :return: function
         """
@@ -219,18 +243,50 @@ class SOLARBRToolBox:
     def round_result(result):
         return round(result, 3)
 
+    def get_numerator_and_denominator(self, sos_filters=None, include_empty=False, **general_filters):
 
-    def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False):
-        """
-        Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
-        :param kpi_name: str
-        :param result: int
-        :param display_text: str
-        :param weight: int/float
-        :param scene_fk: for the scene's kpi
-        :param reuse_scene: this kpi can use scenes that were used
-        """
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
-        # self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        print(kpi_name, score, result)
-        # self.write_to_db(kpi_name, score, result=result)
+        if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
+                general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+        pop_filter = self.toolbox.get_filter_condition(self.scif, **general_filters)
+        subset_filter = self.toolbox.get_filter_condition(self.scif, **sos_filters)
+        try:
+            pop = self.scif
+
+            filtered_population = pop[pop_filter]
+            if filtered_population.empty:
+                return 0,0
+            else:
+                subset_population = filtered_population[subset_filter]
+                # ratio = TBox.calculate_ratio_sum_field_in_rows(filtered_population, subset_population, Fd.FACINGS)
+
+                df = filtered_population
+                subset_df = subset_population
+                sum_field  = Fd.FACINGS
+                try:
+                    Validation.is_empty_df(df)
+                    Validation.is_empty_df(subset_df)
+                    Validation.is_subset(df, subset_df)
+                    Validation.df_columns_equality(df, subset_df)
+                    Validation.validate_columns_exists(df, [sum_field])
+                    Validation.validate_columns_exists(subset_df, [sum_field])
+                    Validation.is_none(sum_field)
+                except Exception, e:
+                    msg = "Data verification failed: {}.".format(e)
+                    # raise Exception(msg)
+
+                default_value = 0
+
+                numerator = TBox.calculate_frame_column_sum(subset_df, sum_field, default_value)
+                denominator = TBox.calculate_frame_column_sum(df, sum_field, default_value)
+
+                return numerator, denominator
+
+        except Exception as e:
+
+             Log.error(e.message)
+
+
+        return True
+
+
+
