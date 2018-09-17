@@ -17,9 +17,13 @@ class CCUSSceneToolBox:
         self.templates = self.data_provider[Data.TEMPLATES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        empties = self.all_products[self.all_products['product_type'] == 'Empty']['product_fk'].unique().tolist()
+        self.match_product_in_scene = self.match_product_in_scene[
+            ~(self.match_product_in_scene['product_fk'].isin(empties))]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.template_group = self.templates['template_group'].iloc[0]
+        self.template_fk = self.templates['template_fk'].iloc[0]
         self.scene_id = self.scene_info['scene_fk'][0]
         self.kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POC)
         self.poc_number = 1
@@ -37,5 +41,5 @@ class CCUSSceneToolBox:
     def count_products(self, relevant_match_products):
         for product_fk in relevant_match_products['product_fk'].unique().tolist():
             facings = len(relevant_match_products[relevant_match_products['product_fk'] == product_fk])
-            self.common.write_to_db_result(fk=self.kpi_fk, numerator_id=product_fk, numerator_result=facings,
-                                           result=self.poc_number, by_scene=True)
+            self.common.write_to_db_result(fk=self.kpi_fk, numerator_id=product_fk, denominator_id=self.template_fk,
+                                           numerator_result=facings, result=self.poc_number, by_scene=True)

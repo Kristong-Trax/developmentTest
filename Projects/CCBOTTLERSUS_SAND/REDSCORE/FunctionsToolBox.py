@@ -7,14 +7,16 @@ __author__ = 'Elyashiv'
 
 class FunctionsToolBox:
 
-    def __init__(self, data_provider, output, templates):
+    def __init__(self, data_provider, output, templates, store_attr):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.survey = Survey(self.data_provider, self.output)
         self.templates = templates
-        self.converters = self.templates[Const.CONVERTERS]
-        self.exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
+        if Const.CONVERTERS in self.templates:
+            self.converters = self.templates[Const.CONVERTERS]
+            self.exclusion_sheet = self.templates[Const.SKU_EXCLUSION]
+        self.store_attr = store_attr
 
     # survey:
 
@@ -41,34 +43,54 @@ class FunctionsToolBox:
                 return True
         return False
 
-    # same_pack availability:
+    # pointer the other kpi_functions:
 
-    def calculate_availability_with_same_pack(self, relevant_template, relevant_scif, isnt_dp, target):
+    def calculate_kpi_by_type(self, main_line, filtered_scif):
         """
-        checks if all the lines in the availability sheet passes the KPI, AND if all of these filtered scif has
-        at least one common product that has the same size and number of sub_packages.
-        :param relevant_template: all the match lines from the availability sheet.
-        :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
-        :param target: how many lines should pass
-        :return: boolean
+        the function calculates all the kpis
+        :param main_line: one kpi line from the main template
+        :param filtered_scif:
+        :return: boolean, but it can be None if we want not to write it in DB
         """
-        relevant_scif = relevant_scif.fillna("NAN")
-        sizes = relevant_scif['size'].tolist()
-        sub_packages_nums = relevant_scif['number_of_sub_packages'].tolist()
-        packages = set(zip(sizes, sub_packages_nums))
-        for package in packages:
-            passed_counter = 0
-            filtered_scif = relevant_scif[(relevant_scif['size'] == package[0]) &
-                                          (relevant_scif['number_of_sub_packages'] == package[1])]
-            for i, kpi_line in relevant_template.iterrows():
-                answer = self.calculate_availability(kpi_line, filtered_scif, isnt_dp)
-                if answer:
-                    passed_counter += 1
-            if passed_counter < target:
-                return False
-        return True
+        kpi_type = main_line[Const.SHEET]
+        relevant_template = self.templates[kpi_type]
+        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]]
+        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
+        isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
+        if main_line[Const.SAME_PACK] == Const.V:
+            sizes = filtered_scif['size'].tolist()
+            sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
+            packages = set(zip(sizes, sub_packages_nums))
+            for package in packages:
+                filtered_scif = filtered_scif[(filtered_scif['size'] == package[0]) &
+                                              (filtered_scif['number_of_sub_packages'] == package[1])]
+                result = self.calculate_specific_kpi(relevant_template, filtered_scif, isnt_dp,
+                                                     target, self.calculate_availability)
+                if result is False:
+                    return result
+            return True
+        kpi_function = self.get_kpi_function(kpi_type)
+        return self.calculate_specific_kpi(relevant_template, filtered_scif, isnt_dp, target, kpi_function)
+
+    @staticmethod
+    def calculate_specific_kpi(relevant_template, filtered_scif, isnt_dp, target, kpi_function):
+        """
+        checks if the passed lines are more than target
+        :param relevant_template: specific template filtered with the specific kpi lines
+        :param filtered_scif:
+        :param isnt_dp: the main_line has "DP" flag and the store_attr is not DP
+        :param target: integer
+        :param kpi_function: specific function for the calculation
+        :return: boolean, but it can be None if we want not to write it in DB
+        """
+        passed_counter = 0
+        for i, kpi_line in relevant_template.iterrows():
+            answer = kpi_function(kpi_line, filtered_scif, isnt_dp)
+            if answer:
+                passed_counter += 1
+            elif answer is None:
+                return None
+        return passed_counter >= target
 
     # availability:
 

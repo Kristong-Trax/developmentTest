@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-from Projects.RINIELSENUS.Utils.Const import FILTER_NAMING_DICT, TARGET, IRRELEVANT_FIELDS, KPI_GROUP, KPI_NAME, \
+from Projects.RINIELSENUS_SAND.Utils.Const import FILTER_NAMING_DICT, TARGET, IRRELEVANT_FIELDS, KPI_GROUP, KPI_NAME, \
     KPI_TYPE, WEIGHT, RELEVANT_SCENE_TYPES, SEPARATOR, FILTER_NAME_SEPARATOR, EXCLUDE, ALLOWED, DEPEND_ON, \
     DEPEND_SCORE, NOT_SEPARATE_FIELDS
-from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
-from Projects.RINIELSENUS.Utils.ParseTemplates import KPIConsts
+from Projects.RINIELSENUS_SAND.Utils.GeneralToolBox import MarsUsGENERALToolBox
+from Projects.RINIELSENUS_SAND.Utils.ParseTemplates import KPIConsts
 
 
 class Definition(object):

@@ -2,7 +2,7 @@
 __author__ = 'Uri'
 
 
-class CCBOTTLERSUS_SANDConst(object):
+class Const(object):
 
     SOVI = "SOVI"
 
@@ -18,7 +18,6 @@ class CCBOTTLERSUS_SANDConst(object):
     TARGETS = "Targets"
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
     SHEETS_CMA = [KPIS, SOS, TARGETS]
-
 
     # generic columns:
     KPI_NAME = "KPI name"
@@ -105,4 +104,3 @@ class CCBOTTLERSUS_SANDConst(object):
 
     MANUAL = "MANUAL"
     CALCULATION_TYPES = [SOVI, MANUAL]
-
