@@ -124,6 +124,7 @@ GROCERY = 'GROCERY'
 LnT = 'L&T'
 QSR = 'QSR'
 PRODUCT_FK='product_fk'
+PRODUCT_NAME = 'product_name'
 NON_KPI = 999999
 
 class CCBZA_ToolBox:
@@ -178,17 +179,6 @@ class CCBZA_ToolBox:
                                     AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_POSM: self.calculate_availability_posm,
                                     AVAILABILITY_SKU_FACING_OR_MIN: self.calculate_availability_min_facings_unique_list}
-        # if not self.data_provider.scene_id:
-        #     self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        #     self.scene_kpi_results = self.ps_data_provider.get_scene_results(
-        #         self.scene_info['scene_fk'].drop_duplicates().values)
-        # self.scif_KO_only = self.get_manufacturer_related_scif()
-        # self.kpi_static_data = self.get_kpi_static_data()
-        # self.new_kpi_static_data = self.get_new_kpi_static_data()
-        # self.planogram_results = self.get_planogram_results()
-        # self.set_results = {}
-        # self.kpi_static_data = self.common.get_kpi_static_data()
-
 
 #------------------scene calculations-----------------------------
 
@@ -995,7 +985,10 @@ class CCBZA_ToolBox:
                 try:
                     score = self.availability_router[avail_type](atomic_kpi, identifier_result)
                 except Exception as e:
-                    Log.error('Availability type {} is not supported by calculation. {}'.format(avail_type, str(e)))
+                    Log.error('Availability type {} is not supported by calculation. kpi {}. error {}'.format(avail_type,
+                                                                                                        atomic_kpi[
+                                                                                                            ATOMIC_KPI_NAME],
+                                                                                                        str(e)))
                     continue
 
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
@@ -1031,13 +1024,21 @@ class CCBZA_ToolBox:
     # calculated on session level
     def calculate_availability_posm(self, atomic_kpi, identifier_parent):
         max_score = atomic_kpi[SCORE]
-        target = atomic_kpi[TARGET]
+        target = float(atomic_kpi[TARGET])
         filters = self.get_general_calculation_parameters(atomic_kpi)
         filters.update(self.get_availability_and_price_calculation_parameters(atomic_kpi))
         atomic_result = 0
         if filters['scene_fk']:
-            facings = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['facings'].sum()
-            atomic_result = 100 if facings >= float(target) else 0
+            # facings = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['facings'].sum()
+            # atomic_result = 100 if facings >= float(target) else 0
+            filtered_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+            facings = filtered_df['facings'].sum()
+            atomic_result = 100 if facings >= target else 0
+
+            # per sku to DB
+            sku_list = filters[PRODUCT_NAME]
+            facings_by_sku = self.get_facing_number_by_item(filtered_df, sku_list, PRODUCT_NAME, PRODUCT_FK)
+            self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene=False)
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
 
