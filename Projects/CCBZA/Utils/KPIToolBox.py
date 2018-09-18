@@ -985,7 +985,10 @@ class CCBZA_ToolBox:
                 try:
                     score = self.availability_router[avail_type](atomic_kpi, identifier_result)
                 except Exception as e:
-                    Log.error('Availability type {} is not supported by calculation. {}'.format(avail_type, str(e)))
+                    Log.error('Availability type {} is not supported by calculation. kpi {}. error {}'.format(avail_type,
+                                                                                                        atomic_kpi[
+                                                                                                            ATOMIC_KPI_NAME],
+                                                                                                        str(e)))
                     continue
 
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, score)
