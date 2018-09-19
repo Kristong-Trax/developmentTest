@@ -20,8 +20,9 @@ class Const(object):
     TARGETS = "Targets"
     FACINGS = 'Facings NTBA'
     RATIO = 'ratio'
+    PURITY = 'purity'
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, RATIO, TARGETS]
+    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, RATIO, PURITY, TARGETS]
 
 
     # generic columns:
