@@ -141,6 +141,9 @@ pipeline {
             docker rm test_mysql_test_project_1
             rm Miniconda-latest-Linux-x86_64.*
             '''
+
+            cleanWs()
+
      	}
 
        failure {
