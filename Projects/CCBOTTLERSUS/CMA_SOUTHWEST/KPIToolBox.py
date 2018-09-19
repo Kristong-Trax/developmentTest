@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -8,6 +9,9 @@ from Projects.CCBOTTLERSUS.CMA_SOUTHWEST.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+
+from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
+from Trax.Algo.Calculations.Core.Utils import Validation, PandasUtils
 
 
 __author__ = 'Uri'
@@ -236,7 +240,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         sos_value = round(sos_value, 2)
 
         if target:
-            score = 1 if sos_value >= target*100 else 0
+            target = target * 100
+            score = 1 if sos_value >= target else 0
         elif not target and upper_limit and lower_limit:
             score = 1 if (lower_limit * 100 <= sos_value <= upper_limit * 100) else 0
             target = '{}% - {}%'.format(lower_limit, upper_limit)
@@ -262,7 +267,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return upper_limit, lower_limit
         else:
             if not filtered_targets_to_kpi.empty:
-                target = int(filtered_targets_to_kpi[Const.TARGET].values[0].strip())
+                target = float(filtered_targets_to_kpi[Const.TARGET].values[0])
             else:
                 target = None
             return target
@@ -277,6 +282,21 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         else:
             target = None
         return target
+
+    def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
+        try:
+            Validation.is_empty_df(df)
+            Validation.is_empty_df(subset_df)
+            Validation.df_columns_equality(df, subset_df)
+            Validation.is_subset(df, subset_df)
+        except Exception, e:
+            msg = "Data verification failed: {}.".format(e)
+            raise Exception(msg)
+
+        numerator = PandasUtils.num_of_rows(subset_df)
+        denominator = PandasUtils.num_of_rows(df)
+        ratio = numerator / float(denominator)
+        return numerator, denominator, ratio
 
     @staticmethod
     def get_kpi_line_filters(kpi_line):
@@ -296,12 +316,25 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
     def get_kpi_line_targets(kpi_line):
         mask = kpi_line.index.str.contains('Target')
         if mask.any():
-            targets = kpi_line.loc[mask]
+            targets = kpi_line.loc[mask].replace('', np.nan).dropna()
             targets.index = [int(x.split(Const.SEPERATOR)[1].split(' ')[0]) for x in targets.index]
             targets = targets.to_dict()
         else:
             targets = {}
         return targets
+
+    @staticmethod
+    def extrapolate_target(targets, c):
+        while 1:
+            if targets[c]:
+                target = targets[c]
+                break
+            else:
+                c -= 1
+                if c < 0:
+                    target = 0
+                    break
+        return target
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
         # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
@@ -312,6 +345,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         facings_filters = self.get_kpi_line_filters(kpi_line)
         score = 0
         passed = 0
+        sum_facings = 0
+        sum_target = 0
 
         for scene in scenes:
             scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
@@ -321,20 +356,23 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             print('Num bays is', num_bays)
             if num_bays in targets:
                 target = targets[num_bays]
-            elif num_bays > max_given:
-                target = targets[max_given]  # if num bays exceeds doors given in targets, use largest option as target
             else:
                 target = None
 
+            if target is None:  # if num bays exceeds doors given in targets, use largest option as target
+                target = self.extrapolate_target(targets, max_given)
+
             if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
                 score += 1
+            sum_facings += facings
+            sum_target += target
 
         if score == len(scenes):
             passed = 1
-        if score > 0:
-            return score/float(len(scenes)), passed, target
-        else:
-            return 1, passed, target
+
+        # return score, passed, len(scenes)
+        return sum_facings, passed, sum_target
+
 
     def calculate_ratio(self, kpi_line, relevant_scif, general_filters):
         sos_filters = self.get_kpi_line_filters(kpi_line)
@@ -389,11 +427,12 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             self.facings_field].sum()
         denominator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)][
             self.facings_field].sum()
-        general_filters['Southwest Deliver'] = 'Y'
+        # general_filters['Southwest Deliver'] = 'Y'
         # number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
         #     self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
         #     unique().count()
-        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **scene_filters)]\
+        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
+                                        self.match_product_in_scene, **scene_filters)]\
                                         [['scene_fk', 'bay_number', 'shelf_number']]\
                                         .drop_duplicates().shape[0]
 
@@ -405,7 +444,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             score = 1
             target = 0
 
-        if 'bonus' not in kpi_name:
+        if 'bonus' not in kpi_name.lower():
             return number_of_shelves_score, score, target
         else:
             return number_of_shelves_score, None, None
@@ -538,6 +577,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return self.calculate_facings_ntba
         elif kpi_type == Const.RATIO:
             return self.calculate_ratio
+        elif kpi_type == Const.PURITY:
+            return self.sos_with_num_and_dem
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
