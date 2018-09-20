@@ -327,7 +327,7 @@ class PEPSICORUToolBox:
                                                denominator_id=relevant_category_fk, denominator_result=scene_type_target,
                                                identifier_parent=parent_identifier, context_id=scene_type_fk,
                                                result=result_scene_level, should_enter=True)
-                count_store_level += scene_type_score if scene_type_score >= scene_type_target else scene_type_score
+                count_store_level += scene_type_target if scene_type_score >= scene_type_target else scene_type_score
 
             # Calculate count of display - store_level
             result_store_level = 1.0 if count_store_level >= store_target else count_store_level / float(store_target)
