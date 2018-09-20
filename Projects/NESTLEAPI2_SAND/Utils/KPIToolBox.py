@@ -106,8 +106,8 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                     num_of_products_in_cat_and_manufacturer = sum(filtered_manufacturer[mode])
                     result = 0 if num_of_products_in_cat == 0 \
                         else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
-                    mode = 'linear' if mode == 'gross_len_add_stack' else mode
-                    atomic_name = 'sos for category_' + mode + '_{}'.format(category)
+                    name = 'linear' if mode == 'gross_len_add_stack' else mode
+                    atomic_name = 'sos for category_' + name + '_{}'.format(category)
                     self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 3:
             brands = self.scif['brand_name'].unique().tolist()
@@ -121,8 +121,8 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                         brand_filter = brand_filter[brand_filter['brand_name'] == brand]
                         num_of_products_in_brand = sum(brand_filter[mode])
                         result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
-                        mode = 'linear' if mode == 'gross_len_add_stack' else mode
-                        atomic_name = 'sos ' + mode + ' for brand_{brand} and category_group_{category}'.format(
+                        name = 'linear' if mode == 'gross_len_add_stack' else mode
+                        atomic_name = 'sos ' + name + ' for brand_{brand} and category_group_{category}'.format(
                             brand=brand, category=category_group)
                         self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
