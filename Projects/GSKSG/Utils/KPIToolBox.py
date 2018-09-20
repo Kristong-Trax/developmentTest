@@ -10,7 +10,7 @@ from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
@@ -27,12 +27,13 @@ relevant_cols = 'relevant columns'
 template_kpi_type = 'type of condition'
 GENERAL_COLS = ['template_name']
 EXCLUDE = 0
-
+SURVEY_QUEST = 'Survey Question Text'
 STORE_LVL_1 = 'store_type'
 # chance to additional attribute!!!!!
 # STORE_LVL_2 = 'address_line_1'
 STORE_LVL_2 = 'retailer_name'
 STORE_LVL_3 = 'additional_attribute_1'
+SURVEY_SHEET ='Survey'
 ######################
 
 class GSKSGToolBox:
@@ -61,6 +62,7 @@ class GSKSGToolBox:
 
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
+        self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
         self.msl_list = pd.read_excel(self.excel_file_path,
                    header=[[0, 1, 2]],
                    index_col=[0],
@@ -71,6 +73,8 @@ class GSKSGToolBox:
                              'Survey': self.calculate_survey, 'No facings': self.calculate_no_facings}
         self.sequence = Sequence(data_provider, ignore_stacking=True)
         self.availability = Availability(data_provider, ignore_stacking=True)
+        self.sos = SOS(data_provider,self.output)
+        self.survey_data = self.data_provider.survey_responses
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -83,11 +87,34 @@ class GSKSGToolBox:
         return score
 
     def handle_calculation(self, kpis):
+        kpi_results = dict()
+
         # for each level3:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
             result = self.calculate_atomic(current_kpi)
+        #all caculation below for main kpis 
             # save result to db
+    #         kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
+    #         if kpi_key not in kpi_results:
+    #             kpi_results[kpi_key] = 0
+    #         if current_kpi['Score Method'] == 'Proportional':
+    #             kpi_results[kpi_key] = result * current_kpi['Weight']
+    #         else:
+    #             result = 100 if(result >= current_kpi['Benchmark']) else 0
+    #             kpi_results[kpi_key] = result * current_kpi['Weight']
+    #
+    #     kpi_3_results = dict()
+    #     for kpi in kpi_results.keys():
+    #         #write result to db level 2
+    #         if kpi['1st level'] not in kpi_3_results:
+    #             kpi_3_results[kpi['1st level']] = 0
+    #         if kpi_results[kpi] >= kpi['Conditional Weight']:
+    #             kpi_3_results[kpi['1st level']] = kpi['KPI Weight'] * kpi_results[kpi]
+    # #
+    #     for score in kpi_3_results.keys():
+    # #write ti db
+
 
 
     def get_relevant_calculations(self):
@@ -108,21 +135,12 @@ class GSKSGToolBox:
             calculation(row)
 
     def calculate_sos(self, row):
+        filters, general_filters = self.get_filters(row)
+        return self.sos.calculate_share_of_shelf(self, sos_filters=filters, **general_filters)
 
-
-
-        
-        return
-
-
-
-    # Todo: Should we just send the presence to facing function?
     def calculate_presence(self, row):
-        target = row['target'] if not pd.isnull(row['target']) else 0
-        row_filter, general_filters = self.get_filters(row)
-        row_filter.update(general_filters)
-        result = 0 if self.availability.calculate_availability(**row_filter) >= target else 1
-        return result
+
+        return self.calculate_facings(row)
 
     def calculate_facings(self, row, no_facing=False):
 
@@ -176,8 +194,19 @@ class GSKSGToolBox:
         result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
         return result
 
+
+#need to check below
     def calculate_survey(self, row):
-        return
+        group_of_question = self.survey_file[(self.survey_file['KPI Name'] == row['3rd Level']) & (self.store_info[STORE_LVL_1] in self.survey_file['Store Policy'])]
+        target = group_of_question.iloc[0]['target']
+        counter = 0
+        for quest in group_of_question.itertuples():
+            answer = self.survey_data[self.survey_data['question_text'] == quest['Survey Question Text']]
+            if ~ self.quest[answer['selected_option_text'] == quest['Accepted Answers']].empty: #not empty
+                counter = counter + 1
+                if counter >= target:
+                    return 100
+        return 0
 
     def get_filters(self, row):
         filters = {}
