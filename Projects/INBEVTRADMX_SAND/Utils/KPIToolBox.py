@@ -134,6 +134,7 @@ class INBEVTRADMXToolBox:
         choose what is the appropriate set to calculate
         :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
         :param additional_attribute_13: session additional_attribute_13. if None, will ignore this attribute
+        :param template: parsed template
         :return: set name to calculate - assuming each additional attribute 4 matches only 1 set name.
         """
         template = template.dropna(subset=['Store Additional Attribute 4'], axis=0)
@@ -146,8 +147,7 @@ class INBEVTRADMXToolBox:
                             (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
         else:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
-                            (pd.isnull(template['Store Additional Attribute 13']))]
-
+                            (template['Store Additional Attribute 13'] == '')]
         if sets.empty:
             return ''
         else:
