@@ -9,9 +9,9 @@ from Projects.CCBOTTLERSUS.CMA_SOUTHWEST.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from SceneKPIToolBox import SceneGenerator
 
-from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
-from Trax.Algo.Calculations.Core.Utils import Validation, PandasUtils
+
 
 
 __author__ = 'Uri'
@@ -93,8 +93,13 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         kpi_type = main_line[Const.TYPE]
         relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
+        store_type = self.does_exist(main_line, Const.STORE_TYPE)
+        scene_level = self.does_exist(main_line, Const.SCENE_LEVEL)
+        store_attrs = main_line[Const.PROGRAM].split(',')
         result = score = target = None
         general_filters = {}
+        if store_type and store_type[0] != self.store_type:
+            return
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters['template_name'] = scene_types
@@ -111,14 +116,17 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         function = self.get_kpi_function(kpi_type)
 
         for i, kpi_line in relevant_template.iterrows():
-            if not self.store_attr or self.store_attr not in main_line[Const.PROGRAM].split(',')\
+            if not self.store_attr or (store_attrs[0] != '' and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
+
             result, score, target = function(kpi_line, relevant_scif, general_filters)
 
             # write in DF:
             if score > 0:
                 self.total_score += 1
+            if result is None and score is None and target is None:
+                continue
             self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
             print(kpi_name, kpi_type, result, score, target)
         else:
@@ -251,7 +259,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         return sos_value, score, target
 
     # Targets:
-
     def get_sos_targets(self, kpi_name, sos_range=False):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
@@ -272,6 +279,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 target = None
             return target
 
+
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
@@ -282,21 +290,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         else:
             target = None
         return target
-
-    def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
-        try:
-            Validation.is_empty_df(df)
-            Validation.is_empty_df(subset_df)
-            Validation.df_columns_equality(df, subset_df)
-            Validation.is_subset(df, subset_df)
-        except Exception, e:
-            msg = "Data verification failed: {}.".format(e)
-            raise Exception(msg)
-
-        numerator = PandasUtils.num_of_rows(subset_df)
-        denominator = PandasUtils.num_of_rows(df)
-        ratio = numerator / float(denominator)
-        return numerator, denominator, ratio
 
     @staticmethod
     def get_kpi_line_filters(kpi_line):
@@ -335,6 +328,17 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     target = 0
                     break
         return target
+
+    def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
+        num_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+
+        scenes = relevant_scif['scene_fk'].unique().tolist()
+        scene_gen = SceneGenerator(self.data_provider)
+        scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
+
+        return None, None, None
+
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
         # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):

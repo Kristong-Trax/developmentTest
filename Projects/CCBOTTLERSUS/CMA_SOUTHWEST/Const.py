@@ -37,6 +37,7 @@ class Const(object):
     # columns of KPIS:
     REGION = "Region"
     DISPLAY_TEXT = 'display_text'
+    SCENE_LEVEL = 'scene level'
     STORE_TYPE = "store_type"
     SCENE_TYPE = "scene type"
     SCENE_TYPE_GROUP = "template_group"
