@@ -16,7 +16,7 @@ class CCRURunSql:
     def run_it(self):
         statement_1 = \
 """
-UPDATE `static`.`atomic_kpi` SET `name`='CS@SSD Shelf Share', `description`='CS@SSD Shelf Share', `display_text`='SSD Shelf Share' WHERE `pk`='4704';
+DELETE FROM `static`.`atomic_kpi` WHERE `pk`>=4821;
 """
 # """
 # DELETE FROM `static`.`kpi_set` WHERE `pk`>='64';

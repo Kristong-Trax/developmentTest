@@ -227,7 +227,7 @@ class CCRUAddKPIs(CCRUConsts):
             if self.KPI_WEIGHT in kpis.iloc[i].keys():
                 kpi_weight = float(kpis.iloc[i][self.KPI_WEIGHT])
             else:
-                kpi_weight = None
+                kpi_weight = 'NULL'
             if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                     (self.kpi_static_data['kpi_name'] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
@@ -264,7 +264,7 @@ class CCRUAddKPIs(CCRUConsts):
             if self.ATOMIC_WEIGHT in atomics.iloc[i].keys():
                 atomic_weight = float(atomics.iloc[i][self.ATOMIC_WEIGHT])
             else:
-                atomic_weight = None
+                atomic_weight = 'NULL'
             if self.ATOMIC_DISPLAY_TEXT in atomics.iloc[i].keys():
                 atomic_display_text = str(atomics.iloc[i][self.ATOMIC_DISPLAY_TEXT]).replace("'", "\\'").encode('utf-8')
             else:
@@ -302,7 +302,8 @@ if __name__ == '__main__':
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/idanr/Desktop/super.xlsx')
-    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for Contract Execution.xlsx')
+    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - Contract Execution.xlsx')
+    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - CCH Integration.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
