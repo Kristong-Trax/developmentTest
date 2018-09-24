@@ -119,16 +119,18 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             if not self.store_attr or (store_attrs[0] != '' and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
+            if scene_level:
+                pass
+            else:
+                result, score, target = function(kpi_line, relevant_scif, general_filters)
 
-            result, score, target = function(kpi_line, relevant_scif, general_filters)
-
-            # write in DF:
-            if score > 0:
-                self.total_score += 1
-            if result is None and score is None and target is None:
-                continue
-            self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-            print(kpi_name, kpi_type, result, score, target)
+                # write in DF:
+                if score > 0:
+                    self.total_score += 1
+                if result is None and score is None and target is None:
+                    continue
+                self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
+                print(kpi_name, kpi_type, result, score, target)
         else:
             pass
 
@@ -328,6 +330,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     target = 0
                     break
         return target
+
+    def scene_level_kpis(self, kpi_line, ):
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
         num_filters = self.get_kpi_line_filters(kpi_line)
