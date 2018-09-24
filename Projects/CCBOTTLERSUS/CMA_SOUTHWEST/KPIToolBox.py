@@ -335,8 +335,25 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         num_filters = self.get_kpi_line_filters(kpi_line)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
 
-        scene_gen = SceneGenerator(self.data_provider)
-        scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
+        # scene_gen = SceneGenerator(self.data_provider)
+        # scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
+        if not isinstance(scenes, list):
+            scenes = [scenes]
+        common = SceneCommon(self.data_provider)
+
+        for scene in scenes:
+            # self.data_provider.load_scene_data(self.session_uid, scene)
+            common.scene_specific(scene)
+            # scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+            scif = scif[scif['scene_fk'] == scene]
+            if scif.empty:
+                pass
+                Log.warning('Match product in scene is empty for this scene')
+            else:
+                CCBOTTLERSUSSceneToolBox(self.data_provider, common).sos_with_num_and_dem(
+                                                kpi_line, scif, num_filters, general_filters)
+                common.commit_results_data(result_entity='scene')
+                common.kpi_results = pd.DataFrame(columns=common.COLUMNS)
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
         num_filters = self.get_kpi_line_filters(kpi_line)
