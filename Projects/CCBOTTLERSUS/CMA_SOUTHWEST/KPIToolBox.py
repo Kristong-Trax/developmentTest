@@ -331,7 +331,12 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     break
         return target
 
-    def scene_level_kpis(self, kpi_line, ):
+    def scene_level_kpis(self, kpi_line, relevant_scif, general_filters, function):
+        num_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+
+        scene_gen = SceneGenerator(self.data_provider)
+        scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
         num_filters = self.get_kpi_line_filters(kpi_line)
