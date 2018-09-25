@@ -71,73 +71,88 @@ if __name__ == '__main__':
             ]
 
     sessions = [
-                # '413734a3-4e21-494d-bb18-418e5aacc4bd',
-                # '0357aee6-385c-4fbc-8cbf-31eb534719f8',
-                # 'E83A6DE8-CB50-4299-BF90-05D58A22DE0C',
-                # '2BE54279-6758-4C0B-A8D0-EE7353B97560',
-                # '029809F9-09CF-4AB8-8925-51FD267CF00F',
-                # '8787E4E2-9530-47AF-86FC-D3534EACCBBC',
-                # '01750D5D-1A53-4ABD-BA1D-C4EE2ABE5C8D',
-                # 'E20655D2-9CDE-4524-93E1-499026D3FEC5',
-                # 'aa0fa187-3ee8-405f-bda7-256d335363ec',
-                # '8c1302c9-59d0-47f2-aa4b-4157fe5782bd',
-                # '379525DA-0639-494A-BCEB-21A2B2BC9038',
-                # '11B90536-52E5-4A0C-9549-65FE34C960FB',
+                '413734a3-4e21-494d-bb18-418e5aacc4bd',
+                '0357aee6-385c-4fbc-8cbf-31eb534719f8',
+                'E83A6DE8-CB50-4299-BF90-05D58A22DE0C',
+                '2BE54279-6758-4C0B-A8D0-EE7353B97560',
+                '029809F9-09CF-4AB8-8925-51FD267CF00F',
+                '8787E4E2-9530-47AF-86FC-D3534EACCBBC',
+                '01750D5D-1A53-4ABD-BA1D-C4EE2ABE5C8D',
+                'E20655D2-9CDE-4524-93E1-499026D3FEC5',
+                'aa0fa187-3ee8-405f-bda7-256d335363ec',
+                '8c1302c9-59d0-47f2-aa4b-4157fe5782bd',
+                '379525DA-0639-494A-BCEB-21A2B2BC9038',
+                '11B90536-52E5-4A0C-9549-65FE34C960FB',
                 '39847231-200D-456F-A5D6-B1AA6B953E39',
-                # '46D4EB0E-7870-4D9C-B404-89EFEA37556D',
-                # '57349314-60DD-41D9-A32D-EDF3171BADBD',
-                # 'D60F6762-B7AB-4B93-BF7C-9946781C6D02',
-                # '0716542F-FE30-46A8-9E5D-990B100FB18B',
-                # '815E0CA8-6CF7-41CE-B012-E2FF99D8ABE9',
-                # '123BB875-4AD5-48D8-B428-8AB655218233',
-                # '211A0049-036E-4656-BAB6-8134B80B3A35',
-                # '77944758-6D27-4F24-8A67-E03DBF75CBDC',
-                # 'FCEBB0AE-D410-4022-90BE-C8373856FCDF',
-                # '8FB16B26-4544-4DE9-A498-8022B4A6E9FB',
-                # '65009bad-545d-4e83-8e95-5564cc993d2d',
-                # 'c0c65599-83c2-450e-9369-8b48f0a44fef',
-                # '6e727938-e128-4ec7-8fdc-9143b12b199b',
-                # '6656CD65-250D-44D1-851F-07E00C9291F7',
-                # '2461329B-9115-4F70-BAF4-C6701355A343',
-                # '33C71AC8-5497-47F1-A654-F066874803DE',
-                # 'CBBEF405-E719-4886-B317-232EDE12C87D',
-                # '337A7F53-9E39-4277-852E-2C7CF2FE3285',
-                # 'E5F1EB25-9841-494C-8FB8-5B58A52A0929',
-                # 'E5D74460-D34C-413E-B886-F976535CE88D',
-                # '115ADAE5-4A67-473E-9E55-D89E91BA5900',
-                # '912FE127-0BC0-4C2F-BF90-B8B13E36A0EC',
-                # 'CB27593F-6580-4D50-99DB-C3828CC65AC5',
-                # '49B48ACA-BE09-4868-BBA7-6E5566B00C64',
-                # '76FAF1B6-A901-4842-B2EE-0CA551B7BE73',
-                # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF',
-                # 'D57D0162-93D6-47E9-BFE0-2B7E95F55B60',
-                # 'CCFC5415-720A-46E6-B776-967C98A8AF6A',
-                # '9390DBCB-E95D-46BB-9491-813D11021AEF',
-                # 'BF279D54-B242-4656-8321-F03CB4216D92',
-                # 'E5197000-32FB-4F0E-8EDB-C92C316C6B9E',
-                # 'C0692CCD-2373-466C-9510-DC692264C38A',
-                # '679FF2FB-EDA7-4C5D-ABE5-63015087E038',
-                # '48FD5F0C-394D-44AC-827E-73044799DBF4',
-                # '61D36CC4-D66D-4BA5-BCCF-0EE969CDE096',
-                # 'EBB1FB95-4FC2-4301-85D9-7C6602132B01',
-                # '550A25C2-D0CE-46C1-967A-CDE5C2F40EC2',
-                # '87228dd9-20b0-4400-bd87-f8566a69ddcf',
+                '46D4EB0E-7870-4D9C-B404-89EFEA37556D',
+                '57349314-60DD-41D9-A32D-EDF3171BADBD',
+                'D60F6762-B7AB-4B93-BF7C-9946781C6D02',
+                '0716542F-FE30-46A8-9E5D-990B100FB18B',
+                '815E0CA8-6CF7-41CE-B012-E2FF99D8ABE9',
+                '123BB875-4AD5-48D8-B428-8AB655218233',
+                '211A0049-036E-4656-BAB6-8134B80B3A35',
+                '77944758-6D27-4F24-8A67-E03DBF75CBDC',
+                'FCEBB0AE-D410-4022-90BE-C8373856FCDF',
+                '8FB16B26-4544-4DE9-A498-8022B4A6E9FB',
+                '65009bad-545d-4e83-8e95-5564cc993d2d',
+                'c0c65599-83c2-450e-9369-8b48f0a44fef',
+                '6e727938-e128-4ec7-8fdc-9143b12b199b',
+                '6656CD65-250D-44D1-851F-07E00C9291F7',
+                '2461329B-9115-4F70-BAF4-C6701355A343',
+                '33C71AC8-5497-47F1-A654-F066874803DE',
+                'CBBEF405-E719-4886-B317-232EDE12C87D',
+                '337A7F53-9E39-4277-852E-2C7CF2FE3285',
+                'E5F1EB25-9841-494C-8FB8-5B58A52A0929',
+                'E5D74460-D34C-413E-B886-F976535CE88D',
+                '115ADAE5-4A67-473E-9E55-D89E91BA5900',
+                '912FE127-0BC0-4C2F-BF90-B8B13E36A0EC',
+                'CB27593F-6580-4D50-99DB-C3828CC65AC5',
+                '49B48ACA-BE09-4868-BBA7-6E5566B00C64',
+                '76FAF1B6-A901-4842-B2EE-0CA551B7BE73',
+                '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF',
+                'D57D0162-93D6-47E9-BFE0-2B7E95F55B60',
+                'CCFC5415-720A-46E6-B776-967C98A8AF6A',
+                '9390DBCB-E95D-46BB-9491-813D11021AEF',
+                'BF279D54-B242-4656-8321-F03CB4216D92',
+                'E5197000-32FB-4F0E-8EDB-C92C316C6B9E',
+                'C0692CCD-2373-466C-9510-DC692264C38A',
+                '679FF2FB-EDA7-4C5D-ABE5-63015087E038',
+                '48FD5F0C-394D-44AC-827E-73044799DBF4',
+                '61D36CC4-D66D-4BA5-BCCF-0EE969CDE096',
+                'EBB1FB95-4FC2-4301-85D9-7C6602132B01',
+                '550A25C2-D0CE-46C1-967A-CDE5C2F40EC2',
+                '87228dd9-20b0-4400-bd87-f8566a69ddcf',
             ]
-
+    # import pandas as pd
+    # df = pd.DataFrame()
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
 
-        # import pandas as pd
-        # from Trax.Algo.Calculations.Core.DataProvider import Data
-        # scif = data_provider[Data.SCENE_ITEM_FACTS]
-        # store_info = data_provider[Data.STORE_INFO]
-        # scif = scif.merge(store_info, left_on='store_id', right_on='store_fk')
-        # with pd.ExcelWriter('/home/samk/Downloads/scifs/{}.xlsx'.format(session)) as writer:
-        #     scif.to_excel(writer)
-        # print('{} saved'.format(session))
+
+    #     from Trax.Algo.Calculations.Core.DataProvider import Data
+    #     scif = data_provider[Data.SCENE_ITEM_FACTS]
+    #     store_info = data_provider[Data.STORE_INFO]
+    #     scif = scif.merge(store_info, left_on='store_id', right_on='store_fk')
+    #     cols = [
+    #             'session_id',
+    #             'scene_id',
+    #             'manufacturer_name',
+    #             'product_name',
+    #             'product_type',
+    #             'Southwest Deliver',
+    #             'template_name',
+    #             'template_group',
+    #             'facings',
+    #             'facings_ign_stack'
+    #             ]
+    #     scif = scif[cols]
+    #     df = pd.concat([df, scif])
+    # with pd.ExcelWriter('/home/samk/Downloads/scifs/SCIF.xlsx') as writer:
+    #     df.to_excel(writer)
+    # print('{} saved'.format(session))
 
         output = Output()
         CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()

@@ -101,7 +101,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         store_attrs = main_line[Const.PROGRAM].split(',')
         result = score = target = None
         general_filters = {}
-        if store_type and store_type[0] != self.store_type:
+        if (store_type and store_type[0] != self.store_type)\
+                or self.region not in Const.REGIONS:
             return
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
