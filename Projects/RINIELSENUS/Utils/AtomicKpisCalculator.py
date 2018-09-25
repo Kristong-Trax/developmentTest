@@ -292,7 +292,8 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
                 blocked_scenes += 1
                 visited.add(scene['scene_fk'])
 
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)):
+        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
+                and blocked_scenes > 0:
             return 100
         else:
             return 0
@@ -385,7 +386,9 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
             if self.check_block(block, scene['scene_avg_num_of_shelves']):
                 blocked_scenes += 1
                 visited.add(scene['scene_fk'])
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)):
+
+        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
+                and blocked_scenes > 0:
             return 100
         else:
             return 0
@@ -458,7 +461,8 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
             if float(sum_products) / float(scif_facing_total) >= 0.8:
                 return 100
 
-        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)):
+        if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)) \
+                and blocked_scenes > 0:
             return 100
         else:
             return 0

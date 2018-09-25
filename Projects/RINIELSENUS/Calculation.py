@@ -63,10 +63,20 @@ class MarsUsCalculations(BaseCalculationsScript):
     #             '242d1600-e2c2-45f3-994c-eb57623a4deb'
     #             ]
 
-
-    # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-
+    # sessions = [
+    #             # 'a799771a-bc07-47a0-b2aa-c3d62a56038b',
+    #             # '4afdbfd5-3257-4d01-94f8-37fd16ce950f',
+    #             # '0a138058-3b88-4543-8501-d19f83c1b671',
+    #             'cd3465ce-fb3d-4cc3-b487-c216521f0e87',
+    #             # '81cf50bf-c4f7-4812-9e2f-d28d0fcecdca'
+    #             ]
+    #
+    #
+    # # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
+    #
     # for session in sessions:
+    #     print('*******************************************************************')
+    #     print('--------------{}-------------'.format(session))
     #     Log.info('starting session : {}'.format(session))
     #     data_provider = KEngineDataProvider(project_name)
     #     # session = Common(data_provider).get_session_id(session)
