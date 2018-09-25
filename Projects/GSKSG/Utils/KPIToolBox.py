@@ -65,8 +65,7 @@ class GSKSGToolBox:
         self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
         self.msl_list = pd.read_excel(self.excel_file_path,
                    header=[[0, 1, 2]],
-                   index_col=[0],
-                   sheetname='MSL List').dropna()
+                   sheetname='MSL-test').dropna()
 
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
                              'presence': self.calculate_presence, 'facings': self.calculate_facings,
@@ -176,9 +175,9 @@ class GSKSGToolBox:
         kpi_filters.update(general)
         total_products = len(products)
         exist_products = 0
-        for product in products:
+        for product in set(products):
             # kpi_filters['product_ean_code'] = product
-            kpi_filters['product_name'] = product
+            kpi_filters['product_ean_code'] = product
             res = self.availability.calculate_availability(**kpi_filters)
             if res:
                 exist_products += 1
@@ -219,7 +218,7 @@ class GSKSGToolBox:
                 # handle the values in column
                 if col == 'exclude':
                     value = self.handle_exclude(row[col])
-                if col == 'target':
+                if col in ['target','Store Type']:
                     continue
                 elif self.is_string_a_list(str(row[col])):
                     value = map(str.strip, str(row[col]).split(','))
