@@ -7,8 +7,10 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.CMA_SOUTHWEST.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from Trax.Algo.Calculations.Core.Utils import Validation
 from SceneKPIToolBox import SceneGenerator
 
 
@@ -56,6 +58,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
+        self.common_v2 = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -120,7 +123,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     or relevant_scif.empty:
                 continue
             if scene_level:
-                pass
+                self.scene_level_kpis(kpi_line, relevant_scif, general_filters, function)
             else:
                 result, score, target = function(kpi_line, relevant_scif, general_filters)
 
@@ -331,40 +334,49 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     break
         return target
 
-    def scene_level_kpis(self, kpi_line, relevant_scif, general_filters, function):
+    def scene_level_kpis(self, kpi_line, scif, general_filters, func):
         num_filters = self.get_kpi_line_filters(kpi_line)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
 
-        # scene_gen = SceneGenerator(self.data_provider)
-        # scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
+        scenes = scif['scene_fk'].unique().tolist()
         if not isinstance(scenes, list):
             scenes = [scenes]
-        common = SceneCommon(self.data_provider)
 
         for scene in scenes:
             # self.data_provider.load_scene_data(self.session_uid, scene)
-            common.scene_specific(scene)
-            # scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-            scif = scif[scif['scene_fk'] == scene]
+            self.common_v2.scene_id = scene
+            scene_scif = scif[scif['scene_fk'] == scene]
             if scif.empty:
                 pass
                 Log.warning('Match product in scene is empty for this scene')
             else:
-                CCBOTTLERSUSSceneToolBox(self.data_provider, common).sos_with_num_and_dem(
-                                                kpi_line, scif, num_filters, general_filters)
-                common.commit_results_data(result_entity='scene')
-                common.kpi_results = pd.DataFrame(columns=common.COLUMNS)
+                func(kpi_line, scene_scif, num_filters, general_filters)
+                self.common_v2.commit_results_data(result_entity='scene')
+                self.common_v2.kpi_results = pd.DataFrame(columns=self.common_v2.COLUMNS)
 
-    def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters):
-        num_filters = self.get_kpi_line_filters(kpi_line)
-        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+    def sos_with_num_and_dem(self, kpi_line, relevant_scif, num_filters,  general_filters):
 
-        scenes = relevant_scif['scene_fk'].unique().tolist()
-        scene_gen = SceneGenerator(self.data_provider)
-        scene_gen.scene_control(scenes, kpi_line, relevant_scif, num_filters, general_filters)
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
 
-        return None, None, None
+        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **num_filters)]
+        den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
 
+        try:
+            Validation.is_empty_df(den_scif)
+            Validation.is_empty_df(num_scif)
+            Validation.df_columns_equality(den_scif, num_scif)
+            Validation.is_subset(den_scif, num_scif)
+        except Exception, e:
+            msg = "Data verification failed: {}.".format(e)
+            raise Exception(msg)
+        num = num_scif[self.facings_field].sum()
+        den = den_scif[self.facings_field].sum()
+
+        ratio = num / float(den)
+        # numerator_id=product_fk,
+        self.common_v2.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+                                       result=ratio, by_scene=True)
+        return num, ratio, den
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
         # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
