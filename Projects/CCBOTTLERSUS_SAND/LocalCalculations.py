@@ -22,30 +22,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus calculations')
     Config.init()
-    project_name = 'ccbottlersus-sand'
-    session = 'e7067c2d-1712-4dfd-8700-b1390f20cdd8'
-    scenes = [817627
-              # 524253,
-              #   524260,
-              #   524274,
-              #   524306,
-              #   524317,
-              #   524330,
-              #   524338,
-              #   524343,
-              #   524354,
-              #   524398,
-              #   524420,
-              #   524445,
-              #   524494,
-            ]
-    for scene in scenes:
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        SceneCalculations(data_provider).calculate_kpis()
+    project_name = 'ccbottlersus'
     sessions = [
         "bc8a1244-a53d-4b2f-9591-fcf57f9d3054"
     ]
