@@ -435,9 +435,22 @@ class PEPSICORUToolBox:
     #                                        result=result_scene_level, should_enter=True)
 
     def calculate_assortment(self):
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        # lvl3_result = self.assortment.calculate_lvl3_assortment()
+        lvl3_result = self.get_lvl3_assortment_result_main_shelf()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
+
+    def get_lvl3_assortment_result_main_shelf(self):
+        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        if not self.main_shelves and not assortment_result.empty:
+            assortment_result.drop(assortment_result.index[0:], inplace=True)
+        if assortment_result.empty:
+            return assortment_result
+        filters = {Const.TEMPLATE_NAME: self.main_shelves}
+        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        return assortment_result
 
     @log_runtime('Share of shelf pepsicoRU')
     def calculate_share_of_shelf(self):
@@ -463,11 +476,13 @@ class PEPSICORUToolBox:
         general_filters = {Const.TEMPLATE_NAME: self.main_shelves}
         facings_level_1_identifier = self.common.get_dictionary(kpi_fk=facings_stores_kpi_fk)
         linear_level_1_identifier = self.common.get_dictionary(kpi_fk=linear_store_kpi_fk)
-        num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
-            sos_filters=filter_man_param, **general_filters)
+        num_facings = denom_facings = num_linear = denom_linear = result_facings = result_linear = 0
 
-        result_facings = num_facings / float(denom_facings) if denom_facings else 0
-        result_linear = num_linear / float(denom_linear) if denom_linear else 0
+        if self.main_shelves:
+            num_facings, denom_facings, num_linear, denom_linear = self.calculate_sos(
+                sos_filters=filter_man_param, **general_filters)
+            result_facings = num_facings / float(denom_facings) if denom_facings else 0
+            result_linear = num_linear / float(denom_linear) if denom_linear else 0
 
         # Facings level 1
         self.common.write_to_db_result(fk=facings_stores_kpi_fk, numerator_id=self.pepsico_fk,
@@ -606,6 +621,7 @@ class PEPSICORUToolBox:
 
         if not lvl3_result.empty:
             cat_df = self.all_products[['product_fk', 'category_fk']]
+            # cat_df = self.all_products[['product_fk', 'category_fk', 'category']]
             lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
             lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
 
