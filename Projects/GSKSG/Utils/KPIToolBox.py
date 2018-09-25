@@ -93,7 +93,7 @@ class GSKSGToolBox:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
             result = self.calculate_atomic(current_kpi)
-        #all caculation below for main kpis 
+        #all caculation below for main kpis
             # save result to db
     #         kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
     #         if kpi_key not in kpi_results:
