@@ -81,10 +81,12 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
-        self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+        if self.region in Const.REGIONS:
+            for i, main_line in main_template.iterrows():
+                if self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
+                    self.calculate_main_kpi(main_line)
+            self.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -96,14 +98,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         kpi_type = main_line[Const.TYPE]
         relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-        store_type = self.does_exist(main_line, Const.STORE_TYPE)
         scene_level = self.does_exist(main_line, Const.SCENE_LEVEL)
         store_attrs = main_line[Const.PROGRAM].split(',')
         result = score = target = None
         general_filters = {}
-        if (store_type and store_type[0] != self.store_type)\
-                or self.region not in Const.REGIONS:
-            return
+
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters['template_name'] = scene_types
