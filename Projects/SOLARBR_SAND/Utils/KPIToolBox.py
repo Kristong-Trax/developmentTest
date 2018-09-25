@@ -11,6 +11,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.SOLARBR_SAND.Utils.Const import Const
 from KPIUtils_v2.DB.Common import Common
+from Projects.SOLARBR_SAND.Utils.Fetcher import SOLARBRQueries
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
@@ -36,6 +37,8 @@ KPS_RESULT = 'report.kps_results'
 
 SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template.xlsx')
 MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template v0.1.xlsx')
+
+
 
 
 
@@ -67,6 +70,7 @@ class SOLARBRToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates = {}
+        self.session_id = self.data_provider.session_id
         self.score_templates = {}
         self.get_templates()
         self.get_score_template()
@@ -77,6 +81,7 @@ class SOLARBRToolBox:
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.toolbox = GENERALToolBox(self.data_provider)
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
+        self.kpi_results_new_tables_queries = []
         # self.store_type = self.data_provider.store_type
 
 
@@ -96,6 +101,7 @@ class SOLARBRToolBox:
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
+        self.commit_results()
 
 
 
@@ -288,5 +294,27 @@ class SOLARBRToolBox:
 
         return True
 
+    def commit_results(self):
+        insert_queries = self.merge_insert_queries(self.kpi_results_new_tables_queries)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
+        cur = self.rds_conn.db.cursor()
+        delete_query = SOLARBRQueries.get_delete_session_results_query(self.session_uid, self.session_id)
+        cur.execute(delete_query)
+        for query in insert_queries:
+            cur.execute(query)
+        self.rds_conn.db.commit()
+        self.rds_conn.disconnect_rds()
 
-
+    @staticmethod
+    def merge_insert_queries(insert_queries):
+        query_groups = {}
+        for query in insert_queries:
+            static_data, inserted_data = query.split('VALUES ')
+            if static_data not in query_groups:
+                query_groups[static_data] = []
+            query_groups[static_data].append(inserted_data)
+        merged_queries = []
+        for group in query_groups:
+            merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
+        return merged_queries
