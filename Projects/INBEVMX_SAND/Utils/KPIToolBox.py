@@ -164,7 +164,7 @@ class INBEVMXToolBox:
     def create_filters_according_to_scif(self, filters):
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
                                 Const.TEMPLATE_MANUFACTURER_NOMINATOR: 'manufacturer_name',
-                                Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_14'}
+                                Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_6'}
 
         for key in filters.keys():
             if key in convert_from_scif:
