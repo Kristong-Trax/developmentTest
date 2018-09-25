@@ -996,8 +996,9 @@ class CCRUKPIToolBox:
                             depends_scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
                         elif c.get('Formula') == 'number of coolers with facings target and fullness target':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
-                            depends_scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes, function='get scenes',
-                                                                                  proportion_param=0.9)
+                            depends_scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                              function='get scenes',
+                                                                                              proportion_param=0.9)
                         break
                 if not depends_scenes:
                     # return 0
@@ -1150,8 +1151,9 @@ class CCRUKPIToolBox:
         if scenes_passed:
             if params.get('depends on') == 'filled collers target':
                 total_res = 0
-                scenes_passed_filled = self.check_number_of_doors_of_filled_coolers(params, function='get scenes',
-                                                                               proportion=0.9)
+                scenes_passed_filled = self.check_number_of_doors_of_filled_coolers(params,
+                                                                                    function='get scenes',
+                                                                                    proportion=0.9)
                 total_scenes_passed = list(set(scenes_passed_filled) & set(scenes_passed))
                 scene_types_list = self.scenes_info.loc[self.scenes_info['scene_fk'].isin(total_scenes_passed)]['template_fk'].tolist()
                 for scene in total_scenes_passed:
@@ -1398,8 +1400,9 @@ class CCRUKPIToolBox:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                         elif c.get('Formula') == 'number of coolers with facings target and fullness target':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
-                            scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes, function = 'get scenes',
-                                                                                              proportion_param=0.9)
+                            scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                      function='get scenes',
+                                                                                      proportion_param=0.9)
                         break
                 if not scenes:
                     if p.get('level') == 2:
@@ -1431,7 +1434,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def check_number_of_doors_of_filled_coolers(self, params, function = None, proportion = None):
+    def check_number_of_doors_of_filled_coolers(self, params, function=None, proportion=None):
         """
         This function calculates number of doors of filled Coolers
 
@@ -1441,8 +1444,9 @@ class CCRUKPIToolBox:
             if not proportion:
                 proportion = 0.8
             relevant_scenes = self.get_relevant_scenes(params)
-            scenes = self.calculate_number_of_doors_of_filled_coolers(params, relevant_scenes, function = 'get scenes',
-                                                                      proportion_param = proportion)
+            scenes = self.calculate_number_of_doors_of_filled_coolers(params, relevant_scenes,
+                                                                      function='get scenes',
+                                                                      proportion_param=proportion)
             return scenes
         # for p in params.values()[0]:
         #     if p.get('Formula') != 'number of doors of filled Coolers':
@@ -1525,7 +1529,7 @@ class CCRUKPIToolBox:
         self.thresholds_and_results[kpi_name] = {'result': sum_of_passed_doors}
         return ratio
 
-    def calculate_number_of_doors_of_filled_coolers(self, p, scenes, function=None, proportion_param = 0.8):
+    def calculate_number_of_doors_of_filled_coolers(self, p, scenes, function=None, proportion_param=0.8):
         sum_of_passed_doors = 0
         scenes_passed = []
         for scene in scenes:
@@ -1580,8 +1584,8 @@ class CCRUKPIToolBox:
                         elif c.get('Formula') == 'number of coolers with facings target and fullness target':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
-                                                                                      function = 'get scenes',
-                                                                                          proportion_param=0.9)
+                                                                                      function='get scenes',
+                                                                                      proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                 if not scenes:
@@ -1942,7 +1946,7 @@ class CCRUKPIToolBox:
                         scenes = self.get_relevant_scenes(c)
                         atomic_res = self.calculate_share_of_cch(c, scenes, sos=False)
                     elif c.get("Formula") == "number of filled Coolers (scenes)":
-                        scenes_list = self.check_number_of_doors_of_filled_coolers(c, function = 'get scenes')
+                        scenes_list = self.check_number_of_doors_of_filled_coolers(c, function='get scenes')
                         atomic_res = len(scenes_list)
                     elif c.get("Formula") == "number of SKU per Door RANGE":
                         atomic_score = self.check_number_of_skus_per_door_range(params)
@@ -2192,7 +2196,7 @@ class CCRUKPIToolBox:
                     if c.get("Formula") == "number of facings":
                         atomic_res = self.calculate_availability(c)
                     elif c.get("Formula") == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent = p)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula") == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.check_number_of_scenes_with_target(c)
                     else:
@@ -2249,8 +2253,7 @@ class CCRUKPIToolBox:
                     for c in params.values()[0]:
                         if c.get('KPI name Eng') == depends_on_kpi_name:
                             if c.get('Formula') == 'number of doors with more than Target facings':
-                                scenes = self.calculate_number_of_doors_more_than_target_facings(c,
-                                                                                                         'get scenes')
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                             elif c.get('Formula') == 'number of doors of filled Coolers':
                                 scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
                             break
