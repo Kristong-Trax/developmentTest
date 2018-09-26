@@ -12,20 +12,22 @@ from DevloperTools.ProjectCreator.Consts import MAIN_FILE_NAME, MAIN_FILE, LOCAL
     GENERATOR_FILE_NAME, GENERATOR, TOOL_BOX_FILE_NAME, TOOL_BOX, PROFILING_SCRIPT_NAME, PROFILING_SCRIPT, \
     GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT, SCENE_TOOLBOX_FILE_NAME, \
     SCENE_TOOLBOX_SCRIPT, SCENE_GENERATOR_SCRIPT, SCENE_GENERATOR_FILE_NAME, SCENE_CALCULATIONS_FILE_NAME, \
-    SCENE_CALCULATIONS_SCRIPT
+    SCENE_CALCULATIONS_SCRIPT, PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME, PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT, \
+    PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME, PLANOGRAM_FINDER_CALCULATIONS_SCRIPT
 
 __author__ = 'yoava'
 
 
 class CreateKPIProject:
 
-    def __init__(self, project_name, calculate_by_scene=False):
+    def __init__(self, project_name, calculate_by_scene=False, planogram=False):
         self.project = project_name.lower().replace('_', '-')
         self.project_capital = self.project.upper().replace('-', '_')
         self.project_short = self.project_capital.split('_')[0]
         self.author = os.environ.get('USER', '')
         self.project_path = self.get_project_path()
         self.calculate_by_scene = calculate_by_scene
+        self.planogram_calculation = planogram
         self.create_project_directory()
 
     def get_project_path(self):
@@ -100,6 +102,11 @@ class CreateKPIProject:
             files_to_create['Utils'].append((SCENE_TOOLBOX_FILE_NAME, SCENE_TOOLBOX_SCRIPT))
             files_to_create[''].append((SCENE_GENERATOR_FILE_NAME, SCENE_GENERATOR_SCRIPT))
             files_to_create[''].append((SCENE_CALCULATIONS_FILE_NAME, SCENE_CALCULATIONS_SCRIPT))
+        if self.planogram_calculation:
+            files_to_create['PlanogramCompliance'] = [(PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME,
+                                                      PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT)]
+            files_to_create['PlanogramFinder'] = [(PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME,
+                                                  PLANOGRAM_FINDER_CALCULATIONS_SCRIPT)]
         return files_to_create
 
 
@@ -108,6 +115,6 @@ if __name__ == '__main__':
     Config.init(app_name='new_project_new')
     project = 'test3'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project)
+    new = CreateKPIProject(project, planogram=True)
     new.create_new_project()
     Log.info('project {} was created successfully'.format(project))

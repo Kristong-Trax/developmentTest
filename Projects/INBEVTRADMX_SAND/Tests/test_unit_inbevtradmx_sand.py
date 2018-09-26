@@ -1,7 +1,7 @@
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import Projects.INBEVTRADMX_SAND.Tests.test_data as Data
-from Projects.INBEVTRADMX_SAND.Utils.KPIToolBox import INBEVTRADMXToolBox
+from Projects.INBEVTRADMX_SAND.Utils.KPIToolBox_old import INBEVTRADMXToolBox
 
 
 __author__ = 'yoava'

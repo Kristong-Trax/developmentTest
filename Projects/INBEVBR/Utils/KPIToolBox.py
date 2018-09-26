@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.3 - KENGINE - AUGUST.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.4 - KENGINE - SEPTEMBER.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -128,7 +128,7 @@ class INBEVBRToolBox:
     def handle_sos_atomics(self,atomic_id, atomic_name):
 
         denominator_number_of_total_facings = 0
-        count_result = -1
+        count_result = 0
 
         # bring the kpi rows from the sos sheet
         rows = self.sos_sheet.loc[self.sos_sheet[Const.KPI_ID] == atomic_id]
@@ -149,17 +149,14 @@ class INBEVBRToolBox:
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
         numerator_number_of_facings = self.count_of_facings(df, filters)
-        if numerator_number_of_facings != 0 and count_result == -1:
+        if numerator_number_of_facings != 0:
             if 'manufacturer_name' in filters.keys():
                 for f in ['manufacturer_name', 'brand_name']:
                     if f in filters:
                         del filters[f]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
-                count_result = weight if percentage >= target else -1
-
-        if count_result == -1:
-            return
+                count_result = weight if percentage >= target else 0
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -229,9 +226,6 @@ class INBEVBRToolBox:
         number_of_valid_scenes = len(set(df_target_filtered['scene_fk']).union(set(df_packs['scene_fk'])))
         number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
-        if count_result == 0:
-            return
-
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
@@ -252,8 +246,6 @@ class INBEVBRToolBox:
                                            denominator_result=0, result=count_result)
 
     def handle_count_atomics(self, atomic_id, atomic_name):
-
-        count_result = 0
 
         # bring the kpi rows from the count sheet
         rows = self.count_sheet.loc[self.count_sheet[Const.KPI_ID] == atomic_id]
@@ -286,9 +278,6 @@ class INBEVBRToolBox:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
-
-        if count_result == 0:
             return
 
         if result_type == 1:
@@ -337,9 +326,6 @@ class INBEVBRToolBox:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
-
-        if count_result == 0:
             return
 
         if result_type == 1:

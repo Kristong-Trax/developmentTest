@@ -1,5 +1,7 @@
 
 import os
+
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 import MySQLdb
@@ -10,12 +12,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_bimy_sanity import ProjectsSanityData
 from Projects.BIMY.Calculations import BIMYCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

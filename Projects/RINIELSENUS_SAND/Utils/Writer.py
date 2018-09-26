@@ -4,10 +4,10 @@ import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Files.FilesServices import create_folder
 
-from Projects.RINIELSENUS.Exceptions import AtomicKpiNotInStaticException, KpiNotInStaticException, \
+from Projects.RINIELSENUS_SAND.Exceptions import AtomicKpiNotInStaticException, KpiNotInStaticException, \
     KpiSetNotInStaticException
-from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
-from Projects.RINIELSENUS.Utils.Utils import log_runtime, get_all_kpi_static_data
+from Projects.RINIELSENUS_SAND.Utils.Fetcher import MarsUsQueries
+from Projects.RINIELSENUS_SAND.Utils.Utils import log_runtime, get_all_kpi_static_data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 

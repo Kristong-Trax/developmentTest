@@ -2,7 +2,7 @@
 __author__ = 'ortalk'
 
 
-class CCUSQueries:
+class CCUS_SANDQueries:
 
     def __init__(self):
         pass

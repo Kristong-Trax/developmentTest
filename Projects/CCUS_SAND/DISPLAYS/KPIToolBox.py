@@ -5,13 +5,13 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-
-from Projects.CCUS_SAND.DISPLAYS.GeneralToolBox import DISPLAYSGENERALToolBox
-from Projects.CCUS_SAND.DISPLAYS.Fetcher import DISPLAYSQueries
+from Trax.Data.Projects.Connector import ProjectConnector
+from Projects.CCUS_SAND.DISPLAYS.GeneralToolBox import DISPLAYSGENERALCCUS_SANDToolBox
+from Projects.CCUS_SAND.DISPLAYS.Fetcher import CCUS_SANDDISPLAYSQueries
 from Projects.CCUS_SAND.DISPLAYS.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -37,7 +37,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class DISPLAYSConsts(object):
+class CCUS_SANDDISPLAYSCCUS_SANDConsts(object):
 
     KPI_NAME = 'KPI Name'
     SCENE_RECOGNITION = 'SR'
@@ -52,7 +52,7 @@ class DISPLAYSConsts(object):
     SEPARATOR = ','
 
 
-class DISPLAYSToolBox(DISPLAYSConsts):
+class DISPLAYSCCUS_SANDToolBox(CCUS_SANDDISPLAYSCCUS_SANDConsts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -71,17 +71,17 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         # self.all_products = self.all_products.merge(self.get_additional_attributes(), on='product_fk', how='left')
         self.match_display_in_scene = self.get_match_display()
-        self.tools = DISPLAYSGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = DISPLAYSGENERALCCUS_SANDToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.template_data = parse_template(TEMPLATE_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
 
     # def get_additional_attributes(self):
-    #     query = DISPLAYSQueries.get_attributes_data()
+    #     query = CCUS_SANDDISPLAYSQueries.get_attributes_data()
     #     attributes = pd.read_sql_query(query, self.rds_conn.db)
     #     return attributes
 
@@ -90,7 +90,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DISPLAYSQueries.get_match_display(self.session_uid)
+        query = CCUS_SANDDISPLAYSQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         match_display = match_display.merge(self.scif.drop_duplicates(subset=['scene_fk']), on='scene_fk', how='left')
         return match_display
@@ -100,7 +100,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DISPLAYSQueries.get_all_kpi_data()
+        query = CCUS_SANDDISPLAYSQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -259,8 +259,10 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
-        delete_queries = DISPLAYSQueries.get_delete_session_results_query(self.session_uid, self.kpi_static_data)
+        delete_queries = CCUS_SANDDISPLAYSQueries.get_delete_session_results_query(self.session_uid, self.kpi_static_data)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

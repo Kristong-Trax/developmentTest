@@ -13,11 +13,12 @@ from mock import patch
 
 from Projects.DIAGEOBR.Calculations import DIAGEOBRCalculations
 from Tests.Data.Templates.diageobr_template import diageobr_template
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

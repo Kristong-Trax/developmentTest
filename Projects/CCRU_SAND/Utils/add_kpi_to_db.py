@@ -9,7 +9,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 __author__ = 'Nimrod'
 
 
-class Consts(object):
+class CCRU_SANDConsts(object):
 
     SET_NAME = 'KPI Level 1 Name'
     KPI_NAME = 'KPI Level 2 Name'
@@ -24,12 +24,12 @@ class Consts(object):
     PRESENTATION_ORDER = 'presentation_order'
 
 
-class AddKPIs(Consts):
+class CCRU_SANDAddKPIs(CCRU_SANDConsts):
     """
     This module writes all levels of KPIs to the DB, given a template.
 
     - The template file must include a unique row for every Atomic KPI (and ONLY Atomics)
-    - Each row much include Set-Name, KPI-Name and Atomic-Name columns (configured in 'Consts')
+    - Each row much include Set-Name, KPI-Name and Atomic-Name columns (configured in 'CCRU_SANDConsts')
     - Optionally KPI-Weight, Atomic-Weight and Atomic-DisplayText may be included
     - For every level of KPI (Set, KPI or Atomic) - only the ones that do not already exist by their names to be added to the DB
 
@@ -82,13 +82,13 @@ class AddKPIs(Consts):
         In order to get the set name it iterates the relevant unique set name.
         :return: A tuple of the relevant KPI data and relevant project's template data
         """
-        if self.project == 'ccru-sand':
+        if self.project == 'ccru_sand':
             dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         else:
-            dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'CCRU', 'Data')
+            dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'CCRU_SAND', 'Data')
 
         # Get the relevant project template
-        template_channel_name = self.data[Consts.CHANNEL].values[0]
+        template_channel_name = self.data[CCRU_SANDConsts.CHANNEL].values[0]
         if not template_channel_name:
             Log.error("The isn't a correct set in Channel attribute in the uploaded template.")
             return pd.DataFrame.empty,  pd.DataFrame.empty
@@ -109,7 +109,7 @@ class AddKPIs(Consts):
         # Get the relevant KPI data and project template data
         relevant_kpi_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == current_set]
         filtered_project_data = project_current_data[
-            project_current_data[Consts.SORTING].isin(self.data[Consts.SORTING].unique().tolist())]
+            project_current_data[CCRU_SANDConsts.SORTING].isin(self.data[CCRU_SANDConsts.SORTING].unique().tolist())]
         return relevant_kpi_data, filtered_project_data
 
     def update_atomic_kpi_data(self):
@@ -130,13 +130,13 @@ class AddKPIs(Consts):
         # Iterate over the uploaded template and create the queries
         for i in xrange(len(self.data)):
             row = self.data.iloc[i]
-            new_name = row[Consts.KPI_ENG_NAME].replace('\n', '').strip()
-            display = row[Consts.KPI_RUS_NAME].replace('\n', '').strip()
-            presentation_order = row[Consts.SORTING]
-            old_atomic_df = relevant_kpi_data[relevant_kpi_data[Consts.PRESENTATION_ORDER] == presentation_order]
+            new_name = row[CCRU_SANDConsts.KPI_ENG_NAME].replace('\n', '').strip()
+            display = row[CCRU_SANDConsts.KPI_RUS_NAME].replace('\n', '').strip()
+            presentation_order = row[CCRU_SANDConsts.SORTING]
+            old_atomic_df = relevant_kpi_data[relevant_kpi_data[CCRU_SANDConsts.PRESENTATION_ORDER] == presentation_order]
             if len(old_atomic_df) > 1:
-                old_atomic_name = filtered_project_data[filtered_project_data[Consts.SORTING] == presentation_order][
-                    Consts.KPI_ENG_NAME].values[0]
+                old_atomic_name = filtered_project_data[filtered_project_data[CCRU_SANDConsts.SORTING] == presentation_order][
+                    CCRU_SANDConsts.KPI_ENG_NAME].values[0]
                 try:
                     old_atom_fk = old_atomic_df[old_atomic_df['atomic_kpi_name'] == old_atomic_name][
                         'atomic_kpi_fk'].values[0]
@@ -299,10 +299,12 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
-    # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
-    # kpi = AddKPIs('ccru', '/home/idanr/Desktop/super.xlsx')
+    # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
+    # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
+    # kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/idanr/Desktop/super.xlsx')
+    kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for Contract Execution.xlsx')
+    kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
-    # # kpi.update_kpi_weights()
-    # # kpi.update_atomic_weights()
+    # kpi.update_kpi_weights()
+    # kpi.update_atomic_weights()
 
