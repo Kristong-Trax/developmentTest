@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
@@ -60,7 +60,7 @@ class GSKSGToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-
+        self.store_type = self.store_info[STORE_LVL_1].values[0]
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
@@ -74,7 +74,8 @@ class GSKSGToolBox:
         self.sequence = Sequence(data_provider, ignore_stacking=True)
         self.availability = Availability(data_provider, ignore_stacking=True)
         self.sos = SOS(data_provider,self.output)
-        self.survey_data = self.data_provider.survey_responses
+        self.survey = Survey(data_provider, self.output)
+        # self.survey_data = self.data_provider.survey_responses
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -165,12 +166,12 @@ class GSKSGToolBox:
         target = row['target'] if not pd.isnull(row['target']) else 0
 
         # Gets relevant assortment
-        store_type = self.store_info[STORE_LVL_1].values[0]
+
         att1 = self.store_info[STORE_LVL_2].values[0]
         att2 = self.store_info[STORE_LVL_3].values[0]
 
         # gets the assortment product's ean codes relevant for store
-        store_assortment = self.msl_list[store_type][att1][att2]
+        store_assortment = self.msl_list[self.store_type][att1][att2]
         store_assortment = store_assortment[store_assortment == 1]
         products = store_assortment.keys()
 
@@ -214,7 +215,35 @@ class GSKSGToolBox:
     #     return 0
 
     def calculate_survey(self, row):
-        pass
+        """
+        gets the relevant survey for atomic.
+        assuming there is only one survey in atomic, if not- will calculate only the first.
+        Handles the case where there are same atomics name in different store types.
+        Contains may cause 'x' to be found in 'xz', therefore not enough as a check.
+        """
+
+        # Gets the atomic's survey
+        atomic_name = row['3rd Level']
+        rows = self.survey_file.loc[(self.survey_file['KPI Name'] == atomic_name)
+                              & (self.survey_file['Store Policy'].str.contains(self.store_type, case=False))]
+        rows['match_policy'] = rows.apply(self.ensure_policy, axis=1)
+        rows = rows.loc[rows['match_policy'] == 1]
+
+        if len(rows) > 1:
+            Log.info('More than one survey question for atomic- calculating only first survey')
+
+        # Get the survey relevant data
+        survey_data = rows.iloc[0]
+        question = survey_data['Survey Question Text']
+        target_answer = survey_data['Compare to Target']
+
+        # return whether the given answer matches the target answer.
+        return self.survey.check_survey_answer(question, target_answer)
+
+    def ensure_policy(self, row):
+        # This checks if the store policy matches the store policy required
+        relevant_stores = map(str.strip, map(str.upper, (str(row['Store Policy']).split(','))))
+        return 1 if self.store_type.upper() in relevant_stores else 0
 
     def get_filters(self, row):
         filters = {}
