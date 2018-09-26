@@ -92,6 +92,7 @@ class GSKSGToolBox:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
             result = self.calculate_atomic(current_kpi)
+
         #all caculation below for main kpis
             # save result to db
     #         kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
@@ -113,7 +114,6 @@ class GSKSGToolBox:
     # #
     #     for score in kpi_3_results.keys():
     # #write ti db
-
 
 
     def get_relevant_calculations(self):
@@ -158,15 +158,14 @@ class GSKSGToolBox:
         """This function gets the relevant assortment, and returns the number of shown is session out of assortment"""
         # ToDo: use the benchmark as needed if needed.
 
-        if not pd.isnull(row['target']):
-            target = row['target']
+        target = row['target'] if not pd.isnull(row['target']) else 0
 
         # Gets relevant assortment
         store_type = self.store_info[STORE_LVL_1].values[0]
         att1 = self.store_info[STORE_LVL_2].values[0]
         att2 = self.store_info[STORE_LVL_3].values[0]
 
-        # gets the assortment product's ean codes
+        # gets the assortment product's ean codes relevant for store
         store_assortment = self.msl_list[store_type][att1][att2]
         store_assortment = store_assortment[store_assortment == 1]
         products = store_assortment.keys()
@@ -175,14 +174,17 @@ class GSKSGToolBox:
         kpi_filters.update(general)
         total_products = len(products)
         exist_products = 0
+        # Checks for each product if passed, if so, count it.
         for product in set(products):
-            # kpi_filters['product_ean_code'] = product
             kpi_filters['product_ean_code'] = product
             res = self.availability.calculate_availability(**kpi_filters)
             if res:
                 exist_products += 1
 
-        return exist_products / total_products if total_products else 0
+        if exist_products >= target:
+            return exist_products / total_products if total_products else 0
+        else:
+            return 0
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
