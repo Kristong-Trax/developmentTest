@@ -197,10 +197,11 @@ class INBEVMXToolBox:
                     return
                 condition = row[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
-                    if condition == ">=":
-                        second_question_id = row[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
-                        second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
-                        survey_result = 1 if survey_result > second_survey_result else -1
+                    second_question_id = row[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
+                    second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
+                    survey_result = 1 if survey_result > second_survey_result else -1
+                else:
+                    survey_result = 1
             else:
                 answer = self.survey.check_survey_answer(('question_fk', question_id), question_answer_template)
                 survey_result = 1 if answer else -1
