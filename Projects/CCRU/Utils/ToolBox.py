@@ -2875,7 +2875,7 @@ class CCRUKPIToolBox:
                         count_of_kpis += 1
 
             if count_of_kpis:
-                score = int(round(total_score / float(total_weight)))
+                score = round(total_score / float(total_weight), 2)
                 attributes_for_table1 = pd.DataFrame([(EQUIPMENT_SET_NAME,
                                                        self.session_uid,
                                                        self.store_id,
@@ -2906,21 +2906,18 @@ class CCRUKPIToolBox:
             count_of_kpis = 0
 
             score = None
-            result = None
-            target = None
 
             for param in params:
                 if param.get('KPI Set Type') == 'Contract':
                     if param.get('Formula') == 'OSA score':
                         score = self.osa_score
-                        result = score
-                        target = 100
                     elif param.get('Formula') == 'Equipment Execution score':
                         score = self.equipment_execution_score
-                        result = score
-                        target = 100
 
                     if score is not None:
+                        target = 100
+                        result = score
+                        score = int(round(score))
 
                         kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
                         kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
@@ -2942,7 +2939,7 @@ class CCRUKPIToolBox:
                         count_of_kpis += 1
 
             if count_of_kpis:
-                score = int(round(total_score / float(total_weight)))
+                score = round(total_score / float(total_weight), 2)
                 attributes_for_table1 = pd.DataFrame([(CONTRACT_SET_NAME,
                                                        self.session_uid,
                                                        self.store_id,
@@ -2999,7 +2996,7 @@ class CCRUKPIToolBox:
                 if distributed:
                     distributed_products[anchor_product_fk] = 1
         if in_assortment_products:
-            score = int(round(len(distributed_products.keys()) / float(len(in_assortment_products.keys())) * 100))
+            score = round(len(distributed_products.keys()) / float(len(in_assortment_products.keys())) * 100, 2)
         else:
             score = None
 
