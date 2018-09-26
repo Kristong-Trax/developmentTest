@@ -36,14 +36,16 @@ STORE_LVL_3 = 'additional_attribute_1'
 ######################
 SURVEY_SHEET ='Survey'
 ######################
+KPI_NAME_INDEX = 0
+KPI_WEIGHT = 2
+CONDITION_WEIGHT = 3
+######################
+
 
 class GSKSGToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
-    KPI_NAME_INDEX = 0
-    KPI_WEIGHT = 2
-    CONDITION_WEIGHT = 3
 
     def __init__(self, data_provider, output):
         self.output = output
