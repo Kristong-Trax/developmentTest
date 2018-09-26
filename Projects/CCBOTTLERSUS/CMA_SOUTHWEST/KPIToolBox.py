@@ -11,7 +11,6 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from Trax.Algo.Calculations.Core.Utils import Validation
-from SceneKPIToolBox import SceneGenerator
 
 
 
@@ -83,7 +82,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         main_template = self.templates[Const.KPIS]
         if self.region in Const.REGIONS:
             for i, main_line in main_template.iterrows():
-                if self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
+                store_type = self.does_exist(main_line, Const.STORE_TYPE)
+                if store_type is None or self.store_type in store_type:
                     self.calculate_main_kpi(main_line)
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)

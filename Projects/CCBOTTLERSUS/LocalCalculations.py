@@ -43,7 +43,7 @@ if __name__ == '__main__':
                 # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
                 # '50820afd-91e4-4367-af3d-f82d37d76a7c',
                 # '51a9fbe3-b28a-4107-9c32-b9ce5163404c',
-                '035858a8-f8d8-49f9-80ed-f5e9619e0133',
+                # '035858a8-f8d8-49f9-80ed-f5e9619e0133',
                 # 'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
                 # 'f33c783c-3f20-409a-8804-57b113571773',
                 # '8D7A0575-6C8B-4C87-8B01-3E27DFD1A91A',
@@ -123,6 +123,7 @@ if __name__ == '__main__':
                 '550A25C2-D0CE-46C1-967A-CDE5C2F40EC2',
                 '87228dd9-20b0-4400-bd87-f8566a69ddcf',
             ]
+    sessions = ['035858a8-f8d8-49f9-80ed-f5e9619e0133']
     # import pandas as pd
     # df = pd.DataFrame()
     for session in sessions:
