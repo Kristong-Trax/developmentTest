@@ -59,7 +59,7 @@ class CCAAUToolBox:
         self.Include_filters = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
                                              sheetname="Include")
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -83,7 +83,6 @@ class CCAAUToolBox:
 
         scene_templates = self.scif['template_fk'].unique().tolist()
         scene_manufactures = self.scif['manufacturer_fk'].unique().tolist()
-
 
         # exclude filters denominator
         den_general_facing_filters = self.create_dict_filters(den_facing_exclude_template, self.EXCLUDE_FILTER)
@@ -153,7 +152,7 @@ class CCAAUToolBox:
                       df : Data frame
                :return: data frame filtered by entries in the template with 2 conditions
         """
-        filters_dict = {}
+
         template_without_second = template[template['Param 2'].notnull()]
 
         if template_without_second is not None:
