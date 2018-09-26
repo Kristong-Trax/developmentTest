@@ -2959,7 +2959,6 @@ class CCRUKPIToolBox:
         data = pd.read_excel(KPI_CONVERSION_PATH)
         conversion = {}
         for x, row in data.iterrows():
-            # conversion[int(row['KPI ID'])] = row['KPI Name']
             conversion[row['KPI Name']] = str(row['KPI ID'])
         return conversion
 
