@@ -2917,7 +2917,7 @@ class CCRUKPIToolBox:
                     if score is not None:
                         target = 100
                         result = score
-                        score = int(round(score))
+                        score_to_db = int(round(score))
 
                         kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
                         kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
@@ -2927,11 +2927,11 @@ class CCRUKPIToolBox:
                         kpi_name = param.get('KPI name Eng')
 
                         attributes_for_level3 = self.create_attributes_for_level3_df(
-                            {'KPI name Eng': kpi_name}, (score, result, target), kpi_fk, atomic_kpi_fk)
+                            {'KPI name Eng': kpi_name}, (score_to_db, result, target), kpi_fk, atomic_kpi_fk)
                         self.write_to_db_result(attributes_for_level3, 'level3')
 
                         attributes_for_level2 = self.create_attributes_for_level2_df(
-                            {'KPI name Eng': kpi_name}, score, kpi_fk)
+                            {'KPI name Eng': kpi_name}, score_to_db, kpi_fk)
                         self.write_to_db_result(attributes_for_level2, 'level2')
 
                         total_score += score * kpi_weight
