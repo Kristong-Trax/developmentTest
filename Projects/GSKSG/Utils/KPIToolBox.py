@@ -28,11 +28,12 @@ template_kpi_type = 'type of condition'
 GENERAL_COLS = ['template_name']
 EXCLUDE = 0
 SURVEY_QUEST = 'Survey Question Text'
+
+#####################
 STORE_LVL_1 = 'store_type'
-# chance to additional attribute!!!!!
-# STORE_LVL_2 = 'address_line_1'
 STORE_LVL_2 = 'retailer_name'
 STORE_LVL_3 = 'additional_attribute_1'
+######################
 SURVEY_SHEET ='Survey'
 ######################
 
@@ -131,11 +132,14 @@ class GSKSGToolBox:
         # runs the relevant calculation
         calculation = self.calculations.get(kpi_type, '')
         if calculation:
-            calculation(row)
+            return calculation(row)
+        else:
+            Log.info('kpi type {} does not exist'.format(kpi_type))
+            return None
 
     def calculate_sos(self, row):
         filters, general_filters = self.get_filters(row)
-        return self.sos.calculate_share_of_shelf(self, sos_filters=filters, **general_filters)
+        return self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
 
     def calculate_presence(self, row):
 
@@ -197,17 +201,20 @@ class GSKSGToolBox:
 
 
 #need to check below
+    # def calculate_survey(self, row):
+    #     group_of_question = self.survey_file[(self.survey_file['KPI Name'] == row['3rd Level']) & (self.store_info[STORE_LVL_1] in self.survey_file['Store Policy'])]
+    #     target = group_of_question.iloc[0]['target']
+    #     counter = 0
+    #     for quest in group_of_question.itertuples():
+    #         answer = self.survey_data[self.survey_data['question_text'] == quest['Survey Question Text']]
+    #         if ~ self.quest[answer['selected_option_text'] == quest['Accepted Answers']].empty: #not empty
+    #             counter = counter + 1
+    #             if counter >= target:
+    #                 return 100
+    #     return 0
+
     def calculate_survey(self, row):
-        group_of_question = self.survey_file[(self.survey_file['KPI Name'] == row['3rd Level']) & (self.store_info[STORE_LVL_1] in self.survey_file['Store Policy'])]
-        target = group_of_question.iloc[0]['target']
-        counter = 0
-        for quest in group_of_question.itertuples():
-            answer = self.survey_data[self.survey_data['question_text'] == quest['Survey Question Text']]
-            if ~ self.quest[answer['selected_option_text'] == quest['Accepted Answers']].empty: #not empty
-                counter = counter + 1
-                if counter >= target:
-                    return 100
-        return 0
+        pass
 
     def get_filters(self, row):
         filters = {}
@@ -219,8 +226,14 @@ class GSKSGToolBox:
             if col in row.keys():
                 # handle the values in column
                 if col == 'exclude':
-                    value = self.handle_exclude(row[col])
+                    excludes = self.handle_complex_data(row[col], exclude=True)
+                    filters.update(excludes)
+                    continue
                 if col in ['target','Store Type']:
+                    continue
+                if col == 'denominator':
+                    denom = self.handle_complex_data(row[col])
+                    general_filters.update(denom)
                     continue
                 elif self.is_string_a_list(str(row[col])):
                     value = map(str.strip, str(row[col]).split(','))
@@ -242,20 +255,19 @@ class GSKSGToolBox:
         # checks whether a string is representing a list of values
         return len(str_value.split(',')) > 0
 
-    def handle_exclude(self, value):
+    def handle_complex_data(self, value, exclude=False):
         # value is string of dictionary format with multi values, for example 'product_type:Irrelevant, Empty;
         # scene_id:34,54'
 
         exclude_dict = {}
-
         # gets the different fields
         fields = value.split(';')
         for field in fields:
 
             # gets the key and value of field
-            field = field.split[':']
+            field = field.split(':')
             key = field[0]
-            values = field[1].split(',')
-            exclude_dict[key] = (values, EXCLUDE)
+            values = map(str.strip, str(field[1]).split(','))
+            exclude_dict[key] = (values, EXCLUDE) if exclude else values
 
         return exclude_dict
