@@ -51,8 +51,8 @@ class DIAGEOBRToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_channel = self.store_info['store_type'].values[0]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:
             self.store_channel = self.store_channel.upper()
         self.store_type = self.store_info['additional_attribute_1'].values[0]
@@ -103,14 +103,14 @@ class DIAGEOBRToolBox:
         if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
             self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name in ('MPA', 'New Products'):
-            set_score = self.calculate_assortment_sets(set_name)
-        elif set_name in ('POSM'):
-            set_score = self.calculate_posm_sets(set_name)
-        # elif set_name == 'Visible to Customer':
-        #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-        #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-        #     self.save_level2_and_level3(set_name, set_name, set_score)
+        # if set_name in ('MPA', 'New Products'):
+        #     set_score = self.calculate_assortment_sets(set_name)
+        # elif set_name in ('POSM',):
+        #     set_score = self.calculate_posm_sets(set_name)
+        if set_name == 'Visible to Customer':
+            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+            self.save_level2_and_level3(set_name, set_name, set_score)
         elif set_name == 'Secondary Displays':
             set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
             self.save_level2_and_level3(set_name, set_name, set_score)
@@ -167,7 +167,7 @@ class DIAGEOBRToolBox:
         segment = '{};{}'.format(self.store_type, self.segment)
         for params in self.set_templates_data[set_name]:
             if params.get(segment, '').capitalize() in (self.tools.RELEVANT_FOR_STORE,
-                                                        self.tools.OR_OTHER_PRODUCTS):
+                                                                self.tools.OR_OTHER_PRODUCTS):
 
                 object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
                                                                    'product_ean_code')
