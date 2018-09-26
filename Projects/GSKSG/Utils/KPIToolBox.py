@@ -96,22 +96,22 @@ class GSKSGToolBox:
 
         #all caculation below for main kpis
             # save result to db
-    #         kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
-    #         if kpi_key not in kpi_results:
-    #             kpi_results[kpi_key] = 0
-    #         if current_kpi['Score Method'] == 'Proportional':
-    #             kpi_results[kpi_key] = result * current_kpi['Weight']
-    #         else:
-    #             result = 100 if(result >= current_kpi['Benchmark']) else 0
-    #             kpi_results[kpi_key] = result * current_kpi['Weight']
-    #
-    #     kpi_3_results = dict()
-    #     for kpi in kpi_results.keys():
-    #         #write result to db level 2
-    #         if kpi['1st level'] not in kpi_3_results:
-    #             kpi_3_results[kpi['1st level']] = 0
-    #         if kpi_results[kpi] >= kpi['Conditional Weight']:
-    #             kpi_3_results[kpi['1st level']] = kpi['KPI Weight'] * kpi_results[kpi]
+            kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
+            if kpi_key not in kpi_results:
+                kpi_results[kpi_key] = 0
+            if current_kpi['Score Method'] == 'Proportional':
+                kpi_results[kpi_key] = result * current_kpi['Weight']
+            else:
+                result = 100 if(result >= current_kpi['Benchmark']) else 0
+                kpi_results[kpi_key] = result * current_kpi['Weight']
+
+        kpi_3_results = dict()
+        for kpi in kpi_results.keys():
+            #write result to db level 2
+            if kpi['1st level'] not in kpi_3_results:
+                kpi_3_results[kpi['1st level']] = 0
+            if kpi_results[kpi] >= kpi['Conditional Weight']:
+                kpi_3_results[kpi['1st level']] = kpi['KPI Weight'] * kpi_results[kpi]
     # #
     #     for score in kpi_3_results.keys():
     # #write ti db
@@ -131,7 +131,7 @@ class GSKSGToolBox:
 
         # runs the relevant calculation
         calculation = self.calculations.get(kpi_type, '')
-        if calculation:
+        if calculation or calculation == 0:
             return calculation(row)
         else:
             Log.info('kpi type {} does not exist'.format(kpi_type))
@@ -152,8 +152,8 @@ class GSKSGToolBox:
         row_filter.update(general_filters)
         result = self.availability.calculate_availability(**row_filter)
         if no_facing:
-            return result < target
-        return result >= target
+            return int(result < target)
+        return int(result >= target)
 
     def calculate_no_facings(self, row):
         return self.calculate_facings(row, no_facing=True)
