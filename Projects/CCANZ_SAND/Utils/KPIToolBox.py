@@ -1,10 +1,9 @@
-
+import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-import os
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -58,7 +57,7 @@ class CCANZToolBox:
         self.Include_filters = pd.read_excel(os.path.join(kpi_path[:- len(base_file)], 'Data', 'template.xlsx'),
                                              sheetname="Include")
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -73,8 +72,10 @@ class CCANZToolBox:
             Writing the results to the new tables in DB
 
         """
-        facing_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] == 'FACINGS_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
-        linear_kpi_fk =self.kpi_static_data[self.kpi_static_data['client_name'] == 'LINEAR_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
+        facing_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] ==
+                                             'FACINGS_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
+        linear_kpi_fk = self.kpi_static_data[self.kpi_static_data['client_name'] ==
+                                             'LINEAR_SOS_SCENE_TYPE_BY_MANUFACTURER']['pk'].iloc[0]
         den_facing_exclude_template = self.exclude_filters[
             (self.exclude_filters['KPI'] == 'Share of Shelf by Facing') & (
                     self.exclude_filters['apply on'] == 'Denominator')]
@@ -159,13 +160,12 @@ class CCANZToolBox:
                       df : Data frame
                :return: data frame filtered by entries in the template with 2 conditions
         """
-        filters_dict = {}
         template_without_second = template[template['Param 2'].notnull()]
 
         if template_without_second is not None:
             for row in template_without_second.iterrows():
-                df = df.loc[(~df[row[1]['Param 1']].isin(row[1]['Value 1'].split(','))) | (
-                ~df[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
+                df = df.loc[(~df[row[1]['Param 1']].isin(row[1]['Value 1'].split(','))) | (df[row[1]['Param 2']].isin(
+                    row[1]['Value 2'].split(',')))]
 
         return df
 

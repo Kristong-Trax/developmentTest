@@ -153,7 +153,7 @@ class CCAAUToolBox:
                       df : Data frame
                :return: data frame filtered by entries in the template with 2 conditions
         """
-        filters_dict = {}
+
         template_without_second = template[template['Param 2'].notnull()]
 
         if template_without_second is not None:
