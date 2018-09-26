@@ -41,6 +41,9 @@ class GSKSGToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    KPI_NAME_INDEX = 0
+    KPI_WEIGHT = 2
+    CONDITION_WEIGHT = 3
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -76,7 +79,7 @@ class GSKSGToolBox:
         self.sos = SOS(data_provider,self.output)
         self.survey_data = self.data_provider.survey_responses
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
@@ -88,15 +91,16 @@ class GSKSGToolBox:
 
     def handle_calculation(self, kpis):
         kpi_results = dict()
-
         # for each level3:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
             result = self.calculate_atomic(current_kpi)
-
+            if result is None:
+                continue
         #all caculation below for main kpis
             # save result to db
-            kpi_key = (current_kpi['1st level'],current_kpi['2nd Level'],current_kpi['KPI Weight'],current_kpi['Conditional Weight'])
+            kpi_key = (current_kpi['1st level'], current_kpi['2nd Level'], current_kpi['KPI Weight'],
+                       current_kpi['Conditional Weight'])
             if kpi_key not in kpi_results:
                 kpi_results[kpi_key] = 0
             if current_kpi['Score Method'] == 'Proportional':
@@ -105,13 +109,14 @@ class GSKSGToolBox:
                 result = 100 if(result >= current_kpi['Benchmark']) else 0
                 kpi_results[kpi_key] = result * current_kpi['Weight']
 
-        kpi_3_results = dict()
+        final_kpi_score = dict()
         for kpi in kpi_results.keys():
             #write result to db level 2
-            if kpi['1st level'] not in kpi_3_results:
-                kpi_3_results[kpi['1st level']] = 0
-            if kpi_results[kpi] >= kpi['Conditional Weight']:
-                kpi_3_results[kpi['1st level']] = kpi['KPI Weight'] * kpi_results[kpi]
+            if kpi[self.KPI_NAME_INDEX] not in final_kpi_score:
+                final_kpi_score[kpi[self.KPI_NAME_INDEX]] = 0
+            if kpi_results[kpi] >= kpi[self.CONDITION_WEIGHT]:
+                final_kpi_score[kpi[self.KPI_NAME_INDEX]] = kpi[self.KPI_WEIGHT] * kpi_results[kpi]
+        print("ok")
     # #
     #     for score in kpi_3_results.keys():
     # #write ti db
