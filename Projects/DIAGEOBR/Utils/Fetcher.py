@@ -43,7 +43,6 @@ class DIAGEOBRQueries:
             where s.session_uid = '{}'
         """.format(session_uid)
 
-
     @staticmethod
     def get_business_unit_name(store_fk):
         return """

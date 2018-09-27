@@ -2848,7 +2848,7 @@ class CCRUKPIToolBox:
                                     result = 0
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
-                                    score = int(round(result / float(target) * 100))
+                                    score = int(round(result / float(target) * 100)) if target else 100
                                     score = 100 if score > 100 else score
                                 else:
                                     score = 100 if result >= target else 0
