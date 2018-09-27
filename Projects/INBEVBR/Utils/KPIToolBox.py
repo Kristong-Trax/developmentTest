@@ -19,9 +19,6 @@ from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.4 - KENGINE - SEPTEMBER.xlsx')
 

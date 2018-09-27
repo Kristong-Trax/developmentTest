@@ -23,7 +23,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.0 - KENGINE.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.4 - KENGINE - SEPTEMBER.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -85,6 +85,7 @@ class INBEVBRToolBox:
         self.prod_weight_sku_sheet = pd.read_excel(PATH, Const.PROD_WEIGHT_SKU).fillna("")
         self.prod_weight_subbrand_sheet = pd.read_excel(PATH, Const.PROD_WEIGHT_SUBBRAND).fillna("")
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.parent_kpis = dict.fromkeys([Const.CERVEJA,Const.GAME_PLAN, Const.NAB], 0)
 
     def main_calculation(self):
         """
@@ -93,11 +94,13 @@ class INBEVBRToolBox:
         kpis_sheet = pd.read_excel(PATH, Const.KPIS).fillna("")
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
+        self.write_parent_kpis_results()
         self.commit_results_data()
 
     def handle_atomic(self, row):
         atomic_id = row[Const.KPI_ID]
         atomic_name = row[Const.ENGLISH_KPI_NAME].strip()
+        parent_kpi = row[Const.PARENT_KPI_GROUP].strip()
         store_type_template = row[Const.STORE_TYPE_TEMPLATE].strip()
 
         # if cell in template is not empty
@@ -109,24 +112,25 @@ class INBEVBRToolBox:
 
         kpi_type = row[Const.KPI_TYPE].strip()
         if kpi_type == Const.SOS:
-            self.handle_sos_atomics(atomic_id, atomic_name)
+            self.handle_sos_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.SOS_PACKS:
-            self.handle_sos_packs_atomics(atomic_id, atomic_name)
+            self.handle_sos_packs_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.COUNT:
-            self.handle_count_atomics(atomic_id, atomic_name)
+            self.handle_count_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.GROUP_COUNT:
-            self.handle_group_count_atomics(atomic_id, atomic_name)
+            self.handle_group_count_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.SURVEY:
             self.handle_survey_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.PROD_SEQ:
-            self.handle_prod_seq_atomics(atomic_id, atomic_name)
+            self.handle_prod_seq_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.PROD_SEQ_2:
-            self.handle_prod_seq_2_atomics(atomic_id, atomic_name)
+            self.handle_prod_seq_2_atomics(atomic_id, atomic_name, parent_kpi)
         elif kpi_type == Const.PROD_WEIGHT:
-            self.handle_prod_weight_atomics(atomic_id, atomic_name)
+            self.handle_prod_weight_atomics(atomic_id, atomic_name, parent_kpi)
 
-    def handle_sos_atomics(self,atomic_id, atomic_name):
+    def handle_sos_atomics(self,atomic_id, atomic_name, parent_kpi):
 
+        denominator_number_of_total_facings = 0
         count_result = 0
 
         # bring the kpi rows from the sos sheet
@@ -139,7 +143,7 @@ class INBEVBRToolBox:
 
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
-        df = self.scif
+        df = self.scif.copy()
 
         product_size = row[Const.PRODUCT_SIZE].values[0]
         if product_size != "":
@@ -147,10 +151,8 @@ class INBEVBRToolBox:
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
-
-        # if count_type == Const.FACING:
         numerator_number_of_facings = self.count_of_facings(df, filters)
-        if numerator_number_of_facings != 0 and count_result == 0:
+        if numerator_number_of_facings != 0:
             if 'manufacturer_name' in filters.keys():
                 for f in ['manufacturer_name', 'brand_name']:
                     if f in filters:
@@ -158,21 +160,19 @@ class INBEVBRToolBox:
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else 0
-
-        if count_result == 0:
-            return
-
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+        self.parent_kpis[parent_kpi] += count_result
 
-    def handle_sos_packs_atomics(self,atomic_id, atomic_name):
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                       numerator_result=numerator_number_of_facings, denominator_id=3,
+                                       denominator_result=denominator_number_of_total_facings, result=count_result)
+
+    def handle_sos_packs_atomics(self,atomic_id, atomic_name, parent_kpi):
 
         count_result = 0
 
@@ -188,6 +188,7 @@ class INBEVBRToolBox:
         target = row[Const.TARGET].values[0]
         target_secondary = row[Const.SECONDARY_TARGET].values[0]
         target_packs = row[Const.PACKS_TARGET].values[0]
+        result_type = row[Const.RESULT_TYPE].values[0]
         weight = row[Const.WEIGHT].values[0]
 
         # get the filters
@@ -206,28 +207,28 @@ class INBEVBRToolBox:
         if (number_of_valid_scenes >= target_secondary):
             count_result = weight
 
-        else:
+        # count number of facings
+        if ('form_factor' in filters.keys()):
+            del filters['form_factor']
+        df_numirator = self.count_of_scenes_facings(df,filters)
+        # count_of_total_facings = self.count_of_facings(df,filters)
+        df_numirator = df_numirator.rename(columns={'face_count': 'facings_nom'})
+        count_of_total_facings = df_numirator['facings_nom'].sum()
+        for f in ['manufacturer_name', 'brand_name']:
+            if f in filters:
+                del filters[f]
+        df_denominator = self.count_of_scenes_facings(df, filters)
+        scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_fk')
+        df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
+                                                                scene_types_groupby['face_count']) * 100 >= target]
+        number_of_valid_scenes = len(df_target_filtered)
+        if target_secondary == "":
+            target_secondary = 1
+        if number_of_valid_scenes >= target_secondary:
+            count_result = weight
 
-            # count number of facings
-            if ('form_factor' in filters.keys()):
-                del filters['form_factor']
-            df_numirator = self.count_of_scenes_facings(df,filters)
-            df_numirator = df_numirator.rename(columns={'face_count': 'facings_nom'})
-            for f in ['manufacturer_name', 'brand_name']:
-                if f in filters:
-                    del filters[f]
-            df_denominator = self.count_of_scenes_facings(df, filters)
-            scene_types_groupby = pd.merge(df_numirator, df_denominator, how='left', on='scene_fk')
-            df_target_filtered = scene_types_groupby[(scene_types_groupby['facings_nom'] /
-                                                                    scene_types_groupby['face_count']) * 100 >= target]
-            number_of_valid_scenes = len(df_target_filtered)
-            if target_secondary == "":
-                target_secondary = 1
-            if number_of_valid_scenes >= target_secondary:
-                count_result = weight
-
-        if count_result == 0:
-            return
+        number_of_valid_scenes = len(set(df_target_filtered['scene_fk']).union(set(df_packs['scene_fk'])))
+        number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -235,14 +236,22 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+        self.parent_kpis[parent_kpi] += count_result
+
+        if result_type == 1:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=3,
+                                               numerator_result=number_of_valid_scenes,
+                                               denominator_result=number_of_not_valid_scenes, result=count_result)
+        elif result_type == 2:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
+                                               numerator_result=count_of_total_facings,
+                                               denominator_result=0, result=count_result)
+        elif result_type == 3:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
                                            numerator_result=number_of_valid_scenes,
-                                           denominator_result=target, result=count_result)
+                                           denominator_result=0, result=count_result)
 
-    def handle_count_atomics(self, atomic_id, atomic_name):
-
-        count_result = 0
-        numerator_number_of_facings = 0
+    def handle_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
         # bring the kpi rows from the count sheet
         rows = self.count_sheet.loc[self.count_sheet[Const.KPI_ID] == atomic_id]
@@ -254,22 +263,22 @@ class INBEVBRToolBox:
 
         target = row[Const.TARGET].values[0]
         weight = row[Const.WEIGHT].values[0]
+        result_type = row[Const.RESULT_TYPE].values[0]
         count_type = row[Const.COUNT_TYPE].values[0].strip()
 
-        df = self.scif
+        df = self.scif.copy()
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
 
-        if count_type == Const.FACING:
-            number_of_facings = self.count_of_facings(df, filters)
-            count_result = weight if number_of_facings >= target else 0
-        elif count_type == Const.SCENES:
+        # if count_type == Const.FACING:
+        number_of_facings = self.count_of_facings(df, filters)
+        count_result = weight if number_of_facings >= target else 0
+        if count_type == Const.SCENES:
             secondary_target = row[Const.SECONDARY_TARGET].values[0]
             scene_types_groupby = self.count_of_scenes(df, filters)
             number_of_scenes = len(scene_types_groupby[scene_types_groupby['facings'] >= target])
             count_result = weight if (number_of_scenes >= secondary_target) else 0
-            numerator_number_of_facings = number_of_scenes
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
@@ -277,19 +286,24 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        if count_result == 0:
-            return
+        self.parent_kpis[parent_kpi] += count_result
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+        if result_type == 1:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=0, denominator_id=1,
+                                           denominator_result=0, result=count_result)
+        elif result_type == 2:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=number_of_facings, denominator_id=2,
+                                           denominator_result=0, result=count_result)
 
-    def handle_group_count_atomics(self, atomic_id, atomic_name):
+    def handle_group_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
-        target = 0
         count_result = 0
-        numerator_number_of_facings = 0
+        total_facings_number = 0
         group_score = 0
+        result_type = 0
+        group_scenes = set()
 
         # bring the kpi rows from the group_count sheet
         rows = self.group_count_sheet.loc[self.group_count_sheet[Const.KPI_ID] == atomic_id]
@@ -301,31 +315,39 @@ class INBEVBRToolBox:
             target = row[Const.TARGET]
             weight = row[Const.WEIGHT]
             score = row[Const.SCORE]
-            count_type = row[Const.COUNT_TYPE].strip()
+            result_type = row[Const.RESULT_TYPE]
 
             # get the filters
             filters = self.get_filters_from_row(row)
 
-            if count_type == Const.FACING:
-                number_of_facings = self.count_of_facings(self.scif, filters)
-                if number_of_facings >= target:
-                    group_score += score
-                    if group_score >= 100:
-                        count_result = weight
-                        break
+            number_of_facings = self.count_of_facings(self.scif, filters)
+            total_facings_number += number_of_facings
+            if number_of_facings >= target:
+                count_of_scenes = self.count_of_scenes(self.scif, filters)
+                group_scenes = group_scenes.union(set(count_of_scenes['scene_id']))
+                group_score += score
+                if group_score >= 100:
+                    count_result = weight
 
+        number_of_valid_scenes = len(group_scenes)
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        if count_result == 0:
-            return
+        self.parent_kpis[parent_kpi] += count_result
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings,
-                                           denominator_result=target, result=count_result)
+        if result_type == 1:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
+                                           numerator_result=total_facings_number,
+                                           denominator_result=0, result=count_result)
+        elif count_result == 2:
+            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
+                                           numerator_result=number_of_valid_scenes,
+                                           denominator_result=0, result=count_result)
+
+
 
     def find_row(self, rows):
         temp = rows[Const.STORE_TYPE_TEMPLATE]
@@ -376,7 +398,7 @@ class INBEVBRToolBox:
     def create_filters_according_to_scif(self, filters):
         convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
                                 Const.BRAND: 'brand_name',
-                                Const.SUB_BRAND: 'Sub Brand',
+                                Const.SUB_BRAND: 'sub_brand',
                                 Const.CATEGORY: 'category',
                                 Const.SUB_CATEGORY: 'sub_category',
                                 Const.TEMPLATE_NAME: 'template_name',
@@ -421,12 +443,9 @@ class INBEVBRToolBox:
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
-        rows = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
+        row = self.survey_sheet.loc[self.survey_sheet[Const.KPI_ID] == atomic_id]
 
-        # get a the correct rows
-        row = self.find_row(rows)
-
-        if row == -1:
+        if row.empty:
             return
         else:
             # find the answer to the survey in session
@@ -451,10 +470,10 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=survey_result,
-                                           result=survey_result)
+        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
+                                           denominator_result=0, denominator_id=1, result=survey_result)
 
-    def handle_prod_seq_atomics(self, atomic_id, atomic_name):
+    def handle_prod_seq_atomics(self, atomic_id, atomic_name, parent_kpi):
         result = 0
 
         # bring the kpi rows in the PROD_SEQ sheet
@@ -507,9 +526,12 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
+        self.parent_kpis[parent_kpi] += result
+
+
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_shelfs,
-                                           denominator_result=target, result=result)
+                                           numerator_result=numerator_shelfs, denominator_id=1,
+                                           denominator_result=denominator_shelfs, result=result)
 
     def check_order_prod_seq(self, list_df, filtered_rows, num_of_products):
         shelf_fail = False
@@ -538,7 +560,7 @@ class INBEVBRToolBox:
             return  True
         return False
 
-    def handle_prod_seq_2_atomics(self, atomic_id, atomic_name):
+    def handle_prod_seq_2_atomics(self, atomic_id, atomic_name, parent_kpi):
 
         count_result = 0
         result = 0
@@ -599,9 +621,11 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
+        self.parent_kpis[parent_kpi] += count_result
+
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_shelfs,
-                                           denominator_result=target, result=count_result)
+                                           numerator_result=numerator_shelfs, denominator_id=1,
+                                           denominator_result=denominator_shelfs, result=count_result)
 
     def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
         result = False
@@ -648,8 +672,9 @@ class INBEVBRToolBox:
         scenes_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['scene_fk'].unique().tolist()
         return scenes_list
 
-    def handle_prod_weight_atomics(self, atomic_id, atomic_name):
+    def handle_prod_weight_atomics(self, atomic_id, atomic_name, parent_kpi):
         total_weight = 0
+        total_facings = 0
         limit = 100
 
         # bring the kpi rows in the PROD_SEQ_2 sheet
@@ -670,16 +695,20 @@ class INBEVBRToolBox:
             limit = matching_rows_sku.iloc[0][Const.LIMIT_SCORE]
 
 
-
         for i, row in matching_rows_sku.iterrows():
             product = row[self.state_name_filter]
-            if self.scif[self.scif['product_name'] == product]['facings'].sum() > 0:
+            product_facings = self.scif[self.scif['product_name'] == product]['facings'].sum()
+            total_facings += product_facings
+            if product_facings > 0:
                 total_weight += row[Const.WEIGHT]
 
-        for i, row in matching_rows_subbrand.iterrows():
-            subbrand = row[self.state_name_filter]
-            if self.scif[self.scif['Sub Brand'] == subbrand]['facings'].sum() > 0:
-                total_weight += row[Const.WEIGHT]
+        if 'sub_brand' in self.scif.columns:
+            for i, row in matching_rows_subbrand.iterrows():
+                subbrand = row[self.state_name_filter]
+                subbrand_facings = self.scif[self.scif['sub_brand'] == subbrand]['facings'].sum()
+                total_facings += subbrand_facings
+                if subbrand_facings > 0:
+                    total_weight += row[Const.WEIGHT]
 
         if limit < total_weight:
             total_weight = limit
@@ -690,9 +719,24 @@ class INBEVBRToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
+        self.parent_kpis[parent_kpi] += total_weight
+
+
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=total_weight,
+                                           numerator_result=total_facings, denominator_id=2,
                                            denominator_result=limit, result=total_weight)
+
+    def write_parent_kpis_results(self):
+        self.write_to_db_result_new_tables(fk=1, numerator_id=self.session_id,
+                                           numerator_result=0, denominator_id=1,
+                                           denominator_result=0, result=self.parent_kpis[Const.CERVEJA])
+        self.write_to_db_result_new_tables(fk=2, numerator_id=self.session_id,
+                                           numerator_result=0, denominator_id=1,
+                                           denominator_result=0, result=self.parent_kpis[Const.GAME_PLAN])
+        self.write_to_db_result_new_tables(fk=3, numerator_id=self.session_id,
+                                           numerator_result=0, denominator_id=1,
+                                           denominator_result=0, result=self.parent_kpis[Const.NAB])
+
 
     def get_new_kpi_static_data(self):
         """
