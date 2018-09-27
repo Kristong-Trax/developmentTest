@@ -279,7 +279,6 @@ class PEPSICORUToolBox:
                 #                                identifier_result=display_count_category_level_identifier,
                 #                                identifier_parent=identifier_parent_store_level,
                 #                                result=result_cat_level, should_enter=True)
-
                 scene_count_in_cate = 0
                 result_cat_level = 0
                 if not filtered_scif_by_cat.empty:
