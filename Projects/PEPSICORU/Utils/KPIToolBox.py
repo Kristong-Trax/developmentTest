@@ -584,7 +584,6 @@ class PEPSICORUToolBox:
                                                                result=num_linear / float(denom_linear), should_enter=True)
 
     # Utils functions with a slight change from the SDK factory:
-
     def calculate_sos(self, sos_filters, include_empty=Const.EXCLUDE_EMPTY, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
@@ -621,7 +620,6 @@ class PEPSICORUToolBox:
 
         if not lvl3_result.empty:
             cat_df = self.all_products[['product_fk', 'category_fk']]
-            # cat_df = self.all_products[['product_fk', 'category_fk', 'category']]
             lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
             lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
 
