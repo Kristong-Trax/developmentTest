@@ -5,7 +5,6 @@ from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.CCBOTTLERSUS.CMA.KPIToolBox import CCBOTTLERSUSCMAToolBox
-from Projects.CCBOTTLERSUS.CMA_SOUTHWEST.KPIToolBox import CCBOTTLERSUSCMASOUTHWESTToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import CCBOTTLERSUSREDToolBox
 from Projects.CCBOTTLERSUS.DISPLAYS.KPIToolBox import CCBOTTLERSUSDISPLAYSToolBox
 from Projects.CCBOTTLERSUS.Utils.KPIToolBox import CCBOTTLERSUSBCIKPIToolBox
@@ -31,7 +30,6 @@ class CCBOTTLERSUSGenerator:
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
-        self.calculate_cma_compliance_sw()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
@@ -76,16 +74,6 @@ class CCBOTTLERSUSGenerator:
         Log.info('starting calculate_cma_compliance')
         try:
             tool_box = CCBOTTLERSUSCMAToolBox(self.data_provider, self.output)
-            tool_box.main_calculation()
-            tool_box.commit_results()
-        except Exception as e:
-            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
-
-    @log_runtime('CMA Compliance SW CCBOTTLERSUSCalculations')
-    def calculate_cma_compliance_sw(self):
-        Log.info('starting calculate_cma_compliance')
-        try:
-            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output)
             tool_box.main_calculation()
             tool_box.commit_results()
         except Exception as e:
