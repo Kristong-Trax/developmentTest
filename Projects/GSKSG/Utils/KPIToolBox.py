@@ -115,10 +115,10 @@ class GSKSGToolBox:
         final_kpi_score = dict()
         for kpi in kpi_results.keys():
             #write result to db level 2
-            if kpi[self.KPI_NAME_INDEX] not in final_kpi_score:
-                final_kpi_score[kpi[self.KPI_NAME_INDEX]] = 0
-            if kpi_results[kpi] >= kpi[self.CONDITION_WEIGHT]:
-                final_kpi_score[kpi[self.KPI_NAME_INDEX]] = kpi[self.KPI_WEIGHT] * kpi_results[kpi]
+            if kpi[KPI_NAME_INDEX] not in final_kpi_score:
+                final_kpi_score[kpi[KPI_NAME_INDEX]] = 0
+            if kpi_results[kpi] >= kpi[CONDITION_WEIGHT]:
+                final_kpi_score[kpi[KPI_NAME_INDEX]] = kpi[KPI_WEIGHT] * kpi_results[kpi]
         print("ok")
     # #
     #     for score in kpi_3_results.keys():
