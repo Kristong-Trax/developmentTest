@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.5.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPITemplateV4.6.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -452,8 +452,13 @@ class CCBOTTLERSUSREDToolBox:
         :param relevant_scif: current filtered scif
         :return: new scif
         """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.PRODUCT_EAN] != "":
+            exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.BRAND] != "":
+            exclude_brands = exclude_line[Const.BRAND].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['brand_name'].isin(exclude_brands))]
+        return relevant_scif
 
     @staticmethod
     def does_exist(kpi_line, column_name):

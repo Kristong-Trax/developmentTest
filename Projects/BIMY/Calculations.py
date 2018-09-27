@@ -1,8 +1,10 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+
 import os
 import datetime as dt
 from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
@@ -15,10 +17,10 @@ class BIMYCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
 
-        if dt.datetime(2018, 7, 1) <= self.data_provider.visit_date <= dt.datetime(2018, 7, 31):
+        if dt.datetime(2018, 7, 1).date() <= self.data_provider.visit_date <= dt.datetime(2018, 7, 31).date():
             TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                          'BIMY', 'Data', 'Template_Jul_2018.xlsx')
-        elif dt.datetime(2018, 8, 1) <= self.data_provider.visit_date <= dt.datetime(2018, 8, 31):
+        elif dt.datetime(2018, 8, 1).date() <= self.data_provider.visit_date <= dt.datetime(2018, 8, 31).date():
             TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                          'BIMY', 'Data', 'Template_Aug_2018.xlsx')
         else:
