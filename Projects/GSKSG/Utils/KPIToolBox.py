@@ -5,6 +5,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
+import  numpy as np
 from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -93,33 +94,65 @@ class GSKSGToolBox:
         return score
 
     def handle_calculation(self, kpis):
-        kpi_results = dict()
+        # kpi_results = dict()
+
+        kpi_results = pd.DataFrame(columns=['1st level','2nd Level','3rd Level','KPI Weight','Weight','Score Method','Benchmark','Conditional Weight','result'])
+
+
         # for each level3:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
             result = self.calculate_atomic(current_kpi)
             if result is None:
                 continue
+
+            kpi_results = kpi_results.append(current_kpi['1st level'], current_kpi['2nd Level'],current_kpi['3rd Level'],current_kpi['KPI Weight'],current_kpi['Weight'],
+                          current_kpi['Score Method'], current_kpi['Benchmark'],
+                        current_kpi['Conditional Weight'], result)
+
+        aggs_res = kpi_results.groupby(['1st level','2nd Level','3rd Level','KPI Weight','Weight','Score Method','Benchmark','Conditional Weight'], as_index=False)['result'].sum()
+
+        ## write to db
+
+        ## if method binary change result to 100/0
+        aggs_res.loc[(aggs_res['Score Method'] =='Binary' )&(aggs_res['result'] >= aggs_res['Benchmark']) ,'result_bin'] = 100
+        aggs_res.loc[
+            (aggs_res['Score Method'] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
+        aggs_res['result_bin'] = np.where(aggs_res['Score Method'] == 'Proportional', aggs_res['result'],aggs_res['result_bin'])
+        aggs_res['result_bin'] = aggs_res['result_bin']*(aggs_res['Weight']/100)
+
+        aggs_res_level_2 = aggs_res.groupby(
+            ['1st level', '2nd Level' 'KPI Weight','Conditional Weight'], as_index=False)['result_level_2'].sum()
+
+        ## write to db level 2 kpis
+
+
+
+
+
+
+
+
+
+
         #all caculation below for main kpis
             # save result to db
-            kpi_key = (current_kpi['1st level'], current_kpi['2nd Level'], current_kpi['KPI Weight'],
-                       current_kpi['Conditional Weight'])
-            if kpi_key not in kpi_results:
-                kpi_results[kpi_key] = 0
-            if current_kpi['Score Method'] == 'Proportional':
-                kpi_results[kpi_key] = result * current_kpi['Weight']
-            else:
-                result = 100 if(result >= current_kpi['Benchmark']) else 0
-                kpi_results[kpi_key] = result * current_kpi['Weight']
 
-        final_kpi_score = dict()
-        for kpi in kpi_results.keys():
-            #write result to db level 2
-            if kpi[KPI_NAME_INDEX] not in final_kpi_score:
-                final_kpi_score[kpi[KPI_NAME_INDEX]] = 0
-            if kpi_results[kpi] >= kpi[CONDITION_WEIGHT]:
-                final_kpi_score[kpi[KPI_NAME_INDEX]] = kpi[KPI_WEIGHT] * kpi_results[kpi]
-        print("ok")
+        #
+        #     if current_kpi['Score Method'] == 'Proportional':
+        #         kpi_results[kpi_key] = result * current_kpi['Weight']
+        #     else:
+        #         result = 100 if(result >= current_kpi['Benchmark']) else 0
+        #         kpi_results[kpi_key] = result * current_kpi['Weight']
+        #
+        # final_kpi_score = dict()
+        # for kpi in kpi_results.keys():
+        #     #write result to db level 2
+        #     if kpi[KPI_NAME_INDEX] not in final_kpi_score:
+        #         final_kpi_score[kpi[KPI_NAME_INDEX]] = 0
+        #     if kpi_results[kpi] >= kpi[CONDITION_WEIGHT]:
+        #         final_kpi_score[kpi[KPI_NAME_INDEX]] = kpi[KPI_WEIGHT] * kpi_results[kpi]
+
     # #
     #     for score in kpi_3_results.keys():
     # #write ti db
