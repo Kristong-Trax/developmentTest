@@ -5,7 +5,6 @@ __author__ = 'Uri'
 class Const(object):
 
     SOVI = "SOVI"
-    REGIONS = ['UNITED']
 
     # sheets:
     KPIS = "KPIs"
