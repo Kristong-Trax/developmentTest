@@ -73,11 +73,9 @@ class KpiAtomicKpisCalculator(object):
             scif = self._data_provider.scene_item_facts
             return scif[self._tools.get_filter_condition(scif, **filters)].facings.sum()
 
-    def get_scif_facings_for_scene(self, scene, allowed_filter, **filters):
+    def get_scif_facings_for_scene(self, scene, **filters):
         scif = self._data_provider.scene_item_facts
         scif = scif[(scif['scene_fk'] == scene['scene_fk'])]
-        if allowed_filter:
-            scif = scif[scif['product_fk'].isin(allowed_filter['product_fk'])]
         if filters:
             scif = scif[self._tools.get_filter_condition(scif, **filters)]
         if not scif.empty:
@@ -231,7 +229,7 @@ class KpiAtomicKpisCalculator(object):
         iter_groups = []
         skipped_scenes = set()
         for index, scene in scene_avg_shelf.iterrows():
-            facings = self.get_scif_facings_for_scene(scene, allowed_filter, **filters)
+            facings = self.get_scif_facings_for_scene(scene, **filters)
             if facings >= threshold:
                 if use_probes:
                     matches = self._tools.match_product_in_scene.copy()
