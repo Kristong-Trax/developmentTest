@@ -70,7 +70,8 @@ class CCBOTTLERSUSCMAToolBox:
         main_template = self.templates[Const.KPIS]
         if self.region in Const.REGIONS:
             for i, main_line in main_template.iterrows():
-                if self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
+                store_type = self.does_exist(main_line, Const.STORE_TYPE)
+                if store_type is None or self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
                     self.calculate_main_kpi(main_line)
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
@@ -310,7 +311,7 @@ class CCBOTTLERSUSCMAToolBox:
     def get_sos_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-                                             (targets_template['sales center'] == self.sales_center) &
+                                             # (targets_template['sales center'] == self.sales_center) &
                                              (targets_template['channel'] == self.store_type)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
