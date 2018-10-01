@@ -23,7 +23,7 @@ class GOOGLEKR_SANDCalculations(BaseCalculationsScript):
         self.timer.start()
         common = CommonV2(self.data_provider)
         google = GOOGLEGenerator(self.data_provider, self.output, common)
-        google.google_global_SOS()
+
 
         # heinz.heinz_global_distribution_per_category()
         # heinz.heinz_global_share_of_shelf_function()
@@ -31,6 +31,14 @@ class GOOGLEKR_SANDCalculations(BaseCalculationsScript):
         # heinz.heinz_global_extra_spaces()
         # common.commit_results_data_to_new_tables()
         # common.commit_results_data()
+
+        for scene in google.tool_box.scene_info['scene_fk']:
+            common.scene_id = scene
+            google.tool_box.scif = google.tool_box.scif[google.tool_box.scif['scene_id'] == scene]
+
+            google.google_global_SOS()
+
+
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
