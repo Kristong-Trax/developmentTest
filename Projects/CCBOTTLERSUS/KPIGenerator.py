@@ -31,7 +31,7 @@ class CCBOTTLERSUSGenerator:
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
-        self.calculate_cma_compliance_sw()
+        # self.calculate_cma_compliance_sw()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
