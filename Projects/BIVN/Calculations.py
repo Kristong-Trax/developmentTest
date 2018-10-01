@@ -1,11 +1,12 @@
+import os
+import datetime as dt
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Utils.Conf.Configuration import Config
 
-
-import os
 from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
 
 
@@ -15,7 +16,14 @@ __author__ = 'Shani'
 class BIVNCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BIVN', 'Data', 'Template.xlsx')
+
+        if dt.datetime(2018, 7, 1).date() <= self.data_provider.visit_date <= dt.datetime(2018, 8, 31).date():
+            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                                         'BIVN', 'Data', 'Template_Jul_Aug_2018.xlsx')
+        else:
+            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                                         'BIVN', 'Data', 'Template.xlsx')
+
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
