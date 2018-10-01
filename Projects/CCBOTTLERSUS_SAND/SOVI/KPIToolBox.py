@@ -152,7 +152,8 @@ class SOVIToolBox:
                                       (self.scif['att4'] == att4) &
                                       (self.scif['category'] == category) &
                                       (self.scif['manufacturer_name'] == manufacturer_name) &
-                                      (self.scif['brand_name'] == brand_name)].product_name.unique()
+                                      (self.scif['brand_name'] == brand_name) &
+                                      (self.scif['product_type'] != 'Empty')].product_name.unique()
 
         for product_name in product_name_list:
             self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name, product_name)
@@ -171,4 +172,4 @@ class SOVIToolBox:
         sos_value *= 100
         sos_value = round(sos_value, 2)
         print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
-                                                        brand_name, product_name, sos_value))
+                                                        brand_name, product_name.encode('utf-8'), sos_value))
