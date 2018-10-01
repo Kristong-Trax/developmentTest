@@ -955,17 +955,17 @@ class CCRUKPIToolBox:
     #     return set_total_res
 
     @kpi_runtime()
-    def check_number_of_scenes_with_target(self, params):
-        scenes = None
-        if 'depends on' in params.keys():
-            depends_on_kpi_name = params.get('depends on')
-            for c in params.values()[0]:
-                if c.get('KPI name Eng') == depends_on_kpi_name:
-                    scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
-            if not scenes:
-                return 0
-        else:
-            scenes = self.get_relevant_scenes(params)
+    def check_number_of_scenes_with_target(self, params, scenes=[]):
+        if not scenes:
+            if 'depends on' in params.keys():
+                depends_on_kpi_name = params.get('depends on')
+                for c in params.values()[0]:
+                    if c.get('KPI name Eng') == depends_on_kpi_name:
+                        scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                if not scenes:
+                    return 0
+            else:
+                scenes = self.get_relevant_scenes(params)
         kpi_total_res = 0
         for scene in scenes:
             res = self.calculate_availability(params, scenes=[scene])
@@ -2125,13 +2125,7 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_sub_atomic_passed(self, params, all_params, scenes=[], parent = None, same_scene = None):
-        """
-
-        :param all_params:
-        :param params:
-        :return:
-        """
+    def calculate_sub_atomic_passed(self, params, all_params, scenes=[], parent=None, same_scene=None):
         if not scenes:
             if 'depends on' in params.keys():
                 if params['depends on'] == 'scene type':
@@ -2187,6 +2181,13 @@ class CCRUKPIToolBox:
         for p in params.values()[0]:
             if p.get('Formula').strip() not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
                 continue
+            scenes = []
+            if 'depends on' in params.keys():
+                depends_on_kpi_name = params.get('depends on')
+                for c in params.values()[0]:
+                    if c.get('KPI name Eng') == depends_on_kpi_name:
+                        if c.get('Formula') == 'number of doors with more than Target facings':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, p.get("Children").split("\n"))
             kpi_total = 0
@@ -2194,11 +2195,11 @@ class CCRUKPIToolBox:
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
                     if c.get("Formula") == "number of facings":
-                        atomic_res = self.calculate_availability(c)
+                        atomic_res = self.calculate_availability(c, scenes=scenes)
                     elif c.get("Formula") == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula") == "check_number_of_scenes_with_facings_target":
-                        atomic_res = self.check_number_of_scenes_with_target(c)
+                        atomic_res = self.check_number_of_scenes_with_target(c, scenes=scenes)
                     else:
                         atomic_res = -1
                         # print "Weighted Average", c.get("Formula")
@@ -2240,14 +2241,13 @@ class CCRUKPIToolBox:
                 return number_relevant_scenes
             else:
                 return 0
-        else: # level 2
+        else:  # level 2
             set_total_res = 0
             number_relevant_scenes = 0
             scenes = []
             for p in params.values()[0]:
                 if p.get('Formula') != "Scenes with no tagging":
                     continue
-                kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 if 'depends on' in p.keys():
                     depends_on_kpi_name = p.get('depends on')
                     for c in params.values()[0]:
