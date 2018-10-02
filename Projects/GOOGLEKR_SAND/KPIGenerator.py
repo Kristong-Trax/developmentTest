@@ -8,13 +8,13 @@ __author__ = 'Eli'
 
 class GOOGLEGenerator:
 
-    def __init__(self, data_provider, output, common):
+    def __init__(self, data_provider, output, common_v2):
         self.data_provider = data_provider
         self.output = output
-        self.common = common
+        self.common_v2 = common_v2
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = GOOGLEToolBox(self.data_provider, self.output, self.common)
+        self.tool_box = GOOGLEToolBox(self.data_provider, self.output, self.common_v2)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -39,55 +39,21 @@ class GOOGLEGenerator:
         except Exception as e:
             Log.error('{}'.format(e))
 
-    @log_runtime('Total Calculations', log_start=True)
-    def heinz_global_distribution_per_category(self):
+    def google_global_fixture_compliance(self):
         try:
-            # Log.info('In KPI generator DIAGEOTW-SAND')
+            # Log.info('In KPI generator GOOGLE-SAND')
             if self.tool_box.scif.empty:
                 Log.warning('Distribution is empty for this session')
-            self.tool_box.heinz_global_distribution_per_category()
+            self.tool_box.google_global_fixture_compliance()
         except Exception as e:
             Log.error('{}'.format(e))
 
-    @log_runtime('Total Calculations', log_start=True)
-    def heinz_global_share_of_shelf_function(self):
-        """
-        This is the main KPI calculation function.
-        It calculates the score for every KPI set and saves it to the DB.
-        """
+    def google_global_survey(self):
         try:
-            # Log.info('In KPI generator DIAGEOTW-SAND')
+            # Log.info('In KPI generator GOOGLE-SAND')
             if self.tool_box.scif.empty:
-                Log.warning('Scene item facts is empty for this session')
-            self.tool_box.main_sos_calculation()
+                Log.warning('Distribution is empty for this session')
+            self.tool_box.google_global_survey()
         except Exception as e:
             Log.error('{}'.format(e))
 
-    @log_runtime('Total Calculations', log_start=True)
-    def heinz_global_price_adherence(self, config_df):
-        """
-
-        :return:
-        """
-        try:
-            # Log.info('In KPI generator DIAGEOTW-SAND')
-            if self.tool_box.scif.empty:
-                Log.warning('Scene item facts is empty for this session')
-            self.tool_box.heinz_global_price_adherence(config_df)
-        except Exception as e:
-            Log.error('{}'.format(e))
-
-
-    @log_runtime('Total Calculations', log_start=True)
-    def heinz_global_extra_spaces(self):
-        """
-
-        :return:
-        """
-        try:
-            # Log.info('In KPI generator DIAGEOTW-SAND')
-            if self.tool_box.scif.empty:
-                Log.warning('Scene item facts is empty for this session')
-            self.tool_box.heinz_global_extra_spaces()
-        except Exception as e:
-            Log.error('{}'.format(e))
