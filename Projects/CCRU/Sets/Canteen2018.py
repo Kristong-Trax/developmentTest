@@ -74,9 +74,9 @@ class CCRUCanteen2018Calculations:
                                                                                                   'score_1',
                                                                                                   'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
-# Sergey
-#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
-# Sergey
+
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=CANTEEN_2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -107,8 +107,13 @@ class CCRUCanteen2018Calculations:
                                                                                             'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 
-        self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
+
+        jg.create_equipment_json('Contract Execution 2018.xlsx', CANTEEN_2018)
+        if jg.project_kpi_dict.get('equipment'):
+            self.tool_box.calculate_equipment_execution(jg.project_kpi_dict.get('equipment'))
+            self.tool_box.calculate_contract_execution(jg.project_kpi_dict.get('equipment'))
+
         self.tool_box.commit_results_data()
         # calc_finish_time = datetime.datetime.utcnow()
         # Log.info('Calculation time took {}'.format(calc_finish_time-calc_start_time))

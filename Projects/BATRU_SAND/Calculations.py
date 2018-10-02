@@ -24,18 +24,9 @@ class BATRU_SANDCalculations(BaseCalculationsScript):
 #     LoggerInitializer.init('batru calculations')
 #     Config.init()
 #     project_name = 'batru_sand'
-#     # data_provider = KEngineDataProvider(project_name)
-#     # session = '78a6aaba-c5d6-4dd7-9fbb-8423792af0d1'
-#     # data_provider.load_session_data(session)
-#     # output = Output()
-#     # BATRU_SANDCalculations(data_provider, output).run_project_calculations()
 #     sessions = [
-#                 # 'fa5d21e8-457f-40ae-8d6e-1dbf66febcb7',
-#                 # 'ffa70f4e-d934-412f-855f-0c2b6465c07b',
-#                 # 'FF96883A-43C8-4BD8-A307-5F8DE5C2DD86',
-#                 'ffed8c38-8182-4e89-bbdc-0ea88e3b3eaf',
-#                 'FF27F8F5-A994-4E65-82C2-26ACED5CCB3A',
-#                 ]
+#          'efe1c553-79a8-4be9-a753-1981bc91fdc9',
+#         'B342DF96-9852-4CDE-A86B-523795FD3294']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

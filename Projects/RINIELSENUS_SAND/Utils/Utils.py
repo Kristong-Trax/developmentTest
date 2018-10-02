@@ -2,7 +2,7 @@ from datetime import datetime
 
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
+from Projects.RINIELSENUS_SAND.Utils.Fetcher import MarsUsQueries
 
 
 def log_runtime(description, log_start=False):

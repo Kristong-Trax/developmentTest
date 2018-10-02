@@ -15,10 +15,10 @@ this module creates dump file and sanity test classes for a specific project.
 all you have to do is to insert the project name and run it 
 """
 
-TOP_SESSIONS = []
-
 
 class SeedCreator:
+    TOP_SESSIONS = []
+
     """
     this class creates seed file
     """
@@ -36,44 +36,47 @@ class SeedCreator:
         self.seed_name = '{}_seed.sql.gz'.format(project.replace('-', '_'))
         self.export_dir = os.path.join('/home', self.user, 'dev', 'traxdatabase', 'traxExport')
 
-    def get_top_sessions(self):
+    def _set_top_sessions_from_db(self, number_of_sessions):
         """
         this method gets top sessions from the project db to test
         :return: list of sessions
         """
-        Log.info('Fetching 3 sessions')
+        Log.info('Fetching {} sessions'.format(number_of_sessions))
         query = """
-        SELECT s.session_uid, s.pk FROM probedata.session s
-        join reporting.scene_item_facts r on r.session_id = s.pk
-        WHERE
-            status = 'Completed' 
-            and r.session_id is not null  
-            ORDER BY s.visit_date , s.number_of_scenes DESC
-            LIMIT 1;
-        """
+     "'6A8F68EB-9092-4F13-8230-F77CB3452A43','80519624-CE27-44CE-9343-264F27ECDBD6'"
+            LIMIT {0};
+        """.format(number_of_sessions)
         sessions_df = pd.read_sql(query, self.rds_conn.db)
-        Log.info(str(sessions_df.values))
         for session in sessions_df.session_uid.values:
-            TOP_SESSIONS.append(session)
-        return sessions_df.session_uid.values
+            self.TOP_SESSIONS.append(session)
 
-    def get_specific_session(self, session_uid):
-        TOP_SESSIONS.append(session_uid)
-        return [session_uid]
+    def _set_top_sessions_from_specific_sessions(self, specific_sessions):
+        for session_uid in specific_sessions:
+            self.TOP_SESSIONS.append(session_uid)
 
-    def activate_exporter(self, specific_session=None):
+    def build_export_command(self):
+        export_command = """./traxExportIntuition.sh {0} {1} session_uid """.format(self.rds_name, self.output_dir)
+        for session_uid in self.TOP_SESSIONS:
+            export_command = export_command.__add__(session_uid)
+            if session_uid != self.TOP_SESSIONS[len(self.TOP_SESSIONS) - 1]:
+                export_command += ','
+        return export_command
+
+    def activate_exporter(self, number_of_sessions=1, specific_sessions=None):
         """
         this method build a dump file with traxExporter from the given sessions
+        :param number_of_sessions: number of sessions in cae we want to fetch them from db
+        :param specific_sessions: list of sessions if we already know the sessions to test
         :return: None
         """
         os.chdir(self.export_dir)
-        if specific_session is not None:
-            sessions = self.get_specific_session(specific_session)
+        if specific_sessions is not None:
+            self._set_top_sessions_from_specific_sessions(specific_sessions)
         else:
-            sessions = self.get_top_sessions()
+            self._set_top_sessions_from_db(number_of_sessions)
         Log.info('Activating exporter')
-        export_command = """./traxExportIntuition.sh {0} {1} session_uid {2}""". \
-            format(self.rds_name, self.output_dir, sessions[0])
+        export_command = self.build_export_command()
+        Log.info(export_command)
         os.system(export_command)
         os.chdir(self.output_dir)
         os.rename('dump.sql.gz', self.seed_name)
@@ -99,12 +102,13 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_%(project)s_sanity import ProjectsSanityData
 from Projects.%(project_capital)s.Calculations import %(main_class_name)s
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = '%(author)s'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):
@@ -130,7 +134,7 @@ class TestKEngineOutOfTheBox(MockingTestCase):
     def test_%(project)s_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['%(session_0)s']
+        sessions = [%(sessions)s]
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
@@ -154,16 +158,22 @@ class TestKEngineOutOfTheBox(MockingTestCase):
         formatting_dict = {'author': self.user,
                            'main_class_name': self.main_class_name,
                            'project_capital': self.project_capital,
-                           'seed': '{}_seed'.format(self.project.replace('-','_')),
+                           'seed': '{}_seed'.format(self.project.replace('-', '_')),
                            'project': self.project,
-                           'session_0': self.session_list[0],
-                           # 'session_1': self.session_list[1],
-                           # 'session_2': self.session_list[2]
+                           'sessions': self._get_session_list_as_str(),
                            }
 
         test_path = ('/home/{0}/dev/kpi_factory/Tests/test_functional_{1}_sanity'.format(self.user, self.project))
         with open(test_path + '.py', 'wb') as f:
             f.write(SanityTestsCreator.TEST_CLASS % formatting_dict)
+
+    def _get_session_list_as_str(self):
+        sessions_str = ""
+        for session_uid in self.session_list:
+            sessions_str = sessions_str.__add__("'{}'".format(session_uid))
+            if session_uid != self.session_list[len(self.session_list) - 1]:
+                sessions_str += ', '
+        return sessions_str
 
 
 class CreateTestDataProjectSanity:
@@ -202,7 +212,8 @@ class ProjectsSanityData(BaseSeedData):
 
         data_class_path = \
             ('/home/{0}/dev/kpi_factory/Tests/Data/TestData/test_data_{1}_sanity'.format(self.user,
-                                                                                self.project.replace('-', '_')))
+                                                                                         self.project.
+                                                                                         replace('-', '_')))
 
         with open(data_class_path + '.py', 'wb') as f:
             f.write(data_class_content)
@@ -211,11 +222,12 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'ccbza'
+    project_to_test = 'ccru'
     creator = SeedCreator(project_to_test)
-    creator.activate_exporter()
+    creator.activate_exporter(specific_sessions=
+                              ['6A8F68EB-9092-4F13-8230-F77CB3452A43', '80519624-CE27-44CE-9343-264F27ECDBD6'])
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()
-    sanity = SanityTestsCreator(project_to_test, TOP_SESSIONS)
+    sanity = SanityTestsCreator(project_to_test, creator.TOP_SESSIONS)
     sanity.create_test_class()

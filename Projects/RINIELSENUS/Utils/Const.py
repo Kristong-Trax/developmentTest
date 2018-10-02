@@ -77,6 +77,8 @@ BREED_SIZE = 'Breed Size'
 MM_TO_FT_RATIO = 304.8
 SECTION = 'Section'
 SEGMENT_SPT = 'Segment_SPT'
+FACINGS = 'facings_ign_stack'
+USE_PROBES = 'Separate Stitching Group'
 
 TEMPLATE_NAME = 'template_name'
 
@@ -95,7 +97,8 @@ FILTER_NAMING_DICT = {
     'Sub Brand': SUB_BRAND_NAME,
     'PACK TYPE': PACK_TYPE,
     'SINGLE/MULTI COUNT': SINGLE_MULTIPLE,
-    'Breed size': BREED_SIZE
+    'Breed size': BREED_SIZE,
+    'Facings Minimum': FACINGS,
 }
 
 BLOCK_THRESHOLD = 0.5

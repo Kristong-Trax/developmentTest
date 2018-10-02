@@ -7,12 +7,17 @@ class Const(object):
     SNACKS = 'SNACK'
     BEVERAGES = 'BEVERAGE'
     JUICES = 'JUICE'
+    LRB = 'LRB'
 
     # Filters
+    ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
+    TEMPLATE_GROUP = 'template_group'
     TEMPLATE_NAME = 'template_name'
+    TEMPLATE_FK = 'template_fk'
     SCENE_FK = 'scene_fk'
     MANUFACTURER_NAME = 'manufacturer_name'
     MANUFACTURER = 'manufacturer'
+    MANUFACTURER_FK = 'manufacturer_fk'
     CATEGORY = 'category'
     CATEGORY_FK = 'category_fk'
     SUB_CATEGORY = 'sub_category'
@@ -20,13 +25,18 @@ class Const(object):
     BRAND = 'brand'
     TEMPLATE = 'template'
     BRAND_NAME = 'brand_name'
-    MAIN_SHELF = 'Main Shelf'
+    MAIN_SHELF = 'MAIN SHELF'
     MAIN_SHELF_SNACKS = 'Main Shelf Snacks'
     MAIN_SHELF_BEVERAGES = 'Main Shelf Beverages'
     MAIN_SHELF_JUICES = 'Main Shelf Juices'
     PEPSICO = 'PepsiCo'
     FK = '_fk'
     NAME = '_name'
+    PRODUCT_TYPE = 'product_type'
+    IRRELEVANT = 'Irrelevant'
+    STORE_NUMBER_1 = 'Store Number 1'
+    STORE_NAME = 'Store Name'
+
 
     # SOS plaster
     EXCLUDE_FILTER = 0
@@ -48,7 +58,16 @@ class Const(object):
     DISPLAY_COUNT_STORE_LEVEL = 'PEPSICO_COUNT_OF_DISPLAYS_STORE_LEVEL'
     DISPLAY_COUNT_CATEGORY_LEVEL = 'PEPSICO_COUNT_OF_DISPLAYS_CATEGORY_LEVEL'
     DISPLAY_COUNT_SCENE_LEVEL = 'PEPSICO_COUNT_OF_DISPLAYS_SCENE_TYPE_LEVEL'
+    OSA_STORE_LEVEL = 'OSA_Store_level'
+    OSA_CATEGORY_LEVEL = 'OSA_Category_level'
+    OSA_SKU_LEVEL = 'OSA_Store_level - SKU'
+    OOS_STORE_LEVEL = 'OOS_Store_level'
+    OOS_CATEGORY_LEVEL = 'OOS_Category_level'
+    OOS_SKU_LEVEL = 'OOS_Store_level - SKU'
 
     # Saving to DB
     RESULT = 'result'
     SCORE = 'score'
+    DISTRIBUTION = 4
+    OOS = 5
+

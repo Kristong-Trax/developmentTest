@@ -17,12 +17,13 @@ from Tests.Data.Templates.diageouk.POSM import POSM
 from Tests.Data.Templates.diageouk.RelativePosition import Position
 from Tests.Data.TestData.test_data_diageouk_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOUK_SAND.Calculations import DIAGEOUK_SANDCalculations
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

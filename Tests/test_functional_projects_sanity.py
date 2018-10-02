@@ -8,6 +8,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 # from Projects.RIPETCAREUK_PROD.Calculation import MarsUkCalculations
 # from Projects.DIAGEOZA.Calculations import DIAGEOZACalculations as diageoza_calc
@@ -30,7 +31,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 __author__ = 'idanr'
 
 
-class TestKEngineOutOfTheBox(MockingTestCase):
+class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
     @property
     def import_path(self):

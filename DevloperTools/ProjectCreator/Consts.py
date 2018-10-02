@@ -11,6 +11,8 @@ TESTS_SCRIPT_NAME = 'test_unit'
 SCENE_TOOLBOX_FILE_NAME = 'KPISceneToolBox'
 SCENE_GENERATOR_FILE_NAME = 'KPISceneGenerator'
 SCENE_CALCULATIONS_FILE_NAME = 'SceneCalculations'
+PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME = 'PlanogramComplianceCalculation'
+PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME = 'PlanogramFinderCalculation'
 
 
 LOCAL_FILE = """
@@ -323,6 +325,7 @@ SCENE_CALCULATIONS_SCRIPT = """
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
 
+__author__ = '%(author)s'
 
 class SceneCalculations(SceneBaseClass):
     def __init__(self, data_provider):
@@ -332,4 +335,34 @@ class SceneCalculations(SceneBaseClass):
     def calculate_kpis(self):
         self.scene_generator.scene_score()
 
+"""
+
+
+PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramComplianceBaseClass
+
+__author__ = '%(author)s'
+
+
+class PlanogramComplianceCalculation(PlanogramComplianceBaseClass):
+    def __init__(self, data_provider):
+        super(PlanogramComplianceCalculation, self).__init__(data_provider)
+
+    def get_compliance(self):
+        pass
+
+"""
+
+PLANOGRAM_FINDER_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramFinderBaseClass
+
+__author__ = '%(author)s'
+
+
+class PlanogramFinderCalculation(PlanogramFinderBaseClass):
+    def __init__(self, data_provider):
+        super(PlanogramFinderCalculation, self).__init__(data_provider)
+
+    def get_planogram_id(self):
+        pass
 """
