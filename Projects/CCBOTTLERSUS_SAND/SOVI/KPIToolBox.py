@@ -299,28 +299,6 @@ class SOVIToolBox:
         print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
                                                         brand_name, product_name.encode('utf-8'), sos_value))
 
-    # def calculate_share_of_shelf(self, sos_filters=None, include_empty=EXCLUDE_EMPTY, **general_filters):
-    #     """
-    #     :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
-    #     :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
-    #     :param general_filters: These are the parameters which the general data frame is filtered by.
-    #     :return: The ratio of the Facings SOS.
-    #     """
-    #     if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
-    #         general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
-    #     pop_filter = self.toolbox.get_filter_condition(self.scif, **general_filters)
-    #     subset_filter = self.toolbox.get_filter_condition(self.scif, **sos_filters)
-    #
-    #     try:
-    #         ratio = self.k_engine.calculate_sos_by_facings(pop_filter=pop_filter, subset_filter=subset_filter)
-    #     except Exception as e:
-    #         Log.error(e.message)
-    #         ratio = 0
-    #
-    #     if not isinstance(ratio, (float, int)):
-    #         ratio = 0
-    #     return ratio
-
     def get_last_pk(self):
         query = SQLQueries.get_kpi_level_2_results_max_pk()
         df = pd.read_sql_query(query, self.rds_conn.db)
