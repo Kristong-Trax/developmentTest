@@ -1,11 +1,11 @@
-# import pandas as pd
+import pandas as pd
 # import numpy as np
 import networkx as nx
 import pydot
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityFacingCalculation, \
-    AvailabilityHangingStripCalculation, CountCalculation, DistributionCalculation, LinearSOSCalculation
+from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityHangingStripCalculation, CountCalculation, \
+                                                       DistributionCalculation, LinearSOSCalculation
 
 
 class Results(object):
@@ -13,7 +13,7 @@ class Results(object):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
         self.common = CommonV2(self._data_provider)
-        self.kpi_results = {}
+        self.kpi_results = pd.DataFrame(columns=['kpi_name', 'fk', 'score'])
 
     def calculate_old_tables(self, hierarchy):
         atomic_results = self._get_atomic_result(hierarchy)
@@ -51,9 +51,15 @@ class Results(object):
         kpi_list.reverse()
         for kpi in kpi_list:
             kpi_neighbors = nx.neighbors(self.dependencies_graph, kpi[0])
-            result = self._get_atomic_result(kpi, kpi_neighbors)
+            if kpi_neighbors:
+                relevant_kpis = self.kpi_results[self.kpi_results['kpi_name'] in kpi_neighbors]
+                result = sum(relevant_kpis['score'])
+            else:
+                result = self._get_atomic_result(kpi, kpi_neighbors)
             self._data_provider.common.write_to_db_result(result)
-            self.kpi_results.update({result['fk'], result['score']})
+            self.kpi_results.append({'kpi_name': result['kpi_name'],
+                                     'fk': result['fk'],
+                                     'score': result['score']})
 
     def _create_atomic_result(self, atomic_kpi_name, kpi_name, kpi_set_name, result, score=None, threshold=None,
                               weight=None):
@@ -66,7 +72,8 @@ class Results(object):
 
     def _get_atomic_result(self, atomic, kpi_neighbors):
         kpi_params = self.get_kpi_params(atomic)
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic)
+        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic)
+        kpi_fk = 0
         calculation = self._kpi_type_calculator_mapping[kpi_params['KPI Type'].iloc[0]](self._data_provider, kpi_fk)
         return calculation.calculate(kpi_params)
         # concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
@@ -88,7 +95,6 @@ class Results(object):
             DistributionCalculation.kpi_type: DistributionCalculation,
             CountCalculation.kpi_type: CountCalculation,
             AvailabilityHangingStripCalculation.kpi_type: AvailabilityHangingStripCalculation,
-            AvailabilityFacingCalculation.kpi_type: AvailabilityFacingCalculation,
             LinearSOSCalculation.kpi_type: LinearSOSCalculation
         }
 

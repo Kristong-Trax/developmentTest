@@ -77,7 +77,7 @@ class AvailabilityBaseCalculation(KpiBaseCalculation):
     def calculate_availability(self, params):
         result = 0
         target = params['minimum products']
-        filters = {params['Filter Type']: params['Filter Value'], 'template_name': params['scene type'].split(',')}
+        filters = {'template_name': params.iloc[0]['scene type'].split(',')}
         matches = self._data_provider.matches()
         matches = matches[self._toolbox.get_filter_condition(matches, filters)]
         if matches >= target:
