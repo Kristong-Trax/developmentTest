@@ -1,6 +1,8 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 #from Trax.Cloud.Services.Connector.Keys import DbUsers
 #from Trax.Data.Projects.Connector import ProjectConnector
+from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
@@ -13,8 +15,11 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from Projects.CCBOTTLERSUS_SAND.SOVI.Fetcher import SQLQueries
+import pandas as pd
 
-__author__ = 'hunter'
+
+__author__ = 'huntery'
 
 
 class SOVIToolBox:
@@ -23,7 +28,7 @@ class SOVIToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
-        self.common_db2 = common_db2
+        self.common_v2 = common_db2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -36,6 +41,8 @@ class SOVIToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.sos = SOS(self.data_provider, self.output)
+        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.max_pk = self.get_max_pk()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -43,7 +50,6 @@ class SOVIToolBox:
         This function calculates the KPI results.
         """
         self.calculate_entire_store_sos()
-
 
     def calculate_entire_store_sos(self):
         general_filters = {}  # entire session/store visit
@@ -55,6 +61,13 @@ class SOVIToolBox:
 
         # this assumes that template groups where United does NOT have products should NOT be shown
         template_group_list = self.scif[self.scif['United Deliver'] == 'Y'].template_group.unique()
+
+        self.common_v2.write_to_db_result(fk, numerator_id=0, numerator_result=0, result=0,
+                           denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None, target=None,
+                           identifier_parent=None, identifier_result=None, should_enter=False, by_scene=False,
+                           scene_result_fk=None)
 
         for template_group in template_group_list:
             self.calculate_template_group_sos(template_group)
@@ -173,3 +186,11 @@ class SOVIToolBox:
         sos_value = round(sos_value, 2)
         print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
                                                         brand_name, product_name.encode('utf-8'), sos_value))
+
+    def get_max_pk(self):
+        query = SQLQueries.get_kpi_level_2_results_max_pk()
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df['MAX(pk)'][0]
+
+    def commit_results(self):
+        self.common_v2.commit_results_data()

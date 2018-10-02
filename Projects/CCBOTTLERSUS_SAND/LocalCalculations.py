@@ -22,7 +22,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus calculations')
     Config.init()
-    project_name = 'ccbottlersus'
+    project_name = 'ccbottlersus-sand'
     sessions = [
         # "bc8a1244-a53d-4b2f-9591-fcf57f9d3054"
         'F5333A3F-4AEF-4FC0-8647-053FCC58EC56'
