@@ -90,6 +90,6 @@ class CCBOTTLERSUS_SANDGenerator:
         try:
             tool_box = SOVIToolBox(self.data_provider, self.output, self.common_db)
             tool_box.main_calculation()
-            #tool_box.commit_results()
+            tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate SOVI due to: {}'.format(e.message))

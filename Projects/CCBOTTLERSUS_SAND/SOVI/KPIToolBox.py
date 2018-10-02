@@ -5,6 +5,8 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Utils.Logging.Logger import Log
 
+from Trax.Algo.Calculations.Core.Utils import Validation
+
 from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -42,7 +44,7 @@ class SOVIToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.sos = SOS(self.data_provider, self.output)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.max_pk = self.get_max_pk()
+        self.last_pk = self.get_last_pk()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -62,18 +64,18 @@ class SOVIToolBox:
         # this assumes that template groups where United does NOT have products should NOT be shown
         template_group_list = self.scif[self.scif['United Deliver'] == 'Y'].template_group.unique()
 
-        self.common_v2.write_to_db_result(fk, numerator_id=0, numerator_result=0, result=0,
-                           denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
+        self.common_v2.write_to_db_result(3000, numerator_id=self.store_id, numerator_result=0, result=sos_value,
+                           denominator_id=999, denominator_result=0, score=sos_value, score_after_actions=sos_value,
                            denominator_result_after_actions=None, numerator_result_after_actions=0,
-                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None, target=None,
-                           identifier_parent=None, identifier_result=None, should_enter=False, by_scene=False,
-                           scene_result_fk=None)
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for template_group in template_group_list:
-            self.calculate_template_group_sos(template_group)
+            self.calculate_template_group_sos(template_group, own_pk)
 
-
-    def calculate_template_group_sos(self, template_group):
+    def calculate_template_group_sos(self, template_group, parent_pk):
         general_filters = {}  # entire session/store visit
         sos_filters = {'United Deliver': 'Y',
                        'template_group': template_group}
@@ -82,13 +84,23 @@ class SOVIToolBox:
         sos_value = round(sos_value, 2)
         print('{}: {}%'.format(template_group, sos_value))
 
-        att4_list = self.scif[(self.scif['United Deliver'] == 'Y') &
-                              (self.scif['template_group'] == template_group)].att4.unique()
+        template_group_df = self.scif[(self.scif['United Deliver'] == 'Y') &
+                                      (self.scif['template_group'] == template_group)]
+        att4_list = template_group_df.att4.unique()
+        template_group_id = template_group_df.template_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3001, numerator_id=template_group_id, numerator_result=0, result=sos_value,
+                           denominator_id=self.store_id, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for att4 in att4_list:
-            self.calculate_att4_sos(template_group, att4)
+            self.calculate_att4_sos(template_group, att4, own_pk)
 
-    def calculate_att4_sos(self, template_group, att4):
+    def calculate_att4_sos(self, template_group, att4, parent_pk):
         general_filters = {}  # entire session/store visit
         sos_filters = {'United Deliver': 'Y',
                        'template_group': template_group,
@@ -99,14 +111,24 @@ class SOVIToolBox:
         sos_value = round(sos_value, 2)
         print('{} - {}: {}%'.format(template_group, att4, sos_value))
 
-        category_list = self.scif[(self.scif['United Deliver'] == 'Y') &
-                                  (self.scif['template_group'] == template_group) &
-                                  (self.scif['att4'] == att4)].category.unique()
+        att4_df = self.scif[(self.scif['United Deliver'] == 'Y') &
+                            (self.scif['template_group'] == template_group) &
+                            (self.scif['att4'] == att4)]
+        category_list = att4_df.category.unique()
+        template_group_id = att4_df.template_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3002, numerator_id=999, numerator_result=0, result=sos_value,
+                           denominator_id=template_group_id, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for category in category_list:
-            self.calculate_category_sos(template_group, att4, category)
+            self.calculate_category_sos(template_group, att4, category, own_pk)
 
-    def calculate_category_sos(self, template_group, att4, category):
+    def calculate_category_sos(self, template_group, att4, category, parent_pk):
         general_filters = {}
         sos_filters = {'United Deliver': 'Y',
                        'template_group': template_group,
@@ -118,15 +140,27 @@ class SOVIToolBox:
         sos_value = round(sos_value, 2)
         print('{} - {} - {}: {}%'.format(template_group, att4, category, sos_value))
 
-        manufacturer_list = self.scif[(self.scif['United Deliver'] == 'Y') &
-                                  (self.scif['template_group'] == template_group) &
-                                  (self.scif['att4'] == att4) &
-                                  (self.scif['category'] == category)].manufacturer_name.unique()
+        category_df = self.scif[(self.scif['United Deliver'] == 'Y') &
+                                (self.scif['template_group'] == template_group) &
+                                (self.scif['att4'] == att4) &
+                                (self.scif['category'] == category)]
+
+        manufacturer_list = category_df.manufacturer_name.unique()
+
+        category_id = category_df.category_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3003, numerator_id=category_id, numerator_result=0, result=sos_value,
+                           denominator_id=999, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for manufacturer_name in manufacturer_list:
-            self.calculate_manufacturer_sos(template_group, att4, category, manufacturer_name)
+            self.calculate_manufacturer_sos(template_group, att4, category, manufacturer_name, own_pk)
 
-    def calculate_manufacturer_sos(self, template_group, att4, category, manufacturer_name):
+    def calculate_manufacturer_sos(self, template_group, att4, category, manufacturer_name, parent_pk):
         general_filters = {
                        'template_group': template_group,
                        'att4': att4,
@@ -138,15 +172,27 @@ class SOVIToolBox:
         sos_value = round(sos_value, 2)
         print('{} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name, sos_value))
 
-        brand_name_list = self.scif[(self.scif['template_group'] == template_group) &
+        manufacturer_df = self.scif[(self.scif['template_group'] == template_group) &
                                     (self.scif['att4'] == att4) &
                                     (self.scif['category'] == category) &
-                                    (self.scif['manufacturer_name'] == manufacturer_name)].brand_name.unique()
+                                    (self.scif['manufacturer_name'] == manufacturer_name)]
+
+        brand_name_list = manufacturer_df.brand_name.unique()
+        category_id = manufacturer_df.category_fk.unique()[0]
+        manufacturer_id = manufacturer_df.manufacturer_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3004, numerator_id=manufacturer_id, numerator_result=0, result=sos_value,
+                           denominator_id=category_id, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for brand_name in brand_name_list:
-            self.calculate_brand_sos(template_group, att4, category, manufacturer_name, brand_name)
+            self.calculate_brand_sos(template_group, att4, category, manufacturer_name, brand_name, own_pk)
 
-    def calculate_brand_sos(self, template_group, att4, category, manufacturer_name, brand_name):
+    def calculate_brand_sos(self, template_group, att4, category, manufacturer_name, brand_name, parent_pk):
         general_filters = {
             'template_group': template_group,
             'att4': att4,
@@ -161,17 +207,29 @@ class SOVIToolBox:
         print('{} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
                                                    brand_name, sos_value))
 
-        product_name_list = self.scif[(self.scif['template_group'] == template_group) &
+        brand_df = self.scif[(self.scif['template_group'] == template_group) &
                                       (self.scif['att4'] == att4) &
                                       (self.scif['category'] == category) &
                                       (self.scif['manufacturer_name'] == manufacturer_name) &
                                       (self.scif['brand_name'] == brand_name) &
-                                      (self.scif['product_type'] != 'Empty')].product_name.unique()
+                                      (self.scif['product_type'] != 'Empty')]
+
+        product_name_list = brand_df.product_name.unique()
+        brand_id = brand_df.brand_fk.unique()[0]
+        manufacturer_id = brand_df.manufacturer_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3005, numerator_id=brand_id, numerator_result=0, result=sos_value,
+                           denominator_id=manufacturer_id, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        own_pk = self.last_pk
 
         for product_name in product_name_list:
-            self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name, product_name)
+            self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name, product_name, own_pk)
 
-    def calculate_product_name_sos(self, template_group, att4, category, manufacturer_name, brand_name, product_name):
+    def calculate_product_name_sos(self, template_group, att4, category, manufacturer_name, brand_name, product_name, parent_pk):
         general_filters = {
             'template_group': template_group,
             'att4': att4,
@@ -184,10 +242,90 @@ class SOVIToolBox:
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         sos_value *= 100
         sos_value = round(sos_value, 2)
+
+        product_df = self.scif[(self.scif['template_group'] == template_group) &
+                               (self.scif['att4'] == att4) &
+                               (self.scif['category'] == category) &
+                               (self.scif['manufacturer_name'] == manufacturer_name) &
+                               (self.scif['brand_name'] == brand_name) &
+                               (self.scif['product_type'] != 'Empty') &
+                               (self.scif['product_name'] == product_name)]
+
+        product_id =product_df.product_fk.unique()[0]
+        brand_id = product_df.brand_fk.unique()[0]
+
+        self.common_v2.write_to_db_result(3006, numerator_id=product_id, numerator_result=0, result=sos_value,
+                           denominator_id=brand_id, denominator_result=0, score=sos_value, score_after_actions=sos_value,
+                           denominator_result_after_actions=None, numerator_result_after_actions=0,
+                           weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=parent_pk)
+
+        self.last_pk = self.last_pk + 1
+        print self.last_pk
+
         print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
                                                         brand_name, product_name.encode('utf-8'), sos_value))
 
-    def get_max_pk(self):
+
+
+    # def calculate_share_of_shelf(self, sos_filters=None, include_empty=EXCLUDE_EMPTY, **general_filters):
+    #     """
+    #     :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+    #     :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+    #     :param general_filters: These are the parameters which the general data frame is filtered by.
+    #     :return: The ratio of the Facings SOS.
+    #     """
+    #     if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
+    #         general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+    #     pop_filter = self.toolbox.get_filter_condition(self.scif, **general_filters)
+    #     subset_filter = self.toolbox.get_filter_condition(self.scif, **sos_filters)
+    #
+    #     try:
+    #         ratio = self.k_engine.calculate_sos_by_facings(pop_filter=pop_filter, subset_filter=subset_filter)
+    #     except Exception as e:
+    #         Log.error(e.message)
+    #         ratio = 0
+    #
+    #     if not isinstance(ratio, (float, int)):
+    #         ratio = 0
+    #     return ratio
+
+    def calculate_sos_by_facings(self, pop_filter, subset_filter, population=None):
+        """
+
+        Returns data frame containing result, target and score.
+
+        :param pop_filter: how to filter the population
+        :param subset_filter: how to create the subset population
+        :param population: optional :class:`pandas.DataFrame` to be used in this calculation
+        :return: A newly created :class:`Core.DataProvider.Fact` object
+        """
+        pop = self.get_population(population)
+
+        filtered_population = pop[pop_filter]
+        if filtered_population.empty:
+            return None
+        else:
+            subset_population = filtered_population[subset_filter]
+            ratio = TBox.calculate_ratio_sum_field_in_rows(filtered_population, subset_population, Fd.FACINGS)
+            return ratio
+
+    def get_population(self, population):
+        """
+
+        Returns a reference to the population to work on in next steps.
+        If population accepted, return it, otherwise, return self.scif (scene_item_facts) as default.
+
+        :param population: optional :class:`pandas.DataFrame`
+        :return: :class:`pandas.DataFrame` to use in next steps of the calculation
+        """
+        if population is None:
+            pop = self.scif
+        else:
+            Validation.is_df(population)
+            pop = population
+        return pop
+
+    def get_last_pk(self):
         query = SQLQueries.get_kpi_level_2_results_max_pk()
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df['MAX(pk)'][0]
