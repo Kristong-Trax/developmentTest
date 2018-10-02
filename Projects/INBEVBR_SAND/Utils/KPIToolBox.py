@@ -19,11 +19,8 @@ from KPIUtils.DB.Common import Common
 
 __author__ = 'ilays'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.4 - KENGINE - SEPTEMBER.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.5 - KENGINE - SEPTEMBER.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -160,6 +157,7 @@ class INBEVBRToolBox:
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else 0
+
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
         except IndexError:
