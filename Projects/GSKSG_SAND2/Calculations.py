@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Projects.GSKSG.KPIGenerator import Generator
+from Projects.GSKSG_SAND2.KPIGenerator import Generator
 
 __author__ = 'jasmine'
 

@@ -96,7 +96,8 @@ class GSKSGToolBox:
     def handle_calculation(self, kpis):
         # kpi_results = dict()
 
-        kpi_results = pd.DataFrame(columns=['1st level','2nd Level','3rd Level','KPI Weight','Weight','Score Method','Benchmark','Conditional Weight','result'])
+        kpi_results = pd.DataFrame(columns=['1st level','2nd Level','3rd Level','KPI Weight','Weight',
+                                            'Score Method','Benchmark','Conditional Weight','result'])
 
 
         # for each level3:
@@ -106,23 +107,32 @@ class GSKSGToolBox:
             if result is None:
                 continue
 
-            kpi_results = kpi_results.append(current_kpi['1st level'], current_kpi['2nd Level'],current_kpi['3rd Level'],current_kpi['KPI Weight'],current_kpi['Weight'],
-                          current_kpi['Score Method'], current_kpi['Benchmark'],
-                        current_kpi['Conditional Weight'], result)
+            kpi_results = kpi_results.append({'1st level': current_kpi['1st level'],
+                                              '2nd Level': current_kpi['2nd Level'],
+                                              '3rd Level': current_kpi['3rd Level'],
+                                              'KPI Weight': current_kpi['KPI Weight'],
+                                              'Weight': current_kpi['Weight'],
+                                              'Score Method': current_kpi['Score Method'],
+                                              'Benchmark': current_kpi['Benchmark'],
+                                              'Conditional Weight': current_kpi['Conditional Weight'],
+                                              'result': result}, ignore_index=True)
 
-        aggs_res = kpi_results.groupby(['1st level','2nd Level','3rd Level','KPI Weight','Weight','Score Method','Benchmark','Conditional Weight'], as_index=False)['result'].sum()
+        aggs_res = kpi_results.groupby(['1st level', '2nd Level', '3rd Level', 'KPI Weight', 'Weight', 'Score Method',
+                                        'Benchmark', 'Conditional Weight'], as_index=False)['result'].sum()
 
         ## write to db
 
         ## if method binary change result to 100/0
-        aggs_res.loc[(aggs_res['Score Method'] =='Binary' )&(aggs_res['result'] >= aggs_res['Benchmark']) ,'result_bin'] = 100
+        aggs_res.loc[(aggs_res['Score Method'] =='Binary')&
+                     (aggs_res['result'] >= aggs_res['Benchmark']), 'result_bin'] = 100
         aggs_res.loc[
             (aggs_res['Score Method'] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
-        aggs_res['result_bin'] = np.where(aggs_res['Score Method'] == 'Proportional', aggs_res['result'],aggs_res['result_bin'])
+        aggs_res['result_bin'] = np.where(aggs_res['Score Method'] == 'Proportional', aggs_res['result'],
+                                          aggs_res['result_bin'])
         aggs_res['result_bin'] = aggs_res['result_bin']*(aggs_res['Weight']/100)
 
         aggs_res_level_2 = aggs_res.groupby(
-            ['1st level', '2nd Level' 'KPI Weight','Conditional Weight'], as_index=False)['result_level_2'].sum()
+            ['1st level', '2nd Level' 'KPI Weight', 'Conditional Weight'], as_index=False)['result_level_2'].sum()
 
         ## write to db level 2 kpis
 
@@ -336,7 +346,10 @@ class GSKSGToolBox:
             # gets the key and value of field
             field = field.split(':')
             key = field[0]
-            values = map(str.strip, str(field[1]).split(','))
+            if key == 'product_type':
+                values = {'Irrelevant', 'Empty', 'POS', 'SKU', 'Other'} - set(map(str.strip, str(field[1]).split(',')))
+            else:
+                values = map(str.strip, str(field[1]).split(','))
             exclude_dict[key] = (values, EXCLUDE) if exclude else values
 
         return exclude_dict

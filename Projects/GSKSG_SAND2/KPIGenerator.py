@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.GSKSG.Utils.KPIToolBox import GSKSGToolBox
+from Projects.GSKSG_SAND2.Utils.KPIToolBox import GSKSGToolBox
 
 from KPIUtils_v2.DB.Common import Common
 

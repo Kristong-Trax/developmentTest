@@ -3,7 +3,7 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import pandas as pd
-from Projects.GSKSG.Utils.KPIToolBox import GSKSGToolBox
+from Projects.GSKSG_SAND2.Utils.KPIToolBox import GSKSGToolBox
 
 
 __author__ = 'jasmine'
@@ -11,7 +11,7 @@ __author__ = 'jasmine'
 
 class TestGSKSG(TestCase):
 
-    @mock.patch('Projects.GSKSG.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.GSKSG_SAND2.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
