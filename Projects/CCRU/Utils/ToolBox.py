@@ -2179,7 +2179,10 @@ class CCRUKPIToolBox:
         """
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula').strip() not in ("Weighted Average", "average of atomic KPI Score") or not p.get("Children"):
+            if p.get('Formula').strip() not in ("Weighted Average",
+                                                "average of atomic KPI Score",
+                                                "Weighted Sum") \
+                    or not p.get("Children"):
                 continue
             scenes = []
             if 'depends on' in params.keys():
@@ -2217,7 +2220,8 @@ class CCRUKPIToolBox:
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_db_result(attributes_for_level3, 'level3')
             if kpi_total_weight:
-                kpi_total /= kpi_total_weight
+                if p.get('Formula').strip() != "Weighted Sum":
+                    kpi_total /= kpi_total_weight
             else:
                 kpi_total = 0
             kpi_score = self.calculate_score(kpi_total, p)
