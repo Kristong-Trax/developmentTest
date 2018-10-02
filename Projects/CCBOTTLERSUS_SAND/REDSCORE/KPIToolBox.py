@@ -161,8 +161,6 @@ class REDToolBox:
         writes all the KPI in the DB: first the session's ones, second the scene's ones and in the end the ones
         that depends on the previous ones. After all it writes the red score
         """
-        # self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
-        # self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
         main_template = self.templates[Const.KPIS]
         self.write_session_kpis(main_template)
         if self.calculation_type == Const.SOVI:
@@ -170,9 +168,6 @@ class REDToolBox:
         self.write_condition_kpis(main_template)
         self.write_missings(main_template)
         self.write_to_db(self.RED_SCORE, self.red_score)
-        # result_dict = {CCBOTTLERSUS_SANDConst.KPI_NAME: 'RED SCORE', CCBOTTLERSUS_SANDConst.SCORE: self.red_score}####
-        # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
-        # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
 
     def write_missings(self, main_template):
         """
@@ -218,8 +213,8 @@ class REDToolBox:
             for i, main_line in incremental_template.iterrows():
                 kpi_name = main_line[Const.KPI_NAME]
                 reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-                kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
+                kpi_scene_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name + Const.SCENE_SUFFIX)
+                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_scene_fk]
                 if not reuse_scene:
                     kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
                 true_results = kpi_results[kpi_results[Const.DB_RESULT] > 0]
@@ -251,8 +246,8 @@ class REDToolBox:
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
             reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
+            kpi_scene_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name + Const.SCENE_SUFFIX)
+            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_scene_fk]
             if not reuse_scene:
                 kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
             true_results = kpi_results[kpi_results[Const.DB_RESULT] > 0]
@@ -274,9 +269,9 @@ class REDToolBox:
         """
         for i, main_line in scene_template.iterrows():
             kpi_name = main_line[Const.KPI_NAME]
-            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
+            kpi_scene_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name + Const.SCENE_SUFFIX)
             reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
+            kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_scene_fk]
             if not reuse_scene:
                 kpi_results = kpi_results[~(kpi_results[Const.DB_SCENE_FK].isin(self.used_scenes))]
             display_text = main_line[Const.DISPLAY_TEXT]
@@ -312,8 +307,8 @@ class REDToolBox:
             if self.calculation_type == Const.MANUAL or main_line[Const.SESSION_LEVEL] == Const.V:
                 kpi_results = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
             else:
-                kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_fk]
+                kpi_scene_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name + Const.SCENE_SUFFIX)
+                kpi_results = self.scenes_results[self.scenes_results[Const.DB_SCENE_KPI_FK] == kpi_scene_fk]
             condition_result = self.all_results[(self.all_results[Const.KPI_NAME] == condition) &
                                                 (self.all_results[Const.DB_RESULT] > 0)]
             if condition_result.empty:
@@ -457,7 +452,6 @@ class REDToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
-        # self.common_db2.commit_results_data()
         if self.common_db_integ:
             self.common_db_integ.delete_results_data_by_kpi_set()
             self.common_db_integ.commit_results_data_without_delete()

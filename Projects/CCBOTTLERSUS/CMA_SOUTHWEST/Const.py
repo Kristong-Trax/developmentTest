@@ -1,32 +1,34 @@
-import os
-__author__ = 'Elyashiv'
+
+__author__ = 'Uri'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.6.xlsx')
-    SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                        'SurveyTemplateV2.xlsx')
-    STORE_TYPES = {
-        "CR SOVI RED": "CR&LT",
-        "DRUG SOVI RED": "Drug",
-        "VALUE SOVI RED": "Value",
-        "FSOP - QSR": "QSR",
-    }
+
+    SOVI = "SOVI"
+
+    REGIONS = ['SOUTHWEST']
 
     # sheets:
     KPIS = "KPIs"
     AVAILABILITY = "Availability"
     SOS = "SOS"
+    SHELVES = "shelves"
+    SHELVES_BONUS = "shelves bonus"
     SOS_MAJOR = "SOS_majority"
     SURVEY = "Survey"
     SKU_EXCLUSION = "SKU_Exclusion"
     CONVERTERS = "converters"
     SCENE_AVAILABILITY = "Availability_scene"
+    TARGETS = "Targets"
+    FACINGS = 'Facings NTBA'
+    RATIO = 'ratio'
+    PURITY = 'purity'
     SHEETS = [KPIS, AVAILABILITY, SOS, SOS_MAJOR, SURVEY, SKU_EXCLUSION, CONVERTERS]
-    SHEETS_MANUAL = [KPIS, SURVEY]
+    SHEETS_CMA = [KPIS, SOS, SHELVES, FACINGS, RATIO, PURITY, TARGETS]
+
 
     # generic columns:
-    KPI_NAME = "KPI_name"
+    KPI_NAME = "KPI name"
     PACKAGE_TYPE = "package_type"
     SSD_STILL = "SSD/still"
     TRADEMARK = "trademark"
@@ -37,9 +39,10 @@ class Const(object):
     # columns of KPIS:
     REGION = "Region"
     DISPLAY_TEXT = 'display_text'
+    SCENE_LEVEL = 'scene level'
     STORE_TYPE = "store_type"
-    SCENE_TYPE = "scene_type"
-    SCENE_TYPE_GROUP = "scene_type_group"
+    SCENE_TYPE = "scene type"
+    SCENE_TYPE_GROUP = "template_group"
     STORE_ATTRIBUTE = "store_attribute"
     SESSION_LEVEL = "session_level"
     GROUP_TARGET = "group_target"
@@ -50,6 +53,8 @@ class Const(object):
     WEIGHT = "weight"
     SAME_PACK = "Same Pack"
     REUSE_SCENE = "reuse_scene"
+    TYPE = "type"
+    TEMPLATE_GROUP = 'template group'
 
     # columns of AVAILABILITY:
     SCENE_SKU = "scene/SKU"
@@ -61,17 +66,25 @@ class Const(object):
     PRODUCT_EAN = "product_ean_code"
 
     # columns of sos&majority:
-    DEN_TYPES_1 = "denominator_types 1"
-    DEN_VALUES_1 = "denominator_values 1"
-    DEN_TYPES_2 = "denominator_types 2"
-    DEN_VALUES_2 = "denominator_values 2"
-    NUM_TYPES_1 = "numerator_types 1"
-    NUM_VALUES_1 = "numerator_values 1"
-    NUM_TYPES_2 = "numerator_types 2"
-    NUM_VALUES_2 = "numerator_values 2"
+    DEN_TYPES_1 = "denominator param 1"
+    DEN_VALUES_1 = "denominator value 1"
+    DEN_TYPES_2 = "denominator param 2"
+    DEN_VALUES_2 = "denominator value 2"
+    NUM_TYPES_1 = "numerator param 1"
+    NUM_VALUES_1 = "numerator value 1"
+    NUM_TYPES_2 = "numerator param 2"
+    NUM_VALUES_2 = "numerator value 2"
     GROUP = "Group"
     MAJ_DOM = "Majority/Dominant"
-    ADD_IF_NOT_DP = "add if not DP"
+
+    # Generic Columns
+    A_PARAM = 'Param 1'
+    A_VALUE = 'Value 1'
+    B_PARAM = 'Param 2'
+    B_VALUE = 'Value 2'
+    C_PARAM = 'Param 3'
+    C_VALUE = 'Value 3'
+    PROGRAM = 'program (Additional Attribute 3)'
 
     # columns of survey:
     Q_TEXT = "question_text"
@@ -83,13 +96,18 @@ class Const(object):
     NAME_IN_TEMP = "name_in_template"
     NAME_IN_DB = "name_in_db"
 
-    # tables of results:
-    DB_SCENE_KPI_FK = "kpi_level_2_fk"
-    DB_SCENE_FK = "scene_fk"
-    DB_RESULT = "result"
+    # table of scene results:
+    SCENE_FK = "scene_fk"
+    RESULT = "result"
     KPI_FK = "kpi_fk"
     SCORE = "score"
-    COLUMNS_OF_RESULTS = [KPI_NAME, DB_RESULT]
+    THRESHOLD = "threshold"
+    COLUMNS_OF_SCENE = [SCENE_FK, KPI_NAME, RESULT, SCORE]
+    COLUMNS_OF_SESSION = [KPI_NAME, RESULT]
+
+    # seperators
+    SEPERATOR = '; '
+    COMMA = ','
 
     # constants:
     ALL = "ALL"
@@ -106,10 +124,6 @@ class Const(object):
     MANUAL_RED_SCORE = 'Red Score Survey'
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
 
-    SOVI = "SOVI"
     MANUAL = "MANUAL"
-    CALCULATION_TYPES = [
-        SOVI,
-        MANUAL
-    ]
-    SCENE_SUFFIX = " - scene"
+    CALCULATION_TYPES = [SOVI, MANUAL]
+
