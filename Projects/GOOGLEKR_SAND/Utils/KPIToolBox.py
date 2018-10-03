@@ -9,7 +9,8 @@ from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Eli_Sam_Shivi'
 
 
-FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'KR - Google Fixture Targets test.csv')
+FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data',
+                                     'KR - Google Fixture Targets test.csv')
 
 
 class GOOGLEToolBox:
