@@ -60,6 +60,7 @@ class Const(object):
     TARGET_ANSWER = 'Target Answer'
     TEMPLATE_NAME = 'Template name'
     EXPECTED_RESULT = "Expected Result"
+    PARENT_KPI_GROUP = 'Parent kpi group'
 
     KPI_GROUP = 'Tested KPI Group'
     KPI_DISPLAY_NAME = 'KPI Display Name'
@@ -70,6 +71,9 @@ class Const(object):
     PRODUCT = 'Product'
     MULTIPACK= 'Multipack'
     CONSIDER_FEW = 'Consider few brands'
+    CERVEJA = 'CERVEJA'
+    GAME_PLAN = 'GAME PLAN'
+    NAB = 'NAB'
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
