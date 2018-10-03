@@ -8,7 +8,6 @@ from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Eli_Sam_Shivi'
 
-
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data',
                                      'KR - Google Fixture Targets test.csv')
 
@@ -47,15 +46,17 @@ class GOOGLEToolBox:
         score = 0
         return score
 
-    def filter_df(self, df, exclude=0):
-        for filter in Const.EXCLUDE_FILTERS:
+    @staticmethod
+    def filter_df(df, exclude=0):
+        for exclude_filter in Const.EXCLUDE_FILTERS:
             if exclude:
-                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[filter])]
+                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
             else:
-                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[filter])]
+                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
         return df
 
-    def division(self, num, den):
+    @staticmethod
+    def division(num, den):
         if den:
             ratio = float(num) / den
         else:
@@ -77,14 +78,10 @@ class GOOGLEToolBox:
         for (brand_name, brand_fk), numerator in brand_totals.iteritems():
             for kpi in Const.SOS_KPIs:
                 ratio = self.division(numerator, Const.SOS_KPIs[kpi]['den'])
-
-                self.common_v2.write_to_db_result(fk=Const.SOS_KPIs[kpi]['pk'],
-                                                  numerator_id=brand_fk,
-                                                  numerator_result=numerator,
-                                                  denominator_id=self.common_v2.scene_id,
-                                                  denominator_result=Const.SOS_KPIs[kpi]['den'],
-                                                  result=ratio*100,
-                                                  by_scene=True)
+                kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
+                self.common_v2.write_to_db_result(
+                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio*100, by_scene=True,
+                    denominator_id=self.common_v2.scene_id, denominator_result=Const.SOS_KPIs[kpi]['den'])
 
     def google_global_fixture_compliance(self):
         store_num = self.store_info['store_number_1'][0]
@@ -102,13 +99,10 @@ class GOOGLEToolBox:
                 ratio = 1
                 score = 1
 
-            self.common_v2.write_to_db_result(fk=Const.FIXTURE_KPIs['FIXTURE COMPLIANCE']['pk'],
-                                              numerator_id=fixture_pk,
-                                              numerator_result=numerator,
-                                              denominator_id=fixture_pk,
-                                              denominator_result=denominator,
-                                              score=score,
-                                              result=ratio*100)
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('FIXTURE COMPLIANCE')
+            self.common_v2.write_to_db_result(
+                fk=kpi_fk, numerator_id=fixture_pk, numerator_result=numerator, denominator_id=fixture_pk,
+                denominator_result=denominator, score=score, result=ratio*100)
 
     def google_global_survey(self):
         'No Mock Survey Data Yet'
