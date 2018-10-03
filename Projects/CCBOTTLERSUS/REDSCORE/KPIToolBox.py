@@ -219,6 +219,10 @@ class CCBOTTLERSUSREDToolBox:
         :return: boolean
         """
         relevant_scif = relevant_scif.fillna("NAN")
+        # only items categorized as SSD should be evaluated in this calculation; see PROS-6342
+        relevant_scif = relevant_scif[relevant_scif['att4'] == 'SSD']
+        if relevant_scif.empty:
+            return False
         sizes = relevant_scif['size'].tolist()
         sub_packages_nums = relevant_scif['number_of_sub_packages'].tolist()
         packages = set(zip(sizes, sub_packages_nums))
