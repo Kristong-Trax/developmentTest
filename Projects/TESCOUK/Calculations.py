@@ -8,10 +8,11 @@
 # __author__ = 'yacovm'
 #
 # PROJECT = 'tescouk'
-#
-#
-# class TESCOUKCalculations(BaseCalculationsScript):
-#     def run_project_calculations(self):
+
+
+class TESCOUKCalculations(BaseCalculationsScript):
+    def run_project_calculations(self):
+        pass
 #         self.timer.start()
 #         Log.info('Starting project calculations for tescouk')
 #         tpn_report = TPNReportMobile(self.data_provider.project_name)
