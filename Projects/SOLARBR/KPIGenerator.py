@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.SOLARBR_SAND.Utils.KPIToolBox import SOLARBRToolBox
+from Projects.SOLARBR.Utils.KPIToolBox import SOLARBRToolBox
 
 from KPIUtils_v2.DB.Common import Common
 

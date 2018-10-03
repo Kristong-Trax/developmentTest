@@ -9,25 +9,16 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Projects.SOLARBR_SAND.Utils.Const import Const
+from Projects.SOLARBR.Utils.Const import Const
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from Projects.SOLARBR_SAND.Utils.Fetcher import SOLARBRQueries
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
 from Trax.Algo.Calculations.Core.Utils import Validation
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'nicolaske'
 
