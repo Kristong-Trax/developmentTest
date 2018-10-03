@@ -126,7 +126,8 @@ class INBEVMXToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
                                        numerator_result=numerator_number_of_facings, denominator_id=3,
-                                       denominator_result=denominator_number_of_total_facings, result=count_result)
+                                       denominator_result=denominator_number_of_total_facings, result=count_result
+                                           ,score=0)
 
 
     def find_row(self, rows):
@@ -213,7 +214,7 @@ class INBEVMXToolBox:
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
-                                           denominator_result=0, denominator_id=1, result=survey_result)
+                                           denominator_result=0, denominator_id=1, result=survey_result, score=0)
 
 
     def get_new_kpi_static_data(self):
@@ -247,7 +248,7 @@ class INBEVMXToolBox:
                                                                                   'numerator_id', 'numerator_result',
                                                                                   'denominator_id',
                                                                                   'denominator_result', 'result',
-                                                                                  'score'])
+                                                                                   'score'])
         return attributes.to_dict()
 
 
