@@ -22,12 +22,12 @@ class DIAGEOBR_SANDCalculations(BaseCalculationsScript):
         DIAGEOBR_SANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageobr calculations')
-#     Config.init()
-#     project_name = 'diageobr-sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = '2a87e0e5-a620-47d2-806e-405c2974bf07'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     DIAGEOBR_SANDCalculations(data_provider, output).run_project_calculations()
+#if __name__ == '__main__':
+#    LoggerInitializer.init('diageobr calculations')
+#    Config.init()
+#    project_name = 'diageobr-sand'
+#    data_provider = KEngineDataProvider(project_name)
+    # session = '2a87e0e5-a620-47d2-806e-405c2974bf07'
+ #   data_provider.load_session_data(session)
+ #   output = Output()
+ #   DIAGEOBR_SANDCalculations(data_provider, output).run_project_calculations()

@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from datetime import date
 
-from Projects.RINIELSENUS.Utils.Const import DOG_MAIN_MEAL_WET
-from Projects.RINIELSENUS.Utils.Utils import strip_df
+from Projects.RINIELSENUS_SAND.Utils.Const import DOG_MAIN_MEAL_WET
+from Projects.RINIELSENUS_SAND.Utils.Utils import strip_df
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
 TEMPLATE_NAME = 'Template.xlsx'

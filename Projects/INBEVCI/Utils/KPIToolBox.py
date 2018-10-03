@@ -71,10 +71,15 @@ class INBEVCIINBEVCIToolBox:
         self.kpi_results_new_tables_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        self.store_sos_policies = self.get_store_policies()
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
         self.district_name = self.get_district_name()
         self.groups_fk = self.get_groups_fk()
+
+    def get_store_policies(self):
+        query = INBEVCIINBEVCIQueries.get_store_policies()
+        store_policies = pd.read_sql_query(query, self.rds_conn.db)
+        return store_policies
 
     def main_calculation(self, set_name):
         """
@@ -112,7 +117,8 @@ class INBEVCIINBEVCIToolBox:
                 fk=result_dict['fk'], result=result_dict['result'], score=result_dict['score'],
                 numerator_result=result_dict['numerator_result'], denominator_result=result_dict['denominator_result'],
                 numerator_id=result_dict['numerator_id'], denominator_id=0,
-                target=result_dict["denominator_result_after_actions"])
+                target=result_dict["denominator_result_after_actions"],
+                denominator_result_after_actions=result_dict["denominator_result_after_actions"])
         if sum_of_total == 0:
             return 0
         percentage = round(sum_of_passed / float(sum_of_total), 4) * 100
@@ -344,7 +350,8 @@ class INBEVCIINBEVCIToolBox:
                                                       numerator_id=result.assortment_group_fk,
                                                       numerator_result=numerator_res,
                                                       denominator_id=super_group_fk, denominator_result=denominator_res,
-                                                      target=denominator_after_action)
+                                                      target=denominator_after_action,
+                                                      denominator_result_after_actions=denominator_after_action)
         if lvl2_result.empty:
             return
         lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
@@ -363,7 +370,8 @@ class INBEVCIINBEVCIToolBox:
                                                       numerator_result=numerator_res,
                                                       denominator_result=denominator_res,
                                                       numerator_id=result.assortment_super_group_fk,
-                                                      target=denominator_after_action)
+                                                      target=denominator_after_action,
+                                                      denominator_result_after_actions=denominator_after_action)
 
     def update_targets(self, lvl1_result):
         """
@@ -413,9 +421,16 @@ class INBEVCIINBEVCIToolBox:
             for key, value in policies.items():
                 store_info = store_info[store_info[key].isin(value)]
             if not store_info.empty:
+                visit_date = self.visit_date
                 stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy) &
-                                                 (self.store_sos_policies['target_validity_start_date'] <=
-                                                  datetime.date(self.current_date))]
+                                                 (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
+                                                 (self.store_sos_policies['target_validity_end_date'] >= visit_date)]
+
+                stores_with_no_end_date = self.store_sos_policies[
+                                                 (self.store_sos_policies['store_policy'] == row.store_policy) &
+                                                 (self.store_sos_policies['target_validity_start_date'] <= visit_date) &
+                                                 (self.store_sos_policies['target_validity_end_date'].isnull())]
+                stores = stores.append(stores_with_no_end_date)
                 if stores.empty:
                     relevant_stores = stores
                 else:
@@ -457,7 +472,8 @@ class INBEVCIINBEVCIToolBox:
             self.common.write_to_db_result_new_tables(fk=row.kpi, result=sos, score=score,
                                                       numerator_result=numerator, numerator_id=numerator_id,
                                                       denominator_id=denominator_id, denominator_result=denominator,
-                                                      target=target)
+                                                      target=target,
+                                                      denominator_result_after_actions=target)
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()

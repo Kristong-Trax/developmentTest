@@ -69,9 +69,9 @@ class CCRUHRCBar2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HRC_BAR_2018)
-# Sergey
-#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
-# Sergey
+
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HRC_BAR_2018_GAPS)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -94,7 +94,6 @@ class CCRUHRCBar2018Calculations:
             score += self.tool_box.check_kpi_scores(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.calculate_number_of_scenes_no_tagging(jg.project_kpi_dict.get('kpi_data')[0])
             attributes_for_table1 = pd.DataFrame([(extra_set_name, self.session_uid,
-
                                                    self.store_id, self.visit_date.isoformat()
                                                    , format(score, '.2f'), None)], columns=['kps_name',
                                                                                             'session_uid',
@@ -104,8 +103,13 @@ class CCRUHRCBar2018Calculations:
                                                                                             'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 
-        self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
+
+        jg.create_equipment_json('Contract Execution 2018.xlsx', HRC_BAR_2018)
+        if jg.project_kpi_dict.get('equipment'):
+            self.tool_box.calculate_equipment_execution(jg.project_kpi_dict.get('equipment'))
+            self.tool_box.calculate_contract_execution(jg.project_kpi_dict.get('equipment'))
+
         self.tool_box.commit_results_data()
         # calc_finish_time = datetime.datetime.utcnow()
         # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
