@@ -3,7 +3,7 @@ __author__ = 'Elyashiv'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.5.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.6.xlsx')
     SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
                                         'SurveyTemplateV2.xlsx')
     STORE_TYPES = {
