@@ -432,6 +432,10 @@ class ShareOfDisplay(object):
                         )
                     values
                         {};'''
+        if len(display_visit_summary_list_of_dict) == 0:
+            Log.info('no displays in this scene')
+            return
+
         for display in display_visit_summary_list_of_dict[:-1]:
             query_line = self._get_query_line(display) + ',' + '{}'
             query = query.format(query_line)
