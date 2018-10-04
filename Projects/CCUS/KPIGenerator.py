@@ -26,12 +26,12 @@ class CCUSGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         self.calculate_manufacturer_displays()
-        self.calculate_obbo()
-        self.calculate_dunkin_donuts()
+        # self.calculate_obbo()
+        # self.calculate_dunkin_donuts()
         self.calculate_monster()
         self.calculate_programs()
         self.calculate_holiday_programs()
-        self.calculate_msc_new()
+        # self.calculate_msc_new()
         #self.calculate_gold_peak_block()
         self.calculate_special_programs()
 
@@ -47,24 +47,24 @@ class CCUSGenerator:
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=27)
 
-    @log_runtime('OBBO Calculations')
-    def calculate_obbo(self):
-        tool_box = OBBOToolBox(self.data_provider, self.output)
-        tool_box.main_calculation()
-        tool_box.commit_results_data()
-
-    @log_runtime('Dunkin Donuts Calculations')
-    def calculate_dunkin_donuts(self):
-        set_name = 'Dunkin Donuts'
-        tool_box = CCUSToolBox(self.data_provider, self.output)
-        if tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
-        tool_box.tools.update_templates()
-        tool_box.main_calculation(set_name=set_name)
-        tool_box.save_level1(set_name=set_name, score=100)
-        set_fk = tool_box.kpi_static_data[tool_box.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        tool_box.commit_results_data(kpi_set_fk=set_fk)
-        Log.info('Dunkin Donuts: Downloading templates took {}'.format(tool_box.download_time))
+    # @log_runtime('OBBO Calculations')
+    # def calculate_obbo(self):
+    #     tool_box = OBBOToolBox(self.data_provider, self.output)
+    #     tool_box.main_calculation()
+    #     tool_box.commit_results_data()
+    #
+    # @log_runtime('Dunkin Donuts Calculations')
+    # def calculate_dunkin_donuts(self):
+    #     set_name = 'Dunkin Donuts'
+    #     tool_box = CCUSToolBox(self.data_provider, self.output)
+    #     if tool_box.scif.empty:
+    #         Log.warning('Scene item facts is empty for this session')
+    #     tool_box.tools.update_templates()
+    #     tool_box.main_calculation(set_name=set_name)
+    #     tool_box.save_level1(set_name=set_name, score=100)
+    #     set_fk = tool_box.kpi_static_data[tool_box.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+    #     tool_box.commit_results_data(kpi_set_fk=set_fk)
+    #     Log.info('Dunkin Donuts: Downloading templates took {}'.format(tool_box.download_time))
 
     @log_runtime('Programs Calculations')
     def calculate_programs(self):
@@ -72,11 +72,11 @@ class CCUSGenerator:
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk = 28)
 
-    @log_runtime('MSC New Calculations')
-    def calculate_msc_new(self):
-        tool_box = MSC_NEWToolBox(self.data_provider, self.output)
-        tool_box.main_calculation()
-        tool_box.commit_results_data(kpi_set_fk=29)
+    # @log_runtime('MSC New Calculations')
+    # def calculate_msc_new(self):
+    #     tool_box = MSC_NEWToolBox(self.data_provider, self.output)
+    #     tool_box.main_calculation()
+    #     tool_box.commit_results_data(kpi_set_fk=29)
 
     @log_runtime('Holiday Programs Calculations')
     def calculate_holiday_programs(self):
