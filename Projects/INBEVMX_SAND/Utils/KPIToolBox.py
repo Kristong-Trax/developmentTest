@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                    '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.1.xlsx')
+                                                    '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.2.xlsx')
 
 
 class INBEVMXToolBox:
@@ -60,7 +60,7 @@ class INBEVMXToolBox:
             Log.error("there is no region in the db")
             return
         try:
-            self.att6_filter = self.store_info['additional_attribute_14'].values[0].strip()
+            self.att6_filter = self.store_info['additional_attribute_6'].values[0].strip()
         except:
             Log.error("there is no additional attribute 6 in the db")
             return
@@ -180,32 +180,45 @@ class INBEVMXToolBox:
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
-        row = self.survey_sheet.loc[self.survey_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
+        rows = self.survey_sheet.loc[self.survey_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
+        temp = rows[Const.TEMPLATE_STORE_TYPE]
+        row_store_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip() for item in
+                                                                                        r.split(",")])) | (temp == "")]
 
-        if row.empty:
+        if row_store_filter.empty:
             return
         else:
             # find the answer to the survey in session
-            question_id = row[Const.TEMPLATE_SURVEY_QUESTION_ID].values[0]
-            question_answer_template = row[Const.TEMPLATE_TARGET_ANSWER].values[0]
+            question_id = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_ID].values[0]
+            question_answer_template = row_store_filter[Const.TEMPLATE_TARGET_ANSWER].values[0]
 
             survey_result = self.survey.get_survey_answer(('question_fk', question_id))
             if not survey_result:
                 return
             if '-' in question_answer_template:
                 numbers = question_answer_template.split('-')
-                if survey_result < int(numbers[0]) or survey_result > int(numbers[1]):
+                try:
+                    numeric_survey_result = int(survey_result)
+                except:
+                    Log.warning("Survey doesn't have a numeric result")
                     return
-                condition = row[Const.TEMPLATE_CONDITION].values[0]
+                if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
+                    return
+                condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
-                    second_question_id = row[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
+                    second_question_id = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
                     second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
-                    survey_result = 1 if survey_result > second_survey_result else -1
+                    second_numeric_survey_result = int(second_survey_result)
+                    numeric_survey_result = 1 if numeric_survey_result >= second_numeric_survey_result else -1
                 else:
                     survey_result = 1
             else:
-                answer = self.survey.check_survey_answer(('question_fk', question_id), question_answer_template)
-                survey_result = 1 if answer else -1
+                question_answer_template = question_answer_template.split(',')
+                question_answer_template = [item.strip() for item in question_answer_template]
+                if survey_result in question_answer_template:
+                    survey_result = 1
+                else:
+                    survey_result = -1
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
