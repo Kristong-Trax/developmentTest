@@ -515,14 +515,15 @@ class DIAGEOUSToolBox:
             relevant_competitions = relevant_competitions[relevant_competitions[Const.STATE] == Const.OTHER]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, competition in relevant_competitions.iterrows():
-            result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes, i)
+            result_dict = self.calculate_shelf_facings_of_competition_per_scene(competition, relevant_scenes, i)
             all_results = all_results.append(result_dict, ignore_index=True)
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
             all_results, kpi_db_names, weight, with_standard_type=True)
         return total_result, segment_result, national_result
 
-    def calculate_shelf_facings_of_competition(self, competition, relevant_scenes, index):
+
+    def calculate_shelf_facings_of_competition_per_scene(self, competition, relevant_scenes, index):
         """
         Checks the facings of product, creates target (from competitor and template) and compares them.
         :param competition: template's line
@@ -532,7 +533,7 @@ class DIAGEOUSToolBox:
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
-        our_eans = competition[Const.OUR_EAN_CODE].split(', ')
+        our_eans = str(competition[Const.OUR_EAN_CODE]).split(', ')
         our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
         if our_lines.empty:
             Log.warning("The products {} in shelf facings don't exist in DB".format(our_eans))
@@ -545,6 +546,10 @@ class DIAGEOUSToolBox:
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
         result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
+        flag = False
+        target = 1
+        comp_facings_df = pd.DataFrame()
         if self.does_exist(competition[Const.COMP_EAN_CODE]):
             comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
             comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
@@ -553,30 +558,56 @@ class DIAGEOUSToolBox:
                 target = 0
             else:
                 comp_fks = comp_lines['product_fk'].unique().tolist()
-                comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
+                comp_facings_df = self.calculate_shelf_facings_of_sku_per_scene(comp_fks, relevant_scenes)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
-                target = comp_facings * bench_value
+                comp_facings_df['target'] = comp_facings_df['facings'] * bench_value
+                comp_facings_df = comp_facings_df.rename(columns={'facings' : 'facings_comp'})
+                flag = True
         elif self.does_exist(competition[Const.BENCH_VALUE]):
             target = competition[Const.BENCH_VALUE]
         else:
             Log.warning("Product {} has no target in shelf facings".format(our_eans))
             target = 0
-        our_facings = self.calculate_shelf_facings_of_sku(
-            our_fks, relevant_scenes, result_identifier, target=target, diageo_product=True)
-        comparison = 1 if (our_facings >= target and our_facings > 0) else 0
+        our_facings_df = self.calculate_shelf_facings_of_sku_per_scene(our_fks, relevant_scenes)
+        if flag:
+            comparison_df = pd.merge(our_facings_df,comp_facings_df, on='template_name')
+            comparison_result = comparison_df[(comparison_df['facings'] >= comparison_df['facings_comp']) &
+                                                                                    (comparison_df['facings'] > 0)]
+            comparison_len = len(comparison_result)
+            comparison = 1 if comparison_len > 0 else 0
+        else:
+            comparison_df = comparison_result = our_facings_df.copy()
+            comparison = 1 if len(comparison_df[comparison_df['facings'] >= target]) else 0
+
+        product_facings_comp = product_facings_ours = 0
+        if flag and not comparison_result.empty:
+            product_facings_comp = comparison_result.iloc[0]['facings_comp']
+            product_facings_ours = comparison_result.iloc[0]['facings']
+        else:
+            if not comp_facings_df.empty:
+                product_facings_comp = comp_facings_df.iloc[0]['facings_comp']
+            if not our_facings_df.empty:
+                product_facings_ours = our_facings_df.iloc[0]['facings']
+
+        self.common.write_to_db_result(
+                        fk=kpi_fk, numerator_id=product_fk, result=product_facings_comp, denominator_id=None,
+                        should_enter=True, identifier_parent=result_identifier, target=target)
+        self.common.write_to_db_result(
+            fk=kpi_fk, numerator_id=product_fk, result=product_facings_ours, denominator_id=self.manufacturer_fk,
+            should_enter=True, identifier_parent=result_identifier, target=target)
+
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
-            result=our_facings, identifier_result=result_identifier,
+            result=product_facings_ours, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
-    def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier, target=None,
-                                       diageo_product=False):
+    def calculate_shelf_facings_of_sku_per_scene(self, product_fks, relevant_scenes):
         """
         Gets product(s) and counting its facings.
         :param product_fks: list of FKs
@@ -586,22 +617,94 @@ class DIAGEOUSToolBox:
         :param diageo_product: bool, if it's the main product
         :return: amount of facings
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
-        amount_of_facings = 0
-        denominator_id = self.manufacturer_fk if diageo_product else None
+        product_facing = pd.DataFrame
         for product_fk in product_fks:
             product_facing = self.scif_without_emptys[
                 (self.scif_without_emptys['product_fk'] == product_fk) &
-                (self.scif_without_emptys['scene_id'].isin(relevant_scenes))]['facings'].sum()
-            if product_facing is None or np.isnan(product_facing):
-                product_facing = 0
-            amount_of_facings += product_facing
-            if product_fk == 0:
-                continue
-            self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
-                should_enter=True, identifier_parent=parent_identifier, target=target)
-        return amount_of_facings
+                (self.scif_without_emptys['scene_id'].isin(relevant_scenes))][['template_name',
+                                                             'facings']].groupby('template_name').sum().reset_index()
+        return product_facing
+
+    # def calculate_shelf_facings_of_competition(self, competition, relevant_scenes, index):
+    #     """
+    #     Checks the facings of product, creates target (from competitor and template) and compares them.
+    #     :param competition: template's line
+    #     :param relevant_scenes:
+    #     :param index: for hierarchy
+    #     :return: passed, product_fk, standard_type
+    #     """
+    #     kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
+    #     total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
+    #     our_eans = str(competition[Const.OUR_EAN_CODE]).split(', ')
+    #     our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
+    #     if our_lines.empty:
+    #         Log.warning("The products {} in shelf facings don't exist in DB".format(our_eans))
+    #         return None
+    #     our_fks = our_lines['product_fk'].unique().tolist()
+    #     product_fk = our_fks[0]
+    #     product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
+    #     if product_assortment_line.empty or product_fk == 0:
+    #         return None
+    #     additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
+    #     standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+    #     result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
+    #     if self.does_exist(competition[Const.COMP_EAN_CODE]):
+    #         comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
+    #         comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
+    #         if comp_lines.empty:
+    #             Log.warning("The products {} in shelf facings don't exist in DB".format(comp_eans))
+    #             target = 0
+    #         else:
+    #             comp_fks = comp_lines['product_fk'].unique().tolist()
+    #             comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
+    #             bench_value = competition[Const.BENCH_VALUE]
+    #             if type(bench_value) in (unicode, str):
+    #                 bench_value = float(bench_value.replace("%", "")) / 100
+    #             target = comp_facings * bench_value
+    #     elif self.does_exist(competition[Const.BENCH_VALUE]):
+    #         target = competition[Const.BENCH_VALUE]
+    #     else:
+    #         Log.warning("Product {} has no target in shelf facings".format(our_eans))
+    #         target = 0
+    #     our_facings = self.calculate_shelf_facings_of_sku(
+    #         our_fks, relevant_scenes, result_identifier, target=target, diageo_product=True)
+    #     comparison = 1 if (our_facings >= target and our_facings > 0) else 0
+    #     brand, sub_brand = self.get_product_details(product_fk)
+    #     self.common.write_to_db_result(
+    #         fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
+    #         result=our_facings, identifier_result=result_identifier,
+    #         identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+    #     product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
+    #                       Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
+    #     return product_result
+
+    # def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier, target=None,
+    #                                    diageo_product=False):
+    #     """
+    #     Gets product(s) and counting its facings.
+    #     :param product_fks: list of FKs
+    #     :param relevant_scenes: list
+    #     :param parent_identifier: for write_to_db
+    #     :param target: float, for the main product
+    #     :param diageo_product: bool, if it's the main product
+    #     :return: amount of facings
+    #     """
+    #     kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
+    #     amount_of_facings = 0
+    #     denominator_id = self.manufacturer_fk if diageo_product else None
+    #     for product_fk in product_fks:
+    #         product_facing = self.scif_without_emptys[
+    #             (self.scif_without_emptys['product_fk'] == product_fk) &
+    #             (self.scif_without_emptys['scene_id'].isin(relevant_scenes))]['facings'].sum()
+    #         if product_facing is None or np.isnan(product_facing):
+    #             product_facing = 0
+    #         amount_of_facings += product_facing
+    #         if product_fk == 0:
+    #             continue
+    #         self.common.write_to_db_result(
+    #             fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
+    #             should_enter=True, identifier_parent=parent_identifier, target=target)
+    #     return amount_of_facings
 
     # shelf placement:
 
