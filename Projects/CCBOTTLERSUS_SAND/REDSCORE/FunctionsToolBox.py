@@ -58,6 +58,11 @@ class FunctionsToolBox:
         target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
         isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
         if main_line[Const.SAME_PACK] == Const.V:
+            filtered_scif = filtered_scif.fillna("NAN")
+            # only items categorized as SSD should be evaluated in this calculation; see PROS-6342
+            filtered_scif = filtered_scif[filtered_scif['att4'] == 'SSD']
+            if filtered_scif.empty:
+                return False
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
             packages = set(zip(sizes, sub_packages_nums))
@@ -148,7 +153,7 @@ class FunctionsToolBox:
 
     # SOS:
 
-    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):  # EXCLUSION
+    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -314,8 +319,13 @@ class FunctionsToolBox:
         :param relevant_scif: current filtered scif
         :return: new scif
         """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.PRODUCT_EAN] != "":
+            exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.BRAND] != "":
+            exclude_brands = exclude_line[Const.BRAND].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['brand_name'].isin(exclude_brands))]
+        return relevant_scif
 
     def exclude_from_scif(self, kpi_name, relevant_scif):
         """
