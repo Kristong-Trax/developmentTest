@@ -24,7 +24,6 @@ class Calculations(BaseCalculationsScript):
 #     # second report
 #     list_sessions = [
 #         'fff20792-6a60-4a13-bb00-879a308c1ea6',
-#         'fff20792-6a60-4a13-bb00-879a308c1ea6',
 #         '341a9b53-65ad-43b6-9fe0-2ae56fcbe9bd',
 #         '409c0346-a00a-4c7b-9f3b-63f4ab94307f',
 #         '6a19080f-9741-4760-85fb-22a5e774d13b'
@@ -34,4 +33,4 @@ class Calculations(BaseCalculationsScript):
 #     for session in list_sessions:
 #         data_provider.load_session_data(session)
 #         Calculations(data_provider, output).run_project_calculations()
-
+#
