@@ -209,7 +209,7 @@ class INBEVMXToolBox:
                     second_question_id = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
                     second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
                     second_numeric_survey_result = int(second_survey_result)
-                    numeric_survey_result = 1 if numeric_survey_result >= second_numeric_survey_result else -1
+                    survey_result = 1 if numeric_survey_result >= second_numeric_survey_result else -1
                 else:
                     survey_result = 1
             else:
