@@ -60,7 +60,7 @@ class INBEVMXToolBox:
             Log.error("there is no region in the db")
             return
         try:
-            self.att6_filter = self.store_info['additional_attribute_14'].values[0].strip()
+            self.att6_filter = self.store_info['additional_attribute_6'].values[0].strip()
         except:
             Log.error("there is no additional attribute 6 in the db")
             return
@@ -204,8 +204,12 @@ class INBEVMXToolBox:
                 else:
                     survey_result = 1
             else:
-                answer = self.survey.check_survey_answer(('question_fk', question_id), question_answer_template)
-                survey_result = 1 if answer else -1
+                question_answer_template = question_answer_template.split(',')
+                question_answer_template = [item.strip() for item in question_answer_template]
+                if survey_result in question_answer_template:
+                    survey_result = 1
+                else:
+                    survey_result = -1
 
         try:
             atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
