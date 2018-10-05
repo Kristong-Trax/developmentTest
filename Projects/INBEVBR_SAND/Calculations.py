@@ -25,9 +25,9 @@ class INBEVBRCalculations(BaseCalculationsScript):
 #     list_sessions = [
 #                     'ee5ed5c4-47dd-487c-af41-4bebfa4b7031',
 #                     'ee6e5b25-7fad-46bd-b56b-3bc10aab3848',
-#                      'b85ef7f1-49a0-4ca3-b1d9-6617d66d6674',
+#                     'b85ef7f1-49a0-4ca3-b1d9-6617d66d6674',
 #                     'ebfb699e-c8c5-4553-b586-f422c45e173c',
-#                      '41896a7b-4d9e-4920-9aba-2b1adcbb334c',
+#                     '41896a7b-4d9e-4920-9aba-2b1adcbb334c',
 #                     '6db4c530-747c-472e-a2b2-da5fcdca3aef',
 #                     'f03fb2ad-52a0-4f32-8dcd-30ad94970f80',
 #                     'f89ffb04-f041-4182-9be3-9afb51728bcc',

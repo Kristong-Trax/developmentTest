@@ -42,6 +42,7 @@ class Const(object):
     PERCENTAGE = '%'
     CONTAINER_TYPE = 'Container Type'
     ATT1 = 'att1'
+    RESULT_TYPE = 'Result Type'
     BEER_TYPE = 'Beer Type'
     TARGET_OPERATOR = 'Target operator'
     SECONDARY_TARGET = 'Secondary Target'
@@ -59,6 +60,7 @@ class Const(object):
     TARGET_ANSWER = 'Target Answer'
     TEMPLATE_NAME = 'Template name'
     EXPECTED_RESULT = "Expected Result"
+    PARENT_KPI_GROUP = 'Parent kpi group'
 
     KPI_GROUP = 'Tested KPI Group'
     KPI_DISPLAY_NAME = 'KPI Display Name'
@@ -69,11 +71,14 @@ class Const(object):
     PRODUCT = 'Product'
     MULTIPACK= 'Multipack'
     CONSIDER_FEW = 'Consider few brands'
+    CERVEJA = 'CERVEJA'
+    GAME_PLAN = 'GAME PLAN'
+    NAB = 'NAB'
 
     # delete fields
     DELETE_FIELDS = [KPI_ID, REGION_TEMPLATE, ENGLISH_KPI_NAME, COUNT_TYPE, TARGET, EXPECTED_RESULT, TARGET_OPERATOR,
                      MEASUREMENT_UNIT,PRODUCT,PRODUCT_SIZE, STORE_TYPE_TEMPLATE, WEIGHT, STATE_TEMPLATE,
-                     SECONDARY_TARGET, GROUP_KPI_NAME,SCORE, PACKS_TARGET]
+                     SECONDARY_TARGET, GROUP_KPI_NAME,SCORE, PACKS_TARGET, RESULT_TYPE]
 
     # include exclude filters
     EXCLUDE_FILTER = 0
