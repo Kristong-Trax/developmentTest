@@ -12,6 +12,7 @@ PROJECT = 'ccru'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'
+TARGETS_SHEET_NAME = 'targets'
 
 
 class CCRUTopSKUAssortment:
@@ -241,7 +242,7 @@ class CCRUTopSKUAssortment:
         This function gets the data from the excel file, validates it and returns a valid DataFrame
         :return: A DataFrame with valid products
         """
-        raw_data = pd.read_excel(file_path)
+        raw_data = pd.read_excel(file_path, sheetname=TARGETS_SHEET_NAME)
         raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
