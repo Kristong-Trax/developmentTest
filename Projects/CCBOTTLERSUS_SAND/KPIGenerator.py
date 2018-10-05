@@ -34,8 +34,8 @@ class CCBOTTLERSUS_SANDGenerator:
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
-        self.calculate_SOVI()
-        self.common_db.commit_results_data()
+        self.calculate_sovi()
+        # self.common_db.commit_results_data()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
@@ -85,7 +85,7 @@ class CCBOTTLERSUS_SANDGenerator:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
 
     @log_runtime('SOVI CCBOTTLERUS_SANDCalculations')
-    def calculate_SOVI(self):
+    def calculate_sovi(self):
         Log.info('starting calculate_SOVI')
         try:
             tool_box = SOVIToolBox(self.data_provider, self.output, self.common_db)
