@@ -31,7 +31,9 @@ class AddKPIs():
                             ('11','connected_shelf','static.connected_shelf'),
                             ('12','region','static.regions'),
                             ('13','retailer','static.retailer'),
-                            ('999','none', NULL)
+                            ('999','none', NULL),
+                            ('1000', 'display_definition', 'static.display_definition'),
+                            ('1001','assortment', 'pservice.assortment')
                             """
 
         kpi_calculation_stage_query = """
@@ -75,17 +77,17 @@ class AddKPIs():
             self.aws_conn.db.commit()
         except:
             pass
-        try:
-            cur.execute(level2_query)
-            self.aws_conn.db.commit()
-        except:
-            pass
+        # try:
+        #     cur.execute(level2_query)
+        #     self.aws_conn.db.commit()
+        # except:
+        #     pass
 
 
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['sanofing']:
+    for project in ['diageogh']:
         print 'start project: ' + str(project)
         kpi = AddKPIs(project)
         kpi.add_kpi_level_2()

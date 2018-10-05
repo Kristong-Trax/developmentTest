@@ -54,10 +54,17 @@ class FunctionsToolBox:
         """
         kpi_type = main_line[Const.SHEET]
         relevant_template = self.templates[kpi_type]
-        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]]
-        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
+        relevant_template = relevant_template[relevant_template[Const.KPI_NAME]
+                                              == main_line[Const.KPI_NAME]]
+        target = len(
+            relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
         isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
         if main_line[Const.SAME_PACK] == Const.V:
+            filtered_scif = filtered_scif.fillna("NAN")
+            # only items categorized as SSD should be evaluated in this calculation; see PROS-6342
+            filtered_scif = filtered_scif[filtered_scif['att4'] == 'SSD']
+            if filtered_scif.empty:
+                return False
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
             packages = set(zip(sizes, sub_packages_nums))
@@ -127,7 +134,8 @@ class FunctionsToolBox:
             # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
+            relevant_scif = self.filter_scif_specific(
+                relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):  # V
@@ -148,25 +156,7 @@ class FunctionsToolBox:
 
     # SOS:
 
-    def sos_first_filtering(self, kpi_line, relevant_scif):
-        """
-        The common part of both SOS functions, first filtering
-        :param kpi_line: line from the SOS/SOS_maj template
-        :param relevant_scif: filtered scif
-        :return: new filtered scif
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
-            relevant_exclusions = self.exclusion_sheet[self.exclusion_sheet[Const.KPI_NAME] == kpi_name]
-            for i, exc_line in relevant_exclusions.iterrows():
-                relevant_scif = self.exclude_scif(exc_line, relevant_scif)
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1]
-        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        return relevant_scif
-
-    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):  # EXCLUSION
+    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -189,9 +179,25 @@ class FunctionsToolBox:
             else 0
         return percentage >= target
 
+    def sos_first_filtering(self, kpi_line, relevant_scif):
+        """
+        The common part of both SOS functions, first filtering
+        :param kpi_line: line from the SOS/SOS_maj template
+        :param relevant_scif: filtered scif
+        :return: new filtered scif
+        """
+        kpi_name = kpi_line[Const.KPI_NAME]
+        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
+            relevant_scif = self.exclude_from_scif(kpi_name, relevant_scif)
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
+        den_type = kpi_line[Const.DEN_TYPES_1]
+        den_value = kpi_line[Const.DEN_VALUES_1]
+        relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
+        return relevant_scif
+
     # SOS majority:
 
-    def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):  # EXCLUSION
+    def calculate_sos_maj(self, kpi_line, relevant_scif, isnt_dp):
         """
         calculates SOS majority line in the relevant scif. Filters the denominator and sends the line to the
         match function (majority or dominant)
@@ -202,6 +208,9 @@ class FunctionsToolBox:
         :return: boolean
         """
         relevant_scif = self.sos_first_filtering(kpi_line, relevant_scif)
+        if kpi_line[Const.EXCLUSION_SHEET] == Const.V:
+            kpi_name = kpi_line[Const.KPI_NAME]
+            relevant_scif = self.exclude_from_scif(kpi_name, relevant_scif)
         den_type = kpi_line[Const.DEN_TYPES_2]
         den_value = kpi_line[Const.DEN_VALUES_2]
         relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
@@ -214,7 +223,7 @@ class FunctionsToolBox:
             answer = False
         return answer
 
-    def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):  # V
+    def calculate_majority_part(self, kpi_line, relevant_scif, isnt_dp):
         """
         filters the numerator and checks if the SOS is bigger than 50%.
         :param kpi_line: line from SOS majority sheet.
@@ -236,7 +245,7 @@ class FunctionsToolBox:
         target = Const.MAJORITY_TARGET
         return num_scif['facings'].sum() / relevant_scif['facings'].sum() >= target
 
-    def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):  # V
+    def calculate_dominant_part(self, kpi_line, relevant_scif, isnt_dp):
         """
         filters the numerator and checks if the given value in the given type is the one with the most facings.
         :param kpi_line: line from SOS majority sheet.
@@ -313,8 +322,26 @@ class FunctionsToolBox:
         :param relevant_scif: current filtered scif
         :return: new scif
         """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.PRODUCT_EAN] != "":
+            exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+            relevant_scif = relevant_scif[~(
+                relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.BRAND] != "":
+            exclude_brands = exclude_line[Const.BRAND].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['brand_name'].isin(exclude_brands))]
+        return relevant_scif
+
+    def exclude_from_scif(self, kpi_name, relevant_scif):
+        """
+        excludes all the necessary types from the scif
+        :param kpi_name:
+        :param relevant_scif:
+        :return: filtered relevant_scif
+        """
+        relevant_exclusions = self.exclusion_sheet[self.exclusion_sheet[Const.KPI_NAME] == kpi_name]
+        for i, exc_line in relevant_exclusions.iterrows():
+            relevant_scif = self.exclude_scif(exc_line, relevant_scif)
+        return relevant_scif
 
     @staticmethod
     def does_exist(kpi_line, column_name):
@@ -347,5 +374,6 @@ class FunctionsToolBox:
         elif kpi_type == Const.SOS_MAJOR:
             return self.calculate_sos_maj
         else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            Log.warning(
+                "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
