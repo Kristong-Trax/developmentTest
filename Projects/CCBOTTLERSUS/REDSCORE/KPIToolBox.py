@@ -103,7 +103,8 @@ class CCBOTTLERSUSREDToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
+        relevant_scif = self.scif[(self.scif['scene_id'].isin(self.united_scenes)) &
+                                  (self.scif['product_type'] != 'Empty')]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
