@@ -178,8 +178,8 @@ if __name__ == '__main__':
         "FE678C7C-DAF5-4906-9279-2F4490EDD5F9",
     ]
     # '''kpi test set'''
-    sessions = [
-                '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
+    # sessions = [
+    #             '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
                 # '6fc73672-db6a-4ace-9dc1-e0f07ea57c03',
                 # '9DD11D67-61EA-49BC-AEEB-90F005DD0AB1',
                 # '6A165E9D-8F6B-499D-9AB8-98E4C3F27EB0',
@@ -217,7 +217,7 @@ if __name__ == '__main__':
                 # 'f14b216c-3684-4166-ae8d-aa8bbd956865',
                 # '66F41897-887A-429F-BB4F-6A1C12F1F3E7',
                 # 'd30529f6-21c0-459c-b027-5642f82d0cac',
-            ]
+            # ]
     # '''Coke Cooler Purity test set'''
     # sessions = [
     #             '413734a3-4e21-494d-bb18-418e5aacc4bd',
@@ -273,6 +273,13 @@ if __name__ == '__main__':
     #             '87228dd9-20b0-4400-bd87-f8566a69ddcf',
     #         ]
 
+    sessions = [
+        '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
+        '76D3ED09-1B30-4D59-8EEE-F05D8478F607',
+        '413734a3-4e21-494d-bb18-418e5aacc4bd',
+        'E83A6DE8-CB50-4299-BF90-05D58A22DE0C',
+        'c2b54ac8-f018-468f-8d2b-f00ab246c985',
+        ]
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))

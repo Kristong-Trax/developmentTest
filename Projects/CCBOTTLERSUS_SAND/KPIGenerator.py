@@ -7,6 +7,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as Common2
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.CCBOTTLERSUS_SAND.CMA.KPIToolBox import CMAToolBox
+from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.KPIToolBox import CCBOTTLERSUSCMASOUTHWESTToolBox
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.KPIToolBox import REDToolBox
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 # from Projects.CCBOTTLERSUS_SAND.Utils.KPIToolBox import BCIKPIToolBox
@@ -34,6 +35,7 @@ class CCBOTTLERSUS_SANDGenerator:
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
+        self.calculate_cma_compliance_sw()
         self.calculate_sovi()
         # self.common_db.commit_results_data()
 
@@ -93,3 +95,13 @@ class CCBOTTLERSUS_SANDGenerator:
             tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate SOVI due to: {}'.format(e.message))
+
+    @log_runtime('CMA Compliance SW CCBOTTLERSUSCalculations')
+    def calculate_cma_compliance_sw(self):
+        Log.info('starting calculate_cma_compliance')
+        try:
+            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))

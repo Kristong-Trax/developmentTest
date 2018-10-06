@@ -6,7 +6,7 @@ from collections import defaultdict
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCBOTTLERSUS.CMA_SOUTHWEST.Const import Const
+from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -89,10 +89,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)
                 if store_type is None or self.store_type in store_type:
                     self.calculate_main_kpi(main_line)
+            print(self.sub_totals)
             self.write_sub_parents()
             self.write_parent()
-            self.write_to_db_result(
-                self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+            # self.write_to_db_result(
+            #     self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -258,14 +259,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
             sos_filters[num_type_2] = num_value_2
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-        sos_value *= 100
+        # sos_value *= 100
         sos_value = round(sos_value, 2)
 
         if target:
-            target = target * 100
+            target = target
             score = 1 if sos_value >= target else 0
         elif not target and upper_limit and lower_limit:
-            score = 1 if (lower_limit * 100 <= sos_value <= upper_limit * 100) else 0
+            score = 1 if (lower_limit <= sos_value <= upper_limit) else 0
             target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
             score = 1
@@ -365,14 +366,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 total_num += num
                 total_den += den
                 self.common_scene.commit_results_data(result_entity='scene')
-                self.common_scene.kpi_results = pd.DataFrame(columns=self.common_db2.COLUMNS)
+                self.common_scene.kpi_results = pd.DataFrame(columns=self.common_scene.COLUMNS)
 
 
-        # self.common_db2.write_to_db_result(fk=2161, numerator_result=total_num,
-        #                                    denominator_result=total_den, result=ratio,
-        #                                    identifier_result=self.common_db2.get_dictionary(
-        #                                        parent_name='Total Coke Cooler Purity'),
-        #                                    should_enter=True)
+        self.common_db2.write_to_db_result(fk=2161, numerator_result=total_num,
+                                           denominator_result=total_den, result=ratio,
+                                           identifier_parent=self.common_db2.get_dictionary(
+                                               parent_name='CMA_COMPLIANCE'),
+                                           should_enter=True)
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, num_filters,  general_filters):
 
@@ -852,9 +853,9 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
     def update_sub_score(self, kpi_name, passed=0, parent=None):
         if not parent:
             parent = self.get_kpi_parent(kpi_name)
-        self.sub_totals[parent] += passed
+        self.sub_totals[parent] += 1
         if passed:
-            self.sub_scores[parent] += 1
+            self.sub_scores[parent] += passed
 
     def write_to_db(self, kpi_name, score, result=None, threshold=None):
         """
@@ -869,11 +870,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         parent = self.get_kpi_parent(kpi_name)
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
-        self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
-        self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3,
-            threshold=threshold, result=result)
+        # self.write_to_db_result(
+        #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
+        # self.write_to_db_result(
+        #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3,
+        #     threshold=threshold, result=result)
 
     def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
         """
@@ -968,9 +969,9 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             num = self.sub_scores[sub_parent]
             den = self.sub_totals[sub_parent]
             if den:
-                result = float(num) / den
+                # result = float(num) / den
                 self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
-                                                   denominator_result=den, result=result, score=result, target=den,
+                                                   denominator_result=den, result=num, score=num, target=den,
                                                    identifier_result=self.common_db2.get_dictionary(
                                                        parent_name=sub_parent),
                                                    identifier_parent=self.common_db2.get_dictionary(
@@ -978,12 +979,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                                                    should_enter=True)
     def write_parent(self):
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+        del self.sub_scores['CMA Compliance SW # of Shelves Bonus']
+        del self.sub_totals['CMA Compliance SW # of Shelves Bonus']
         num = sum(self.sub_scores.values())
         den = sum(self.sub_totals.values())
         if den:
-            result = float(num) / den
+            # result = float(num) / den
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
-                                               denominator_result=den, result=result, score=result, target=den,
+                                               denominator_result=den, result=num, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=CMA_COMPLIANCE))
 
@@ -992,8 +995,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         committing the results in both sets
         """
-        self.common_db.delete_results_data_by_kpi_set()
-        self.common_db.commit_results_data_without_delete()
+        # self.common_db.delete_results_data_by_kpi_set()
+        # self.common_db.commit_results_data_without_delete()
         self.common_db2.commit_results_data()
         # if self.common_db_integ:
         #     self.common_db_integ.delete_results_data_by_kpi_set()
