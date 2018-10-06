@@ -57,7 +57,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
-        self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
+        # self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
         self.common_db2 = CommonV2(self.data_provider)
         self.common_scene = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
@@ -67,7 +67,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
-        self.kpi_static_data = self.common_db.get_kpi_static_data()
+        # self.kpi_static_data = self.common_db.get_kpi_static_data()
         self.total_score = 0
         self.sub_scores = defaultdict(int)
         self.sub_totals = defaultdict(int)

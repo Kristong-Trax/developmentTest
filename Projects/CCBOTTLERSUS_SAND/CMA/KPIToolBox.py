@@ -561,3 +561,5 @@ class CMAToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
+        self.common_db2.commit_results_data()
+
