@@ -127,3 +127,10 @@ class Const(object):
     MANUAL = "MANUAL"
     CALCULATION_TYPES = [SOVI, MANUAL]
 
+    KPI_FAMILY_KEY = {
+                    18: 'CMA Compliance SW # of Shelves',
+                    19: 'CMA Compliance SW Impulse Zone Cooler',
+                    20: 'CMA Compliance SW % of Facings',
+                    2: 'CMA Compliance SW % of Facings'
+                }
+
