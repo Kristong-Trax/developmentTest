@@ -368,26 +368,26 @@ class MARSRU_PRODMARSRUKPIFetcher:
                 for row in targets:
 
                     if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
+                        store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
-                        regions = str(row.get('Region').encode('utf-8')).split(',\n')
+                        regions = str(row.get('Region').encode('utf-8')).replace('\n', '').split(',')
                     else:
                         regions = []
 
                     if (not store_types or store_type.encode('utf-8') in store_types) and\
-                        (not regions or region.encode('utf-8') in regions):
+                            (not regions or region.encode('utf-8') in regions):
 
                         if 'KPI name' in row:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
-                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').split(',\n')
+                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
                             kpi_result = kpi_results[kpi_results['kpi_name'] == kpi_name_to_check]['result']
                             if not kpi_result.empty:
                                 if kpi_result[0] in kpi_results_to_check:
-                                    skus_list = str(row.get('EAN')).split(',\n')
+                                    skus_list = str(row.get('EAN')).replace('\n', '').split(',')
                                     break
                                 else:
                                     continue
@@ -395,14 +395,14 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                 continue
 
                         else:
-                            skus_list = str(row.get('EAN')).split(',\n')
+                            skus_list = str(row.get('EAN')).replace('\n', '').split(',')
                             break
                     else:
                         continue
 
             elif 'Shelf # from the bottom' in targets[0]:
                 for row in targets:
-                    store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
+                    store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
                     if store_type.encode('utf-8') in store_types:
                         skus_list = row.get('Shelf # from the bottom')
                         break

@@ -115,3 +115,6 @@ class GOOGLEToolBox:
         denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
         numerator = match_planogram_in_scene[match_planogram_in_scene['compiance_status_fk'] == 3]
         return numerator, denominator
+
+    def get_visit_osa(self):
+        list_of_products = []
