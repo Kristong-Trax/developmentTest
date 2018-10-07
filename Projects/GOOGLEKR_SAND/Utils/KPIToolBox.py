@@ -58,7 +58,7 @@ class GOOGLEToolBox:
     @staticmethod
     def division(num, den):
         if den:
-            ratio = float(num) / den
+            ratio = num * 100.0 / den
         else:
             ratio = 0
         return ratio
@@ -80,7 +80,7 @@ class GOOGLEToolBox:
                 ratio = self.division(numerator, Const.SOS_KPIs[kpi]['den'])
                 kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
                 self.common_v2.write_to_db_result(
-                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio*100, by_scene=True,
+                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio, by_scene=True,
                     denominator_id=self.common_v2.scene_id, denominator_result=Const.SOS_KPIs[kpi]['den'])
 
     def google_global_fixture_compliance(self):
@@ -95,41 +95,42 @@ class GOOGLEToolBox:
             numerator = self.scene_info[self.scene_info['template_fk'] == fixture_pk].shape[0]
             ratio = self.division(numerator, denominator)
             score = 0
-            if ratio >= 1:
-                ratio = 1
+            if ratio >= 100:
+                ratio = 100
                 score = 1
 
             kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('FIXTURE COMPLIANCE')
             self.common_v2.write_to_db_result(
                 fk=kpi_fk, numerator_id=fixture_pk, numerator_result=numerator, denominator_id=fixture_pk,
-                denominator_result=denominator, score=score, result=ratio*100)
+                denominator_result=denominator, score=score, result=ratio)
 
     def google_global_survey(self):
         'No Mock Survey Data Yet'
         pass
 
     def get_planogram_visit_details(self):
-        return
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
         match_planogram_in_probe = {}
         match_planogram_in_scene = {}
         planogram_products = []
         denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
         numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
-        return numerator, denominator
+
+    def get_planogram_fixture_details(self):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
+        match_planogram_in_probe = {}
+        match_planogram_in_scene = {}
+        planogram_products = []
+        denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
+        numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
+        ratio = self.division(numerator, denominator)
 
     def get_visit_osa(self):
         list_of_products = []
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
         return
-
-    def get_planogram_fixture_details(self):
-        return
-        match_planogram_in_probe = {}
-        match_planogram_in_scene = {}
-        planogram_products = []
-        denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
-        numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
-        return numerator, denominator
 
     def get_fixture_osa(self):
         list_of_products = []
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
         return

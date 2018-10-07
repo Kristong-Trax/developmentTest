@@ -20,7 +20,7 @@ class GOOGLEKR_SANDCalculations(BaseCalculationsScript):
             Log.warning('Distribution is empty for this session')
         google.google_global_fixture_compliance()
         google.google_global_survey()
-        google.visit_osa_and_pog()
+        # google.visit_osa_and_pog()
         common_v2.commit_results_data()
         for scene in google.tool_box.scene_info['scene_fk']:
             google.common_v2.kpi_results = pd.DataFrame(columns=google.common_v2.COLUMNS)
@@ -28,6 +28,6 @@ class GOOGLEKR_SANDCalculations(BaseCalculationsScript):
             google.tool_box.scif = google.tool_box.scif[google.tool_box.scif['scene_id'] == scene]
             # 'Scene Level KPIs'
             google.google_global_SOS()
-            google.scene_osa_and_pog()
+            # google.scene_osa_and_pog()
             google.common_v2.commit_results_data(result_entity='scene')
         self.timer.stop('KPIGenerator.run_project_calculations')
