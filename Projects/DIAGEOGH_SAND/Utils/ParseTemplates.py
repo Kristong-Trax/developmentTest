@@ -40,7 +40,8 @@ def parse_template(template_path, sheet_name=None, lower_headers_row_index=0, up
                     if column:
                         new_columns[i] += '{0}{1}'.format(output_column_name_separator, column)
         columns_to_rename = data.columns[data_content_column_index:]
-        data = data.rename(columns={columns_to_rename[i]: new_columns[i] for i in xrange(len(new_columns))})
+        data = data.rename(
+            columns={columns_to_rename[i]: new_columns[i] for i in xrange(len(new_columns))})
         columns_to_duplicate = {}
         for column in data.columns[data_content_column_index:]:
             if column and column.count(input_column_name_separator):
@@ -53,7 +54,8 @@ def parse_template(template_path, sheet_name=None, lower_headers_row_index=0, up
                         new_duplicates = []
                         for sub_duplicate in sub_duplicates:
                             for duplicate in duplicates:
-                                new_duplicates.append('{0}{1}{2}'.format(duplicate, output_column_name_separator, sub_duplicate))
+                                new_duplicates.append('{0}{1}{2}'.format(
+                                    duplicate, output_column_name_separator, sub_duplicate))
                         duplicates = list(new_duplicates)
                 columns_to_duplicate[column] = duplicates
         for column in columns_to_duplicate.keys():
@@ -76,7 +78,8 @@ def strip_data_frame(data):
         if column.strip() != column:
             data = data.rename(columns={column: column.strip()})
     for column in data.columns:
-        data[column] = data[column].apply(lambda x: x if not isinstance(x, (str, unicode)) else x.strip())
+        data[column] = data[column].apply(
+            lambda x: x if not isinstance(x, (str, unicode)) else x.strip())
     return data
 
 
@@ -109,4 +112,3 @@ def pad_vertical_data(data, columns):
                 column_data.append(last_value)
             data[column] = column_data
     return data
-

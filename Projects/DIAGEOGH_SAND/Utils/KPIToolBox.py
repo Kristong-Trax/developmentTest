@@ -74,7 +74,8 @@ class DIAGEOToolBox:
         """
         This function calculates the KPI results.
         """
-        set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+        set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                        == kpi_set_fk]['kpi_set_name'].values[0]
         if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
             self.set_templates_data[set_name] = self.tools.download_template(set_name)
         if set_name in ('MPA', 'Local MPA', 'New Products',):
@@ -92,7 +93,8 @@ class DIAGEOToolBox:
             return
         if isinstance(set_score, type(None)):
             return
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                      == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return set_score
 
@@ -179,22 +181,25 @@ class DIAGEOToolBox:
 
         """
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score,'.2f'), fk)],
+                                        format(score, '.2f'), fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk']
+                                            == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name.replace("'","''"), score)],
+                                        fk, kpi_name.replace("'", "''"), score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.LEVEL3:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(atomic_kpi_name.replace("'","''"), self.session_uid, kpi_set_name, self.store_id,
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
+            attributes = pd.DataFrame([(atomic_kpi_name.replace("'", "''"), self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         score, kpi_fk, fk)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',

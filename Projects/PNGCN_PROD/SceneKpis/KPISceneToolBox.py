@@ -37,6 +37,7 @@ TABLE_DISPLAYS = ['Table']
 TABLE_TOTAL_DISPLAYS = ['Table Display']
 DISPLAY_SIZE_KPI_NAME = 'DISPLAY_SIZE_PER_SKU_IN_SCENE'
 
+
 class ShareOfDisplay(object):
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         # self.session_uid = session_uid
@@ -51,7 +52,7 @@ class ShareOfDisplay(object):
             # self.data_provider = PNGCN_SANDShareOfDisplayDataProvider(project_connector, self.session_uid)
         self.cur = self.project_connector.db.cursor()
         self.log_prefix = 'Share_of_display for scene: {}, project {}'.format(self.scene_id,
-                                                                                self.project_connector.project_name)
+                                                                              self.project_connector.project_name)
         Log.info(self.log_prefix + ' Starting calculation')
         self.match_display_in_scene = pd.DataFrame({})
         self.match_product_in_scene = pd.DataFrame({})
@@ -82,7 +83,8 @@ class ShareOfDisplay(object):
                     self.project_connector.db.commit()
                 Log.info(self.log_prefix + ' Finished calculation')
         except Exception as e:
-            Log.error('Share of display calculation for scene: \'{0}\' error: {1}'.format(self.scene_id, str(e)))
+            Log.error('Share of display calculation for scene: \'{0}\' error: {1}'.format(
+                self.scene_id, str(e)))
             raise e
 
     def _handle_rest_display(self):
@@ -95,8 +97,8 @@ class ShareOfDisplay(object):
         # filtering all rest displays tags
         display_non_cube_non_promotion_wall_with_bays = \
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS +
-                                                                                        CUBE_TOTAL_DISPLAYS +
-                                                                                        PROMOTION_WALL_DISPLAYS +
+                                                                                          CUBE_TOTAL_DISPLAYS +
+                                                                                          PROMOTION_WALL_DISPLAYS +
                                                                                           TABLE_DISPLAYS +
                                                                                           TABLE_TOTAL_DISPLAYS +
                                                                                           FOUR_SIDED +
@@ -107,7 +109,8 @@ class ShareOfDisplay(object):
             # only valid tags are relevant
             display_non_cube_non_promotion_wall_with_id_and_valid_bays = \
                 self._filter_valid_bays(display_non_cube_non_promotion_wall_with_id_and_bays)
-            self._calculate_share_of_display(display_non_cube_non_promotion_wall_with_id_and_valid_bays)
+            self._calculate_share_of_display(
+                display_non_cube_non_promotion_wall_with_id_and_valid_bays)
 
     def _handle_promotion_wall_display(self):
         """
@@ -116,13 +119,15 @@ class ShareOfDisplay(object):
         """
         Log.debug(self.log_prefix + ' Starting promotion display')
         promotion_tags = \
-            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(PROMOTION_WALL_DISPLAYS)]
+            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+                PROMOTION_WALL_DISPLAYS)]
         if not promotion_tags.empty:
             promotion_display_name = promotion_tags['display_name'].values[0]
             display_promotion_wall = promotion_tags.groupby(['display_fk', 'scene_fk'],
                                                             as_index=False).display_size.sum()
             display_promotion_wall['display_name'] = promotion_display_name
-            display_promotion_wall_with_id = self._insert_into_display_surface(display_promotion_wall)
+            display_promotion_wall_with_id = self._insert_into_display_surface(
+                display_promotion_wall)
             promotion_wall_bays = promotion_tags[['scene_fk', 'bay_number']].copy()
             promotion_wall_bays.drop_duplicates(['scene_fk', 'bay_number'], inplace=True)
             # only valid tags are relevant
@@ -139,14 +144,17 @@ class ShareOfDisplay(object):
         :return:
         """
         Log.debug(self.log_prefix + ' Starting cube display')
-        tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_DISPLAYS + FOUR_SIDED)]
+        tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+            CUBE_DISPLAYS + FOUR_SIDED)]
         total_tags = \
-            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS + FOUR_SIDED_TOTAL_DISPLAYS)]
+            self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+                CUBE_TOTAL_DISPLAYS + FOUR_SIDED_TOTAL_DISPLAYS)]
         # remove mixed scenes with table and cube tags together
-        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
+        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+            TABLE_DISPLAYS)]
         table_scenes = table_tags.scene_fk.tolist()
         scenes = tags.scene_fk.tolist() + total_tags.scene_fk.tolist()
-        mixed_with_table_scenes = list(set(scenes)&set(table_scenes))
+        mixed_with_table_scenes = list(set(scenes) & set(table_scenes))
         scenes = list(set(scenes)-set(mixed_with_table_scenes))
         bays = pd.DataFrame({})
         display = pd.DataFrame({})
@@ -156,18 +164,21 @@ class ShareOfDisplay(object):
             if not (total_tags_scene.empty and tags_scene.empty):
                 if total_tags_scene.empty:
                     bays_scene = tags_scene[['scene_fk', 'bay_number']].copy()
-                    display_scene = tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                    display_scene = tags_scene.groupby(
+                        'scene_fk', as_index=False).display_size.sum()
                 elif tags_scene.empty:
                     bays_scene = total_tags_scene[['scene_fk', 'bay_number']].copy()
-                    display_scene = total_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                    display_scene = total_tags_scene.groupby(
+                        'scene_fk', as_index=False).display_size.sum()
                 else:
                     bays_scene = tags_scene[['scene_fk', 'bay_number']].copy()
-                    display_scene = total_tags_scene.groupby('scene_fk', as_index=False).display_size.sum()
+                    display_scene = total_tags_scene.groupby(
+                        'scene_fk', as_index=False).display_size.sum()
                 # if there is even 1 cube tag in the scene, all display tags will be considered as cube
                 if not (tags_scene[tags_scene['display_name'].isin(CUBE_DISPLAYS + CUBE_TOTAL_DISPLAYS)]).empty:
                     display_scene['display_fk'] = \
                         NON_BRANDED_CUBE_FK if (NON_BRANDED_CUBE in tags_scene['display_name'].values and
-                                             CUBE not in tags_scene['display_name'].values) else CUBE_FK
+                                                CUBE not in tags_scene['display_name'].values) else CUBE_FK
                 else:
                     display_scene['display_fk'] = FOUR_SIDED_FK
 
@@ -198,15 +209,18 @@ class ShareOfDisplay(object):
             :return:
             """
         Log.debug(self.log_prefix + ' Starting table display')
-        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS)]
-        total_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)]
+        table_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+            TABLE_DISPLAYS)]
+        total_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+            CUBE_TOTAL_DISPLAYS)]
         other_tags = \
             self.match_display_in_scene[~self.match_display_in_scene['display_name'].isin(TABLE_DISPLAYS +
                                                                                           TABLE_TOTAL_DISPLAYS + CUBE_TOTAL_DISPLAYS + CUBE_DISPLAYS)]
         table_scenes = table_tags.scene_fk.tolist()
         other_scenes = other_tags.scene_fk.tolist()
         total_cube_scenes = total_cube_tags.scene_fk.tolist()
-        mixed_scenes = list(set(table_scenes)&set(total_cube_scenes))  # scenes with total cube tag & table tag
+        mixed_scenes = list(set(table_scenes) & set(total_cube_scenes)
+                            )  # scenes with total cube tag & table tag
         # scenes = list((set(table_scenes)|set(mixed_scenes))-set(other_scenes))
         scenes = list(set(table_scenes)-set(other_scenes))
         table_bays = pd.DataFrame({})
@@ -218,24 +232,29 @@ class ShareOfDisplay(object):
             cube_size = 0
             table_tags_scene = table_tags[table_tags['scene_fk'] == scene]
             table_bays_scene = table_tags_scene[['scene_fk', 'bay_number']].copy()
-            number_of_captured_sides = len(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
+            number_of_captured_sides = len(table_tags_scene.groupby(
+                ['scene_fk', 'bay_number']).display_size.sum())
             table_size = table_tags_scene['display_size'].values[0]
             if scene in mixed_scenes:
                 # add the size of cube (1 cube = 3 tables), all_cube_tags includes cube and total in order to include all products
-                all_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS + CUBE_DISPLAYS)]
+                all_cube_tags = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+                    CUBE_TOTAL_DISPLAYS + CUBE_DISPLAYS)]
                 all_cube_tags_scene = all_cube_tags[all_cube_tags['scene_fk'] == scene]
                 cube_bays_scene = all_cube_tags_scene[['scene_fk', 'bay_number']].copy()
-                cube_size = all_cube_tags_scene.loc[all_cube_tags_scene['display_name'].isin(CUBE_TOTAL_DISPLAYS)].display_size.sum()
-            if number_of_captured_sides ==1:
+                cube_size = all_cube_tags_scene.loc[all_cube_tags_scene['display_name'].isin(
+                    CUBE_TOTAL_DISPLAYS)].display_size.sum()
+            if number_of_captured_sides == 1:
                 size = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_size.sum())
                 display_size = size + (cube_size * 3 * table_size)
             else:
                 try:
-                    min_side = min(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
-                    max_side = max(table_tags_scene.groupby(['scene_fk', 'bay_number']).display_fk.count())
+                    min_side = min(table_tags_scene.groupby(
+                        ['scene_fk', 'bay_number']).display_fk.count())
+                    max_side = max(table_tags_scene.groupby(
+                        ['scene_fk', 'bay_number']).display_fk.count())
                     display_size = (min_side * max_side * table_size) + (cube_size * 3 * table_size)
                 except Exception as e:
-                    display_size = (cube_size * 3 * table_size) # table bays are not valid
+                    display_size = (cube_size * 3 * table_size)  # table bays are not valid
             table_display = table_display.append({'scene_fk': scene, 'display_fk': table_display_fk,
                                                   'display_size': display_size, 'display_name': table_display_name}, ignore_index=True)
             table_bays = table_bays.append(table_bays_scene, ignore_index=True)
@@ -247,7 +266,8 @@ class ShareOfDisplay(object):
             # only valid tags are relevant
             table_valid_bays = self._filter_valid_bays(table_bays)
             table_display_with_id = self._insert_into_display_surface(table_display)
-            table_display_with_id_and_bays = table_display_with_id.merge(table_valid_bays, on=['scene_fk'])
+            table_display_with_id_and_bays = table_display_with_id.merge(
+                table_valid_bays, on=['scene_fk'])
             self._calculate_share_of_display(table_display_with_id_and_bays, all_skus=0)
 
         return
@@ -270,7 +290,6 @@ class ShareOfDisplay(object):
         display_group_fk = pd.read_sql_query(query, self.project_connector.db)
         return display_group_fk.pk[0]
 
-
     def _calculate_share_of_display(self, display_with_id_and_bays, all_skus=1):
         """
         Cross information between display and bays to match_product_in_scene.
@@ -282,7 +301,8 @@ class ShareOfDisplay(object):
         """
         if not display_with_id_and_bays.empty:
             # merging between display data and product tags, by scene and bay number
-            display_visit = display_with_id_and_bays.merge(self.match_product_in_scene, on=['scene_fk', 'bay_number'])
+            display_visit = display_with_id_and_bays.merge(
+                self.match_product_in_scene, on=['scene_fk', 'bay_number'])
             if display_visit.empty:
                 Log.debug(self.log_prefix + ' no product found on the displays')
                 return
@@ -290,7 +310,8 @@ class ShareOfDisplay(object):
                                                                  'template_fk', 'display_fk', 'display_size'],
                                                                 as_index=False).facings.sum()
             # for sos purposes filtering out stacking tags
-            display_visit_stacking = display_visit[display_visit['display_name'].isin(TABLE_DISPLAYS)]
+            display_visit_stacking = display_visit[display_visit['display_name'].isin(
+                TABLE_DISPLAYS)]
             display_visit_stacking.drop(['status', 'stacking_layer'], axis=1)
             display_visit = display_visit[~display_visit['display_name'].isin(TABLE_DISPLAYS)]
             display_visit = display_visit[(display_visit['stacking_layer'] == 1)]\
@@ -306,17 +327,20 @@ class ShareOfDisplay(object):
                 display_visit_by_display_product = \
                     display_visit.groupby(['display_surface_fk', 'product_fk', 'template_fk',
                                            'display_size', 'display_fk'], as_index=False)['linear', 'facings'].sum()
-                display_visit_by_display_product = self._exclude_sos(display_visit_by_display_product)
+                display_visit_by_display_product = self._exclude_sos(
+                    display_visit_by_display_product)
 
                 display_visit_by_display = \
                     display_visit_by_display_product[display_visit_by_display_product['in_sos'] == 1] \
-                        .groupby(['display_surface_fk'], as_index=False)
-                display_tot_linear = display_visit_by_display.linear.sum().rename(columns={'linear': 'tot_linear'})
-                display_tot_facings = display_visit_by_display.facings.sum().rename(columns={'facings': 'tot_facings'})
+                    .groupby(['display_surface_fk'], as_index=False)
+                display_tot_linear = display_visit_by_display.linear.sum().rename(columns={
+                    'linear': 'tot_linear'})
+                display_tot_facings = display_visit_by_display.facings.sum().rename(columns={
+                    'facings': 'tot_facings'})
                 display_visit_by_display_product_enrich_totals = \
                     display_visit_by_display_product \
-                        .merge(display_tot_linear, on='display_surface_fk') \
-                        .merge(display_tot_facings, on='display_surface_fk')
+                    .merge(display_tot_linear, on='display_surface_fk') \
+                    .merge(display_tot_facings, on='display_surface_fk')
 
                 display_visit_by_display_product_enrich_sos_type = display_visit_by_display_product_enrich_totals.merge(
                     self.displays, on='display_fk')
@@ -338,8 +362,9 @@ class ShareOfDisplay(object):
                 irrelvant_products = self.data_provider.all_products.loc[self.data_provider.all_products['product_type'] == 'Irrelevant'][
                     'product_fk'].tolist()
                 not_in_sos_condition = ((display_visit_by_display_product_enrich_sos_type['in_sos'] == 0) |
-                (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(irrelvant_products)))
-                display_visit_by_display_product_enrich_sos_type.loc[not_in_sos_condition, 'product_size'] = 0
+                                        (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(irrelvant_products)))
+                display_visit_by_display_product_enrich_sos_type.loc[not_in_sos_condition,
+                                                                     'product_size'] = 0
 
                 display_visit_summary = \
                     display_visit_by_display_product_enrich_sos_type.drop(['linear', 'tot_linear', 'tot_facings',
@@ -351,17 +376,17 @@ class ShareOfDisplay(object):
 
                 displays = display_visit_summary['display_surface_fk'].unique()
                 brands = self.get_products_brand()
-                merged_displays =display_facings_for_product.merge(brands, how='left', on='product_fk')
+                merged_displays = display_facings_for_product.merge(
+                    brands, how='left', on='product_fk')
                 for current_display in displays:
                     self.valid_facing_product[current_display] = []
                     current_display_products = merged_displays[
-                    merged_displays['display_surface_fk'] == current_display]
+                        merged_displays['display_surface_fk'] == current_display]
                     brands_in_display = current_display_products['brand_name'].unique()
                     for brand in brands_in_display:
                         if current_display_products[current_display_products['brand_name'] == brand]['facings'].sum() > 2:
                             self.valid_facing_product[current_display].extend(
                                 current_display_products[current_display_products['brand_name'] == brand]['product_fk'])
-
 
                 display_visit_summary = display_facings_for_product.merge(display_visit_summary, how='left',
                                                                           on=['display_surface_fk', 'product_fk'])
@@ -411,7 +436,8 @@ class ShareOfDisplay(object):
         condition = (df['excluded_templates'] == 1) | \
                     (df['excluded_template_products'] == 1) | (df['excluded_products'] == 1)
 
-        df = df.drop(['excluded_templates', 'excluded_template_products', 'excluded_products'], axis=1)
+        df = df.drop(['excluded_templates', 'excluded_template_products',
+                      'excluded_products'], axis=1)
 
         df.loc[condition, 'in_sos'] = 0
         df.loc[~condition, 'in_sos'] = 1
@@ -432,6 +458,10 @@ class ShareOfDisplay(object):
                         )
                     values
                         {};'''
+        if len(display_visit_summary_list_of_dict) == 0:
+            Log.info('no displays in this scene')
+            return
+
         for display in display_visit_summary_list_of_dict[:-1]:
             query_line = self._get_query_line(display) + ',' + '{}'
             query = query.format(query_line)
@@ -490,7 +520,7 @@ class ShareOfDisplay(object):
                  left join report.display_item_facts
                     on report.display_item_facts.display_surface_fk = probedata.display_surface.pk;""",
             drop_temp_table_query
-            ]
+        ]
         self.project_connector.disconnect_rds()
         self.project_connector.connect_rds()
         self.cur = self.project_connector.db.cursor()
@@ -598,12 +628,13 @@ class ShareOfDisplay(object):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_KPI_NAME)
         df = pd.DataFrame(display_visit_summary_list_of_dict)
         df.product_size = df.product_size.round(2)
-        final_df = df.groupby(['display_group', 'product_fk'])['product_size', 'facings'].sum().reset_index()
+        final_df = df.groupby(['display_group', 'product_fk'])[
+            'product_size', 'facings'].sum().reset_index()
         for index, row in final_df.iterrows():
             if row['product_size'] != 0:
                 display_group_fk = self.get_display_group(row['display_group'])
-                self.common.write_to_db_result(fk = kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
-                                          result=row['product_size'], score=row['facings'], by_scene=True)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=display_group_fk, denominator_id=row['product_fk'],
+                                               result=row['product_size'], score=row['facings'], by_scene=True)
         return
 
 
@@ -623,4 +654,3 @@ def calculate_share_of_display(project_conn, session, data_provider=None):
 #     data_provider = ACEDataProvider('integ3')
 #     data_provider.load_session_data(session)
 #     calculate(conn, session, data_provider)
-

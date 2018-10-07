@@ -92,7 +92,8 @@ class Consts(object):
     KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
                                       'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA',
                                       'Visible to Consumer %']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer', 'Visible to Consumer %', 'Secondary Displays']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer',
+                                   'Visible to Consumer %', 'Secondary Displays']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
 
@@ -170,7 +171,8 @@ class ToolBox(Consts):
         :param filters: These are the parameters which the data frame is filtered by.
         :return: Number of unique POSMs appeared in the filtered Display data frame.
         """
-        filtered_display = self.match_display_in_scene[self.get_filter_condition(self.match_display_in_scene, **filters)]
+        filtered_display = self.match_display_in_scene[self.get_filter_condition(
+            self.match_display_in_scene, **filters)]
         assortment = len(filtered_display['display_name'].unique())
         return assortment
 
@@ -200,7 +202,8 @@ class ToolBox(Consts):
 
         sub_category = self.all_products[(self.all_products['brand_name'] == brand) &
                                          (self.all_products['category'] == 'Spirit')]['sub_category'].values[0]
-        filtered_df = self.scif[self.get_filter_condition(self.scif, sub_category=sub_category, **filters)]
+        filtered_df = self.scif[self.get_filter_condition(
+            self.scif, sub_category=sub_category, **filters)]
         if filtered_df[filtered_df['brand_name'] == brand].empty:
             return False
         brands_in_category = filtered_df['brand_name'].unique().tolist()
@@ -212,7 +215,8 @@ class ToolBox(Consts):
                                                                      sub_category=sub_category, **filters)
         pouring_sos = sos_by_brand[brand]
 
-        pouring_survey = self.check_survey_answer(survey_text=POURING_SURVEY_TEXT, target_answer=brand)
+        pouring_survey = self.check_survey_answer(
+            survey_text=POURING_SURVEY_TEXT, target_answer=brand)
 
         if pouring_survey and pouring_sos == max(sos_by_brand.values()):
             brand_pouring_status = True
@@ -312,8 +316,10 @@ class ToolBox(Consts):
         """
         if not os.path.exists(self.local_templates_path):
             os.makedirs(self.local_templates_path)
-        dir_name = self.get_latest_directory_date_from_cloud(self.cloud_templates_path.format(''), self.amz_conn)
-        files = [f.key for f in self.amz_conn.bucket.list(self.cloud_templates_path.format(dir_name))]
+        dir_name = self.get_latest_directory_date_from_cloud(
+            self.cloud_templates_path.format(''), self.amz_conn)
+        files = [f.key for f in self.amz_conn.bucket.list(
+            self.cloud_templates_path.format(dir_name))]
         for file_path in files:
             file_name = file_path.split('/')[-1]
             with open(os.path.join(self.local_templates_path, file_name), 'wb') as f:
@@ -336,9 +342,11 @@ class ToolBox(Consts):
                     output.columns = row
                     break
         output = output[[key for key in output.keys() if isinstance(key, (str, unicode, int))]]
-        duplicated_rows = set([head for head in output.keys() if output.keys().tolist().count(head) > 1])
+        duplicated_rows = set([head for head in output.keys()
+                               if output.keys().tolist().count(head) > 1])
         if duplicated_rows:
-            Log.warning('The following columns titles appear more than once: {}'.format(', '.join(duplicated_rows)))
+            Log.warning('The following columns titles appear more than once: {}'.format(
+                ', '.join(duplicated_rows)))
             return None
         output = output.to_json(orient='records')
         json_data = json.loads(output)
