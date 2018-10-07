@@ -46,7 +46,8 @@ if __name__ == '__main__':
                                     "variables": [
                                         "denominator_val",
                                         "denominator_key",
-                                        "numerator_key"
+                                        "numerator_key",
+                                        "df"
                                     ]
                                 },
                                 {
@@ -54,7 +55,8 @@ if __name__ == '__main__':
                                     "variables": [
                                         "numerator_id",
                                         "numerator_val",
-                                        "numerator_key"
+                                        "numerator_key",
+                                        "df_1"
                                     ]
                                 },
                                 {
@@ -62,29 +64,47 @@ if __name__ == '__main__':
                                     "variables": [
                                         "kpi_fk",
                                         "target",
+                                        "stores"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "main_sos_calculation",
+                            "groups": [
+                                {
+                                    "name": "SOS_Denominator",
+                                    "variables": [
+                                        "denominator",
+                                        "denominator_id",
+                                        "denominator_key",
+                                        "denominator_val"
+                                    ]
+                                },
+                                {
+                                    "name": "SOS_Numerator",
+                                    "variables": [
+                                        "numerator",
+                                        "numerator_id",
+                                        "numerator_key",
+                                        "numerator_val"
+                                    ]
+                                },
+                                {
+                                    "name": "Others",
+                                    "variables": [
+                                        "json_policy",
+                                        "key",
+                                        "kpi_fk",
+                                        "manufacturer",
+                                        "score",
+                                        "sos_policy",
+                                        "stores",
+                                        "value"
                                     ]
                                 }
                             ]
                         }
-                        # {
-                        #     "name": "main_sos_calculation",
-                        #     "groups": [
-                        #         {
-                        #             "name": "SOS_Numerators",
-                        #             "variables": [
-                        #                 "aa",
-                        #                 "bb"
-                        #             ]
-                        #         },
-                        #         {
-                        #             "name": "SOS_Denominators",
-                        #             "variables": [
-                        #                 "lala",
-                        #                 "kakaroto"
-                        #             ]
-                        #         }
-                        #     ]
-                        # }
                     ]
                 }
                 # {
