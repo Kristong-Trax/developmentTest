@@ -202,7 +202,7 @@ class INBEVNLINBEVBEToolBox:
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVNLINBEVBEQueries.get_oos_messages(self.store_id)
+        query = INBEVNLINBEVBEQueries.get_oos_messages(self.store_id, self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
@@ -475,7 +475,8 @@ class INBEVNLINBEVBEToolBox:
     def remove_product_from_store_assortment(self, products_list):
         for product in products_list:
             custom_osa_query = INBEVNLINBEVBEQueries.get_delete_osa_records_query(product, self.store_id,
-                                                                                  datetime.utcnow())
+                                                                                  datetime.utcnow(), self.visit_date,
+                                                                                  datetime.utcnow().date())
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
 
