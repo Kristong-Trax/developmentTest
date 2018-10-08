@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.SOLARBR_SAND.Utils.KPIToolBox import SOLARBRToolBox
+from Projects.SOLARBR.Utils.KPIToolBox import SOLARBRToolBox
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -31,4 +31,4 @@ class Generator:
 
         self.tool_box.main_calculation()
 
-        # self.tool_box.common.commit_results_data_to_new_tables()
+

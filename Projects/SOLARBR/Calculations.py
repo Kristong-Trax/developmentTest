@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.SOLARBR_SAND.KPIGenerator import Generator
+from Projects.SOLARBR.KPIGenerator import Generator
 
 __author__ = 'nicolaske'
 
@@ -18,19 +18,16 @@ class Calculations(BaseCalculationsScript):
 
 
 
-
+#
 # if __name__ == '__main__':
-#     LoggerInitializer.init('inbevbr calculations')
+#     LoggerInitializer.init('SolarBr calculations')
 #     Config.init()
-#     project_name = 'solarbr-sand'
+#     project_name = 'solarbr'
 #     data_provider = KEngineDataProvider(project_name)
 #     output = Output()
 #
 #     # second report
-#     list_sessions = [
-#         'a93ba740-dc13-4a49-8f14-ef9b4693c8a3',
-#
-#     ]
+#     list_sessions = sessions = ['33eac77e-a9ef-4b31-b734-8610cc4bbc15']
 #
 #
 #     for session in list_sessions:
