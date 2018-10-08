@@ -17,17 +17,10 @@ class JsonGenerator:
         self.project_kpi_dict = {'project': self.project, 'author': 'urid', 'golden_shelves': '', 'kpi_data': []}
 
     def create_json(self, file_name):
-        # file_input = pd.read_csv(self.path + file_name, encoding='utf-8')
-        # file_input = pd.read_excel(self.path + file_name)
         file_input = pd.read_excel(os.path.join(self.base_path, file_name))
         output = file_input.to_json(orient='records')
-        # json_acceptable_string = output.replace("'", "\"")
-        # final_json = json.loads(json_acceptable_string)
         final_json = json.loads(output)
         self.project_kpi_dict['kpi_data'].append({'marsru-kpi': final_json})
-        # with open('/home/uri/dev/theGarage/Trax/Analytics/Calculation/Ps/CCRU/Utils/data.txt', 'w') as outfile:
-        #     json.dump(final_json, outfile)
-
         return
 
     def create_targets_json(self, file_name, key, sheet_name=None):
@@ -38,5 +31,4 @@ class JsonGenerator:
         output = file_input.to_json(orient='records')
         final_json = json.loads(output)
         self.project_kpi_dict[key] = final_json
-
         return

@@ -6,7 +6,7 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.INBEVNL.Utils.KPIToolBox import INBEVNLINBEVBEToolBox
+from Projects.INBEV.INBEVToolBox import INBEVToolBox
 
 __author__ = 'urid'
 
@@ -22,7 +22,7 @@ class INBEVNLINBEVBEGenerator:
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = INBEVNLINBEVBEToolBox(self.data_provider, self.output)
+        self.tool_box = INBEVToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

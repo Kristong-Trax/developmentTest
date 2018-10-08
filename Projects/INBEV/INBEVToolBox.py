@@ -12,9 +12,9 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils.INBEV.UploadNewTemplate import NewTemplate
-from Projects.INBEVLU.Utils.Fetcher import Queries
-from Projects.INBEVLU.Utils.INBEVBEJSON import JsonGenerator
-from Projects.INBEVLU.Utils.ToolBox import INBEVLUINBEVBEINBEVToolBox
+from Projects.INBEVNL.Utils.Fetcher import Queries
+from Projects.INBEVNL.Utils.INBEVBEJSON import JsonGenerator
+from Projects.INBEVNL.Utils.ToolBox import INBEVNLINBEVBEINBEVToolBox
 import sys
 
 sys.path.append('.')
@@ -31,6 +31,7 @@ PALLET = ['Full Pallet', 'Metal Bracket']
 HALF_PALLET = 'Half Pallet'
 PALLET_WEIGHT = 1
 HALF_PALLET_WEIGHT = 0.5
+
 PALLET_FACTOR = 6
 HALF_PALLET_FACTOR = 4
 PALLET_STACK_PARAM = 2
@@ -40,11 +41,12 @@ HALF_PALLET_SEQUENCE_PARAM = 2
 NON_PALLET_MIN_STACK_PARAM = 2
 NON_PALLET_MAX_STACK_PARAM = 4
 NON_PALLET_MAX_SEQUENCE_PARAM = 4
-MIN_STACK_PARAM=2
+MIN_STACK_PARAM = 2
+
 COMMERCIAL_GROUP = 'ABI_SFA_External_ID__c'
 EMPTY = 'Empty'
 OTHER = 'Other'
-DISPLAY_LIST =['1_display','2_display']
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -62,12 +64,12 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class INBEVLUINBEVBEToolBox:
+class INBEVToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
     CUSTOM_SCENE_ITEM_FACTS = 'pservice.custom_scene_item_facts'
-    ABINBEV = 'ABINBEV'
+    ABINBEV = 'AB INBEV'
     DELISTED_MESSAGE_TYPE = 'DVOID'
     PALLET_SIZE_MM = 1200
     HALF_PALLET_SIZE_MM = 600
@@ -103,7 +105,7 @@ class INBEVLUINBEVBEToolBox:
         except Exception as e:
             Log.info('Updating API sets failed')
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = INBEVLUINBEVBEINBEVToolBox(self.data_provider, output,
+        self.tools = INBEVNLINBEVBEINBEVToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
@@ -114,12 +116,12 @@ class INBEVLUINBEVBEToolBox:
         self.scene_item_length_mm_dict = {}
         self.osa_scene_item_results = {}
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
-        self.must_have_assortment_score_range = {(0, 70): 0, (71, 90): 15, (90, 101): 30}
-        self.linear_share_of_shelf_score_range = {(0, 95): 0, (95, 100): 15, (100, 103): 25,
+        self.must_have_assortment_score_range = {(0, 69.999): 0, (70, 89.999): 15, (90, 101): 30}
+        self.linear_share_of_shelf_score_range = {(0, 94.999): 0, (95, 99.999): 15, (100, 102.999): 25,
                                                   (103, 500): 30}
-        self.osa_score_range = {(0, 95): 0, (95, 97): 10, (97, 101): 15}
-        self.shelf_level_score_range = {(0, 60): 0, (60, 80): 10, (80, 101): 15}
-        self.product_blocking_score_range = {(0, 60): 0, (60, 80): 5, (80, 101): 10}
+        self.osa_score_range = {(0, 94.999): 0, (95, 96.999): 10, (97, 101): 15}
+        self.shelf_level_score_range = {(0, 59.999): 0, (60, 79.999): 10, (80, 101): 15}
+        self.product_blocking_score_range = {(0, 59.999): 0, (60, 79.999): 5, (80, 101): 10}
         self.products_to_add = []
         self.mha_product_results = {}
         self.has_assortment_list = []
@@ -132,6 +134,7 @@ class INBEVLUINBEVBEToolBox:
         # self.rect_values = self.get_rect_values()
         self.extra_bundle_leads = []
         self.current_date = datetime.date
+
     @staticmethod
     def inrange(x, min, max):
         return (min is None or min <= x) and (max is None or max >= x)

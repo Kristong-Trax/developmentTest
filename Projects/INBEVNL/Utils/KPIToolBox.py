@@ -6,17 +6,15 @@ from datetime import datetime, timedelta
 
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils.INBEV.UploadNewTemplate import NewTemplate
-from Projects.INBEVNL.Utils.Fetcher import INBEVNLINBEVBEQueries
-from Projects.INBEVNL.Utils.INBEVBEJSON import INBEVNLINBEVBEJsonGenerator
-from Projects.INBEVNL.Utils.ToolBox import INBEVNLINBEVBEINBEVToolBox
-import os
+from Projects.INBEV.Fetcher import Queries
+from Projects.INBEV.INBEVJSON import JsonGenerator
+from Projects.INBEV.ToolBox import ToolBox
 import sys
 
 sys.path.append('.')
@@ -107,7 +105,7 @@ class INBEVNLINBEVBEToolBox:
         except Exception as e:
             Log.info('Updating API sets failed')
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = INBEVNLINBEVBEINBEVToolBox(self.data_provider, output,
+        self.tools = ToolBox(self.data_provider, output,
                                                 kpi_static_data=self.kpi_static_data,
                                                 match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
@@ -166,7 +164,7 @@ class INBEVNLINBEVBEToolBox:
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = INBEVNLINBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = Queries.get_business_unit_data(self.store_info['store_fk'].values[0])
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
@@ -179,7 +177,7 @@ class INBEVNLINBEVBEToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = INBEVNLINBEVBEQueries.get_all_kpi_data()
+        query = Queries.get_all_kpi_data()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
@@ -189,32 +187,32 @@ class INBEVNLINBEVBEToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = INBEVNLINBEVBEQueries.get_match_display(self.session_uid)
+        query = Queries.get_match_display(self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
-        query = INBEVNLINBEVBEQueries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
+        query = Queries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVNLINBEVBEQueries.get_oos_messages(self.store_id, self.session_uid)
+        query = Queries.get_oos_messages(self.store_id, self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
 
     def get_store_number_1(self):
-        query = INBEVNLINBEVBEQueries.get_store_number_1(self.store_id)
+        query = Queries.get_store_number_1(self.store_id)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
     def get_eye_level_shelves(self, shelves_num):
-        jg = INBEVNLINBEVBEJsonGenerator('inbevbe')
+        jg = JsonGenerator('inbevbe')
         jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
         targets = jg.project_kpi_dict['golden_shelves']
         final_shelves = []
@@ -240,11 +238,7 @@ class INBEVNLINBEVBEToolBox:
             store_assortment_df = pd.DataFrame([])
         if store_assortment_df.empty:
             json_data = self.tools.download_template(set_name)
-            # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-            # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
             new_assortment_df = pd.DataFrame(json_data)
-            # ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-            #     'EAN'].unique().tolist()
 
             initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
                 COMMERCIAL_GROUP].unique().tolist()
@@ -267,7 +261,6 @@ class INBEVNLINBEVBEToolBox:
             (~self.scif[object_type].isin(ass_prod_list)) & (self.scif['manufacturer_name'] == self.ABINBEV) & (
                 ~self.scif['product_type'].isin([EMPTY, OTHER]))]
         if not new_products_df.empty:
-            # self.products_to_add = new_products_df['product_fk'].unique().tolist()
             for product in new_products_df['product_fk'].unique().tolist():
                 bundle_product_fk = self.get_bundle_lead(product)
                 if bundle_product_fk is not None and bundle_product_fk not in ass_prod_list:
@@ -435,9 +428,6 @@ class INBEVNLINBEVBEToolBox:
             elif (bundle_number_of_skus == 0) and not (product in falsely_recognized_prods):
                 assortment_result = 1
                 oos_result = 1
-            # elif product in ass_prod_list:
-            #     mha_in_ass = 1
-            #     mha_oos = 1
             else:
                 assortment_result = 0
                 oos_result = 0
@@ -474,24 +464,11 @@ class INBEVNLINBEVBEToolBox:
 
     def remove_product_from_store_assortment(self, products_list):
         for product in products_list:
-            custom_osa_query = INBEVNLINBEVBEQueries.get_delete_osa_records_query(product, self.store_id,
+            custom_osa_query = Queries.get_delete_osa_records_query(product, self.store_id,
                                                                                   datetime.utcnow(), self.visit_date,
                                                                                   datetime.utcnow().date())
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
-
-            # try:
-            #     product_ean_code = \
-            #         self.all_products.loc[self.all_products['product_fk']
-            #                               == product]['product_ean_code'].values[0]
-            # except IndexError as e:
-            #     Log.info('Product fk {} is not defined in the DB'.format(product))
-            #     continue
-            # assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
-            # oos_kpi_name = str(product_ean_code) + ' - OOS'
-            # self.save_level2_and_level3(OSA, assortment_kpi_name, 0)
-            # self.save_level2_and_level3(OSA, oos_kpi_name, 0)
-
         return
 
     def main_calculation(self, set_name):
@@ -505,7 +482,6 @@ class INBEVNLINBEVBEToolBox:
 
         if set_name in ('OSA',):
             set_score = self.check_on_shelf_availability(set_name)
-            # self.check_on_shelf_availability_on_scene_level(set_name)
         elif set_name in ('Linear Share of Shelf vs. Target', 'Linear Share of Shelf'):
             set_score = self.custom_share_of_shelf(set_name)
         elif set_name in ('Shelf Level',):
@@ -526,8 +502,6 @@ class INBEVNLINBEVBEToolBox:
 
         else:
             return
-        # if not set_score:
-        #     return
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                       == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
@@ -548,9 +522,7 @@ class INBEVNLINBEVBEToolBox:
                 kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                                 (self.kpi_static_data['kpi_name'] == level2_name_for_atomic) & (
                                                     self.kpi_static_data['atomic_kpi_name'] == kpi_name)]
-                # kpi_fk = kpi_data['kpi_fk'].values[0]
                 atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-                # self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
                 if score is None and threshold is None:
                     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
                 elif score is not None and threshold is None:
@@ -581,7 +553,6 @@ class INBEVNLINBEVBEToolBox:
 
     @kpi_runtime()
     def calculate_eye_level_availability(self, set_name):
-        total_inbev_prods_counter = 0
         results = []
         scene_recognition_flag = False
         oos_products = [product for product,
@@ -614,7 +585,6 @@ class INBEVNLINBEVBEToolBox:
                                 'bay_number'].unique().tolist()
                             bays_results_dict = {}
                             for bay in bays:
-                                # products_sos_dict = {}
                                 shelves_result_dict = {}
                                 bay_data = self.match_product_in_scene.loc[
                                     (self.match_product_in_scene['scene_fk'] == scene) & (
@@ -673,7 +643,6 @@ class INBEVNLINBEVBEToolBox:
         else:
             set_score = 0
             target = 0
-        # self.save_level1('Shelf Level', set_score)
         self.shelf_impact_score_results[set_name] = round(sum(results), 2)
         self.shelf_impact_score_thresholds[set_name] = target
 
@@ -683,7 +652,6 @@ class INBEVNLINBEVBEToolBox:
     def custom_share_of_shelf(self, set_name):
         set_score = 0
         if set_name == 'Linear Share of Shelf vs. Target':
-            # store_attribute_8 = self.get_store_attribute_7(self.store_id)
             self.shelf_impact_score_results[set_name] = round(set_score, 2)
             self.shelf_impact_score_thresholds[set_name] = 0
             targets_df = pd.DataFrame(self.set_templates_data[set_name])
@@ -716,7 +684,6 @@ class INBEVNLINBEVBEToolBox:
         sos_dict['denominator'] = 0
         nominator = 0
         denominator = 0
-        count_stacking_lowest_shelf = 0
         scenes_to_check = self.scif['scene_fk'].unique().tolist()
         for scene in scenes_to_check:
             matches = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene]
@@ -736,17 +703,10 @@ class INBEVNLINBEVBEToolBox:
                     bay_match_display_in_scene['name'].isin(ALL_PALLETS)]['name'].tolist()
                 lowest_shelf = max(shelves)
                 products_not_on_pallet = []
-                # products_with_zero_length = \
-                #         filtered_products.loc[filtered_products['shelf_number'] == lowest_shelf][
-                #             'product_fk'].unique().tolist()
                 lowest_shelf_data = matches.loc[
                     (matches['bay_number'] == bay) & (matches['shelf_number'] == lowest_shelf) &
                     (matches['stacking_layer'] <= 4)]
-                products_to_check = filtered_products.loc[filtered_products['shelf_number'] == lowest_shelf][
-                    'product_fk'].tolist()
-                # most_common_product = self.most_common(products_to_check)
                 if bay_displays:  # todo: to insert the rules in case we recoginzed displays
-                    # pallet_products = lowest_shelf_data['product_fk'].unique().tolist()
                     pallet_products = lowest_shelf_data['product_fk'].tolist()
                     pallet_products_facings_dict = collect.Counter(pallet_products)
                     pallet_products_above_two = dict(
@@ -771,11 +731,9 @@ class INBEVNLINBEVBEToolBox:
                                                                                      scene)
                                     self.insert_product_to_csif_legth_dict(scene, product=factor_dict.keys()[0],
                                                                            custom_mm_length=pallet_size_dict[
-                                        display] * int(
-                                                                               factor_dict.values()[0]))
-                                    # if factor_dict.keys()[0] in products_with_zero_length:
-                                    #     products_with_zero_length.remove(factor_dict.keys()[0])
-                    else:  # MY CODE:
+                                        display] * int(factor_dict.values()[0]))
+
+                    else:
                         if len(pallet_products_above_two) == 1:
                             if bay_displays[0] == HALF_PALLET:
                                 if self.check_rule(lowest_shelf_data, common_products[0], HALF_PALLET_STACK_PARAM,
@@ -789,9 +747,6 @@ class INBEVNLINBEVBEToolBox:
                                     factors = self.get_product_factor_by_lowest_shelf(lowest_shelf_data,
                                                                                       common_products,
                                                                                       display_unit=bay_displays)
-                            # if factors is None:
-                            #     if max(lowest_shelf_data['stacking_layer'].values) >= MIN_STACK_PARAM:
-                            #         count_stacking_lowest_shelf = 1
                             if factors is not None:
                                 for display, factor_dict in factors.items():
                                     denominator += self.calculate_denominator_for_pallet(display, factor_dict,
@@ -804,12 +759,7 @@ class INBEVNLINBEVBEToolBox:
                                                                            custom_mm_length=pallet_size_dict[display]
                                                                                             * int(
                                                                                list(factor_dict.values())[0]))
-                                    # if factor_dict.keys()[0] in products_with_zero_length:
-                                    #     products_with_zero_length.remove(factor_dict.keys()[0])
                     if factors:
-                        # for product in products_with_zero_length:
-                        #     if not (scene, product) in self.scene_item_length_mm_dict.keys():
-                        #         self.scene_item_length_mm_dict[scene, product] = 0
                         pallet_products_below_two = dict(
                             (k, v) for k, v in pallet_products_facings_dict.items() if v <= 2)
                         if len(pallet_products_below_two) > 0 or half_pallet_half_mixed:
@@ -901,7 +851,6 @@ class INBEVNLINBEVBEToolBox:
         if set_name == 'Linear Share of Shelf':
             set_score = linear_sos_value
             self.linear_sos_value = linear_sos_value
-            # self.save_level1(set_name=set_name, score=linear_sos_value)
             self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, result=nominator,
                                         score=round(linear_sos_value, 2), threshold=denominator)
         else:
@@ -995,31 +944,24 @@ class INBEVNLINBEVBEToolBox:
             for display in displays:
                 products_for_two_half_pallets = {}
                 passed_rule = 0
-                # products=self.list_by_most_common(products_to_check)
                 for product in products_to_check:
                     if self.check_rule(bay_data, product, HALF_PALLET_STACK_PARAM, HALF_PALLET_SEQUENCE_PARAM):
                         passed_rule += 1
                         products_for_two_half_pallets['{}_display'.format(passed_rule)] = product
                         if passed_rule >= 2:
-                            # products_for_two_half_pallets['1_display'] = first_common_product
-                            # products_for_two_half_pallets['2_display'] = second_common_product
                             break
                 if passed_rule == 0:
                     return None
                 if passed_rule == 1:
                     if len(products_to_check) == 1:
                         products_for_two_half_pallets['2_display'] = products_for_two_half_pallets['1_display']
-                    # else:
-                    #     return None
                 for display, product in products_for_two_half_pallets.items():
-                    # factor = self.get_product_att4(most_common_product)
                     factor = self.get_factor(HALF_PALLET)
                     if factor == 'NO VALUE' or factor is None:
                         factor = 1
                     factors[display] = {product: factor}
                 return factors
-        # most_common_product = self.most_common(products_to_check)
-        # factor = self.get_product_att4(most_common_product)
+
         factor = self.get_factor(display_unit[0])
         if factor == 'NO VALUE' or factor is None:
             factor = 1
@@ -1029,14 +971,6 @@ class INBEVNLINBEVBEToolBox:
     @staticmethod
     def most_common(lst):
         return max(set(lst), key=lst.count)
-
-    @staticmethod
-    def list_by_most_common(lst):
-        counter = collect.Counter(lst)
-        counter_by_order = collect.OrderedDict(
-            sorted(counter.items(), key=lambda x: x[1], reverse=True))
-        return counter_by_order
-        #groupby(set(lst), key=lst.count)
 
     @kpi_runtime()
     def product_stacking(self, set_name):
@@ -1057,7 +991,6 @@ class INBEVNLINBEVBEToolBox:
             set_score = 0
         else:
             set_score = (sum(results) / float(len(results))) * 100
-        # self.save_level1(set_name, set_score)
         return round(set_score, 2)
 
     @kpi_runtime()
@@ -1146,7 +1079,6 @@ class INBEVNLINBEVBEToolBox:
         product_ean_lst = [x.strip("'") for x in relevant_store_df['EAN'].unique().tolist()]
         ass_prod_list = self.all_products.loc[
             self.all_products['product_ean_code'].isin(product_ean_lst)]['product_fk'].unique().tolist()
-        scores = []
         falsely_unrecognized_products = self.oos_messages.loc[
             self.oos_messages['description'] == self.NOT_OOS]
         if not falsely_unrecognized_products.empty:
@@ -1197,7 +1129,6 @@ class INBEVNLINBEVBEToolBox:
                     product_dist_dict[product] = max(dist_score, existing_dist)
                 else:
                     product_dist_dict[product] = dist_score
-                # scores.append(dist_score)
                 if (scene, product) in self.mha_product_results:
                     existing_in_ass = self.mha_product_results[scene, product].get('in_assortment')
                     existing_oos = self.mha_product_results[scene, product].get('in_assortment')
@@ -1256,13 +1187,13 @@ class INBEVNLINBEVBEToolBox:
         return bundle_lead
 
     def get_store_attribute_8(self, store_fk):
-        query = INBEVNLINBEVBEQueries.get_store_attribute_8(store_fk)
+        query = Queries.get_store_attribute_8(store_fk)
         final_df = pd.read_sql_query(query, self.rds_conn.db)
         value = final_df.values[0][0]
         return value
 
     def get_all_products(self):
-        query = INBEVNLINBEVBEQueries.get_att3_att4_for_products()
+        query = Queries.get_att3_att4_for_products()
         attributes = pd.read_sql_query(query, self.rds_conn.db)
         final_df = self.all_project_products.merge(attributes, on='product_fk', suffixes=['', '_1'])
         return final_df
@@ -1397,7 +1328,6 @@ class INBEVNLINBEVBEToolBox:
         else:
             set_score = (sum(scores) / float(len(scores))) * 100
             target = len(scores)
-        # self.save_level1(set_name, set_score)
         self.shelf_impact_score_results[set_name] = round(sum(scores), 2)
         self.shelf_impact_score_thresholds[set_name] = target
 
@@ -1430,12 +1360,11 @@ class INBEVNLINBEVBEToolBox:
         return round(set_score, 2)
 
     def get_product_att4(self, product_fk):
-        query = INBEVNLINBEVBEQueries.get_product_att4(product_fk)
+        query = Queries.get_product_att4(product_fk)
         att4 = pd.read_sql_query(query, self.rds_conn.db)
         return att4.values[0][0]
 
     def get_factor(self, display):
-        factor = None
         if display in PALLET:
             factor = PALLET_FACTOR
         else:
@@ -1462,7 +1391,7 @@ class INBEVNLINBEVBEToolBox:
         return False
 
     def get_rect_values(self):
-        query = INBEVNLINBEVBEQueries.get_rect_values_query(self.session_uid)
+        query = Queries.get_rect_values_query(self.session_uid)
         rect_values = pd.read_sql_query(query, self.rds_conn.db)
         return rect_values
 
@@ -1474,13 +1403,11 @@ class INBEVNLINBEVBEToolBox:
         if set_name == 'OSA':
             missing_products_in_osa_format = [
                 str(sku) + ' - OOS' for sku in existing_skus if sku is not None]
-            # missing_products = set(missing_products_in_osa_format) ^ set(set_data)
             missing_products = []
             for missing_product in missing_products_in_osa_format:
                 if missing_product not in set_data:
                     missing_products.append(missing_product)
         else:
-            # missing_products = set(existing_skus) ^ set(set_data)
             missing_products = []
             for existing_sku in existing_skus:
                 if existing_sku not in set_data and existing_sku is not None:
@@ -1491,7 +1418,6 @@ class INBEVNLINBEVBEToolBox:
             if set_name == 'OSA':
                 kpi_list = []
                 for missing_product in missing_products:
-                    # if missing_product + ' - OOS' not in set_data:
                     sku = missing_product.strip(' - OOS')
                     in_ass_kpi_name = str(sku) + ' - In Assortment'
                     kpi_list.append(in_ass_kpi_name)
@@ -1530,15 +1456,10 @@ class INBEVNLINBEVBEToolBox:
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
         """
-        # result = round(result, 2)
         if level == self.LEVEL1:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
                                                 == fk]['kpi_set_name'].values[0]
             score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
-            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-            #                             format(result, '.2f'), score_type, fk)],
-            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-            #                                    'score_2', 'kpi_set_fk'])
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         result, score_type, fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
@@ -1591,8 +1512,8 @@ class INBEVNLINBEVBEToolBox:
         self.rds_conn.disconnect_rds()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
-        delete_queries = INBEVNLINBEVBEQueries.get_delete_session_results_query(self.session_uid)
-        pservice_tables_delete_query = INBEVNLINBEVBEQueries.get_delete_custom_scif_query(
+        delete_queries = Queries.get_delete_session_results_query(self.session_uid)
+        pservice_tables_delete_query = Queries.get_delete_custom_scif_query(
             self.session_fk)
         for query in delete_queries:
             cur.execute(query)
