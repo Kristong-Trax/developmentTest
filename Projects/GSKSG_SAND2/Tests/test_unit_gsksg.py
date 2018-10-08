@@ -11,7 +11,7 @@ __author__ = 'jasmine'
 
 class TestGSKSG(TestCase):
 
-    @mock.patch('Projects.GSKSG_SAND2.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.GSKSG.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()

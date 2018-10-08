@@ -1,49 +1,62 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
+import os
 import pandas as pd
-from datetime import datetime
-
+import numpy as np
+import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Utils.Conf.Keys import DbUsers
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-
+from Projects.SOLARBR_SAND.Utils.Const import Const
+from KPIUtils_v2.DB.Common import Common
 from Projects.SOLARBR_SAND.Utils.Fetcher import SOLARBRQueries
-from Projects.SOLARBR_SAND.Utils.GeneralToolBox import SOLARBRGENERALToolBox
-from KPIUtils.DB.Common import Common
+from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
+from Trax.Algo.Calculations.Core.Constants import Fields as Fd
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
+from Trax.Algo.Calculations.Core.Utils import Validation
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-__author__ = 'Ilan'
+# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+
+__author__ = 'nicolaske'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-EMPTY = 'Empty'
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
+SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template.xlsx')
+MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template v0.1.xlsx')
+
+
+
 
 
 class SOLARBRToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    EXCLUDE_EMPTY = False
+    EXCLUDE_FILTER = 0
+    EMPTY = 'Empty'
 
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
+        self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -51,134 +64,247 @@ class SOLARBRToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = SOLARBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.kpi_static_data = self.get_kpi_static_data()
+        self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.common = Common(data_provider)
+        self.templates = {}
+        self.session_id = self.data_provider.session_id
+        self.score_templates = {}
+        self.get_templates()
+        self.get_score_template()
+        self.manufacturer_fk = self.all_products[
+            self.all_products['manufacturer_name'] == 'Coca Cola'].iloc[0]
+        self.sos = SOS(self.data_provider, self.output)
+        self.total_score = 0
+        self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.toolbox = GENERALToolBox(self.data_provider)
+        self.scenes_info = self.data_provider[Data.SCENES_INFO]
+        self.kpi_results_new_tables_queries = []
+        # self.store_type = self.data_provider.store_type
 
-    def get_kpi_static_data(self):
-        """
-        This function extracts the static KPI data and saves it into one global data frame.
-        The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
-        """
-        query = SOLARBRQueries.get_all_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
 
-    # def main_calculation(self, kpi, scene_type, score):
-    def main_calculation(self):
-        """
-        This function calculates the KPI results.
-        """
-        total_scores = {}
-        for index, scene in self.scif.iterrows():
-            score_types = {
-                'Total_Length_Empty': 0,
-                'Total_Length_CC': 0,
-                'Total_Length_Competitor': 0
-            }
-            scene = scene.fillna(0)
-            scene_type = scene['template_name']
-            if scene_type not in total_scores:
-                total_scores[scene_type] = score_types
-            if scene['product_type'] == EMPTY:
-                total_scores[scene_type]['Total_Length_Empty'] += scene['gross_len_ign_stack']
-            elif scene['manufacturer_fk'] == 1:
-                total_scores[scene_type]['Total_Length_CC'] += scene['gross_len_ign_stack']
+
+    def get_templates(self):
+
+        for sheet in Const.SHEETS_MAIN:
+            self.templates[sheet] = pd.read_excel(MAIN_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"), keep_default_na=False)
+
+
+    def get_score_template(self):
+        for sheet in Const.SHEETS_SCORE:
+            self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"), keep_default_na=False, encoding = "utf-8")
+
+
+    def main_calculation(self, *args, **kwargs):
+        main_template = self.templates[Const.KPIS]
+        for i, main_line in main_template.iterrows():
+            self.calculate_main_kpi(main_line)
+        self.commit_results()
+
+
+
+
+
+    def calculate_main_kpi(self, main_line):
+        kpi_name = main_line[Const.KPI_NAME]
+        kpi_type = main_line[Const.Type]
+        scene_types = self.does_exist(main_line, Const.SCENE_TYPES)
+
+        result = score = 0
+        general_filters = {}
+
+
+        scif_scene_types = self.scif['template_name'].unique().tolist()
+        store_type = str(self.store_info["store_type"].iloc[0])
+        store_types = self.does_exist_store(main_line, Const.STORE_TYPES)
+        if store_type in store_types:
+
+            if scene_types:
+                if (('All' in scene_types) or bool(set(scif_scene_types) & set(scene_types))) :
+                    if not ('All' in scene_types):
+                        general_filters['template_name'] = scene_types
+                    if kpi_type == Const.SOVI:
+                        relevant_template = self.templates[kpi_type]
+                        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
+
+                        if relevant_template["numerator param 1"].all() and relevant_template["denominator param"].all():
+                            function = self.get_kpi_function(kpi_type)
+                            for i, kpi_line in relevant_template.iterrows():
+                                result, score = function(kpi_line, general_filters)
+                    else:
+                        pass
+
             else:
-                total_scores[scene_type]['Total_Length_Competitor'] += scene['gross_len_ign_stack']
-        set_kpi_scores = {
-            'Total_Length_Empty': 0,
-            'Total_Length_CC': 0,
-            'Total_Length_Competitor': 0
-        }
-        for scene_type in total_scores:
-            scores = total_scores[scene_type]
-            for kpi in scores:
-                atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi][
-                    'atomic_kpi_fk'].values[0]
+                pass
 
-                self.write_to_db_result(atomic_kpi_fk,
-                                        scores[kpi],
-                                        self.common.LEVEL3,
-                                        display_text='KPI_Type-' + kpi + '-Scene_Type-' + scene_type)
-                set_kpi_scores[kpi] += scores[kpi]
-        for set_kpi in set_kpi_scores:
-            kpi_set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_kpi][
-                'kpi_set_fk'].values[0]
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == set_kpi][
-                'kpi_fk'].values[0]
-            self.write_to_db_result(kpi_fk,
-                                    set_kpi_scores[set_kpi],
-                                    self.common.LEVEL2,
-                                    display_text='')
-            self.write_to_db_result(kpi_set_fk,
-                                    set_kpi_scores[set_kpi],
-                                    self.common.LEVEL1,
-                                    display_text='')
 
-    def write_to_db_result(self, fk, score, level, display_text):
+    @staticmethod
+    def does_exist(kpi_line, column_name):
         """
-        This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
+        checks if kpi_line has values in this column, and if it does - returns a list of these values
+        :param kpi_line: line from template
+        :param column_name: str
+        :return: list of values if there are, otherwise None
         """
-        attributes = self.create_attributes_dict(fk, score, level, display_text)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+            cell = kpi_line[column_name]
+            if type(cell) in [int, float]:
+                return [cell]
+            elif type(cell) in [unicode, str]:
+                return cell.split(", ")
+        return None
+
+    @staticmethod
+    def does_exist_store(kpi_line, column_name):
+        """
+        checks if kpi_line has values in this column, and if it does - returns a list of these values
+        :param kpi_line: line from template
+        :param column_name: str
+        :return: list of values if there are, otherwise None
+        """
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+            cell = kpi_line[column_name]
+            if type(cell) in [int, float]:
+                return [cell]
+            elif type(cell) in [unicode, str]:
+                return cell.split(",")
+        return None
+
+
+
+
+
+    def calculate_sos(self, kpi_line,  general_filters):
+        kpi_name = kpi_line[Const.KPI_NAME]
+        den_type = kpi_line[Const.DEN_TYPES_1]
+        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
+
+        num_type = kpi_line[Const.NUM_TYPES_1]
+        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
+
+        general_filters[den_type] = den_value
+
+        sos_filters = {num_type : num_value}
+
+        if kpi_line[Const.NUM_TYPES_2]:
+            num_type_2 = kpi_line[Const.NUM_TYPES_2]
+            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
+            sos_filters[num_type_2] = num_value_2
+
+        sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+        # sos_value *= 100
+        sos_value = round(sos_value, 2)
+
+        score = self.get_score_from_range(kpi_name, sos_value)
+
+        manufacturer_products = self.all_products[
+            self.all_products['manufacturer_name'] == num_value[0]].iloc[0]
+
+        manufacturer_fk = manufacturer_products["manufacturer_fk"]
+
+        all_products = self.all_products[
+            self.all_products['category'] == den_value[0]].iloc[0]
+
+        category_fk = all_products["category_fk"]
+
+
+
+        numerator_res, denominator_res = self.get_numerator_and_denominator(sos_filters, **general_filters)
+
+        self.common.write_to_db_result_new_tables(fk = 1,
+                                                  numerator_id=manufacturer_fk,
+                                                  numerator_result= numerator_res,
+                                                  denominator_id=category_fk,
+                                                  denominator_result= denominator_res,
+                                                  result=sos_value,
+                                                  score= score,
+                                                  score_after_actions= score)
+        return sos_value, score
+
+    def get_score_from_range(self, kpi_name, sos_value):
+        store_type = str(self.store_info["store_type"].iloc[0])
+        self.score_templates[store_type] = self.score_templates[store_type].replace(kpi_name, kpi_name.encode("utf-8"))
+        score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +
+                                                          '" & Low <= ' + str(sos_value) +
+                                                          ' & High >= ' + str(sos_value)+'')
+        score = score_range['Score'].iloc[0]
+        return score
+
+
+    def get_kpi_function(self, kpi_type):
+        """
+        transfers every kpi to its own function    .encode('utf-8')
+        :param kpi_type: value from "sheet" column in the main sheet
+        :return: function
+        """
+        if kpi_type == Const.SOVI:
+            return self.calculate_sos
         else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
+            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            return None
 
-    def create_attributes_dict(self, fk, score, level, display_text):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results tables.
+    @staticmethod
+    def round_result(result):
+        return round(result, 3)
 
-        """
-        if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score, '.2f'), fk)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'kpi_set_fk'])
-        elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
-            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name, score)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-        elif level == self.LEVEL3:
-            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-            # atomic_kpi_name = data['atomic_kpi_name'].values[0]
-            kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(display_text, self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
+    def get_numerator_and_denominator(self, sos_filters=None, include_empty=False, **general_filters):
 
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        insert_queries = self.merge_insert_queries(self.kpi_results_queries)
+        if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
+                general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+        pop_filter = self.toolbox.get_filter_condition(self.scif, **general_filters)
+        subset_filter = self.toolbox.get_filter_condition(self.scif, **sos_filters)
+        try:
+            pop = self.scif
+
+            filtered_population = pop[pop_filter]
+            if filtered_population.empty:
+                return 0,0
+            else:
+                subset_population = filtered_population[subset_filter]
+                # ratio = TBox.calculate_ratio_sum_field_in_rows(filtered_population, subset_population, Fd.FACINGS)
+
+                df = filtered_population
+                subset_df = subset_population
+                sum_field  = Fd.FACINGS
+                try:
+                    Validation.is_empty_df(df)
+                    Validation.is_empty_df(subset_df)
+                    Validation.is_subset(df, subset_df)
+                    Validation.df_columns_equality(df, subset_df)
+                    Validation.validate_columns_exists(df, [sum_field])
+                    Validation.validate_columns_exists(subset_df, [sum_field])
+                    Validation.is_none(sum_field)
+                except Exception, e:
+                    msg = "Data verification failed: {}.".format(e)
+                    # raise Exception(msg)
+
+                default_value = 0
+
+                numerator = TBox.calculate_frame_column_sum(subset_df, sum_field, default_value)
+                denominator = TBox.calculate_frame_column_sum(df, sum_field, default_value)
+
+                return numerator, denominator
+
+        except Exception as e:
+
+             Log.error(e.message)
+
+
+        return True
+
+    def commit_results(self):
+        insert_queries = self.merge_insert_queries(self.kpi_results_new_tables_queries)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
-        delete_queries = SOLARBRQueries.get_delete_session_results_query(self.session_uid)
-        for query in delete_queries:
-            cur.execute(query)
+        delete_query = SOLARBRQueries.get_delete_session_results_query(self.session_uid, self.session_id)
+        cur.execute(delete_query)
         for query in insert_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+        self.rds_conn.disconnect_rds()
 
     @staticmethod
     def merge_insert_queries(insert_queries):
