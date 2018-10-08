@@ -12,9 +12,9 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils.INBEV.UploadNewTemplate import NewTemplate
-from Projects.INBEV.Fetcher import Queries
-from Projects.INBEV.INBEVJSON import JsonGenerator
-from Projects.INBEV.ToolBox import ToolBox
+from KPIUtils.INBEV.Fetcher import Queries
+from KPIUtils.INBEV.INBEVJSON import JsonGenerator
+from KPIUtils.INBEV.ToolBox import ToolBox
 import sys
 
 sys.path.append('.')
