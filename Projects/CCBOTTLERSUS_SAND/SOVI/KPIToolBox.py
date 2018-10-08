@@ -299,7 +299,7 @@ class SOVIToolBox:
         #                                                 brand_name, product_name.encode('utf-8'), sos_value * 100))
 
     def sanitize_scif(self):
-        excluded_types = ['Empty', 'Irrelevant']
+        excluded_types = ['Empty', 'Irrelevant', 'Other']
         self.scif = self.scif[~(self.scif['product_type'].isin(excluded_types)) &
                               (self.scif['facings'] != 0)]
 
