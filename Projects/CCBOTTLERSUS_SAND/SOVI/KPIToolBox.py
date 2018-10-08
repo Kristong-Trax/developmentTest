@@ -318,4 +318,5 @@ class SOVIToolBox:
         return round(ratio, 4)
 
     def commit_results(self):
-        self.common_v2.commit_results_data()
+        pass
+        # self.common_v2.commit_results_data()

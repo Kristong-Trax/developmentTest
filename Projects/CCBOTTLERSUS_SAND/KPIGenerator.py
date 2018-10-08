@@ -34,10 +34,10 @@ class CCBOTTLERSUS_SANDGenerator:
         # self.calculate_red_score()
         # self.calculate_bci()
         # self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
+        # self.calculate_cma_compliance()
         self.calculate_cma_compliance_sw()
         # self.calculate_sovi()
-        # self.common_db.commit_results_data()
+        self.common_db.commit_results_data()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
@@ -100,7 +100,7 @@ class CCBOTTLERSUS_SANDGenerator:
     def calculate_cma_compliance_sw(self):
         Log.info('starting calculate_cma_compliance')
         try:
-            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output)
+            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output, self.common_db)
             tool_box.main_calculation()
             tool_box.commit_results()
         except Exception as e:
