@@ -35,7 +35,10 @@ class SOVIToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.region = self.store_info['region_name'].iloc[0]
+        self.valid_regions = ['UNITED']
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.kpi_static_data = self.common.get_kpi_static_data()
         # self.sos = SOS(self.data_provider, self.output)
@@ -46,8 +49,9 @@ class SOVIToolBox:
         """
         This function calculates the KPI results.
         """
-        self.sanitize_scif()
-        self.calculate_entire_store_sos()
+        if self.region in self.valid_regions:
+            self.sanitize_scif()
+            self.calculate_entire_store_sos()
 
     def calculate_entire_store_sos(self):
         # general_filters = {}  # entire session/store visit
