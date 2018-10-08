@@ -6,7 +6,7 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.INBEV.INBEVToolBox import INBEVToolBox
+from KPIUtils.INBEV.INBEVToolBox import INBEVToolBox
 
 __author__ = 'urid'
 
