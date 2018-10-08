@@ -264,10 +264,12 @@ class GSKSGToolBox:
 
     def get_relevant_calculations(self):
         # Gets the store type name and the relevant template according to it.
-        store_type = self.store_info['store_type'].values[0].title()
+        store_type = self.store_info['store_type'].values[0]
 
         # Gets the relevant kpis from template
-        template = pd.read_excel(self.excel_file_path, sheetname=store_type)
+        template = pd.read_excel(self.excel_file_path, sheetname='KPIs')
+        template = template.loc[template['Store Type'] == store_type]
+
         return template
 
     def calculate_atomic(self, row):
