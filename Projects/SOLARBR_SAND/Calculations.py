@@ -19,20 +19,20 @@ class Calculations(BaseCalculationsScript):
 
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('inbevbr calculations')
-    Config.init()
-    project_name = 'solarbr-sand'
-    data_provider = KEngineDataProvider(project_name)
-    output = Output()
-
-    # second report
-    list_sessions = [
-        'a93ba740-dc13-4a49-8f14-ef9b4693c8a3',
-
-    ]
-
-
-    for session in list_sessions:
-        data_provider.load_session_data(session)
-        Calculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('inbevbr calculations')
+#     Config.init()
+#     project_name = 'solarbr-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     output = Output()
+#
+#     # second report
+#     list_sessions = [
+#         'a93ba740-dc13-4a49-8f14-ef9b4693c8a3',
+#
+#     ]
+#
+#
+#     for session in list_sessions:
+#         data_provider.load_session_data(session)
+#         Calculations(data_provider, output).run_project_calculations()
