@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.Utils import Validation
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import sos_with_num_and_dem
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 
@@ -127,8 +127,10 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
 
         # scene_scif = scif[scif['scene_fk'] == scene]
+        num_scif = scif[self.get_filter_condition(scif, **num_filters)]
+        den_scif = scif[self.get_filter_condition(scif, **general_filters)]
 
-        num, ratio, den = self.sos_with_num_and_dem(kpi_line, scif, num_filters, general_filters)
+        ratio, num, den = sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
 
         self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
                                            result=ratio, by_scene=True,
@@ -160,33 +162,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         #     self.write_to_scene_level(
         #         kpi_name=kpi_name, result=result, parent=parent)
 
-    def sos_with_num_and_dem(self, kpi_line, relevant_scif, num_filters,  general_filters):
 
-        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **num_filters)]
-        den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-
-        try:
-            Validation.is_empty_df(den_scif)
-            Validation.is_empty_df(num_scif)
-            Validation.df_columns_equality(den_scif, num_scif)
-            Validation.is_subset(den_scif, num_scif)
-        except Exception, e:
-            msg = "Data verification failed: {}.".format(e)
-            raise Exception(msg)
-        num = num_scif[self.facings_field].sum()
-        den = den_scif[self.facings_field].sum()
-
-        ratio = num / float(den)
-        # numerator_id=product_fk,
-        # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-        #                                result=ratio, by_scene=True)
-
-        # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num,
-        #                                    denominator_result=den, result=ratio, by_scene=True,
-        #                                    identifier_parent=self.common_db2.get_dictionary(
-        #                                        parent_name='Total Coke Cooler Purity'),
-        #                                    should_enter=True)
-        return num, ratio, den
 
     def get_kpi_function(self, kpi_type):
         """

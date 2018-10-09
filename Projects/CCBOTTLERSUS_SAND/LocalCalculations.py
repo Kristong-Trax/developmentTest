@@ -31,24 +31,24 @@ if __name__ == '__main__':
     session = '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
     scenes = [
                 628916,
-                # 628924,
-                # 628934,
-                # 628947,
-                # 628951,
-                # 628945,
-                # 628949,
-                # 628964,
-                # 628967,
-                # 628975
+                628924,
+                628934,
+                628947,
+                628951,
+                628945,
+                628949,
+                628964,
+                628967,
+                628975
             ]
 
-    for scene in scenes:
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        SceneCalculations(data_provider).calculate_kpis()
+    # for scene in scenes:
+    #     data_provider = KEngineDataProvider(project_name)
+    #     data_provider.load_scene_data(session, scene)
+    #     output = VanillaOutput()
+    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+    #     save_scene_item_facts_to_data_provider(data_provider, output)
+    #     SceneCalculations(data_provider).calculate_kpis()
 
 
     sessions = [
@@ -69,10 +69,10 @@ if __name__ == '__main__':
         # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
     ]
 
-    # for session in sessions:
-    #     print('*************************************')
-    #     print('~~~~~~~{}~~~~~~~'.format(session))
-    #     data_provider = KEngineDataProvider(project_name)
-    #     data_provider.load_session_data(session)
-    #     output = Output()
-    #     CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
+    for session in sessions:
+        print('*************************************')
+        print('~~~~~~~{}~~~~~~~'.format(session))
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        output = Output()
+        CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()

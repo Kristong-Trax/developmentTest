@@ -7,6 +7,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import sos_with_num_and_dem
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -42,6 +43,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.manufacturer_fk = 1
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -129,21 +131,20 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             if not self.store_attr or (store_attrs[0] != '' and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
-            if scene_level:
-                self.scene_level_kpis(kpi_line, relevant_scif, general_filters, function)
+            result, score, target = function(kpi_line, relevant_scif, general_filters)
+            if result is None and score is None and target is None:
+                continue
+
+            if 'Bonus' in self.get_kpi_parent(kpi_name):
+                self.update_sub_score(kpi_name, passed=result)
             else:
-                result, score, target = function(kpi_line, relevant_scif, general_filters)
+                self.update_sub_score(kpi_name, passed=score)
 
-                # write in DF:
-                if result is None and score is None and target is None:
-                    continue
-
-                if 'Bonus' in self.get_kpi_parent(kpi_name):
-                    self.update_sub_score(kpi_name, passed=result)
-                else:
-                    self.update_sub_score(kpi_name, passed=score)
+            if isinstance(result, tuple):
+                self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
+                                         num=result[1], den=result[2])
+            else:
                 self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-                print(kpi_name, kpi_type, result, score, target)
         else:
             pass
 
@@ -156,7 +157,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
         self.session_results = self.session_results.append(result_dict, ignore_index=True)
 
-    def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False):
+    def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False,
+                            num=None, den=None):
         """
         Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
         :param kpi_name: str
@@ -168,7 +170,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.write_to_db(kpi_name, score, result=result, threshold=target)
+        self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
 
     # availability:
 
@@ -258,9 +260,13 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             num_type_2 = kpi_line[Const.NUM_TYPES_2]
             num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
             sos_filters[num_type_2] = num_value_2
-        sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+
+        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
+        den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
+        # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+        sos_value, num, den = sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
         # sos_value *= 100
-        sos_value = round(sos_value, 2)
+        # sos_value = round(sos_value, 2)
 
         if target:
             target = target
@@ -269,9 +275,9 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             score = 1 if (lower_limit <= sos_value <= upper_limit) else 0
             target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
-            score = 1
+            score = 0
             target = 0
-        return sos_value, score, target
+        return (sos_value, num, den), score, target
 
     # Targets:
     def get_sos_targets(self, kpi_name, sos_range=False):
@@ -796,7 +802,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if passed:
             self.sub_scores[parent] += passed
 
-    def write_to_db(self, kpi_name, score, result=None, threshold=None):
+    def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
         """
         writes result in the DB
         :param kpi_name: str
@@ -808,6 +814,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
         parent = self.get_kpi_parent(kpi_name)
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
+                                           numerator_result=num, denominator_result=den,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
         # self.write_to_db_result(
         #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
@@ -924,7 +931,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         den = sum(self.sub_totals.values())
         if den:
             # result = float(num) / den
-            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
+                                               denominator_id=self.store_id,
                                                denominator_result=den, result=num, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=CMA_COMPLIANCE))
