@@ -6,6 +6,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
+
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -87,7 +88,8 @@ class SOVIToolBox:
 
         self.common_v2.write_to_db_result(3000, numerator_id=MANUFACTURER_FK, numerator_result=numerator_result,
                                           result=sos_value,
-                                          denominator_id=self.store_id, denominator_result=denominator_result, score=sos_value,
+                                          denominator_id=self.store_id, denominator_result=denominator_result,
+                                          score=sos_value,
                                           score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
                                           weight=None, kpi_level_2_target_fk=None, context_id=None,
@@ -149,7 +151,8 @@ class SOVIToolBox:
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
 
-        self.common_v2.write_to_db_result(3002, numerator_id=att4_id, numerator_result=numerator_result, result=sos_value,
+        self.common_v2.write_to_db_result(3002, numerator_id=att4_id, numerator_result=numerator_result,
+                                          result=sos_value,
                                           denominator_id=template_group_id, denominator_result=denominator_result,
                                           score=sos_value, score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
@@ -187,7 +190,8 @@ class SOVIToolBox:
 
         self.common_v2.write_to_db_result(3003, numerator_id=category_id, numerator_result=numerator_result,
                                           result=sos_value,
-                                          denominator_id=att4_id, denominator_result=denominator_result, score=sos_value,
+                                          denominator_id=att4_id, denominator_result=denominator_result,
+                                          score=sos_value,
                                           score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
                                           weight=None, kpi_level_2_target_fk=None, context_id=None,
@@ -341,4 +345,5 @@ class SOVIToolBox:
         return round(ratio * 100, 2)
 
     def commit_results(self):
-        self.common_v2.commit_results_data()
+        pass
+        # self.common_v2.commit_results_data()
