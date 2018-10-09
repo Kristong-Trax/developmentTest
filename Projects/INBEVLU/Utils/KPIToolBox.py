@@ -1,20 +1,23 @@
 import pandas as pd
 import numpy as np
 import collections as collect
+import copy
 from datetime import datetime, timedelta
 
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils.INBEV.UploadNewTemplate import NewTemplate
-
-from Projects.INBEVLU.Utils.Fetcher import INBEVLUINBEVBEQueries
-from Projects.INBEVLU.Utils.INBEVBEJSON import INBEVLUINBEVBEJsonGenerator
+from Projects.INBEVLU.Utils.Fetcher import Queries
+from Projects.INBEVLU.Utils.INBEVBEJSON import JsonGenerator
 from Projects.INBEVLU.Utils.ToolBox import INBEVLUINBEVBEINBEVToolBox
+import sys
+
+sys.path.append('.')
 
 __author__ = 'urid'
 
@@ -129,7 +132,6 @@ class INBEVLUINBEVBEToolBox:
         # self.rect_values = self.get_rect_values()
         self.extra_bundle_leads = []
         self.current_date = datetime.date
-
     @staticmethod
     def inrange(x, min, max):
         return (min is None or min <= x) and (max is None or max >= x)
@@ -159,7 +161,7 @@ class INBEVLUINBEVBEToolBox:
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = INBEVLUINBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = Queries.get_business_unit_data(self.store_info['store_fk'].values[0])
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
@@ -172,7 +174,7 @@ class INBEVLUINBEVBEToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = INBEVLUINBEVBEQueries.get_all_kpi_data()
+        query = Queries.get_all_kpi_data()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
@@ -182,32 +184,32 @@ class INBEVLUINBEVBEToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = INBEVLUINBEVBEQueries.get_match_display(self.session_uid)
+        query = Queries.get_match_display(self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
-        query = INBEVLUINBEVBEQueries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
+        query = Queries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVLUINBEVBEQueries.get_oos_messages(self.session_uid)
+        query = Queries.get_oos_messages(self.store_id, self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
 
     def get_store_number_1(self):
-        query = INBEVLUINBEVBEQueries.get_store_number_1(self.store_id)
+        query = Queries.get_store_number_1(self.store_id)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
     def get_eye_level_shelves(self, shelves_num):
-        jg = INBEVLUINBEVBEJsonGenerator('inbevbe')
+        jg = JsonGenerator('inbevbe')
         jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
         targets = jg.project_kpi_dict['golden_shelves']
         final_shelves = []
@@ -220,22 +222,7 @@ class INBEVLUINBEVBEToolBox:
                 continue
         return final_shelves
 
-    # def test_new_bundles(self):
-    #     json_data = self.tools.download_template('OSA')
-    #     # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-    #     # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
-    #     new_assortment_df = pd.DataFrame(json_data)
-    #     # ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-    #     #     'EAN'].unique().tolist()
-    #
-    #     initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-    #         COMMERCIAL_GROUP].unique().tolist()
-    #     ass_prod_list = []
-    #     for product in initial_ass_prod_list:
-    #         product_fk = self.get_bundle_lead_by_att1(product)
-    #         if product_fk is not None:
-    #             ass_prod_list.append(product_fk)
-
+    @kpi_runtime()
     def check_on_shelf_availability(self, set_name):
         """
         This function is used for OSA set calculations
@@ -248,11 +235,7 @@ class INBEVLUINBEVBEToolBox:
             store_assortment_df = pd.DataFrame([])
         if store_assortment_df.empty:
             json_data = self.tools.download_template(set_name)
-            # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-            # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
             new_assortment_df = pd.DataFrame(json_data)
-            # ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-            #     'EAN'].unique().tolist()
 
             initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
                 COMMERCIAL_GROUP].unique().tolist()
@@ -263,7 +246,8 @@ class INBEVLUINBEVBEToolBox:
                     ass_prod_list.append(product_fk)
             self.has_assortment_list = ass_prod_list
             object_type = 'product_fk'
-            self.add_product_to_store_assortment(ass_prod_list, object_type)  # Insert all data from file
+            self.add_product_to_store_assortment(
+                ass_prod_list, object_type)  # Insert all data from file
         else:
             ass_prod_list = store_assortment_df['product_fk'].unique().tolist()
             self.has_assortment_list = ass_prod_list
@@ -274,20 +258,21 @@ class INBEVLUINBEVBEToolBox:
             (~self.scif[object_type].isin(ass_prod_list)) & (self.scif['manufacturer_name'] == self.ABINBEV) & (
                 ~self.scif['product_type'].isin([EMPTY, OTHER]))]
         if not new_products_df.empty:
-            # self.products_to_add = new_products_df['product_fk'].unique().tolist()
             for product in new_products_df['product_fk'].unique().tolist():
                 bundle_product_fk = self.get_bundle_lead(product)
                 if bundle_product_fk is not None and bundle_product_fk not in ass_prod_list:
                     self.products_to_add.append(bundle_product_fk)
             self.add_product_to_store_assortment(list(set(self.products_to_add)), 'product_fk')
-        delisted_products = self.oos_messages.loc[self.oos_messages['description'] == self.DELISTED_MESSAGE_TYPE]
+        delisted_products = self.oos_messages.loc[self.oos_messages['description']
+                                                  == self.DELISTED_MESSAGE_TYPE]
         if not delisted_products.empty:
             products_to_remove = delisted_products['product_fk'].unique().tolist()
             self.remove_product_from_store_assortment(products_to_remove)
         falsely_recognized_products = self.oos_messages.loc[
             self.oos_messages['description'] == self.NOT_OOS]
         if not falsely_recognized_products.empty:
-            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique().tolist()
+            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique(
+            ).tolist()
         else:
             falsely_recognized_products_list = []
         ass_prod_present_in_store.extend(self.products_to_add)
@@ -299,23 +284,40 @@ class INBEVLUINBEVBEToolBox:
             self.calculate_osa_assortment_and_oos(products_list, ass_prod_present_in_store, object_type,
                                                   falsely_recognized_prods=falsely_recognized_products_list)
 
-            updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
-                (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
+            updated_ass_prod_list = self.get_relevant_assortment_product_list(ass_prod_list)
             updated_ass_prod_list.extend(set(self.extra_bundle_leads))
             for delisted_product in self.delisted_products:
                 if delisted_product in updated_ass_prod_list:
                     updated_ass_prod_list.remove(delisted_product)
+                if delisted_product in self.osa_product_dist_dict.keys():
+                    del self.osa_product_dist_dict[delisted_product]
             if not updated_ass_prod_list:
                 set_score = 0
                 target = 0
             else:
-                # set_score = (len(ass_prod_present_in_store) / float(len(set(updated_ass_prod_list)))) * 100
-                set_score = (sum(self.osa_product_dist_dict.values()) / float(len(set(updated_ass_prod_list)))) * 100
+                set_score = (sum(self.osa_product_dist_dict.values()) /
+                             float(len(set(updated_ass_prod_list)))) * 100
                 target = len(set(updated_ass_prod_list))
             self.shelf_impact_score_thresholds[OSA] = target
-        self.shelf_impact_score_results[OSA] = round(sum(self.osa_product_dist_dict.values()), 2)
+            self.shelf_impact_score_results[OSA] = round(sum(self.osa_product_dist_dict.values()), 2)
 
         return round(set_score, 2)
+
+    def get_relevant_assortment_product_list(self, ass_prod_list):
+        """
+        This function was created to take care of cases that in the assortment list there are both product and it's
+        lead.
+        :param ass_prod_list: assortment product list from the DB without the delisted products
+        :return: List of the products that need to be in the assortment
+        """
+        relevant_prod = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
+            (self.all_products['att3'] == 'YES'))]['product_fk'].unique().tolist()
+        for prod in relevant_prod:
+            lead = self.get_bundle_lead(prod)
+            if lead in relevant_prod and lead != prod:
+                relevant_prod.remove(prod)
+        return relevant_prod
+
 
     def check_on_shelf_availability_on_scene_level(self, set_name):
         """
@@ -329,16 +331,8 @@ class INBEVLUINBEVBEToolBox:
             store_assortment_df = pd.DataFrame([])
         if store_assortment_df.empty:
             json_data = self.tools.download_template(set_name)
-            # json_data = self.tools.get_json_data('/home/uri/trax_ace_factory/Projects/INBEVBE_SAND/Data/OSA.xlsx')
-            # new_assortment_df = pd.DataFrame.from_dict(json_data, orient='index')
             new_assortment_df = pd.DataFrame(json_data)
-            # init_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
-            #     'EAN'].unique().tolist()
             object_type = 'product_fk'
-            # self.add_product_to_store_assortment(ass_prod_list, object_type)  # Insert all data from file
-            # ass_prod_list = self.all_products.loc[self.all_products['product_ean_code'].isin(init_ass_prod_list)][
-            #     'product_fk'].unique().tolist()
-
             initial_ass_prod_list = new_assortment_df.loc[new_assortment_df['store'] == self.store_number[0]][
                 COMMERCIAL_GROUP].unique().tolist()
             ass_prod_list = []
@@ -360,7 +354,8 @@ class INBEVLUINBEVBEToolBox:
         falsely_recognized_products = scif_with_oos_messages.loc[
             (scif_with_oos_messages['description'] == self.NOT_OOS)]
         if not falsely_recognized_products.empty:
-            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique().tolist()
+            falsely_recognized_products_list = falsely_recognized_products['product_fk'].unique(
+            ).tolist()
         else:
             falsely_recognized_products_list = []
         products_without_oos_reasons = scif_with_oos_messages.loc[
@@ -368,7 +363,8 @@ class INBEVLUINBEVBEToolBox:
                 ~scif_with_oos_messages['product_fk'].isin(ass_prod_list)) & (
                 scif_with_oos_messages['product_fk'].isin(ass_prod_list))]
         if not products_without_oos_reasons.empty:
-            products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique().tolist()
+            products_without_oos_reasons_list = products_without_oos_reasons['product_fk'].unique(
+            ).tolist()
         else:
             products_without_oos_reasons_list = []
         for scene in scenes_to_check:
@@ -389,44 +385,46 @@ class INBEVLUINBEVBEToolBox:
             product_bundle_name = self.get_bundle_lead(product)
             if product_bundle_name:
                 bundle_products = self.get_bundle_products(product)
+                if product != product_bundle_name and product in products_list and product_bundle_name in products_list:
+                    continue
                 if scene:
                     self.osa_scene_item_results[scene, product] = {'in_assortment': 0, 'oos': 1}
                 if product_bundle_name not in products_list:
                     self.extra_bundle_leads.append(product_bundle_name)
                 product = product_bundle_name
             else:
-                # bundle_products = [product]
                 if product in self.all_products['product_fk'].unique().tolist():
                     self.missing_bundle_leads.append(product)
                 continue
             try:
-                product_fk = self.all_products.loc[self.all_products[object_type] == product]['product_fk'].values[0]
+                product_fk = self.all_products.loc[self.all_products[object_type]
+                                                   == product]['product_fk'].values[0]
                 product_ean_code = \
-                    self.all_products.loc[self.all_products[object_type] == product]['product_ean_code'].values[0]
+                    self.all_products.loc[self.all_products[object_type]
+                                          == product]['product_ean_code'].values[0]
             except IndexError as e:
-                Log.info('Product with the {} number {} is not defined in the DB'.format(object_type, product))
+                Log.info('Product with the {} number {} is not defined in the DB'.format(
+                    object_type, product))
                 continue
             assortment_kpi_name = str(product_ean_code) + ' - In Assortment'
             oos_kpi_name = str(product_ean_code) + ' - OOS'
             if scene:
-                bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products, scene_id=scene)
+                bundle_number_of_skus = self.tools.calculate_assortment(
+                    product_fk=bundle_products, scene_id=scene)
             else:
                 bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products,
                                                                         session_id=self.session_fk)
-            if (bundle_number_of_skus > 0):
+            if bundle_number_of_skus > 0:
                 dist_score = 1
                 assortment_result = 1
                 oos_result = 0
-            elif (product in falsely_recognized_prods):
+            elif product in falsely_recognized_prods:
                 dist_score = 1
                 assortment_result = 1
                 oos_result = 0
             elif (bundle_number_of_skus == 0) and not (product in falsely_recognized_prods):
                 assortment_result = 1
                 oos_result = 1
-            # elif product in ass_prod_list:
-            #     mha_in_ass = 1
-            #     mha_oos = 1
             else:
                 assortment_result = 0
                 oos_result = 0
@@ -444,7 +442,8 @@ class INBEVLUINBEVBEToolBox:
                     existing_oos = self.osa_scene_item_results[scene, product].get('oos')
                     in_ass = max(existing_ass, assortment_result)
                     oos = min(existing_oos, oos_result)
-                    self.osa_scene_item_results[scene, product_fk] = {'in_assortment': in_ass, 'oos': oos}
+                    self.osa_scene_item_results[scene, product_fk] = {
+                        'in_assortment': in_ass, 'oos': oos}
                 else:
                     self.osa_scene_item_results[scene, product_fk] = {'in_assortment': assortment_result,
                                                                       'oos': oos_result}
@@ -452,7 +451,8 @@ class INBEVLUINBEVBEToolBox:
     def add_product_to_store_assortment(self, products_list, object_type):
         for product in products_list:
             try:
-                product_fk = self.all_products.loc[self.all_products[object_type] == product]['product_fk'].values[0]
+                product_fk = self.all_products.loc[self.all_products[object_type]
+                                                   == product]['product_fk'].values[0]
                 self.write_to_osa_table(product_fk)
             except Exception as e:
                 Log.info('Product {} is not defined'.format(product))
@@ -461,7 +461,9 @@ class INBEVLUINBEVBEToolBox:
 
     def remove_product_from_store_assortment(self, products_list):
         for product in products_list:
-            custom_osa_query = INBEVLUINBEVBEQueries.get_delete_osa_records_query(product, self.store_id, datetime.utcnow())
+            custom_osa_query = Queries.get_delete_osa_records_query(product, self.store_id,
+                                                                                  datetime.utcnow(), self.visit_date,
+                                                                                  datetime.utcnow().date())
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
         return
@@ -477,7 +479,6 @@ class INBEVLUINBEVBEToolBox:
 
         if set_name in ('OSA',):
             set_score = self.check_on_shelf_availability(set_name)
-            # self.check_on_shelf_availability_on_scene_level(set_name)
         elif set_name in ('Linear Share of Shelf vs. Target', 'Linear Share of Shelf'):
             set_score = self.custom_share_of_shelf(set_name)
         elif set_name in ('Shelf Level',):
@@ -491,14 +492,15 @@ class INBEVLUINBEVBEToolBox:
         elif set_name == 'Share of Assortment':
             set_score = self.calculate_share_of_assortment()
             self.save_level2_and_level3(set_name, set_name, set_score)
+        elif set_name == 'Product Stacking':
+            set_score = self.product_stacking(set_name)
         elif set_name == 'Shelf Impact Score':
             set_score = self.shelf_impact_score()
 
         else:
             return
-        # if not set_score:
-        #     return
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                      == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return set_score
 
@@ -507,16 +509,6 @@ class INBEVLUINBEVBEToolBox:
         """
         Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
         """
-        # kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-        #                                 (self.kpi_static_data['kpi_name'] == kpi_name)]
-        #
-        # kpi_fk = kpi_data['kpi_fk'].values[0]
-        # atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-        # self.write_to_db_result(kpi_fk, result, self.LEVEL2)
-        # if not result and not threshold:
-        #     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
-        # else:
-        #     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
         try:
             if level_2_only:
                 kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
@@ -527,15 +519,14 @@ class INBEVLUINBEVBEToolBox:
                 kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                                 (self.kpi_static_data['kpi_name'] == level2_name_for_atomic) & (
                                                     self.kpi_static_data['atomic_kpi_name'] == kpi_name)]
-                # kpi_fk = kpi_data['kpi_fk'].values[0]
                 atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
-                # self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
                 if score is None and threshold is None:
                     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
                 elif score is not None and threshold is None:
                     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
                 else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3,
+                                            score=score, threshold=threshold)
             else:
                 kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                                 (self.kpi_static_data['kpi_name'] == kpi_name)]
@@ -547,32 +538,38 @@ class INBEVLUINBEVBEToolBox:
                 elif score is not None and threshold is None:
                     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
                 else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3,
+                                            score=score, threshold=threshold)
         except IndexError as e:
-            Log.info('KPI {} is not defined in the DB for set {}'.format(kpi_name.encode('utf-8'), set_name))
+            Log.info('KPI {} is not defined in the DB'.format(kpi_name))
 
     def save_level1(self, set_name, score):
         kpi_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]
         kpi_set_fk = kpi_data['kpi_set_fk'].values[0]
         self.write_to_db_result(kpi_set_fk, score, self.LEVEL1)
 
+    @kpi_runtime()
     def calculate_eye_level_availability(self, set_name):
-        total_inbev_prods_counter = 0
         results = []
         scene_recognition_flag = False
-        oos_products = [product for product, dist_score in self.osa_product_dist_dict.items() if dist_score == 0]
-        for params in self.set_templates_data[set_name]:  # todo add handler for bays without pallets
+        oos_products = [product for product,
+                        dist_score in self.osa_product_dist_dict.items() if dist_score == 0]
+        # todo add handler for bays without pallets
+        for params in self.set_templates_data[set_name]:
             try:
                 if params.get(self.store_type) in self.tools.RELEVANT_FOR_STORE:
                     scenes_results_dict = {}
                     scenes_to_check = self.match_product_in_scene['scene_fk'].unique().tolist()
                     object_type = self.tools.ENTITY_TYPE_CONVERTER.get(params.get(self.tools.ENTITY_TYPE),
                                                                        'product_ean_code')
-                    objects = str(params.get(self.tools.PRODUCT_EAN_CODE, params.get(self.tools.PRODUCT_EAN_CODE2, '')))
-                    product_fks = self.all_products[self.all_products['product_ean_code'].isin([objects])]['product_fk'].unique().tolist()
+                    objects = str(params.get(self.tools.PRODUCT_EAN_CODE,
+                                             params.get(self.tools.PRODUCT_EAN_CODE2, '')))
+                    product_fks = self.all_products[self.all_products['product_ean_code'].isin(
+                        [objects])]['product_fk'].unique().tolist()
                     if set(product_fks) & set(oos_products):
                         result = None
-                    elif not set(product_fks) & set(self.scif.loc[self.scif['dist_sc'] == 1]['product_fk'].unique().tolist()):
+                    elif not set(product_fks) & \
+                            set(self.scif.loc[self.scif['dist_sc'] == 1]['product_fk'].unique().tolist()):
                         result = None
                     else:
                         for scene in scenes_to_check:
@@ -585,7 +582,6 @@ class INBEVLUINBEVBEToolBox:
                                 'bay_number'].unique().tolist()
                             bays_results_dict = {}
                             for bay in bays:
-                                # products_sos_dict = {}
                                 shelves_result_dict = {}
                                 bay_data = self.match_product_in_scene.loc[
                                     (self.match_product_in_scene['scene_fk'] == scene) & (
@@ -594,18 +590,23 @@ class INBEVLUINBEVBEToolBox:
                                     bay_match_display_in_scene = self.match_display_in_scene.loc[
                                         (self.match_display_in_scene['scene_fk'] == scene) &
                                         (self.match_display_in_scene['bay_number'] == bay)]
-                                    bay_displays = bay_match_display_in_scene['name'].unique().tolist()
+                                    bay_displays = bay_match_display_in_scene['name'].unique(
+                                    ).tolist()
                                     if bay_displays:
                                         factor = self.get_factor(bay_displays[0])
                                     else:
                                         factor = 1
-                                    number_of_shelves = len(bay_data['shelf_number'].unique()) + (int(factor) - 1)
+                                    number_of_shelves = len(
+                                        bay_data['shelf_number'].unique()) + (int(factor) - 1)
                                 else:
                                     number_of_shelves = len(bay_data['shelf_number'].unique())
-                                bay_eye_level_shelves = self.get_eye_level_shelves(number_of_shelves)
+                                bay_eye_level_shelves = self.get_eye_level_shelves(
+                                    number_of_shelves)
                                 for shelf in bay_eye_level_shelves:
-                                    filters = {object_type: objects, 'bay_number': bay, 'shelf_number': shelf, 'scene_fk': scene}
-                                    object_facings = self.tools.calculate_assortment(oos_products=oos_products, **filters)  # todo: validate
+                                    filters = {object_type: objects, 'bay_number': bay,
+                                               'shelf_number': shelf, 'scene_fk': scene}
+                                    object_facings = self.tools.calculate_assortment(oos_products=oos_products,
+                                                                                     **filters)  # todo: validate
                                     if object_facings > 0:
                                         shelves_result_dict[shelf] = 1
                                     else:
@@ -624,10 +625,11 @@ class INBEVLUINBEVBEToolBox:
                             result = 0  # FALSE
                         results.append(result)
                     if set_name == 'Shelf Level':
-                        self.save_level2_and_level3(set_name, params.get('SKU Name (Description)').encode(), result,
+                        self.save_level2_and_level3(set_name, params.get('SKU Name (Description)'), result,
                                                     score=result)
                     elif set_name == 'Shelf Impact Score':
-                        self.save_level2_and_level3(set_name, params.get('SKU Name (Description)'), result)
+                        self.save_level2_and_level3(
+                            set_name, params.get('SKU Name (Description)'), result)
                     else:
                         pass
             except Exception as e:
@@ -638,16 +640,15 @@ class INBEVLUINBEVBEToolBox:
         else:
             set_score = 0
             target = 0
-        # self.save_level1('Shelf Level', set_score)
         self.shelf_impact_score_results[set_name] = round(sum(results), 2)
         self.shelf_impact_score_thresholds[set_name] = target
 
         return round(set_score, 2)
 
+    @kpi_runtime()
     def custom_share_of_shelf(self, set_name):
         set_score = 0
         if set_name == 'Linear Share of Shelf vs. Target':
-            # store_attribute_8 = self.get_store_attribute_8(self.store_id)
             self.shelf_impact_score_results[set_name] = round(set_score, 2)
             self.shelf_impact_score_thresholds[set_name] = 0
             targets_df = pd.DataFrame(self.set_templates_data[set_name])
@@ -672,7 +673,7 @@ class INBEVLUINBEVBEToolBox:
         return set_score
 
     def calculate_custom_share_of_shelf(self, set_name, target=None):
-        pallet_size_dict =  {'Full Pallet': self.PALLET_SIZE_MM, 'Half Pallet': self.HALF_PALLET_SIZE_MM,
+        pallet_size_dict = {'Full Pallet': self.PALLET_SIZE_MM, 'Half Pallet': self.HALF_PALLET_SIZE_MM,
                             '1_display': self.HALF_PALLET_SIZE_MM, '2_display': self.HALF_PALLET_SIZE_MM,
                             'Metal Bracket': self.PALLET_SIZE_MM}
         sos_dict = {}
@@ -680,16 +681,15 @@ class INBEVLUINBEVBEToolBox:
         sos_dict['denominator'] = 0
         nominator = 0
         denominator = 0
-        count_stacking_lowest_shelf = 0
         scenes_to_check = self.scif['scene_fk'].unique().tolist()
-
         for scene in scenes_to_check:
             matches = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene]
             bays = matches['bay_number'].unique().tolist()
             for bay in bays:
                 factors = {}
                 half_pallet_half_mixed = 0
-                custom_bay_data = matches.loc[(matches['bay_number'] == bay) & (matches['stacking_layer'] == 1)]
+                custom_bay_data = matches.loc[(matches['bay_number'] == bay) & (
+                    matches['stacking_layer'] == 1)]
                 shelves = custom_bay_data['shelf_number'].unique().tolist()
                 filtered_products = pd.merge(custom_bay_data, self.all_products, on=['product_fk', 'product_fk'],
                                              suffixes=['', '_1'])
@@ -700,17 +700,10 @@ class INBEVLUINBEVBEToolBox:
                     bay_match_display_in_scene['name'].isin(ALL_PALLETS)]['name'].tolist()
                 lowest_shelf = max(shelves)
                 products_not_on_pallet = []
-                # products_with_zero_length = \
-                #     filtered_products.loc[filtered_products['shelf_number'] == lowest_shelf][
-                #         'product_fk'].unique().tolist()
                 lowest_shelf_data = matches.loc[
                     (matches['bay_number'] == bay) & (matches['shelf_number'] == lowest_shelf) &
                     (matches['stacking_layer'] <= 4)]
-                products_to_check = filtered_products.loc[filtered_products['shelf_number'] == lowest_shelf][
-                    'product_fk'].tolist()
-                # most_common_product = self.most_common(products_to_check)
-                if bay_displays:
-                    # pallet_products = lowest_shelf_data['product_fk'].unique().tolist()
+                if bay_displays:  # todo: to insert the rules in case we recoginzed displays
                     pallet_products = lowest_shelf_data['product_fk'].tolist()
                     pallet_products_facings_dict = collect.Counter(pallet_products)
                     pallet_products_above_two = dict(
@@ -730,29 +723,27 @@ class INBEVLUINBEVBEToolBox:
                                 for display, factor_dict in factors.items():
                                     denominator += self.calculate_denominator_for_pallet(display, factor_dict,
                                                                                          pallet_size_dict, scene)
-                                    nominator += self.calculate_nominator_for_pallet(display, factor_dict, pallet_size_dict,
-                                                                                 scene)
+                                    nominator += self.calculate_nominator_for_pallet(display, factor_dict,
+                                                                                     pallet_size_dict,
+                                                                                     scene)
                                     self.insert_product_to_csif_legth_dict(scene, product=factor_dict.keys()[0],
-                                                                       custom_mm_length=pallet_size_dict[
-                                                                                            display] * int(
-                                                                           factor_dict.values()[0]))
-                                    # if factor_dict.keys()[0] in products_with_zero_length:
-                                    #     products_with_zero_length.remove(factor_dict.keys()[0])
-                    else:  # MY CODE:
+                                                                           custom_mm_length=pallet_size_dict[
+                                        display] * int(factor_dict.values()[0]))
+
+                    else:
                         if len(pallet_products_above_two) == 1:
                             if bay_displays[0] == HALF_PALLET:
                                 if self.check_rule(lowest_shelf_data, common_products[0], HALF_PALLET_STACK_PARAM,
                                                    HALF_PALLET_SEQUENCE_PARAM):
-                                    factors = self.get_product_factor_by_lowest_shelf(lowest_shelf_data, common_products,
+                                    factors = self.get_product_factor_by_lowest_shelf(lowest_shelf_data,
+                                                                                      common_products,
                                                                                       display_unit=bay_displays)
                             elif bay_displays[0] in PALLET:
                                 if self.check_rule(lowest_shelf_data, common_products[0], PALLET_STACK_PARAM,
                                                    PALLET_SEQUENCE_PARAM):
-                                    factors = self.get_product_factor_by_lowest_shelf(lowest_shelf_data, common_products,
+                                    factors = self.get_product_factor_by_lowest_shelf(lowest_shelf_data,
+                                                                                      common_products,
                                                                                       display_unit=bay_displays)
-                            # if factors is None:
-                            #     if max(lowest_shelf_data['stacking_layer'].values) >= MIN_STACK_PARAM:
-                            #         count_stacking_lowest_shelf = 1
                             if factors is not None:
                                 for display, factor_dict in factors.items():
                                     denominator += self.calculate_denominator_for_pallet(display, factor_dict,
@@ -765,8 +756,6 @@ class INBEVLUINBEVBEToolBox:
                                                                            custom_mm_length=pallet_size_dict[display]
                                                                                             * int(
                                                                                list(factor_dict.values())[0]))
-                                    # if factor_dict.keys()[0] in products_with_zero_length:
-                                    #     products_with_zero_length.remove(factor_dict.keys()[0])
                     if factors:
                         pallet_products_below_two = dict(
                             (k, v) for k, v in pallet_products_facings_dict.items() if v <= 2)
@@ -785,7 +774,8 @@ class INBEVLUINBEVBEToolBox:
                                 lowest_shelf_data.loc[(lowest_shelf_data['shelf_number'] == shelf)][
                                     'product_fk'].unique().tolist()
                         lowest_shelf_data_with_manufacturer = pd.merge(lowest_shelf_data, self.all_products,
-                                                                       on=['product_fk', 'product_fk'],
+                                                                       on=['product_fk',
+                                                                           'product_fk'],
                                                                        suffixes=['', '_1'])
                         for product in products_in_shelf:  # Saving results to custom scene item facts table
                             size = \
@@ -797,28 +787,27 @@ class INBEVLUINBEVBEToolBox:
                                 denominator += self.calculate_denominator(lowest_shelf_data_with_manufacturer,
                                                                           scene, shelf, product,
                                                                           size, width_mm_field=None)
-                                custom_mm_length = self.calculate_custom_mm_length(
-                                    lowest_shelf_data_with_manufacturer, scene, shelf,
-                                    product, size, width_mm_field=None)
+                                custom_mm_length = self.calculate_custom_mm_length(lowest_shelf_data_with_manufacturer,
+                                                                                   scene, shelf,
+                                                                                   product, size, width_mm_field=None)
                             else:
                                 if any(filtered_products.loc[
-                                                           (filtered_products[
-                                                                'manufacturer_name'] == self.ABINBEV) & (
-                                                               filtered_products['shelf_number'] == shelf) & (
-                                                       filtered_products['product_fk'] == product)][
-                                           'width_mm_advance']):
+                                    (filtered_products['manufacturer_name'] == self.ABINBEV) & (
+                                        filtered_products['shelf_number'] == shelf) & (
+                                        filtered_products['product_fk'] == product)][
+                                        'width_mm_advance']):
                                     width_mm_field = 'width_mm_advance'
                                 else:
                                     width_mm_field = 'width_mm'
-                                nominator += self.calculate_nominator(lowest_shelf_data_with_manufacturer, scene,
-                                                                      shelf, product, size,
+                                nominator += self.calculate_nominator(lowest_shelf_data_with_manufacturer, scene, shelf,
+                                                                      product, size,
                                                                       width_mm_field)
-                                denominator += self.calculate_denominator(lowest_shelf_data_with_manufacturer,
-                                                                          scene, shelf, product,
+                                denominator += self.calculate_denominator(lowest_shelf_data_with_manufacturer, scene,
+                                                                          shelf, product,
                                                                           size, width_mm_field)
-                                custom_mm_length = self.calculate_custom_mm_length(
-                                    lowest_shelf_data_with_manufacturer, scene, shelf,
-                                    product, size, width_mm_field)
+                                custom_mm_length = self.calculate_custom_mm_length(lowest_shelf_data_with_manufacturer,
+                                                                                   scene, shelf,
+                                                                                   product, size, width_mm_field)
                             self.insert_product_to_csif_legth_dict(scene, product, custom_mm_length)
 
                     else:
@@ -827,28 +816,26 @@ class INBEVLUINBEVBEToolBox:
                                 'product_fk'].unique().tolist()
                         for product in products_in_shelf:  # Saving results to custom scene item facts table
                             size = \
-                            self.all_products.loc[(self.all_products['product_fk'] == product)]['width_mm'].values[
-                                0]
+                                self.all_products.loc[(
+                                    self.all_products['product_fk'] == product)]['width_mm'].values[0]
                             if size is not None and not np.isnan(size):
-                                nominator += self.calculate_nominator(filtered_products, scene, shelf, product,
-                                                                      size, width_mm_field=None)
+                                nominator += self.calculate_nominator(filtered_products, scene, shelf, product, size,
+                                                                      width_mm_field=None)
                                 denominator += self.calculate_denominator(filtered_products, scene, shelf, product,
                                                                           size, width_mm_field=None)
                                 custom_mm_length = self.calculate_custom_mm_length(filtered_products, scene, shelf,
-                                                                                   product, size,
-                                                                                   width_mm_field=None)
+                                                                                   product, size, width_mm_field=None)
                             else:
                                 if any(filtered_products.loc[
-                                                           (filtered_products[
-                                                                'manufacturer_name'] == self.ABINBEV) & (
-                                                               filtered_products['shelf_number'] == shelf) & (
-                                                       filtered_products['product_fk'] == product)][
-                                           'width_mm_advance']):
+                                    (filtered_products['manufacturer_name'] == self.ABINBEV) & (
+                                        filtered_products['shelf_number'] == shelf) & (
+                                        filtered_products['product_fk'] == product)][
+                                        'width_mm_advance']):
                                     width_mm_field = 'width_mm_advance'
                                 else:
                                     width_mm_field = 'width_mm'
-                                nominator += self.calculate_nominator(filtered_products, scene, shelf, product,
-                                                                      size, width_mm_field)
+                                nominator += self.calculate_nominator(filtered_products, scene, shelf, product, size,
+                                                                      width_mm_field)
                                 denominator += self.calculate_denominator(filtered_products, scene, shelf, product,
                                                                           size, width_mm_field)
                                 custom_mm_length = self.calculate_custom_mm_length(filtered_products, scene, shelf,
@@ -861,7 +848,6 @@ class INBEVLUINBEVBEToolBox:
         if set_name == 'Linear Share of Shelf':
             set_score = linear_sos_value
             self.linear_sos_value = linear_sos_value
-            # self.save_level1(set_name=set_name, score=linear_sos_value)
             self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, result=nominator,
                                         score=round(linear_sos_value, 2), threshold=denominator)
         else:
@@ -881,70 +867,70 @@ class INBEVLUINBEVBEToolBox:
             self.scene_item_length_mm_dict[scene, product_bundle_lead] = custom_mm_length
 
     def calculate_nominator_for_pallet(self, display, factor_dict, pallet_size_dict, scene):
-        nominator=0
+        nominator = 0
         if self.all_products.loc[self.all_products['product_fk'] ==
-                factor_dict.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
+                                 factor_dict.keys()[0]]['manufacturer_name'].values[0] == self.ABINBEV:
             nominator = pallet_size_dict[display] * int(list(factor_dict.values())[0]) * \
-                                     (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                    (self.scif['product_fk'] == factor_dict.keys()[
-                                                        0])]
-                                      ['rlv_sos_sc'].values[0])
+                (self.scif.loc[(self.scif['scene_id'] == scene) &
+                               (self.scif['product_fk'] == factor_dict.keys()[
+                                   0])]
+                 ['rlv_sos_sc'].values[0])
         return nominator
 
     def calculate_denominator_for_pallet(self, display, factor_dict, pallet_size_dict, scene):
         denominator = pallet_size_dict[display] * int(list(factor_dict.values())[0]) * \
-                                       (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                      (
-                                                          self.scif['product_fk'] == factor_dict.keys()[0])]
-                                        ['rlv_sos_sc'].values[0])
+            (self.scif.loc[(self.scif['scene_id'] == scene) &
+                           (
+                self.scif['product_fk'] == factor_dict.keys()[0])]
+             ['rlv_sos_sc'].values[0])
         return denominator
 
     def calculate_nominator(self, shelf_data, scene, shelf, product, size, width_mm_field):
-        nominator=0
+        nominator = 0
         if size is not None and not np.isnan(size):
             nominator = (shelf_data.loc[(shelf_data['manufacturer_name'] == self.ABINBEV) & (
                 shelf_data['shelf_number'] == shelf) & (shelf_data['product_fk'] == product)][
-                 'product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                (self.scif['product_fk'] == product)][
-                                                      'rlv_sos_sc'].values[0])
+                'product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                               (self.scif['product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         else:
             nominator = (shelf_data.loc[(shelf_data['manufacturer_name'] == self.ABINBEV) & (
                 shelf_data['shelf_number'] == shelf) & (shelf_data['product_fk'] == product)][
-                                                  width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                                        (self.scif['product_fk'] == product)][
-                                                                              'rlv_sos_sc'].values[0])
+                width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                        (self.scif['product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         return nominator
 
     def calculate_denominator(self, shelf_data, scene, shelf, product, size, width_mm_field):
         if size is not None and not np.isnan(size):
-            denominator=(shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
+            denominator = (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
                 shelf_data['product_fk'] == product)]
-                                                ['product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                                       (self.scif['product_fk'] == product)][
-                                                                             'rlv_sos_sc'].values[0])
+                ['product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                                (self.scif['product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         else:
-            denominator= (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
+            denominator = (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
                 shelf_data['product_fk'] == product)]
-                                                [width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                                       (self.scif['product_fk'] == product)][
-                                                                             'rlv_sos_sc'].values[0])
+                [width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                         (self.scif['product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         return denominator
 
     def calculate_custom_mm_length(self, shelf_data, scene, shelf, product, size, width_mm_field):
         if size is not None and not np.isnan(size):
-            custom_mm_length=(shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
+            custom_mm_length = (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
                 shelf_data['product_fk'] == product)][
-                 'product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                                (self.scif[
-                                                                     'product_fk'] == product)][
-                                                      'rlv_sos_sc'].values[0])
+                'product_fk'].count()) * size * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                               (self.scif[
+                                                                   'product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         else:
-            custom_mm_length= (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
+            custom_mm_length = (shelf_data.loc[(shelf_data['shelf_number'] == shelf) & (
                 shelf_data['product_fk'] == product)][
-                 width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                         (self.scif[
-                                                              'product_fk'] == product)][
-                                               'rlv_sos_sc'].values[0])
+                width_mm_field].sum()) * (self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                        (self.scif[
+                                                            'product_fk'] == product)][
+                    'rlv_sos_sc'].values[0])
         return custom_mm_length
 
     def get_product_factor_by_lowest_shelf(self, bay_data, products_to_check, display_unit=[], display_data=None):
@@ -953,13 +939,8 @@ class INBEVLUINBEVBEToolBox:
         displays = ['1_display', '2_display']
         if len(display_unit) > 1:  # todo: to add condition for 2 displays
             for display in displays:
-                display_rect_dict = {}
-                # product_display_adjacency_dict = {}
                 products_for_two_half_pallets = {}
-                num_display = 0
                 passed_rule = 0
-                # products = self.list_by_most_common(products_to_check)
-                # for product in products.keys():
                 for product in products_to_check:
                     if self.check_rule(bay_data, product, HALF_PALLET_STACK_PARAM, HALF_PALLET_SEQUENCE_PARAM):
                         passed_rule += 1
@@ -977,7 +958,7 @@ class INBEVLUINBEVBEToolBox:
                         factor = 1
                     factors[display] = {product: factor}
                 return factors
-        # most_common_product = self.most_common(products_to_check)
+
         factor = self.get_factor(display_unit[0])
         if factor == 'NO VALUE' or factor is None:
             factor = 1
@@ -988,14 +969,10 @@ class INBEVLUINBEVBEToolBox:
     def most_common(lst):
         return max(set(lst), key=lst.count)
 
-    @staticmethod
-    def list_by_most_common(lst):
-        counter=collect.Counter(lst)
-        counter_by_order=collect.OrderedDict(sorted(counter.items(), key=lambda x:x[1], reverse=True))
-        return counter_by_order
-
+    @kpi_runtime()
     def product_stacking(self, set_name):
-        kpi_df_include_stacking = self.match_product_in_scene.merge(self.products, on=['product_fk'])
+        kpi_df_include_stacking = self.match_product_in_scene.merge(
+            self.products, on=['product_fk'])
         results = []
         for params in self.set_templates_data[set_name]:
             result = 0
@@ -1011,9 +988,9 @@ class INBEVLUINBEVBEToolBox:
             set_score = 0
         else:
             set_score = (sum(results) / float(len(results))) * 100
-        # self.save_level1(set_name, set_score)
         return round(set_score, 2)
 
+    @kpi_runtime()
     def shelf_impact_score(self):
         total_score = 0
         must_have_assortment_score = self.calculate_must_have_assortment()
@@ -1030,7 +1007,8 @@ class INBEVLUINBEVBEToolBox:
 
         share_of_shelf_result = self.shelf_impact_score_results['Linear Share of Shelf vs. Target']
         if self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target'] > 0:
-            share_of_shelf_score = (share_of_shelf_result / float(self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target']))*100
+            share_of_shelf_score = (share_of_shelf_result / float(
+                self.shelf_impact_score_thresholds['Linear Share of Shelf vs. Target'])) * 100
         else:
             share_of_shelf_score = 0
         share_of_shelf_points = self.get_points_by_score_range(share_of_shelf_score,
@@ -1045,7 +1023,7 @@ class INBEVLUINBEVBEToolBox:
 
         osa_result = self.shelf_impact_score_results['OSA']
         if self.shelf_impact_score_thresholds['OSA'] > 0:
-            osa_score = (osa_result / float(self.shelf_impact_score_thresholds['OSA']))*100
+            osa_score = (osa_result / float(self.shelf_impact_score_thresholds['OSA'])) * 100
         else:
             osa_score = 0
         osa_points = self.get_points_by_score_range(osa_score, score_dict=self.osa_score_range)
@@ -1058,10 +1036,12 @@ class INBEVLUINBEVBEToolBox:
 
         shelf_level_result = self.shelf_impact_score_results['Shelf Level']
         if self.shelf_impact_score_thresholds['Shelf Level'] > 0:
-            shelf_level_score = (shelf_level_result / float(self.shelf_impact_score_thresholds['Shelf Level']))*100
+            shelf_level_score = (shelf_level_result /
+                                 float(self.shelf_impact_score_thresholds['Shelf Level'])) * 100
         else:
             shelf_level_score = 0
-        shelf_level_points = self.get_points_by_score_range(shelf_level_score, score_dict=self.shelf_level_score_range)
+        shelf_level_points = self.get_points_by_score_range(
+            shelf_level_score, score_dict=self.shelf_level_score_range)
         self.save_level2_and_level3(self.SHELF_IMPACT_SCORE, 'Shelf Level Availability', result=shelf_level_result,
                                     score=shelf_level_points, level_3_only=True,
                                     level2_name_for_atomic='Shelf Level Availability',
@@ -1071,8 +1051,9 @@ class INBEVLUINBEVBEToolBox:
         total_score += shelf_level_points
 
         blocked_together_result = self.shelf_impact_score_results['Product Blocking']
-        if self.shelf_impact_score_thresholds['Product Blocking'] >0:
-            blocked_together_score = (blocked_together_result / float(self.shelf_impact_score_thresholds['Product Blocking']))*100
+        if self.shelf_impact_score_thresholds['Product Blocking'] > 0:
+            blocked_together_score = (blocked_together_result / float(
+                self.shelf_impact_score_thresholds['Product Blocking'])) * 100
         else:
             blocked_together_score = 0
         blocked_together_points = self.get_points_by_score_range(blocked_together_score,
@@ -1092,35 +1073,36 @@ class INBEVLUINBEVBEToolBox:
         mha_json = self.tools.download_template('must_have_assortment')
         mha_df = pd.DataFrame(mha_json)
         relevant_store_df = mha_df.loc[mha_df['store'] == self.store_number[0]]
+        product_ean_lst = [x.strip("'") for x in relevant_store_df['EAN'].unique().tolist()]
         ass_prod_list = self.all_products.loc[
-            self.all_products['product_ean_code'].isin(relevant_store_df['EAN'].unique().tolist())][
-            'product_fk'].unique().tolist()
-        scores = []
+            self.all_products['product_ean_code'].isin(product_ean_lst)]['product_fk'].unique().tolist()
         falsely_unrecognized_products = self.oos_messages.loc[
             self.oos_messages['description'] == self.NOT_OOS]
         if not falsely_unrecognized_products.empty:
-            falsely_unrecognized_products_list = falsely_unrecognized_products['product_fk'].unique().tolist()
+            falsely_unrecognized_products_list = falsely_unrecognized_products['product_fk'].unique(
+            ).tolist()
         else:
             falsely_unrecognized_products_list = []
         missing_bundle_leads = []
         for scene in self.scif['scene_fk'].unique().tolist():
-            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)]['product_fk'].unique().tolist()
-            # scene_leading_products = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (self.all_products['att3'] == 'YES')][
-            #     'product_fk'].unique().tolist()
+            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)
+                                           ]['product_fk'].unique().tolist()
             scene_products.extend(ass_prod_list)
             for product in set(scene_products):
                 dist_score = 0
-                # product_ean_code = \
-                #     self.all_products.loc[self.all_products['product_fk'] == product]['product_ean_code'].values[0]
+
                 product_bundle_name = self.get_bundle_lead(product)
                 if product_bundle_name:
+                    if product_bundle_name != product and product in ass_prod_list \
+                            and product_bundle_name in ass_prod_list:
+                        ass_prod_list.remove(product)
                     bundle_products = self.get_bundle_products(product)
                     product = product_bundle_name
                 else:
                     bundle_products = [product]
                     missing_bundle_leads.append(product)
-                bundle_number_of_skus = self.tools.calculate_assortment(product_fk=bundle_products, scene_id=scene)
+                bundle_number_of_skus = self.tools.calculate_assortment(
+                    product_fk=bundle_products, scene_id=scene)
                 if (bundle_number_of_skus > 0) and (product in ass_prod_list):
                     dist_score = 1
                     mha_in_ass = 1
@@ -1130,7 +1112,7 @@ class INBEVLUINBEVBEToolBox:
                     mha_in_ass = 1
                     mha_oos = 0
                 elif (bundle_number_of_skus == 0) and (
-                            product in ass_prod_list) and not (product in falsely_unrecognized_products_list):
+                        product in ass_prod_list) and not (product in falsely_unrecognized_products_list):
                     mha_in_ass = 1
                     mha_oos = 1
                 elif product in ass_prod_list:
@@ -1144,7 +1126,6 @@ class INBEVLUINBEVBEToolBox:
                     product_dist_dict[product] = max(dist_score, existing_dist)
                 else:
                     product_dist_dict[product] = dist_score
-                # scores.append(dist_score)
                 if (scene, product) in self.mha_product_results:
                     existing_in_ass = self.mha_product_results[scene, product].get('in_assortment')
                     existing_oos = self.mha_product_results[scene, product].get('in_assortment')
@@ -1152,7 +1133,8 @@ class INBEVLUINBEVBEToolBox:
                     oos = min(existing_oos, mha_oos)
                     self.mha_product_results[scene, product] = {'in_assortment': in_ass, 'oos': oos}
                 else:
-                    self.mha_product_results[scene, product] = {'in_assortment': mha_in_ass, 'oos': mha_oos}
+                    self.mha_product_results[scene, product] = {
+                        'in_assortment': mha_in_ass, 'oos': mha_oos}
         updated_ass_prod_list = self.all_products.loc[(self.all_products['product_fk'].isin(ass_prod_list)) & (
             (self.all_products['att3'] == 'YES') | (self.all_products['product_fk'].isin(missing_bundle_leads)))][
             'product_fk'].unique().tolist()
@@ -1181,7 +1163,8 @@ class INBEVLUINBEVBEToolBox:
 
     def get_bundle_lead(self, product_fk):
         try:
-            product_bundle_name = self.all_products.loc[self.all_products['product_fk'] == product_fk]['att1'].values[0]
+            product_bundle_name = self.all_products.loc[self.all_products['product_fk']
+                                                        == product_fk]['att1'].values[0]
             bundle_lead = self.all_products.loc[
                 (self.all_products['att1'] == product_bundle_name) & (self.all_products['att3'] == 'YES')][
                 'product_fk'].values[0]
@@ -1201,13 +1184,13 @@ class INBEVLUINBEVBEToolBox:
         return bundle_lead
 
     def get_store_attribute_8(self, store_fk):
-        query = INBEVLUINBEVBEQueries.get_store_attribute_8(store_fk)
+        query = Queries.get_store_attribute_8(store_fk)
         final_df = pd.read_sql_query(query, self.rds_conn.db)
         value = final_df.values[0][0]
         return value
 
     def get_all_products(self):
-        query = INBEVLUINBEVBEQueries.get_att3_att4_for_products()
+        query = Queries.get_att3_att4_for_products()
         attributes = pd.read_sql_query(query, self.rds_conn.db)
         final_df = self.all_project_products.merge(attributes, on='product_fk', suffixes=['', '_1'])
         return final_df
@@ -1215,27 +1198,15 @@ class INBEVLUINBEVBEToolBox:
     def save_custom_scene_item_facts_results(self):
         scenes_to_check = self.scif['scene_fk'].unique().tolist()
         for scene in scenes_to_check:
-            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)]['product_fk'].unique().tolist()
-            # scene_products_to_check = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (
-            #         (self.all_products['att3'] == 'YES') | (
-            #             self.all_products['product_type'].isin(['Empty', 'Other'])))]['product_fk'].unique().tolist()
-            # scene_products_to_check = self.all_products.loc[
-            #     (self.all_products['product_fk'].isin(scene_products)) & (
-            #         (self.all_products['att3'] == 'YES') | (
-            #             self.all_products['product_type'].isin(['Empty', 'Other'])) | (~
-            #                                                                            (self.all_products[
-            #                                                                                 'att1'] is not None) & (
-            #                                                                                self.all_products[
-            #                                                                                    'att3'] is None)))][
-            #     'product_fk'].unique().tolist()
+            scene_products = self.scif.loc[(self.scif['scene_fk'] == scene)
+                                           ]['product_fk'].unique().tolist()
             scene_products_to_check = self.all_products.loc[
                 (self.all_products['product_fk'].isin(scene_products)) & (
                     (self.all_products['att3'] == 'YES') | (
                         self.all_products['product_type'].isin(['Empty', 'Other'])) | ((self.all_products[
-                                                                                            'att1'].notnull()) & (
-                                                                                           self.all_products[
-                                                                                               'att3'].isnull())) | (
+                            'att1'].notnull()) & (
+                            self.all_products[
+                                'att3'].isnull())) | (
                         self.all_products['manufacturer_name'] != self.ABINBEV) |
                     ((self.all_products['att1'].notnull()) & (self.all_products['att3'].isin(['NO', 'NO VALUE']))) |
                     ((self.all_products['att1'].isnull()) & (self.all_products['att3'].isnull())))]['product_fk'].unique().tolist()
@@ -1249,11 +1220,8 @@ class INBEVLUINBEVBEToolBox:
                     missing_bundle_leads.append(product_bundle_lead)
             scene_products_to_check.extend(missing_bundle_leads)
             for product in set(scene_products_to_check):
-                # product_bundle_lead = self.get_bundle_lead(product)
-                # if not product_bundle_lead:
-                #     product_bundle_lead = product
                 if (scene, product) in self.osa_scene_item_results and not (
-                            product in self.delisted_products):
+                        product in self.delisted_products):
                     in_ass_res = self.osa_scene_item_results[scene, product].get('in_assortment')
                     oos_res = self.osa_scene_item_results[scene, product].get('oos')
                 elif product in self.delisted_products:
@@ -1299,11 +1267,13 @@ class INBEVLUINBEVBEToolBox:
         for product in products_to_check:
             aggregated_linear_length = 0
             for scene in scenes_to_check:
+
                 product_bundle_lead = self.get_bundle_lead(product)
                 if not product_bundle_lead:
                     product_bundle_lead = product
                 if (scene, product_bundle_lead) in self.scene_item_length_mm_dict:
-                    scene_product_length = self.scene_item_length_mm_dict[scene, product_bundle_lead]
+                    scene_product_length = self.scene_item_length_mm_dict[scene,
+                                                                          product_bundle_lead]
                 else:
                     scene_product_length = 0
 
@@ -1321,6 +1291,7 @@ class INBEVLUINBEVBEToolBox:
                                                 product_ean_code, aggregated_linear_length)
                     product_list_to_write.append(product_ean_code)
 
+    @kpi_runtime()
     def calculate_block_together_sets(self, set_name):
         """
         This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
@@ -1329,8 +1300,12 @@ class INBEVLUINBEVBEToolBox:
         parameters_df = pd.DataFrame(self.set_templates_data[set_name])
         product_groups = parameters_df['Atomic Name'].unique().tolist()
         for group in product_groups:
-            relevant_df = parameters_df.loc[
-                (parameters_df['Atomic Name'] == group) & (parameters_df['Store Type'] == self.store_type)]
+            if self.store_type not in parameters_df['Store Type'].unique().tolist():
+                relevant_df = parameters_df.loc[
+                    (parameters_df['Atomic Name'] == group) & (parameters_df['Store Type'] == 'All')]
+            else:
+                relevant_df = parameters_df.loc[
+                    (parameters_df['Atomic Name'] == group) & (parameters_df['Store Type'] == self.store_type)]
             if not relevant_df.empty:
                 products_for_block_check = relevant_df['EAN Number'].unique().tolist()
                 result = self.tools.calculate_block_together(product_ean_code=products_for_block_check,
@@ -1344,43 +1319,30 @@ class INBEVLUINBEVBEToolBox:
                     self.save_level2_and_level3(set_name, atomic, score, score=score, level_3_only=True,
                                                 level2_name_for_atomic=group)
 
-        # for params in self.set_templates_data[set_name]:
-        #     if params.get('Store Type') == self.store_type:
-        #         # filters = {'template_name': params.get(self.tools.LOCATION)}
-        #         # if params.get(self.tools.SUB_BRAND_NAME):
-        #         #     filters['sub_brand_name'] = params.get(self.tools.SUB_BRAND_NAME)
-        #         # else:
-        #         #     filters['brand_name'] = params.get(self.tools.BRAND_NAME)
-        #         # result = self.tools.calculate_block_together(**filters)
-        #
-        #         result = self.tools.calculate_block_together(product_ean_code=[],
-        #                                                      template_name=params.get('Scene Type'))
-        #         score = 1 if result else 0
-        #         scores.append(score)
-        #
-        #         self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
-
         if not scores:
             set_score = 0
             target = 0
         else:
             set_score = (sum(scores) / float(len(scores))) * 100
             target = len(scores)
-        # self.save_level1(set_name, set_score)
         self.shelf_impact_score_results[set_name] = round(sum(scores), 2)
         self.shelf_impact_score_thresholds[set_name] = target
 
         return round(set_score, 2)
 
+    @kpi_runtime()
     def calculate_pallet_presence(self):
         """
         This function calculates every Pallet-Presence typed KPI from the relevant sets, and returns the set final score.
         """
-        pallet_score = len(self.match_display_in_scene[self.match_display_in_scene['name'].isin(PALLET)])
-        half_pallet_score = len(self.match_display_in_scene[self.match_display_in_scene['name'] == HALF_PALLET])
+        pallet_score = len(
+            self.match_display_in_scene[self.match_display_in_scene['name'].isin(PALLET)])
+        half_pallet_score = len(
+            self.match_display_in_scene[self.match_display_in_scene['name'] == HALF_PALLET])
         set_score = (PALLET_WEIGHT * pallet_score) + (HALF_PALLET_WEIGHT * half_pallet_score)
         return set_score, pallet_score, half_pallet_score
 
+    @kpi_runtime()
     def calculate_share_of_assortment(self):
         """
         This function calculates every Share-of-Assortment typed KPI from the relevant sets, and returns the set final score.
@@ -1395,12 +1357,11 @@ class INBEVLUINBEVBEToolBox:
         return round(set_score, 2)
 
     def get_product_att4(self, product_fk):
-        query = INBEVLUINBEVBEQueries.get_product_att4(product_fk)
+        query = Queries.get_product_att4(product_fk)
         att4 = pd.read_sql_query(query, self.rds_conn.db)
         return att4.values[0][0]
 
     def get_factor(self, display):
-        factor = None
         if display in PALLET:
             factor = PALLET_FACTOR
         else:
@@ -1421,40 +1382,39 @@ class INBEVLUINBEVBEToolBox:
         relevant_bay_data_first_layer = bay_data.loc[
             (bay_data['product_fk'] == common_product) & (bay_data['stacking_layer'] == 1)]
         if (max(relevant_bay_data['stacking_layer'].values) >= min_stack_param) and (
-            max(relevant_bay_data['stacking_layer'].values) <= max_stack_param):
+                max(relevant_bay_data['stacking_layer'].values) <= max_stack_param):
             if relevant_bay_data_first_layer['product_fk'].size <= max_sequence_param:
                 return True
-
         return False
 
     def get_rect_values(self):
-        query = INBEVLUINBEVBEQueries.get_rect_values_query(self.session_uid)
+        query = Queries.get_rect_values_query(self.session_uid)
         rect_values = pd.read_sql_query(query, self.rds_conn.db)
         return rect_values
 
     def get_missing_products_to_api_set(self, set_name):
         existing_skus = self.all_products[~self.all_products['product_ean_code'].isin(['746', '747', '748'])
-                                            ]['product_ean_code'].unique().tolist()
-        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['atomic_kpi_name'].unique().tolist()
+                                          ]['product_ean_code'].unique().tolist()
+        set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                        == set_name]['atomic_kpi_name'].unique().tolist()
         if set_name == 'OSA':
-            missing_products_in_osa_format = [str(sku) + ' - OOS' for sku in existing_skus if sku is not None]
-            # missing_products = set(missing_products_in_osa_format) ^ set(set_data)
+            missing_products_in_osa_format = [
+                str(sku) + ' - OOS' for sku in existing_skus if sku is not None]
             missing_products = []
             for missing_product in missing_products_in_osa_format:
                 if missing_product not in set_data:
                     missing_products.append(missing_product)
         else:
-            # missing_products = set(existing_skus) ^ set(set_data)
             missing_products = []
             for existing_sku in existing_skus:
                 if existing_sku not in set_data and existing_sku is not None:
                     missing_products.append(existing_sku)
         if missing_products:
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                          == set_name]['kpi_set_fk'].values[0]
             if set_name == 'OSA':
                 kpi_list = []
                 for missing_product in missing_products:
-                    # if missing_product + ' - OOS' not in set_data:
                     sku = missing_product.strip(' - OOS')
                     in_ass_kpi_name = str(sku) + ' - In Assortment'
                     kpi_list.append(in_ass_kpi_name)
@@ -1469,7 +1429,8 @@ class INBEVLUINBEVBEToolBox:
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
-        attributes = self.create_attributes_dict(fk, result, level, score=score, threshold=threshold)
+        attributes = self.create_attributes_dict(
+            fk, result, level, score=score, threshold=threshold)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -1492,14 +1453,10 @@ class INBEVLUINBEVBEToolBox:
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
         """
-        # result = round(result, 2)
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
-            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-            #                             format(result, '.2f'), score_type, fk)],
-            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-            #                                    'score_2', 'kpi_set_fk'])
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         result, score_type, fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
@@ -1515,7 +1472,8 @@ class INBEVLUINBEVBEToolBox:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             if score is None and threshold is None:
                 attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                             self.visit_date.isoformat(), datetime.utcnow().isoformat(),
@@ -1551,8 +1509,9 @@ class INBEVLUINBEVBEToolBox:
         self.rds_conn.disconnect_rds()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
-        delete_queries = INBEVLUINBEVBEQueries.get_delete_session_results_query(self.session_uid)
-        pservice_tables_delete_query = INBEVLUINBEVBEQueries.get_delete_custom_scif_query(self.session_fk)
+        delete_queries = Queries.get_delete_session_results_query(self.session_uid)
+        pservice_tables_delete_query = Queries.get_delete_custom_scif_query(
+            self.session_fk)
         for query in delete_queries:
             cur.execute(query)
         cur.execute(pservice_tables_delete_query)

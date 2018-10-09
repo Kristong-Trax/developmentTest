@@ -232,12 +232,14 @@ class Common(object):
         self.refresh_parents()
         insert_queries = self.merge_insert_queries(self.kpi_results[self.QUERY].tolist())
         delete_old_session_specific_tree_query = ''
+        delete_old_tree_query_parent = None
         if result_entity == self.SCENE:
             delete_old_session_specific_tree_query = self.queries.get_delete_specific_tree_queries(self.scene_id, self.HIERARCHY_SESSION_TABLE)
             delete_old_tree_query = self.queries.get_delete_tree_scene_queries(self.scene_id, self.HIERARCHY_SCENE_TABLE)
             delete_query = self.queries.get_delete_scene_results_query_from_new_tables(self.scene_id)
         elif result_entity == self.SESSION:
             delete_old_tree_query = self.queries.get_delete_tree_queries(self.session_id,  self.HIERARCHY_SESSION_TABLE)
+            delete_old_tree_query_parent = self.queries.get_delete_tree_queries_parent_fk(self.session_id, self.HIERARCHY_SESSION_TABLE)
             delete_query = self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
         else:
             Log.error('Cannot Calculate results per {}'.format(result_entity))
@@ -247,6 +249,8 @@ class Common(object):
         if delete_old_session_specific_tree_query:
             cur.execute(delete_old_session_specific_tree_query)
         cur.execute(delete_old_tree_query)
+        if delete_old_tree_query_parent:
+            cur.execute(delete_old_tree_query_parent)
         cur.execute(delete_query)
         Log.info('Start committing results')
         cur.execute(insert_queries[0] + ";")

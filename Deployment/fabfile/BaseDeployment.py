@@ -19,8 +19,8 @@ PROJECT_FOLDER = 'Projects'
 
 ROLLBACK_SUFFIX = '_rollback'
 TRAX_ACE_LIVE = 'trax_ace_live'
-S3_BUCKET = ['trax-k-engine-scripts']
-S3_PATH = 'trax_ace_live_latest'
+STORAGE_BUCKET = ['trax-k-engine-scripts']
+STORAGE_PATH = 'trax_ace_live_latest'
 TAR_FILE_NAME = 'latest.tar.gz'
 
 
@@ -121,10 +121,10 @@ class ProjectDeployment(object):
             if update_version:
                 ProjectDeployment.update_version_file(live_folder, tag)
             tar_file_stream = ProjectDeployment.make_tarfile(live_folder)
-            for bucket in S3_BUCKET:
+            for bucket in STORAGE_BUCKET:
                 print 'bucket name', bucket
                 storage_connector = StorageFactory.get_connector(mybucket=bucket, region='us-east-1')
-                DeploymentUtils.save_file_stream(storage_connector, S3_PATH, TAR_FILE_NAME, tar_file_stream)
+                DeploymentUtils.save_file_stream(storage_connector, STORAGE_PATH, TAR_FILE_NAME, tar_file_stream)
         except Exception as e:
             print e
             raise
