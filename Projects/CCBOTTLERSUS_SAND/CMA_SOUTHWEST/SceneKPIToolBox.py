@@ -10,6 +10,9 @@ __author__ = 'Elyashiv'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v8.xlsx')
 
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
 
     def __init__(self, data_provider, output, common):
         self.output = output
@@ -29,6 +32,8 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         if self.store_type in Const.STORE_TYPE:
             self.store_type = Const.STORE_TYPE[self.store_type]
         self.templates = {}
@@ -50,7 +55,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        self.write_results_to_db()
+        # self.write_results_to_db()
         return True
 
     def write_results_to_db(self):
@@ -74,7 +79,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             self.scenes_results.loc[(self.scenes_results[Const.KPI_NAME] == parent) &
                                     (self.scenes_results[Const.DB_RESULT] > 0), Const.DB_RESULT] += 1
         result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result * 1}
-        self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
+        # self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -105,12 +110,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             if (store_attrs is not None and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
-            result, score, target = function(kpi_line, relevant_scif, general_filters)
-
-            # write in DF:
-            if result is None and score is None and target is None:
-                continue
-            print(kpi_name, kpi_type, result, score, target)
+            function(kpi_line, relevant_scif, general_filters)
         else:
             pass
 
@@ -120,7 +120,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         KPIs in the same name in the match sheet, scene after scene.
         :param main_line: series from the template of the main_sheet.
         """
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
 
         # num_filters = self.get_kpi_line_filters(kpi_line)
         num_filters = {'Southwest Deliver': 'Y'}
@@ -130,9 +130,15 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         num, ratio, den = self.sos_with_num_and_dem(kpi_line, scif, num_filters, general_filters)
 
-        self.common.write_to_db_result(fk=2161, numerator_result=total_num,
-                                           denominator_result=total_den, result=ratio,
-                                           should_enter=True, by_scene=True)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+                                           result=ratio, by_scene=True,
+                                           identifier_parent=self.common.get_dictionary(
+                                               parent_name='Total Coke Cooler Purity'),
+                                           should_enter=True)
+
+        # self.common.write_to_db_result(fk=2161, numerator_result=total_num,
+        #                                    denominator_result=total_den, result=ratio,
+        #                                    should_enter=True, by_scene=True)
 
         # self.common_scene.write_to_db_result(fk=2161, numerator_result=total_num,
         #                                    denominator_result=total_den, result=ratio,
@@ -210,3 +216,47 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             elif type(cell) in [unicode, str]:
                 return cell.split(", ")
         return None
+
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUPNGAMERICAGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
