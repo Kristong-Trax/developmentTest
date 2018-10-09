@@ -12,7 +12,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.7.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.9.xlsx')
 
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
@@ -65,13 +65,16 @@ class CMAToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
-        self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score,
-                                           identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
-        self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+        if self.region in Const.REGIONS:
+            for i, main_line in main_template.iterrows():
+                store_type = self.does_exist(main_line, Const.STORE_TYPE)
+                if store_type is None or self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
+                    self.calculate_main_kpi(main_line)
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+            self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score,
+                                               identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
+            self.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -260,11 +263,11 @@ class CMAToolBox:
             num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
             sos_filters[num_type_2] = num_value_2
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-        sos_value *= 100
+        # sos_value *= 100
         sos_value = round(sos_value, 2)
 
         if target:
-            score = 1 if sos_value >= target*100 else 0
+            score = 1 if sos_value >= target else 0
         else:
             score = 1
             target = 0
@@ -275,7 +278,7 @@ class CMAToolBox:
     def get_sos_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-                                             (targets_template['sales center'] == self.sales_center) &
+                                             # (targets_template['sales center'] == self.sales_center) &
                                              (targets_template['channel'] == self.store_type)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
@@ -558,3 +561,4 @@ class CMAToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
+
