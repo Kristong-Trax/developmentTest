@@ -1,15 +1,14 @@
 import os
-import json
-import shutil
 import pandas as pd
 from datetime import datetime
+import json
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
-from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-
-from KPIUtils.GeneralToolBox import GENERALToolBox
+from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
+from Projects.INBEVNL.Utils.PositionGraph import INBEVNLINBEVBEPositionGraphs
+from Projects.INBEVNL.Utils.GeneralToolBox import INBEVNLINBEVBEGENERALToolBox
 
 __author__ = 'Nimrod'
 
@@ -19,12 +18,13 @@ EMPTY = 'Empty'
 POURING_SURVEY_TEXT = 'Are the below brands pouring?'
 KPI_NAME = 'Atomic'
 PRODUCT_NAME = 'Product Name'
+TEMP_TEMPLATES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
 UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
-CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
 
 
-class INBEVToolBox:
+class ToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     EXCLUDE_EMPTY = 0
@@ -43,8 +43,8 @@ class INBEVToolBox:
 
     # Availability KPIs
     PRODUCT_NAME = PRODUCT_NAME
-    PRODUCT_EAN_CODE = 'Leading Product EAN'
-    PRODUCT_EAN_CODE2 = 'Product EAN'
+    PRODUCT_EAN_CODE = 'Product EAN'
+    PRODUCT_EAN_CODE2 = 'EAN Number'
     ADDITIONAL_SKUS = '1st Follower Product EAN'
     ENTITY_TYPE = 'Entity Type'
     TARGET = 'Target'
@@ -54,6 +54,7 @@ class INBEVToolBox:
 
     # Relative Position
     CHANNEL = 'Channel'
+
     LOCATION = 'Primary "In store location"'
     TESTED = 'Tested SKU2'
     ANCHOR = 'Anchor SKU2'
@@ -75,14 +76,13 @@ class INBEVToolBox:
                              'Category': 'category',
                              'display': 'display_name'}
 
-    KPI_SETS = ['Linear Share of Shelf vs. Target', 'Linear Share of Shelf', 'OSA',
-                'Share of Assortment', 'Shelf Level',
-                'Shelf Impact Score']
+    KPI_SETS = ['MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
+                'Brand Pouring', 'Visible to Customer']
     KPI_SETS_WITH_PRODUCT_AS_NAME = ['MPA', 'New Products', 'POSM']
-    KPI_SETS_WITH_PERCENT_AS_SCORE = KPI_SETS_WITH_PRODUCT_AS_NAME + ['Visible to Customer', 'Relative Position',
-                                                                      'Brand Blocking']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer']
-    TEMPLATES_PATH = 'Diageo_templates/'
+    KPI_SETS_WITH_PERCENT_AS_SCORE = ['Share of Assortment', 'Linear Share of Shelf vs. Target',
+                                      'Product Blocking', 'Shelf Level', 'OSA', 'Linear Share of Shelf', 'Share of Assortment']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['OSA', 'Linear Share of Shelf', 'Shelf Impact Score', 'Share of Assortment', 'Pallet Presence']
+    TEMPLATES_PATH = 'Inbev_templates/'
     KPI_NAME = KPI_NAME
 
     def __init__(self, data_provider, output, **data):
@@ -95,10 +95,24 @@ class INBEVToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = GENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
+        self.general_tools = INBEVNLINBEVBEGENERALToolBox(data_provider, output,
+                                                               kpi_static_data=self.kpi_static_data)
         self.amz_conn = StorageFactory.get_connector(BUCKET)
+        self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
+
+    @property
+    def position_graphs(self):
+        if not hasattr(self, '_position_graphs'):
+            self._position_graphs = INBEVNLINBEVBEPositionGraphs(self.data_provider)
+        return self._position_graphs
+
+    @property
+    def match_product_in_scene(self):
+        if not hasattr(self, '_match_product_in_scene'):
+            self._match_product_in_scene = self.position_graphs.match_product_in_scene
+        return self._match_product_in_scene
 
     def check_survey_answer(self, survey_text, target_answer):
         """
@@ -140,22 +154,34 @@ class INBEVToolBox:
         """
         return self.general_tools.calculate_availability(**filters)
 
-    def calculate_assortment(self, **filters):
+    def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1,  oos_products=None,**filters):
         """
+        :param assortment_entity: This is the entity on which the assortment is calculated.
+        :param minimum_assortment_for_entity: This is the number of assortment per each unique entity in order for it
+                                              to be counted in the final assortment result (default is 1).
         :param filters: These are the parameters which the data frame is filtered by.
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts data frame.
         """
-        return self.general_tools.calculate_assortment(**filters)
-
-    def calculate_posm(self, **filters):
-        """
-        :param filters: These are the parameters which the data frame is filtered by.
-        :return: Number of unique POSMs appeared in the filtered Display data frame.
-        """
-        filtered_display = self.match_display_in_scene[
-            self.get_filter_condition(self.match_display_in_scene, **filters)]
-        assortment = len(filtered_display['display_name'].unique())
+        if set(filters.keys()).difference(self.scif.keys()):
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        else:
+            filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+        if oos_products is not None:
+            filtered_df = filtered_df[~filtered_df['product_fk'].isin(oos_products)]
+        if minimum_assortment_for_entity == 1:
+            assortment = len(filtered_df[assortment_entity].unique())
+        else:
+            assortment = 0
+            for entity_id in filtered_df[assortment_entity].unique():
+                assortment_for_entity = filtered_df[filtered_df[assortment_entity] == entity_id]
+                if 'facings' in filtered_df.columns:
+                    assortment_for_entity = assortment_for_entity['facings'].sum()
+                else:
+                    assortment_for_entity = len(assortment_for_entity)
+                if assortment_for_entity >= minimum_assortment_for_entity:
+                    assortment += 1
         return assortment
+
 
     def calculate_share_of_shelf(self, manufacturer=DIAGEO, sos_filters=None, include_empty=EXCLUDE_EMPTY,
                                  **general_filters):
@@ -237,35 +263,10 @@ class INBEVToolBox:
         """
         return self.general_tools.get_filter_condition(df, **filters)
 
-    @staticmethod
-    def get_latest_directory_date_from_cloud(cloud_path, amz_conn):
-        """
-        This function reads all files from a given path (in the Cloud), and extracts the dates of their mother dirs
-        by their name. Later it returns the latest date (up to today).
-        """
-        files = amz_conn.bucket.list(cloud_path)
-        files = [f.key.replace(cloud_path, '') for f in files]
-        files = [f for f in files if len(f.split('/')) > 1]
-        files = [f.split('/')[0] for f in files]
-        files = [f for f in files if f.isdigit()]
-        if not files:
-            return
-        dates = [datetime.strptime(f, '%y%m%d') for f in files]
-        for date in sorted(dates, reverse=True):
-            if date.date() <= datetime.utcnow().date():
-                return date.strftime("%y%m%d")
-        return
-
     def download_template(self, set_name):
         """
         This function receives a KPI set name and return its relevant template as a JSON.
         """
-        # temp_file_path = '{}/{}'.format(self.new_dir, set_name)
-        # f = open(temp_file_path, 'wb')
-        # self.amz_conn.download_file('{}{}.xlsx'.format(self.templates_path, set_name), f)
-        # f.close()
-        # json_data = self.get_json_data(temp_file_path)
-        # os.remove(temp_file_path)
         with open(os.path.join(self.local_templates_path, set_name), 'rb') as f:
             json_data = json.load(f)
         return json_data
@@ -307,11 +308,30 @@ class INBEVToolBox:
         Log.info('Latest version of templates has been saved to cache')
 
     @staticmethod
+    def get_latest_directory_date_from_cloud(cloud_path, amz_conn):
+        """
+        This function reads all files from a given path (in the Cloud), and extracts the dates of their mother dirs
+        by their name. Later it returns the latest date (up to today).
+        """
+        files = amz_conn.bucket.list(cloud_path)
+        files = [f.key.replace(cloud_path, '') for f in files]
+        files = [f for f in files if len(f.split('/')) > 1]
+        files = [f.split('/')[0] for f in files]
+        files = [f for f in files if f.isdigit()]
+        if not files:
+            return
+        dates = [datetime.strptime(f, '%y%m%d') for f in files]
+        for date in sorted(dates, reverse=True):
+            if date.date() <= datetime.utcnow().date():
+                return date.strftime("%y%m%d")
+        return
+
+    @staticmethod
     def get_json_data(file_path):
         """
         This function gets a file's path and extract its content into a JSON.
         """
-        output = pd.read_excel(file_path)
+        output = pd.read_excel(file_path, convert_float={'EAN': lambda x: str(x)})
         if KPI_NAME not in output.keys() and PRODUCT_NAME not in output.keys():
             for index in xrange(len(output)):
                 row = output.iloc[index].tolist()

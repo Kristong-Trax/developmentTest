@@ -35,7 +35,10 @@ class SOVIToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.region = self.store_info['region_name'].iloc[0]
+        self.valid_regions = ['UNITED']
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.kpi_static_data = self.common.get_kpi_static_data()
         # self.sos = SOS(self.data_provider, self.output)
@@ -46,8 +49,9 @@ class SOVIToolBox:
         """
         This function calculates the KPI results.
         """
-        self.sanitize_scif()
-        self.calculate_entire_store_sos()
+        if self.region in self.valid_regions:
+            self.sanitize_scif()
+            self.calculate_entire_store_sos()
 
     def calculate_entire_store_sos(self):
         # general_filters = {}  # entire session/store visit
@@ -64,10 +68,11 @@ class SOVIToolBox:
         # print('Entire store: {}%'.format(sos_value * 100))
 
         own_pk = self.pseudo_pk
+        manufacturer_id = 1 # for CCNA
 
-        self.common_v2.write_to_db_result(3000, numerator_id=self.store_id, numerator_result=numerator_result,
+        self.common_v2.write_to_db_result(3000, numerator_id=manufacturer_id, numerator_result=numerator_result,
                                           result=sos_value,
-                                          denominator_id=999, denominator_result=denominator_result, score=sos_value,
+                                          denominator_id=self.store_id, denominator_result=denominator_result, score=sos_value,
                                           score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
                                           weight=None, kpi_level_2_target_fk=None, context_id=None,
@@ -118,6 +123,7 @@ class SOVIToolBox:
                             (self.scif['att4'] == att4)]
         category_list = att4_df.category.unique()
         template_group_id = att4_df.template_fk.unique()[0]
+        att4_id = 1 if att4 == 'Still' else 0
 
         numerator_result = att4_df.facings.sum()
         denominator_result = self.scif.facings.sum()
@@ -128,7 +134,7 @@ class SOVIToolBox:
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
 
-        self.common_v2.write_to_db_result(3002, numerator_id=999, numerator_result=numerator_result, result=sos_value,
+        self.common_v2.write_to_db_result(3002, numerator_id=att4_id, numerator_result=numerator_result, result=sos_value,
                                           denominator_id=template_group_id, denominator_result=denominator_result,
                                           score=sos_value, score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
@@ -152,7 +158,7 @@ class SOVIToolBox:
                                 (self.scif['category'] == category)]
 
         manufacturer_list = category_df.manufacturer_name.unique()
-
+        att4_id = 1 if att4 == 'Still' else 0
         category_id = category_df.category_fk.unique()[0]
 
         numerator_result = category_df.facings.sum()
@@ -166,7 +172,7 @@ class SOVIToolBox:
 
         self.common_v2.write_to_db_result(3003, numerator_id=category_id, numerator_result=numerator_result,
                                           result=sos_value,
-                                          denominator_id=999, denominator_result=denominator_result, score=sos_value,
+                                          denominator_id=att4_id, denominator_result=denominator_result, score=sos_value,
                                           score_after_actions=sos_value,
                                           denominator_result_after_actions=None, numerator_result_after_actions=0,
                                           weight=None, kpi_level_2_target_fk=None, context_id=None,
@@ -297,7 +303,8 @@ class SOVIToolBox:
         #                                                 brand_name, product_name.encode('utf-8'), sos_value * 100))
 
     def sanitize_scif(self):
-        self.scif = self.scif[(self.scif['product_type'] != 'Empty') &
+        excluded_types = ['Empty', 'Irrelevant', 'Other']
+        self.scif = self.scif[~(self.scif['product_type'].isin(excluded_types)) &
                               (self.scif['facings'] != 0)]
 
     @staticmethod

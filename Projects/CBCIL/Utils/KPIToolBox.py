@@ -482,7 +482,7 @@ class CBCILCBCIL_ToolBox(object):
                                 scene_result = 100 if all([facing >= target_facings_per_shelf
                                                            for facing in shelf_facings_result]) else 0
                     session_results.append(scene_result)
-                return 100 if all(session_results) else 0
+                return 100 if any(session_results) else 0
         return 0
 
     def calculate_availability_by_sequence(self, **general_filters):
