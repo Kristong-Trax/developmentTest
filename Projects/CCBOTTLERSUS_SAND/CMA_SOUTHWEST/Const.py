@@ -6,7 +6,7 @@ class Const(object):
 
     SOVI = "SOVI"
 
-    REGIONS = ['SOUTHWEST']
+    REGIONS = 'SOUTHWEST'
 
     # sheets:
     KPIS = "KPIs"

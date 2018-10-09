@@ -83,7 +83,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         main_template = self.templates[Const.KPIS]
-        main_template = main_template[main_template[Const.SESSION_LEVEL] is True]
+        main_template = main_template[main_template[Const.SESSION_LEVEL] == 'Y']
         if self.region in Const.REGIONS:
             for i, main_line in main_template.iterrows():
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)

@@ -29,22 +29,22 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
-        if self.store_type in Const.STORE_TYPES:
-            self.store_type = Const.STORE_TYPES[self.store_type]
+        if self.store_type in Const.STORE_TYPE:
+            self.store_type = Const.STORE_TYPE[self.store_type]
         self.templates = {}
         for sheet in Const.SHEETS_CMA:
-            self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.region = self.store_info['region_name'].iloc[0]
         main_template = self.templates[Const.KPIS]
-        self.templates[Const.KPIS] = main_template[(main_template[Const.REGION] == self.region) &
+        self.templates[Const.KPIS] = main_template[(main_template['Regions'] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
-        self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
+        # self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
 
     def main_calculation(self):
         """
             This function makes the calculation for the scene's KPI and returns their answers to the session's calc
         """
-        if self.scif[self.scif['SOUTHWEST Deliver'] == 'Y'].empty:  # if it's not united scene we don't need to calculate
+        if self.scif[self.scif['Southwest Deliver'] == 'Y'].empty:  # if it's not sw scene we don't need to calculate
             return False
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
@@ -84,10 +84,9 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
+        relevant_scif = self.scif.copy()
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-        store_attrs = main_line[Const.PROGRAM].split(',')
-        result = score = target = None
+        store_attrs = self.does_exist(main_line, Const.PROGRAM)
         general_filters = {}
 
         if scene_types:
@@ -103,7 +102,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         function = self.get_kpi_function(kpi_type)
 
         for i, kpi_line in relevant_template.iterrows():
-            if not self.store_attr or (store_attrs[0] != '' and self.store_attr not in store_attrs)\
+            if (store_attrs is not None and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
             result, score, target = function(kpi_line, relevant_scif, general_filters)
@@ -121,30 +120,25 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         KPIs in the same name in the match sheet, scene after scene.
         :param main_line: series from the template of the main_sheet.
         """
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
 
-        num_filters = self.get_kpi_line_filters(kpi_line)
+        # num_filters = self.get_kpi_line_filters(kpi_line)
+        num_filters = {'Southwest Deliver': 'Y'}
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
 
-        scenes = scif['scene_fk'].unique().tolist()
-        if not isinstance(scenes, list):
-            scenes = [scenes]
-        total_num = 0
-        total_den = 0
-
         # scene_scif = scif[scif['scene_fk'] == scene]
-        if scif.empty:
-            pass
-            Log.warning('Match product in scene is empty for this scene')
-        else:
-            num, ratio, den = self.sos_with_num_and_dem(kpi_line, scene_scif, num_filters, general_filters)
-            total_num += num
-            total_den += den
 
-        self.common_scene.write_to_db_result(fk=2161, numerator_result=total_num,
+        num, ratio, den = self.sos_with_num_and_dem(kpi_line, scif, num_filters, general_filters)
+
+        self.common.write_to_db_result(fk=2161, numerator_result=total_num,
                                            denominator_result=total_den, result=ratio,
-                                           identifier_parent=self.common_db2.get_dictionary(
-                                               parent_name='CMA_COMPLIANCE'),
-                                           should_enter=True)
+                                           should_enter=True, by_scene=True)
+
+        # self.common_scene.write_to_db_result(fk=2161, numerator_result=total_num,
+        #                                    denominator_result=total_den, result=ratio,
+        #                                    identifier_parent=self.common_db2.get_dictionary(
+        #                                        parent_name='CMA_COMPLIANCE'),
+        #                                    should_enter=True)
         # self.common_scene.commit_results_data(result_entity='scene')
 
 
@@ -162,8 +156,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, num_filters,  general_filters):
 
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
-
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **num_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
 
@@ -180,14 +172,14 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         ratio = num / float(den)
         # numerator_id=product_fk,
-        # self.common_scene.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+        # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
         #                                result=ratio, by_scene=True)
 
-        self.common_scene.write_to_db_result(fk=kpi_fk, numerator_result=num,
-                                           denominator_result=den, result=ratio, by_scene=True,
-                                           identifier_parent=self.common_db2.get_dictionary(
-                                               parent_name='Total Coke Cooler Purity'),
-                                           should_enter=True)
+        # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num,
+        #                                    denominator_result=den, result=ratio, by_scene=True,
+        #                                    identifier_parent=self.common_db2.get_dictionary(
+        #                                        parent_name='Total Coke Cooler Purity'),
+        #                                    should_enter=True)
         return num, ratio, den
 
     def get_kpi_function(self, kpi_type):
@@ -202,3 +194,19 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
+
+    @staticmethod
+    def does_exist(kpi_line, column_name):
+        """
+        checks if kpi_line has values in this column, and if it does - returns a list of these values
+        :param kpi_line: line from template
+        :param column_name: str
+        :return: list of values if there are, otherwise None
+        """
+        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
+            cell = kpi_line[column_name]
+            if type(cell) in [int, float]:
+                return [cell]
+            elif type(cell) in [unicode, str]:
+                return cell.split(", ")
+        return None
