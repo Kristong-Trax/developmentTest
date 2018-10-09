@@ -9,24 +9,16 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Projects.SOLARBR_SAND.Utils.Const import Const
+from Projects.SOLARBR.Utils.Const import Const
 from KPIUtils_v2.DB.Common import Common
-from Projects.SOLARBR_SAND.Utils.Fetcher import SOLARBRQueries
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
 from Trax.Algo.Calculations.Core.Utils import Validation
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'nicolaske'
 
@@ -54,6 +46,7 @@ class SOLARBRToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -82,7 +75,6 @@ class SOLARBRToolBox:
         self.toolbox = GENERALToolBox(self.data_provider)
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
         self.kpi_results_new_tables_queries = []
-        # self.store_type = self.data_provider.store_type
 
 
 
@@ -95,13 +87,13 @@ class SOLARBRToolBox:
     def get_score_template(self):
         for sheet in Const.SHEETS_SCORE:
             self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"), keep_default_na=False, encoding = "utf-8")
-
+        print("-")
 
     def main_calculation(self, *args, **kwargs):
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        self.commit_results()
+        self.commonV2.commit_results_data()
 
 
 
@@ -112,12 +104,11 @@ class SOLARBRToolBox:
         kpi_type = main_line[Const.Type]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPES)
 
-        result = score = 0
         general_filters = {}
 
-
         scif_scene_types = self.scif['template_name'].unique().tolist()
-        store_type = str(self.store_info["store_type"].iloc[0])
+
+        store_type = self.store_info["store_type"].iloc[0].encode("utf-8")
         store_types = self.does_exist_store(main_line, Const.STORE_TYPES)
         if store_type in store_types:
 
@@ -209,18 +200,24 @@ class SOLARBRToolBox:
 
         category_fk = all_products["category_fk"]
 
+        filtered_kpi_list = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]
+        kpi_fk = filtered_kpi_list['kpi_fk'].iloc[0]
 
 
         numerator_res, denominator_res = self.get_numerator_and_denominator(sos_filters, **general_filters)
 
-        self.common.write_to_db_result_new_tables(fk = 1,
+        if numerator_res == None:
+            numerator_res = 0
+
+        self.commonV2.write_to_db_result(         fk = 1,
                                                   numerator_id=manufacturer_fk,
                                                   numerator_result= numerator_res,
                                                   denominator_id=category_fk,
                                                   denominator_result= denominator_res,
-                                                  result=sos_value,
-                                                  score= score,
-                                                  score_after_actions= score)
+                                                  result =sos_value,
+                                                  score = score,
+                                                  score_after_actions = score,
+                                                  context_id= kpi_fk)
         return sos_value, score
 
     def get_score_from_range(self, kpi_name, sos_value):
@@ -230,6 +227,10 @@ class SOLARBRToolBox:
                                                           '" & Low <= ' + str(sos_value) +
                                                           ' & High >= ' + str(sos_value)+'')
         score = score_range['Score'].iloc[0]
+
+
+
+
         return score
 
 
@@ -263,7 +264,6 @@ class SOLARBRToolBox:
                 return 0,0
             else:
                 subset_population = filtered_population[subset_filter]
-                # ratio = TBox.calculate_ratio_sum_field_in_rows(filtered_population, subset_population, Fd.FACINGS)
 
                 df = filtered_population
                 subset_df = subset_population
@@ -278,7 +278,6 @@ class SOLARBRToolBox:
                     Validation.is_none(sum_field)
                 except Exception, e:
                     msg = "Data verification failed: {}.".format(e)
-                    # raise Exception(msg)
 
                 default_value = 0
 
@@ -293,28 +292,3 @@ class SOLARBRToolBox:
 
 
         return True
-
-    def commit_results(self):
-        insert_queries = self.merge_insert_queries(self.kpi_results_new_tables_queries)
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        delete_query = SOLARBRQueries.get_delete_session_results_query(self.session_uid, self.session_id)
-        cur.execute(delete_query)
-        for query in insert_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
-
-    @staticmethod
-    def merge_insert_queries(insert_queries):
-        query_groups = {}
-        for query in insert_queries:
-            static_data, inserted_data = query.split('VALUES ')
-            if static_data not in query_groups:
-                query_groups[static_data] = []
-            query_groups[static_data].append(inserted_data)
-        merged_queries = []
-        for group in query_groups:
-            merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
-        return merged_queries

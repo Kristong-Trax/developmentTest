@@ -5,6 +5,7 @@ __author__ = 'Uri'
 class Const(object):
 
     SOVI = "SOVI"
+    REGIONS = ['UNITED']
 
     # sheets:
     KPIS = "KPIs"
@@ -96,6 +97,7 @@ class Const(object):
     DOMINANT = "dominant"
     MAJORITY_TARGET = 0.5
     NUMERIC_VALUES_TYPES = ['size']
+    MANUFACTURER_FK = 1
 
     RED_SCORE = 'Red SCORE'
     RED_SCORE_INTEG = 'Red SCORE Integration'
