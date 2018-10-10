@@ -82,7 +82,7 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('Entire store: {}%'.format(sos_value * 100))
+        # print('Entire store: {}%'.format(sos_value))
 
         own_pk = self.pseudo_pk
 
@@ -112,7 +112,7 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{}: {}%'.format(template_group, sos_value * 100))
+        # print('{}: {}%'.format(template_group, sos_value))
 
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
@@ -146,7 +146,7 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {}: {}%'.format(template_group, att4, sos_value * 100))
+        # print('{} - {}: {}%'.format(template_group, att4, sos_value))
 
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
@@ -177,7 +177,7 @@ class SOVIToolBox:
         manufacturer_list = category_df.manufacturer_name.unique()
 
         # we need to apply United Deliver filter to return the correct KPI result
-        category_df = self.scif[(self.scif['United Deliver'] == 'Y')]
+        category_df = category_df[(category_df['United Deliver'] == 'Y')]
 
         att4_id = STILL_FK if att4 == 'Still' else SSD_FK
         category_id = category_df.category_fk.unique()[0]
@@ -186,7 +186,7 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {} - {}: {}%'.format(template_group, att4, category, sos_value * 100))
+        # print('{} - {} - {}: {}%'.format(template_group, att4, category, sos_value))
 
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
@@ -224,7 +224,7 @@ class SOVIToolBox:
         denominator_result = self.apply_filters_to_df(self.scif, general_filters).facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name, sos_value * 100))
+        # print('{} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name, sos_value))
 
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
@@ -266,7 +266,7 @@ class SOVIToolBox:
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
         # print('{} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
-        #                                            brand_name, sos_value * 100))
+        #                                            brand_name, sos_value))
 
         self.pseudo_pk = self.pseudo_pk + 1
         own_pk = self.pseudo_pk
