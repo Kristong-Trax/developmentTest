@@ -1,6 +1,6 @@
+
 import os
 import json
-import shutil
 import pandas as pd
 from datetime import datetime
 
@@ -9,7 +9,8 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from KPIUtils.GeneralToolBox import GENERALToolBox
+from Projects.DIAGEOGH.Utils.GeneralToolBox import GENERALToolBox
+
 
 __author__ = 'Nimrod'
 
@@ -17,14 +18,17 @@ BUCKET = 'traxuscalc'
 
 EMPTY = 'Empty'
 POURING_SURVEY_TEXT = 'Are the below brands pouring?'
-KPI_NAME = 'Atomic'
-PRODUCT_NAME = 'Product Name'
 UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
 CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
 
+KPI_NAME = 'Atomic'
+GROUP_NAME = 'Group Name'
+PRODUCT_NAME = 'Product Name'
 
-class INBEVToolBox:
+
+class Consts(object):
+
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     EXCLUDE_EMPTY = 0
@@ -42,6 +46,7 @@ class INBEVToolBox:
     # Templates fields #
 
     # Availability KPIs
+    GROUP_NAME = GROUP_NAME
     PRODUCT_NAME = PRODUCT_NAME
     PRODUCT_EAN_CODE = 'Leading Product EAN'
     PRODUCT_EAN_CODE2 = 'Product EAN'
@@ -51,6 +56,12 @@ class INBEVToolBox:
 
     # POSM KPIs
     DISPLAY_NAME = 'Product Name'
+
+    # Survey KPIs
+    SURVEY_QUESTION = 'Question Text'
+    SURVEY_ANSWER = 'Targeted Text'
+    SURVEY_ANSWER_TYPE = 'Answer Type'
+    SURVEY_CONDITION = 'Execution Condition'
 
     # Relative Position
     CHANNEL = 'Channel'
@@ -75,15 +86,19 @@ class INBEVToolBox:
                              'Category': 'category',
                              'display': 'display_name'}
 
-    KPI_SETS = ['Linear Share of Shelf vs. Target', 'Linear Share of Shelf', 'OSA',
-                'Share of Assortment', 'Shelf Level',
-                'Shelf Impact Score']
-    KPI_SETS_WITH_PRODUCT_AS_NAME = ['MPA', 'New Products', 'POSM']
-    KPI_SETS_WITH_PERCENT_AS_SCORE = KPI_SETS_WITH_PRODUCT_AS_NAME + ['Visible to Customer', 'Relative Position',
-                                                                      'Brand Blocking']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer']
+    KPI_SETS = ['MPA', 'Local MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
+                'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring',
+                'Visible to Consumer %']
+    KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
+                                      'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA',
+                                      'Visible to Consumer %']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer',
+                                   'Visible to Consumer %', 'Secondary Displays']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
+
+
+class ToolBox(Consts):
 
     def __init__(self, data_provider, output, **data):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -93,12 +108,16 @@ class INBEVToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = GENERALToolBox(data_provider, output, self.kpi_static_data, geometric_kpi_flag=True)
-        self.amz_conn = StorageFactory.get_connector(BUCKET)
+        self.general_tools = GENERALToolBox(data_provider, output, **data)
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
+
+    @property
+    def amz_conn(self):
+        if not hasattr(self, '_amz_conn'):
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
+        return self._amz_conn
 
     def check_survey_answer(self, survey_text, target_answer):
         """
@@ -152,13 +171,12 @@ class INBEVToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: Number of unique POSMs appeared in the filtered Display data frame.
         """
-        filtered_display = self.match_display_in_scene[
-            self.get_filter_condition(self.match_display_in_scene, **filters)]
+        filtered_display = self.match_display_in_scene[self.get_filter_condition(
+            self.match_display_in_scene, **filters)]
         assortment = len(filtered_display['display_name'].unique())
         return assortment
 
-    def calculate_share_of_shelf(self, manufacturer=DIAGEO, sos_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 **general_filters):
+    def calculate_share_of_shelf(self, manufacturer=None, sos_filters=None, include_empty=None, **general_filters):
         """
         :param manufacturer: This is taken as a lone sos-filter in case sos_filters param is None.
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
@@ -166,6 +184,10 @@ class INBEVToolBox:
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: The ratio of the SOS.
         """
+        if manufacturer is None:
+            manufacturer = self.DIAGEO
+        if include_empty is None:
+            include_empty = self.EXCLUDE_EMPTY
         if not sos_filters:
             sos_filters = {'manufacturer_name': manufacturer}
         return self.general_tools.calculate_share_of_shelf(sos_filters, include_empty, **general_filters)
@@ -178,9 +200,10 @@ class INBEVToolBox:
         """
         brand_pouring_status = False
 
-        sub_category = self.scif[(self.scif['brand_name'] == brand) &
-                                 (self.scif['category'] == 'Spirit')]['sub_category'].values[0]
-        filtered_df = self.scif[self.get_filter_condition(self.scif, sub_category=sub_category, **filters)]
+        sub_category = self.all_products[(self.all_products['brand_name'] == brand) &
+                                         (self.all_products['category'] == 'Spirit')]['sub_category'].values[0]
+        filtered_df = self.scif[self.get_filter_condition(
+            self.scif, sub_category=sub_category, **filters)]
         if filtered_df[filtered_df['brand_name'] == brand].empty:
             return False
         brands_in_category = filtered_df['brand_name'].unique().tolist()
@@ -192,7 +215,8 @@ class INBEVToolBox:
                                                                      sub_category=sub_category, **filters)
         pouring_sos = sos_by_brand[brand]
 
-        pouring_survey = self.check_survey_answer(survey_text=POURING_SURVEY_TEXT, target_answer=brand)
+        pouring_survey = self.check_survey_answer(
+            survey_text=POURING_SURVEY_TEXT, target_answer=brand)
 
         if pouring_survey and pouring_sos == max(sos_by_brand.values()):
             brand_pouring_status = True
@@ -215,7 +239,7 @@ class INBEVToolBox:
         return self.general_tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
                                                               min_required_to_pass, **general_filters)
 
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
+    def calculate_block_together(self, allowed_products_filters=None, include_empty=None, **filters):
         """
         :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
@@ -223,6 +247,8 @@ class INBEVToolBox:
         :return: True - if in (at least) one of the scenes all the relevant SKUs are grouped together in one block;
                  otherwise - returns False.
         """
+        if include_empty is None:
+            include_empty = self.EXCLUDE_EMPTY
         return self.general_tools.calculate_block_together(allowed_products_filters, include_empty, **filters)
 
     def get_filter_condition(self, df, **filters):
@@ -260,12 +286,6 @@ class INBEVToolBox:
         """
         This function receives a KPI set name and return its relevant template as a JSON.
         """
-        # temp_file_path = '{}/{}'.format(self.new_dir, set_name)
-        # f = open(temp_file_path, 'wb')
-        # self.amz_conn.download_file('{}{}.xlsx'.format(self.templates_path, set_name), f)
-        # f.close()
-        # json_data = self.get_json_data(temp_file_path)
-        # os.remove(temp_file_path)
         with open(os.path.join(self.local_templates_path, set_name), 'rb') as f:
             json_data = json.load(f)
         return json_data
@@ -296,8 +316,10 @@ class INBEVToolBox:
         """
         if not os.path.exists(self.local_templates_path):
             os.makedirs(self.local_templates_path)
-        dir_name = self.get_latest_directory_date_from_cloud(self.cloud_templates_path.format(''), self.amz_conn)
-        files = [f.key for f in self.amz_conn.bucket.list(self.cloud_templates_path.format(dir_name))]
+        dir_name = self.get_latest_directory_date_from_cloud(
+            self.cloud_templates_path.format(''), self.amz_conn)
+        files = [f.key for f in self.amz_conn.bucket.list(
+            self.cloud_templates_path.format(dir_name))]
         for file_path in files:
             file_name = file_path.split('/')[-1]
             with open(os.path.join(self.local_templates_path, file_name), 'wb') as f:
@@ -312,14 +334,20 @@ class INBEVToolBox:
         This function gets a file's path and extract its content into a JSON.
         """
         output = pd.read_excel(file_path)
-        if KPI_NAME not in output.keys() and PRODUCT_NAME not in output.keys():
+        if KPI_NAME not in output.keys() and PRODUCT_NAME not in output.keys() and GROUP_NAME not in output.keys():
             for index in xrange(len(output)):
                 row = output.iloc[index].tolist()
-                if KPI_NAME in row or PRODUCT_NAME in row:
-                    output = output[index + 1:]
+                if KPI_NAME in row or PRODUCT_NAME in row or GROUP_NAME in row:
+                    output = output[index+1:]
                     output.columns = row
                     break
-        output = output[[key for key in output.keys() if isinstance(key, (str, unicode))]]
+        output = output[[key for key in output.keys() if isinstance(key, (str, unicode, int))]]
+        duplicated_rows = set([head for head in output.keys()
+                               if output.keys().tolist().count(head) > 1])
+        if duplicated_rows:
+            Log.warning('The following columns titles appear more than once: {}'.format(
+                ', '.join(duplicated_rows)))
+            return None
         output = output.to_json(orient='records')
         json_data = json.loads(output)
         # Removing None values + Converting all values to unicode-typed + Removing spaces from headers
@@ -330,7 +358,7 @@ class INBEVToolBox:
                 else:
                     json_data[i][key] = unicode(json_data[i][key]).strip()
                 try:
-                    json_data[i][key.strip()] = json_data[i].pop(key)
+                    json_data[i][str(key).strip()] = json_data[i].pop(key)
                 except KeyError:
                     continue
-        return json_data
+        return filter(bool, json_data)

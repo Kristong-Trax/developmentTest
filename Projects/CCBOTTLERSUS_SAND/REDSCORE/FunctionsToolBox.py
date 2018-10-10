@@ -54,10 +54,17 @@ class FunctionsToolBox:
         """
         kpi_type = main_line[Const.SHEET]
         relevant_template = self.templates[kpi_type]
-        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]]
-        target = len(relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
+        relevant_template = relevant_template[relevant_template[Const.KPI_NAME]
+                                              == main_line[Const.KPI_NAME]]
+        target = len(
+            relevant_template) if main_line[Const.GROUP_TARGET] == Const.ALL else main_line[Const.GROUP_TARGET]
         isnt_dp = True if self.store_attr != Const.DP and main_line[Const.STORE_ATTRIBUTE] == Const.DP else False
         if main_line[Const.SAME_PACK] == Const.V:
+            filtered_scif = filtered_scif.fillna("NAN")
+            # only items categorized as SSD should be evaluated in this calculation; see PROS-6342
+            filtered_scif = filtered_scif[filtered_scif['att4'] == 'SSD']
+            if filtered_scif.empty:
+                return False
             sizes = filtered_scif['size'].tolist()
             sub_packages_nums = filtered_scif['number_of_sub_packages'].tolist()
             packages = set(zip(sizes, sub_packages_nums))
@@ -127,7 +134,8 @@ class FunctionsToolBox:
             # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
+            relevant_scif = self.filter_scif_specific(
+                relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
 
     def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):  # V
@@ -148,7 +156,7 @@ class FunctionsToolBox:
 
     # SOS:
 
-    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):  # EXCLUSION
+    def calculate_sos(self, kpi_line, relevant_scif, isnt_dp):
         """
         calculates SOS line in the relevant scif.
         :param kpi_line: line from SOS sheet.
@@ -314,8 +322,14 @@ class FunctionsToolBox:
         :param relevant_scif: current filtered scif
         :return: new scif
         """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.PRODUCT_EAN] != "":
+            exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
+            relevant_scif = relevant_scif[~(
+                relevant_scif['product_ean_code'].isin(exclude_products))]
+        if exclude_line[Const.BRAND] != "":
+            exclude_brands = exclude_line[Const.BRAND].split(', ')
+            relevant_scif = relevant_scif[~(relevant_scif['brand_name'].isin(exclude_brands))]
+        return relevant_scif
 
     def exclude_from_scif(self, kpi_name, relevant_scif):
         """
@@ -360,5 +374,6 @@ class FunctionsToolBox:
         elif kpi_type == Const.SOS_MAJOR:
             return self.calculate_sos_maj
         else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            Log.warning(
+                "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
