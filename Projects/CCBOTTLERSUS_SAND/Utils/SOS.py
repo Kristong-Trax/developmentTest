@@ -16,17 +16,11 @@ def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
         return None, None, None
     num = num_scif[facings_field].sum()
     den = den_scif[facings_field].sum()
+    if den:
+        ratio = round((num / float(den))*100, 2)
+    else:
+        ratio = 0
 
-    ratio = round(num / float(den), 2)
-    # numerator_id=product_fk,
-    # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-    #                                result=ratio, by_scene=True)
-
-    # self.common.write_to_db_result(fk=kpi_fk, numerator_result=num,
-    #                                    denominator_result=den, result=ratio, by_scene=True,
-    #                                    identifier_parent=self.common_db2.get_dictionary(
-    #                                        parent_name='Total Coke Cooler Purity'),
-    #                                    should_enter=True)
     return ratio, num, den
 
     # def get_filter_condition(self, df, **filters):

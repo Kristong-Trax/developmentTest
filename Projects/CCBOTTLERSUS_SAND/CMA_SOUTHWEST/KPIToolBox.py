@@ -916,7 +916,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             den = self.sub_totals[sub_parent]
             if den:
                 # result = float(num) / den
-                self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
+                self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,numerator_id=self.manufacturer_fk,
+                                                   denominator_id=self.store_id,
                                                    denominator_result=den, result=num, score=num, target=den,
                                                    identifier_result=self.common_db2.get_dictionary(
                                                        parent_name=sub_parent),
@@ -937,6 +938,27 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=CMA_COMPLIANCE))
 
+    def write_scene_parent(self):
+        results = self.data_provider[Data.SCENE_KPI_RESULTS]
+        scene_kpis = results['kpi_level_2_fk'].unique().tolist()
+        for scene_kpi in scene_kpis:
+            if scene_kpi in Const.SCENE_SESSION_KPI:
+                session_kpi = Const.SCENE_SESSION_KPI[scene_kpi]
+                kpi_res = results[results['kpi_level_2_fk'] == scene_kpi]
+                num = kpi_res['numerator_result'].sum()
+                den = kpi_res['denominator_result'].sum()
+
+                if den:
+                    ratio = float(num) / den
+                else:
+                    ratio = 0
+
+                self.common_db2.write_to_db_result(fk=session_kpi, numerator_result=num,
+                                                   numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                                   denominator_result=den, result=num, score=num, target=den,
+                                                   # identifier_result=self.common_db2.get_dictionary(
+                                                   #     parent_name=CMA_COMPLIANCE)
+                                                  )
 
     def commit_results(self):
         """

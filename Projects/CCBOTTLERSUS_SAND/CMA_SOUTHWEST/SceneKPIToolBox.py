@@ -134,8 +134,8 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
                                            result=ratio, by_scene=True,
-                                           identifier_parent=self.common.get_dictionary(
-                                               parent_name='Total Coke Cooler Purity'),
+                                           # identifier_parent=self.common.get_dictionary(
+                                           #     parent_name='Total Coke Cooler Purity'),
                                            should_enter=True)
 
         # self.common.write_to_db_result(fk=2161, numerator_result=total_num,
@@ -162,7 +162,25 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         #     self.write_to_scene_level(
         #         kpi_name=kpi_name, result=result, parent=parent)
 
+    def session_kpi(self, kpi_fk):
+        results = self.data_provider[Data.SCENE_KPI_RESULTS]
+        kpi_res = results[results['kpi_level_2_fk'] == kpi_fk]
+        num = kpi_res['numerator_result'].sum()
+        den = kpi_res['denominator_result'].sum()
 
+        if den:
+            ratio = float(num) / den
+        else:
+            ratio = 0
+        self.common.kpi_results = pd.DataFrame(columns=self.common.COLUMNS)
+        self.common.write_to_db_result(fk=2161, numerator_result=num, denominator_result=den,
+                                       result=ratio, numerator_id=1,
+                                       denominator_id=self.store_id,
+                                       # identifier_result=self.common.get_dictionary(
+                                       #     parent_name='Total Coke Cooler Purity'),
+                                       # should_enter=True
+                                       )
+        self.common.commit_results_data()
 
     def get_kpi_function(self, kpi_type):
         """
