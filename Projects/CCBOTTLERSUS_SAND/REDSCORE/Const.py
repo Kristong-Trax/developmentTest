@@ -114,3 +114,5 @@ class Const(object):
         MANUAL
     ]
     SCENE_SUFFIX = " - scene"
+    PASS = "Pass"
+    FAIL = "Fail"

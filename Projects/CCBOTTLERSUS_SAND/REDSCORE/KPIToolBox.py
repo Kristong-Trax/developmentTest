@@ -30,6 +30,7 @@ class REDToolBox:
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
+        self.result_values = self.ps_data_provider.get_result_values()
         self.calculation_type = calculation_type
         if self.calculation_type == Const.SOVI:
             self.TEMPLATE_PATH = Const.TEMPLATE_PATH
@@ -343,6 +344,15 @@ class REDToolBox:
     def get_score(self, weight):
         return weight / self.weight_factor
 
+    def get_pks_of_result(self, result):
+        """
+        converts string result to its pk (in static.kpi_result_value)
+        :param result: str
+        :return: int
+        """
+        pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
+        return pk
+
     def write_to_db(self, kpi_name, score, display_text=''):
         """
         writes result in the DB
@@ -367,11 +377,12 @@ class REDToolBox:
             display_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(display_text)
             if display_kpi_fk is None:
                 display_kpi_fk = integ_kpi_fk
+            result = self.get_pks_of_result(Const.PASS) if score > 0 else self.get_pks_of_result(Const.FAIL)
             self.common_db2.write_to_db_result(
                 fk=display_kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
-                should_enter=True)
+                should_enter=True, result=result)
             self.common_db2.write_to_db_result(
-                fk=integ_kpi_fk, score=score, should_enter=True,
+                fk=integ_kpi_fk, score=score, should_enter=True, result=result,
                 identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
