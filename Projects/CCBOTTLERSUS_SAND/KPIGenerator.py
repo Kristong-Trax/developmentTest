@@ -67,10 +67,13 @@ class CCBOTTLERSUS_SANDGenerator:
     def calculate_red_score(self):
         Log.info('starting calculate_red_score')
         try:
-            for calculation_type in Const.CALCULATION_TYPES:
-                tool_box = REDToolBox(self.data_provider, self.output, calculation_type, self.common_db)
-                tool_box.main_calculation()
+            tool_box = REDToolBox(self.data_provider, self.output, Const.SOVI, self.common_db)
+            if tool_box.main_calculation() > 0:
                 tool_box.commit_results()
+                return
+            tool_box = REDToolBox(self.data_provider, self.output, Const.MANUAL, self.common_db)
+            tool_box.main_calculation()
+            tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
 
