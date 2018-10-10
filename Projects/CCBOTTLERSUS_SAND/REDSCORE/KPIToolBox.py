@@ -352,7 +352,8 @@ class REDToolBox:
         """
         if kpi_name == self.RED_SCORE:
             self.common_db2.write_to_db_result(
-                fk=self.set_fk, score=score, identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
+                fk=self.set_fk, numerator_id=Const.MANUFACTURER_FK, score=score,
+                identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
             self.common_db2.write_to_db_result(
                 fk=self.set_integ_fk, score=score,
                 identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))

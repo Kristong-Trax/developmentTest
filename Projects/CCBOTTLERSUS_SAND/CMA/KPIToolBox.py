@@ -78,6 +78,7 @@ class CMAToolBox:
                 if store_type is None or self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
                     self.calculate_main_kpi(main_line)
             kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+
             self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
                                                identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
