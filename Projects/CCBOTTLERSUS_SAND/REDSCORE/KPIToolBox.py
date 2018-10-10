@@ -87,6 +87,7 @@ class REDToolBox:
                 self.calculate_manual_kpi(main_line)
         if not main_template.empty:
             self.choose_and_write_results()
+        return self.red_score
 
     def calculate_main_kpi(self, main_line):
         """
@@ -148,15 +149,17 @@ class REDToolBox:
         :param scene_fk: for the scene's kpi
         :param reuse_scene: this kpi can use scenes that were used
         """
-        score = self.get_score(weight) * (result > 0)
-        self.red_score += score
+        score = self.get_score(weight)
+        result_value = Const.PASS if result > 0 else Const.FAIL
+        if result_value == Const.PASS:
+            self.red_score += score
         result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result, Const.SCORE: score}
         if scene_fk:
             result_dict[Const.DB_SCENE_FK] = scene_fk
             if not reuse_scene:
                 self.used_scenes.append(scene_fk)
         self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.write_to_db(kpi_name, score, display_text=display_text)
+        self.write_to_db(kpi_name, score, display_text=display_text, result_value=result_value)
 
     def choose_and_write_results(self):
         """
@@ -334,9 +337,6 @@ class REDToolBox:
             scene_fk = results.iloc[0][Const.DB_SCENE_FK] if Const.DB_SCENE_FK in kpi_results else None
             self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
 
-    def get_united_scenes(self):
-        return self.scif[self.scif['United Deliver'] == 'Y']['scene_id'].unique().tolist()
-
     def get_weight_factor(self):
         sum_weights = self.templates[Const.KPIS][Const.WEIGHT].sum()
         return sum_weights / 100.0
@@ -353,12 +353,13 @@ class REDToolBox:
         pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
         return pk
 
-    def write_to_db(self, kpi_name, score, display_text=''):
+    def write_to_db(self, kpi_name, score, display_text='', result_value=Const.FAIL):
         """
         writes result in the DB
         :param kpi_name: str
-        :param score: float
+        :param score: float, the weight of the question
         :param display_text: str
+        :param result_value: str, Pass/Fail
         """
         if kpi_name == self.RED_SCORE:
             self.common_db2.write_to_db_result(
@@ -377,13 +378,15 @@ class REDToolBox:
             display_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(display_text)
             if display_kpi_fk is None:
                 display_kpi_fk = integ_kpi_fk
-            result = self.get_pks_of_result(Const.PASS) if score > 0 else self.get_pks_of_result(Const.FAIL)
+            result = self.get_pks_of_result(result_value)
             self.common_db2.write_to_db_result(
                 fk=display_kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
                 should_enter=True, result=result)
             self.common_db2.write_to_db_result(
                 fk=integ_kpi_fk, score=score, should_enter=True, result=result,
                 identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
+            if result_value == Const.FAIL:
+                score = 0
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
             self.write_to_db_result(
