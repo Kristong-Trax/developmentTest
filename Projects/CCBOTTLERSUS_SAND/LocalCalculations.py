@@ -70,9 +70,15 @@ if __name__ == '__main__':
         ]
 
     sessions = [
-        # 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942',
+        'ffe5750c-2ffe-42bd-96bc-7772d8d6b942',
         # 'f4311b59-74a0-4400-8b92-3d373dfb557a',
         # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
+        # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
+        # 'fff64504-26e3-4ddd-b60c-098daab8caa1',
+        # 'FF7EB0D2-DF3C-4971-BFA9-033E3144A194',
+        # 'ffd9cc9d-9847-402d-9026-54a3bdf10a84',
+
+        # 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
         '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
     ]
 

@@ -8,6 +8,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.CCBOTTLERSUS_SAND.CMA.KPIToolBox import CMAToolBox
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.KPIToolBox import CCBOTTLERSUSCMASOUTHWESTToolBox
+from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.KPIToolBox import SceneSessionToolBox
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.KPIToolBox import REDToolBox
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 # from Projects.CCBOTTLERSUS_SAND.Utils.KPIToolBox import BCIKPIToolBox
@@ -38,6 +39,8 @@ class CCBOTTLERSUS_SANDGenerator:
         self.calculate_cma_compliance_sw()
         self.calculate_sovi()
         self.common_db.commit_results_data()
+
+        self.calculate_scene_session()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
@@ -101,6 +104,16 @@ class CCBOTTLERSUS_SANDGenerator:
         Log.info('starting calculate_cma_compliance')
         try:
             tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output, self.common_db)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
+
+    @log_runtime('Scene Session CCBOTTLERSUSCalculations')
+    def calculate_scene_session(self):
+        Log.info('starting calculate_scene_session')
+        try:
+            tool_box = SceneSessionToolBox(self.data_provider)
             tool_box.main_calculation()
             tool_box.commit_results()
         except Exception as e:

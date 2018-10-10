@@ -24,7 +24,7 @@ class SceneGenerator:
         # self.calculate_scene_redscore()
         self.calculate_scene_coke_cooler()
 
-        self.common.commit_results_data(result_entity='scene')
+        # self.common.commit_results_data(result_entity='scene')
 
     @log_runtime('Scene RedScore Calculations', log_start=True)
     def calculate_scene_redscore(self):

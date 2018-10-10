@@ -284,6 +284,7 @@ class CMAToolBox:
         # sos_value = round(sos_value, 2)
 
         if target:
+            target *= 100
             score = 1 if sos_value >= target else 0
         else:
             score = 0
@@ -295,7 +296,6 @@ class CMAToolBox:
     def get_sos_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-                                             # (targets_template['sales center'] == self.sales_center) &
                                              (targets_template['channel'] == self.store_type)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
