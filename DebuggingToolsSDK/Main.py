@@ -19,7 +19,7 @@ class Debugger:
 
     def execute(self):
         self.log_variables()
-        dh = DataHandler(project_name, sessions, db.singleton.data).execute()
+        dh = DataHandler(self.project, self.sessions, self.singleton.data).execute()
 
     @log_locals()
     def log_variables(self):
