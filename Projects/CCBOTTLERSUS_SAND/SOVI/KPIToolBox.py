@@ -170,12 +170,15 @@ class SOVIToolBox:
         #                'category': category
         #                }
 
-        category_df = self.scif[(self.scif['United Deliver'] == 'Y') &
-                                (self.scif['template_group'] == template_group) &
+        # we need to get manufacturers for the next KPI before applying United Deliver filter
+        category_df = self.scif[(self.scif['template_group'] == template_group) &
                                 (self.scif['att4'] == att4) &
                                 (self.scif['category'] == category)]
-
         manufacturer_list = category_df.manufacturer_name.unique()
+
+        # we need to apply United Deliver filter to return the correct KPI result
+        category_df = self.scif[(self.scif['United Deliver'] == 'Y')]
+
         att4_id = STILL_FK if att4 == 'Still' else SSD_FK
         category_id = category_df.category_fk.unique()[0]
 
@@ -319,7 +322,7 @@ class SOVIToolBox:
                                           identifier_parent=parent_pk, should_enter=True)
 
         # print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
-        #                                                 brand_name, product_name.encode('utf-8'), sos_value * 100))
+        #                                                 brand_name, product_name.encode('utf-8'), sos_value))
 
     def sanitize_scif(self):
         excluded_types = ['Empty', 'Irrelevant']
