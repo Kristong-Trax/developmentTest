@@ -24,22 +24,14 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'ccbottlersus-sand'
     session = 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
-#     scenes = [376377,
-# 376378,
-# 376379,
-# 376381,
-# 376383,
-# 376385,
-# 376399,
-#
-#               ]
-#     for scene in scenes:
-#         data_provider = KEngineDataProvider(project_name)
-#         data_provider.load_scene_data(session, scene)
-#         output = VanillaOutput()
-#         SceneVanillaCalculations(data_provider, output).run_project_calculations()
-#         save_scene_item_facts_to_data_provider(data_provider, output)
-#         SceneCalculations(data_provider).calculate_kpis()
+    # scenes = [376377, 376378, 376379, 376381, 376383, 376385, 376399]
+    # for scene in scenes:
+    #     data_provider = KEngineDataProvider(project_name)
+    #     data_provider.load_scene_data(session, scene)
+    #     output = VanillaOutput()
+    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+    #     save_scene_item_facts_to_data_provider(data_provider, output)
+    #     SceneCalculations(data_provider).calculate_kpis()
     data_provider = KEngineDataProvider(project_name)
     data_provider.load_session_data(session)
     output = Output()
