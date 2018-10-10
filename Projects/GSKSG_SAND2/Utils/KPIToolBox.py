@@ -50,6 +50,12 @@ KPI_NAME_INDEX = 0
 KPI_WEIGHT = 2
 CONDITION_WEIGHT = 3
 ######################
+MANUFACTURER_FK= 1  # GSKSK pk in table static_new.manufacturer
+ORAL_FK = 1
+PAIN_FK = 4
+ORAL_KPI = 2054
+
+
 
 TBD = 'tbd'
 
@@ -169,6 +175,7 @@ class GSKSGToolBox:
         # if not && condinal weight is NA MSL conditional weight + this KPI weight
 
         ## write to db
+        store_fk =self.store_info['store_fk']
         # ## asking if template isnt valid to write to db
         for i in xrange(len(aggs_res)):
             result = aggs_res.iloc[i]
@@ -183,8 +190,8 @@ class GSKSGToolBox:
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['result'],
-                                           denominator_id=TBD,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['result'],
+                                           denominator_id=store_fk,
                                            identifier_result=identifier_child_fk,
                                            identifier_parent=identifier_parent_fk,
                                            target=TBD, should_enter=True)
@@ -248,12 +255,11 @@ class GSKSGToolBox:
             identifier_parent_fk = self.common.get_dictionary(
                 kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
-            # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
-                                           denominator_id=TBD,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['total_result'],
+                                           denominator_id=MANUFACTURER_FK,
                                            identifier_result=identifier_child_fk,
                                            identifier_parent=identifier_parent_fk,
-                                           target=TBD, should_enter=True)
+                                           target=aggs_res_level_2['Weight'], should_enter=True)
 
         # fixind data for 1st level
 
@@ -265,15 +271,13 @@ class GSKSGToolBox:
         for i in xrange(len(aggs_res_level_1)):
             result = aggs_res_level_1.iloc[i]
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[SET])
-
+            category_fk = ORAL_FK if kpi_fk == ORAL_KPI else PAIN_FK
             identifier_child_fk = self.common.get_dictionary(
                 kpi_fk=kpi_fk)
-
-            # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
-                                           denominator_id=TBD,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['total_result'],
+                                           denominator_id=category_fk,
                                            identifier_result=identifier_child_fk,
-                                           target=TBD, should_enter=True)
+                                           target= aggs_res_level_1['KPI Weight'], should_enter=True)
 
     def get_relevant_calculations(self):
         # Gets the store type name and the relevant template according to it.
@@ -384,19 +388,22 @@ class GSKSGToolBox:
                 kpi_filters['product_ean_code'] = str(product)
                 kpi_filters['scene_id'] = scene_id
                 res = self.availability.calculate_availability(**kpi_filters)
-                products_in_scenes.append({
+                products_in_scenes = products_in_scenes.append({
                     'product_ean_code': product,
                     'scene_id': scene_id,
                     'result': 1 if res else 0,
                 }, ignore_index=True)
-        scene_passed_count = 0
-        for scene_id in valid_scenes:
-            in_scene = products_in_scenes.loc[products_in_scenes['scene_id'] == scene_id]
-            exist_products = in_scene['result'].sum()
-            res = float(exist_products) / total_products if total_products else 0
-            if res >= target:
-                scene_passed = True
-                scene_passed_count += 1
+
+        sum_exist = len(products_in_scenes[products_in_scenes['result'] != 0]['product_ean_code'].unique())
+        scene_passed_count = len(products_in_scenes[products_in_scenes['result'] != 0]['scene_id'].unique())
+        # for scene_id in valid_scenes:
+        #     in_scene = products_in_scenes.loc[products_in_scenes['scene_id'] == scene_id]
+        #     exist_products = in_scene['result'].sum()
+        res = float(sum_exist) / total_products if total_products else 0
+        #     if res >= target:
+        #         scene_passed = True
+        #         scene_passed_count += 1
+        # sum_exist = float(sum_exist) / total_products if total_products else 0
 
         return res, scene_passed_count, len(valid_scenes)
 
