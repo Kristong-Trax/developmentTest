@@ -85,7 +85,8 @@ class REDToolBox:
         else:
             for i, main_line in main_template.iterrows():
                 self.calculate_manual_kpi(main_line)
-        self.choose_and_write_results()
+        if not main_template.empty:
+            self.choose_and_write_results()
 
     def calculate_main_kpi(self, main_line):
         """
@@ -315,7 +316,12 @@ class REDToolBox:
             if condition_result.empty:
                 continue
             condition_result = condition_result.iloc[0]
-            condition_scene = condition_result[Const.DB_SCENE_FK]
+
+            if Const.DB_SCENE_FK in condition_result:
+                condition_scene = condition_result[Const.DB_SCENE_FK]
+            else:
+                condition_scene = None
+
             if condition_scene and Const.DB_SCENE_FK in kpi_results:
                 results = kpi_results[kpi_results[Const.DB_SCENE_FK] == condition_scene]
             else:
@@ -356,7 +362,8 @@ class REDToolBox:
         """
         if kpi_name == self.RED_SCORE:
             self.common_db2.write_to_db_result(
-                fk=self.set_fk, score=score, identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
+                fk=self.set_fk, numerator_id=Const.MANUFACTURER_FK, score=score,
+                identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
             self.common_db2.write_to_db_result(
                 fk=self.set_integ_fk, score=score,
                 identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
