@@ -142,7 +142,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 else:
                     self.update_sub_score(kpi_name, passed=score)
                 self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-                print(kpi_name, kpi_type, result, score, target)
         else:
             pass
 
@@ -421,7 +420,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             facings = scene_scif[self.get_filter_condition(scene_scif, **facings_filters)][self.facings_field].sum()
             num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['bay_number'].max()
             max_given = max(list(targets.keys()))
-            print('Num bays is', num_bays)
             if num_bays in targets:
                 target = targets[num_bays]
             else:
