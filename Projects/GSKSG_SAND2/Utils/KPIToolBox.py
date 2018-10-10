@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -40,9 +39,8 @@ KPI = '2nd_level'
 SET = '1st_level'
 KPI_TYPE = 'type of condition'
 COLS_TO_LOOK = 'relevant columns'
-SCORE_METHOD = 'Score Method'
+SCORE_METHOD = 'KPI Score Method'
 STORE_TYPE = 'store_type'
-
 
 ######################
 SURVEY_SHEET = 'Survey'
@@ -54,6 +52,7 @@ CONDITION_WEIGHT = 3
 ######################
 
 TBD = 'tbd'
+
 
 class GSKSGToolBox:
     LEVEL1 = 1
@@ -83,12 +82,12 @@ class GSKSGToolBox:
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
         self.msl_list = pd.read_excel(self.excel_file_path,
-                   header=[[0, 1, 2]],
-                   sheetname=MSL).dropna()
+                                      header=[[0, 1, 2]],
+                                      sheetname=MSL).dropna()
 
-        self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
-                             'presence': self.calculate_presence, 'facings': self.calculate_facings,
-                             'No facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
+        self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
+                             'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
+                             'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
         self.sequence = Sequence(data_provider, ignore_stacking=True)
         self.availability = Availability(data_provider, ignore_stacking=True)
         self.sos = SOS(data_provider, self.output)
@@ -117,7 +116,7 @@ class GSKSGToolBox:
 
     def handle_calculation(self, kpis):
 
-        kpi_results = pd.DataFrame(columns=[SET, KPI, ATOMIC,'valid_template_name',
+        kpi_results = pd.DataFrame(columns=[SET, KPI, ATOMIC, 'valid_template_name',
                                             'KPI Weight', 'Weight',
                                             'Score Method', 'Benchmark', 'Conditional Weight', 'result'])
 
@@ -133,12 +132,19 @@ class GSKSGToolBox:
             if result is None:
                 continue
 
+            if isinstance(result, tuple):
+                scenes_passed = result[1]
+                scenes_total = result[2]
+                result = result[0]
+
             kpi_results = kpi_results.append({SET: current_kpi[SET],
                                               KPI: current_kpi[KPI],
                                               ATOMIC: current_kpi[ATOMIC],
+                                              'kpi_type': current_kpi[KPI_TYPE],
                                               'KPI Weight': current_kpi['KPI Weight'],
                                               'Weight': current_kpi['Weight'],
                                               'Score Method': current_kpi['Score Method'],
+                                              'KPI Score Method': current_kpi['KPI Score Method'],
                                               'Benchmark': current_kpi['Benchmark'],
                                               'Conditional Weight': current_kpi['Conditional Weight'],
                                               'result': result, 'valid_template_name': is_template_valid},
@@ -146,11 +152,21 @@ class GSKSGToolBox:
 
         kpi_results['Conditional Weight'] = kpi_results['Conditional Weight'].fillna(-1)
 
-        aggs_res = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'Score Method',
-                     'Benchmark', 'Conditional Weight'], as_index=False)[['result', 'valid_template_name']].sum()
+        boolean_res = kpi_results.loc[kpi_results['Score Method'] == 'Binary']
+        boolean_res['result'] = boolean_res['result'].astype(bool)
 
+        boolean_res = boolean_res.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+                                           'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'all',
+                                                                                                    'valid_template_name': 'sum'})
+
+        kpi_results = kpi_results.loc[kpi_results['Score Method'] != 'Binary']
+
+        aggs_res = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+                                                                                  'Benchmark', 'Conditional Weight'],
+                                       as_index=False).agg({'result': 'sum', 'valid_template_name': 'sum'})
+
+        aggs_res = aggs_res.append(boolean_res, ignore_index=True)
         # if not && condinal weight is NA MSL conditional weight + this KPI weight
-
 
         ## write to db
         # ## asking if template isnt valid to write to db
@@ -166,7 +182,7 @@ class GSKSGToolBox:
                 kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[KPI]),
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
-            #numerator /  denominator understnad
+            # numerator /  denominator understnad
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['result'],
                                            denominator_id=TBD,
                                            identifier_result=identifier_child_fk,
@@ -174,7 +190,7 @@ class GSKSGToolBox:
                                            target=TBD, should_enter=True)
 
         ## if method binary change result to 100/0
-        aggs_res.loc[(aggs_res[SCORE_METHOD] == 'Binary')&
+        aggs_res.loc[(aggs_res[SCORE_METHOD] == 'Binary') &
                      (aggs_res['result'] >= aggs_res['Benchmark']), 'result_bin'] = 100
         aggs_res.loc[
             (aggs_res[SCORE_METHOD] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
@@ -184,27 +200,26 @@ class GSKSGToolBox:
 
         aggs_res['result_bin'] = np.where(aggs_res[SCORE_METHOD] == 'Proportional', aggs_res['result'],
                                           aggs_res['result_bin'])
-        aggs_res['result_bin'] = aggs_res['result_bin']*(aggs_res['Weight']/100)
+        aggs_res['result_bin'] = aggs_res['result_bin'] * (aggs_res['Weight'] / 100)
 
         aggs_res['valid_template_name'] = aggs_res['valid_template_name'].astype(float)
 
         # aggregating atomic results to kpi level
         aggs_res_level_2 = aggs_res.groupby(
             [SET, KPI, 'KPI Weight', 'Conditional Weight'], as_index=False).agg(
-            {'valid_template_name': 'max',  'result_bin': np.sum})
+            {'valid_template_name': 'max', 'result_bin': np.sum})
 
         # takes conditional weight for irrelevnat kpis that has it.
         aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
-                     (aggs_res_level_2['Conditional Weight'] != -1), 'result_bin'] = aggs_res_level_2['Conditional Weight']
-
-
+                             (aggs_res_level_2['Conditional Weight'] != -1), 'result_bin'] = aggs_res_level_2[
+            'Conditional Weight']
 
         sets = aggs_res_level_2[SET].unique()
 
         # The kpis to 'take weight' from for the MSL.
         invalid_templates = aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
-                                        (aggs_res_level_2['Conditional Weight'] == -1) &
-                                        (aggs_res_level_2[KPI] != 'MSL')]
+                                                 (aggs_res_level_2['Conditional Weight'] == -1) &
+                                                 (aggs_res_level_2[KPI] != 'MSL')]
 
         invalid_templates = invalid_templates.groupby([SET], as_index=False)[['KPI Weight']].sum()
         invalid_templates = invalid_templates.rename(columns={'KPI Weight': 'PLUS_WEIGHT'})
@@ -242,8 +257,6 @@ class GSKSGToolBox:
 
         # fixind data for 1st level
 
-
-
         # aggregating to level 3:
         aggs_res_level_1 = aggs_res_level_2.groupby([SET], as_index=False)['total_result'].sum()
 
@@ -261,11 +274,6 @@ class GSKSGToolBox:
                                            denominator_id=TBD,
                                            identifier_result=identifier_child_fk,
                                            target=TBD, should_enter=True)
-
-
-
-
-
 
     def get_relevant_calculations(self):
         # Gets the store type name and the relevant template according to it.
@@ -291,22 +299,46 @@ class GSKSGToolBox:
 
     def calculate_sos(self, row):
         # Calculates the sos kpi according to the template.
+
+        target = row['target'] if not pd.isnull(row['target']) else 0
         filters, general_filters = self.get_filters(row)
-        return self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        return res >= target if not pd.isnull(row['target']) else res
 
     def calculate_presence(self, row):
 
         return self.calculate_facings(row)
 
     def calculate_facings(self, row, no_facing=False):
+        """This function calculates facing from given filter, and return True if at least
+         one scene had facing as neede by target. Assuming row has a target (if not, target =0).
+         returns whether kpi passed, the number of scenes passed and total scenes checked/"""
 
+        facing_scenes_counted = 0
+        no_facing_scenes_counted = 0
+        passed = False
         target = row['target'] if not pd.isnull(row['target']) else 0
         row_filter, general_filters = self.get_filters(row)
         row_filter.update(general_filters)
-        result = self.availability.calculate_availability(**row_filter)
+        # Gets relevant scenes
+        templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
+        for scene_id in valid_scenes:
+            # Checks for each product if found in scene, if so, 'count' it.
+            row_filter['scene_id'] = scene_id
+            result = self.availability.calculate_availability(**row_filter)
+            if no_facing:
+                if int(result < target):
+                    no_facing_scenes_counted += 1
+                    passed = True
+            else:
+                if int(result >= target):
+                    facing_scenes_counted += 1
+                    passed = True
+
         if no_facing:
-            return int(result < target)
-        return int(result >= target)
+            return passed, no_facing_scenes_counted, len(valid_scenes)
+        return passed, facing_scenes_counted, len(valid_scenes)
 
     def calculate_no_facings(self, row):
         return self.calculate_facings(row, no_facing=True)
@@ -365,10 +397,8 @@ class GSKSGToolBox:
             if res >= target:
                 scene_passed = True
                 scene_passed_count += 1
-        #     write to 4h level?
 
-        return scene_passed, scene_passed_count, len(valid_scenes)
-
+        return res, scene_passed_count, len(valid_scenes)
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
@@ -381,25 +411,12 @@ class GSKSGToolBox:
         if len(sequence_filter) == 1:
             key = sequence_filter.keys()[0]
             sequence_filter = (key, sequence_filter[key])
-            result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
+            result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', min_required_to_pass=1,
+                                                              **general_filters)
         else:
             result = None
             Log.info('More than 1 filter was applied for sequence organs- Not supported!')
         return result
-
-
-#need to check below
-    # def calculate_survey(self, row):
-    #     group_of_question = self.survey_file[(self.survey_file['KPI Name'] == row['3rd Level']) & (self.store_info[STORE_LVL_1] in self.survey_file['Store Policy'])]
-    #     target = group_of_question.iloc[0]['target']
-    #     counter = 0
-    #     for quest in group_of_question.itertuples():
-    #         answer = self.survey_data[self.survey_data['question_text'] == quest['Survey Question Text']]
-    #         if ~ self.quest[answer['selected_option_text'] == quest['Accepted Answers']].empty: #not empty
-    #             counter = counter + 1
-    #             if counter >= target:
-    #                 return 100
-    #     return 0
 
     def calculate_survey(self, row):
         """
@@ -412,7 +429,7 @@ class GSKSGToolBox:
         # Gets the atomic's survey
         atomic_name = row[ATOMIC]
         rows = self.survey_file.loc[(self.survey_file['KPI Name'] == atomic_name)
-                              & (self.survey_file['Store Policy'].str.contains(self.store_type, case=True))]
+                                    & (self.survey_file['Store Policy'].str.contains(self.store_type, case=True))]
         rows['match_policy'] = rows.apply(self.ensure_policy, axis=1)
         rows = rows.loc[rows['match_policy'] == 1]
 
@@ -429,7 +446,7 @@ class GSKSGToolBox:
 
     def ensure_policy(self, row):
         # This checks if the store policy matches the store policy required
-        relevant_stores = map(str.strip, map(str.upper, (str(row['Store Policy']).split(','))))
+        relevant_stores = map(str.strip, map(str.upper, (str(row[STORE_TYPE]).split(','))))
         return 1 if self.store_type.upper() in relevant_stores else 0
 
     def get_filters(self, row):
@@ -445,7 +462,7 @@ class GSKSGToolBox:
                     excludes = self.handle_complex_data(row[col], exclude=True)
                     filters.update(excludes)
                     continue
-                if col in ['target','Store Type']:
+                if col in ['target', STORE_TYPE]:
                     continue
                 if col == 'denominator':
                     denom = self.handle_complex_data(row[col])
