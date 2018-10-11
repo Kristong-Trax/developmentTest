@@ -1112,7 +1112,7 @@ class CCBZA_ToolBox:
             elif availability_type == AVAILABILITY_SKU_FACING_OR:
                 # result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
                 count_skus_meeting_target = sum([facings >= target for facings in facings_by_sku.values()])
-                result = 100 if count_skus_meeting_target >= min_skus else 0
+                result = 100 if count_skus_meeting_target >= float(min_skus) else 0
             else:
                 Log.warning('Availability of type {} is not supported'.format(availability_type))
         return result
