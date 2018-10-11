@@ -23,8 +23,30 @@ if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus calculations')
     Config.init()
     project_name = 'ccbottlersus-sand'
+
+    session = 'e7067c2d-1712-4dfd-8700-b1390f20cdd8'
+    scenes = [817627, 524253, 524260, 524274, 524306, 524317,
+              524330, 524338, 524343, 524354, 524398, 524420, 524445, 524494,
+              ]
+
+    session = '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
+    scenes = [
+                628916,
+                628924,
+                628934,
+                628947,
+                628951,
+                628945,
+                628949,
+                628964,
+                628967,
+                628975
+            ]
+
+
     session = 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
     # scenes = [376377, 376378, 376379, 376381, 376383, 376385, 376399]
+
     # for scene in scenes:
     #     data_provider = KEngineDataProvider(project_name)
     #     data_provider.load_scene_data(session, scene)
@@ -32,7 +54,39 @@ if __name__ == '__main__':
     #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
     #     save_scene_item_facts_to_data_provider(data_provider, output)
     #     SceneCalculations(data_provider).calculate_kpis()
-    data_provider = KEngineDataProvider(project_name)
-    data_provider.load_session_data(session)
-    output = Output()
-    CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
+
+
+
+    sessions = [
+        "e7067c2d-1712-4dfd-8700-b1390f20cdd8"
+    ]
+    sessions = [
+        # '6f963459-f5f1-4fc4-a77e-2a804a885f6b',
+        # '76D3ED09-1B30-4D59-8EEE-F05D8478F607',
+        # '413734a3-4e21-494d-bb18-418e5aacc4bd',
+        # 'E83A6DE8-CB50-4299-BF90-05D58A22DE0C',
+        # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
+        '2BE54279-6758-4C0B-A8D0-EE7353B97560',
+        ]
+
+    sessions = [
+        'ffe5750c-2ffe-42bd-96bc-7772d8d6b942',
+        # 'f4311b59-74a0-4400-8b92-3d373dfb557a',
+        # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
+        # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
+        # 'fff64504-26e3-4ddd-b60c-098daab8caa1',
+        # 'FF7EB0D2-DF3C-4971-BFA9-033E3144A194',
+        # 'ffd9cc9d-9847-402d-9026-54a3bdf10a84',
+
+        # 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
+        '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
+    ]
+
+    for session in sessions:
+        print('*************************************')
+        print('~~~~~~~{}~~~~~~~'.format(session))
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        output = Output()
+        CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
+
