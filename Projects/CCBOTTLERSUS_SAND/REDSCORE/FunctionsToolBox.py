@@ -130,8 +130,8 @@ class FunctionsToolBox:
             Const.TRADEMARK: "att2",
             Const.SIZE: "size",
             Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.PREMIUM_SSD: "Premium SSD",
-            # CCBOTTLERSUSCCBOTTLERSUS_SANDConst.INNOVATION_BRAND: "Innovation Brand",
+            Const.PREMIUM_SSD: "Premium SSD",
+            Const.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(
