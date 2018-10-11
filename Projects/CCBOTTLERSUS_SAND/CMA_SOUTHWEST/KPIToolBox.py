@@ -18,7 +18,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v8.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -240,30 +240,18 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         :return: boolean
         """
         kpi_name = kpi_line[Const.KPI_NAME]
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
         # relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
-        # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        relevant_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
         if kpi_line['range'] == 'Y':
             upper_limit, lower_limit = self.get_sos_targets(kpi_name, sos_range=True)
             target = None
         else:
             upper_limit, lower_limit = None, None
             target = self.get_sos_targets(kpi_name)
-        general_filters[den_type] = den_value
-        if kpi_line[Const.DEN_TYPES_2]:
-            den_type_2 = kpi_line[Const.DEN_TYPES_2]
-            den_value_2 = kpi_line[Const.DEN_VALUES_2].split(',')
-            general_filters[den_type_2] = den_value_2
-        sos_filters = {num_type: num_value}
-        if kpi_line[Const.NUM_TYPES_2]:
-            num_type_2 = kpi_line[Const.NUM_TYPES_2]
-            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
-            sos_filters[num_type_2] = num_value_2
+
+        sos_filters = self.get_kpi_line_filters(kpi_line, name='numerator')
+        general_filters = self.get_kpi_line_filters(kpi_line, name='denominator')
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
@@ -318,13 +306,16 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         return target
 
     @staticmethod
-    def get_kpi_line_filters(kpi_line):
-        filters = {}
-        attribs = list(kpi_line.index)
+    def get_kpi_line_filters(kpi_line, name=''):
+        if name:
+            name = name.lower() + ' '
+        filters = defaultdict(list)
+        attribs = [x.lower() for x in kpi_line.index]
+        kpi_line.index = attribs
         c = 1
         while 1:
-            if 'Param {}'.format(c) in attribs and kpi_line['Param {}'.format(c)]:
-                filters[kpi_line['Param {}'.format(c)]] = kpi_line['Value {}'.format(c)].split(',')
+            if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]:
+                filters[kpi_line['{}param {}'.format(name, c)]] += (kpi_line['{}value {}'.format(name, c)].split(','))
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
@@ -399,6 +390,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         scenes = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]['scene_fk'].unique().tolist()
         us = 0
         them = 0
+        if not scenes:
+            return None, None, None
 
         for scene in scenes:
             sos_filters['scene_fk'] = scene
@@ -418,8 +411,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             score = us
         else:
             score = 0
+        target = us + them
+        if target != 1:
+            target = round(((us + them) / 2) * 100, 2)
 
-        return (score, us, them), passed, .5
+        return (score, us, them), passed, target
 
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
@@ -812,9 +808,10 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             parent = self.get_kpi_parent(kpi_name)
         if parent == CMA_COMPLIANCE:
             parent = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
-        self.sub_totals[parent] += 1
-        if passed:
-            self.sub_scores[parent] += passed
+        if kpi_name not in Const.NO_PRESSURE:
+            self.sub_totals[parent] += 1
+            if passed:
+                self.sub_scores[parent] += passed
 
     def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
         """
@@ -932,6 +929,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             den = self.sub_totals[sub_parent]
             if den:
                 # result = float(num) / den
+                if 'Bonus' in sub_parent:
+                    den = 0
                 self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                    denominator_id=self.store_id,
                                                    denominator_result=den, result=num, score=num, target=den,

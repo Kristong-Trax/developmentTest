@@ -7,7 +7,7 @@ from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 
 __author__ = 'Elyashiv'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v8.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
     EXCLUDE_FILTER = 0
@@ -52,7 +52,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         if self.scif[self.scif['Southwest Deliver'] == 'Y'].empty:  # if it's not sw scene we don't need to calculate
             return False
         main_template = self.templates[Const.KPIS]
-        main_template = main_template[main_template[Const.SESSION_LEVEL] != Const.V]
+        main_template = main_template[main_template[Const.SESSION_LEVEL] != 'Y']
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
         # self.write_results_to_db()

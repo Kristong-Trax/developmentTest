@@ -7,6 +7,7 @@ class Const(object):
     SOVI = "SOVI"
 
     REGIONS = 'SOUTHWEST'
+    TEMPLATE_PATH = 'Southwest CMA Compliance Template_v8.xlsx'
 
     # sheets:
     KPIS = "KPIs"
@@ -131,7 +132,9 @@ class Const(object):
                     # 19: 'CMA Compliance SW Impulse Zone Cooler',
                     20: 'CMA Compliance SW # of Facings',
                     2: 'CMA Compliance SW % of Facings',
-                    21: 'CMA Compliance SW # of Shelves Bonus'
+                    # 21: 'CMA Compliance SW # of Shelves Bonus'
+                    21: 'CMA Compliance SW # of Shelves'
                 }
 
+    NO_PRESSURE = ['# of Shelves Bonus']
 
