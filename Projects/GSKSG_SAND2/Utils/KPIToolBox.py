@@ -50,10 +50,11 @@ KPI_NAME_INDEX = 0
 KPI_WEIGHT = 2
 CONDITION_WEIGHT = 3
 ######################
-MANUFACTURER_FK= 1  # GSKSK pk in table static_new.manufacturer
+MANUFACTURER_FK = 1  # GSKSK pk in table static_new.manufacturer
 ORAL_FK = 1
 PAIN_FK = 4
 ORAL_KPI = 2054
+ORANGE_SCORE =2056
 
 
 
@@ -144,9 +145,7 @@ class GSKSGToolBox:
                 scenes_passed = result[1]
                 scenes_total = result[2]
                 result = result[0]
-            else: #DELETEEEEEEEEEEEEEEE
-                print ("ERRRORRRRRRRRRRRR %s",current_kpi[ATOMIC] )
-            # if
+
 
             kpi_results = kpi_results.append({SET: current_kpi[SET],
                                               KPI: current_kpi[KPI],
@@ -270,7 +269,7 @@ class GSKSGToolBox:
                 kpi_fk=kpi_fk,
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
             identifier_parent_fk = self.common.get_dictionary(
-                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[SET]))
+                kpi_category=self.common.get_kpi_fk_by_kpi_type(result[SET]),kpi_fk=ORANGE_SCORE)
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['total_result'],
                                            denominator_id=MANUFACTURER_FK,
@@ -292,8 +291,8 @@ class GSKSGToolBox:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[SET])
             category_fk = ORAL_FK if kpi_fk == ORAL_KPI else PAIN_FK
             identifier_child_fk = self.common.get_dictionary(
-                kpi_fk=kpi_fk)
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['total_result'],
+                kpi_category=kpi_fk, kpi_fk=ORANGE_SCORE)
+            self.common.write_to_db_result(fk=ORANGE_SCORE, numerator_id=MANUFACTURER_FK, score=result['total_result'],
                                            denominator_id=category_fk,
                                            identifier_result=identifier_child_fk
                                            , should_enter=True)
