@@ -71,6 +71,7 @@ class CCBOTTLERSUS_SANDGenerator:
             if tool_box.main_calculation() > 0:
                 tool_box.commit_results()
                 return
+            tool_box.remove_queries_of_calculation_type()
             tool_box = REDToolBox(self.data_provider, self.output, Const.MANUAL, self.common_db)
             tool_box.main_calculation()
             tool_box.commit_results()
