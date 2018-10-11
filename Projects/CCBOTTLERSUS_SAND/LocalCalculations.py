@@ -47,13 +47,27 @@ if __name__ == '__main__':
     session = 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
     # scenes = [376377, 376378, 376379, 376381, 376383, 376385, 376399]
 
-    # for scene in scenes:
-    #     data_provider = KEngineDataProvider(project_name)
-    #     data_provider.load_scene_data(session, scene)
-    #     output = VanillaOutput()
-    #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-    #     save_scene_item_facts_to_data_provider(data_provider, output)
-    #     SceneCalculations(data_provider).calculate_kpis()
+    # sw coke cooler sessions
+    sessions = ['c2b54ac8-f018-468f-8d2b-f00ab246c985'
+                '48FD5F0C-394D-44AC-827E-73044799DBF4',
+                'C0692CCD-2373-466C-9510-DC692264C38A',
+                'E5D74460-D34C-413E-B886-F976535CE88D',
+                'E5197000-32FB-4F0E-8EDB-C92C316C6B9E',
+                 ]
+    for session in sessions:
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        scif = data_provider['scene_item_facts']
+        scenes = scif['scene_id'].unique().tolist()
+
+        for scene in scenes:
+            print('scene')
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
 
 
 
@@ -70,7 +84,7 @@ if __name__ == '__main__':
         ]
 
     sessions = [
-        'ffe5750c-2ffe-42bd-96bc-7772d8d6b942',
+        # 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942',
         # 'f4311b59-74a0-4400-8b92-3d373dfb557a',
         # 'c2b54ac8-f018-468f-8d2b-f00ab246c985',
         # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
@@ -79,8 +93,38 @@ if __name__ == '__main__':
         # 'ffd9cc9d-9847-402d-9026-54a3bdf10a84',
 
         # 'ffe5750c-2ffe-42bd-96bc-7772d8d6b942'
-        '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF'
+        # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF',
+
+        'c2b54ac8-f018-468f-8d2b-f00ab246c985'
     ]
+
+    # sw ratio sessions
+    # sessions = [
+    #             '6ce2258b-6a4a-4a85-ba18-6ead7cf1b772',
+    #             '1ECD1661-27E1-4324-AEDB-BC3CBF44CACB',
+    #             'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
+    #             '50820afd-91e4-4367-af3d-f82d37d76a7c',
+    #             ]
+    # # sw NTBA sessions
+    # sessions = [
+    #             '8E0FCD9E-C20A-4A68-B24F-2037707C404B',
+    #             'f8dcaeaf-9129-4621-ae8a-6a131ce3b15e',
+    #             'e450ca7d-c90d-4164-bb60-1fc8f90d08e0',
+    #             ]
+    # # sw Club Coke Chill Plus
+    sessions = [
+                'e5f82e5c-58ea-4af1-9701-ff38bb6e65c1',
+                '1ECD1661-27E1-4324-AEDB-BC3CBF44CACB',
+                '900f9fdb-0f3c-4da1-855b-99afd1b6e006',
+                'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
+              ]
+    # # sw coke cooler sessions
+    sessions = [
+                '48FD5F0C-394D-44AC-827E-73044799DBF4',
+                'C0692CCD-2373-466C-9510-DC692264C38A',
+                'E5D74460-D34C-413E-B886-F976535CE88D',
+                'E5197000-32FB-4F0E-8EDB-C92C316C6B9E',
+                 ]
 
     for session in sessions:
         print('*************************************')

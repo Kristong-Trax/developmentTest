@@ -123,18 +123,15 @@ class Const(object):
     RED_SCORE_INTEG = 'Red SCORE Integration'
     MANUAL_RED_SCORE = 'Red Score Survey'
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
-
     MANUAL = "MANUAL"
     CALCULATION_TYPES = [SOVI, MANUAL]
 
     KPI_FAMILY_KEY = {
                     18: 'CMA Compliance SW # of Shelves',
-                    19: 'CMA Compliance SW Impulse Zone Cooler',
-                    20: 'CMA Compliance SW % of Facings',
+                    # 19: 'CMA Compliance SW Impulse Zone Cooler',
+                    20: 'CMA Compliance SW # of Facings',
                     2: 'CMA Compliance SW % of Facings',
                     21: 'CMA Compliance SW # of Shelves Bonus'
                 }
-    SCENE_SESSION_KPI = {
-                        2160: 2161
-                            }
+
 
