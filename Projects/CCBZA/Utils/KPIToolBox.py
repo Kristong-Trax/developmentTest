@@ -359,9 +359,14 @@ class CCBZA_ToolBox:
 
         red_score_percent = float(red_score) / red_target if red_target != 0 else 0
         red_score_kpi_fk = self.common.get_kpi_fk_by_kpi_type(RED_SCORE)
-        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=self.ko_id, result=red_score,
-                                       score=red_score_percent, identifier_result=identifier_result_red_score,
-                                       denominator_id=self.store_id, target=red_target, should_enter=True)
+        # self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=self.ko_id, result=red_score,
+        #                                score=red_score_percent, identifier_result=identifier_result_red_score,
+        #                                denominator_id=self.store_id, target=red_target, should_enter=True)
+        self.common.write_to_db_result(fk=red_score_kpi_fk, numerator_id=self.ko_id, numerator_result=red_score,
+                                       result=red_score_percent, score=red_score_percent,
+                                       identifier_result=identifier_result_red_score,
+                                       denominator_id=self.store_id, denominator_result=red_target,
+                                       should_enter=True)
         self.common.commit_results_data()
 
     def get_identifier_result_kpi(self, kpi):
