@@ -6,7 +6,7 @@ class Const(object):
 
     SOVI = "SOVI"
 
-    REGIONS = ['SOUTHWEST']
+    REGIONS = 'SOUTHWEST'
 
     # sheets:
     KPIS = "KPIs"
@@ -134,4 +134,7 @@ class Const(object):
                     2: 'CMA Compliance SW % of Facings',
                     21: 'CMA Compliance SW # of Shelves Bonus'
                 }
+    SCENE_SESSION_KPI = {
+                        2160: 2161
+                            }
 
