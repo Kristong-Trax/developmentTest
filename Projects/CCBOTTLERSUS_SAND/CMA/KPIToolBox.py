@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 import pandas as pd
-from Projects.CCBOTTLERSUS_SAND.Utils.SOS import sos_with_num_and_dem
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -63,6 +63,8 @@ class CMAToolBox:
         self.total_score = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.tools = Shared()
+
 
     # main functions:
 
@@ -278,7 +280,7 @@ class CMAToolBox:
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-        sos_value, num, den = sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
+        sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
         # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         # sos_value *= 100
         # sos_value = round(sos_value, 2)
