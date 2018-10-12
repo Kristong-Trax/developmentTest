@@ -6,28 +6,28 @@ from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
 
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('ccbottlersus calculations')
-    Config.init()
-    project_name = 'ccbottlersus'
+#if __name__ == '__main__':
+#    LoggerInitializer.init('ccbottlersus calculations')
+#    Config.init()
+#    project_name = 'ccbottlersus'
 
     #  CMA Compliance Test Set
-    sessions = [
-        '76D3ED09-1B30-4D59-8EEE-F05D8478F607',
-        '4A102E93-FF88-4A2B-8AA5-F62DA53D0AC3',
-        '3e2938e1-3dab-486f-9ffb-2b18b4566b48',
-        'da55402d-96f1-4307-8ff2-798a59886889',
-        'd909a67f-faba-40c7-abee-dff2f23f2aa7',
-        '282ec6cf-3a7b-41e8-9c4d-c2a5b4369411',
-        '3e48b094-2aab-4a86-9936-cdf66800ffbd',
-        'bce79446-3a01-4a50-9f08-fae988f10000',
-        'e16ce5d8-8336-4fff-9235-79bba21cee30',
-        '1fe0540b-56f6-4783-a8f2-d3955d26386d',
-        '1d83a58e-822a-44c0-8b46-48b42da2e8a7',
-        'd7ebd787-124a-410f-a6a4-07f064fccdd1',
-        'ad339fa9-f63f-4cc2-9456-3b959a296033',
-        '40a1d7b4-e2b2-4d18-a71e-ff0a2d63e1da',
-        '68f4713b-9b3b-4d92-890e-4e38caf4a174',
+#    sessions = [
+#        '76D3ED09-1B30-4D59-8EEE-F05D8478F607',
+#        '4A102E93-FF88-4A2B-8AA5-F62DA53D0AC3',
+#        '3e2938e1-3dab-486f-9ffb-2b18b4566b48',
+#        'da55402d-96f1-4307-8ff2-798a59886889',
+#        'd909a67f-faba-40c7-abee-dff2f23f2aa7',
+#        '282ec6cf-3a7b-41e8-9c4d-c2a5b4369411',
+#        '3e48b094-2aab-4a86-9936-cdf66800ffbd',
+#        'bce79446-3a01-4a50-9f08-fae988f10000',
+#        'e16ce5d8-8336-4fff-9235-79bba21cee30',
+#        '1fe0540b-56f6-4783-a8f2-d3955d26386d',
+#        '1d83a58e-822a-44c0-8b46-48b42da2e8a7',
+#        'd7ebd787-124a-410f-a6a4-07f064fccdd1',
+#        'ad339fa9-f63f-4cc2-9456-3b959a296033',
+#        '40a1d7b4-e2b2-4d18-a71e-ff0a2d63e1da',
+#        '68f4713b-9b3b-4d92-890e-4e38caf4a174',
         # '760529e3-6562-40e4-af71-3d2946d22f50',
         # 'cf2a5fce-39d6-438a-9fc4-fa9f91dc1c5e',
         # '2dce3112-5b05-4dc1-a6b9-078a05debe6c',
@@ -282,16 +282,10 @@ if __name__ == '__main__':
     #     ]
     # sessions = ['4c060e04-bde4-40ba-a820-26d93734f327']
 
-    sessions = [
-        '8E0FCD9E-C20A-4A68-B24F-2037707C404B',
-        'f8dcaeaf-9129-4621-ae8a-6a131ce3b15e',
-        'e450ca7d-c90d-4164-bb60-1fc8f90d08e0'
-    ]
-
-    for session in sessions:
-        print('***********************************************************************************')
-        print('_______________________ {} ____________________'.format(session))
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
-        output = Output()
-        CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
+#    for session in sessions:
+#        print('***********************************************************************************')
+#        print('_______________________ {} ____________________'.format(session))
+#        data_provider = KEngineDataProvider(project_name)
+#        data_provider.load_session_data(session)
+#        output = Output()
+#        CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
