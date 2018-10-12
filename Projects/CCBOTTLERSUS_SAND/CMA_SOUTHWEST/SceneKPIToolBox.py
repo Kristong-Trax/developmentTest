@@ -1,11 +1,11 @@
 import pandas as pd
 import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCBOTTLERSUS_SAND.Utils.SOS import sos_with_num_and_dem
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 
-__author__ = 'Elyashiv'
+__author__ = 'Sam'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 
@@ -26,6 +26,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scene = self.scene_info[0]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
@@ -43,6 +44,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template['Regions'] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
+        self.tools = Shared()
         # self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
 
     def main_calculation(self):
@@ -110,9 +112,11 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             if (store_attrs is not None and self.store_attr not in store_attrs)\
                     or relevant_scif.empty:
                 continue
-            function(kpi_line, relevant_scif, general_filters)
-        else:
-            pass
+            num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+                                           result=result, score=score, target=target,  by_scene=True, should_enter=True)
 
     def calculate_coke_cooler_purity(self, kpi_line, scif, general_filters):
         """
@@ -120,7 +124,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         KPIs in the same name in the match sheet, scene after scene.
         :param main_line: series from the template of the main_sheet.
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
 
         # num_filters = self.get_kpi_line_filters(kpi_line)
         num_filters = {'Southwest Deliver': 'Y'}
@@ -130,57 +133,45 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         num_scif = scif[self.get_filter_condition(scif, **num_filters)]
         den_scif = scif[self.get_filter_condition(scif, **general_filters)]
 
-        ratio, num, den = sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-
-        self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-                                           result=ratio, by_scene=True,
-                                           # identifier_parent=self.common.get_dictionary(
-                                           #     parent_name='Total Coke Cooler Purity'),
-                                           should_enter=True)
-
-        # self.common.write_to_db_result(fk=2161, numerator_result=total_num,
-        #                                    denominator_result=total_den, result=ratio,
-        #                                    should_enter=True, by_scene=True)
-
-        # self.common_scene.write_to_db_result(fk=2161, numerator_result=total_num,
-        #                                    denominator_result=total_den, result=ratio,
-        #                                    identifier_parent=self.common_db2.get_dictionary(
-        #                                        parent_name='CMA_COMPLIANCE'),
-        #                                    should_enter=True)
-        # self.common_scene.commit_results_data(result_entity='scene')
+        ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
+        return num, den, ratio, None, None
 
 
-        # scene_types = self.toolbox.does_exist(main_line, Const.SCENE_TYPE)
-        # scene_groups = self.toolbox.does_exist(main_line, Const.SCENE_TYPE_GROUP)
-        # if (scene_types and self.scif['template_name'].iloc[0] not in scene_types) or \
-        #         (scene_groups and self.scif['template_group'].iloc[0] not in scene_groups):
-        #     return
-        # kpi_name = main_line[Const.KPI_NAME]
-        # parent = main_line[Const.CONDITION]
-        # result = self.toolbox.calculate_kpi_by_type(main_line, self.scif)
-        # if result is not None:
-        #     self.write_to_scene_level(
-        #         kpi_name=kpi_name, result=result, parent=parent)
+    def calculate_facings_ntba(self, kpi_line, scif, general_filters):
+        targets = self.tools.get_kpi_line_targets(kpi_line)
+        facings_filters = self.get_kpi_line_filters(kpi_line)
+        score = 0
 
-    def session_kpi(self, kpi_fk):
-        results = self.data_provider[Data.SCENE_KPI_RESULTS]
-        kpi_res = results[results['kpi_level_2_fk'] == kpi_fk]
-        num = kpi_res['numerator_result'].sum()
-        den = kpi_res['denominator_result'].sum()
-
-        if den:
-            ratio = float(num) / den
+        facings = scif[self.get_filter_condition(scif, **facings_filters)][self.facings_field].sum()
+        num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == self.scene]['bay_number'].max()
+        max_given = max(list(targets.keys()))
+        print('Num bays is', num_bays)
+        if num_bays in targets:
+            target = targets[num_bays]
         else:
-            ratio = 0
-        self.common.kpi_results = pd.DataFrame(columns=self.common.COLUMNS)
-        self.common.write_to_db_result(fk=2161, numerator_result=num, denominator_result=den,
-                                       result=ratio, numerator_id=1,
-                                       denominator_id=self.store_id,
-                                       # identifier_result=self.common.get_dictionary(
-                                       #     parent_name='Total Coke Cooler Purity'),
-                                       # should_enter=True
-                                       )
-        self.common.commit_results_data()
+            target = None
+
+        if target is None:  # if num bays exceeds doors given in targets, use largest option as target
+            target = self.extrapolate_target(targets, max_given)
+
+        if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
+            score = 1
+
+        # return score, passed, len(scenes)
+        return facings, None, facings, score, target
+
+    @staticmethod
+    def extrapolate_target(targets, c):
+        while 1:
+            if targets[c]:
+                target = targets[c]
+                break
+            else:
+                c -= 1
+                if c < 0:
+                    target = 0
+                    break
+        return target
 
     def get_kpi_function(self, kpi_type):
         """

@@ -7,7 +7,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
-from Projects.CCBOTTLERSUS_SAND.Utils.SOS import sos_with_num_and_dem
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -76,6 +76,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.tools = Shared()
 
     # main functions:
 
@@ -104,7 +105,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
-        if 'Impulse' not in kpi_name:  # placeholder- need to check for unintended consequences
+        if kpi_name not in Const.ALL_SCENE_KPIS:  # placeholder- need to check for unintended consequences
             relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
         else:
             relevant_scif = self.scif.copy()
@@ -256,7 +257,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
         # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-        sos_value, num, den = sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
+        sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
         # sos_value *= 100
         # sos_value = round(sos_value, 2)
 

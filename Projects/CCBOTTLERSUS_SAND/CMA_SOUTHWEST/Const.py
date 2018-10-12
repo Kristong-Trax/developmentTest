@@ -137,4 +137,5 @@ class Const(object):
                 }
 
     NO_PRESSURE = ['# of Shelves Bonus']
+    ALL_SCENE_KPIS = ['Impulse Zone Cooler']
 
