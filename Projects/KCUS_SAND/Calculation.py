@@ -1,10 +1,10 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from mock import MagicMock
-# from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from mock import MagicMock
+from Trax.Utils.Conf.Configuration import Config
 
-from Projects.KCUS_SAND.Utils.KCUS_SANDToolBox import KCUS_SANDToolBox
+from Projects.KCUS_SAND.Utils.KpiToolbox import KCUS_SAND_KPIToolBox
 from Projects.KCUS_SAND.Utils.KCUS_SANDJSON import KCUS_SANDJsonGenerator
 
 __author__ = 'ortalk'
@@ -12,10 +12,11 @@ __author__ = 'ortalk'
 
 class KCUS_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
-        pass
-        # self.timer.start()
-        # tool_box = KCUS_SANDToolBox(self.data_provider, self.output, set_name='KC Score')
-        # self.timer.stop('KPIGenerator.run_project_calculations')
+        # pass
+        self.timer.start()
+        tool_box = KCUS_SAND_KPIToolBox(self.data_provider, self.output, set_name='KC Score')
+        tool_box.main_calculation()
+        self.timer.stop('KPIGenerator.run_project_calculations')
         # jg = KCUS_SANDJsonGenerator('KEngine_KC_US')
         # jg.create_json('KEngine_KC_US.xlsx')
         # for p in jg.project_kpi_dict['Block Together']:
@@ -50,16 +51,16 @@ class KCUS_SANDCalculations(BaseCalculationsScript):
         #     except Exception as e:
         #         Log.info('KPI {} failed due to {}'.format(p.get('KPI Level 2 Name'), e))
         #         continue
-        # tool_box.commit_results_data()
+        tool_box.commit_results_data()
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('kcus-sand calculations')
-#     Config.init()
-#     project_name = 'kcus-sand'
-#     sessions = ['58bd497f-17d9-4d0e-80b8-e1bbcea2b59f']
-#
-#     for session in sessions:
-#         data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         KCUS_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('kcus-sand calculations')
+    Config.init()
+    project_name = 'kcus'
+    sessions = ['fead8dbb-122b-4db2-b849-ebcc91d6756b']
+
+    for session in sessions:
+        data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
+        data_provider.load_session_data(session)
+        output = Output()
+        KCUS_SANDCalculations(data_provider, output).run_project_calculations()

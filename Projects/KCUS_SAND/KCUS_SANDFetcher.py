@@ -101,6 +101,20 @@ class KCUS_SANDFetcher:
         return object_facings
 
     @staticmethod
+    def get_static_new_products():
+        return  """
+                   SELECT sp.*, cat.name as category, 
+                    IF (labels like '%"FEM NEEDS": "Feminine Needs"%', 'Feminine Needs', null) as 'FEM NEEDS',
+                    IF (labels like '%"FEM HYGINE": "Feminine Hygine"%', 'Feminine Hygiene',null) as 'FEM HYGINE'
+                    
+                    FROM static_new.product sp
+                    left join static_new.category as cat 
+                    on cat.pk = sp.category_fk ;
+                
+                """
+
+
+    @staticmethod
     def get_kpi_results_data():
 
         return '''

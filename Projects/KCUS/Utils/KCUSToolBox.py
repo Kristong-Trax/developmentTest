@@ -183,6 +183,12 @@ class KCUSToolBox:
         self.store_data = self.store_data.merge(store_att8, how='left', left_on='store_fk',
                                     right_on='store_fk', suffixes= ['', '_1'])
 
+    def get_new_products(self):
+        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        query = KCUSFetcher.get_static_new_products(self.store_id)
+        self.new_products = pd.read_sql_query(query, self.rds_conn.db)
+
+
     def calculate_anchor(self, params):
         filters = {}
         store_type = params.get('Store_Type')

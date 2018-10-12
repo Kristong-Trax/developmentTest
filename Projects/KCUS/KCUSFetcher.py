@@ -351,6 +351,13 @@ class KCUSFetcher:
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
+    def get_static_new_products(self):
+        query = """
+                 SELECT * from
+            static_new.product """
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
     # def get_golden_shelves(self, shelves_num):
     #     jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
     #     jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
