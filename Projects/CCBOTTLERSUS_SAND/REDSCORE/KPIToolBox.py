@@ -467,6 +467,14 @@ class REDToolBox:
             attributes = pd.DataFrame()
         return attributes.to_dict()
 
+    def remove_queries_of_calculation_type(self):
+        """
+        In case that the session has no results in the SOVI KPIs we are deleting all the queries
+        and calculating the MANUAL
+        :return:
+        """
+        self.common_db2.kpi_results = pd.DataFrame(columns=self.common_db2.COLUMNS)
+
     def commit_results(self):
         """
         committing the results in both sets
