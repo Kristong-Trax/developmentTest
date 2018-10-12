@@ -154,7 +154,7 @@ from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
         # 'da1091b1-9b31-4029-af02-13c6fba70cba',
         # 'FD7A2626-78B1-47F9-BC30-573B4409E31C',
 
-    ]
+  #  ]
 
     # '''old test set'''
     # sessions = [
