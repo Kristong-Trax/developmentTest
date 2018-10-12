@@ -52,15 +52,15 @@ class KCUS_SANDCalculations(BaseCalculationsScript):
         #         Log.info('KPI {} failed due to {}'.format(p.get('KPI Level 2 Name'), e))
         #         continue
         tool_box.commit_results_data()
-
-if __name__ == '__main__':
-    LoggerInitializer.init('kcus-sand calculations')
-    Config.init()
-    project_name = 'kcus'
-    sessions = ['fead8dbb-122b-4db2-b849-ebcc91d6756b']
-
-    for session in sessions:
-        data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
-        data_provider.load_session_data(session)
-        output = Output()
-        KCUS_SANDCalculations(data_provider, output).run_project_calculations()
+#
+# if __name__ == '__main__':
+#     LoggerInitializer.init('kcus-sand calculations')
+#     Config.init()
+#     project_name = 'kcus'
+#     sessions = ['614fd208-6078-469b-9251-a5a751b3bf05' ]
+#
+#     for session in sessions:
+#         data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         KCUS_SANDCalculations(data_provider, output).run_project_calculations()
