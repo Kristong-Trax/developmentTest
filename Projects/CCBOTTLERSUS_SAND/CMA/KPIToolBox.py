@@ -492,7 +492,10 @@ class CMAToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                if ", " in cell:
+                    return cell.split(", ")
+                else:
+                    return cell.split(',')
         return None
 
     def get_kpi_function(self, kpi_type):

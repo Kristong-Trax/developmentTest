@@ -8,6 +8,7 @@ from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 __author__ = 'Sam'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
+CMA_COMPLIANCE = 'CMA Compliance SW'
 
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
     EXCLUDE_FILTER = 0
@@ -26,12 +27,12 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.scene = self.scene_info[0]
+        self.scene = self.scene_info.loc[0, 'scene_fk']
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
-        self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
+        self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
@@ -55,8 +56,15 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             return False
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != 'Y']
+        print(self.scif.loc[0, 'template_group'], self.scif.loc[0, 'template_name'], self.store_attr)
         for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
+            template_group = self.does_exist(main_line, Const.TEMPLATE_GROUP)
+            template_name = self.does_exist(main_line, Const.SCENE_TYPE)
+            store_attrs = self.does_exist(main_line, Const.PROGRAM)
+            if (template_group is None or self.scif.loc[0, 'template_group'] in template_group) and\
+               (template_name is None or self.scif.loc[0, 'template_name'] in template_name) and\
+               (store_attrs is None or self.store_attr in store_attrs):
+                self.calculate_main_kpi(main_line)
         # self.write_results_to_db()
         return True
 
@@ -92,31 +100,20 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
         relevant_scif = self.scif.copy()
-        scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-        store_attrs = self.does_exist(main_line, Const.PROGRAM)
         general_filters = {}
-
-        if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-            general_filters['template_name'] = scene_types
-        scene_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
-        if scene_groups:
-            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
-            general_filters['template_group'] = scene_groups
 
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         function = self.get_kpi_function(kpi_type)
 
         for i, kpi_line in relevant_template.iterrows():
-            if (store_attrs is not None and self.store_attr not in store_attrs)\
-                    or relevant_scif.empty:
-                continue
-            num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
-            kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
+            if not relevant_scif.empty:
+                num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
+                kpi_fk = self.common.get_kpi_fk_by_kpi_name('{} {}'.format(CMA_COMPLIANCE, kpi_name))
 
-            self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-                                           result=result, score=score, target=target,  by_scene=True, should_enter=True)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+                                               result=result, score=score, target=target,
+                                               by_scene=True, should_enter=True)
 
     def calculate_coke_cooler_purity(self, kpi_line, scif, general_filters):
         """
@@ -139,7 +136,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
     def calculate_facings_ntba(self, kpi_line, scif, general_filters):
         targets = self.tools.get_kpi_line_targets(kpi_line)
-        facings_filters = self.get_kpi_line_filters(kpi_line)
+        facings_filters = self.tools.get_kpi_line_filters(kpi_line)
         score = 0
 
         facings = scif[self.get_filter_condition(scif, **facings_filters)][self.facings_field].sum()
@@ -182,6 +179,10 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         if kpi_type == Const.PURITY:
             return self.calculate_coke_cooler_purity
+        if kpi_type == Const.FACINGS:
+            return self.calculate_facings_ntba
+        if kpi_type == Const.RATIO:
+            return self.calculate_facings_ntba
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
@@ -199,7 +200,10 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                if ", " in cell:
+                    return cell.split(", ")
+                else:
+                    return cell.split(',')
         return None
 
     def get_filter_condition(self, df, **filters):

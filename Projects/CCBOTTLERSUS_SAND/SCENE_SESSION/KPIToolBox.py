@@ -1,10 +1,8 @@
 import pandas as pd
+from collections import defaultdict
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
-
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 
@@ -29,8 +27,26 @@ class SceneSessionToolBox:
     SHOULD_ENTER = "should_enter"
     COLUMNS = [SESSION_RESULT_FK, PARENT_FK, SHOULD_ENTER, SCENE_RESULT_FK]
     SCENE_SESSION_KPI = {
-                        2160: 2161
-                            }
+                            2160: 3045,
+                            3048: 3045,
+                            3022: 3047,
+                            3023: 3047,
+                            3024: 3047,
+                            3025: 3047,
+                            3026: 3047,
+                            3027: 3047,
+                            3028: 3047,
+                            3029: 3047,
+                            3030: 3047,
+                            3031: 3047,
+                        }
+    BEHAVIOR = {
+                3045: 'SUM',
+                3047: 'PASS'
+                }
+    GRANPAPPY = {
+                3047: 3044
+                }
 
     def __init__(self, data_provider):
         self.data_provider = data_provider
@@ -54,11 +70,12 @@ class SceneSessionToolBox:
         if self.store_type in STORE_TYPES: #####
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
-
-
-
+        self.session_results = self.get_session_kpi_results()
+        self.parent_frame = pd.DataFrame()
         self.results = self.data_provider[Data.SCENE_KPI_RESULTS]
         self.hierarchy_table = pd.DataFrame(columns=self.COLUMNS)
+        self.session_hierarchy_table = pd.DataFrame(columns=self.COLUMNS)
+
 
     # main functions:
 
@@ -69,35 +86,116 @@ class SceneSessionToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         self.write_scene_parent()
+        self.granpappy_path()
+        self.commit_results(scene_session=True)
+
+        # self.write_pappies
 
     def write_scene_parent(self):
-        scene_kpis = self.results['kpi_level_2_fk'].unique().tolist()
-        for i, scene_kpi in enumerate(scene_kpis):
-            if scene_kpi in self.SCENE_SESSION_KPI:
-                session_kpi = self.SCENE_SESSION_KPI[scene_kpi]
-                kpi_res = self.results[self.results['kpi_level_2_fk'] == scene_kpi]
-                num = kpi_res['numerator_result'].sum()
-                den = kpi_res['denominator_result'].sum()
-                score = kpi_res['score'].sum()
+        self.results['parent_kpi'] = [int(self.SCENE_SESSION_KPI[kpi]) if kpi in self.SCENE_SESSION_KPI else None
+                                      for kpi in self.results['kpi_level_2_fk']]
+        self.results = self.results[~self.results['parent_kpi'].isnull()]
+        for i, parent_kpi in enumerate(set(self.results['parent_kpi'])):
+            kpi_res = self.results[self.results['parent_kpi'] == parent_kpi]
+            num, den, score = self.aggregate(kpi_res, parent_kpi)
 
-                if den:
-                    ratio = round((float(num) / den)*100, 2)
-                else:
-                    ratio = 0
+            if den:
+                ratio = round((float(num) / den)*100, 2)
+            else:
+                ratio = 0
 
-                self.common.write_to_db_result(fk=session_kpi, numerator_result=num,
-                                                   numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                                   denominator_result=den, result=ratio, score=score, target=den)
-                self.write_hierarchy(kpi_res, i)
+            line = {'fk': parent_kpi, 'numerator_result': num, 'numerator_id': self.manufacturer_fk,
+                    'denominator_result': den, 'denominator_id': self.store_id, 'result': ratio, 'score': score,
+                    'target': den}
+            self.parent_frame = self.parent_frame.append(line, ignore_index=True)
 
-    def write_hierarchy(self, kpi_res, i):
+            # self.common.write_to_db_result(fk=parent_kpi, numerator_result=num,
+            #                                    numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+            #                                    denominator_result=den, result=ratio, score=score, target=den)
+
+            self.write_hierarchy(kpi_res, i, parent_kpi)
+
+    def aggregate(self, kpi_res, parent_kpi):
+        if self.BEHAVIOR[parent_kpi] == 'PASS':
+            num = kpi_res['score'].sum()
+            den = kpi_res['parent_kpi'].count()
+
+        else:
+            num = kpi_res['numerator_result'].sum()
+            den = kpi_res['denominator_result'].sum()
+
+        score = kpi_res['score'].sum()
+        return num, den, score
+
+    def write_pappies(self, num, den, score, ratio, current_kpi):
+        self.write_kpi(num, den, ratio, score, current_kpi, None, self.GRANPAPPY[current_kpi])
+
+        while current_kpi in self.GRANPAPPY:
+            pappy_kpi = self.GRANPAPPY[current_kpi]
+            self.write_kpi(num, den, ratio, score, current_kpi, current_kpi, pappy_kpi)
+            current_kpi = pappy_kpi
+
+        self.write_kpi(num, den, ratio, score, current_kpi, current_kpi, None)
+
+    def write_kpi(self, num, den, ratio, score, parent_kpi, ident_self, ident_parent):
+        self.common.write_to_db_result(fk=parent_kpi, numerator_result=num,
+                                       numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                       denominator_result=den, result=ratio, score=score, target=den,
+                                       identifier_result=self.common.get_dictionary(
+                                           parent_name=ident_self),
+                                       identifier_parent=self.common.get_dictionary(
+                                           parent_name=ident_parent),
+                                       )
+
+    def write_hierarchy(self, kpi_res, i, parent):
         for j, kpi_line in kpi_res.iterrows():
             kpi_fk = kpi_line['scene_kpi_fk']
             new_line = pd.DataFrame([(0, i, True, kpi_fk)],
                                       columns=self.COLUMNS)
             self.hierarchy_table = pd.concat((self.hierarchy_table, new_line))
+        if parent in self.GRANPAPPY:
+            ses_line = pd.DataFrame([(self.GRANPAPPY[parent], i, True, None)],
+                                    columns=self.COLUMNS)
+            self.session_hierarchy_table = pd.concat((self.hierarchy_table, ses_line))
 
-    def commit_results(self):
+    def granpappy_path(self):
+        relevant_kpis = self.parent_frame['fk'].unique().tolist()
+        family_tree = self.parent_frame.set_index('session_kpi_results_fk')['session_kpi_results_parent_fk'].to_dict()
+        family_tree += self.GRANPAPPy
+        lineage = defaultdict(list)
+        for kpi in relevant_kpis:
+            while pappy in family_tree:
+                pappy = family_tree[pappy]
+                lineage[kpi].append(pappy)
+        return lineage
+
+    def write_pappies(self, lineage):
+        for kpi in lineage:
+          pass
+
+    def read_kpi(self):
+        pass
+
+    def write_kpi(self):
+        pass
+
+
+    def get_session_kpi_results(self):
+        query = '''
+                select kpir.*, kh.session_kpi_results_fk, kh.session_kpi_results_parent_fk
+                from report.kpi_level_2_results kpir
+                left join probedata.session ses on kpir.session_fk = ses.pk
+                left join report.kpi_hierarchy kh on kpir.pk = kh.session_kpi_results_parent_fk
+                -- left join report.kpi_level_2_results kpir2 on kh.session_kpi_results_parent_fk = kpir2.pk
+                where kh.session_kpi_results_fk  is not null
+                and session_uid = '{}'
+                '''.format(self.session_uid)
+        con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        data = pd.read_sql(query, con.db)
+        con.disconnect_rds()
+        return data
+
+    def commit_results(self, scene_session=False):
         insert_queries = self.common.merge_insert_queries(self.common.kpi_results[self.common.QUERY].tolist())
         if not insert_queries:
             return
@@ -109,9 +207,10 @@ class SceneSessionToolBox:
         cur.execute(insert_queries[0] + ";")
         cur.execute(self.common.queries.get_last_id())
         last_id = cur.fetchmany()
+
         self.hierarchy_table[self.PARENT_FK] += int(last_id[0][0])
         self.common.kpi_results = self.hierarchy_table
-        insert_tree_queries = self.common.get_insert_queries_hierarchy('session', True)
+        insert_tree_queries = self.common.get_insert_queries_hierarchy('session', scene_session)
         if insert_tree_queries:
             insert_tree_queries = self.common.merge_insert_queries(insert_tree_queries)[0] + ";"
             cur.execute(insert_tree_queries)

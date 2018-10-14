@@ -32,13 +32,13 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()  # should be first, because it can include a deletion from the common
+        # self.calculate_red_score()  # should be first, because it can include a deletion from the common
         # self.calculate_bci()
-        self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
-        self.calculate_cma_compliance_sw()
-        self.calculate_sovi()
-        self.common_db.commit_results_data()
+        # self.calculate_manufacturer_displays()
+        # self.calculate_cma_compliance()
+        # self.calculate_cma_compliance_sw()
+        # self.calculate_sovi()
+        # self.common_db.commit_results_data()
 
         self.calculate_scene_session()
 
@@ -119,6 +119,6 @@ class CCBOTTLERSUS_SANDGenerator:
         try:
             tool_box = SceneSessionToolBox(self.data_provider)
             tool_box.main_calculation()
-            tool_box.commit_results()
+            # tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))

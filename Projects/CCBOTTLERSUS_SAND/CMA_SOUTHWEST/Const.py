@@ -128,13 +128,13 @@ class Const(object):
     CALCULATION_TYPES = [SOVI, MANUAL]
 
     KPI_FAMILY_KEY = {
-                    18: 'CMA Compliance SW # of Shelves',
-                    # 19: 'CMA Compliance SW Impulse Zone Cooler',
-                    20: 'CMA Compliance SW # of Facings',
-                    2: 'CMA Compliance SW % of Facings',
-                    # 21: 'CMA Compliance SW # of Shelves Bonus'
-                    21: 'CMA Compliance SW # of Shelves'
-                }
+                      18: 'CMA Compliance SW # of Shelves',
+                      # 19: 'CMA Compliance SW Impulse Zone Cooler',
+                       20: 'CMA Compliance SW # of Facings',
+                       2: 'CMA Compliance SW % of Facings',
+                       # 21: 'CMA Compliance SW # of Shelves Bonus'
+                       21: 'CMA Compliance SW # of Shelves'
+                     }
 
     NO_PRESSURE = ['# of Shelves Bonus']
     ALL_SCENE_KPIS = ['Impulse Zone Cooler']
