@@ -966,11 +966,6 @@ class BATRUToolBox:
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
 
-        if self.state in sections_template_data['State'].unique().tolist():
-            state_for_calculation = self.state
-        else:
-            state_for_calculation = 'ALL'
-
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
         else:
@@ -990,6 +985,10 @@ class BATRUToolBox:
 
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
+            if self.state in sections_template_data['State'].unique().tolist():
+                state_for_calculation = self.state
+            else:
+                state_for_calculation = 'ALL'
             relevant_sections_data = sections_template_data.loc[
                 (sections_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
                 (sections_template_data['fixture'] == fixture) &
@@ -1067,6 +1066,10 @@ class BATRUToolBox:
                             .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
                             .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
 
+                        if self.state in sections_products_template_data['State'].unique().tolist():
+                            state_for_calculation = self.state
+                        else:
+                            state_for_calculation = 'ALL'
                         specific_section_products_template = self.get_relevant_section_products(
                             sections_products_template_data, section, state_for_calculation, fixture, attribute_3)
                         section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()

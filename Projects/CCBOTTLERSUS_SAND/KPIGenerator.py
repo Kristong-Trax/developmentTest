@@ -32,7 +32,7 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()
+        self.calculate_red_score()  # should be first, because it can include a deletion from the common
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
@@ -76,6 +76,7 @@ class CCBOTTLERSUS_SANDGenerator:
             if tool_box.main_calculation() > 0:
                 tool_box.commit_results()
                 return
+            tool_box.remove_queries_of_calculation_type()
             tool_box = REDToolBox(self.data_provider, self.output, Const.MANUAL, self.common_db)
             tool_box.main_calculation()
             tool_box.commit_results()
