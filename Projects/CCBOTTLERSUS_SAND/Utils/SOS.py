@@ -1,27 +1,61 @@
+import numpy as np
+from collections import defaultdict
 from Trax.Algo.Calculations.Core.Utils import Validation
 
+SEPERATOR = '; '
+COMMA = ','
 
 
-def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
+class Shared():
+    @staticmethod
+    def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
 
-    try:
-        Validation.is_empty_df(den_scif)
-        Validation.is_empty_df(num_scif)
-        Validation.df_columns_equality(den_scif, num_scif)
-        Validation.is_subset(den_scif, num_scif)
-    except Exception, e:
-        msg = "Data verification failed: {}.".format(e)
-        # raise Exception(msg)
-        # print(msg)
-        return None, None, None
-    num = num_scif[facings_field].sum()
-    den = den_scif[facings_field].sum()
-    if den:
-        ratio = round((num / float(den))*100, 2)
-    else:
-        ratio = 0
+        try:
+            Validation.is_empty_df(den_scif)
+            Validation.is_empty_df(num_scif)
+            Validation.df_columns_equality(den_scif, num_scif)
+            Validation.is_subset(den_scif, num_scif)
+        except Exception, e:
+            msg = "Data verification failed: {}.".format(e)
+            # raise Exception(msg)
+            # print(msg)
+            return None, None, None
+        num = num_scif[facings_field].sum()
+        den = den_scif[facings_field].sum()
+        if den:
+            ratio = round((num / float(den))*100, 2)
+        else:
+            ratio = 0
 
-    return ratio, num, den
+        return ratio, num, den
+
+    @staticmethod
+    def get_kpi_line_filters(kpi_line, name=''):
+        if name:
+            name = name.lower() + ' '
+        filters = defaultdict(list)
+        attribs = [x.lower() for x in kpi_line.index]
+        kpi_line.index = attribs
+        c = 1
+        while 1:
+            if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]:
+                filters[kpi_line['{}param {}'.format(name, c)]] += (kpi_line['{}value {}'.format(name, c)].split(','))
+            else:
+                if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
+                    break
+            c += 1
+        return filters
+
+    @staticmethod
+    def get_kpi_line_targets(kpi_line):
+        mask = kpi_line.index.str.contains('Target')
+        if mask.any():
+            targets = kpi_line.loc[mask].replace('', np.nan).dropna()
+            targets.index = [int(x.split(SEPERATOR)[1].split(' ')[0]) for x in targets.index]
+            targets = targets.to_dict()
+        else:
+            targets = {}
+        return targets
 
     # def get_filter_condition(self, df, **filters):
     #     """
