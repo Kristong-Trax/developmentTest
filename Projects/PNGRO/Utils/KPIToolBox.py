@@ -73,6 +73,11 @@ class PNGRO_PRODToolBox:
     SHELF_NUMBERS = 'Shelf number for the eye level counting from the bottom'
     NUMBER_OF_SHELVES = 'Number of shelves'
 
+    TEMPLATE_NAME = 'template_name' #Natalya
+    MAIN_SHELF = 'Main Shelf' #Natalya
+    ASSORTMENT_KPI = 'PSKUs Assortment' #Natalya
+    ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -103,6 +108,9 @@ class PNGRO_PRODToolBox:
         self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
         self.common = Common(self.data_provider)
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
+
+        self.main_shelves = self.get_main_shelves() #Natalya
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common) #Natalya
 
     @property
     def matches(self):
@@ -218,6 +226,54 @@ class PNGRO_PRODToolBox:
             return True
         else:
             return False
+
+    # Natalya
+    def calculate_assortment_main_shelf(self):
+        assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
+        if not self.main_shelves and not assortment_result_lvl3.empty:
+            assortment_result_lvl3.drop(assortment_result_lvl3.index[0:], inplace=True)
+        if not assortment_result_lvl3.empty:
+            filters = {PNGRO_PRODToolBox.TEMPLATE_NAME: self.main_shelves}
+            filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+            products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
+            assortment_result_lvl3.loc[assortment_result_lvl3['product_fk'].isin(products_in_session), 'in_store'] = 1
+            assortment_kpi_fk = self.get_new_kpi_fk_by_kpi_name(PNGRO_PRODToolBox.ASSORTMENT_KPI)
+            assortment_sku_fk = self.get_new_kpi_fk_by_kpi_name(PNGRO_PRODToolBox.ASSORTMENT_SKU_KPI)
+
+            for result in assortment_result_lvl3.itertuples():
+                if result.in_store == 1:
+                    score = 1
+                else:
+                    score = 0
+                self.common.write_to_db_result_new_tables(fk=assortment_sku_fk, numerator_id=result.product_fk,
+                                                          numerator_result=score, result=score,
+                                                          denominator_id=result.category_fk, denominator_result=1,
+                                                          score=score, score_after_actions=score)
+            lvl2_result = self.assortment.calculate_lvl2_assortment(assortment_result_lvl3)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and not np.math.isnan(result.target):
+                    if result.group_target_date <= self.visit_date: #not sure what this is
+                        denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+                                                          numerator_result=result.passes, result=res,
+                                                          denominator_id=result.assortment_super_group_fk,
+                                                          denominator_result=denominator_res,
+                                                          score=score)
+
+    #Natalya
+    def get_main_shelves(self):
+        """
+        This function returns a list with the main shelves of this session
+        """
+        main_shelves = [template for template in self.scif[PNGRO_PRODToolBox.TEMPLATE_NAME].unique().tolist() if
+                                        PNGRO_PRODToolBox.MAIN_SHELF in template]
+        return main_shelves
 
     def get_general_filters(self, params):
         # template_name = params['Template Name']
