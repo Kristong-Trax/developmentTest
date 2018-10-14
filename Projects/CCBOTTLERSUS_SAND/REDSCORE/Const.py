@@ -3,7 +3,7 @@ __author__ = 'Elyashiv'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.5.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'KPITemplateV4.6.xlsx')
     SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
                                         'SurveyTemplateV2.xlsx')
     STORE_TYPES = {
@@ -100,6 +100,7 @@ class Const(object):
     DOMINANT = "dominant"
     MAJORITY_TARGET = 0.5
     NUMERIC_VALUES_TYPES = ['size']
+    MANUFACTURER_FK = 1
 
     RED_SCORE = 'Red SCORE'
     RED_SCORE_INTEG = 'Red SCORE Integration'
@@ -113,3 +114,5 @@ class Const(object):
         MANUAL
     ]
     SCENE_SUFFIX = " - scene"
+    PASS = "Pass"
+    FAIL = "Fail"

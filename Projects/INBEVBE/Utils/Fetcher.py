@@ -2,7 +2,7 @@
 __author__ = 'urid'
 
 
-class INBEVBEINBEVBEQueries:
+class Queries:
 
     def __init__(self):
         pass
@@ -50,12 +50,12 @@ class INBEVBEINBEVBEQueries:
         """.format(session_uid)
 
     @staticmethod
-    def get_oos_messages(session_uid):
+    def get_oos_messages(store_fk, session_uid):
         return """
             SELECT * FROM probedata.oos_exclude oe
             join static.oos_message om on om.pk=oe.oos_message_fk
             join static.oos_message_type omt on omt.pk=om.type
-            where oe.session_uid = '{}';
+            where session_uid = '{}';
         """.format(session_uid)
 
     @staticmethod
@@ -63,8 +63,9 @@ class INBEVBEINBEVBEQueries:
         if str(status) == "Completed":
             return """
                 SELECT * FROM pservice.custom_osa
-                WHERE store_fk = {} AND '{}' <= IFNULL(end_date, '{}')
-            """.format(store_fk, visit_date, current_date)
+                WHERE store_fk = {} 
+                AND '{}' between IFNULL(start_date, '{}') and IFNULL(end_date, '{}') 
+            """.format(store_fk, visit_date, current_date, current_date)
         else:
 
             return """
@@ -73,12 +74,14 @@ class INBEVBEINBEVBEQueries:
             """.format(store_fk)
 
     @staticmethod
-    def get_delete_osa_records_query(product_fk, store_fk, delete_time):
+    def get_delete_osa_records_query(product_fk, store_fk, delete_time, visit_date, current_date):
         return """
             UPDATE pservice.custom_osa
             SET end_date = '{}', is_current=NULL
-            WHERE product_fk = {} AND store_fk = {} AND is_current=1
-        """.format(delete_time, product_fk, store_fk)
+            WHERE product_fk = {} AND store_fk = {}
+            AND '{}' >= IFNULL(start_date, '{}')
+            AND is_current = 1
+        """.format(delete_time, product_fk, store_fk, visit_date, current_date, current_date)
 
     @staticmethod
     def get_delete_scif_records_query(product_fk, session_fk):

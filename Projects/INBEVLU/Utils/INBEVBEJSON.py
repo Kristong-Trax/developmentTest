@@ -10,7 +10,7 @@ sys.path.append('.')
 __author__ = 'urid'
 
 
-class INBEVLUINBEVBEJsonGenerator:
+class JsonGenerator:
     def __init__(self, project):
         self.project = project
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
@@ -40,12 +40,3 @@ class INBEVLUINBEVBEJsonGenerator:
         self.project_kpi_dict[key] = final_json
 
         return
-
-
-
-
-
-
-
-
-
