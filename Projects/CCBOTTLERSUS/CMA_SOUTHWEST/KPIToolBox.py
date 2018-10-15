@@ -141,6 +141,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                     self.update_sub_score(kpi_name, passed=result)
                 else:
                     self.update_sub_score(kpi_name, passed=score)
+                if target is None:
+                    target = 0
                 self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
         else:
             pass
