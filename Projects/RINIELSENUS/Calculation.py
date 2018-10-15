@@ -14,18 +14,18 @@ from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'nethanel'
 
-#
-# class MarsUsCalculations(BaseCalculationsScript):
-#     def run_project_calculations(self):
-#         if True:
-#             self.timer.start()
-#             try:
-#                 MarsUsGenerator(self.data_provider, self.output).main_function()
-#             except:
-#                 Log.error('Mars US kpis not calculated')
-#             self.timer.stop('KPIGenerator.run_project_calculations')
-#
-#
+
+class MarsUsCalculations(BaseCalculationsScript):
+    def run_project_calculations(self):
+        if False:
+            self.timer.start()
+            try:
+                MarsUsGenerator(self.data_provider, self.output).main_function()
+            except:
+                Log.error('Mars US kpis not calculated')
+            self.timer.stop('KPIGenerator.run_project_calculations')
+
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('TREX')
 #     Config.init()
