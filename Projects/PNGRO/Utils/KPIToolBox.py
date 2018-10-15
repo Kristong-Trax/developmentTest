@@ -109,7 +109,7 @@ class PNGRO_PRODToolBox:
         self.common = Common(self.data_provider)
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
 
-        self.main_shelves = self.get_main_shelves() #Natalya
+        self.main_shelves = self.are_main_shelves() #Natalya
         self.assortment = Assortment(self.data_provider, self.output, common=self.common) #Natalya
 
     @property
@@ -234,18 +234,13 @@ class PNGRO_PRODToolBox:
         if not self.main_shelves and not assortment_result_lvl3.empty:
             assortment_result_lvl3.drop(assortment_result_lvl3.index[0:], inplace=True)
         if not assortment_result_lvl3.empty:
-            filters = {PNGRO_PRODToolBox.LOCATION_TYPE: self.main_shelves}
+            filters = {self.LOCATION_TYPE: self.PRIMARY_SHELF}
             filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
             products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
             assortment_result_lvl3.loc[assortment_result_lvl3['product_fk'].isin(products_in_session), 'in_store'] = 1
-            # assortment_kpi_fk = self.get_new_kpi_fk_by_kpi_name(PNGRO_PRODToolBox.ASSORTMENT_KPI)
-            # assortment_sku_fk = self.get_new_kpi_fk_by_kpi_name(PNGRO_PRODToolBox.ASSORTMENT_SKU_KPI)
 
             for result in assortment_result_lvl3.itertuples():
-                if result.in_store == 1:
-                    score = 100
-                else:
-                    score = 0
+                score = result.in_store * 100
                 self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
                                                           numerator_result=result.in_store, result=score,
                                                           denominator_id=result.assortment_group_fk, denominator_result=1,
@@ -254,7 +249,7 @@ class PNGRO_PRODToolBox:
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
                 if result.target and not np.math.isnan(result.target):
-                    if result.group_target_date <= self.visit_date: #not sure what this is
+                    if result.group_target_date <= self.visit_date:
                         denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res)) * 100
                 if res >= 100:
@@ -268,13 +263,12 @@ class PNGRO_PRODToolBox:
                                                           score=score)
 
     #Natalya
-    def get_main_shelves(self):
+    def are_main_shelves(self):
         """
         This function returns a list with the main shelves of this session
         """
-        main_shelves = [location for location in self.scif[PNGRO_PRODToolBox.LOCATION_TYPE].unique().tolist() if
-                                        PNGRO_PRODToolBox.LOCATION_TYPE == PNGRO_PRODToolBox.PRIMARY_SHELF]
-        return main_shelves
+        are_main_shelves = True if self.PRIMARY_SHELF in self.scif[self.LOCATION_TYPE].unique().tolist() else False
+        return are_main_shelves
 
     def get_general_filters(self, params):
         # template_name = params['Template Name']
