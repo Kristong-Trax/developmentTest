@@ -14,6 +14,7 @@ class Results(object):
         self.kpi_sheets = self._data_provider.kpi_sheets
         self.common = CommonV2(self._data_provider)
         self.kpi_results = pd.DataFrame(columns=['kpi_name', 'fk', 'score'])
+        self.kpi_mapping = []
 
     def calculate_old_tables(self, hierarchy):
         atomic_results = self._get_atomic_result(hierarchy)
@@ -25,10 +26,9 @@ class Results(object):
         for column in hierarchy.columns:
             if ('Level' not in column) or ('Level' in column and 'type' in column):
                 level_hierarchy.pop(column)
-        self.dependencies_graph = nx.DiGraph()
+        dependencies_graph = nx.DiGraph()
         graph = pydot.Dot(graph_type='digraph')
 
-        self.kpi_mapping = []
         columns = list(reversed(level_hierarchy.columns))
         for i, level_row in hierarchy.iterrows():
             dependents = [{'kpi_name': level_row[l1], 'depends_on': level_row[l2], 'kpi_type': level_row.get(l1 + '_type')} for l1, l2 in zip(columns, columns[1:])]
@@ -37,20 +37,20 @@ class Results(object):
                 if kpi not in self.kpi_mapping:
                     self.kpi_mapping.append(kpi)
         for kpi in self.kpi_mapping:
-            self.dependencies_graph.add_node(kpi['kpi_name'], kpi_type=kpi.get('kpi_type'), depends_on=kpi.get('depends_on'))
+            dependencies_graph.add_node(kpi['kpi_name'], kpi_type=kpi.get('kpi_type'), depends_on=kpi.get('depends_on'))
             graph.add_node(pydot.Node(kpi['kpi_name']))
             if kpi.get('depends_on'):
-                self.dependencies_graph.add_edge(kpi['depends_on'], kpi['kpi_name'])
+                dependencies_graph.add_edge(kpi['depends_on'], kpi['kpi_name'])
                 graph.add_edge(pydot.Edge(kpi['depends_on'], kpi['kpi_name']))
         # nx.draw(self.dependencies_graph)
         # graph.write_png('/home/israels/Desktop/example1_graph.png')
 
-        kpi_nodes = self.dependencies_graph.node
-        kpi_topological_sort = nx.topological_sort(self.dependencies_graph)
+        kpi_nodes = dependencies_graph.node
+        kpi_topological_sort = nx.topological_sort(dependencies_graph)
         kpi_list = [(kpi, kpi_nodes[kpi]['kpi_type']) for kpi in kpi_topological_sort]
         kpi_list.reverse()
         for kpi in kpi_list:
-            kpi_neighbors = nx.neighbors(self.dependencies_graph, kpi[0])
+            kpi_neighbors = nx.neighbors(dependencies_graph, kpi[0])
             if kpi_neighbors:
                 relevant_kpis = self.kpi_results[self.kpi_results['kpi_name'] in kpi_neighbors]
                 result = sum(relevant_kpis['score'])
