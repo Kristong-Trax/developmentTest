@@ -126,14 +126,25 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                             brand=brand, category=category_group)
                         self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         elif kpi_set_fk == 4:
-            shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]
+            try:
+                shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack', 'Customer_ean_code']]
+            except:
+                shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack']]
+
             products_list = shorted_df['product_ean_code'].unique().tolist()
             for product_ean_code in products_list:
-                filtered_df = shorted_df[shorted_df['product_ean_code'] == product_ean_code ]
+                filtered_df = shorted_df[shorted_df['product_ean_code'] == product_ean_code]
                 num_of_facings = sum(filtered_df['facings'])
                 # num_of_facings_ign_stack = sum(filtered_df['facings_ign_stack'])
-                display_name = 'SKU EAN Code: ' + product_ean_code
-                self.write_to_db_result(self.LEVEL3, kpi_set_fk, result=num_of_facings, display_text=display_name, score=num_of_facings)
+                ean_code = filtered_df.get('Customer_ean_code')
+                try:
+                    ean_code = filtered_df.get('Customer_ean_code').dropna().values[0]
+                except:
+                    ean_code = product_ean_code
+                display_name = 'SKU EAN Code: ' + ean_code
+                self.write_to_db_result(self.LEVEL3, kpi_set_fk, result=num_of_facings, display_text=display_name,
+                                        score=num_of_facings)
+
         return
 
     def write_to_db_result(self, level, kpi_set_fk, atomic_name=None, result=None, display_text=None, score=None):
