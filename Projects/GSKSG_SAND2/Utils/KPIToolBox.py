@@ -202,7 +202,7 @@ class GSKSGToolBox:
         aggs_res['valid_template_name'] = aggs_res['valid_template_name'].astype(float)
 
 
-        ## write to db
+        ## write level3 to db
         store_fk = self.store_info['store_fk'][0]
         # ## asking if template isnt valid to write to db
         for i in xrange(len(aggs_res)):
