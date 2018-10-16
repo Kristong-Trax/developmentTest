@@ -17,7 +17,7 @@ __author__ = 'nethanel'
 
 class MarsUsCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
-        if False:
+        if True:
             self.timer.start()
             try:
                 MarsUsGenerator(self.data_provider, self.output).main_function()
