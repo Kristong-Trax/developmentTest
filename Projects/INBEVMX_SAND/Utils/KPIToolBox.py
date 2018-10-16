@@ -3,6 +3,7 @@
 
 import pandas as pd
 import os
+import json
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -49,6 +50,9 @@ class INBEVMXToolBox:
         self.kpi_results_queries = []
         self.kpi_results_new_tables_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.oos_policies = self.get_policies()
+
+
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -68,14 +72,26 @@ class INBEVMXToolBox:
             PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
 
+    def get_policies(self):
+        query = INBEVMXQueries.get_policies()
+        policies = pd.read_sql_query(query, self.rds_conn.db)
+        return policies
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
         kpis_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.KPIS).fillna("")
+        self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
         self.commit_results_data()
+
+
+    def calculate_oos_target(self):
+        all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
+        json_policies = self.oos_policies['policy'].apply(lambda line: json.loads(line))
+
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
