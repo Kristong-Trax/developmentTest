@@ -73,10 +73,10 @@ class PNGRO_PRODToolBox:
     SHELF_NUMBERS = 'Shelf number for the eye level counting from the bottom'
     NUMBER_OF_SHELVES = 'Number of shelves'
 
-    LOCATION_TYPE = 'location_type' #Natalya
-    PRIMARY_SHELF = 'Primary Shelf' #Natalya
-    ASSORTMENT_KPI = 'PSKUs Assortment' #Natalya
-    ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU' #Natalya
+    LOCATION_TYPE = 'location_type'
+    PRIMARY_SHELF = 'Primary Shelf'
+    ASSORTMENT_KPI = 'PSKUs Assortment'
+    ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -109,8 +109,8 @@ class PNGRO_PRODToolBox:
         self.common = Common(self.data_provider)
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
 
-        self.main_shelves = self.are_main_shelves() #Natalya
-        self.assortment = Assortment(self.data_provider, self.output, common=self.common) #Natalya
+        self.main_shelves = self.are_main_shelves()
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
 
     @property
     def matches(self):
@@ -181,8 +181,8 @@ class PNGRO_PRODToolBox:
         """
         This function calculates the KPI results.
         """
-        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation() #Natalya
-        self.calculate_assortment_main_shelf() #Natalya
+        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        self.calculate_assortment_main_shelf()
         # if not self.match_display.empty:
         #     if self.match_display['exclude_status_fk'][0] in (1, 4):
         self.calculate_linear_share_of_shelf_per_product_display()
@@ -228,7 +228,6 @@ class PNGRO_PRODToolBox:
         else:
             return False
 
-    # Natalya
     def calculate_assortment_main_shelf(self):
         assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
         if not self.main_shelves and not assortment_result_lvl3.empty:
@@ -262,7 +261,6 @@ class PNGRO_PRODToolBox:
                                                           denominator_result=denominator_res,
                                                           score=score)
 
-    #Natalya
     def are_main_shelves(self):
         """
         This function returns a list with the main shelves of this session
