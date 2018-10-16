@@ -2,6 +2,7 @@
 import os
 import json
 import pandas as pd
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -16,16 +17,6 @@ from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.MOLSONCOORSHR.Utils.ParseTemplates import parse_template
 from Projects.MOLSONCOORSHR.Utils.Fetcher import Queries
 
-
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'sergey'
 
@@ -67,6 +58,7 @@ class MOLSONCOORSHRToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.current_date = datetime.now()
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -74,7 +66,7 @@ class MOLSONCOORSHRToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(data_provider)
-
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -98,13 +90,14 @@ class MOLSONCOORSHRToolBox:
             return
 
         self.kpis_calculation()
+        self.common.commit_results_data()
 
     def kpis_calculation(self, kpi_group=''):
         """
         This is a recursive function.
         The function calculates each level KPI cascading from the highest level to the lowest.
         """
-        total_score = 0
+        total_score = total_target = total_calculated = 0
         kpis = self.template_data['KPIs'][self.template_data['KPIs']['KPI Group'] == kpi_group]
         for index, kpi in kpis.iterrows():
 
@@ -112,40 +105,153 @@ class MOLSONCOORSHRToolBox:
             kpi_type = kpi['KPI Type'].lower()
             weight = float(kpi['Weight']) if kpi['Weight'] else 1
             score_function = kpi['Score Function'].lower()
-            l_threshold = float(kpi['Lower Threshold']) if kpi['Lower Threshold'] else 0
-            h_threshold = float(kpi['Higher Threshold']) if kpi['Higher Threshold'] else 1
 
             if not child_kpi_group:
                 if kpi_type in [LINEAR_SOS_VS_TARGET, FACINGS_SOS_VS_TARGET]:
-                    score = self.calculate_sos_vs_target(kpi)
+                    score, target, calculated = self.calculate_sos_vs_target(kpi)
                 elif kpi_type in [FACINGS_VS_TARGET, DISTRIBUTION]:
-                    score = self.calculate_assortment_vs_target(kpi)
+                    score, target, calculated = self.calculate_assortment_vs_target(kpi)
                 else:
                     Log.error("KPI of type '{}' is not supported".format(kpi_type))
-                    score = 0
+                    score = target = calculated = 0
             else:
-                score = self.kpis_calculation(child_kpi_group)
+                score, target, calculated = self.kpis_calculation(child_kpi_group)
 
-            if score < l_threshold:
-                score = 0
-            elif score >= h_threshold:
-                score = 100
-
-            if score_function in [WEIGHTED_SCORE]:
-                total_score += score * weight
-            elif score_function in [SUM_OF_SCORES]:
+            if score_function in [WEIGHTED_SCORE, SUM_OF_SCORES]:
                 total_score += score
+                total_target += target
+                total_calculated += calculated
             else:
                 total_score += 0
+                total_target += 0
+                total_calculated += 0
 
-            self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight}, ignore_index=True)
+            if child_kpi_group and calculated:
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
+                parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
+                identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+                identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=0,
+                                               numerator_result=0,
+                                               denominator_id=0,
+                                               denominator_result=0,
+                                               result=score,
+                                               score=score,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True
+                                               )
 
-        return total_score
+                self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Target': target}, ignore_index=True)
+
+        return total_score, total_target, total_calculated
 
     def calculate_assortment_vs_target(self, kpi):
+        """
+        The function filters only the relevant scenes by Location Type and calculates the Assortment scores
+        according to rules set in the target.
+        :return:
+        """
+        lvl3_result = self.calculate_assortment_vs_target_lvl3(kpi)
+        for row in lvl3_result.itertuples():
+            numerator_id = row.product_fk
+            numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
+            denominator_id = row.assortment_group_fk
+            denominator_result = row.target
+            denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
+            result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
+            score = round(result*100, 0)
+            identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
+            identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
+            self.common.write_to_db_result(fk=row.kpi_fk_lvl3,
+                                           numerator_id=numerator_id,
+                                           numerator_result=numerator_result,
+                                           denominator_id=denominator_id,
+                                           denominator_result=denominator_result,
+                                           denominator_result_after_actions=denominator_result_after_actions,
+                                           result=result,
+                                           score=score,
+                                           identifier_result=identifier_details,
+                                           identifier_parent=identifier_kpi,
+                                           should_enter=True
+                                           )
 
+        score = target = 0
+        if not lvl3_result.empty:
+            lvl2_result = self.calculate_assortment_vs_target_lvl2(lvl3_result)
+            for row in lvl2_result.itertuples():
+                numerator_id = row.assortment_group_fk
+                numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
+                denominator_id = 0
+                denominator_result = row.target
+                result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
+                score += self.score_function(result*100, kpi)
+                target += round(float(kpi['Weight'])*100, 0)
+                identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
+                identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']))
+                self.common.write_to_db_result(fk=row.kpi_fk_lvl2,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               result=result,
+                                               score=score,
+                                               target=target,
+                                               identifier_result=identifier_kpi,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True
+                                               )
+        if len(lvl3_result) > 0:
+            calculated = 1
+        else:
+            calculated = 0
 
-        return 0
+        return score, target, calculated
+
+    def calculate_assortment_vs_target_lvl3(self, kpi):
+        location_types = kpi['Location Type'].split(', ')
+        kpi_fk_lvl3 = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'] + ' - SKU')
+        kpi_fk_lvl2 = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
+
+        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        assortment_result = assortment_result[(assortment_result['kpi_fk_lvl3'] == kpi_fk_lvl3) & (assortment_result['kpi_fk_lvl2'] == kpi_fk_lvl2)]
+        if assortment_result.empty:
+            return assortment_result
+
+        assortment_result['target'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Target'), axis=1)
+        assortment_result['target'] = assortment_result['target'].fillna(1)
+
+        assortment_result['weight'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Weight'), axis=1)
+        assortment_result['weight'] = assortment_result['weight'].fillna(1)
+        assortment_total_weights = assortment_result[['assortment_fk', 'weight']].groupby('assortment_fk').agg({'weight': 'sum'}).reset_index()
+        assortment_result = assortment_result.merge(assortment_total_weights, how='left', left_on='assortment_fk', right_on='assortment_fk', suffixes=['', '_total'])
+
+        facings = 'facings_ign_stack' if kpi['Ignore Stacking'] else 'facings'
+
+        products_in_session = self.scif[(self.scif[facings] > 0) & (self.scif['location_type'].isin(location_types))][['product_fk', 'facings']]\
+            .groupby('product_fk').agg({'facings': 'sum'}).reset_index()
+        lvl3_result = assortment_result.merge(products_in_session, how='left', left_on='product_fk', right_on='product_fk')
+        lvl3_result['facings'] = lvl3_result['facings'].fillna(0)
+        lvl3_result['distributed'] = lvl3_result.apply(lambda x: 1 if x['facings'] else 0, axis=1)
+
+        lvl3_result['result_facings'] = lvl3_result.apply(lambda x: self.assortment_vs_target_result(x, 'facings'), axis=1)
+        lvl3_result['result_distributed'] = lvl3_result.apply(lambda x: self.assortment_vs_target_result(x, 'distributed'), axis=1)
+
+        return lvl3_result
+
+    def calculate_assortment_vs_target_lvl2(self, lvl3_result):
+        lvl2_result = lvl3_result.groupby(['kpi_fk_lvl2', self.assortment.ASSORTMENT_FK, self.assortment.ASSORTMENT_GROUP_FK])\
+            .agg({'facings': 'sum', 'distributed': 'sum', 'target': 'sum', 'result_facings': 'sum', 'result_distributed': 'sum'}).reset_index()
+        return lvl2_result
+
+    @staticmethod
+    def assortment_vs_target_result(x, y):
+        if x[y] < x['target']:
+            return round(x[y] / float(x['target']) * float(x['weight']) / x['weight_total'], 5)
+        else:
+            return round(1 * float(x['weight']) / x['weight_total'], 5)
 
     def calculate_sos_vs_target(self, kpi):
         """
@@ -153,7 +259,6 @@ class MOLSONCOORSHRToolBox:
         the facing SOS according to Manufacturer and Category set in the target.
          :return:
         """
-
         location_type = kpi['Location Type']
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(SOS_MANUFACTURER_CATEGORY + ('_' + location_type if location_type else ''))
 
@@ -179,6 +284,7 @@ class MOLSONCOORSHRToolBox:
             if store_policy_passed:
                 break
 
+        score = target = 0
         if store_policy_passed:
 
             general_filters = {LOCATION_TYPE: location_type}
@@ -186,30 +292,56 @@ class MOLSONCOORSHRToolBox:
             numerator_sos_filters = {MANUFACTURER_NAME: sos_policy[NUMERATOR][MANUFACTURER], CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
             denominator_sos_filters = {CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
 
-            numer_facings, numer_linear = self.calculate_share_space(**dict(numerator_sos_filters, **general_filters))
-            denom_facings, denom_linear = self.calculate_share_space(**dict(denominator_sos_filters, **general_filters))
+            numerator_fk = self.scif.loc[self.scif[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
+            denominator_fk = self.scif.loc[self.scif[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
+
+            ignore_stacking = kpi['Ignore Stacking'] if kpi['Ignore Stacking'] else 0
+
+            numer_facings, numer_linear = self.calculate_share_space(ignore_stacking=ignore_stacking, **dict(numerator_sos_filters, **general_filters))
+            denom_facings, denom_linear = self.calculate_share_space(ignore_stacking=ignore_stacking, **dict(denominator_sos_filters, **general_filters))
 
             if kpi['KPI Type'].lower() == LINEAR_SOS_VS_TARGET:
+                numerator_result = round(numer_linear, 0)
+                denominator_result = round(denom_linear, 0)
                 result = numer_linear / float(denom_linear) if denom_linear else 0
             elif kpi['KPI Type'].lower() == FACINGS_SOS_VS_TARGET:
+                numerator_result = numer_facings
+                denominator_result = denom_facings
                 result = numer_facings / float(denom_facings) if denom_facings else 0
             else:
                 Log.error("KPI Type is invalid: '{}'").format(kpi['KPI Type'])
-                result = 0
+                numerator_result = denominator_result = result = 0
 
             if sos_store_policy['target']:
-                target = float(sos_store_policy['target'])
+                sos_target = round(float(sos_store_policy['target'])*100, 0)
             else:
                 Log.error("SOS target is not set for Store ID {}").format(self.store_id)
-                target = 0
+                sos_target = 0
 
-            score = result / target * 100 if target else 0
+            score = result/float(sos_target/100) if sos_target else 0
+            score = self.score_function(score, kpi)
+            target = round(float(kpi['Weight'])*100, 0)
+
+            identifier_kpi = self.common.get_dictionary(kpi_fk=kpi_fk)
+            identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']))
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=numerator_fk,
+                                           numerator_result=numerator_result,
+                                           numerator_result_after_actions=sos_target,
+                                           denominator_id=denominator_fk,
+                                           denominator_result=denominator_result,
+                                           result=result,
+                                           score=score,
+                                           target=target,
+                                           identifier_result=identifier_kpi,
+                                           identifier_parent=identifier_parent,
+                                           should_enter=True
+                                           )
 
         else:
-            Log.error("Store Policy is not found for Store ID {}").format(self.store_id)
-            score = 0
+            Log.warning("Store Policy is not found for Store ID {}".format(self.store_id))
 
-        return score
+        return score, target, store_policy_passed
 
     def calculate_share_space(self, ignore_stacking=1, **filters):
         """
@@ -227,8 +359,8 @@ class MOLSONCOORSHRToolBox:
 
         return sum_of_facings, space_length
 
-
-    def get_template_path(self):
+    @staticmethod
+    def get_template_path():
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', KPIS_TEMPLATE_NAME)
 
     def get_template_data(self):
@@ -241,3 +373,19 @@ class MOLSONCOORSHRToolBox:
             Log.error('Template {} does not exist. {}'.format(KPIS_TEMPLATE_NAME, repr(e)))
         return template_data
 
+    @staticmethod
+    def score_function(score, kpi):
+        weight = float(kpi['Weight']) if kpi['Weight'] else 1
+        score_function = kpi['Score Function'].lower()
+        l_threshold = float(kpi['Lower Threshold']) if kpi['Lower Threshold'] else 0
+        h_threshold = float(kpi['Higher Threshold']) if kpi['Higher Threshold'] else 1
+
+        if score < l_threshold:
+            score = 0
+        elif score >= h_threshold:
+            score = 100
+
+        if score_function in [WEIGHTED_SCORE]:
+            return round(score * weight, 0)
+        else:
+            return round(score, 0)
