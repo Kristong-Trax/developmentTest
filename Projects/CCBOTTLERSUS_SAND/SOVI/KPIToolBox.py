@@ -1,11 +1,6 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
-# from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.Connector import ProjectConnector
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-
-from KPIUtils_v2.DB.Common import Common
+from Projects.CCBOTTLERSUS_SAND.SOVI.Const import Const
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -20,30 +15,13 @@ from KPIUtils_v2.DB.Common import Common
 
 __author__ = 'huntery'
 
-MANUFACTURER_FK = 1  # for CCNA
-SSD_FK = 1
-STILL_FK = 2
-EXCLUDED_BRANDS = [
-    "GENERAL OTHER",
-    "GENERAL COFFEE OTHER",
-    "GENERAL DAIRY OTHER",
-    "GENERAL ENERGY OTHER",
-    "GENERAL ISOTONIC OTHER",
-    "GENERAL JC/DR SHELF STABLE OTHER",
-    "GENERAL SSD OTHER",
-    "GENERAL WATER OTHER",
-    "Juice Other",
-    "Tea Other"
-]
-
 
 class SOVIToolBox:
 
     def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
-        self.common_v2 = common_db2
+        self.common = common_db2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -57,9 +35,7 @@ class SOVIToolBox:
         self.region = self.store_info['region_name'].iloc[0]
         self.valid_regions = ['UNITED']
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.kpi_static_data = self.common.get_kpi_static_data()
         # self.sos = SOS(self.data_provider, self.output)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.pseudo_pk = 0
 
     def main_calculation(self, *args, **kwargs):
@@ -82,18 +58,13 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('Entire store: {}%'.format(sos_value * 100))
+        # print('Entire store: {}%'.format(sos_value))
 
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3000, numerator_id=MANUFACTURER_FK, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=self.store_id, denominator_result=denominator_result,
-                                          score=sos_value,
-                                          score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_result=own_pk)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TOTAL)
+        self.common.write_to_db_result(kpi_fk, numerator_id=Const.MANUFACTURER_FK, numerator_result=numerator_result,
+                                       result=sos_value, identifier_result=own_pk,
+                                       denominator_id=self.store_id, denominator_result=denominator_result)
 
         for template_group in template_group_list:
             self.calculate_template_group_sos(template_group, own_pk)
@@ -112,18 +83,15 @@ class SOVIToolBox:
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{}: {}%'.format(template_group, sos_value * 100))
+        # print('{}: {}%'.format(template_group, sos_value))
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3001, numerator_id=template_group_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=self.store_id, denominator_result=denominator_result,
-                                          score=sos_value, score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE)
+        self.common.write_to_db_result(kpi_fk, numerator_id=template_group_id, numerator_result=numerator_result,
+                                       result=sos_value,
+                                       denominator_id=self.store_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for att4 in att4_list:
             self.calculate_att4_sos(template_group, att4, own_pk)
@@ -140,29 +108,26 @@ class SOVIToolBox:
                             (self.scif['att4'] == att4)]
         category_list = att4_df.category.unique()
         template_group_id = att4_df.template_fk.unique()[0]
-        att4_id = STILL_FK if att4 == 'Still' else SSD_FK
+        att4_id = Const.STILL_FK if att4 == 'Still' else Const.SSD_FK
 
         numerator_result = att4_df.facings.sum()
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {}: {}%'.format(template_group, att4, sos_value * 100))
+        # print('{} - {}: {}%'.format(template_group, att4, sos_value))
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3002, numerator_id=att4_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=template_group_id, denominator_result=denominator_result,
-                                          score=sos_value, score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.ATT4)
+        self.common.write_to_db_result(kpi_fk, numerator_id=att4_id, numerator_result=numerator_result,
+                                       result=sos_value,
+                                       denominator_id=template_group_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for category in category_list:
-            self.calculate_category_sos(template_group, att4, category, own_pk)
+            self.calculate_category_sos(template_group, att4, category, own_pk, template_group_id)
 
-    def calculate_category_sos(self, template_group, att4, category, parent_pk):
+    def calculate_category_sos(self, template_group, att4, category, parent_pk, template_group_id):
         # general_filters = {}
         # sos_filters = {'United Deliver': 'Y',
         #                'template_group': template_group,
@@ -170,32 +135,31 @@ class SOVIToolBox:
         #                'category': category
         #                }
 
-        category_df = self.scif[(self.scif['United Deliver'] == 'Y') &
-                                (self.scif['template_group'] == template_group) &
+        # we need to get manufacturers for the next KPI before applying United Deliver filter
+        category_df = self.scif[(self.scif['template_group'] == template_group) &
                                 (self.scif['att4'] == att4) &
                                 (self.scif['category'] == category)]
-
         manufacturer_list = category_df.manufacturer_name.unique()
-        att4_id = STILL_FK if att4 == 'Still' else SSD_FK
+
+        # we need to apply United Deliver filter to return the correct KPI result
+        category_df = category_df[(category_df['United Deliver'] == 'Y')]
+
+        att4_id = Const.STILL_FK if att4 == 'Still' else Const.SSD_FK
         category_id = category_df.category_fk.unique()[0]
 
         numerator_result = category_df.facings.sum()
         denominator_result = self.scif.facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {} - {}: {}%'.format(template_group, att4, category, sos_value * 100))
+        # print('{} - {} - {}: {}%'.format(template_group, att4, category, sos_value))
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3003, numerator_id=category_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=att4_id, denominator_result=denominator_result,
-                                          score=sos_value,
-                                          score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.CATEGORY)
+        self.common.write_to_db_result(kpi_fk, numerator_id=category_id, numerator_result=numerator_result,
+                                       result=sos_value, context_id=template_group_id,
+                                       denominator_id=att4_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for manufacturer_name in manufacturer_list:
             self.calculate_manufacturer_sos(template_group, att4, category, manufacturer_name, own_pk)
@@ -221,18 +185,15 @@ class SOVIToolBox:
         denominator_result = self.apply_filters_to_df(self.scif, general_filters).facings.sum()
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-        # print('{} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name, sos_value * 100))
+        # print('{} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name, sos_value))
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3004, numerator_id=manufacturer_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=category_id, denominator_result=denominator_result,
-                                          score=sos_value, score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER)
+        self.common.write_to_db_result(kpi_fk, numerator_id=manufacturer_id, numerator_result=numerator_result,
+                                       result=sos_value,
+                                       denominator_id=category_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for brand_name in brand_name_list:
             self.calculate_brand_sos(template_group, att4, category, manufacturer_name, brand_name, own_pk)
@@ -263,18 +224,15 @@ class SOVIToolBox:
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
         # print('{} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
-        #                                            brand_name, sos_value * 100))
+        #                                            brand_name, sos_value))
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3005, numerator_id=brand_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=manufacturer_id, denominator_result=denominator_result,
-                                          score=sos_value, score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.BRAND)
+        self.common.write_to_db_result(kpi_fk, numerator_id=brand_id, numerator_result=numerator_result,
+                                       result=sos_value,
+                                       denominator_id=manufacturer_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for product_name in product_name_list:
             self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name, product_name,
@@ -307,24 +265,21 @@ class SOVIToolBox:
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
 
-        self.pseudo_pk = self.pseudo_pk + 1
+        self.pseudo_pk += 1
         # own_pk = self.pseudo_pk
-
-        self.common_v2.write_to_db_result(3006, numerator_id=product_id, numerator_result=numerator_result,
-                                          result=sos_value,
-                                          denominator_id=brand_id, denominator_result=denominator_result,
-                                          score=sos_value, score_after_actions=sos_value,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None,
-                                          identifier_parent=parent_pk, should_enter=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.PRODUCT)
+        self.common.write_to_db_result(kpi_fk, numerator_id=product_id, numerator_result=numerator_result,
+                                       result=sos_value,
+                                       denominator_id=brand_id, denominator_result=denominator_result,
+                                       identifier_parent=parent_pk, should_enter=True)
 
         # print('{} - {} - {} - {} - {} - {}: {}%'.format(template_group, att4, category, manufacturer_name,
-        #                                                 brand_name, product_name.encode('utf-8'), sos_value * 100))
+        #                                                 brand_name, product_name.encode('utf-8'), sos_value))
 
     def sanitize_scif(self):
         excluded_types = ['Empty', 'Irrelevant']
         self.scif = self.scif[~(self.scif['product_type'].isin(excluded_types)) &
-                              ~(self.scif['brand_name'].isin(EXCLUDED_BRANDS)) &
+                              ~(self.scif['brand_name'].isin(Const.EXCLUDED_BRANDS)) &
                               (self.scif['facings'] != 0)]
 
     @staticmethod
