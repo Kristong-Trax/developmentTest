@@ -19,9 +19,10 @@ PROJECT_FOLDER = 'Projects'
 
 ROLLBACK_SUFFIX = '_rollback'
 TRAX_ACE_LIVE = 'trax_ace_live'
-STORAGE_BUCKET = ['trax-k-engine-scripts']
+STORAGE_BUCKET = 'trax-k-engine-scripts'
 STORAGE_PATH = 'trax_ace_live_latest'
 TAR_FILE_NAME = 'latest.tar.gz'
+CLOUDS = 'AWS', 'GCP'
 
 
 class ProjectDeployment(object):
@@ -121,9 +122,11 @@ class ProjectDeployment(object):
             if update_version:
                 ProjectDeployment.update_version_file(live_folder, tag)
             tar_file_stream = ProjectDeployment.make_tarfile(live_folder)
-            for bucket in STORAGE_BUCKET:
-                print 'bucket name', bucket
-                storage_connector = StorageFactory.get_connector(mybucket=bucket, region='us-east-1')
+            # iterate through aes and gcp clouds to deploy in both of them
+            for cloud in CLOUDS:
+                print 'bucket name', STORAGE_BUCKET, 'cloud to store', cloud
+                storage_connector = StorageFactory.get_connector(mybucket=STORAGE_BUCKET, region='us-east-1',
+                                                                 cloud=cloud)
                 DeploymentUtils.save_file_stream(storage_connector, STORAGE_PATH, TAR_FILE_NAME, tar_file_stream)
         except Exception as e:
             print e
