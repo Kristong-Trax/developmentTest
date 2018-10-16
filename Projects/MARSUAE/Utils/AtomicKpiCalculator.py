@@ -74,44 +74,45 @@ class AvailabilityBaseCalculation(KpiBaseCalculation):
     def kpi_type(self):
         pass
 
-    def calculate_availability(self, params):
+    def calculate_availability(self, params, attribute_type):
         result = 0
         target = params['minimum products']
-        filters = {'template_name': params.iloc[0]['scene type'].split(',')}
-        matches = self._data_provider.matches()
-        matches = matches[self._toolbox.get_filter_condition(matches, filters)]
-        if matches >= target:
-            result = 100
-        result *= params['Points']
+        filters = {attribute_type: params.iloc[0]['scene type'].split(',')}
+        scif = self._data_provider.scene_item_facts
+        scif = scif[self._toolbox.get_filter_condition(scif, **filters)]
+        if not scif.empty:
+            if sum(scif.facings) >= target:
+                result = 100
+            result *= params['Points']
 
-        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
-                                        numerator_id=999, numerator_result=matches,
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
+                                        numerator_id=999, numerator_result=scif,
                                         denominator_id=999, denominator_result=None,
-                                        target=target)]
+                                        target=target)
 
 
 class AvailabilityHangingStripCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'Availbility hanging strip'
+        return 'Availability hanging strip'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params)
+        return self.calculate_availability(params=params, attribute_type='template_name')
 
 
 class AvailabilityBasketCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'Availbility basket'
+        return 'Availability basket'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params)
+        return self.calculate_availability(params=params, attribute_type='product_type')
 
 
 class AvailabilityMultipackCalculation(AvailabilityBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'Availbility multipack'
+        return 'Availability multipack'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params)
+        return self.calculate_availability(params=params, attribute_type='package')
