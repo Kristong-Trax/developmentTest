@@ -4,7 +4,9 @@
 import pandas as pd
 import os
 import json
+import numpy as np
 
+from pandas.io.json import json_normalize
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -90,8 +92,30 @@ class INBEVMXToolBox:
 
     def calculate_oos_target(self):
         all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
-        json_policies = self.oos_policies['policy'].apply(lambda line: json.loads(line))
+        json_policies = self.oos_policies.copy()
+        json_policies[Const.POLICY] = self.oos_policies[Const.POLICY].apply(lambda line: json.loads(line))
+        diff_policies = json_policies[Const.POLICY].drop_duplicates().reset_index()
+        diff_table = json_normalize(diff_policies[Const.POLICY].tolist())
 
+        # remove all lists from df
+        diff_table = diff_table.applymap(lambda x: x[0] if isinstance(x, list) else x)
+        for col in diff_table.columns:
+            att = all_data.iloc[0][col]
+            if att is None:
+                return
+            diff_table = diff_table[diff_table[col] == att]
+            all_data = all_data[all_data[col] == att]
+        if len(diff_table) > 1:
+            Log.warning ("There is more than one possible match")
+            return
+        if diff_table.empty:
+            return
+        selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
+        json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
+        products_to_check = json_policies['product_fk'].tolist()
+        existing_products = all_data[(all_data['product_fk'].isin(products_to_check)) & (all_data['facings'] > 0)]
+        result = len(existing_products) / len(products_to_check)
+        return result
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
