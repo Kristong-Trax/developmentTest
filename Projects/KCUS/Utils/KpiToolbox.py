@@ -11,9 +11,9 @@ from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-from Projects.KCUS_SAND.KCUS_SANDFetcher import KCUS_SANDFetcher
-from Projects.KCUS_SAND.Utils.KCUS_SAND_GENERAL_TOOLBOX import KCUS_SANDGENERALToolBox
-from Projects.KCUS_SAND.Utils.ParseTemplates import parse_template
+from Projects.KCUS.KCUSFetcher import KCUSFetcher
+from Projects.KCUS.Utils.KCUS_GENERAL_TOOLBOX import KCUSGENERALToolBox
+from Projects.KCUS.Utils.ParseTemplates import parse_template
 
 __author__ = 'nicolaskeeton'
 
@@ -68,7 +68,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class KCUS_SAND_KPIToolBox:
+class KCUS_KPIToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -100,10 +100,10 @@ class KCUS_SAND_KPIToolBox:
         for title in TITLE:
             if title in (self.scif.columns.unique().tolist()):
                 self.scif = self.scif.rename(columns={title: TITLE.get(title)})
-        # self.generaltoolbox = KCUS_SANDGENERALToolBox(data_provider, output, geometric_kpi_flag=True)
+        # self.generaltoolbox = KCUSGENERALToolBox(data_provider, output, geometric_kpi_flag=True)
         # self.scif = self.scif.replace(' ', '', regex=True)
         self.set_name = set_name
-        self.kpi_fetcher = KCUS_SANDFetcher(self.project_name, self.scif, self.match_product_in_scene,
+        self.kpi_fetcher = KCUSFetcher(self.project_name, self.scif, self.match_product_in_scene,
                                             self.set_name, self.products, self.session_uid)
         self.all_template_data = parse_template(TEMPLATE_PATH, "Simple KPI's")
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
@@ -124,7 +124,6 @@ class KCUS_SAND_KPIToolBox:
         self.max_shelf_of_bay = []
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-        self.all_new_products = self.get_static_new_products()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -177,17 +176,17 @@ class KCUS_SAND_KPIToolBox:
 
 
         if kpi_template['Value1']:
-            values_to_check = self.all_new_products.loc[self.all_new_products['category'] == kpi_template['Value1']]['category'].unique().tolist()
+            values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']]['category'].unique().tolist()
 
         if kpi_template['Value2']:
             if kpi_template['Value2'] == 'Feminine Needs':
                 sub_category_att = 'FEM NEEDS'
-                secondary_values_to_check = self.all_new_products.loc[self.all_new_products['category'] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
             elif kpi_template['Value2'] == 'Feminine Hygiene':
                 sub_category_att = 'FEM HYGINE'
-                secondary_values_to_check = self.all_new_products.loc[self.all_new_products['category'] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
 
@@ -333,13 +332,13 @@ class KCUS_SAND_KPIToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = KCUS_SANDFetcher.get_all_kpi_data()
+        query = KCUSFetcher.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
 
     def get_static_new_products(self):
-        query = KCUS_SANDFetcher.get_static_new_products()
+        query = KCUSFetcher.get_static_new_products()
         kpi_products_new_table = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_products_new_table
 
@@ -429,7 +428,7 @@ class KCUS_SAND_KPIToolBox:
         """
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
-        delete_queries = KCUS_SANDFetcher.get_delete_session_results_query(self.session_uid)
+        delete_queries = KCUSFetcher.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
@@ -463,7 +462,7 @@ class KCUS_SAND_KPIToolBox:
             for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index + 10 ** 4])))
-        # merged_queries.extend(other_queries)
+
         return merged_queries
 
 

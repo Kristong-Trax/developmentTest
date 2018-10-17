@@ -124,7 +124,6 @@ class KCUS_SAND_KPIToolBox:
         self.max_shelf_of_bay = []
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-        self.all_new_products = self.get_static_new_products()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -172,32 +171,22 @@ class KCUS_SAND_KPIToolBox:
         kpi_template = kpi_template.iloc[0]
         values_to_check = []
         secondary_values_to_check = []
-        # exclude_pl_wo_pg_category = False
+
         filters = {'template_name': scene_types, 'category': kpi_template['Value1']}
-        # filters = {'template_name': kpi_template['Value1'], 'category': kpi_template['Value1']}
-
-        if kpi_template['Value1'] == 'ADULT INCONTINENCE PROTECTION':
-            category_att = 'category'
-        elif kpi_template['Value1'] == 'FEM CARE':
-            category_att = 'category'
-
-        elif kpi_template['Value1'] == 'Feminine Hygiene':
-            category_att = 'category'
-            sub_category_att = ''
 
 
         if kpi_template['Value1']:
-            values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][category_att].unique().tolist()
+            values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']]['category'].unique().tolist()
 
         if kpi_template['Value2']:
             if kpi_template['Value2'] == 'Feminine Needs':
                 sub_category_att = 'FEM NEEDS'
-                secondary_values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
             elif kpi_template['Value2'] == 'Feminine Hygiene':
                 sub_category_att = 'FEM HYGINE'
-                secondary_values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
 
@@ -208,17 +197,10 @@ class KCUS_SAND_KPIToolBox:
                 for secondary_filter in secondary_values_to_check:
                     if secondary_filter == None:
                         continue
-                    # if self.all_products[(self.all_products[category_att] == primary_filter) &
-                    #                      (self.all_products[
-                    #                           sub_category_att] == secondary_filter)].empty or secondary_filter is None:
-                    #     continue
+
                     filters['template_name'] = secondary_filter
                     new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                    # if kpi_template['category'] in FABRICARE_CATEGORIES:
-                    #     exclude_pl_wo_pg_category = True
-                    #     filters[PG_CATEGORY] = kpi_template['category']
-                    #     if 'category' in filters.keys():
-                    #         del filters['category']
+
                     result = self.calculate_category_space_length(new_kpi_name,
                                                                  **filters)
                     filters['category'] = kpi_template['KPI Level 2 Name']
@@ -227,21 +209,19 @@ class KCUS_SAND_KPIToolBox:
                     self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-                # if kpi_template['category'] in FABRICARE_CATEGORIES:
-                #     exclude_pl_wo_pg_category = True
-                #     filters[PG_CATEGORY] = kpi_template['category']
-                #     del filters['category']
+
+
                 result = self.calculate_category_space_length(new_kpi_name,
                                                              **filters)
                 filters['Category'] = kpi_template['KPI Level 2 Name']
                 score = result * self.MM_TO_FEET_CONVERSION
-                # score = result
+
                 self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
 
 
 
 
-    def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
+    def calculate_category_space_length(self, kpi_name, threshold=0.5,  **filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -263,11 +243,10 @@ class KCUS_SAND_KPIToolBox:
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
-                    # if exclude_pl:
-                    #     tested_group_linear = tested_group_linear.loc[
-                    #         (tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
+
                     tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
-                    # tested_group_linear = self.calculate_share_space_length(**scene_filters)
+
+
                     if tested_group_linear_value:
                         bay_ratio = bay_total_linear / float(tested_group_linear_value)
                     else:
@@ -407,10 +386,7 @@ class KCUS_SAND_KPIToolBox:
         if level == self.LEVEL1:
             kpi_set_name = \
                 self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-            #                             format(result, '.2f'), score_type, fk)],
-            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-            #                                    'score_2', 'kpi_set_fk'])
+
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         result, kpi_set_fk,)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
@@ -486,7 +462,7 @@ class KCUS_SAND_KPIToolBox:
             for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
                 merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
                                                                                 [group_index:group_index + 10 ** 4])))
-        # merged_queries.extend(other_queries)
+
         return merged_queries
 
 

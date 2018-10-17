@@ -351,65 +351,9 @@ class KCUSFetcher:
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
-    def get_static_new_products(self):
-        query = """
-                 SELECT * from
-            static_new.product """
-        df = pd.read_sql_query(query, self.rds_conn.db)
-        return df
 
-    # def get_golden_shelves(self, shelves_num):
-    #     jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-    #     jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
-    #     targets = jg.project_kpi_dict['golden_shelves']
-    #     final_shelves = []
-    #     for row in targets:
-    #         if row.get('num. of shelves min') <= shelves_num <= row.get('num. of shelves max'):
-    #             start_shelf = row.get('num. ignored from top') + 1
-    #             end_shelf = shelves_num - row.get('num. ignored from bottom')
-    #             final_shelves = range(start_shelf, end_shelf + 1)
-    #         else:
-    #             continue
-    #     return final_shelves
-    #
-    # def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
-    #     jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-    #     jg.create_targets_json('answers_translation.xlsx', 'survey_answers_translation')
-    #     targets = jg.project_kpi_dict['survey_answers_translation']
-    #     answers_list = []
-    #     for row in targets:
-    #         if row.get('question code') == int(survey_question_code) and row.get('answer text') in survey_answers_text:
-    #             answer_translation = row.get('answer translation')
-    #             answers_list.append(answer_translation)
-    #         else:
-    #             continue
-    #     final_answers = ','.join([str(result_value) for result_value in answers_list])
-    #
-    #     return final_answers
-    #
-    # def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name):
-    #     jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-    #     jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
-    #     targets = jg.project_kpi_dict['must_range_skus']
-    #     skus_list = []
-    #     if store_type and region:  # Validation check
-    #         for row in targets:
-    #             store_types = str(row.get('Store type').encode('utf-8')).split(',\n')
-    #             try:
-    #                 regions = str(row.get('Region').encode('utf-8')).split(',\n')
-    #             except AttributeError as e:
-    #                 regions = None
-    #             if regions:
-    #                 if store_type.encode('utf-8') in store_types and region.encode('utf-8') in regions:
-    #                     skus_list = str(row.get('EAN')).split(',\n')
-    #                 else:
-    #                     continue
-    #             else:
-    #                 if store_type.encode('utf-8') in store_types:
-    #                     skus_list = str(row.get('EAN')).split(', ')
-    #                 else:
-    #                     continue
-    #     return skus_list
+
+
 
     def get_filtered_matches(self, include_stacking=True):
         matches = self.matches
