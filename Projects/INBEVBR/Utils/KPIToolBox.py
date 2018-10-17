@@ -48,6 +48,8 @@ class INBEVBRToolBox:
         self.tools = INBEVBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_fk = self.store_info['store_fk'].values[0]
+
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -163,8 +165,9 @@ class INBEVBRToolBox:
 
         self.parent_kpis[parent_kpi] += count_result
 
-        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, identifier_parent=parent_kpi,
-                                   numerator_result=numerator_number_of_facings, denominator_id=3, should_enter=True,
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                   numerator_result=numerator_number_of_facings, denominator_id = self.store_fk,
+                                   denominator_result_after_actions = 3,should_enter=True,
                                    denominator_result=denominator_number_of_total_facings, result=count_result)
 
     def handle_sos_packs_atomics(self,atomic_id, atomic_name, parent_kpi):
@@ -234,17 +237,20 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, denominator_id=3,
-                               numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
-                               denominator_result=number_of_not_valid_scenes, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                denominator_result_after_actions=3,
+                                numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                denominator_result=number_of_not_valid_scenes, result=count_result, should_enter=True)
         elif result_type == 2:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                               numerator_result=count_of_total_facings, identifier_parent=parent_kpi,
-                               denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                numerator_result=count_of_total_facings, identifier_parent=parent_kpi,
+                                denominator_result_after_actions=2,
+                                denominator_result=0, result=count_result, should_enter=True)
         elif result_type == 3:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                               numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
-                               denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                denominator_result_after_actions=2,
+                                denominator_result=0, result=count_result, should_enter=True)
 
     def handle_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
@@ -284,13 +290,15 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=0, denominator_id=1, identifier_parent=parent_kpi,
-                                           denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1,
+                                            numerator_result=0, denominator_id=self.store_fk, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=count_result, should_enter=True)
         elif result_type == 2:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, identifier_parent=parent_kpi,
-                                           numerator_result=number_of_facings, denominator_id=2,
-                                           denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                            numerator_result=number_of_facings, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
@@ -334,13 +342,15 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                           numerator_result=total_facings_number, identifier_parent=parent_kpi,
-                                           denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                            numerator_result=total_facings_number, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
         elif count_result == 2:
-            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                           numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
-                                           denominator_result=0, result=count_result, should_enter=True)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                            numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
 
 
 
@@ -524,9 +534,10 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += result
 
 
-        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, identifier_parent=parent_kpi,
-                                           numerator_result=numerator_shelfs, denominator_id=1, should_enter=True,
-                                           denominator_result=denominator_shelfs, result=result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                        denominator_result_after_actions=1,
+                                        numerator_result=numerator_shelfs, denominator_id=self.store_fk,
+                                        should_enter=True, denominator_result=denominator_shelfs, result=result)
 
     def check_order_prod_seq(self, list_df, filtered_rows, num_of_products):
         shelf_fail = False
@@ -618,9 +629,10 @@ class INBEVBRToolBox:
 
         self.parent_kpis[parent_kpi] += count_result
 
-        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, identifier_parent=parent_kpi,
-                                           numerator_result=numerator_shelfs, denominator_id=1, should_enter=True,
-                                           denominator_result=denominator_shelfs, result=count_result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                          denominator_result_after_actions=1,
+                                          numerator_result=numerator_shelfs, denominator_id=self.store_fk,
+                                          should_enter=True, denominator_result=denominator_shelfs, result=count_result)
 
     def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
         result = False
@@ -716,18 +728,21 @@ class INBEVBRToolBox:
 
         self.parent_kpis[parent_kpi] += total_weight
 
-
-        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, identifier_parent=parent_kpi,
-                                           numerator_result=total_facings, denominator_id=2, should_enter=True,
-                                           denominator_result=limit, result=total_weight)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                        numerator_result=total_facings, denominator_id=self.store_fk,
+                                        denominator_result_after_actions=2,
+                                        should_enter=True, denominator_result=limit, result=total_weight)
 
     def write_parent_kpis_results(self):
-        self.common_db.write_to_db_result(fk=1, numerator_id=self.session_id, identifier_result=Const.CERVEJA,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.CERVEJA])
-        self.common_db.write_to_db_result(fk=2, numerator_id=self.session_id, identifier_result=Const.GAME_PLAN,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.GAME_PLAN])
-        self.common_db.write_to_db_result(fk=3, numerator_id=self.session_id, identifier_result=Const.NAB,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.NAB])
+        self.common_db.write_to_db_result(fk=1, numerator_id=1, identifier_result=Const.CERVEJA,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.CERVEJA])
+        self.common_db.write_to_db_result(fk=2, numerator_id=1, identifier_result=Const.GAME_PLAN,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.GAME_PLAN])
+        self.common_db.write_to_db_result(fk=3, numerator_id=1, identifier_result=Const.NAB,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.NAB])
