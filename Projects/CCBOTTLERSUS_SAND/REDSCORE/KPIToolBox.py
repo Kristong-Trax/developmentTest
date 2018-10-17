@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
-from KPIUtils_v2.DB.Common import Common as Common
+from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.FunctionsToolBox import FunctionsToolBox
 
@@ -353,6 +353,16 @@ class REDToolBox:
         pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
         return pk
 
+    @staticmethod
+    def get_0_1_of_result(result):
+        """
+        converts string result to its pk (in static.kpi_result_value)
+        :param result: str
+        :return: int
+        """
+        pk = 0 if result == Const.FAIL else 1
+        return pk
+
     def write_to_db(self, kpi_name, score, display_text='', result_value=Const.FAIL):
         """
         writes result in the DB
@@ -377,11 +387,12 @@ class REDToolBox:
             integ_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
             display_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(display_text)
             if display_kpi_fk is None:
-                display_kpi_fk = integ_kpi_fk
+                display_kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(display_text[:100])
             result = self.get_pks_of_result(result_value)
             self.common_db2.write_to_db_result(
                 fk=display_kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
                 should_enter=True, result=result)
+            result = self.get_0_1_of_result(result_value)
             self.common_db2.write_to_db_result(
                 fk=integ_kpi_fk, score=score, should_enter=True, result=result,
                 identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))

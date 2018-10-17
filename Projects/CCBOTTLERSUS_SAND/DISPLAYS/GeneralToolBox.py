@@ -11,7 +11,7 @@ from Projects.CCBOTTLERSUS_SAND.DISPLAYS.PositionGraph import CCBOTTLERSUS_SANDD
 __author__ = 'Nimrod'
 
 
-class CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox:
+class GENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
