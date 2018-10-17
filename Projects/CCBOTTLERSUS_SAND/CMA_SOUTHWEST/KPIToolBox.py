@@ -13,6 +13,8 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
+from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.CommonV3 import Common as CommonV3
+
 
 
 
@@ -41,6 +43,11 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
     def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
+        # self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
+        # self.common_db2 = common_db2
+        self.common_db2 = CommonV3(self.data_provider)
+        self.common_scene = CommonV2(self.data_provider)
+
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.manufacturer_fk = 1
@@ -57,10 +64,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.sw_scenes = self.get_sw_scenes() # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
+        self.results = self.data_provider[Data.SCENE_KPI_RESULTS]
         self.templates = {}
-        # self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
-        self.common_db2 = common_db2
-        self.common_scene = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -92,6 +97,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)
                 if store_type is None or self.store_type in store_type:
                     self.calculate_main_kpi(main_line)
+            self.write_scene_parent()
             self.write_sub_parents()
             self.write_parent()
             # self.write_to_db_result(
@@ -466,6 +472,43 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             return score, None, None
         else:
             return number_of_shelves_score, None, None
+
+    def write_scene_parent(self):
+        self.results['parent_kpi'] = [int(Const.SCENE_SESSION_KPI[kpi]) if kpi in Const.SCENE_SESSION_KPI else None
+                                      for kpi in self.results['kpi_level_2_fk']]
+        self.results = self.results[~self.results['parent_kpi'].isnull()]
+        for i, parent_kpi in enumerate(set(self.results['parent_kpi'])):
+            kpi_res = self.results[self.results['parent_kpi'] == parent_kpi]
+            num, den, score = self.aggregate(kpi_res, parent_kpi)
+
+            if den:
+                ratio = round((float(num) / den)*100, 2)
+            else:
+                ratio = 0
+
+            self.common_db2.write_to_db_result(fk=parent_kpi, numerator_result=num,
+                                           numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                           denominator_result=den, result=ratio, score=score, target=den)
+
+            self.write_hierarchy(kpi_res, i)
+
+    def write_hierarchy(self, kpi_res, i):
+        for j, kpi_line in kpi_res.iterrows():
+            kpi_fk = kpi_line['scene_kpi_fk']
+            self.common_db2.write_to_db_result(0, parent_fk=i, scene_result_fk=kpi_fk, should_enter=True,
+                                               hierarchy_only=1)
+
+    def aggregate(self, kpi_res, parent_kpi):
+        if Const.BEHAVIOR[parent_kpi] == 'PASS':
+            num = kpi_res['score'].sum()
+            den = kpi_res['parent_kpi'].count()
+
+        else:
+            num = kpi_res['numerator_result'].sum()
+            den = kpi_res['denominator_result'].sum()
+
+        score = kpi_res['score'].sum()
+        return num, den, score
 
     # Number of shelves
     def old_calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
@@ -961,7 +1004,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         pass
         # self.common_db.delete_results_data_by_kpi_set()
         # self.common_db.commit_results_data_without_delete()
-        # self.common_db2.commit_results_data()
+        self.common_db2.commit_results_data()
         # if self.common_db_integ:
         #     self.common_db_integ.delete_results_data_by_kpi_set()
         #     self.common_db_integ.commit_results_data_without_delete()

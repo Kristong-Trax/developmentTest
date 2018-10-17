@@ -139,3 +139,22 @@ class Const(object):
     NO_PRESSURE = ['# of Shelves Bonus']
     ALL_SCENE_KPIS = ['Impulse Zone Cooler']
 
+    SCENE_SESSION_KPI = {
+                            2160: 3045,
+                            3048: 3045,
+                            3022: 3047,
+                            3023: 3047,
+                            3024: 3047,
+                            3025: 3047,
+                            3026: 3047,
+                            3027: 3047,
+                            3028: 3047,
+                            3029: 3047,
+                            3030: 3047,
+                            3031: 3047,
+                        }
+    BEHAVIOR = {
+                3045: 'SUM',
+                3047: 'PASS'
+                }
+

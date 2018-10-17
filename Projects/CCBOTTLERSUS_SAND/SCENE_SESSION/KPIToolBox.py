@@ -86,7 +86,7 @@ class SceneSessionToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         self.write_scene_parent()
-        self.granpappy_path()
+        # self.granpappy_path()
         self.commit_results(scene_session=True)
 
         # self.write_pappies
@@ -109,9 +109,9 @@ class SceneSessionToolBox:
                     'target': den}
             self.parent_frame = self.parent_frame.append(line, ignore_index=True)
 
-            # self.common.write_to_db_result(fk=parent_kpi, numerator_result=num,
-            #                                    numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-            #                                    denominator_result=den, result=ratio, score=score, target=den)
+            self.common.write_to_db_result(fk=parent_kpi, numerator_result=num,
+                                               numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                               denominator_result=den, result=ratio, score=score, target=den)
 
             self.write_hierarchy(kpi_res, i, parent_kpi)
 
