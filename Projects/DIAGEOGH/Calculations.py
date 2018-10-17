@@ -20,13 +20,13 @@ class DIAGEOESCalculations(BaseCalculationsScript):
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
-if __name__ == '__main__':
-    LoggerInitializer.init('diageogh calculations')
-    Config.init()
-    project_name = 'diageogh'
-    data_provider = KEngineDataProvider(project_name)
-    session = '758342b9-b1c0-11e8-89ec-123f9426d8f6'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOESCalculations(data_provider, output).run_project_calculations()
+#
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageogh calculations')
+#     Config.init()
+#     project_name = 'diageogh'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '758342b9-b1c0-11e8-89ec-123f9426d8f6'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOESCalculations(data_provider, output).run_project_calculations()

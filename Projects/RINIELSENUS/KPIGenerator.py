@@ -18,7 +18,6 @@ class MarsUsGenerator:
         self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
         # self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
 
-
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
@@ -36,4 +35,3 @@ class MarsUsGenerator:
         #     self.purina_tool_box.calculate_purina()
         # except:
         #     Log.error('Purina kpis not calculated')
-

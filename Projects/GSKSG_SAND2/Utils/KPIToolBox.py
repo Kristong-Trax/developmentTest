@@ -5,8 +5,8 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
-import  numpy as np
-from KPIUtils_v2.DB.Common import Common
+import numpy as np
+from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -29,19 +29,21 @@ template_kpi_type = 'type of condition'
 GENERAL_COLS = ['template_name']
 EXCLUDE = 0
 SURVEY_QUEST = 'Survey Question Text'
-
+#####################
+MSL = 'MSL List'
 #####################
 STORE_LVL_1 = 'store_type'
 STORE_LVL_2 = 'retailer_name'
 STORE_LVL_3 = 'additional_attribute_1'
 ######################
-SURVEY_SHEET ='Survey'
+SURVEY_SHEET = 'Survey'
 ######################
 KPI_NAME_INDEX = 0
 KPI_WEIGHT = 2
 CONDITION_WEIGHT = 3
 ######################
 
+TBD = 'tbd'
 
 class GSKSGToolBox:
     LEVEL1 = 1
@@ -72,14 +74,14 @@ class GSKSGToolBox:
         self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
         self.msl_list = pd.read_excel(self.excel_file_path,
                    header=[[0, 1, 2]],
-                   sheetname='MSL-test').dropna()
+                   sheetname=MSL).dropna()
 
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
                              'presence': self.calculate_presence, 'facings': self.calculate_facings,
                              'No facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
         self.sequence = Sequence(data_provider, ignore_stacking=True)
         self.availability = Availability(data_provider, ignore_stacking=True)
-        self.sos = SOS(data_provider,self.output)
+        self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         # self.survey_data = self.data_provider.survey_responses
 
@@ -93,17 +95,35 @@ class GSKSGToolBox:
         score = 0
         return score
 
+    def is_template_relevant(self, template_names):
+        """
+
+        :param template_names: a string of template names seperated by ','
+        :return:
+        """
+        in_session = set(self.scif['template_name'])
+        in_template = set([val.strip(' \n') for val in str(template_names).split(',')])
+        return 1 if (in_session & in_template) else 0
+
     def handle_calculation(self, kpis):
         # kpi_results = dict()
 
-        kpi_results = pd.DataFrame(columns=['1st level','2nd Level','3rd Level','KPI Weight','Weight',
-                                            'Score Method','Benchmark','Conditional Weight','result'])
+
+
+        kpi_results = pd.DataFrame(columns=['1st level', '2nd Level', '3rd Level','valid_template_name',
+                                            'KPI Weight', 'Weight',
+                                            'Score Method', 'Benchmark', 'Conditional Weight', 'result'])
 
 
         # for each level3:
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
-            result = self.calculate_atomic(current_kpi)
+
+            # check if relevant template name exists!!!!!!!!!!!!!!! =0 //1
+            is_template_valid = self.is_template_relevant(current_kpi['template_name'])
+
+            # will calculate only if there is at least ont template_name from template in session.
+            result = self.calculate_atomic(current_kpi) if is_template_valid else 0
             if result is None:
                 continue
 
@@ -115,61 +135,135 @@ class GSKSGToolBox:
                                               'Score Method': current_kpi['Score Method'],
                                               'Benchmark': current_kpi['Benchmark'],
                                               'Conditional Weight': current_kpi['Conditional Weight'],
-                                              'result': result}, ignore_index=True)
+                                              'result': result, 'valid_template_name': is_template_valid},
+                                             ignore_index=True)
+
+        kpi_results['Conditional Weight'] = kpi_results['Conditional Weight'].fillna(-1)
 
         aggs_res = kpi_results.groupby(['1st level', '2nd Level', '3rd Level', 'KPI Weight', 'Weight', 'Score Method',
-                                        'Benchmark', 'Conditional Weight'], as_index=False)['result'].sum()
+                     'Benchmark', 'Conditional Weight'], as_index=False)[['result', 'valid_template_name']].sum()
+
+        # if not && condinal weight is NA MSL conditional weight + this KPI weight
+
 
         ## write to db
+        # ## asking if themplate isnt valid to write to db
+        for i in xrange(len(aggs_res)):
+            result = aggs_res.iloc[i]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['3rd Level'])
+
+            identifier_child_fk = self.common.get_dictionary(
+                kpi_fk=kpi_fk,
+                kpi_level2=self.common.get_kpi_fk_by_kpi_type(result['2nd Level']),
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
+            identifier_parent_fk = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result['2nd Level']),
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
+
+            #numerator /  denominator understnad
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['result'],
+                                           denominator_id=TBD,
+                                           identifier_result=identifier_child_fk,
+                                           identifier_parent=identifier_parent_fk,
+                                           target=TBD, should_enter=True)
 
         ## if method binary change result to 100/0
-        aggs_res.loc[(aggs_res['Score Method'] =='Binary')&
+        aggs_res.loc[(aggs_res['Score Method'] == 'Binary')&
                      (aggs_res['result'] >= aggs_res['Benchmark']), 'result_bin'] = 100
         aggs_res.loc[
             (aggs_res['Score Method'] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
+
+        aggs_res.loc[
+            (aggs_res['Benchmark'] == 'Pass'), 'result_bin'] = aggs_res['result']
+
         aggs_res['result_bin'] = np.where(aggs_res['Score Method'] == 'Proportional', aggs_res['result'],
                                           aggs_res['result_bin'])
         aggs_res['result_bin'] = aggs_res['result_bin']*(aggs_res['Weight']/100)
 
+        aggs_res['valid_template_name'] = aggs_res['valid_template_name'].astype(float)
+
+        # aggregating atomic results to kpi level
         aggs_res_level_2 = aggs_res.groupby(
-            ['1st level', '2nd Level' 'KPI Weight', 'Conditional Weight'], as_index=False)['result_level_2'].sum()
+            ['1st level', '2nd Level', 'KPI Weight', 'Conditional Weight'], as_index=False).agg(
+            {'valid_template_name': 'max',  'result_bin': np.sum})
+
+        # takes conditional weight for irrelevnat kpis that has it.
+        aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
+                     (aggs_res_level_2['Conditional Weight'] != -1), 'result_bin'] = aggs_res_level_2['Conditional Weight']
+
+
+
+        sets = aggs_res_level_2['1st level'].unique()
+
+        # The kpis to 'take weight' from for the MSL.
+        invalid_templates = aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
+                                        (aggs_res_level_2['Conditional Weight'] == -1) &
+                                        (aggs_res_level_2['2nd Level'] != 'MSL')]
+
+        invalid_templates = invalid_templates.groupby(['1st level'], as_index=False)[['KPI Weight']].sum()
+        invalid_templates = invalid_templates.rename(columns={'KPI Weight': 'PLUS_WEIGHT'})
+        invalid_templates['2nd Level'] = 'MSL'
+        aggs_res_level_2 = aggs_res_level_2.merge(invalid_templates, on=['1st level', '2nd Level'], how='left')
+
+        aggs_res_level_2 = aggs_res_level_2.loc[~(aggs_res_level_2['valid_template_name'] == 0) |
+                                                ~(aggs_res_level_2['Conditional Weight'] == -1)]
+
+        aggs_res_level_2['PLUS_WEIGHT'] = aggs_res_level_2['PLUS_WEIGHT'].fillna(0)
+        aggs_res_level_2['KPI Weight'] += aggs_res_level_2['PLUS_WEIGHT']
+
+        aggs_res_level_2.loc[aggs_res_level_2['valid_template_name'] == 0, 'result_bin'] = 1
+
+        aggs_res_level_2['total_result'] =  aggs_res_level_2['KPI Weight'] * aggs_res_level_2['result_bin']
 
         ## write to db level 2 kpis
 
+        for i in xrange(len(aggs_res_level_2)):
+            result = aggs_res_level_2.iloc[i]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['2nd Level'])
+
+            identifier_child_fk = self.common.get_dictionary(
+                kpi_fk=kpi_fk,
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
+            identifier_parent_fk = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
+
+            # numerator /  denominator understnad
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
+                                           denominator_id=TBD,
+                                           identifier_result=identifier_child_fk,
+                                           identifier_parent=identifier_parent_fk,
+                                           target=TBD, should_enter=True)
+
+        # fixind data for 1st level
+
+
+
+        # aggregating to level 3:
+        aggs_res_level_1 = aggs_res_level_2.groupby(
+            ['1st level'], as_index=False)['total_result'].sum()
+
+        # write to db
+
+        for i in xrange(len(aggs_res_level_1)):
+            result = aggs_res_level_1.iloc[i]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['1st level'])
+
+            identifier_child_fk = self.common.get_dictionary(
+                kpi_fk=kpi_fk)
+
+            # numerator /  denominator understnad
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
+                                           denominator_id=TBD,
+                                           identifier_result=identifier_child_fk,
+                                           target=TBD, should_enter=True)
 
 
 
 
-
-
-
-
-
-        #all caculation below for main kpis
-            # save result to db
-
-        #
-        #     if current_kpi['Score Method'] == 'Proportional':
-        #         kpi_results[kpi_key] = result * current_kpi['Weight']
-        #     else:
-        #         result = 100 if(result >= current_kpi['Benchmark']) else 0
-        #         kpi_results[kpi_key] = result * current_kpi['Weight']
-        #
-        # final_kpi_score = dict()
-        # for kpi in kpi_results.keys():
-        #     #write result to db level 2
-        #     if kpi[KPI_NAME_INDEX] not in final_kpi_score:
-        #         final_kpi_score[kpi[KPI_NAME_INDEX]] = 0
-        #     if kpi_results[kpi] >= kpi[CONDITION_WEIGHT]:
-        #         final_kpi_score[kpi[KPI_NAME_INDEX]] = kpi[KPI_WEIGHT] * kpi_results[kpi]
-
-    # #
-    #     for score in kpi_3_results.keys():
-    # #write ti db
 
 
     def get_relevant_calculations(self):
-        # Gets the store type name
+        # Gets the store type name and the relevant template according to it.
         store_type = self.store_info['store_type'].values[0].title()
 
         # Gets the relevant kpis from template
@@ -177,7 +271,7 @@ class GSKSGToolBox:
         return template
 
     def calculate_atomic(self, row):
-        # gets the atomic kpi's calculation type
+        # gets the atomic kpi's calculation type and run the relevant calculation according to it,
         kpi_type = row[template_kpi_type]
 
         # runs the relevant calculation
@@ -189,6 +283,7 @@ class GSKSGToolBox:
             return None
 
     def calculate_sos(self, row):
+        # Calculates the sos kpi according to the template.
         filters, general_filters = self.get_filters(row)
         return self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
 
@@ -215,13 +310,16 @@ class GSKSGToolBox:
 
         target = row['target'] if not pd.isnull(row['target']) else 0
 
-        # Gets relevant assortment
+        # Gets relevant assortment from template according to store attributes.
+        store_data = (self.store_type, self.store_info[STORE_LVL_2].values[0], self.store_info[STORE_LVL_3].values[0])
 
-        att1 = self.store_info[STORE_LVL_2].values[0]
-        att2 = self.store_info[STORE_LVL_3].values[0]
+        # if store attribute are not defined in template, fail the kpi.
+        if isinstance(self.msl_list.get(store_data, None), type(None)):
+            Log.info('Store attribute {} is not in template.'.format(store_data))
+            return 0
 
         # gets the assortment product's ean codes relevant for store
-        store_assortment = self.msl_list[self.store_type][att1][att2]
+        store_assortment = self.msl_list[store_data]
         store_assortment = store_assortment[store_assortment == 1]
         products = store_assortment.keys()
 
@@ -231,15 +329,15 @@ class GSKSGToolBox:
         exist_products = 0
         # Checks for each product if passed, if so, count it.
         for product in set(products):
-            kpi_filters['product_ean_code'] = product
+            kpi_filters['product_ean_code'] = str(product)
             res = self.availability.calculate_availability(**kpi_filters)
             if res:
                 exist_products += 1
+        #     write to 4h level?
 
-        if exist_products >= target:
-            return exist_products / total_products if total_products else 0
-        else:
-            return 0
+        res = float(exist_products) / total_products if total_products else 0
+        return res >= target
+
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
@@ -247,7 +345,15 @@ class GSKSGToolBox:
         # running sequence kpi, allowing empty spaces, not allowing Irrelevant.
         # assuming should pass in ALL relevant scenes.
         # If an entity in sequence is missing (less than 1 facing)- will fail.
-        result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
+
+        # assuming sequence organs are defined by only one filter!
+        if len(sequence_filter) == 1:
+            key = sequence_filter.keys()[0]
+            sequence_filter = (key, sequence_filter[key])
+            result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
+        else:
+            result = None
+            Log.info('More than 1 filter was applied for sequence organs- Not supported!')
         return result
 
 
@@ -348,8 +454,9 @@ class GSKSGToolBox:
             key = field[0]
             if key == 'product_type':
                 values = {'Irrelevant', 'Empty', 'POS', 'SKU', 'Other'} - set(map(str.strip, str(field[1]).split(',')))
+                exclude_dict[key] = list(values)
             else:
                 values = map(str.strip, str(field[1]).split(','))
-            exclude_dict[key] = (values, EXCLUDE) if exclude else values
+                exclude_dict[key] = (values, EXCLUDE) if exclude else values
 
         return exclude_dict
