@@ -451,6 +451,6 @@ class qa:
 if __name__ == "__main__":
     Config.init(app_name='ttt', default_env_and_cloud = ('prod','AWS'),
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbottlersus', start_date='2018-09-01', end_date='2018-09-10')
+    qa_tool = qa('ccbottlersus', start_date='2018-09-01', end_date='2018-09-15')
     qa_tool.run_all_tests()
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
