@@ -170,7 +170,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         if ratio >= target:
             score = 1
 
-        return num, den, ratio, None, target
+        return num, den, ratio, score, target
 
     @staticmethod
     def extrapolate_target(targets, c):

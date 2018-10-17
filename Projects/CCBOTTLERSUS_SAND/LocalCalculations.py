@@ -62,20 +62,28 @@ if __name__ == '__main__':
                 # 'f8dcaeaf-9129-4621-ae8a-6a131ce3b15e',
                 # 'e450ca7d-c90d-4164-bb60-1fc8f90d08e0',
                 ]
-    # for session in sessions:
-    #     data_provider = KEngineDataProvider(project_name)
-    #     data_provider.load_session_data(session)
-    #     scif = data_provider['scene_item_facts']
-    #     scenes = scif['scene_id'].unique().tolist()
-    #
-    #     for scene in scenes:
-    #         print('scene')
-    #         data_provider = KEngineDataProvider(project_name)
-    #         data_provider.load_scene_data(session, scene)
-    #         output = VanillaOutput()
-    #         SceneVanillaCalculations(data_provider, output).run_project_calculations()
-    #         save_scene_item_facts_to_data_provider(data_provider, output)
-    #         SceneCalculations(data_provider).calculate_kpis()
+
+    sessions = [
+                '6ce2258b-6a4a-4a85-ba18-6ead7cf1b772',
+    #             '1ECD1661-27E1-4324-AEDB-BC3CBF44CACB',
+    #             'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
+    #             '50820afd-91e4-4367-af3d-f82d37d76a7c',
+                ]
+
+    for session in sessions:
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        scif = data_provider['scene_item_facts']
+        scenes = scif['scene_id'].unique().tolist()
+
+        for scene in scenes:
+            print('scene')
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
 
 
 
@@ -107,18 +115,18 @@ if __name__ == '__main__':
     ]
 
     # sw ratio sessions
-    # sessions = [
-    #             '6ce2258b-6a4a-4a85-ba18-6ead7cf1b772',
+    sessions = [
+                '6ce2258b-6a4a-4a85-ba18-6ead7cf1b772',
     #             '1ECD1661-27E1-4324-AEDB-BC3CBF44CACB',
     #             'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
     #             '50820afd-91e4-4367-af3d-f82d37d76a7c',
-    #             ]
+                ]
     # # sw NTBA sessions
-    sessions = [
-                '8E0FCD9E-C20A-4A68-B24F-2037707C404B',
+    # sessions = [
+                # '8E0FCD9E-C20A-4A68-B24F-2037707C404B',
                 # 'f8dcaeaf-9129-4621-ae8a-6a131ce3b15e',
                 # 'e450ca7d-c90d-4164-bb60-1fc8f90d08e0',
-                ]
+                # ]
     # # sw Club Coke Chill Plus
     # sessions = [
                 # 'e5f82e5c-58ea-4af1-9701-ff38bb6e65c1',
@@ -170,11 +178,11 @@ if __name__ == '__main__':
     #     'c2b54ac8-f018-468f-8d2b-f00ab246c985'
     # ]
 
-    for session in sessions:
-        print('*************************************')
-        print('~~~~~~~{}~~~~~~~'.format(session))
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
-        output = Output()
-        CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
+    # for session in sessions:
+    #     print('*************************************')
+    #     print('~~~~~~~{}~~~~~~~'.format(session))
+    #     data_provider = KEngineDataProvider(project_name)
+    #     data_provider.load_session_data(session)
+    #     output = Output()
+    #     CCBOTTLERSUS_SANDCalculations(data_provider, output).run_project_calculations()
 
