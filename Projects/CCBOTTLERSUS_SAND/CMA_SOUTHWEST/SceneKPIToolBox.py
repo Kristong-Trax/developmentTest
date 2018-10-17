@@ -155,6 +155,23 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         # return score, passed, len(scenes)
         return facings, None, facings, score, target
 
+    def calculate_ratio(self, kpi_line, scif, general_filters):
+        sos_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        num_scif = scif[self.get_filter_condition(scif, **sos_filters)]
+        den_scif = scif[self.get_filter_condition(scif, **general_filters)]
+        score = 0
+        target = .8
+        if den_scif.empty:
+            return None, None, None
+
+        # sos_value = self.shared.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+        ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
+        if ratio >= target:
+            score = 1
+
+        return num, den, ratio, None, target
+
     @staticmethod
     def extrapolate_target(targets, c):
         while 1:
