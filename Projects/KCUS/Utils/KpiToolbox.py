@@ -337,10 +337,7 @@ class KCUS_KPIToolBox:
         return kpi_static_data
 
 
-    def get_static_new_products(self):
-        query = KCUSFetcher.get_static_new_products()
-        kpi_products_new_table = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_products_new_table
+
 
     def kpi_name_builder(self, kpi_name, **filters):
         """
