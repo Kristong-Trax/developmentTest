@@ -18,28 +18,32 @@ class GOOGLEGenerator:
     @log_runtime('Total Calculations', log_start=True)
     def google_global_SOS(self):
         try:
-            # Log.info('In KPI generator GOOGLE-SAND')
-            if self.tool_box.scif.empty:
-                Log.warning('Distribution is empty for this session')
             self.tool_box.google_global_SOS()
         except Exception as e:
             Log.error('{}'.format(e))
 
     def google_global_fixture_compliance(self):
         try:
-            # Log.info('In KPI generator GOOGLE-SAND')
-            if self.tool_box.scif.empty:
-                Log.warning('Distribution is empty for this session')
             self.tool_box.google_global_fixture_compliance()
         except Exception as e:
             Log.error('{}'.format(e))
 
     def google_global_survey(self):
         try:
-            # Log.info('In KPI generator GOOGLE-SAND')
-            if self.tool_box.scif.empty:
-                Log.warning('Distribution is empty for this session')
             self.tool_box.google_global_survey()
         except Exception as e:
             Log.error('{}'.format(e))
 
+    def visit_osa_and_pog(self):
+        try:
+            self.tool_box.get_visit_osa()
+            self.tool_box.get_planogram_visit_details()
+        except Exception as e:
+            Log.error('{}'.format(e))
+
+    def scene_osa_and_pog(self):
+        try:
+            self.tool_box.get_fixture_osa()
+            self.tool_box.get_planogram_fixture_details()
+        except Exception as e:
+            Log.error('{}'.format(e))
