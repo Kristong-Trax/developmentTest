@@ -531,6 +531,7 @@ class DIAGEOUSToolBox:
         :param index: for hierarchy
         :return: passed, product_fk, standard_type
         """
+
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         our_eans = str(competition[Const.OUR_EAN_CODE]).split(', ')
@@ -572,7 +573,7 @@ class DIAGEOUSToolBox:
             target = 0
         our_facings_df = self.calculate_shelf_facings_of_sku_per_scene(our_fks, relevant_scenes)
         if flag:
-            comparison_df = pd.merge(our_facings_df,comp_facings_df, on='template_name')
+            comparison_df = pd.merge(our_facings_df,comp_facings_df, how="left",on='template_name').fillna(0)
             comparison_result = comparison_df[(comparison_df['facings'] >= comparison_df['facings_comp']) &
                                                                                     (comparison_df['facings'] > 0)]
             comparison_len = len(comparison_result)
@@ -639,7 +640,7 @@ class DIAGEOUSToolBox:
         all_products_table = self.templates[Const.SHELF_PLACMENTS_SHEET]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in all_products_table.iterrows():
-            result = self.calculate_shelf_placement_of_sku_per_scene(product_line, relevant_scenes)
+            result = self.calculate_shelf_placement_of_sku(product_line, relevant_scenes)
             all_results = all_results.append(result, ignore_index=True)
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
@@ -657,7 +658,7 @@ class DIAGEOUSToolBox:
             shelves_groups[group[Const.NUMBER_GROUP]] = group[Const.SHELF_GROUP].split(', ')
         return shelves_groups
 
-    def calculate_shelf_placement_of_sku_per_scene(self, product_line, relevant_scenes):
+    def calculate_shelf_placement_of_sku(self, product_line, relevant_scenes):
         """
         Gets a product (line from template) and checks if it has more facings than targets in the eye level
         :param product_line: series
@@ -690,9 +691,6 @@ class DIAGEOUSToolBox:
             shelf_groups = self.converted_groups[min_shelf_loc]
             all_shelves_placements = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_PLACEMENT)
             passed, result = 0, None
-            # relevant_products = pd.merge(relevant_products,self.scif[['scene_fk','template_name']],
-            #                                                         how="left",on='scene_fk').drop_duplicates()
-
             for i, product in relevant_products.iterrows():
                 is_passed, shelf_name = self.calculate_specific_product_shelf_placement(product, shelf_groups)
                 if is_passed == 1:
@@ -719,66 +717,6 @@ class DIAGEOUSToolBox:
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
-
-    # def calculate_shelf_placement_of_sku(self, product_line, relevant_scenes):
-    #     """
-    #     Gets a product (line from template) and checks if it has more facings than targets in the eye level
-    #     :param product_line: series
-    #     :param relevant_scenes: list
-    #     :return:
-    #     """
-    #     kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.SKU])
-    #     total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.TOTAL])
-    #     product_fk = self.all_products_sku[self.all_products_sku['product_ean_code'] == product_line[
-    #         Const.PRODUCT_EAN_CODE]]['product_fk']
-    #     if product_fk.empty:
-    #         Log.warning("Product_ean '{}' does not exist".format(product_line[Const.PRODUCT_EAN_CODE]))
-    #         return None
-    #     product_fk = product_fk.iloc[0]
-    #     product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
-    #     if product_assortment_line.empty or product_fk == 0:
-    #         return None
-    #     additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
-    #     standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
-    #     min_shelf_loc = product_line[Const.MIN_SHELF_LOCATION]
-    #     product_fk_with_substs = [product_fk]
-    #     product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
-    #         'product_fk'].tolist()
-    #     relevant_products = self.match_product_in_scene[
-    #         (self.match_product_in_scene['product_fk'].isin(product_fk_with_substs)) &
-    #         (self.match_product_in_scene['scene_fk'].isin(relevant_scenes))]
-    #     if relevant_products.empty:
-    #         passed, result = 0, Const.NO_PLACEMENT
-    #     else:
-    #         shelf_groups = self.converted_groups[min_shelf_loc]
-    #         all_shelves_placements = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_PLACEMENT)
-    #         passed, result = 0, None
-    #         for i, product in relevant_products.iterrows():
-    #             is_passed, shelf_name = self.calculate_specific_product_shelf_placement(product, shelf_groups)
-    #             if is_passed == 1:
-    #                 result, passed = shelf_name, 1
-    #                 if shelf_name != Const.OTHER:
-    #                     break
-    #             if all_shelves_placements[all_shelves_placements[Const.SHELF_NAME] == shelf_name].empty:
-    #                 all_shelves_placements = all_shelves_placements.append(
-    #                     {Const.SHELF_NAME: shelf_name, Const.PASSED: is_passed, Const.FACINGS: 1}, ignore_index=True)
-    #             else:
-    #                 all_shelves_placements[all_shelves_placements[Const.SHELF_NAME] == shelf_name][
-    #                     Const.FACINGS] += 1
-    #         if passed == 0:
-    #             all_shelves_placements = all_shelves_placements.sort_values(by=[Const.FACINGS])
-    #             result = all_shelves_placements[Const.SHELF_NAME].iloc[0]
-    #     shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
-    #     target = shelf_groups[shelf_groups[Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
-    #     target_fk, result_fk = self.get_pks_of_result(target), self.get_pks_of_result(result)
-    #     score = passed * 100
-    #     brand, sub_brand = self.get_product_details(product_fk)
-    #     self.common.write_to_db_result(
-    #         fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
-    #         identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target_fk)
-    #     product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
-    #                       Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
-    #     return product_result
 
     def calculate_specific_product_shelf_placement(self, match_product_line, shelf_groups):
         """
