@@ -535,15 +535,15 @@ class CMAToolBox:
         :param target: int
         """
         if target and score == 0:
-            score_after_action = target - result
+            delta = den * (target / 100) - num
         else:
-            score_after_action = 0
+            delta = 0
         score_value = Const.PASS if score == 1 else Const.FAIL
         score = self.get_pks_of_result(score_value)
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(CMA_COMPLIANCE + " " + kpi_name)
         self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=target,
                                            numerator_result=num, denominator_result=den,
-                                           score_after_actions=score_after_action,
+                                           weight=delta,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
