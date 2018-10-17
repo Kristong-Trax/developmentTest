@@ -4,8 +4,7 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 
-from Trax.Aws.S3Connector import BucketConnector
-
+from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Projects.CUBAU.Utils.GeneralToolBox import CUBAUCUBAUGENERALToolBox
 from Projects.CUBAU.Utils.ParseTemplates import parse_template
 
@@ -37,7 +36,7 @@ class CUBAUCUBAUTemplateAsCache:
     @property
     def amz_conn(self):
         if not hasattr(self, '_amz_conn'):
-            self._amz_conn = BucketConnector(BUCKET)
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
         return self._amz_conn
 
     @staticmethod
