@@ -140,8 +140,8 @@ class Const(object):
     ALL_SCENE_KPIS = ['Impulse Zone Cooler']
 
     SCENE_SESSION_KPI = {
-                            2160: 3045,
-                            3048: 3045,
+                            2160: 2161,
+                            3048: 2161,
                             3022: 3047,
                             3023: 3047,
                             3024: 3047,
@@ -155,6 +155,10 @@ class Const(object):
                         }
     BEHAVIOR = {
                 3045: 'SUM',
+                2161: 'SUM',
                 3047: 'PASS'
+                }
+    GRANPAPPY = {
+                3047: 3044
                 }
 

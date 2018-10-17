@@ -43,7 +43,7 @@ class Common(object):
         self.kpi_static_data = self.get_kpi_static_data()
         self.queries = Queries
         self.kpi_results = pd.DataFrame(columns=self.COLUMNS)
-        self.current_pk = 0
+        self.current_pk = -1
 
     def get_kpi_static_data(self):
         """
@@ -173,11 +173,11 @@ class Common(object):
                                                      context_id=context_id, parent_fk=parent_fk, target=target,
                                                      numerator_result_after_actions=numerator_result_after_actions)
             query = insert(attributes, table)
+            self.current_pk += 1
         new_result = {
             self.SESSION_RESULT_FK: self.current_pk, self.SHOULD_ENTER: should_enter,
             self.IDENTIFIER_PARENT: identifier_parent, self.SCENE_RESULT_FK: scene_result_fk, self.QUERY: query,
             self.IDENTIFIER_RESULT: identifier_result, self.HIERARCHY_TABLE: hierarchy_table, self.PARENT_FK: parent_fk}
-        self.current_pk += 1
         self.kpi_results = self.kpi_results.append(new_result, ignore_index=True)
 
     def refresh_parents(self):

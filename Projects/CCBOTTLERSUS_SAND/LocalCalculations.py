@@ -134,13 +134,13 @@ if __name__ == '__main__':
     #             'ea9e5f71-1a43-4c44-9b99-4e0f7fa89068',
     #             ]
     # # sw coke cooler sessions
-    sessions = [
+    # sessions = [
               # '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF',
                 # 'E5D74460-D34C-413E-B886-F976535CE88D',
                 # '2461329B-9115-4F70-BAF4-C6701355A343',
                 # '337A7F53-9E39-4277-852E-2C7CF2FE3285',
-                'C0692CCD-2373-466C-9510-DC692264C38A',
-                 ]
+                # 'C0692CCD-2373-466C-9510-DC692264C38A',
+                #  ]
     # La Blob
     # sessions = [
     #     '3FB3B1D2-237F-4CA0-8AFF-B68F6DCC16FF',

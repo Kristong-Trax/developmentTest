@@ -481,22 +481,18 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             kpi_res = self.results[self.results['parent_kpi'] == parent_kpi]
             num, den, score = self.aggregate(kpi_res, parent_kpi)
 
-            if den:
-                ratio = round((float(num) / den)*100, 2)
-            else:
-                ratio = 0
+            parent_name = self.common_db2.kpi_static_data.set_index('pk').loc[parent_kpi, 'type']
+            self.sub_totals[parent_name] = den
+            self.sub_scores[parent_name] = num
 
-            self.common_db2.write_to_db_result(fk=parent_kpi, numerator_result=num,
-                                           numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                           denominator_result=den, result=ratio, score=score, target=den)
+            self.write_hierarchy(kpi_res, i, parent_name)
 
-            self.write_hierarchy(kpi_res, i)
-
-    def write_hierarchy(self, kpi_res, i):
+    def write_hierarchy(self, kpi_res, i, parent_name):
         for j, kpi_line in kpi_res.iterrows():
             kpi_fk = kpi_line['scene_kpi_fk']
             self.common_db2.write_to_db_result(0, parent_fk=i, scene_result_fk=kpi_fk, should_enter=True,
-                                               hierarchy_only=1)
+                                               identifier_parent=self.common_db2.get_dictionary(
+                                               parent_name=parent_name), hierarchy_only=1)
 
     def aggregate(self, kpi_res, parent_kpi):
         if Const.BEHAVIOR[parent_kpi] == 'PASS':

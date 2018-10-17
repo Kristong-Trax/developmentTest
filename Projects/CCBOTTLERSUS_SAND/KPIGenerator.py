@@ -31,16 +31,16 @@ class CCBOTTLERSUS_SANDGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        Common(self.data_provider).commit_results_data()
+        # Common(self.data_provider).commit_results_data()
         # self.calculate_red_score()  # should be first, because it can include a deletion from the common
         # self.calculate_bci()
         # self.calculate_manufacturer_displays()
         # self.calculate_cma_compliance()
-        # self.calculate_cma_compliance_sw()
+        self.calculate_cma_compliance_sw()
         # self.calculate_sovi()
         # self.common_db.commit_results_data()
 
-        self.calculate_scene_session()
+        # self.calculate_scene_session()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):

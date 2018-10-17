@@ -56,7 +56,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             return False
         main_template = self.templates[Const.KPIS]
         main_template = main_template[main_template[Const.SESSION_LEVEL] != 'Y']
-        print(self.scif.loc[0, 'template_group'], self.scif.loc[0, 'template_name'], self.store_attr)
         for i, main_line in main_template.iterrows():
             template_group = self.does_exist(main_line, Const.TEMPLATE_GROUP)
             template_name = self.does_exist(main_line, Const.SCENE_TYPE)
@@ -109,7 +108,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         for i, kpi_line in relevant_template.iterrows():
             if not relevant_scif.empty:
                 num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
-                kpi_fk = self.common.get_kpi_fk_by_kpi_name('{} {}'.format(CMA_COMPLIANCE, kpi_name))
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
 
                 self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
                                                result=result, score=score, target=target,
@@ -142,7 +141,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         facings = scif[self.get_filter_condition(scif, **facings_filters)][self.facings_field].sum()
         num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == self.scene]['bay_number'].max()
         max_given = max(list(targets.keys()))
-        print('Num bays is', num_bays)
         if num_bays in targets:
             target = targets[num_bays]
         else:
