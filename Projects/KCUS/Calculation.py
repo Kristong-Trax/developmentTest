@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.KCUS.Utils.KCUSToolBox import KCUSToolBox
 from Projects.KCUS.Utils.KCUSJSON import KCUSJsonGenerator
-from Projects.KCUS_SAND.Utils.KpiToolbox import KCUS_KPIToolBox
+from Projects.KCUS.Utils.KpiToolbox import KCUS_KPIToolBox
 
 __author__ = 'ortalk'
 
