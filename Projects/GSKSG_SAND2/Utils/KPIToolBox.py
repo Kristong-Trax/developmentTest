@@ -292,7 +292,7 @@ class GSKSGToolBox:
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             identifier_parent_fk_supervisor = self.common.get_dictionary(
-                kpi_fk=kpi_super_fk)
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             identifier_parent_fk_web = self.common.get_dictionary(
                 kpi_category=self.common.get_kpi_fk_by_kpi_type(result[SET]),kpi_fk=ORANGE_SCORE)
