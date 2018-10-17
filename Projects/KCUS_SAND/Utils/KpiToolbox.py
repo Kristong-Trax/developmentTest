@@ -124,7 +124,7 @@ class KCUS_SAND_KPIToolBox:
         self.max_shelf_of_bay = []
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-        #self.all_new_products = self.get_static_new_products()
+        self.all_new_products = self.get_static_new_products()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -187,17 +187,17 @@ class KCUS_SAND_KPIToolBox:
 
 
         if kpi_template['Value1']:
-            values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][category_att].unique().tolist()
+            values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][category_att].unique().tolist()
 
         if kpi_template['Value2']:
             if kpi_template['Value2'] == 'Feminine Needs':
                 sub_category_att = 'FEM NEEDS'
-                secondary_values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
             elif kpi_template['Value2'] == 'Feminine Hygiene':
                 sub_category_att = 'FEM HYGINE'
-                secondary_values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_new_products.loc[self.all_new_products[category_att] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
 
 
@@ -227,8 +227,10 @@ class KCUS_SAND_KPIToolBox:
                     self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-
-
+                # if kpi_template['category'] in FABRICARE_CATEGORIES:
+                #     exclude_pl_wo_pg_category = True
+                #     filters[PG_CATEGORY] = kpi_template['category']
+                #     del filters['category']
                 result = self.calculate_category_space_length(new_kpi_name,
                                                              **filters)
                 filters['Category'] = kpi_template['KPI Level 2 Name']
@@ -261,9 +263,11 @@ class KCUS_SAND_KPIToolBox:
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
-
+                    # if exclude_pl:
+                    #     tested_group_linear = tested_group_linear.loc[
+                    #         (tested_group_linear[self.PG_CATEGORY].isin(self.FABRICARE_CATEGORIES))]
                     tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
-
+                    # tested_group_linear = self.calculate_share_space_length(**scene_filters)
                     if tested_group_linear_value:
                         bay_ratio = bay_total_linear / float(tested_group_linear_value)
                     else:
@@ -378,7 +382,6 @@ class KCUS_SAND_KPIToolBox:
 
     def write_to_db_result(self, kpi_set_fk, result, level, score=None, threshold=None, kpi_name=None, kpi_fk=None):
         """
-
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
