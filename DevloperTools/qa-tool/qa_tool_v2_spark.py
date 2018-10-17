@@ -307,11 +307,11 @@ class qa:
         static = self.static_kpi.toPandas()
 
         for i, row in static.iterrows():
-            print "*** {} ***".format(row['client_name'])
-            if row['client_name'].find('"'):
+            print "*** {} ***".format(row['client_name'].encode('utf-8').strip())
+            if row['client_name'].find('"') > 0 :
                 print "invalid char cant create histogram  *** {} ***".format(row['client_name'])
                 continue
-            filter = 'result is not null  and client_name = "{}"'.format(row['client_name'])
+            filter = 'result is not null  and client_name = "{}"'.format(row['client_name'].encode('utf-8'))
             res = self.merged_kpi_results.filter(filter).select('client_name','result').toPandas()
             # res = kpi.loc[(kpi['client_name'] == row['client_name'])]
             if not res.empty:
@@ -323,7 +323,7 @@ class qa:
 
                 with open(SUMMERY_FILE, 'a') as file:
                     url = "histogram" + "/" + row['client_name'].replace("/","_") + ".png"
-                    file.write("<img src='{}' >".format(url))
+                    file.write("<img src='{}' >".format(url).encode('utf-8'))
 
     @staticmethod
     def start_html_report():
@@ -449,6 +449,6 @@ class qa:
 if __name__ == "__main__":
     Config.init(app_name='ttt', default_env_and_cloud = ('prod','AWS'),
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbottlersus', start_date='2018-08-01', end_date='2018-08-2')
+    qa_tool = qa('ccbottlersus', start_date='2018-08-01', end_date='2018-08-30')
     qa_tool.run_all_tests()
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
