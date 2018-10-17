@@ -9,6 +9,7 @@ from Projects.CCBOTTLERSUS_SAND.CMA.Const import Const
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
 __author__ = 'Uri'
@@ -46,10 +47,12 @@ class CMAToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.united_scenes = self.get_united_scenes()  # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
         self.common_db2 = common_db2
+        self.result_values = self.ps_data_provider.get_result_values()
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_14'].iloc[0]
@@ -64,7 +67,6 @@ class CMAToolBox:
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.tools = Shared()
-
 
     # main functions:
 
@@ -124,8 +126,7 @@ class CMAToolBox:
             self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
 
     # write in DF:
-    def write_to_all_levels(self, kpi_name, result, score, target=None, num=None, den=None, scene_fk=None,
-                            reuse_scene=False):
+    def write_to_all_levels(self, kpi_name, result, score, target=None, num=None, den=None):
         """
         Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
         :param kpi_name: str
@@ -137,7 +138,7 @@ class CMAToolBox:
         """
         # result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
+        self.write_to_db(kpi_name, score, result=result, target=target, num=num, den=den)
 
     # survey:
 
@@ -519,24 +520,39 @@ class CMAToolBox:
     def get_united_scenes(self):
         return self.scif[self.scif['United Deliver'] == 'Y']['scene_id'].unique().tolist()
 
-    def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
+    def get_pks_of_result(self, result):
+        """
+        converts string result to its pk (in static.kpi_result_value)
+        :param result: str
+        :return: int
+        """
+        pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
+        return pk
+
+    def write_to_db(self, kpi_name, score, result=None, target=None, num=None, den=None):
         """
         writes result in the DB
         :param kpi_name: str
         :param score: float
-        :param display_text: str
         :param result: str
-        :param threshold: int
+        :param target: int
         """
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-        self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=threshold,
+        if target and score == 0:
+            delta = den * (target / 100) - num
+        else:
+            delta = 0
+        score_value = Const.PASS if score == 1 else Const.FAIL
+        score = self.get_pks_of_result(score_value)
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(CMA_COMPLIANCE + " " + kpi_name)
+        self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=target,
                                            numerator_result=num, denominator_result=den,
+                                           weight=delta,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3,
-            threshold=threshold, result=result)
+            threshold=target, result=result)
 
     def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
         """

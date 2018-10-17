@@ -43,6 +43,8 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
+            # if atomic['atomic'] != "Is the Natural Grain-Free Dry Dog Food segment blocked?":
+            #     continue
             if atomic['depend_on']:
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
                 if dependency_status == CalculationDependencyCheck.IGNORE:
