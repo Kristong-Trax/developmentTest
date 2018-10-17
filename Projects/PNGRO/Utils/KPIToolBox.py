@@ -78,6 +78,8 @@ class PNGRO_PRODToolBox:
     ASSORTMENT_KPI = 'PSKUs Assortment'
     ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
 
+    SOS_FACING = 'SOS Facing' #Natalya
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -199,7 +201,9 @@ class PNGRO_PRODToolBox:
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        score, result, threshold = self.calculate_sos(params, **general_filters)
+                        #Natalya
+                        # score, result, threshold = self.calculate_sos(params, **general_filters)
+                        score, result, threshold = self.calculate_sos(params, is_linear=True, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
@@ -208,6 +212,10 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_shelf_position(params, **general_filters)
                     elif kpi_type == self.SURVEY:
                         score = self.calculate_survey(params)
+                    #Natalya
+                    elif kpi_type == self.SOS_FACING:
+                        score = self.calculate_sos(params, is_linear=False, **general_filters)
+
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
                         if result and threshold:
@@ -335,7 +343,8 @@ class PNGRO_PRODToolBox:
         score = 1 if survey_answer in target_answers else 0
         return score
 
-    def calculate_sos(self, params, **general_filters):
+    # Natalya
+    def calculate_sos(self, params, is_linear, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         value1 = map(unicode.strip, params['Param (1) Values'].split(','))
         type2 = params['Param Type (2)/ Denominator']
@@ -351,21 +360,61 @@ class PNGRO_PRODToolBox:
         numerator_filters = {type1: value1, type2: value2, type3: value3}
         denominator_filters = {type2: value2}
 
-        numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                       include_empty=True,
-                                                                       **general_filters)
-        denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
-                                                                         include_empty=True,
-                                                                         **general_filters)
-
-        if denominator_width == 0:
+        if is_linear:
+            numerator_result = self.tools.calculate_linear_share_of_display(numerator_filters,
+                                                                            include_empty=True,
+                                                                            **general_filters)
+            denominator_result = self.tools.calculate_linear_share_of_display(denominator_filters,
+                                                                              include_empty=True,
+                                                                              **general_filters)
+        else:
+            numerator_result = self.tools.calculate_facings_share_of_display(numerator_filters,
+                                                                             include_empty=True,
+                                                                             **general_filters)
+            denominator_result = self.tools.calculate_facings_share_of_display(denominator_filters,
+                                                                               include_empty=True,
+                                                                               **general_filters)
+        if denominator_result == 0:
             ratio = 0
         else:
-            ratio = numerator_width / float(denominator_width)
+            ratio = numerator_result / float(denominator_result)
         if ratio >= target:
             return True, str(ratio), str(target)
         else:
             return False, str(ratio), str(target)
+
+    #Natalya commented out
+    # def calculate_sos(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = map(unicode.strip, params['Param (2) Values'].split(','))
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #     target = params['Target Policy']
+    #     try:
+    #         target = int(target)/100.0
+    #     except:
+    #         Log.info('The target: {} cannot parse to int'.format(str(target)))
+    #
+    #     numerator_filters = {type1: value1, type2: value2, type3: value3}
+    #     denominator_filters = {type2: value2}
+    #
+    #     numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
+    #                                                                    include_empty=True,
+    #                                                                    **general_filters)
+    #     denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
+    #                                                                      include_empty=True,
+    #                                                                      **general_filters)
+    #
+    #     if denominator_width == 0:
+    #         ratio = 0
+    #     else:
+    #         ratio = numerator_width / float(denominator_width)
+    #     if ratio >= target:
+    #         return True, str(ratio), str(target)
+    #     else:
+    #         return False, str(ratio), str(target)
 
     def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
