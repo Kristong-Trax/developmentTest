@@ -9,7 +9,7 @@ from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Eli_Sam_Shivi'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data',
-                                     'KR - Google Fixture Targets Test.csv')
+                                     'KR - Google Fixture Targets.xlsx')
 
 
 class GOOGLEToolBox:
@@ -20,7 +20,7 @@ class GOOGLEToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.templates = self.data_provider[Data.TEMPLATES]
+        self.templates = self.data_provider.all_templates
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -36,7 +36,9 @@ class GOOGLEToolBox:
         self.labels = self.ps_data_provider.get_labels()
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
-        self.fixture_template = pd.read_csv(FIXTURE_TEMPLATE_PATH)
+        self.fixture_template = {}
+        for sheet in Const.SHEETS:
+            self.fixture_template[sheet] = pd.read_excel(FIXTURE_TEMPLATE_PATH, sheet)
         self.current_date = datetime.now()
 
     def main_calculation(self, *args, **kwargs):
@@ -85,13 +87,18 @@ class GOOGLEToolBox:
 
     def google_global_fixture_compliance(self):
         store_num = self.store_info['store_number_1'][0]
-        relevant_fixtures = self.fixture_template[self.fixture_template['Store Number'] == store_num]
-        relevant_fixtures = relevant_fixtures.set_index('New Task Name (unique)')\
-                                             .groupby('New Task Name (unique)')\
+        fixture_template = self.fixture_template[Const.FIXTURE_TARGETS]
+        fixture_template = fixture_template.join(self.fixture_template[Const.PK]
+                                                 .set_index('New Task Name (unique)')[Const.PK],
+                                                 on='New Task Name (unique)', how='left')
+
+        relevant_fixtures = fixture_template[fixture_template['Store Number'] == store_num]
+        relevant_fixtures = relevant_fixtures.set_index(Const.PK)\
+                                             .groupby(Const.PK)\
                                              ['Number of Fixtures(Task)'].sum()
 
-        for fixture, denominator in relevant_fixtures.iteritems():
-            fixture_pk = self.templates.set_index(['template_name']).loc[fixture, 'template_fk']
+        for fixture_pk, denominator in relevant_fixtures.iteritems():
+            # fixture_pk = self.templates.set_index(['template_name']).loc[fixture, 'template_fk']
             numerator = self.scene_info[self.scene_info['template_fk'] == fixture_pk].shape[0]
             ratio = self.division(numerator, denominator)
             score = 0

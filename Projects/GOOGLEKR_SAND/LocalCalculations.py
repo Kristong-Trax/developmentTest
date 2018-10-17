@@ -55,6 +55,21 @@ if __name__ == '__main__':
         # 'e78388ea-c25c-11e8-b150-12499d9ea556',
         # 'ec0108db-c185-11e8-b150-12499d9ea556',
     ]
+
+    sessions = ['3985c4f3-8e86-4cd0-8455-9202306e7d3e',
+                'A7330F2D-620A-4821-A62C-329CFB45D867',
+                'A4CDE6E6-9145-484C-9894-3B78B08085CA',
+                '78949CC4-5E67-47CF-A043-ED832497C1C5',
+                '924d3ce8-10f1-4083-9aa6-39b023eca812',
+                '9595AA6E-CB9C-49DE-B043-0920DCF9EEE0',
+                'f3a1a34e-043d-4c8b-99a5-3f9b7f9e0847',
+                '7c73be34-20b9-4d6c-b48f-ec4a04745660',
+                '5E35A64E-6B49-4106-AC14-BFBFC6BFF4DB',
+                'ECFEEC98-4C2C-46F6-851F-97DBE14A3254',
+                'C23CF630-5953-48A3-AE82-FF1E5BE0C8E0',
+                '698CC197-6902-42AF-8015-AF6FD0DAF8D1',
+                ]
+
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
