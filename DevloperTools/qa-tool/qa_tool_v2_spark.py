@@ -40,6 +40,7 @@ class qa:
                                                             .config("spark.driver.maxResultSize", "4g")\
                                                             .config("spark.ssl.enabled","True") \
                                                             .config("spark.ssl.protocol", "TLSv1.1").getOrCreate()
+
         self._project = project
         self._config_file = config_file
         self._dbUser = DbUsers.CalculationEng
@@ -53,7 +54,8 @@ class qa:
         #const
         self.results_query = '''    
                             (SELECT 
-                                report.kpi_level_2_results.*
+                                report.kpi_level_2_results.*,
+                                probedata.session.pk as sessions_pk
                             FROM
                                 report.kpi_level_2_results,
                                 probedata.session
@@ -142,7 +144,7 @@ class qa:
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
                                                            "password": self.connector.dbuser.cred,
-                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                           "partitionColumn": "tmp_kpi_level_2_results.sessions_pk",
                                                            "lowerBound": "{}".format(lower_bound),
                                                            "upperBound": "{}".format(upper_bound),
                                                            "numPartitions": "{}".format(number_of_partition),
@@ -323,7 +325,7 @@ class qa:
 
                 with open(SUMMERY_FILE, 'a') as file:
                     url = "histogram" + "/" + row['client_name'].replace("/","_") + ".png"
-                    file.write("<img src='{}' >".format(url).encode('utf-8'))
+                    file.write("<img src='{}' >".format(url.encode('utf-8')))
 
     @staticmethod
     def start_html_report():
@@ -449,6 +451,6 @@ class qa:
 if __name__ == "__main__":
     Config.init(app_name='ttt', default_env_and_cloud = ('prod','AWS'),
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbottlersus', start_date='2018-08-01', end_date='2018-08-30')
+    qa_tool = qa('ccbottlersus', start_date='2018-09-01', end_date='2018-09-10')
     qa_tool.run_all_tests()
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
