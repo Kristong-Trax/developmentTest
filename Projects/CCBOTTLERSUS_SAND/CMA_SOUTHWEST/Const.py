@@ -119,6 +119,8 @@ class Const(object):
     DOMINANT = "dominant"
     MAJORITY_TARGET = 0.5
     NUMERIC_VALUES_TYPES = ['size']
+    PASS = 'Pass'
+    FAIL = 'Fail'
 
     RED_SCORE = 'Red SCORE'
     RED_SCORE_INTEG = 'Red SCORE Integration'

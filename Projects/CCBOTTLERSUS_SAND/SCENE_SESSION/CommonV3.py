@@ -222,6 +222,8 @@ class Common(object):
         elif result_entity == self.SESSION:
             # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_queries(self.session_id,  self.HIERARCHY_SESSION_TABLE)
             # delete_queries['delete_old_tree_query_part2'] = self.queries.get_delete_tree_queries_parent_fk(self.session_id,  self.HIERARCHY_SESSION_TABLE)
+            'below temp removed'
+            # pass
             delete_queries['delete_query'] = self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
         else:
             Log.error('Cannot Calculate results per {}'.format(result_entity))

@@ -8,12 +8,11 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
+from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.CommonV3 import Common as CommonV3
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
-
-from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.CommonV3 import Common as CommonV3
 
 
 
@@ -47,7 +46,6 @@ class CMASOUTHWESTToolBox:
         # self.common_db2 = common_db2
         self.common_db2 = CommonV3(self.data_provider)
         self.common_scene = CommonV2(self.data_provider)
-
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.manufacturer_fk = 1
@@ -81,7 +79,7 @@ class CMASOUTHWESTToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.tools = Shared()
+        self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
 
@@ -151,6 +149,8 @@ class CMASOUTHWESTToolBox:
                 else:
                     self.update_sub_score(kpi_name, passed=score)
 
+            score = Const.PASS if score == 1 else Const.FAIL
+            score = self.tools.result_values[score]
             if isinstance(result, tuple):
                 self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
                                          num=result[1], den=result[2])
@@ -270,13 +270,15 @@ class CMASOUTHWESTToolBox:
         if target:
             target *= 100
             score = 1 if sos_value >= target else 0
-            target = '{}%'.format(target)
+            target = '{}%'.format(int(target))
         elif not target and upper_limit and lower_limit:
             score = 1 if (lower_limit <= sos_value <= upper_limit) else 0
             target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
             score = 0
-            target = 0
+            target = None
+        if target:
+            target = self.tools.result_values[target]
         return (sos_value, num, den), score, target
 
     # Targets:
@@ -973,7 +975,7 @@ class CMASOUTHWESTToolBox:
                     den = 0
                 self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                    denominator_id=self.store_id,
-                                                   denominator_result=den, result=num, score=num, target=den,
+                                                   denominator_result=den, result=num, score=None, target=den,
                                                    identifier_result=self.common_db2.get_dictionary(
                                                        parent_name=sub_parent),
                                                    identifier_parent=self.common_db2.get_dictionary(
@@ -989,7 +991,7 @@ class CMASOUTHWESTToolBox:
             # result = float(num) / den
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               denominator_result=den, result=num, score=num, target=den,
+                                               denominator_result=den, result=num, score=None, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=CMA_COMPLIANCE))
 

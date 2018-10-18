@@ -1,12 +1,19 @@
 import numpy as np
 from collections import defaultdict
 from Trax.Algo.Calculations.Core.Utils import Validation
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 SEPERATOR = '; '
 COMMA = ','
 
 
 class Shared():
+    def __init__(self, data_provider, output):
+        self.data_provider = data_provider
+        self.output = output
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.result_values = self.ps_data_provider.get_result_values().set_index('value')['pk'].to_dict()
+
     @staticmethod
     def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
 
@@ -100,3 +107,4 @@ class Shared():
     #             Log.warning('field {} is not in the Data Frame'.format(field))
     #
     #     return filter_condition
+

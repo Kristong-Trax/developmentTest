@@ -45,7 +45,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         main_template = self.templates[Const.KPIS]
         self.templates[Const.KPIS] = main_template[(main_template['Regions'] == self.region) &
                                                    (main_template[Const.STORE_TYPE] == self.store_type)]
-        self.tools = Shared()
+        self.tools = Shared(self.data_provider, self.output)
         # self.scenes_results = pd.DataFrame(columns=Const.COLUMNS_OF_RESULTS)
 
     def main_calculation(self):
@@ -109,7 +109,8 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
             if not relevant_scif.empty:
                 num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
-
+                # score = Const.PASS if score == 1 else Const.FAIL
+                # score = self.tools.result_values[score]
                 self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
                                                result=result, score=score, target=target,
                                                by_scene=True, should_enter=True)
