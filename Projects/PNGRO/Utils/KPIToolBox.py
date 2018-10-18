@@ -620,7 +620,9 @@ class PNGRO_PRODToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
         delete_queries = PNGRO_PRODQueries.get_delete_session_results_query(self.session_uid)
