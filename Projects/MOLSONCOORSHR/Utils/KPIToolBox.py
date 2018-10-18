@@ -97,33 +97,32 @@ class MOLSONCOORSHRToolBox:
         This is a recursive function.
         The function calculates each level KPI cascading from the highest level to the lowest.
         """
-        total_score = total_target = total_calculated = 0
+        total_score = total_potential_score = total_calculated = 0
         kpis = self.template_data['KPIs'][self.template_data['KPIs']['KPI Group'] == kpi_group]
         for index, kpi in kpis.iterrows():
 
             child_kpi_group = kpi['Child KPI Group']
             kpi_type = kpi['KPI Type'].lower()
-            weight = float(kpi['Weight']) if kpi['Weight'] else 1
             score_function = kpi['Score Function'].lower()
 
             if not child_kpi_group:
                 if kpi_type in [LINEAR_SOS_VS_TARGET, FACINGS_SOS_VS_TARGET]:
-                    score, target, calculated = self.calculate_sos_vs_target(kpi)
+                    score, potential_score, calculated = self.calculate_sos_vs_target(kpi)
                 elif kpi_type in [FACINGS_VS_TARGET, DISTRIBUTION]:
-                    score, target, calculated = self.calculate_assortment_vs_target(kpi)
+                    score, potential_score, calculated = self.calculate_assortment_vs_target(kpi)
                 else:
                     Log.error("KPI of type '{}' is not supported".format(kpi_type))
-                    score = target = calculated = 0
+                    score = potential_score = calculated = 0
             else:
-                score, target, calculated = self.kpis_calculation(child_kpi_group)
+                score, potential_score, calculated = self.kpis_calculation(child_kpi_group)
 
             if score_function in [WEIGHTED_SCORE, SUM_OF_SCORES]:
                 total_score += score
-                total_target += target
+                total_potential_score += potential_score
                 total_calculated += calculated
             else:
                 total_score += 0
-                total_target += 0
+                total_potential_score += 0
                 total_calculated += 0
 
             if child_kpi_group and calculated:
@@ -138,15 +137,15 @@ class MOLSONCOORSHRToolBox:
                                                denominator_result=0,
                                                result=score,
                                                score=score,
-                                               target=target,
+                                               weight=potential_score,
                                                identifier_result=identifier_result,
                                                identifier_parent=identifier_parent,
                                                should_enter=True
                                                )
 
-                self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Target': target}, ignore_index=True)
+                # self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Potential': potential_score}, ignore_index=True)
 
-        return total_score, total_target, total_calculated
+        return total_score, total_potential_score, total_calculated
 
     def calculate_assortment_vs_target(self, kpi):
         """
@@ -160,7 +159,7 @@ class MOLSONCOORSHRToolBox:
             numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
             denominator_id = row.assortment_group_fk
             denominator_result = row.target
-            denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
+            # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
             result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
             score = round(result*100, 0)
             identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
@@ -170,7 +169,7 @@ class MOLSONCOORSHRToolBox:
                                            numerator_result=numerator_result,
                                            denominator_id=denominator_id,
                                            denominator_result=denominator_result,
-                                           denominator_result_after_actions=denominator_result_after_actions,
+                                           # denominator_result_after_actions=denominator_result_after_actions,
                                            result=result,
                                            score=score,
                                            identifier_result=identifier_details,
@@ -178,7 +177,7 @@ class MOLSONCOORSHRToolBox:
                                            should_enter=True
                                            )
 
-        score = target = 0
+        score = potential_score = 0
         if not lvl3_result.empty:
             lvl2_result = self.calculate_assortment_vs_target_lvl2(lvl3_result)
             for row in lvl2_result.itertuples():
@@ -188,7 +187,7 @@ class MOLSONCOORSHRToolBox:
                 denominator_result = row.target
                 result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
                 score += self.score_function(result*100, kpi)
-                target += round(float(kpi['Weight'])*100, 0)
+                potential_score += round(float(kpi['Weight'])*100, 0)
                 identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
                 identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']))
                 self.common.write_to_db_result(fk=row.kpi_fk_lvl2,
@@ -198,7 +197,7 @@ class MOLSONCOORSHRToolBox:
                                                denominator_result=denominator_result,
                                                result=result,
                                                score=score,
-                                               target=target,
+                                               weight=potential_score,
                                                identifier_result=identifier_kpi,
                                                identifier_parent=identifier_parent,
                                                should_enter=True
@@ -208,7 +207,7 @@ class MOLSONCOORSHRToolBox:
         else:
             calculated = 0
 
-        return score, target, calculated
+        return score, potential_score, calculated
 
     def calculate_assortment_vs_target_lvl3(self, kpi):
         location_types = kpi['Location Type'].split(', ')
@@ -221,10 +220,10 @@ class MOLSONCOORSHRToolBox:
             return assortment_result
 
         assortment_result['target'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Target'), axis=1)
-        assortment_result['target'] = assortment_result['target'].fillna(1)
+        assortment_result['target'] = assortment_result['target'].fillna(0)
 
         assortment_result['weight'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Weight'), axis=1)
-        assortment_result['weight'] = assortment_result['weight'].fillna(1)
+        assortment_result['weight'] = assortment_result['weight'].fillna(0)
         assortment_total_weights = assortment_result[['assortment_fk', 'weight']].groupby('assortment_fk').agg({'weight': 'sum'}).reset_index()
         assortment_result = assortment_result.merge(assortment_total_weights, how='left', left_on='assortment_fk', right_on='assortment_fk', suffixes=['', '_total'])
 
@@ -284,7 +283,7 @@ class MOLSONCOORSHRToolBox:
             if store_policy_passed:
                 break
 
-        score = target = 0
+        score = potential_score = 0
         if store_policy_passed:
 
             general_filters = {LOCATION_TYPE: location_type}
@@ -318,21 +317,21 @@ class MOLSONCOORSHRToolBox:
                 Log.error("SOS target is not set for Store ID {}").format(self.store_id)
                 sos_target = 0
 
-            score = result/float(sos_target/100) if sos_target else 0
-            score = self.score_function(score, kpi)
-            target = round(float(kpi['Weight'])*100, 0)
+            result_vs_target = result/(float(sos_target)/100)*100 if sos_target else 0
+            score = self.score_function(result_vs_target, kpi)
+            potential_score = round(float(kpi['Weight'])*100, 0)
 
             identifier_kpi = self.common.get_dictionary(kpi_fk=kpi_fk)
             identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']))
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_fk,
                                            numerator_result=numerator_result,
-                                           numerator_result_after_actions=sos_target,
                                            denominator_id=denominator_fk,
                                            denominator_result=denominator_result,
                                            result=result,
                                            score=score,
-                                           target=target,
+                                           weight=potential_score,
+                                           target=sos_target,
                                            identifier_result=identifier_kpi,
                                            identifier_parent=identifier_parent,
                                            should_enter=True
@@ -341,7 +340,7 @@ class MOLSONCOORSHRToolBox:
         else:
             Log.warning("Store Policy is not found for Store ID {}".format(self.store_id))
 
-        return score, target, store_policy_passed
+        return score, potential_score, store_policy_passed
 
     def calculate_share_space(self, ignore_stacking=1, **filters):
         """
@@ -377,8 +376,8 @@ class MOLSONCOORSHRToolBox:
     def score_function(score, kpi):
         weight = float(kpi['Weight']) if kpi['Weight'] else 1
         score_function = kpi['Score Function'].lower()
-        l_threshold = float(kpi['Lower Threshold']) if kpi['Lower Threshold'] else 0
-        h_threshold = float(kpi['Higher Threshold']) if kpi['Higher Threshold'] else 1
+        l_threshold = float(kpi['Lower Threshold'])*100 if kpi['Lower Threshold'] else 0
+        h_threshold = float(kpi['Higher Threshold'])*100 if kpi['Higher Threshold'] else 100
 
         if score < l_threshold:
             score = 0
@@ -386,6 +385,8 @@ class MOLSONCOORSHRToolBox:
             score = 100
 
         if score_function in [WEIGHTED_SCORE]:
-            return round(score * weight, 0)
+            score = round(score*weight, 0)
         else:
-            return round(score, 0)
+            score = round(score, 0)
+
+        return score

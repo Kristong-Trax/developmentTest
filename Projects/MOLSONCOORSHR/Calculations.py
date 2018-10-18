@@ -16,7 +16,7 @@ class Calculations(BaseCalculationsScript):
         Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('molsoncoorshr calculations')
 #     Config.init()
@@ -31,6 +31,6 @@ class Calculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         Calculations(data_provider, output).run_project_calculations()
-#
-#
-#
+
+
+
