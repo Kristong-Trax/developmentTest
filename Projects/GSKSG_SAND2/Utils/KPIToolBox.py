@@ -228,17 +228,17 @@ class GSKSGToolBox:
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            identifier_parent=identifier_parent_fk_web,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            weight=result['Weight'], should_enter=True)
 
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            identifier_parent=identifier_parent_fk_supervisor,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
