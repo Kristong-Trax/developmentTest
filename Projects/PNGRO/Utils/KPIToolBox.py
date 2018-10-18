@@ -79,6 +79,7 @@ class PNGRO_PRODToolBox:
     ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
 
     SOS_FACING = 'SOS Facing' #Natalya
+    EYE_LEVEL = 'Eye Level' #Natalya
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -113,6 +114,7 @@ class PNGRO_PRODToolBox:
 
         self.main_shelves = self.are_main_shelves()
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
+        self.eye_level_args = self.get_eye_level_shelf_data() #Natalya
 
     @property
     def matches(self):
@@ -214,7 +216,9 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_survey(params)
                     #Natalya
                     elif kpi_type == self.SOS_FACING:
-                        score = self.calculate_sos(params, is_linear=False, **general_filters)
+                        score, result, threshold = self.calculate_sos(params, is_linear=False, **general_filters)
+                    elif kpi_type == self.EYE_LEVEL:
+                        score, result, threshold = self.calculate_eye_level(params, **general_filters)
 
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
@@ -235,6 +239,55 @@ class PNGRO_PRODToolBox:
             return True
         else:
             return False
+
+    #Natalya
+    def calculate_eye_level(self, params, **general_filters):
+        type1 = params['Param Type (1)/ Numerator']
+        value1 = map(unicode.strip, params['Param (1) Values'].split(','))
+        type2 = params['Param Type (2)/ Denominator']
+        value2 = map(unicode.strip, params['Param (2) Values'].split(','))
+        type3 = params['Param (3)']
+        value3 = params['Param (3) Values']
+        target = float(params['Target Policy'])
+        score = 0 #?? what should it be if there is no kpi data?
+
+        filters = {type1: value1, type2: value2, type3: value3}
+        filters.update(**general_filters)
+
+        skus_at_eye_lvl=0
+        scene_bays = self.matches[self.tools.get_filter_condition(self.matches, **filters)][[
+            'scene_fk', 'bay_number']].drop_duplicates()  # do we just select shelves that have products of relevant category?
+                                                          # do we calculate for the session as a whole?
+        for index, row in scene_bays.iterrows():
+            total_num_of_shelves = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] ==
+                                                                row.bay_number) & (
+                                                                       self.match_product_in_scene['scene_fk'] == row.scene_fk)][
+                                                                'shelf_number_from_bottom'].max()
+            shelves_in_eye_lvl = self.get_eye_level_shelves(total_num_of_shelves, self.eye_level_args)
+            scene_shelf_bay_matches = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] == row.bay_number)&
+                                                           (self.match_product_in_scene['shelf_number_from_bottom'].isin(
+                                                                                                    shelves_in_eye_lvl))&
+                                                           (self.match_product_in_scene['scene_fk'] == row.scene_fk)]
+            skus_at_eye_lvl += scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches, **filters)]['facings']
+        score = skus_at_eye_lvl/target * 100
+        #result =  # what should I return?
+        return score, score, target
+
+    # Natalya
+    def get_eye_level_shelves(self, shelves_num, eye_lvl_template):
+        """
+        :param shelves_num: num of shelves in specific bay
+        :return: list of eye shelves
+        """
+        res_table = eye_lvl_template[(eye_lvl_template["Number of shelves max"] >= shelves_num) & (
+                    eye_lvl_template["Number of shelves min"] <= shelves_num)][["Ignore from top",
+                                                                                  "Ignore from bottom"]]
+        if res_table.empty:
+            return []
+        start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+        end_shelf = shelves_num - res_table['Ignore from top'].iloc[0]
+        final_shelves = range(start_shelf, end_shelf + 1)
+        return final_shelves
 
     def calculate_assortment_main_shelf(self):
         assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
@@ -700,4 +753,7 @@ class PNGRO_PRODToolBox:
     #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
     #                                                                             self.NUMBER_OF_SHELVES]]
 
+    def get_eye_level_shelf_data(self):
+        eye_level_targets = parse_template(TEMPLATE_PATH, 'eye_level_parameters')
+        return eye_level_targets
 
