@@ -100,6 +100,9 @@ class KCUS_SANDFetcher:
             object_facings = 0
         return object_facings
 
+
+
+
     @staticmethod
     def get_kpi_results_data():
 
