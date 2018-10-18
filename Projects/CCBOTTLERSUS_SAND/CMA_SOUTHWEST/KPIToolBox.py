@@ -141,16 +141,7 @@ class CMASOUTHWESTToolBox:
             result, score, target = function(kpi_line, relevant_scif, general_filters)
             if result is None and score is None and target is None:
                 continue
-
-            parent = self.get_kpi_parent(kpi_name)
-            if parent != CMA_COMPLIANCE:
-                if 'Bonus' in parent:
-                    self.update_sub_score(kpi_name, passed=result)
-                else:
-                    self.update_sub_score(kpi_name, passed=score)
-
-            score = Const.PASS if score == 1 else Const.FAIL
-            score = self.tools.result_values[score]
+            self.update_parents(kpi_name, result, score)
             if isinstance(result, tuple):
                 self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
                                          num=result[1], den=result[2])
@@ -262,11 +253,10 @@ class CMASOUTHWESTToolBox:
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-        # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-        # sos_value *= 100
-        # sos_value = round(sos_value, 2)
 
+        if sos_value is None:
+            return None, None, None
         if target:
             target *= 100
             score = 1 if sos_value >= target else 0
@@ -278,7 +268,7 @@ class CMASOUTHWESTToolBox:
             score = 0
             target = None
         if target:
-            target = self.tools.result_values[target]
+            target = self.tools.result_values[target.replace(' ', '')]
         return (sos_value, num, den), score, target
 
     # Targets:
@@ -836,6 +826,14 @@ class CMASOUTHWESTToolBox:
     def get_score(self, weight):
         return weight / self.weight_factor
 
+    def update_parents(self, kpi_name, result, score):
+        parent = self.get_kpi_parent(kpi_name)
+        if parent != CMA_COMPLIANCE:
+            if 'Bonus' in parent:
+                self.update_sub_score(kpi_name, passed=result)
+            else:
+                self.update_sub_score(kpi_name, passed=score)
+
     def get_kpi_parent(self, kpi_name):
         type_name = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
         kpi_family_fk = int(self.common_db2.kpi_static_data.set_index('type')\
@@ -850,10 +848,13 @@ class CMASOUTHWESTToolBox:
             parent = self.get_kpi_parent(kpi_name)
         if parent == CMA_COMPLIANCE:
             parent = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
-        if kpi_name not in Const.NO_PRESSURE:
+        if 'Bonus' not in kpi_name:
             self.sub_totals[parent] += 1
             if passed:
                 self.sub_scores[parent] += passed
+        else:
+            self.sub_totals[parent] += 0
+            self.sub_scores[parent] += 0
 
     def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
         """
@@ -866,7 +867,14 @@ class CMASOUTHWESTToolBox:
         """
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
         parent = self.get_kpi_parent(kpi_name)
-        # if parent != CMA_COMPLIANCE:
+        if parent != CMA_COMPLIANCE:
+            if score == 1:
+                score = Const.PASS
+            elif score == 0:
+                score = Const.FAIL
+            else:
+                score = 'bonus'
+            score = self.tools.result_values[score]
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
                                            numerator_result=num, denominator_result=den,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
@@ -963,30 +971,38 @@ class CMASOUTHWESTToolBox:
 
         return kwargs_dict
 
+    def kpi_parent_result(self, parent, num, den):
+        if parent in Const.PARENT_RATIO:
+            if den:
+                result = round((float(num) / den)*100, 2)
+            else:
+                result = 0
+        else:
+            result = num
+        return result
+
     def write_sub_parents(self):
         for sub_parent in self.sub_totals.keys():
         # for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
             kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(sub_parent)
             num = self.sub_scores[sub_parent]
             den = self.sub_totals[sub_parent]
-            if den:
-                # result = float(num) / den
-                if 'Bonus' in sub_parent:
-                    den = 0
-                self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
-                                                   denominator_id=self.store_id,
-                                                   denominator_result=den, result=num, score=num, target=den,
-                                                   identifier_result=self.common_db2.get_dictionary(
-                                                       parent_name=sub_parent),
-                                                   identifier_parent=self.common_db2.get_dictionary(
-                                                       parent_name=CMA_COMPLIANCE),
-                                                   should_enter=True)
+            result = self.kpi_parent_result(sub_parent, num, den)
+            if 'Bonus' in sub_parent:
+                den = 0
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
+                                               denominator_id=self.store_id,
+                                               denominator_result=den, result=result, score=num, target=den,
+                                               identifier_result=self.common_db2.get_dictionary(
+                                                   parent_name=sub_parent),
+                                               identifier_parent=self.common_db2.get_dictionary(
+                                                   parent_name=Const.PARENT_HIERARCHY[sub_parent]),
+                                               should_enter=True)
+
     def write_parent(self):
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
-        # del self.sub_scores['CMA Compliance SW # of Shelves Bonus']
-        # del self.sub_totals['CMA Compliance SW # of Shelves Bonus']
-        num = sum(self.sub_scores.values())
-        den = sum(self.sub_totals.values())
+        num = sum([self.sub_scores[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
+        den = sum([self.sub_totals[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
         if den:
             # result = float(num) / den
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,

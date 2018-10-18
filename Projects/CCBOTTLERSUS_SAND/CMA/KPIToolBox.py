@@ -66,7 +66,7 @@ class CMAToolBox:
         self.total_score = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.tools = Shared()
+        self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
 

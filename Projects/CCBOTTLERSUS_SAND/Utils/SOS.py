@@ -19,7 +19,6 @@ class Shared():
 
         try:
             Validation.is_empty_df(den_scif)
-            Validation.is_empty_df(num_scif)
             Validation.df_columns_equality(den_scif, num_scif)
             Validation.is_subset(den_scif, num_scif)
         except Exception, e:
@@ -27,8 +26,15 @@ class Shared():
             # raise Exception(msg)
             # print(msg)
             return None, None, None
-        num = num_scif[facings_field].sum()
+
         den = den_scif[facings_field].sum()
+
+        try:
+            Validation.is_empty_df(num_scif)
+        except Exception as e:
+            return (0, 0, den)
+
+        num = num_scif[facings_field].sum()
         if den:
             ratio = round((num / float(den))*100, 2)
         else:
