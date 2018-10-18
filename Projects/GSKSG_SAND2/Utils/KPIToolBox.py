@@ -224,21 +224,22 @@ class GSKSGToolBox:
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=store_fk,
+                                           denominator_id=MANUFACTURER_FK,
                                            identifier_parent=identifier_parent_fk_web,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True)
+                                           weight=result['Weight'], should_enter=True,
+                                           context_id=self.common.get_kpi_fk_by_kpi_type(result[KPI]))
 
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=store_fk,
+                                           denominator_id=MANUFACTURER_FK,
                                            identifier_parent=identifier_parent_fk_supervisor,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True)
+                                           weight=result['Weight'], should_enter=True, context_id=kpi_super_fk)
 
 
         aggs_res_level_2 = aggs_res.groupby([SET, KPI, 'KPI Weight', 'Conditional Weight'], as_index=False).agg({
@@ -277,10 +278,13 @@ class GSKSGToolBox:
 
         for i in xrange(len(aggs_res_level_2)):
             result = aggs_res_level_2.iloc[i]
+
             if result[SET] == PAIN_LEVEL_1:
                 kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI] + PAIN)
+                category_fk = PAIN_FK
             else:
                 kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI] + ORAL_CARE)
+                category_fk = ORAL_FK
 
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI])
             identifier_child_super_fk = self.common.get_dictionary(
@@ -301,7 +305,7 @@ class GSKSGToolBox:
             #supervisor result to db
             self.common.write_to_db_result(fk=kpi_super_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            identifier_result=identifier_child_super_fk,
@@ -311,7 +315,7 @@ class GSKSGToolBox:
             # web result to db
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            identifier_result=identifier_child_fk,
