@@ -975,7 +975,7 @@ class CMASOUTHWESTToolBox:
                     den = 0
                 self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                    denominator_id=self.store_id,
-                                                   denominator_result=den, result=num, score=None, target=den,
+                                                   denominator_result=den, result=num, score=num, target=den,
                                                    identifier_result=self.common_db2.get_dictionary(
                                                        parent_name=sub_parent),
                                                    identifier_parent=self.common_db2.get_dictionary(
@@ -991,7 +991,7 @@ class CMASOUTHWESTToolBox:
             # result = float(num) / den
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               denominator_result=den, result=num, score=None, target=den,
+                                               denominator_result=den, result=num, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=CMA_COMPLIANCE))
 
