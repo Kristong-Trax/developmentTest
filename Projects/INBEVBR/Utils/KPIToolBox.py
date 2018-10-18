@@ -641,6 +641,7 @@ class INBEVBRToolBox:
         # drop adjacent brand duplicates
         df = df.loc[df.shift(-1) != df]
         list_df = df.tolist()
+        list_df = [str(item) for item in list_df]
         str_df = "".join(list_df)
         constraints = self.calc_constraints(groups_outside, groups_inside, list_df)
         for c in constraints:
