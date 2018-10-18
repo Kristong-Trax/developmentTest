@@ -188,7 +188,7 @@ class KCUS_SAND_KPIToolBox:
                 sub_category_att = 'FEM HYGINE'
                 secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
                 sub_category_att].unique().tolist()
-
+                secondary_values_to_check[secondary_values_to_check.index('Feminine Hygine')] = 'Feminine Hygiene'
 
 
         for primary_filter in values_to_check:
