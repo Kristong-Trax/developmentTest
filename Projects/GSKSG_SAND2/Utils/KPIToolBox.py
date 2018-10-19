@@ -207,11 +207,15 @@ class GSKSGToolBox:
         # ## asking if template isnt valid to write to db
         for i in xrange(len(aggs_res)):
             result = aggs_res.iloc[i]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC])
+            # kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC])
             if result[SET] == PAIN_LEVEL_1:
                 kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI]+PAIN)
+                category_fk = PAIN_FK
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC]+PAIN)
             else:
                 kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI]+ORAL_CARE)
+                category_fk = ORAL_FK
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC]+ORAL_CARE)
 
             #web db
             identifier_parent_fk_web = self.common.get_dictionary(
@@ -224,22 +228,21 @@ class GSKSGToolBox:
                 kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            identifier_parent=identifier_parent_fk_web,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True,
-                                           context_id=self.common.get_kpi_fk_by_kpi_type(result[KPI]))
+                                           weight=result['Weight'], should_enter=True)
 
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
                                            score=result['result_bin'],
-                                           denominator_id=MANUFACTURER_FK,
+                                           denominator_id=category_fk,
                                            identifier_parent=identifier_parent_fk_supervisor,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True, context_id=kpi_super_fk)
+                                           weight=result['Weight'], should_enter=True)
 
 
         aggs_res_level_2 = aggs_res.groupby([SET, KPI, 'KPI Weight', 'Conditional Weight'], as_index=False).agg({
