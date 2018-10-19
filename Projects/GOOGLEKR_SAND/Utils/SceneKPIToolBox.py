@@ -1,0 +1,94 @@
+from datetime import datetime
+import os
+import pandas as pd
+
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Projects.GOOGLEKR_SAND.Utils.Const import Const
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+
+__author__ = 'Eli_Sam_Shivi'
+
+
+class SceneGOOGLEToolBox:
+
+    def __init__(self, data_provider, common_v2):
+        self.common_v2 = common_v2
+        self.data_provider = data_provider
+        self.project_name = self.data_provider.project_name
+        self.session_uid = self.data_provider.session_uid
+        self.templates = self.data_provider.all_templates
+        self.products = self.data_provider[Data.PRODUCTS]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.session_info = self.data_provider[Data.SESSION_INFO]
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_id = self.data_provider[Data.STORE_FK]
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        # self.all_products = self.ps_data_provider.get_sub_category(self.all_products)
+        # self.store_assortment = self.ps_data_provider.get_store_assortment()
+        # self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        # self.labels = self.ps_data_provider.get_labels()
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        # self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
+        self.fixture_template = {}
+        self.current_date = datetime.now()
+
+    def main_calculation(self, *args, **kwargs):
+        """
+        This function calculates the KPI results.
+        """
+        score = 0
+        return score
+
+    def google_global_SOS(self):
+        scif = self.filter_df(self.scif.copy(), Const.EXCLUDE_FILTERS, exclude=1)
+        brands_scif = scif[~scif[Const.BRAND].isin(Const.NOTABRAND)]
+        if brands_scif.empty:
+            return
+
+        Const.SOS_KPIs['SOS BRAND out of SCENE']['den'] = scif[Const.FACINGS].sum()
+        Const.SOS_KPIs['SOS BRAND out of BRANDS in SCENE']['den'] = brands_scif[Const.FACINGS].sum()
+        brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND])\
+                                  .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS]\
+                                  .sum()
+
+        for (brand_name, brand_fk), numerator in brand_totals.iteritems():
+            for kpi in Const.SOS_KPIs:
+                ratio = self.division(numerator, Const.SOS_KPIs[kpi]['den'])
+                kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
+                self.common_v2.write_to_db_result(
+                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio, by_scene=True,
+                    denominator_id=self.common_v2.scene_id, denominator_result=Const.SOS_KPIs[kpi]['den'])
+
+    def get_planogram_fixture_details(self):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
+        match_planogram_in_probe = {}
+        match_planogram_in_scene = {}
+        planogram_products = []
+        denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
+        numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
+        ratio = self.division(numerator, denominator)
+
+    def get_fixture_osa(self):
+        list_of_products = []
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
+        return
+
+    @staticmethod
+    def filter_df(df, filters, exclude=0):
+        for exclude_filter in filters:
+            if exclude:
+                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+            else:
+                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+        return df
+
+    @staticmethod
+    def division(num, den):
+        if den:
+            ratio = num * 100.0 / den
+        else:
+            ratio = 0
+        return ratio

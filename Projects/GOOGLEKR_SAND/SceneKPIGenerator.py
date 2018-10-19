@@ -1,34 +1,30 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GOOGLEKR_SAND.Utils.KPIToolBox import GOOGLEToolBox
+from Projects.GOOGLEKR_SAND.Utils.SceneKPIToolBox import SceneGOOGLEToolBox
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 
 __author__ = 'Eli'
 
 
-class GOOGLEGenerator:
+class SceneGenerator:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider):
         self.data_provider = data_provider
-        self.output = output
         self.common_v2 = CommonV2(self.data_provider)
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = GOOGLEToolBox(self.data_provider, self.output, self.common_v2)
+        self.tool_box = SceneGOOGLEToolBox(self.data_provider, self.common_v2)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        if self.tool_box.scif.empty:
-            Log.warning('Distribution is empty for this session')
+        self.google_global_SOS()
+        # self.scene_osa_and_pog()
+        self.common_v2.commit_results_data(result_entity='scene')
 
-        self.google_global_fixture_compliance()
-        # google.visit_osa_and_pog()
-        self.common_v2.commit_results_data()
-
-    def google_global_fixture_compliance(self):
+    def google_global_SOS(self):
         try:
-            self.tool_box.google_global_fixture_compliance()
+            self.tool_box.google_global_SOS()
         except Exception as e:
             Log.error('{}'.format(e))
 

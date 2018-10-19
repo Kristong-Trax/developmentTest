@@ -48,43 +48,6 @@ class GOOGLEToolBox:
         score = 0
         return score
 
-    @staticmethod
-    def filter_df(df, exclude=0):
-        for exclude_filter in Const.EXCLUDE_FILTERS:
-            if exclude:
-                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
-            else:
-                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
-        return df
-
-    @staticmethod
-    def division(num, den):
-        if den:
-            ratio = num * 100.0 / den
-        else:
-            ratio = 0
-        return ratio
-
-    def google_global_SOS(self):
-        scif = self.filter_df(self.scif.copy())
-        brands_scif = scif[~scif[Const.BRAND].isin(Const.NOTABRAND)]
-        if brands_scif.empty:
-            return
-
-        Const.SOS_KPIs['SOS BRAND out of SCENE']['den'] = scif[Const.FACINGS].sum()
-        Const.SOS_KPIs['SOS BRAND out of BRANDS in SCENE']['den'] = brands_scif[Const.FACINGS].sum()
-        brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND])\
-                                  .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS]\
-                                  .sum()
-
-        for (brand_name, brand_fk), numerator in brand_totals.iteritems():
-            for kpi in Const.SOS_KPIs:
-                ratio = self.division(numerator, Const.SOS_KPIs[kpi]['den'])
-                kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
-                self.common_v2.write_to_db_result(
-                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio, by_scene=True,
-                    denominator_id=self.common_v2.scene_id, denominator_result=Const.SOS_KPIs[kpi]['den'])
-
     def google_global_fixture_compliance(self):
         store_num = self.store_info['store_number_1'][0]
         fixture_template = self.fixture_template[Const.FIXTURE_TARGETS]
@@ -111,10 +74,6 @@ class GOOGLEToolBox:
                 fk=kpi_fk, numerator_id=fixture_pk, numerator_result=numerator, denominator_id=fixture_pk,
                 denominator_result=denominator, score=score, result=ratio)
 
-    def google_global_survey(self):
-        'No Mock Survey Data Yet'
-        pass
-
     def get_planogram_visit_details(self):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
         match_planogram_in_probe = {}
@@ -123,21 +82,16 @@ class GOOGLEToolBox:
         denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
         numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
 
-    def get_planogram_fixture_details(self):
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
-        match_planogram_in_probe = {}
-        match_planogram_in_scene = {}
-        planogram_products = []
-        denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
-        numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
-        ratio = self.division(numerator, denominator)
 
     def get_visit_osa(self):
         list_of_products = []
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
         return
 
-    def get_fixture_osa(self):
-        list_of_products = []
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
-        return
+    @staticmethod
+    def division(num, den):
+        if den:
+            ratio = num * 100.0 / den
+        else:
+            ratio = 0
+        return ratio
