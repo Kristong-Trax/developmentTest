@@ -131,7 +131,8 @@ class PNGRO_PRODToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = PNGRO_PRODQueries.get_all_kpi_data()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -141,7 +142,8 @@ class PNGRO_PRODToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = PNGRO_PRODQueries.get_match_display(self.session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -151,7 +153,8 @@ class PNGRO_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_PRODQueries.get_match_stores_by_retailer()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -161,19 +164,22 @@ class PNGRO_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_PRODQueries.get_template_fk_by_category_fk()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_display(self, session_uid):
         query = PNGRO_PRODQueries.get_status_session_by_display(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_category(self, session_uid):
         query = PNGRO_PRODQueries.get_status_session_by_category(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -614,7 +620,9 @@ class PNGRO_PRODToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
         delete_queries = PNGRO_PRODQueries.get_delete_session_results_query(self.session_uid)

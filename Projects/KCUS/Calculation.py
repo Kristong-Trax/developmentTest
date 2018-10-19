@@ -6,6 +6,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.KCUS.Utils.KCUSToolBox import KCUSToolBox
 from Projects.KCUS.Utils.KCUSJSON import KCUSJsonGenerator
+from Projects.KCUS.Utils.KpiToolbox import KCUS_KPIToolBox
 
 __author__ = 'ortalk'
 
@@ -39,7 +40,14 @@ class KCUSCalculations(BaseCalculationsScript):
                 tool_box.calculate_relative_position(p)
             if p.get('KPI_Type') == 'Assortment':
                 tool_box.calculate_assort(p)
+
+
         tool_box.commit_results_data()
+
+        kpitool_box = KCUS_KPIToolBox(self.data_provider, self.output, set_name='KC Score')
+        kpitool_box.main_calculation()
+        kpitool_box.commit_results_data()
+
         Log.info('calculate kpi took {}'.format(tool_box.download_time))
 
 # if __name__ == '__main__':

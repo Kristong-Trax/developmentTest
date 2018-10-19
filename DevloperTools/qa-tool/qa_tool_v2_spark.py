@@ -32,14 +32,15 @@ class qa:
         # if os.path.isfile(SUMMERY_FILE):
         #     os.remove(SUMMERY_FILE)
 
-        findspark.init('/home/Ilan/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
-        findspark.add_jars('/usr/local/bin/mysql-connector-java-5.1.46-bin.jar')
+        findspark.init('/home/ilanp/miniconda/envs/garage/lib/python2.7/site-packages/pyspark')
+        findspark.add_jars('/usr/share/java/mysql-connector-java.jar')
         self.spark = SparkSession.builder.appName("qa_tool").config("spark.driver.memory","4g")\
                                                             .config("spark.executor.memory", "4g")\
                                                             .config("spark.driver.cores", "4")\
                                                             .config("spark.driver.maxResultSize", "4g")\
                                                             .config("spark.ssl.enabled","True") \
                                                             .config("spark.ssl.protocol", "TLSv1.1").getOrCreate()
+
         self._project = project
         self._config_file = config_file
         self._dbUser = DbUsers.CalculationEng
@@ -53,7 +54,8 @@ class qa:
         #const
         self.results_query = '''    
                             (SELECT 
-                                report.kpi_level_2_results.*
+                                report.kpi_level_2_results.*,
+                                probedata.session.pk as sessions_pk
                             FROM
                                 report.kpi_level_2_results,
                                 probedata.session
@@ -142,7 +144,7 @@ class qa:
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
                                                            "password": self.connector.dbuser.cred,
-                                                           "partitionColumn": "tmp_kpi_level_2_results.session_fk",
+                                                           "partitionColumn": "tmp_kpi_level_2_results.sessions_pk",
                                                            "lowerBound": "{}".format(lower_bound),
                                                            "upperBound": "{}".format(upper_bound),
                                                            "numPartitions": "{}".format(number_of_partition),
@@ -222,7 +224,7 @@ class qa:
         print '## uncalculated kpi list ##'
         test_results.show(1000, False)
         test_results_pandas = test_results.select("client_name","session count").toPandas()
-        test_results_pandas.to_csv(RAW_DATA + "/uncalculated_kpi_list.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/uncalculated_kpi_list.csv" , encoding="utf8")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_invalid_percent_results(self):
@@ -242,7 +244,7 @@ class qa:
                                                   "session_count", \
                                                   ((F.col('session_count') / total_sessions) * 100).alias("session_count%"))\
                                                    .toPandas()
-        test_results_pandas.to_csv(RAW_DATA + "/invalid_percent_results_list.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/invalid_percent_results_list.csv" , encoding="utf8")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_result_is_zero(self):
@@ -267,7 +269,7 @@ class qa:
                                                   ((F.col('session_count') / total_sessions) * 100).alias(
                                                   "session_count%(out of all sessions)") \
                                                   ).toPandas()
-        test_results_pandas.to_csv(RAW_DATA + "/test_result_is_zero.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_result_is_zero.csv" , encoding="utf8")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_results_stdev(self):
@@ -275,7 +277,7 @@ class qa:
                                                                          F.mean('result'), \
                                                                          F.min('result'), \
                                                                          F.max('result')).orderBy('client_name').toPandas()
-        test_results_pandas.to_csv(RAW_DATA + "/test_results_stdev.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_results_stdev.csv" , encoding="utf8")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def test_results_in_expected_range(self):
@@ -299,7 +301,7 @@ class qa:
                                                                          F.min('result'), \
                                                                          F.max('result')).orderBy('client_name').toPandas()
 
-        test_results_pandas.to_csv(RAW_DATA + "/test_results_by_category_stddev.csv")
+        test_results_pandas.to_csv(RAW_DATA + "/test_results_by_category_stddev.csv" , encoding="utf8")
         return test_results_pandas.to_html(classes=["table","table-striped","table-hover"])
 
     def gen_kpi_histogram(self):
@@ -307,8 +309,11 @@ class qa:
         static = self.static_kpi.toPandas()
 
         for i, row in static.iterrows():
-            print "*** {} ***".format(row['client_name'])
-            filter = 'result is not null  and client_name = "{}"'.format(row['client_name'])
+            print "*** {} ***".format(row['client_name'].encode('utf-8').strip())
+            if row['client_name'].find('"') > 0 :
+                print "invalid char cant create histogram  *** {} ***".format(row['client_name'])
+                continue
+            filter = 'result is not null  and client_name = "{}"'.format(row['client_name'].encode('utf-8'))
             res = self.merged_kpi_results.filter(filter).select('client_name','result').toPandas()
             # res = kpi.loc[(kpi['client_name'] == row['client_name'])]
             if not res.empty:
@@ -320,7 +325,7 @@ class qa:
 
                 with open(SUMMERY_FILE, 'a') as file:
                     url = "histogram" + "/" + row['client_name'].replace("/","_") + ".png"
-                    file.write("<img src='{}' >".format(url))
+                    file.write("<img src='{}' >".format(url.encode('utf-8')))
 
     @staticmethod
     def start_html_report():
@@ -442,10 +447,10 @@ class qa:
     # input of session list
 
 
-if __name__ == "__main__":
-    Config.init(app_name='ttt', default_env='prod',
-                config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('diageous', start_date='2018-08-25', end_date='2018-08-26')
-    qa_tool.run_all_tests()
 
+if __name__ == "__main__":
+    Config.init(app_name='ttt', default_env_and_cloud = ('prod','AWS'),
+                config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
+    qa_tool = qa('ccbottlersus', start_date='2018-09-01', end_date='2018-09-15')
+    qa_tool.run_all_tests()
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))

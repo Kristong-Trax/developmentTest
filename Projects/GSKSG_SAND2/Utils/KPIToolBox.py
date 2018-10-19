@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
@@ -24,8 +23,6 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 ######################
-relevant_cols = 'relevant columns'
-template_kpi_type = 'type of condition'
 GENERAL_COLS = ['template_name']
 EXCLUDE = 0
 SURVEY_QUEST = 'Survey Question Text'
@@ -36,14 +33,37 @@ STORE_LVL_1 = 'store_type'
 STORE_LVL_2 = 'retailer_name'
 STORE_LVL_3 = 'additional_attribute_1'
 ######################
+# Template columns in kpi's sheet:
+ATOMIC = '3rd_level'
+KPI = '2nd_level'
+SET = '1st_level'
+KPI_TYPE = 'type of condition'
+COLS_TO_LOOK = 'relevant columns'
+SCORE_METHOD = 'KPI Score Method'
+STORE_TYPE = 'store_type'
+
+######################
 SURVEY_SHEET = 'Survey'
+KPI_SHEET = 'KPIs'
 ######################
 KPI_NAME_INDEX = 0
 KPI_WEIGHT = 2
 CONDITION_WEIGHT = 3
 ######################
+MANUFACTURER_FK = 1  # GSKSK pk in table static_new.manufacturer
+ORAL_FK = 1
+PAIN_FK = 4
+ORAL_KPI = 2054
+ORANGE_SCORE =2056
+######################
+ORAL_CARE_LEVEL_1 = 'Orange Score for Oral Care'
+PAIN_LEVEL_1 = 'Orange score for Pain'
+ORAL_CARE = ' Oral Care'
+PAIN=' Pain'
+
 
 TBD = 'tbd'
+
 
 class GSKSGToolBox:
     LEVEL1 = 1
@@ -73,12 +93,12 @@ class GSKSGToolBox:
         self.excel_file_path = os.path.join(self.templates_path, 'template.xlsx')
         self.survey_file = pd.read_excel(self.excel_file_path, sheetname=SURVEY_SHEET)
         self.msl_list = pd.read_excel(self.excel_file_path,
-                   header=[[0, 1, 2]],
-                   sheetname=MSL).dropna()
+                                      header=[[0, 1, 2]],
+                                      sheetname=MSL).dropna()
 
-        self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'sequence': self.calculate_sequence,
-                             'presence': self.calculate_presence, 'facings': self.calculate_facings,
-                             'No facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
+        self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
+                             'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
+                             'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
         self.sequence = Sequence(data_provider, ignore_stacking=True)
         self.availability = Availability(data_provider, ignore_stacking=True)
         self.sos = SOS(data_provider, self.output)
@@ -91,6 +111,8 @@ class GSKSGToolBox:
         """
         template = self.get_relevant_calculations()
         self.handle_calculation(template)
+        #self.common.commit_results_data_to_new_tables
+        self.common.commit_results_data()
 
         score = 0
         return score
@@ -99,111 +121,148 @@ class GSKSGToolBox:
         """
 
         :param template_names: a string of template names seperated by ','
-        :return:
+        :return: 1 if at least one of the template names given was in session, 0 otherwise.
         """
         in_session = set(self.scif['template_name'])
         in_template = set([val.strip(' \n') for val in str(template_names).split(',')])
         return 1 if (in_session & in_template) else 0
 
     def handle_calculation(self, kpis):
-        # kpi_results = dict()
 
-
-
-        kpi_results = pd.DataFrame(columns=['1st level', '2nd Level', '3rd Level','valid_template_name',
+        kpi_results = pd.DataFrame(columns=[SET, KPI, ATOMIC, 'valid_template_name',
                                             'KPI Weight', 'Weight',
                                             'Score Method', 'Benchmark', 'Conditional Weight', 'result'])
 
-
-        # for each level3:
+        # calculating each calculation in template.
         for i in xrange(len(kpis)):
             current_kpi = kpis.iloc[i]
 
-            # check if relevant template name exists!!!!!!!!!!!!!!! =0 //1
+            # check if relevant template name exists in session.
             is_template_valid = self.is_template_relevant(current_kpi['template_name'])
 
-            # will calculate only if there is at least ont template_name from template in session.
-            result = self.calculate_atomic(current_kpi) if is_template_valid else 0
+            # calculates only if there is at least ont template_name from template in the session.
+            result = self.calculate_atomic(current_kpi) if is_template_valid else (0,0,0)
             if result is None:
                 continue
 
-            kpi_results = kpi_results.append({'1st level': current_kpi['1st level'],
-                                              '2nd Level': current_kpi['2nd Level'],
-                                              '3rd Level': current_kpi['3rd Level'],
+            if isinstance(result, tuple):
+                scenes_passed = result[1]
+                scenes_total = result[2]
+                result = result[0]
+
+
+            kpi_results = kpi_results.append({SET: current_kpi[SET],
+                                              KPI: current_kpi[KPI],
+                                              ATOMIC: current_kpi[ATOMIC],
+                                              'kpi_type': current_kpi[KPI_TYPE],
                                               'KPI Weight': current_kpi['KPI Weight'],
                                               'Weight': current_kpi['Weight'],
                                               'Score Method': current_kpi['Score Method'],
+                                              'KPI Score Method': current_kpi['KPI Score Method'],
                                               'Benchmark': current_kpi['Benchmark'],
                                               'Conditional Weight': current_kpi['Conditional Weight'],
-                                              'result': result, 'valid_template_name': is_template_valid},
+                                              'result': result, 'valid_template_name': is_template_valid,
+                                              'scenes_passed':scenes_passed,'scenes_total':scenes_total},
                                              ignore_index=True)
 
         kpi_results['Conditional Weight'] = kpi_results['Conditional Weight'].fillna(-1)
 
-        aggs_res = kpi_results.groupby(['1st level', '2nd Level', '3rd Level', 'KPI Weight', 'Weight', 'Score Method',
-                     'Benchmark', 'Conditional Weight'], as_index=False)[['result', 'valid_template_name']].sum()
+        boolean_res = kpi_results.loc[kpi_results['Score Method'] == 'Binary']
+        boolean_res['result'] = boolean_res['result'].astype(bool)
 
+        boolean_res = boolean_res.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+                                           'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'all',
+                                                                                                    'valid_template_name': 'sum',
+                                                                                                    'scenes_passed':'sum' ,
+                                                                                                    'scenes_total':'sum'})
+
+        kpi_results = kpi_results.loc[kpi_results['Score Method'] != 'Binary']
+
+        aggs_res = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+                                                                                  'Benchmark', 'Conditional Weight'],
+                                       as_index=False).agg({'result': 'sum', 'valid_template_name': 'sum','scenes_passed':'sum' ,
+                                                                                                    'scenes_total':'sum'})
+
+        aggs_res = aggs_res.append(boolean_res, ignore_index=True)
         # if not && condinal weight is NA MSL conditional weight + this KPI weight
 
-
-        ## write to db
-        # ## asking if themplate isnt valid to write to db
-        for i in xrange(len(aggs_res)):
-            result = aggs_res.iloc[i]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['3rd Level'])
-
-            identifier_child_fk = self.common.get_dictionary(
-                kpi_fk=kpi_fk,
-                kpi_level2=self.common.get_kpi_fk_by_kpi_type(result['2nd Level']),
-                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
-            identifier_parent_fk = self.common.get_dictionary(
-                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result['2nd Level']),
-                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
-
-            #numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['result'],
-                                           denominator_id=TBD,
-                                           identifier_result=identifier_child_fk,
-                                           identifier_parent=identifier_parent_fk,
-                                           target=TBD, should_enter=True)
-
         ## if method binary change result to 100/0
-        aggs_res.loc[(aggs_res['Score Method'] == 'Binary')&
+        aggs_res.loc[(aggs_res[SCORE_METHOD] == 'Binary') &
                      (aggs_res['result'] >= aggs_res['Benchmark']), 'result_bin'] = 100
         aggs_res.loc[
-            (aggs_res['Score Method'] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
+            (aggs_res[SCORE_METHOD] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
 
         aggs_res.loc[
             (aggs_res['Benchmark'] == 'Pass'), 'result_bin'] = aggs_res['result']
 
-        aggs_res['result_bin'] = np.where(aggs_res['Score Method'] == 'Proportional', aggs_res['result'],
+        aggs_res['result_bin'] = np.where(aggs_res[SCORE_METHOD] == 'Proportional', aggs_res['result'],
                                           aggs_res['result_bin'])
-        aggs_res['result_bin'] = aggs_res['result_bin']*(aggs_res['Weight']/100)
+        aggs_res['result_bin'] = aggs_res['result_bin'] * (aggs_res['Weight'] / 100)
 
         aggs_res['valid_template_name'] = aggs_res['valid_template_name'].astype(float)
 
-        # aggregating atomic results to kpi level
-        aggs_res_level_2 = aggs_res.groupby(
-            ['1st level', '2nd Level', 'KPI Weight', 'Conditional Weight'], as_index=False).agg(
-            {'valid_template_name': 'max',  'result_bin': np.sum})
 
+        ## write level3 to db
+        store_fk = self.store_info['store_fk'][0]
+        # ## asking if template isnt valid to write to db
+        for i in xrange(len(aggs_res)):
+            result = aggs_res.iloc[i]
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC])
+            if result[SET] == PAIN_LEVEL_1:
+                kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI]+PAIN)
+            else:
+                kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI]+ORAL_CARE)
+
+            #web db
+            identifier_parent_fk_web = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[KPI]),
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
+
+            #supervisor
+            identifier_parent_fk_supervisor = self.common.get_dictionary(
+                kpi_fk=kpi_super_fk,
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
+
+            # numerator /  denominator understnad
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
+                                           score=result['result_bin'],
+                                           denominator_id=MANUFACTURER_FK,
+                                           identifier_parent=identifier_parent_fk_web,
+                                           numerator_result=result['scenes_passed'],
+                                           denominator_result=result['scenes_total'],
+                                           weight=result['Weight'], should_enter=True,
+                                           context_id=self.common.get_kpi_fk_by_kpi_type(result[KPI]))
+
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=kpi_super_fk, result=result['result'],
+                                           score=result['result_bin'],
+                                           denominator_id=MANUFACTURER_FK,
+                                           identifier_parent=identifier_parent_fk_supervisor,
+                                           numerator_result=result['scenes_passed'],
+                                           denominator_result=result['scenes_total'],
+                                           weight=result['Weight'], should_enter=True, context_id=kpi_super_fk)
+
+
+        aggs_res_level_2 = aggs_res.groupby([SET, KPI, 'KPI Weight', 'Conditional Weight'], as_index=False).agg({
+                                                                                                    'valid_template_name': 'max',
+                                                                                                    'result_bin': np.sum ,
+                                                                                                    'scenes_passed': 'sum',
+                                                                                                    'scenes_total': 'sum'})
         # takes conditional weight for irrelevnat kpis that has it.
         aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
-                     (aggs_res_level_2['Conditional Weight'] != -1), 'result_bin'] = aggs_res_level_2['Conditional Weight']
+                             (aggs_res_level_2['Conditional Weight'] != -1), 'result_bin'] = aggs_res_level_2[
+            'Conditional Weight']
 
-
-
-        sets = aggs_res_level_2['1st level'].unique()
+        # sets = aggs_res_level_2[SET].unique()
 
         # The kpis to 'take weight' from for the MSL.
         invalid_templates = aggs_res_level_2.loc[(aggs_res_level_2['valid_template_name'] == 0) &
-                                        (aggs_res_level_2['Conditional Weight'] == -1) &
-                                        (aggs_res_level_2['2nd Level'] != 'MSL')]
+                                                 (aggs_res_level_2['Conditional Weight'] == -1) &
+                                                 (aggs_res_level_2[KPI] != 'MSL')]
 
-        invalid_templates = invalid_templates.groupby(['1st level'], as_index=False)[['KPI Weight']].sum()
+        invalid_templates = invalid_templates.groupby([SET], as_index=False)[['KPI Weight']].sum()
         invalid_templates = invalid_templates.rename(columns={'KPI Weight': 'PLUS_WEIGHT'})
-        invalid_templates['2nd Level'] = 'MSL'
-        aggs_res_level_2 = aggs_res_level_2.merge(invalid_templates, on=['1st level', '2nd Level'], how='left')
+        invalid_templates[KPI] = 'MSL'
+        aggs_res_level_2 = aggs_res_level_2.merge(invalid_templates, on=[SET, KPI], how='left')
 
         aggs_res_level_2 = aggs_res_level_2.loc[~(aggs_res_level_2['valid_template_name'] == 0) |
                                                 ~(aggs_res_level_2['Conditional Weight'] == -1)]
@@ -213,66 +272,97 @@ class GSKSGToolBox:
 
         aggs_res_level_2.loc[aggs_res_level_2['valid_template_name'] == 0, 'result_bin'] = 1
 
-        aggs_res_level_2['total_result'] =  aggs_res_level_2['KPI Weight'] * aggs_res_level_2['result_bin']
+        aggs_res_level_2['total_result'] = aggs_res_level_2['KPI Weight'] * aggs_res_level_2['result_bin']
 
         ## write to db level 2 kpis
 
         for i in xrange(len(aggs_res_level_2)):
             result = aggs_res_level_2.iloc[i]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['2nd Level'])
+
+            if result[SET] == PAIN_LEVEL_1:
+                kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI] + PAIN)
+                category_fk = PAIN_FK
+            else:
+                kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI] + ORAL_CARE)
+                category_fk = ORAL_FK
+
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI])
+            identifier_child_super_fk = self.common.get_dictionary(
+                kpi_fk=kpi_super_fk,
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
             identifier_child_fk = self.common.get_dictionary(
                 kpi_fk=kpi_fk,
-                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
-            identifier_parent_fk = self.common.get_dictionary(
-                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result['1st level']))
+                kpi_level1=self.common.get_kpi_fk_by_kpi_type(result[SET]))
 
-            # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
-                                           denominator_id=TBD,
+            identifier_parent_fk_supervisor = self.common.get_dictionary(
+                kpi_fk=self.common.get_kpi_fk_by_kpi_type(result[SET]))
+
+            identifier_parent_fk_web = self.common.get_dictionary(
+                kpi_category=self.common.get_kpi_fk_by_kpi_type(result[SET]),kpi_fk=ORANGE_SCORE)
+
+
+            #supervisor result to db
+            self.common.write_to_db_result(fk=kpi_super_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
+                                           score=result['result_bin'],
+                                           denominator_id=category_fk,
+                                           numerator_result=result['scenes_passed'],
+                                           denominator_result=result['scenes_total'],
+                                           identifier_result=identifier_child_super_fk,
+                                           identifier_parent=identifier_parent_fk_supervisor,
+                                           weight=result['KPI Weight'], should_enter=True)
+
+            # web result to db
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
+                                           score=result['result_bin'],
+                                           denominator_id=category_fk,
+                                           numerator_result=result['scenes_passed'],
+                                           denominator_result=result['scenes_total'],
                                            identifier_result=identifier_child_fk,
-                                           identifier_parent=identifier_parent_fk,
-                                           target=TBD, should_enter=True)
+                                           identifier_parent=identifier_parent_fk_web,
+                                           weight=result['KPI Weight'], should_enter=True)
 
         # fixind data for 1st level
 
-
-
         # aggregating to level 3:
-        aggs_res_level_1 = aggs_res_level_2.groupby(
-            ['1st level'], as_index=False)['total_result'].sum()
+        aggs_res_level_1 = aggs_res_level_2.groupby([SET], as_index=False)['total_result'].sum()
 
         # write to db
 
         for i in xrange(len(aggs_res_level_1)):
             result = aggs_res_level_1.iloc[i]
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result['1st level'])
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[SET])
+            category_fk = ORAL_FK if kpi_fk == ORAL_KPI else PAIN_FK
+            identifier_child_fk_web = self.common.get_dictionary(
+                kpi_category=kpi_fk, kpi_fk=ORANGE_SCORE)
+            identifier_child_fk_supervisor = self.common.get_dictionary(
+                 kpi_fk=kpi_fk)
 
-            identifier_child_fk = self.common.get_dictionary(
-                kpi_fk=kpi_fk)
-
-            # numerator /  denominator understnad
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=TBD, score=result['total_result'],
-                                           denominator_id=TBD,
-                                           identifier_result=identifier_child_fk,
-                                           target=TBD, should_enter=True)
-
-
-
-
+            # supervisor result to db
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, score=result['total_result'],
+                                           result=result['total_result'],denominator_id=store_fk,
+                                           identifier_result=identifier_child_fk_supervisor
+                                           ,should_enter=True)
+            # web result to db
+            self.common.write_to_db_result(fk=ORANGE_SCORE, numerator_id=MANUFACTURER_FK, score=result['total_result'],
+                                           result=result['total_result'],
+                                           denominator_id=category_fk,
+                                           identifier_result=identifier_child_fk_web
+                                           ,should_enter=True)
 
 
     def get_relevant_calculations(self):
         # Gets the store type name and the relevant template according to it.
-        store_type = self.store_info['store_type'].values[0].title()
-
+        store_type = self.store_info['store_type'].values[0]
         # Gets the relevant kpis from template
-        template = pd.read_excel(self.excel_file_path, sheetname=store_type)
+        template = pd.read_excel(self.excel_file_path, sheetname=KPI_SHEET)
+        template = template.loc[template[STORE_TYPE] == store_type]
+
         return template
 
     def calculate_atomic(self, row):
-        # gets the atomic kpi's calculation type and run the relevant calculation according to it,
-        kpi_type = row[template_kpi_type]
+        # gets the atomic kpi's calculation type and run the relevant calculation according to it.
+        kpi_type = row[KPI_TYPE]
 
         # runs the relevant calculation
         calculation = self.calculations.get(kpi_type, '')
@@ -284,32 +374,75 @@ class GSKSGToolBox:
 
     def calculate_sos(self, row):
         # Calculates the sos kpi according to the template.
+
+        target = row['target'] if not pd.isnull(row['target']) else 0
+        #
+        # filters, general_filters = self.get_filters(row)
+        templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
+        scene_passed_count = 0
+        for scene_id in valid_scenes:
+            row['scene_id'] = scene_id
+            filters, general_filters = self.get_filters(row)
+            res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+            res = res >= target if not pd.isnull(row['target']) else res
+            scene_passed_count = scene_passed_count+1 if res else scene_passed_count
+        row = row.drop('scene_id')
         filters, general_filters = self.get_filters(row)
-        return self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        return res, scene_passed_count, len(valid_scenes)
 
     def calculate_presence(self, row):
 
         return self.calculate_facings(row)
 
     def calculate_facings(self, row, no_facing=False):
+        """This function calculates facing from given filter, and return True if at least
+         one scene had facing as neede by target. Assuming row has a target (if not, target =0).
+         returns whether kpi passed, the number of scenes passed and total scenes checked/"""
 
+        facing_scenes_counted = 0
+        no_facing_scenes_counted = 0
+        passed = False
         target = row['target'] if not pd.isnull(row['target']) else 0
         row_filter, general_filters = self.get_filters(row)
         row_filter.update(general_filters)
-        result = self.availability.calculate_availability(**row_filter)
+        # Gets relevant scenes
+        templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
+        for scene_id in valid_scenes:
+            # Checks for each product if found in scene, if so, 'count' it.
+            row_filter['scene_id'] = scene_id
+            result = self.availability.calculate_availability(**row_filter)
+            if no_facing:
+                if int(result < target):
+                    no_facing_scenes_counted += 1
+                    passed = True
+            else:
+                if int(result >= target):
+                    facing_scenes_counted += 1
+                    passed = True
+
         if no_facing:
-            return int(result < target)
-        return int(result >= target)
+            return passed, no_facing_scenes_counted, len(valid_scenes)
+        return passed, facing_scenes_counted, len(valid_scenes)
 
     def calculate_no_facings(self, row):
         return self.calculate_facings(row, no_facing=True)
 
     def calculate_MSL(self, row):
-        """This function gets the relevant assortment, and returns the number of shown is session out of assortment"""
+        """This function gets the relevant assortment,
+         and returns the number of shown is session out of assortment.
+         counting by each scene number of product available out of MSL assortment.
+         if at least one scene has result  > target, atomic passes.
+         returns: whether at least one scene passed, number of scene passed, number of scene checked
+         """
         # ToDo: use the benchmark as needed if needed.
 
         target = row['target'] if not pd.isnull(row['target']) else 0
 
+        scene_passed = False
+        products_in_scenes = pd.DataFrame(columns=['product_ean_code', 'scene_id', 'result'])
         # Gets relevant assortment from template according to store attributes.
         store_data = (self.store_type, self.store_info[STORE_LVL_2].values[0], self.store_info[STORE_LVL_3].values[0])
 
@@ -326,18 +459,36 @@ class GSKSGToolBox:
         kpi_filters, general = self.get_filters(row)
         kpi_filters.update(general)
         total_products = len(products)
-        exist_products = 0
-        # Checks for each product if passed, if so, count it.
-        for product in set(products):
-            kpi_filters['product_ean_code'] = str(product)
-            res = self.availability.calculate_availability(**kpi_filters)
-            if res:
-                exist_products += 1
-        #     write to 4h level?
 
-        res = float(exist_products) / total_products if total_products else 0
-        return res >= target
+        # get the relevant scene by the template name given
+        templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
 
+        # save which products were in each relevant scene
+        for scene_id in valid_scenes:
+            # Checks for each product if found in scene, if so, 'count' it.
+            for product in set(products):
+                kpi_filters['product_ean_code'] = str(product)
+                kpi_filters['scene_id'] = scene_id
+                res = self.availability.calculate_availability(**kpi_filters)
+                products_in_scenes = products_in_scenes.append({
+                    'product_ean_code': product,
+                    'scene_id': scene_id,
+                    'result': 1 if res else 0,
+                }, ignore_index=True)
+
+        sum_exist = len(products_in_scenes[products_in_scenes['result'] != 0]['product_ean_code'].unique())
+        scene_passed_count = len(products_in_scenes[products_in_scenes['result'] != 0]['scene_id'].unique())
+        # for scene_id in valid_scenes:
+        #     in_scene = products_in_scenes.loc[products_in_scenes['scene_id'] == scene_id]
+        #     exist_products = in_scene['result'].sum()
+        res = float(sum_exist) / total_products if total_products else 0
+        #     if res >= target:
+        #         scene_passed = True
+        #         scene_passed_count += 1
+        # sum_exist = float(sum_exist) / total_products if total_products else 0
+
+        return res, scene_passed_count, len(valid_scenes)
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
@@ -350,25 +501,12 @@ class GSKSGToolBox:
         if len(sequence_filter) == 1:
             key = sequence_filter.keys()[0]
             sequence_filter = (key, sequence_filter[key])
-            result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', **general_filters)
+            result = self.sequence.calculate_product_sequence(sequence_filter, direction='left', min_required_to_pass=1,
+                                                              **general_filters)
         else:
             result = None
             Log.info('More than 1 filter was applied for sequence organs- Not supported!')
-        return result
-
-
-#need to check below
-    # def calculate_survey(self, row):
-    #     group_of_question = self.survey_file[(self.survey_file['KPI Name'] == row['3rd Level']) & (self.store_info[STORE_LVL_1] in self.survey_file['Store Policy'])]
-    #     target = group_of_question.iloc[0]['target']
-    #     counter = 0
-    #     for quest in group_of_question.itertuples():
-    #         answer = self.survey_data[self.survey_data['question_text'] == quest['Survey Question Text']]
-    #         if ~ self.quest[answer['selected_option_text'] == quest['Accepted Answers']].empty: #not empty
-    #             counter = counter + 1
-    #             if counter >= target:
-    #                 return 100
-    #     return 0
+        return result, 0, 0
 
     def calculate_survey(self, row):
         """
@@ -379,9 +517,9 @@ class GSKSGToolBox:
         """
 
         # Gets the atomic's survey
-        atomic_name = row['3rd Level']
+        atomic_name = row[ATOMIC]
         rows = self.survey_file.loc[(self.survey_file['KPI Name'] == atomic_name)
-                              & (self.survey_file['Store Policy'].str.contains(self.store_type, case=False))]
+                                    & (self.survey_file['Store Policy'].str.contains(self.store_type, case=True))]
         rows['match_policy'] = rows.apply(self.ensure_policy, axis=1)
         rows = rows.loc[rows['match_policy'] == 1]
 
@@ -390,22 +528,22 @@ class GSKSGToolBox:
 
         # Get the survey relevant data
         survey_data = rows.iloc[0]
-        question = survey_data['Survey Question Text']
+        question = survey_data[SURVEY_QUEST]
         target_answer = survey_data['Compare to Target']
 
         # return whether the given answer matches the target answer.
-        return self.survey.check_survey_answer(question, target_answer)
+        return self.survey.check_survey_answer(question, target_answer), 0, 0
 
     def ensure_policy(self, row):
         # This checks if the store policy matches the store policy required
-        relevant_stores = map(str.strip, map(str.upper, (str(row['Store Policy']).split(','))))
+        relevant_stores = map(str.strip, map(str.upper, (str(row[STORE_TYPE]).split(','))))
         return 1 if self.store_type.upper() in relevant_stores else 0
 
     def get_filters(self, row):
         filters = {}
         general_filters = {}
         # gets the relevant column names to consider in kpi
-        cols = map(str.strip, str(row[relevant_cols]).split(','))
+        cols = map(str.strip, str(row[COLS_TO_LOOK]).split(','))
         for col in cols:
             # column must exist
             if col in row.keys():
@@ -414,7 +552,7 @@ class GSKSGToolBox:
                     excludes = self.handle_complex_data(row[col], exclude=True)
                     filters.update(excludes)
                     continue
-                if col in ['target','Store Type']:
+                if col in ['target', STORE_TYPE]:
                     continue
                 if col == 'denominator':
                     denom = self.handle_complex_data(row[col])

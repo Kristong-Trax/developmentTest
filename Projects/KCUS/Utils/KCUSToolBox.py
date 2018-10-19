@@ -183,6 +183,8 @@ class KCUSToolBox:
         self.store_data = self.store_data.merge(store_att8, how='left', left_on='store_fk',
                                     right_on='store_fk', suffixes= ['', '_1'])
 
+
+
     def calculate_anchor(self, params):
         filters = {}
         store_type = params.get('Store_Type')

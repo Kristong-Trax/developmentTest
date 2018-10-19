@@ -113,7 +113,7 @@ class CreateKPIProject:
 if __name__ == '__main__':
     LoggerInitializer.init('new_project')
     Config.init(app_name='new_project_new')
-    project = 'MOLSONCOORSHR'
+    project = 'ttttttt'
     Log.info("project name : " + project)
     new = CreateKPIProject(project, planogram=False)
     new.create_new_project()
