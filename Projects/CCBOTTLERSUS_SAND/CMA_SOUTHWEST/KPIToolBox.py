@@ -267,8 +267,6 @@ class CMASOUTHWESTToolBox:
         else:
             score = 0
             target = None
-        if target:
-            target = self.tools.result_values[target.replace(' ', '')]
         return (sos_value, num, den), score, target
 
     # Targets:
@@ -867,6 +865,13 @@ class CMASOUTHWESTToolBox:
         """
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
         parent = self.get_kpi_parent(kpi_name)
+        delta = 0
+        if isinstance(threshold, str) and '%' in threshold:
+            if score == 0:
+                targ = float(threshold.split('-')[0].replace('%', ''))/100
+                delta = round((targ * den) - num)
+            threshold = self.tools.result_values[threshold.replace(' ', '')]
+
         if parent != CMA_COMPLIANCE:
             if score == 1:
                 score = Const.PASS
@@ -876,7 +881,7 @@ class CMASOUTHWESTToolBox:
                 score = 'bonus'
             score = self.tools.result_values[score]
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
-                                           numerator_result=num, denominator_result=den,
+                                           numerator_result=num, denominator_result=den, weight=delta,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
         # self.write_to_db_result(
         #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
