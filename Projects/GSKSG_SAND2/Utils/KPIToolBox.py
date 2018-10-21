@@ -167,46 +167,53 @@ class GSKSGToolBox:
 
         kpi_results['Conditional Weight'] = kpi_results['Conditional Weight'].fillna(-1)
 
-        boolean_res = kpi_results.loc[kpi_results['Score Method'] == 'Binary']
-        boolean_res['result'] = boolean_res['result'].astype(bool)
+        # boolean_res = kpi_results.loc[kpi_results['Score Method'] == 'Binary']
+        # boolean_res['result'] = boolean_res['result'].astype(bool)
+        #
+        # boolean_res = boolean_res.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+        #                                    'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'all',
+        #                                                                                             'valid_template_name': 'sum',
+        #                                                                                             'scenes_passed':'sum' ,
+        #                                                                                             'scenes_total':'sum'})
+        #
+        # kpi_results = kpi_results.loc[kpi_results['Score Method'] != 'Binary']
+        #
+        # aggs_res = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
+        #                                                                           'Benchmark', 'Conditional Weight'],
+        #                                as_index=False).agg({'result': 'sum', 'valid_template_name': 'sum','scenes_passed':'sum' ,
+        #                                                                                             'scenes_total':'sum'})
+        #
+        # aggs_res = aggs_res.append(boolean_res, ignore_index=True)
 
-        boolean_res = boolean_res.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
-                                           'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'all',
-                                                                                                    'valid_template_name': 'sum',
-                                                                                                    'scenes_passed':'sum' ,
-                                                                                                    'scenes_total':'sum'})
+        kpi_results = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method','Score Method',
+                                                                               'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'sum',
+                                                                                                                                        'valid_template_name':'sum',
+                                                                                                                                        'scenes_passed':'sum' ,
+                                                                                                                                       'scenes_total':'sum'})
 
-        kpi_results = kpi_results.loc[kpi_results['Score Method'] != 'Binary']
-
-        aggs_res = kpi_results.groupby([SET, KPI, ATOMIC, 'KPI Weight', 'Weight', 'KPI Score Method',
-                                                                                  'Benchmark', 'Conditional Weight'],
-                                       as_index=False).agg({'result': 'sum', 'valid_template_name': 'sum','scenes_passed':'sum' ,
-                                                                                                    'scenes_total':'sum'})
-
-        aggs_res = aggs_res.append(boolean_res, ignore_index=True)
         # if not && condinal weight is NA MSL conditional weight + this KPI weight
 
         ## if method binary change result to 100/0
-        aggs_res.loc[(aggs_res[SCORE_METHOD] == 'Binary') &
-                     (aggs_res['result'] >= aggs_res['Benchmark']), 'result_bin'] = 100
-        aggs_res.loc[
-            (aggs_res[SCORE_METHOD] == 'Binary') & (aggs_res['result'] < aggs_res['Benchmark']), 'result_bin'] = 0
 
-        aggs_res.loc[
-            (aggs_res['Benchmark'] == 'Pass'), 'result_bin'] = aggs_res['result']
+        kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
+                        (kpi_results['result'] >= kpi_results['Benchmark']), 'result'] = 1
+        kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
+                        (kpi_results['result'] < kpi_results['Benchmark']), 'result'] = 0
+        kpi_results['result_bin'] = kpi_results['result']
+        kpi_results.loc[(kpi_results['Score Method'] == 'Proportional') &(kpi_results['result'] < kpi_results['Benchmark']), 'result_bin'] = 0
+        # kpi_results.loc[
+        #     (kpi_results['Benchmark'] == 'Pass'), 'result_bin'] = kpi_results['result']
 
-        aggs_res['result_bin'] = np.where(aggs_res[SCORE_METHOD] == 'Proportional', aggs_res['result'],
-                                          aggs_res['result_bin'])
-        aggs_res['result_bin'] = aggs_res['result_bin'] * (aggs_res['Weight'] / 100)
+        kpi_results['result_bin'] = kpi_results['result_bin'] * kpi_results['Weight']
 
-        aggs_res['valid_template_name'] = aggs_res['valid_template_name'].astype(float)
+        kpi_results['valid_template_name'] = kpi_results['valid_template_name'].astype(float)
 
 
         ## write level3 to db
         store_fk = self.store_info['store_fk'][0]
         # ## asking if template isnt valid to write to db
-        for i in xrange(len(aggs_res)):
-            result = aggs_res.iloc[i]
+        for i in xrange(len(kpi_results)):
+            result = kpi_results.iloc[i]
             # kpi_fk = self.common.get_kpi_fk_by_kpi_type(result[ATOMIC])
             if result[SET] == PAIN_LEVEL_1:
                 kpi_super_fk = self.common.get_kpi_fk_by_kpi_type(result[KPI]+PAIN)
@@ -234,7 +241,7 @@ class GSKSGToolBox:
                                            identifier_parent=identifier_parent_fk_web,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True)
+                                           weight=result['Weight']*100, should_enter=True)
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result'],
                                            score=result['result_bin'],
@@ -242,10 +249,10 @@ class GSKSGToolBox:
                                            identifier_parent=identifier_parent_fk_supervisor,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
-                                           weight=result['Weight'], should_enter=True)
+                                           weight=result['Weight']*100, should_enter=True)
 
 
-        aggs_res_level_2 = aggs_res.groupby([SET, KPI, 'KPI Weight', 'Conditional Weight'], as_index=False).agg({
+        aggs_res_level_2 = kpi_results.groupby([SET, KPI, 'KPI Weight',SCORE_METHOD, 'Conditional Weight'], as_index=False).agg({
                                                                                                     'valid_template_name': 'max',
                                                                                                     'result_bin': np.sum ,
                                                                                                     'scenes_passed': 'sum',
@@ -274,7 +281,12 @@ class GSKSGToolBox:
         aggs_res_level_2['KPI Weight'] += aggs_res_level_2['PLUS_WEIGHT']
 
         aggs_res_level_2.loc[aggs_res_level_2['valid_template_name'] == 0, 'result_bin'] = 1
+        aggs_res_level_2.loc[aggs_res_level_2['valid_template_name'] == 0, 'result_bin'] = 1
 
+        aggs_res_level_2.loc[(aggs_res_level_2[SCORE_METHOD] == 'Binary') &
+                        (kpi_results['valid_template_name'] > 0), 'result_bin'] = 1
+        aggs_res_level_2.loc[(aggs_res_level_2[SCORE_METHOD] == 'Binary') &
+                                         (aggs_res_level_2['valid_template_name'] <= 0), 'result_bin'] = 0
         aggs_res_level_2['total_result'] = aggs_res_level_2['KPI Weight'] * aggs_res_level_2['result_bin']
 
         ## write to db level 2 kpis
@@ -306,24 +318,24 @@ class GSKSGToolBox:
 
 
             #supervisor result to db
-            self.common.write_to_db_result(fk=kpi_super_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
-                                           score=result['result_bin'],
+            self.common.write_to_db_result(fk=kpi_super_fk, numerator_id=MANUFACTURER_FK, result=result['result_bin'],
+                                           score=result['total_result'],
                                            denominator_id=category_fk,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            identifier_result=identifier_child_super_fk,
                                            identifier_parent=identifier_parent_fk_supervisor,
-                                           weight=result['KPI Weight'], should_enter=True)
+                                           weight=result['KPI Weight']*100, should_enter=True)
 
             # web result to db
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['total_result'],
-                                           score=result['result_bin'],
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=MANUFACTURER_FK, result=result['result_bin'],
+                                           score=result['total_result'],
                                            denominator_id=category_fk,
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            identifier_result=identifier_child_fk,
                                            identifier_parent=identifier_parent_fk_web,
-                                           weight=result['KPI Weight'], should_enter=True)
+                                           weight=result['KPI Weight']*100, should_enter=True)
 
         # fixind data for 1st level
 
@@ -457,7 +469,14 @@ class GSKSGToolBox:
         # gets the assortment product's ean codes relevant for store
         store_assortment = self.msl_list[store_data]
         store_assortment = store_assortment[store_assortment == 1]
+
+        ##filter the products from the template by category
         products = store_assortment.keys()
+        products = [str(prod) for prod in products ]
+        category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
+        products = self.products.loc[self.products['product_ean_code'].isin(products)]
+        products = products.loc[products['category_fk']==category_fk]['product_ean_code']
+
 
         kpi_filters, general = self.get_filters(row)
         kpi_filters.update(general)
