@@ -284,8 +284,8 @@ class CCBOTTLERSUSREDToolBox:
             Const.TRADEMARK: "att2",
             Const.SIZE: "size",
             Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            # CCBOTTLERSUSConst.PREMIUM_SSD: "Premium SSD",
-            # CCBOTTLERSUSConst.INNOVATION_BRAND: "Innovation Brand",
+            Const.PREMIUM_SSD: "Premium SSD",
+            Const.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])

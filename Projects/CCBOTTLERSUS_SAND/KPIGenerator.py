@@ -7,6 +7,8 @@ from KPIUtils_v2.DB.CommonV2 import Common as Common2
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.CCBOTTLERSUS_SAND.CMA.KPIToolBox import CMAToolBox
+from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.KPIToolBox import CMASOUTHWESTToolBox
+from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.KPIToolBox import SceneSessionToolBox
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.KPIToolBox import REDToolBox
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 # from Projects.CCBOTTLERSUS_SAND.Utils.KPIToolBox import BCIKPIToolBox
@@ -30,12 +32,15 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()
+        self.calculate_red_score()  # should be first, because it can include a deletion from the common
         # self.calculate_bci()
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
+        self.calculate_cma_compliance_sw()
         self.calculate_sovi()
-        # self.common_db.commit_results_data()
+        self.common_db.commit_results_data()
+
+        self.calculate_scene_session()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
@@ -67,10 +72,14 @@ class CCBOTTLERSUS_SANDGenerator:
     def calculate_red_score(self):
         Log.info('starting calculate_red_score')
         try:
-            for calculation_type in Const.CALCULATION_TYPES:
-                tool_box = REDToolBox(self.data_provider, self.output, calculation_type, self.common_db)
-                tool_box.main_calculation()
+            tool_box = REDToolBox(self.data_provider, self.output, Const.SOVI, self.common_db)
+            if tool_box.main_calculation() > 0:
                 tool_box.commit_results()
+                return
+            tool_box.remove_queries_of_calculation_type()
+            tool_box = REDToolBox(self.data_provider, self.output, Const.MANUAL, self.common_db)
+            tool_box.main_calculation()
+            tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CCBOTTLERSUS RED SCORE :{}'.format(e.message))
 
@@ -93,3 +102,23 @@ class CCBOTTLERSUS_SANDGenerator:
             tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate SOVI due to: {}'.format(e.message))
+
+    @log_runtime('CMA Compliance SW CCBOTTLERSUSCalculations')
+    def calculate_cma_compliance_sw(self):
+        Log.info('starting calculate_cma_compliance')
+        try:
+            tool_box = CMASOUTHWESTToolBox(self.data_provider, self.output, self.common_db)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
+
+    @log_runtime('Scene Session CCBOTTLERSUSCalculations')
+    def calculate_scene_session(self):
+        Log.info('starting calculate_scene_session')
+        try:
+            tool_box = SceneSessionToolBox(self.data_provider)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))

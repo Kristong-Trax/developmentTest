@@ -1,0 +1,5 @@
+in order to execute this you must have mysql jdbc installed + java 1.8
+
+*** install libmysql-java ****
+sudo apt-get install libmysql-java
+export CLASSPATH=$CLASSPATH:/usr/share/java/mysql-connector-java.jar

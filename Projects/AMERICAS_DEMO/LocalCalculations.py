@@ -1,4 +1,4 @@
-#
+# #
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -14,8 +14,8 @@
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()
-#     test
-# do somethihg
-# do somethihg 2
-# do somthing 3
-# do somthing 4
+# #     test
+# # do somethihg
+# # do somethihg 2
+# # do somthing 3
+# # do somthing 4

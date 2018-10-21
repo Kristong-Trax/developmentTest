@@ -24,3 +24,7 @@ class Const(object):
     VISIT_POG = "VISIT POG COMPLIANCE"
     FIXTURE_OSA = "FIXTURE OOS/OSA"
     VISIT_OSA = "VISIT OOS/OSA"
+
+    FIXTURE_TARGETS = 'Fixture Targets'
+    PK = 'pk'
+    SHEETS = [FIXTURE_TARGETS, PK]

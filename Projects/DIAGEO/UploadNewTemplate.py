@@ -9,7 +9,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEO.ToolBox import DIAGEOToolBox as Consts
 
@@ -396,15 +396,15 @@ class NewTemplate:
 # if __name__ == '__main__':
 #     Config.init()
 #     LoggerInitializer.init('New Template')
-#     for project_name in ['diageouk-sand']:
+#     for project_name in ['diageoke-sand']:
 #         template = NewTemplate(project_name)
 #         # for name in ['Visible to Customer']:
 #         #     template.add_dummy_kpi(name)
 #         # template.add_kpi_sets_to_static(['Local MPA'])
 #         # path = '/home/Nimrod/Documents/DiageoTWTemplates/Activation Standard.xlsx'
 #         # template.add_activation_standard_kpis(path)
-#         for set_name in ['MPA','Local MPA']:
-#             file_path = '/home/Elyashiv/Shivi/KPIs/templates/diageoUK/11.01.18/{}.xlsx'.format(set_name)
+#         for set_name in ['MPA', 'New Products']:
+#             file_path = '/home/israels/Desktop/US/DIAGEO/diageoke/20181018/{}.xlsx'.format(set_name)
 #             r = template.handle_updated_template(set_name, file_path, ignore_missings=True)
 #             if not r:
 #                 quit()

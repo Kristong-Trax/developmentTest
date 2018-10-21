@@ -8,4 +8,4 @@ class SceneCalculations(SceneBaseClass):
         self.scene_generator = SceneGenerator(self._data_provider)
 
     def calculate_kpis(self):
-        self.scene_generator.scene_score()
+        self.scene_generator.main_function()
