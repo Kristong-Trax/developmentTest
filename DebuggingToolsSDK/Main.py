@@ -1,8 +1,6 @@
-from DebuggingToolsSDK.DataHandling import DataHandler
-from DebuggingToolsSDK.PersistentLocals import log_locals
-from DebuggingToolsSDK.Singleton import OnlyOne
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conf.Configuration import Config
+from KPIUtils_v2.Utils.Decorators.DebuggingToolsSDK.DataHandling import DataHandler
+from KPIUtils_v2.Utils.Decorators.DebuggingToolsSDK.PersistentLocals import log_locals
+from KPIUtils_v2.Utils.Decorators.DebuggingToolsSDK.Singleton import OnlyOne
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 import importlib
 
@@ -19,7 +17,7 @@ class Debugger:
 
     def execute(self):
         self.log_variables()
-        dh = DataHandler(project_name, sessions, db.singleton.data).execute()
+        dh = DataHandler(self.project, self.sessions, self.singleton.data).execute()
 
     @log_locals()
     def log_variables(self):
@@ -36,6 +34,8 @@ class Debugger:
             api_object = report_class(self.data_provider, output).run_project_calculations()
 
 
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Utils.Conf.Configuration import Config
 # if __name__ == '__main__':
 #     LoggerInitializer.init('Self Checker')
 #     Config.init()

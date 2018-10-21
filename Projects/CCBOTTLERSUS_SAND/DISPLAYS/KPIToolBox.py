@@ -8,10 +8,9 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Utils.Logging.Logger import Log
-
-from Projects.CCBOTTLERSUS_SAND.DISPLAYS.GeneralToolBox import CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox
-from Projects.CCBOTTLERSUS_SAND.DISPLAYS.Fetcher import CCBOTTLERSUS_SANDDISPLAYSQueries
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from Projects.CCBOTTLERSUS_SAND.DISPLAYS.GeneralToolBox import GENERALToolBox
+from Projects.CCBOTTLERSUS_SAND.DISPLAYS.Fetcher import Queries
 from Projects.CCBOTTLERSUS_SAND.DISPLAYS.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
@@ -23,21 +22,7 @@ KPS_RESULT = 'report.kps_results'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Template.xlsx')
 
 
-def log_runtime(description, log_start=False):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            calc_start_time = datetime.utcnow()
-            if log_start:
-                Log.info('{} started at {}'.format(description, calc_start_time))
-            result = func(*args, **kwargs)
-            calc_end_time = datetime.utcnow()
-            Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-            return result
-        return wrapper
-    return decorator
-
-
-class DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts(object):
+class Consts(object):
 
     KPI_NAME = 'KPI Name'
     SCENE_RECOGNITION = 'SR'
@@ -48,11 +33,11 @@ class DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts(object):
     SSD_OR_STILL = 'SSD Still (att4)'
     ATT2 = 'att2'
     SOS_TARGET = 'Bay SOS Facings Target'
-
+    SET_NAME = 'Manufacturer Displays'
     SEPARATOR = ','
 
 
-class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
+class DISPLAYSToolBox(Consts):
 
     LEVEL1 = 1
     LEVEL2 = 2
@@ -75,14 +60,14 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         # self.all_products = self.all_products.merge(self.get_additional_attributes(), on='product_fk', how='left')
         self.match_display_in_scene = self.get_match_display()
-        self.tools = CCBOTTLERSUS_SANDDISPLAYSGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
+        self.tools = GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn, scif=self.scif)
         self.template_data = parse_template(TEMPLATE_PATH)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.common = common_db2
 
     # def get_additional_attributes(self):
-    #     query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_attributes_data()
+    #     query = Queries.get_attributes_data()
     #     attributes = pd.read_sql_query(query, self.rds_conn.db)
     #     return attributes
 
@@ -91,7 +76,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_match_display(self.session_uid)
+        query = Queries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         match_display = match_display.merge(self.scif.drop_duplicates(subset=['scene_fk']), on='scene_fk', how='left')
         return match_display
@@ -101,7 +86,7 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_all_kpi_data()
+        query = Queries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -109,10 +94,12 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         """
         This function calculates the KPI results.
         """
-        kpi_results = {self.kpi_static_data.iloc[k]['kpi_name']: [0, 0, 0, 0, 0, 0] for k in xrange(len(self.kpi_static_data))
+        kpi_results = {self.kpi_static_data.iloc[k]['kpi_name']: [0, 0, 0, 0, 0, 0] for k in xrange(len(
+            self.kpi_static_data))
                        if self.kpi_static_data.iloc[k]['kpi_fk'] not in (195, 196, 197, 198, 199, 200, 201, 202)}
         relevant_displays = self.template_data[self.SCENE_RECOGNITION].unique().tolist()
-        actual_displays = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(relevant_displays)]
+        actual_displays = self.match_display_in_scene[self.match_display_in_scene['display_name'].isin(
+            relevant_displays)]
         for scene in actual_displays['scene_fk'].unique():
             scene_displays = actual_displays[actual_displays['scene_fk'] == scene]
             calculate_all = False
@@ -163,12 +150,14 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
                             kpi_results[params[self.KPI_NAME]][x*3 + 2] += s
         for kpi_name in kpi_results.keys():
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-            self.common.write_to_db_result(fk=kpi_fk, result=kpi_results[kpi_name][0])
+            self.common.write_to_db_result(fk=kpi_fk, result=kpi_results[kpi_name][0], should_enter=True,
+                                           identifier_parent=self.common.get_dictionary(kpi_name=self.SET_NAME))
             self.write_to_db_result(kpi_name, 100, level=self.LEVEL2)
             self.write_to_db_result(kpi_name, kpi_results[kpi_name], level=self.LEVEL3)
-        self.write_to_db_result('Manufacturer Displays', 100, level=self.LEVEL1)
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name('Manufacturer Displays')
-        self.common.write_to_db_result(fk=kpi_fk, result=100)
+        self.write_to_db_result(self.SET_NAME, 100, level=self.LEVEL1)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(self.SET_NAME)
+        self.common.write_to_db_result(fk=kpi_fk, result=100,
+                                       identifier_result=self.common.get_dictionary(kpi_name=self.SET_NAME))
 
     def calculate_facing_sos(self, params, display):
         filters = self.get_filters(params)
@@ -267,15 +256,15 @@ class DISPLAYSToolBox(DISPLAYSCCBOTTLERSUSCCBOTTLERSUS_SANDConsts):
         kpi_pks = tuple()
         atomic_pks = tuple()
         if kpi_set_fk is not None:
-            query = CCBOTTLERSUS_SANDDISPLAYSQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
+            query = Queries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)
             kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
             atomic_pks = tuple(kpi_atomic_data['pk'].tolist())
             kpi_data = pd.read_sql_query(query, self.rds_conn.db)
             kpi_pks = tuple(kpi_data['pk'].tolist())
         cur = self.rds_conn.db.cursor()
         if kpi_pks and atomic_pks:
-            delete_queries = CCBOTTLERSUS_SANDDISPLAYSQueries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
-                                                                          atomic_pks)
+            delete_queries = Queries.get_delete_session_results_query(self.session_uid, kpi_set_fk, kpi_pks,
+                                                                      atomic_pks)
             for query in delete_queries:
                 cur.execute(query)
         for query in self.kpi_results_queries:

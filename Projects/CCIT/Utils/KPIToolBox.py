@@ -62,7 +62,8 @@ class CCITToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.old_kpi_static_data = self.commonV1.get_kpi_static_data()
-        self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
+        if not self.data_provider.scene_item_facts.empty:
+            self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.kpi_results_queries = []
         self.multiplier_template = pd.read_excel(self.TEMPLATE_PATH, sheetname=self.MULTIPLIER_SHEET)
 

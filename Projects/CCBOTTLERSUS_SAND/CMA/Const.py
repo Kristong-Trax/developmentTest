@@ -106,3 +106,6 @@ class Const(object):
 
     MANUAL = "MANUAL"
     CALCULATION_TYPES = [SOVI, MANUAL]
+
+    PASS = "Pass"
+    FAIL = "Fail"
