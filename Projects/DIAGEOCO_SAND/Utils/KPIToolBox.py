@@ -5,15 +5,6 @@ from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from Projects.DIAGEOCO_SAND.Utils.Const import Const
 
@@ -62,15 +53,18 @@ class DIAGEOCO_SANDToolBox:
         self.brand_pouring_status_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_POURING_SHEET_NAME,
                                                            header=Const.BRAND_POURING_HEADER_ROW).to_dict(orient='records')
 
-        # self.calculate_block_together()
-        # self.calculate_secondary_display()
-        self.calculate_brand_pouring_status()
-        # self.calculate_touch_point()
-        # self.calculate_relative_position()
-        # self.calculate_activation_standard()
+        # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
+        self.global_gen.tool_box.DIAGEO = 'DIAGEO'
 
-        # self.global_gen.diageo_global_assortment_function()
-        # self.global_gen.diageo_global_share_of_shelf_function()
+        self.calculate_block_together() # working
+        self.calculate_secondary_display() # working
+        self.calculate_brand_pouring_status() # working
+        # self.calculate_touch_point() # using old tables, needs work
+        self.calculate_relative_position() # working
+        # self.calculate_activation_standard() # using old tables, needs work
+
+        self.global_gen.diageo_global_assortment_function() # working
+        # self.global_gen.diageo_global_share_of_shelf_function() # need template
 
     def calculate_secondary_display(self):
         result = self.global_gen.diageo_global_secondary_display_secondary_function()
@@ -85,7 +79,7 @@ class DIAGEOCO_SANDToolBox:
 
     def calculate_touch_point(self):
         result = self.global_gen.diageo_global_touch_point_function(self.touchpoint_template_path)
-        print result
+        # needs work
 
     def calculate_block_together(self):
         results_list = self.global_gen.diageo_global_block_together(Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY, self.brand_blocking_template)
@@ -95,7 +89,7 @@ class DIAGEOCO_SANDToolBox:
 
     def calculate_activation_standard(self):
         result = self.global_gen.diageo_global_activation_standard_function(kpi_scores, set_scores, local_templates_path)
-        print result
+        # needs work
 
     def calculate_relative_position(self):
         # returns list of dict
@@ -105,4 +99,5 @@ class DIAGEOCO_SANDToolBox:
                 self.common.write_to_db_result_new_tables(**result)
 
     def commit_results_data(self):
-        self.common.commit_results_data_to_new_tables()
+        print('success')
+        # self.common.commit_results_data_to_new_tables()

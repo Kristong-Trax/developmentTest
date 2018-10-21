@@ -8,9 +8,10 @@ from Projects.DIAGEOCO_SAND.Calculations import DIAGEOCO_SANDCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('diageoco-sand calculations')
     Config.init()
-    project_name = 'diageoco-sand'
+    project_name = 'diageoco'
     data_provider = KEngineDataProvider(project_name)
-    session = '26AB3270-1EF4-4038-BBB8-ADC590320552'
+    # session = '26AB3270-1EF4-4038-BBB8-ADC590320552'
+    session = 'dac74549-89f5-48da-beaf-cba548b8698e'
     data_provider.load_session_data(session)
     output = Output()
     DIAGEOCO_SANDCalculations(data_provider, output).run_project_calculations()

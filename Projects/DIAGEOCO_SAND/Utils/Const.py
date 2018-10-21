@@ -1,5 +1,5 @@
 import os
-__author__ = huntery
+__author__ = 'huntery'
 
 
 class Const(object):
