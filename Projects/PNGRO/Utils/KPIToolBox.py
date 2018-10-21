@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-import time
 
 import pandas as pd
 import numpy as np
@@ -18,7 +17,6 @@ from Projects.PNGRO.Utils.GeneralToolBox import PNGRO_PRODGENERALToolBox
 from Projects.PNGRO.Utils.ParseTemplates import parse_template
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
-from Trax.Data.Orm.OrmCore import OrmSession
 
 __author__ = 'Israel'
 
@@ -457,7 +455,7 @@ class PNGRO_PRODToolBox:
     #     type2 = params['Param Type (2)/ Denominator']
     #     value2 = params['Param (2) Values']
     #     type3 = params['Param (3)']
-    #     value3 b65ac5c9-af17-4486-ba6d-100d9edb9334= params['Param (3) Values']
+    #     value3 = params['Param (3) Values']
     #
     #     if type3.strip():
     #         filters = {type1: value1, type2: value2, type3: value3}
