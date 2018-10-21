@@ -24,7 +24,12 @@ class Const(object):
     VISIT_POG = "VISIT POG COMPLIANCE"
     FIXTURE_OSA = "FIXTURE OOS/OSA"
     VISIT_OSA = "VISIT OOS/OSA"
+    MISSING_DENOMINATIONS = "missing_denominations"
 
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
-    SHEETS = [FIXTURE_TARGETS, PK]
+    ENTRY_EXIT = "entry_exit_names"
+    TASK_NAME_ENTRY = "task name entry"
+    TASK_NAME_EXIT = "task name exit"
+
+    SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]

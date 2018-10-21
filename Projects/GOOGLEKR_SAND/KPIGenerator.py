@@ -21,9 +21,8 @@ class GOOGLEGenerator:
     def main_function(self):
         if self.tool_box.scif.empty:
             Log.warning('Distribution is empty for this session')
-
         self.google_global_fixture_compliance()
-        # google.visit_osa_and_pog()
+        self.visit_osa_and_pog()
         self.common_v2.commit_results_data()
 
     def google_global_fixture_compliance(self):
@@ -32,9 +31,9 @@ class GOOGLEGenerator:
         except Exception as e:
             Log.error('{}'.format(e))
 
-    def scene_osa_and_pog(self):
+    def visit_osa_and_pog(self):
         try:
-            self.tool_box.get_fixture_osa()
-            self.tool_box.get_planogram_fixture_details()
+            self.tool_box.get_visit_osa()
+            self.tool_box.get_planogram_visit_details()
         except Exception as e:
             Log.error('{}'.format(e))

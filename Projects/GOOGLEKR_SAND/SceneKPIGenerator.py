@@ -3,7 +3,6 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.GOOGLEKR_SAND.Utils.SceneKPIToolBox import SceneGOOGLEToolBox
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
-
 __author__ = 'Eli'
 
 
@@ -18,11 +17,11 @@ class SceneGenerator:
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
-        self.google_global_SOS()
-        # self.scene_osa_and_pog()
+        self.google_global_sos()
+        self.scene_osa_and_pog()
         self.common_v2.commit_results_data(result_entity='scene')
 
-    def google_global_SOS(self):
+    def google_global_sos(self):
         try:
             self.tool_box.google_global_SOS()
         except Exception as e:
@@ -30,7 +29,7 @@ class SceneGenerator:
 
     def scene_osa_and_pog(self):
         try:
-            self.tool_box.get_fixture_osa()
-            self.tool_box.get_planogram_fixture_details()
+            if self.tool_box.get_fixture_osa():
+                self.tool_box.get_planogram_fixture_details()
         except Exception as e:
             Log.error('{}'.format(e))

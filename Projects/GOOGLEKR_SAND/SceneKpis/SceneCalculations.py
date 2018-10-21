@@ -1,7 +1,6 @@
 from Projects.GOOGLEKR_SAND.SceneKPIGenerator import SceneGenerator
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 
-
 __author__ = 'Eli_Shivi_Sam'
 
 

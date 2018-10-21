@@ -20,6 +20,7 @@ class SceneGOOGLEToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.planograms = self.data_provider[Data.PLANOGRAM_ITEM_FACTS]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -64,17 +65,34 @@ class SceneGOOGLEToolBox:
 
     def get_planogram_fixture_details(self):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
-        match_planogram_in_probe = {}
-        match_planogram_in_scene = {}
-        planogram_products = []
-        denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
-        numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
+        denominator = self.planograms['facings'].sum()
+        numerator = len(self.match_product_in_scene[self.match_product_in_scene['compliance_status_fk'] == 3])
         ratio = self.division(numerator, denominator)
+        planogram_id = self.planograms['planogram_id'].iloc[0]
+        self.common_v2.write_to_db_result(
+            fk=kpi_fk, numerator_id=planogram_id, numerator_result=numerator, denominator_result=denominator,
+            score=ratio, by_scene=True)
 
     def get_fixture_osa(self):
-        list_of_products = []
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
-        return
+        if self.planograms.empty:
+            return False
+        assortment_products = set(self.planograms['item_id'])
+        fixture_products = set(self.scif[self.scif['manufacturer_name'] == "Google"]['product_fk'])
+        common_products = fixture_products & assortment_products
+        osa_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
+        numerator_result = len(common_products)
+        denominator_result = len(assortment_products)
+        missings_products = assortment_products - fixture_products
+        score = self.division(numerator_result, denominator_result)
+        self.common_v2.write_to_db_result(
+            fk=osa_kpi_fk, numerator_result=numerator_result, denominator_result=denominator_result, score=score,
+            result=len(missings_products), by_scene=True)
+        missings_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.MISSING_DENOMINATIONS)
+        for product_fk in missings_products:
+            planogram_facings = self.planograms[self.planograms['item_id'] == product_fk]['facings'].iloc[0]
+            self.common_v2.write_to_db_result(fk=missings_kpi_fk, numerator_id=product_fk, result=planogram_facings,
+                                              by_scene=True)
+        return True
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
@@ -88,7 +106,7 @@ class SceneGOOGLEToolBox:
     @staticmethod
     def division(num, den):
         if den:
-            ratio = num * 100.0 / den
+            ratio = round(num * 100.0 / den, 2)
         else:
             ratio = 0
         return ratio

@@ -4,7 +4,7 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.GOOGLEKR_SAND.Utils.Const import Const
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Eli_Sam_Shivi'
 
@@ -27,6 +27,7 @@ class GOOGLEToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scenes = self.scene_info['scene_fk'].tolist()
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
@@ -34,19 +35,13 @@ class GOOGLEToolBox:
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
+        self.scene_results = self.ps_data_provider.get_scene_results(self.scenes)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
         self.fixture_template = {}
         for sheet in Const.SHEETS:
             self.fixture_template[sheet] = pd.read_excel(FIXTURE_TEMPLATE_PATH, sheet)
         self.current_date = datetime.now()
-
-    def main_calculation(self, *args, **kwargs):
-        """
-        This function calculates the KPI results.
-        """
-        score = 0
-        return score
 
     def google_global_fixture_compliance(self):
         store_num = self.store_info['store_number_1'][0]
@@ -81,7 +76,6 @@ class GOOGLEToolBox:
         planogram_products = []
         denominator = match_planogram_in_probe[match_planogram_in_probe['product_fk'].isin(planogram_products)]
         numerator = match_planogram_in_scene[match_planogram_in_scene['compliance_status_fk'] == 3]
-
 
     def get_visit_osa(self):
         list_of_products = []
