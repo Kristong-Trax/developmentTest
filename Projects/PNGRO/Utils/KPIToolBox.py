@@ -73,6 +73,11 @@ class PNGRO_PRODToolBox:
     SHELF_NUMBERS = 'Shelf number for the eye level counting from the bottom'
     NUMBER_OF_SHELVES = 'Number of shelves'
 
+    LOCATION_TYPE = 'location_type'
+    PRIMARY_SHELF = 'Primary Shelf'
+    ASSORTMENT_KPI = 'PSKUs Assortment'
+    ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -104,6 +109,9 @@ class PNGRO_PRODToolBox:
         self.common = Common(self.data_provider)
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
 
+        self.main_shelves = self.are_main_shelves()
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
+
     @property
     def matches(self):
         if not hasattr(self, '_matches'):
@@ -123,7 +131,8 @@ class PNGRO_PRODToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = PNGRO_PRODQueries.get_all_kpi_data()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -133,7 +142,8 @@ class PNGRO_PRODToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = PNGRO_PRODQueries.get_match_display(self.session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -143,7 +153,8 @@ class PNGRO_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_PRODQueries.get_match_stores_by_retailer()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -153,19 +164,22 @@ class PNGRO_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_PRODQueries.get_template_fk_by_category_fk()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_display(self, session_uid):
         query = PNGRO_PRODQueries.get_status_session_by_display(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_category(self, session_uid):
         query = PNGRO_PRODQueries.get_status_session_by_category(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -173,7 +187,8 @@ class PNGRO_PRODToolBox:
         """
         This function calculates the KPI results.
         """
-        Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
+        self.calculate_assortment_main_shelf()
         # if not self.match_display.empty:
         #     if self.match_display['exclude_status_fk'][0] in (1, 4):
         self.calculate_linear_share_of_shelf_per_product_display()
@@ -218,6 +233,46 @@ class PNGRO_PRODToolBox:
             return True
         else:
             return False
+
+    def calculate_assortment_main_shelf(self):
+        assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
+        if not self.main_shelves and not assortment_result_lvl3.empty:
+            assortment_result_lvl3.drop(assortment_result_lvl3.index[0:], inplace=True)
+        if not assortment_result_lvl3.empty:
+            filters = {self.LOCATION_TYPE: self.PRIMARY_SHELF}
+            filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+            products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
+            assortment_result_lvl3.loc[assortment_result_lvl3['product_fk'].isin(products_in_session), 'in_store'] = 1
+
+            for result in assortment_result_lvl3.itertuples():
+                score = result.in_store * 100
+                self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                                                          numerator_result=result.in_store, result=score,
+                                                          denominator_id=result.assortment_group_fk, denominator_result=1,
+                                                          score=score)
+            lvl2_result = self.assortment.calculate_lvl2_assortment(assortment_result_lvl3)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and not np.math.isnan(result.target):
+                    if result.group_target_date <= self.visit_date:
+                        denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+                                                          numerator_result=result.passes, result=res,
+                                                          denominator_id=result.assortment_super_group_fk,
+                                                          denominator_result=denominator_res,
+                                                          score=score)
+
+    def are_main_shelves(self):
+        """
+        This function returns a list with the main shelves of this session
+        """
+        are_main_shelves = True if self.PRIMARY_SHELF in self.scif[self.LOCATION_TYPE].unique().tolist() else False
+        return are_main_shelves
 
     def get_general_filters(self, params):
         # template_name = params['Template Name']
@@ -565,7 +620,9 @@ class PNGRO_PRODToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
         delete_queries = PNGRO_PRODQueries.get_delete_session_results_query(self.session_uid)
