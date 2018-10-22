@@ -253,8 +253,8 @@ class PNGRO_PRODGENERALToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The total number of facings.
         """
-        filtered_matches = self.scif[self.get_filter_condition(self.scif, **filters)]
-        facings = filtered_matches['sum'].sum()
+        filtered_scif = self.scif[self.get_filter_condition(self.scif, **filters)]
+        facings = filtered_scif['facings_ign_stack'].sum()
         return facings
 
     def calculate_display(self, **filters):

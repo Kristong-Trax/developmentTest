@@ -97,8 +97,8 @@ class PNGRO_PRODToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        # self.retailer = \
-        # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
+        self.retailer = \
+                self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
@@ -108,7 +108,8 @@ class PNGRO_PRODToolBox:
         # self.eye_level_target = self.get_shelf_level_target()
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
-        self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+        # self.sbd_kpis_data = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+        self.sbd_kpis_data = self.get_relevant_sbd_kpis()
         self.common = Common(self.data_provider)
         self.new_kpi_static_data = self.common.get_new_kpi_static_data()
 
@@ -128,6 +129,12 @@ class PNGRO_PRODToolBox:
         if not hasattr(self, '_match_display'):
             self._match_display = self.get_status_session_by_display(self.session_uid)
         return self._match_display
+
+    def get_relevant_sbd_kpis(self):
+        sbd_kpis = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+        retailer_targets = parse_template(TEMPLATE_PATH, 'retailer_targets', lower_headers_row_index=1)
+        retailer_targets = retailer_targets[retailer_targets['retailer'] == self.retailer]
+        relevant_df = sbd_kpis.merge()
 
     def get_kpi_static_data(self):
         """
@@ -276,11 +283,12 @@ class PNGRO_PRODToolBox:
                                                                        self.match_product_in_scene['scene_fk'] == row.scene_fk)][
                                                                 'shelf_number_from_bottom'].max()
             shelves_in_eye_lvl = self.get_eye_level_shelves(total_num_of_shelves, self.eye_level_args)
-            scene_shelf_bay_matches = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] == row.bay_number)&
-                                                           (self.match_product_in_scene['shelf_number_from_bottom'].isin(
-                                                                                                    shelves_in_eye_lvl))&
-                                                           (self.match_product_in_scene['scene_fk'] == row.scene_fk)]
-            skus_at_eye_lvl += scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches, **filters)]['facings']
+            if shelves_in_eye_lvl:
+                scene_shelf_bay_matches = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] == row.bay_number)&
+                                                               (self.match_product_in_scene['shelf_number_from_bottom'].isin(
+                                                                                                        shelves_in_eye_lvl))&
+                                                               (self.match_product_in_scene['scene_fk'] == row.scene_fk)]
+                skus_at_eye_lvl += scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches, **filters)]['facings']
         score = skus_at_eye_lvl/target * 100
         #result =  # what should I return?
         return score, score, target
@@ -524,7 +532,8 @@ class PNGRO_PRODToolBox:
 
         for value in map(unicode.strip, params['Param (1) Values'].split(',')):
             filters = {type1: value, type2: value2, type3: value3}
-            if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0: return True
+            if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0:
+                return True
         return False
 
     def calculate_shelf_position(self, params, **general_filters):
