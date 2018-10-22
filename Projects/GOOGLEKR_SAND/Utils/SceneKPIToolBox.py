@@ -61,7 +61,7 @@ class SceneGOOGLEToolBox:
                 kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
                 self.common_v2.write_to_db_result(
                     fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio, by_scene=True,
-                    denominator_id=self.common_v2.scene_id, denominator_result=Const.SOS_KPIs[kpi]['den'])
+                    denominator_result=Const.SOS_KPIs[kpi]['den'])
 
     def get_planogram_fixture_details(self):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
