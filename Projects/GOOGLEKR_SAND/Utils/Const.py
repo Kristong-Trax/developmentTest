@@ -29,7 +29,15 @@ class Const(object):
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
     ENTRY_EXIT = "entry_exit_names"
-    TASK_NAME_ENTRY = "task name entry"
-    TASK_NAME_EXIT = "task name exit"
+    ENTRY_NAME = "entry_name"
+    EXIT_NAME = "exit_name"
+    ENTRY_PK = "entry_pk"
+    EXIT_PK = "exit_pk"
+
+    ENTRY_SCENES = "entry_chosen_scenes"
+    EXIT_SCENES = "exit_chosen_scenes"
+    REQUIRED_AMOUNT = "required_amount"
+    ACTUAL_AMOUNT = "actual_amount"
+    FIXTURE_FK = "fixture_fk"
 
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]

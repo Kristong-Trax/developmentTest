@@ -1,8 +1,8 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+import pandas as pd
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.GOOGLEKR_SAND.Calculations import GOOGLEKR_SANDCalculations
@@ -17,6 +17,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
         scene_item_facts = pd.DataFrame(columns=SCENE_ITEM_FACTS_COLUMNS)
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
+
 
 if __name__ == '__main__':
     LoggerInitializer.init('googlekr-sand calculations')
