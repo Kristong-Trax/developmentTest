@@ -63,6 +63,7 @@ class MOLSONCOORSHRToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.own_manufacturer_id = int(self.data_provider[Data.OWN_MANUFACTURER][self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(data_provider)
@@ -73,6 +74,7 @@ class MOLSONCOORSHRToolBox:
         self.template_path = self.get_template_path()
         self.template_data = self.get_template_data()
         self.sos_store_policies = self.get_sos_store_policies(self.visit_date.strftime('%Y-%m-%d'))
+        self.result_values = self.get_result_values()
 
         self.scores = pd.DataFrame()
 
@@ -80,6 +82,11 @@ class MOLSONCOORSHRToolBox:
         query = Queries.get_sos_store_policies(visit_date)
         store_policies = pd.read_sql_query(query, self.rds_conn.db)
         return store_policies
+
+    def get_result_values(self):
+        query = Queries.get_result_values()
+        result_values = pd.read_sql_query(query, self.rds_conn.db)
+        return result_values
 
     def main_calculation(self):
         """
@@ -126,22 +133,42 @@ class MOLSONCOORSHRToolBox:
                 total_calculated += 0
 
             if child_kpi_group and calculated:
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
-                parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
-                identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
-                identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-                self.common.write_to_db_result(fk=kpi_fk,
-                                               numerator_id=0,
-                                               numerator_result=0,
-                                               denominator_id=0,
-                                               denominator_result=0,
-                                               result=score,
-                                               score=score,
-                                               weight=potential_score,
-                                               identifier_result=identifier_result,
-                                               identifier_parent=identifier_parent,
-                                               should_enter=True
-                                               )
+                if kpi['KPI name Eng'] == 'Store Score':
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
+                    parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
+                    numerator_id = self.own_manufacturer_id
+                    denominator_id = self.store_id
+                    identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+                    identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+                    self.common.write_to_db_result(fk=kpi_fk,
+                                                   numerator_id=numerator_id,
+                                                   numerator_result=0,
+                                                   denominator_id=denominator_id,
+                                                   denominator_result=0,
+                                                   result=score,
+                                                   score=score,
+                                                   weight=potential_score,
+                                                   identifier_result=identifier_result,
+                                                   identifier_parent=identifier_parent,
+                                                   should_enter=True
+                                                   )
+                else:
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
+                    parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
+                    identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+                    identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+                    self.common.write_to_db_result(fk=kpi_fk,
+                                                   numerator_id=0,
+                                                   numerator_result=0,
+                                                   denominator_id=0,
+                                                   denominator_result=0,
+                                                   result=score,
+                                                   score=score,
+                                                   weight=potential_score,
+                                                   identifier_result=identifier_result,
+                                                   identifier_parent=identifier_parent,
+                                                   should_enter=True
+                                                   )
 
                 # self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Potential': potential_score}, ignore_index=True)
 
@@ -160,7 +187,15 @@ class MOLSONCOORSHRToolBox:
             denominator_id = row.assortment_group_fk
             denominator_result = row.target
             # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
-            result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
+            if kpi['KPI Type'] == 'Distribution':
+                if row.result_distributed:
+                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
+                                                (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                else:
+                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
+                                                (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+            else:
+                result = row.result_facings
             score = round(result*100, 0)
             identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
             identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
@@ -221,6 +256,7 @@ class MOLSONCOORSHRToolBox:
 
         assortment_result['target'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Target'), axis=1)
         assortment_result['target'] = assortment_result['target'].fillna(0)
+        assortment_result = assortment_result[assortment_result['target'] > 0]
 
         assortment_result['weight'] = assortment_result.apply(lambda x: json.loads(x['additional_attributes']).get('Weight'), axis=1)
         assortment_result['weight'] = assortment_result['weight'].fillna(0)
@@ -291,8 +327,8 @@ class MOLSONCOORSHRToolBox:
             numerator_sos_filters = {MANUFACTURER_NAME: sos_policy[NUMERATOR][MANUFACTURER], CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
             denominator_sos_filters = {CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
 
-            numerator_fk = self.scif.loc[self.scif[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
-            denominator_fk = self.scif.loc[self.scif[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
+            numerator_id = self.scif.loc[self.scif[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
+            denominator_id = self.scif.loc[self.scif[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
 
             ignore_stacking = kpi['Ignore Stacking'] if kpi['Ignore Stacking'] else 0
 
@@ -324,9 +360,9 @@ class MOLSONCOORSHRToolBox:
             identifier_kpi = self.common.get_dictionary(kpi_fk=kpi_fk)
             identifier_parent = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']))
             self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_fk,
+                                           numerator_id=numerator_id,
                                            numerator_result=numerator_result,
-                                           denominator_id=denominator_fk,
+                                           denominator_id=denominator_id,
                                            denominator_result=denominator_result,
                                            result=result,
                                            score=score,

@@ -19,3 +19,16 @@ class Queries(object):
             ) AS ktp
             JOIN pservice.policy p ON p.policy_name = ktp.sku_name;
             """.format(visit_date=visit_date)
+
+    @staticmethod
+    def get_result_values():
+        return \
+            """
+            SELECT 
+            rt.pk AS result_type_fk,
+            rt.name AS result_type, 
+            rv.pk AS result_value_fk, 
+            rv.value AS result_value
+            FROM static.kpi_result_value rv
+            JOIN static.kpi_result_type rt ON rt.pk=rv.kpi_result_type_fk;
+            """
