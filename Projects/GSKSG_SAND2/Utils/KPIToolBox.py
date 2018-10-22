@@ -475,7 +475,6 @@ class GSKSGToolBox:
          if at least one scene has result  > target, atomic passes.
          returns: whether at least one scene passed, number of scene passed, number of scene checked
          """
-        # ToDo: use the benchmark as needed if needed.
 
         target = row['target'] if not pd.isnull(row['target']) else 0
 
@@ -494,13 +493,17 @@ class GSKSGToolBox:
         store_assortment = store_assortment[store_assortment == 1]
 
         ##filter the products from the template by category
-        products = store_assortment.keys()
-        products = [str(prod) for prod in products ]
+        # products = store_assortment.keys()
+        # products = [str(prod) for prod in products ]
         category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
-        products = self.products.loc[self.products['product_ean_code'].isin(products)]
-        products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
+        # products = self.products.loc[self.products['product_ean_code'].isin(products)]
+        # products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
+        products = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
+                                 (self.scif['category_fk'] == category_fk)]['product_ean_code']
 
+        # (self.scif['in_assort_sc'] == 1) &
+        # (self.scif['rlv_dist_sc'] == 1) &
         kpi_filters, general = self.get_filters(row)
         kpi_filters.update(general)
         total_products = len(products)
@@ -513,13 +516,18 @@ class GSKSGToolBox:
         for scene_id in valid_scenes:
             # Checks for each product if found in scene, if so, 'count' it.
             for product in set(products):
-                kpi_filters['product_ean_code'] = str(product)
-                kpi_filters['scene_id'] = scene_id
-                res = self.availability.calculate_availability(**kpi_filters)
+                # kpi_filters['product_ean_code'] = str(product)
+                # kpi_filters['scene_id'] = scene_id
+                # res = self.availability.calculate_availability(**kpi_filters)
+                product_in_scene = self.scif.loc[(self.scif['rlv_dist_sc'] == 1) &
+                                                 (self.scif['scene_id'] == scene_id) &
+                                                 (self.scif['product_ean_code'] == str(product))
+                                                 ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
+                res = 1 if not product_in_scene.empty else 0
                 products_in_scenes = products_in_scenes.append({
                     'product_ean_code': product,
                     'scene_id': scene_id,
-                    'result': 1 if res else 0,
+                    'result': res,
                 }, ignore_index=True)
 
         sum_exist = len(products_in_scenes[products_in_scenes['result'] != 0]['product_ean_code'].unique())
