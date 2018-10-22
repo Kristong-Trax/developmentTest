@@ -117,6 +117,20 @@ class GSKSGToolBox:
         score = 0
         return score
 
+
+    def set_calculation_result_by_score_type(self, row):
+        if ['Score Method'] == 'Binary':
+            if row['result'] > 0:
+                return 1
+            else:
+                return 0
+        elif ['Score Method'] == 'Proportional':
+            return row['result'] * 100 / row['Benchmark']
+
+        else:
+            return row['result']
+
+
     def is_template_relevant(self, template_names):
         """
 
@@ -141,7 +155,7 @@ class GSKSGToolBox:
             is_template_valid = self.is_template_relevant(current_kpi['template_name'])
 
             # calculates only if there is at least ont template_name from template in the session.
-            result = self.calculate_atomic(current_kpi) if is_template_valid else (0,0,0)
+            result = self.calculate_atomic(current_kpi) if is_template_valid else (0, 0, 0)
             if result is None:
                 continue
 
@@ -195,15 +209,24 @@ class GSKSGToolBox:
 
         ## if method binary change result to 100/0
 
-        kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
-                        (kpi_results['result'] >= kpi_results['Benchmark']), 'result'] = 1
-        kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
-                        (kpi_results['result'] < kpi_results['Benchmark']), 'result'] = 0
-        kpi_results['result_bin'] = kpi_results['result']
-        kpi_results.loc[(kpi_results['Score Method'] == 'Proportional') &(kpi_results['result'] < kpi_results['Benchmark']), 'result_bin'] = 0
+        # kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
+        #                 (kpi_results['result'] >= kpi_results['Benchmark']), 'result'] = 1
+        # kpi_results.loc[(kpi_results['Score Method'] == 'Binary') &
+        #                 (kpi_results['result'] < kpi_results['Benchmark']), 'result'] = 0
+        # kpi_results['result_bin'] = kpi_results['result']
+        ### Changed ###
+        # kpi_results.loc[(kpi_results['Score Method'] == 'Proportional')
+        #                 & (kpi_results['result'] < kpi_results['Benchmark']), 'result_bin'] = 0
+
+        # kpi_results.loc[kpi_results['Score Method'] == 'Proportional',
+        #                 'result_bin'] = (kpi_results['result'] / kpi_results['Benchmark'])
+        #
+
+
         # kpi_results.loc[
         #     (kpi_results['Benchmark'] == 'Pass'), 'result_bin'] = kpi_results['result']
 
+        kpi_results['result_bin'] = kpi_results.apply(self.set_calculation_result_by_score_type, axis=1)
         kpi_results['result_bin'] = kpi_results['result_bin'] * kpi_results['Weight']
 
         kpi_results['valid_template_name'] = kpi_results['valid_template_name'].astype(float)
@@ -475,7 +498,7 @@ class GSKSGToolBox:
         products = [str(prod) for prod in products ]
         category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
         products = self.products.loc[self.products['product_ean_code'].isin(products)]
-        products = products.loc[products['category_fk']==category_fk]['product_ean_code']
+        products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
 
         kpi_filters, general = self.get_filters(row)
