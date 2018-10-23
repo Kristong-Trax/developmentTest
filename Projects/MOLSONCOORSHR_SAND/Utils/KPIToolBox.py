@@ -20,7 +20,7 @@ from Projects.MOLSONCOORSHR_SAND.Utils.Fetcher import MOLSONCOORSHR_SANDQueries
 
 __author__ = 'sergey'
 
-KPIS_TEMPLATE_NAME = 'MOLSONCOORS_CE_KPIs.xlsx'
+KPIS_TEMPLATE_NAME = 'MOLSONCOORS_HR_KPIs.xlsx'
 KPIS_TEMPLATE_SHEET = 'KPIs'
 
 NUMERATOR = 'numerator'
