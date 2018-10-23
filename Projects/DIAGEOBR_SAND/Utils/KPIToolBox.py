@@ -12,6 +12,13 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.DIAGEOBR_SAND.Utils.Fetcher import DIAGEOBR_SANDQueries
 from Projects.DIAGEOBR_SAND.Utils.ToolBox import DIAGEOBR_SANDDIAGEOToolBox
 
+
+
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+
+
 __author__ = 'Nimrod'
 
 KPI_RESULT = 'report.kpi_results'
@@ -41,6 +48,7 @@ class DIAGEOBR_SANDToolBox:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
+        self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -65,6 +73,13 @@ class DIAGEOBR_SANDToolBox:
         self.tools = DIAGEOBR_SANDDIAGEOToolBox(self.data_provider, output, kpi_static_data=self.kpi_static_data,
                                            match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
+
+
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+
+
 
     def get_business_unit_name(self):
         """
@@ -100,6 +115,8 @@ class DIAGEOBR_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        set_score = 0
+
         if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
             self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
@@ -108,12 +125,32 @@ class DIAGEOBR_SANDToolBox:
         # elif set_name in ('POSM',):
         #     set_score = self.calculate_posm_sets(set_name)
         if set_name == 'Visible to Customer':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
+            # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+            # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+
+            # Global function
+            sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+            res_json = self.global_gen.diageo_global_visible_percentage(sku_list)
+
+            if res_json:
+                # Saving to new tables
+                self.save_json_to_new_tables(res_json)
+
+                # Saving to old tables
+                set_score = res_json[-1]['result']
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
         elif set_name == 'Secondary Displays':
+            json_result = self.global_gen.diageo_global_secondary_display_secondary_function()
+            if json_result:
+                # Saving to new tables
+                self.commonV2.write_to_db_result(fk=json_result['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                                                        result=json_result['result'])
+
+            # Saving to old tables
             set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
             self.save_level2_and_level3(set_name, set_name, set_score)
+
         else:
             return
 
@@ -125,6 +162,20 @@ class DIAGEOBR_SANDToolBox:
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return
+
+    def save_json_to_new_tables(self, res_json):
+        parent_json = res_json[-1]
+        parent_fk = parent_json['fk']
+        self.commonV2.write_to_db_result(fk=parent_fk, numerator_id=1, denominator_id=self.store_id,
+                                         result=parent_json['result'],
+                                         numerator_result=parent_json['numerator_result'],
+                                         denominator_result=parent_json['denominator_result'],
+                                         identifier_result=parent_fk)
+        del res_json[-1]
+        for js in res_json:
+            self.commonV2.write_to_db_result(fk=js['fk'], numerator_id=js['numerator_id'],
+                                             denominator_id=self.store_id, result=js['result'],
+                                             should_enter=True, identifier_parent=parent_fk)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
