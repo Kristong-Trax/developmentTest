@@ -179,7 +179,7 @@ class KCUS_KPIToolBox:
             values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']]['category'].unique().tolist()
 
         if kpi_template['Value2']:
-            if kpi_template['Value2'] == 'Feminine Needs' or 'Feminine Hygiene' :
+            if kpi_template['Value2'] in ['Feminine Needs', 'Feminine Hygiene'] :
                 sub_category_att = 'FEM NEEDS'
                 secondary_values_to_check = self.all_products.loc[self.all_products[sub_category_att] == kpi_template['Value2'] ][
                 sub_category_att].unique().tolist()
@@ -199,31 +199,26 @@ class KCUS_KPIToolBox:
                         continue
 
                     filters[sub_category_att] = secondary_filter
-                    new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
 
-
-
-                    result = self.calculate_category_space_length(new_kpi_name,
-                                                                 **filters)
+                    result = self.calculate_category_space_length(**filters)
 
                     score = result
 
-                    self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
+                    self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=kpi_name, score=score)
             else:
-                new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
 
 
-                result = self.calculate_category_space_length(new_kpi_name,
-                                                             **filters)
+
+                result = self.calculate_category_space_length(**filters)
 
                 score = result
 
-                self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
+                self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=kpi_name, score=score)
 
 
 
 
-    def calculate_category_space_length(self, kpi_name, threshold=0.5,  **filters):
+    def calculate_category_space_length(self,  threshold=0.5,  **filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -239,7 +234,7 @@ class KCUS_KPIToolBox:
             bay_values = []
             max_linear_of_bays = 0
             product_fk_list = filtered_scif['product_fk'].unique().tolist()
-
+            # space_length_DEBUG = 0
             for scene in filtered_scif['scene_fk'].unique().tolist():
 
 
@@ -248,6 +243,9 @@ class KCUS_KPIToolBox:
                 scene_filters = filters
                 scene_filters['scene_fk'] = scene
                 scene_filters['product_fk'] = product_fk_list
+
+
+
                 for bay in scene_matches['bay_number'].unique().tolist():
                     bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1) &
@@ -260,9 +258,12 @@ class KCUS_KPIToolBox:
 
 
                     if tested_group_linear_value:
-                        bay_ratio = float(tested_group_linear_value) / bay_total_linear
+                        bay_ratio = tested_group_linear_value / float(bay_total_linear)
                     else:
                         bay_ratio = 0
+
+
+
                     if bay_ratio >= threshold:
                         # bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
                         #                                            (scene_matches['stacking_layer'] == 1)][
@@ -277,11 +278,13 @@ class KCUS_KPIToolBox:
                         #     bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
                         # else:
                         #     bay_final_linear_value = 0
-                        # # bay_values.append(bay_final_linear_value)
+
+
+                        #  bay_final_linear_value * self.MM_TO_FEET_CONVERSION
+                        #  space_length_DEBUG += bay_final_linear_value
                         bay_values.append(4)
                     else:
                         bay_values.append(0)
-                        # space_length += bay_final_linear_value
                 space_length = sum(bay_values)
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
