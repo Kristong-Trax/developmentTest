@@ -4,15 +4,15 @@ import json
 import pandas as pd
 from datetime import datetime
 
-from Trax.Algo.MOLSONCOORSHR_SANDCalculations.Core.DataProvider import Data
+from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as CommonV1
-from KPIUtils_v2.MOLSONCOORSHR_SANDCalculations.MOLSONCOORSHR_SANDCalculationsUtils.GENERALToolBoxMOLSONCOORSHR_SANDCalculations import GENERALToolBox
-from KPIUtils_v2.MOLSONCOORSHR_SANDCalculations.AssortmentMOLSONCOORSHR_SANDCalculations import Assortment
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 from Projects.MOLSONCOORSHR_SAND.Utils.ParseTemplates import parse_template
 from Projects.MOLSONCOORSHR_SAND.Utils.Fetcher import MOLSONCOORSHR_SANDQueries

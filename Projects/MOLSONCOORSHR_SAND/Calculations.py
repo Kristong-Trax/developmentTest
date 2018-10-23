@@ -1,16 +1,16 @@
 
-from Trax.Algo.MOLSONCOORSHR_SANDCalculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Trax.Algo.MOLSONCOORSHR_SANDCalculations.Core.MOLSONCOORSHR_SANDCalculationsScript import BaseMOLSONCOORSHR_SANDCalculationsScript
-from Projects.MOLSONCOORSHR_SAND.KPIMOLSONCOORSHR_SANDGenerator import MOLSONCOORSHR_SANDGenerator
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Projects.MOLSONCOORSHR_SAND.KPIGenerator import MOLSONCOORSHR_SANDGenerator
 
 __author__ = 'sergey'
 
 
-class MOLSONCOORSHR_SANDCalculations(BaseMOLSONCOORSHR_SANDCalculationsScript):
+class MOLSONCOORSHR_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         MOLSONCOORSHR_SANDGenerator(self.data_provider, self.output).main_function()
