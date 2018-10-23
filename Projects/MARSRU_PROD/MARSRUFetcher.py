@@ -52,7 +52,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset='product_fk')
+            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         elif object_type == 'BRAND in CAT':
             if type(brand_category) is not list:
                 brand_category = [brand_category]
@@ -63,7 +63,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
             merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset='product_fk')
+            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         else:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
@@ -72,7 +72,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
             merged_dfs = initial_result.merge(self.matches, how='left', on=['product_fk', 'scene_fk'],
                                               suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
-            final_result = merged_filter.drop_duplicates(subset='product_fk')
+            final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         if include_stacking:
             # merged_dfs = pd.merge(final_result, self.matches, on=['product_fk', 'product_fk'])
             # merged_filter = merged_dfs.loc[~merged_dfs['stacking_layer'] == 1]

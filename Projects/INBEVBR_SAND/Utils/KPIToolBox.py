@@ -158,7 +158,7 @@ class INBEVBRToolBox:
                 count_result = weight if percentage >= target else 0
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -229,7 +229,7 @@ class INBEVBRToolBox:
         number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -282,7 +282,7 @@ class INBEVBRToolBox:
             count_result = weight if (number_of_scenes >= secondary_target) else 0
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -334,7 +334,7 @@ class INBEVBRToolBox:
 
         number_of_valid_scenes = len(group_scenes)
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -470,7 +470,7 @@ class INBEVBRToolBox:
                 survey_result = 1 if answer else -1
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -526,7 +526,7 @@ class INBEVBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -622,7 +622,7 @@ class INBEVBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -641,6 +641,7 @@ class INBEVBRToolBox:
         # drop adjacent brand duplicates
         df = df.loc[df.shift(-1) != df]
         list_df = df.tolist()
+        list_df = [str(item) for item in list_df]
         str_df = "".join(list_df)
         constraints = self.calc_constraints(groups_outside, groups_inside, list_df)
         for c in constraints:
@@ -721,7 +722,7 @@ class INBEVBRToolBox:
             total_weight = limit
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -731,7 +732,7 @@ class INBEVBRToolBox:
         self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
                                         numerator_result=total_facings, denominator_id=self.store_fk,
                                         denominator_result_after_actions=2,
-                                        should_enter=True, denominator_result=limit, result=total_weight)
+                                        should_enter=True, denominator_result=0, result=total_weight)
 
     def write_parent_kpis_results(self):
         self.common_db.write_to_db_result(fk=1, numerator_id=1, identifier_result=Const.CERVEJA,
