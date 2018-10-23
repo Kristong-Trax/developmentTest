@@ -138,7 +138,7 @@ class GSKSGToolBox:
         return 1 if row['result_bin'] == row['Weight'] else 0
 
     def check_if_sequence_passed(self, row):
-        if row[ATOMIC] == 'Sequence' :
+        if row['ATOMIC_TARGET']!= -1:
             return 1 if row['scenes_passed'] == row['ATOMIC_TARGET'] else 0
         else:
             return row['result']
