@@ -7,8 +7,10 @@ class Const(object):
     TOUCHPOINT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), '..',
                                                  'DIAGEOCO_SAND', 'Data',
                                                  'DIAGEOCO TouchPoints- 20181008_V1.1.xlsx')
+    TOUCHPOINT_HEADER_ROW = 2
+
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), '..', 'DIAGEOCO_SAND',
-                                 'Data', 'Diageo_KPIs_v1.xlsx')
+                                 'Data', 'DIAGEOCO KPI Bank - 20181008_v1.1.xlsx')
     RELATIVE_POSITIONING_SHEET_NAME = '2.1 Relative Positioning'
     RELATIVE_POSITIONING_HEADER_ROW = 4
     BRAND_BLOCKING_SHEET_NAME = '2.2 Brand Blocking'

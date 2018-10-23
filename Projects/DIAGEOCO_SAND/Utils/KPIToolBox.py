@@ -52,6 +52,7 @@ class DIAGEOCO_SANDToolBox:
                                                      header=Const.BRAND_BLOCKING_HEADER_ROW).to_dict(orient='records')
         self.brand_pouring_status_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_POURING_SHEET_NAME,
                                                            header=Const.BRAND_POURING_HEADER_ROW).to_dict(orient='records')
+        self.touchpoint_template = pd.read_excel(Const.TOUCHPOINT_TEMPLATE_PATH, header=Const.TOUCHPOINT_HEADER_ROW)
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
         self.global_gen.tool_box.DIAGEO = 'DIAGEO'
@@ -59,7 +60,7 @@ class DIAGEOCO_SANDToolBox:
         self.calculate_block_together() # working
         self.calculate_secondary_display() # working
         self.calculate_brand_pouring_status() # working
-        # self.calculate_touch_point() # using old tables, needs work
+        self.calculate_touch_point() # using old tables, needs work
         self.calculate_relative_position() # working
         # self.calculate_activation_standard() # using old tables, needs work
 
@@ -78,8 +79,8 @@ class DIAGEOCO_SANDToolBox:
                 self.common.write_to_db_result_new_tables(**result)
 
     def calculate_touch_point(self):
-        result = self.global_gen.diageo_global_touch_point_function(self.touchpoint_template_path)
-        # needs work
+        sub_brands = self.touchpoint_template['Sub Brand'].dropna().unique().tolist()
+        self.global_gen.diageo_global_touch_point_function(sub_brand_list=sub_brands, old_tables=False, new_tables=True)
 
     def calculate_block_together(self):
         results_list = self.global_gen.diageo_global_block_together(Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY, self.brand_blocking_template)
@@ -99,5 +100,5 @@ class DIAGEOCO_SANDToolBox:
                 self.common.write_to_db_result_new_tables(**result)
 
     def commit_results_data(self):
-        print('success')
-        # self.common.commit_results_data_to_new_tables()
+        # print('success')
+        self.common.commit_results_data_to_new_tables()
