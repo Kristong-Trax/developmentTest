@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import numpy as np
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.DB.Common import Common as Common_old
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -61,7 +62,10 @@ PAIN_LEVEL_1 = 'Orange score for Pain'
 ORAL_CARE = ' Oral Care'
 PAIN=' Pain'
 SEQUENCE_TARGET = 3
-
+######################
+LEVEL1 = 1
+LEVEL2 = 2
+LEVEL3 = 3
 
 TBD = 'tbd'
 
@@ -75,6 +79,7 @@ class GSKSGToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.common_old_tables= Common_old(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -138,7 +143,7 @@ class GSKSGToolBox:
         return 1 if row['result_bin'] == row['Weight'] else 0
 
     def check_if_sequence_passed(self, row):
-        if row[ATOMIC] == 'Sequence' :
+        if row['ATOMIC_TARGET']!= -1:
             return 1 if row['scenes_passed'] == row['ATOMIC_TARGET'] else 0
         else:
             return row['result']
@@ -291,6 +296,9 @@ class GSKSGToolBox:
                                            numerator_result=result['scenes_passed'],
                                            denominator_result=result['scenes_total'],
                                            weight=result['Weight']*100, should_enter=True)
+
+            # self.common_old_tables.write_to_db_result(kpi_fk, (score, number_of_passed_atomics, number_of_atomics),
+            #                                     level=self.LEVEL3)
 
         kpi_results['kpi_pass'] = kpi_results.apply(self.check_if_kpi_passed, axis =1)
 
