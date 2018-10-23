@@ -560,6 +560,7 @@ class GSKSGToolBox:
         # products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
         products = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
+                                 (self.scif['rlv_dist_sc'] == 1) &
                                  (self.scif['category_fk'] == category_fk)]['product_ean_code']
 
         # (self.scif['in_assort_sc'] == 1) &
@@ -579,7 +580,9 @@ class GSKSGToolBox:
                 # kpi_filters['product_ean_code'] = str(product)
                 # kpi_filters['scene_id'] = scene_id
                 # res = self.availability.calculate_availability(**kpi_filters)
-                product_in_scene = self.scif.loc[(self.scif['rlv_dist_sc'] == 1) &
+                product_in_scene = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
+                                                 (self.scif['rlv_dist_sc'] == 1) &
+                                                 (self.scif['dist_sc'] == 1) &
                                                  (self.scif['scene_id'] == scene_id) &
                                                  (self.scif['product_ean_code'] == str(product))
                                                  ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
