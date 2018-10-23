@@ -2,7 +2,7 @@
 __author__ = 'sergey'
 
 
-class Queries(object):
+class MOLSONCOORSHRQueries(object):
 
     @staticmethod
     def get_sos_store_policies(visit_date):

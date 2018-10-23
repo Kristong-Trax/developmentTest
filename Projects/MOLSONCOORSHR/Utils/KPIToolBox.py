@@ -15,7 +15,7 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 from Projects.MOLSONCOORSHR.Utils.ParseTemplates import parse_template
-from Projects.MOLSONCOORSHR.Utils.Fetcher import Queries
+from Projects.MOLSONCOORSHR.Utils.Fetcher import MOLSONCOORSHRQueries
 
 
 __author__ = 'sergey'
@@ -79,12 +79,12 @@ class MOLSONCOORSHRToolBox:
         self.scores = pd.DataFrame()
 
     def get_sos_store_policies(self, visit_date):
-        query = Queries.get_sos_store_policies(visit_date)
+        query = MOLSONCOORSHRQueries.get_sos_store_policies(visit_date)
         store_policies = pd.read_sql_query(query, self.rds_conn.db)
         return store_policies
 
     def get_result_values(self):
-        query = Queries.get_result_values()
+        query = MOLSONCOORSHRQueries.get_result_values()
         result_values = pd.read_sql_query(query, self.rds_conn.db)
         return result_values
 

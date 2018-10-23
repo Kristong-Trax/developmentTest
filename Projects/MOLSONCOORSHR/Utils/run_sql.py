@@ -8,7 +8,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 __author__ = 'Sergey'
 
 
-class RunSql:
+class MOLSONCOORSHRRunSql:
     def __init__(self, project):
         self.project = project
         self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     Config.init()
     for project in ['molsoncoorshr-sand']:
         print 'Start Project: ' + str(project)
-        sql_to_run = RunSql(project)
+        sql_to_run = MOLSONCOORSHRRunSql(project)
         sql_to_run.run_it()
 
 

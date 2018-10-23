@@ -17,7 +17,7 @@ class MOLSONCOORSHR_SANDGenerator:
         self.tool_box = MOLSONCOORSHR_SANDToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
-    @log_runtime('Total MOLSONCOORSHR_SANDCalculations', log_start=True)
+    @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
         """
         This is the main KPI calculation function.

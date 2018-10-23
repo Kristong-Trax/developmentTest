@@ -7,7 +7,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'sergey'
 
 
-class Generator:
+class MOLSONCOORSHRGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider

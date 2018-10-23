@@ -5,16 +5,16 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Projects.MOLSONCOORSHR.KPIGenerator import Generator
+from Projects.MOLSONCOORSHR.KPIGenerator import MOLSONCOORSHRGenerator
 
 __author__ = 'sergey'
 
 
-class Calculations(BaseCalculationsScript):
+class MOLSONCOORSHRCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        Generator(self.data_provider, self.output).main_function()
-        self.timer.stop('KPIGenerator.run_project_calculations')
+        MOLSONCOORSHRGenerator(self.data_provider, self.output).main_function()
+        self.timer.stop('KPIMOLSONCOORSHRGenerator.run_project_calculations')
 
 
 # if __name__ == '__main__':
@@ -30,7 +30,7 @@ class Calculations(BaseCalculationsScript):
 #     for session in sessions:
 #         data_provider.load_session_data(session)
 #         output = Output()
-#         Calculations(data_provider, output).run_project_calculations()
+#         MOLSONCOORSHRCalculations(data_provider, output).run_project_calculations()
 
 
 
