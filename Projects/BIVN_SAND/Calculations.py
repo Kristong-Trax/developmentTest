@@ -22,7 +22,7 @@ class BIVN_SANDCalculations(BaseCalculationsScript):
                                          'BIVN', 'Data', 'Template_Jul_Aug_2018.xlsx')
         else:
             TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'BIVN', 'Data', 'Template.xlsx')
+                                         'BIVN_SAND', 'Data', 'Template.xlsx')
 
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
