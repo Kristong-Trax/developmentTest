@@ -111,57 +111,57 @@ class DIAGEOBR_SANDToolBox:
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        set_score = 0
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+            # if set_name in ('MPA', 'New Products'):
+            #     set_score = self.calculate_assortment_sets(set_name)
+            # elif set_name in ('POSM',):
+            #     set_score = self.calculate_posm_sets(set_name)
+            if set_name == 'Visible to Customer':
+                # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
 
-        # if set_name in ('MPA', 'New Products'):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('POSM',):
-        #     set_score = self.calculate_posm_sets(set_name)
-        if set_name == 'Visible to Customer':
-            # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_json = self.global_gen.diageo_global_visible_percentage(sku_list)
 
-            # Global function
-            sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-            res_json = self.global_gen.diageo_global_visible_percentage(sku_list)
+                if res_json:
+                    # Saving to new tables
+                    parent_json = self.save_json_to_new_tables(res_json)
 
-            if res_json:
-                # Saving to new tables
-                self.save_json_to_new_tables(res_json)
+                    # Saving to old tables
+                    set_score = parent_json['result']
+                    self.save_level2_and_level3(set_name, set_name, set_score)
+
+            elif set_name == 'Secondary Displays':
+                res_json = self.global_gen.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                                                            result=res_json['result'])
 
                 # Saving to old tables
-                set_score = res_json[-1]['result']
+                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
-        elif set_name == 'Secondary Displays':
-            json_result = self.global_gen.diageo_global_secondary_display_secondary_function()
-            if json_result:
-                # Saving to new tables
-                self.commonV2.write_to_db_result(fk=json_result['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                                                        result=json_result['result'])
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                return
 
-            # Saving to old tables
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            self.save_level2_and_level3(set_name, set_name, set_score)
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
-        else:
-            return
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
-
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+        # commiting to new tables
+        self.commonV2.commit_results_data()
 
     def save_json_to_new_tables(self, res_json):
         parent_json = res_json[-1]
@@ -176,6 +176,8 @@ class DIAGEOBR_SANDToolBox:
             self.commonV2.write_to_db_result(fk=js['fk'], numerator_id=js['numerator_id'],
                                              denominator_id=self.store_id, result=js['result'],
                                              should_enter=True, identifier_parent=parent_fk)
+        return parent_json
+
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
