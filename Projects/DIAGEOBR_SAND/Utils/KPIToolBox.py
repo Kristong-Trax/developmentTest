@@ -9,11 +9,8 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOBR_SAND.Utils.Fetcher import DIAGEOBR_SANDQueries
-from Projects.DIAGEOBR_SAND.Utils.ToolBox import DIAGEOBR_SANDDIAGEOToolBox
-
-
-
+from Projects.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
@@ -70,11 +67,8 @@ class DIAGEOBR_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOBR_SANDDIAGEOToolBox(self.data_provider, output, kpi_static_data=self.kpi_static_data,
-                                           match_display_in_scene=self.match_display_in_scene)
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
-
-
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
@@ -86,7 +80,7 @@ class DIAGEOBR_SANDToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOBR_SANDQueries.get_business_unit_name(self.store_id)
+        query = DIAGEOQueries.get_business_unit_name(self.store_id)
         business_unit_name = pd.read_sql_query(query, self.rds_conn.db)
         if business_unit_name['business_unit_name'].empty:
             return ""
@@ -98,7 +92,7 @@ class DIAGEOBR_SANDToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOBR_SANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -107,7 +101,7 @@ class DIAGEOBR_SANDToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOBR_SANDQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -148,7 +142,8 @@ class DIAGEOBR_SANDToolBox:
                                                                                             result=res_json['result'])
 
                 # Saving to old tables
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
+                # set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
+                set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
             if set_score == 0:
