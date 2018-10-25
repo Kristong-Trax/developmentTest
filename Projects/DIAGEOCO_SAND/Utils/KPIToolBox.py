@@ -40,6 +40,10 @@ class DIAGEOCO_SANDToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_channel = self.store_info['store_type'].values[0]
+        if self.store_channel:
+            self.store_channel = self.store_channel.upper()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
@@ -71,7 +75,7 @@ class DIAGEOCO_SANDToolBox:
         self.calculate_block_together() # working
         self.calculate_secondary_display() # working
         self.calculate_brand_pouring_status() # working
-        self.calculate_touch_point() # using old tables, needs work
+        self.calculate_touch_point() # working
         self.calculate_relative_position() # working
         # self.calculate_activation_standard() # using old tables, needs work
 
@@ -85,6 +89,13 @@ class DIAGEOCO_SANDToolBox:
         set_name = Const.SECONDARY_DISPLAYS
         set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
         self.save_level2_and_level3(set_name, set_name, set_score)
+        if set_score == 0:
+            pass
+        elif set_score is False:
+            return
+
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
     def calculate_brand_pouring_status(self):
         results_list = self.global_gen.diageo_global_brand_pouring_status_function(self.brand_pouring_status_template)
@@ -105,6 +116,16 @@ class DIAGEOCO_SANDToolBox:
         if results_list:
             for result in results_list:
                 self.common.write_to_db_result_new_tables(**result)
+        set_name = Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY
+        set_score = self.calculate_block_together_sets(set_name)
+        if set_score == 0:
+            pass
+        elif set_score is False:
+            return
+
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+        return
 
     def calculate_activation_standard(self):
         result = self.global_gen.diageo_global_activation_standard_function(kpi_scores, set_scores, local_templates_path)
@@ -116,6 +137,76 @@ class DIAGEOCO_SANDToolBox:
         if results_list:
             for result in results_list:
                 self.common.write_to_db_result_new_tables(**result)
+        set_name = Const.RELATIVE_POSITION
+        set_score = self.calculate_relative_position_sets(set_name)
+        if set_score == 0:
+            pass
+        elif set_score is False:
+            return
+
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+        return
+
+    def calculate_relative_position_sets(self, set_name):
+        """
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
+                tested_filters = {'product_ean_code': params.get(self.tools.TESTED)}
+                anchor_filters = {'product_ean_code': params.get(self.tools.ANCHOR)}
+                direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
+                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
+                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
+
+    def _get_direction_for_relative_position(self, value):
+        """
+        This function converts direction data from the template (as string) to a number.
+        """
+        if value == self.tools.UNLIMITED_DISTANCE:
+            value = 1000
+        elif not value or not str(value).isdigit():
+            value = 0
+        else:
+            value = int(value)
+        return value
+
+    def calculate_block_together_sets(self, set_name):
+        """
+        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
+                filters = {'template_name': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.SUB_BRAND_NAME):
+                    filters['sub_brand_name'] = params.get(self.tools.SUB_BRAND_NAME)
+                else:
+                    filters['brand_name'] = params.get(self.tools.BRAND_NAME)
+                result = self.tools.calculate_block_together(**filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
 
     def get_match_display(self):
         """
@@ -191,4 +282,11 @@ class DIAGEOCO_SANDToolBox:
     def commit_results_data(self):
         # print('success')
         self.common.commit_results_data_to_new_tables()
-        self.common_v2.commit_results_data()
+        self.common_v2.commit_results_data()  # new tables
+        cur = self.rds_conn.db.cursor()
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
+        for query in delete_queries:
+            cur.execute(query)
+        for query in self.kpi_results_queries:
+            cur.execute(query)
+        self.rds_conn.db.commit()
