@@ -13,18 +13,7 @@ __author__ = 'Nimrod'
 class DIAGEOMX_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND', 'Data',
-                                     'TOUCH POINT.xlsx')
-
-        common = Common(self.data_provider)
-        diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
-        diageo_generator.diageo_global_assortment_function()
-        diageo_generator.diageo_global_share_of_shelf_function()
-        diageo_generator.diageo_global_touch_point_function(template_path)
-        common.commit_results_data_to_new_tables()
-        common.commit_results_data()  # old tables
         DIAGEOMX_SANDGenerator(self.data_provider, self.output).main_function()
-
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 

@@ -12,7 +12,6 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template
-# from Projects.DIAGEOMX_SAND.Utils.ToolBox import DIAGEOMX_SANDDIAGEOToolBox
 
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
@@ -76,7 +75,7 @@ class DIAGEOMX_SANDToolBox:
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_business_unit(self):
         """
@@ -111,6 +110,16 @@ class DIAGEOMX_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
+                                     'Data', 'TOUCH POINT.xlsx')
+        # self.diageo_generator.diageo_global_assortment_function()
+        result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+        for r in result_sos_dict:
+            self.commonV2.write_to_db_result(**r)
+        # self.diageo_generator.diageo_global_touch_point_function(template_path)
+        self.common.commit_results_data_to_new_tables()
+        self.common.commit_results_data()  # old tables
+
         set_score=0
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -131,7 +140,7 @@ class DIAGEOMX_SANDToolBox:
 
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.global_gen.diageo_global_visible_percentage(sku_list)
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
                 if res_dict:
                     # Saving to new tables
@@ -142,7 +151,14 @@ class DIAGEOMX_SANDToolBox:
                     # Saving to old tables
                     result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            # elif set_name == 'Secondary':
+            # elif set_name == 'Secondary display':
+            #     res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+            #     if res_json:
+            #         # Saving to new tables
+            #         self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+            #                                          result=res_json['result'])
+            #
+            #     # Saving to old tables
             #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
             #     self.save_level2_and_level3(set_name, set_name, set_score)
             else:
@@ -155,6 +171,9 @@ class DIAGEOMX_SANDToolBox:
 
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # commiting to new tables
+        self.commonV2.commit_results_data()
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
@@ -389,6 +408,8 @@ class DIAGEOMX_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         for query in self.kpi_results_queries:
             cur.execute(query)
