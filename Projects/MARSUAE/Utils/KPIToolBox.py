@@ -28,7 +28,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-SHEETS_NAME = ['KPI', 'Count', 'SOS', 'Distribution', 'Availability']
+SHEETS_NAME = ['KPI', 'SOS', 'Distribution', 'Availability']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
