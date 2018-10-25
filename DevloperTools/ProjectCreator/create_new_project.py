@@ -113,8 +113,8 @@ class CreateKPIProject:
 if __name__ == '__main__':
     LoggerInitializer.init('new_project')
     Config.init(app_name='new_project_new')
-    project = 'test3'
+    project = 'ttttttt'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project, planogram=True)
+    new = CreateKPIProject(project, planogram=False)
     new.create_new_project()
     Log.info('project {} was created successfully'.format(project))

@@ -103,7 +103,8 @@ class CCBOTTLERSUSREDToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.SHEET]
-        relevant_scif = self.scif[self.scif['scene_id'].isin(self.united_scenes)]
+        relevant_scif = self.scif[(self.scif['scene_id'].isin(self.united_scenes)) &
+                                  (self.scif['product_type'] != 'Empty')]
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
@@ -219,6 +220,10 @@ class CCBOTTLERSUSREDToolBox:
         :return: boolean
         """
         relevant_scif = relevant_scif.fillna("NAN")
+        # only items categorized as SSD should be evaluated in this calculation; see PROS-6342
+        relevant_scif = relevant_scif[relevant_scif['att4'] == 'SSD']
+        if relevant_scif.empty:
+            return False
         sizes = relevant_scif['size'].tolist()
         sub_packages_nums = relevant_scif['number_of_sub_packages'].tolist()
         packages = set(zip(sizes, sub_packages_nums))
@@ -279,8 +284,8 @@ class CCBOTTLERSUSREDToolBox:
             Const.TRADEMARK: "att2",
             Const.SIZE: "size",
             Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            # CCBOTTLERSUSConst.PREMIUM_SSD: "Premium SSD",
-            # CCBOTTLERSUSConst.INNOVATION_BRAND: "Innovation Brand",
+            Const.PREMIUM_SSD: "Premium SSD",
+            Const.INNOVATION_BRAND: "Innovation Brand",
         }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])

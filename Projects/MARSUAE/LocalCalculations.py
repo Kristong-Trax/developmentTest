@@ -8,9 +8,9 @@ from Projects.MARSUAE.Calculations import Calculations
 if __name__ == '__main__':
     LoggerInitializer.init('marsuae calculations')
     Config.init()
-    project_name = 'ccru-sand'
+    project_name = 'marsuae'
     data_provider = KEngineDataProvider(project_name)
-    session = '00003802-9b4d-47c7-89b3-30e6cd1a39ad'
+    session = '058887fa-d091-11e8-8132-12eda0ad279c'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

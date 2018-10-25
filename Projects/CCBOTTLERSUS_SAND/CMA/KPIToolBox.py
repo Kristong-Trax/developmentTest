@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import pandas as pd
+from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -8,11 +9,12 @@ from Projects.CCBOTTLERSUS_SAND.CMA.Const import Const
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.7.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'CMA Compliance Template v0.9.xlsx')
 
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
@@ -24,12 +26,16 @@ CMA_COMPLIANCE = 'CMA Compliance'
 
 
 class CMAToolBox:
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
 
     def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.manufacturer_fk = 1
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -41,10 +47,12 @@ class CMAToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.united_scenes = self.get_united_scenes()  # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
         self.common_db2 = common_db2
+        self.result_values = self.ps_data_provider.get_result_values()
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_14'].iloc[0]
@@ -53,9 +61,12 @@ class CMAToolBox:
             self.store_type = STORE_TYPES[self.store_type]
         self.store_attr = self.store_info['additional_attribute_15'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.total_score = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.tools = Shared()
 
     # main functions:
 
@@ -65,13 +76,18 @@ class CMAToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
-        self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score,
-                                           identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
-        self.write_to_db_result(
-            self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+        if self.region in Const.REGIONS:
+            for i, main_line in main_template.iterrows():
+                store_type = self.does_exist(main_line, Const.STORE_TYPE)
+                if store_type is None or self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
+                    self.calculate_main_kpi(main_line)
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+
+            self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score, numerator_id=self.manufacturer_fk,
+                                               denominator_id=self.store_id,
+                                               identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
+            self.write_to_db_result(
+                self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -103,11 +119,14 @@ class CMAToolBox:
             pass
         if score > 0:
             self.total_score += 1
-        self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
+        if isinstance(result, tuple):
+            self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
+                                     num=result[1], den=result[2])
+        else:
+            self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
 
     # write in DF:
-
-    def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False):
+    def write_to_all_levels(self, kpi_name, result, score, target=None, num=None, den=None):
         """
         Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
         :param kpi_name: str
@@ -119,7 +138,7 @@ class CMAToolBox:
         """
         # result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.write_to_db(kpi_name, score, result=result, threshold=target)
+        self.write_to_db(kpi_name, score, result=result, target=target, num=num, den=den)
 
     # survey:
 
@@ -259,23 +278,27 @@ class CMAToolBox:
             num_type_2 = kpi_line[Const.NUM_TYPES_2]
             num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
             sos_filters[num_type_2] = num_value_2
-        sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-        sos_value *= 100
-        sos_value = round(sos_value, 2)
+
+        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
+        den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
+        sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
+        # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+        # sos_value *= 100
+        # sos_value = round(sos_value, 2)
 
         if target:
-            score = 1 if sos_value >= target*100 else 0
+            target *= 100
+            score = 1 if sos_value >= target else 0
         else:
-            score = 1
+            score = 0
             target = 0
-        return sos_value, score, target
+        return (sos_value, num, den), score, target
 
     # SOS majority:
 
     def get_sos_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
         store_targets = targets_template.loc[(targets_template['program'] == self.program) &
-                                             (targets_template['sales center'] == self.sales_center) &
                                              (targets_template['channel'] == self.store_type)]
         filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
         if not filtered_targets_to_kpi.empty:
@@ -369,6 +392,51 @@ class CMAToolBox:
                 needed_one += current_sum
         return needed_one >= max_facings
 
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUPNGAMERICAGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
+
+
     # helpers:
     @staticmethod
     def get_column_name(field_name, df):
@@ -449,23 +517,39 @@ class CMAToolBox:
     def get_united_scenes(self):
         return self.scif[self.scif['United Deliver'] == 'Y']['scene_id'].unique().tolist()
 
-    def write_to_db(self, kpi_name, score, result=None, threshold=None):
+    def get_pks_of_result(self, result):
+        """
+        converts string result to its pk (in static.kpi_result_value)
+        :param result: str
+        :return: int
+        """
+        pk = self.result_values[self.result_values['value'] == result]['pk'].iloc[0]
+        return pk
+
+    def write_to_db(self, kpi_name, score, result=None, target=None, num=None, den=None):
         """
         writes result in the DB
         :param kpi_name: str
         :param score: float
-        :param display_text: str
         :param result: str
-        :param threshold: int
+        :param target: int
         """
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_name)
-        self.common_db2.write_to_db_result(fk=kpi_fk, result=score, should_enter=True, target=threshold,
+        if target and score == 0:
+            delta = den * (target / 100) - num
+        else:
+            delta = 0
+        score_value = Const.PASS if score == 1 else Const.FAIL
+        score = self.get_pks_of_result(score_value)
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(CMA_COMPLIANCE + " " + kpi_name)
+        self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=target,
+                                           numerator_result=num, denominator_result=den,
+                                           weight=delta,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 3), score=score, level=3,
-            threshold=threshold, result=result)
+            threshold=target, result=result)
 
     def write_to_db_result(self, fk, level, score, set_type=Const.SOVI, **kwargs):
         """
@@ -558,3 +642,4 @@ class CMAToolBox:
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
+

@@ -72,8 +72,33 @@ class MarsUsPositionGraphs:
         if set(self.ATTRIBUTES_TO_SAVE).difference(matches.keys()):
             missing_data = self.get_missing_data()
             matches = matches.merge(missing_data, on='product_fk', how='left', suffixes=['', '_5'])
+        matches = self.pos_scrubber(matches)
         matches = matches[matches['status'] == 1]
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
+
+        return matches
+
+    def pos_scrubber(self, matches):
+        columns_of_import = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
+        pos_mask = matches['product_type'] == 'POS'
+        pos = matches[pos_mask]
+        for i, row in pos.iterrows():
+            row = matches.loc[i]
+            if row[columns_of_import].iloc[1:].sum() != -3:  # We can ignore POS that was correctly not given shelfspace
+                base_mask = ((matches['scene_fk'] == row['scene_fk']) &
+                             (matches['bay_number'] == row['bay_number']) &
+                             (matches['shelf_number'] == row['shelf_number']))
+                type_mask = (base_mask & (matches['facing_sequence_number'] == row['facing_sequence_number']))
+                stacking_mask = (type_mask & (matches['stacking_layer'] >= row['stacking_layer']))
+                matches.loc[stacking_mask, 'stacking_layer'] -= 1
+
+                if len(set(matches[type_mask]['product_type'])) <= 1:
+                    sequence_mask = (base_mask & (matches['facing_sequence_number'] > row['facing_sequence_number']))
+                    matches.loc[sequence_mask, 'facing_sequence_number'] -= 1
+                    matches.loc[base_mask, 'n_shelf_items'] -= 1
+
+        matches = matches[matches['product_type'] != 'POS']
+        matches.loc[matches['stacking_layer'] == 1, 'status'] = 1
         return matches
 
     def get_missing_data(self):
@@ -178,11 +203,11 @@ class MarsUsPositionGraphs:
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[filtered_matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[filtered_matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
 
         # checking left & right
         filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &

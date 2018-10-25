@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -17,7 +18,7 @@ from Trax.Algo.Calculations.Core.Utils import Validation
 
 __author__ = 'Uri'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v7.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Southwest CMA Compliance Template_v8.xlsx')
 SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
@@ -57,7 +58,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
-        self.common_v2 = CommonV2(self.data_provider)
+        self.common_db2 = CommonV2(self.data_provider)
+        self.common_scene = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -67,6 +69,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
         self.kpi_static_data = self.common_db.get_kpi_static_data()
         self.total_score = 0
+        self.sub_scores = defaultdict(int)
+        self.sub_totals = defaultdict(int)
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         for sheet in Const.SHEETS_CMA:
@@ -85,6 +89,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)
                 if store_type is None or self.store_type in store_type:
                     self.calculate_main_kpi(main_line)
+            self.write_sub_parents()
+            self.write_parent()
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
 
@@ -128,12 +134,16 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
                 result, score, target = function(kpi_line, relevant_scif, general_filters)
 
                 # write in DF:
-                if score > 0:
-                    self.total_score += 1
                 if result is None and score is None and target is None:
                     continue
+
+                if 'Bonus' in self.get_kpi_parent(kpi_name):
+                    self.update_sub_score(kpi_name, passed=result)
+                else:
+                    self.update_sub_score(kpi_name, passed=score)
+                if target is None:
+                    target = 0
                 self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
-                print(kpi_name, kpi_type, result, score, target)
         else:
             pass
 
@@ -342,21 +352,32 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         if not isinstance(scenes, list):
             scenes = [scenes]
 
+        total_num = 0
+        total_den = 0
         for scene in scenes:
             # self.data_provider.load_scene_data(self.session_uid, scene)
-            self.common_v2.scene_id = scene
+            self.common_scene.scene_id = scene
             scene_scif = scif[scif['scene_fk'] == scene]
             if scif.empty:
                 pass
                 Log.warning('Match product in scene is empty for this scene')
             else:
-                func(kpi_line, scene_scif, num_filters, general_filters)
-                self.common_v2.commit_results_data(result_entity='scene')
-                self.common_v2.kpi_results = pd.DataFrame(columns=self.common_v2.COLUMNS)
+                num, ratio, den = func(kpi_line, scene_scif, num_filters, general_filters)
+                total_num += num
+                total_den += den
+                self.common_scene.commit_results_data(result_entity='scene')
+                self.common_scene.kpi_results = pd.DataFrame(columns=self.common_db2.COLUMNS)
+
+
+        # self.common_db2.write_to_db_result(fk=2161, numerator_result=total_num,
+        #                                    denominator_result=total_den, result=ratio,
+        #                                    identifier_result=self.common_db2.get_dictionary(
+        #                                        parent_name='Total Coke Cooler Purity'),
+        #                                    should_enter=True)
 
     def sos_with_num_and_dem(self, kpi_line, relevant_scif, num_filters,  general_filters):
 
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(kpi_line['KPI name'])
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **num_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
@@ -374,8 +395,14 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
         ratio = num / float(den)
         # numerator_id=product_fk,
-        self.common_v2.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
+        self.common_scene.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
                                        result=ratio, by_scene=True)
+
+        # self.common_scene.write_to_db_result(fk=kpi_fk, numerator_result=num,
+        #                                    denominator_result=den, result=ratio, by_scene=True
+        #                                    identifier_parent=self.common_db2.get_dictionary(
+        #                                        parent_name='Total Coke Cooler Purity'),
+        #                                    should_enter=True)
         return num, ratio, den
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
@@ -395,7 +422,6 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
             facings = scene_scif[self.get_filter_condition(scene_scif, **facings_filters)][self.facings_field].sum()
             num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['bay_number'].max()
             max_given = max(list(targets.keys()))
-            print('Num bays is', num_bays)
             if num_bays in targets:
                 target = targets[num_bays]
             else:
@@ -488,6 +514,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
         if 'bonus' not in kpi_name.lower():
             return number_of_shelves_score, score, target
+        elif not kpi_line[Const.TARGET]:
+            return score, None, None
         else:
             return number_of_shelves_score, None, None
 
@@ -816,6 +844,18 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
     def get_score(self, weight):
         return weight / self.weight_factor
 
+    def get_kpi_parent(self, kpi_name):
+        type_name = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
+        return Const.KPI_FAMILY_KEY[int(self.common_db2.kpi_static_data.set_index('type')\
+                                        .loc[type_name, 'kpi_family_fk'])]
+
+    def update_sub_score(self, kpi_name, passed=0, parent=None):
+        if not parent:
+            parent = self.get_kpi_parent(kpi_name)
+        self.sub_totals[parent] += passed
+        if passed:
+            self.sub_scores[parent] += 1
+
     def write_to_db(self, kpi_name, score, result=None, threshold=None):
         """
         writes result in the DB
@@ -825,6 +865,10 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         :param result: str
         :param threshold: int
         """
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
+        parent = self.get_kpi_parent(kpi_name)
+        self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
+                                           identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         self.write_to_db_result(
@@ -918,12 +962,39 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
 
         return kwargs_dict
 
+    def write_sub_parents(self):
+        for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(sub_parent)
+            num = self.sub_scores[sub_parent]
+            den = self.sub_totals[sub_parent]
+            if den:
+                result = float(num) / den
+                self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
+                                                   denominator_result=den, result=result, score=result, target=den,
+                                                   identifier_result=self.common_db2.get_dictionary(
+                                                       parent_name=sub_parent),
+                                                   identifier_parent=self.common_db2.get_dictionary(
+                                                       parent_name=CMA_COMPLIANCE),
+                                                   should_enter=True)
+    def write_parent(self):
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+        num = sum(self.sub_scores.values())
+        den = sum(self.sub_totals.values())
+        if den:
+            result = float(num) / den
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num,
+                                               denominator_result=den, result=result, score=result, target=den,
+                                               identifier_result=self.common_db2.get_dictionary(
+                                                   parent_name=CMA_COMPLIANCE))
+
+
     def commit_results(self):
         """
         committing the results in both sets
         """
         self.common_db.delete_results_data_by_kpi_set()
         self.common_db.commit_results_data_without_delete()
+        self.common_db2.commit_results_data()
         # if self.common_db_integ:
         #     self.common_db_integ.delete_results_data_by_kpi_set()
         #     self.common_db_integ.commit_results_data_without_delete()

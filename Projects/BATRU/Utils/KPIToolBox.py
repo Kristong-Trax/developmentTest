@@ -966,11 +966,6 @@ class BATRUToolBox:
             except Exception as e:
                 Log.warning('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
 
-        if self.state in sections_template_data['State'].unique().tolist():
-            state_for_calculation = self.state
-        else:
-            state_for_calculation = 'ALL'
-
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
         else:
@@ -990,6 +985,10 @@ class BATRUToolBox:
 
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
+            if self.state in sections_template_data['State'].unique().tolist():
+                state_for_calculation = self.state
+            else:
+                state_for_calculation = 'ALL'
             relevant_sections_data = sections_template_data.loc[
                 (sections_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
                 (sections_template_data['fixture'] == fixture) &
@@ -1067,6 +1066,10 @@ class BATRUToolBox:
                             .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
                             .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
 
+                        if self.state in sections_products_template_data['State'].unique().tolist():
+                            state_for_calculation = self.state
+                        else:
+                            state_for_calculation = 'ALL'
                         specific_section_products_template = self.get_relevant_section_products(
                             sections_products_template_data, section, state_for_calculation, fixture, attribute_3)
                         section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
@@ -2053,6 +2056,7 @@ class BATRUToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = BATRUQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
@@ -2061,36 +2065,3 @@ class BATRUToolBox:
             cur.execute(query)
             # print query
         self.rds_conn.db.commit()
-
-# @staticmethod
-# def most_common(lst):
-#     product_counter = max(zip((lst.count(item) for item in set(lst)), set(lst)))
-#     if product_counter[0] > 1:
-#         current_value = product_counter[0]
-#         current_product = product_counter[1]
-#         new_lst = lst
-#         new_lst.remove(current_product)
-#         new_product_counter = max(zip((new_lst.count(item) for item in set(new_lst)), set(new_lst)))
-#         new_lst.append(current_product)
-#         if new_product_counter[0] == current_value and new_product_counter[1] != current_product:
-#             return [new_product_counter[1], current_product]
-#         else:
-#             return product_counter[1]
-#     else:
-#         return None
-
-
-# def _get_latest_session_for_cycle(self, previous_sessions_in_store):
-#     """
-#     Find latest session for the in the same store as current session
-#     :param previous_sessions_in_store:
-#     :type previous_sessions_in_store: pandas.DataFrame
-#     :return:
-#     :rtype pd.DataFrame
-#     """
-#     max_start_time_per_cycle = previous_sessions_in_store.groupby('plan_fk', as_index=False)['start_time'].max()
-#     latest_session_for_cycle = previous_sessions_in_store.merge(max_start_time_per_cycle,
-#                                                                 on=['plan_fk', 'start_time'])
-#     latest_single_session_for_cycle = latest_session_for_cycle.groupby(['plan_fk', 'cycle_start_date'],
-#                                                                        as_index=False)['session_id'].max()
-#     return latest_single_session_for_cycle.sort_values(['cycle_start_date'], ascending=False).reset_index(drop=True)
