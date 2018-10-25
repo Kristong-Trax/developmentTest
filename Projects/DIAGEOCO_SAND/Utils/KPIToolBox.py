@@ -86,7 +86,7 @@ class DIAGEOCO_SANDToolBox:
         result = self.global_gen.diageo_global_secondary_display_secondary_function()
         if result:
             self.common.write_to_db_result_new_tables(**result)
-        set_name = Const.SECONDARY_DISPLAYS
+        set_name = Const.SECONDARY_DISPLAY
         set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
         self.save_level2_and_level3(set_name, set_name, set_score)
         if set_score == 0:

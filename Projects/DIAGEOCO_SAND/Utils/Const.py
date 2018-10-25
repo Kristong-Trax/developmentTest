@@ -20,5 +20,5 @@ class Const(object):
 
     # KPI names
     BRAND_BLOCKING_BRAND_FROM_CATEGORY = 'Brand Blocking'
-    SECONDARY_DISPLAYS = 'Secondary Displays'
+    SECONDARY_DISPLAY = 'Secondary display'
     RELATIVE_POSITION = 'Relative Position'
