@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import os
 import pandas as pd
@@ -10,6 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as Common2
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -22,7 +22,7 @@ from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 
 from Projects.INBEVTRADMX.Utils import GeoLocation
 
-__author__ = 'yoava'
+__author__ = 'yoava_Jasmine_Elyashiv'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -38,6 +38,7 @@ class INBEVTRADMXToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.common2 = Common2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -57,7 +58,9 @@ class INBEVTRADMXToolBox:
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
-                                              self.kpi_static_data, self.common)
+                                                   self.kpi_static_data, self.common, self.common2)
+
+# init functions:
 
     def parse_template(self):
         """
@@ -69,106 +72,187 @@ class INBEVTRADMXToolBox:
         template_df['Store Additional Attribute 13'] = template_df['Store Additional Attribute 13'].fillna('')
         return template_df
 
-    def filter_product_names(self, exclude_skus):
+    def check_store_type(self, row, relevant_columns):
         """
-        this method filters list of SKUs from self.scif
-        :param exclude_skus:  list of SKUs to exclude from template
-        :return: filtered list
-        """
-        return filter(lambda sku: sku not in exclude_skus, self.scif.product_name.values)
-
-    def calculate_weigthed_availability_score(self, row, relevant_columns):
-        """
-        this method calculates availability score according to columns from the data frame
-        :param row: data frame to calculate from
-        :param relevant_columns: columns to check in the excel file
+        this method checks if the session store type is valid
+        :type relevant_columns: list
+        :param row: current KPI row
         :return: boolean
         """
-        passed = 0
-        # Gets the scene types
-        scene_types = row['template_name'].split(', ')
-        scenes_num = len(scene_types)
-        # man = row['manufacturer_name']
-        if 'scene_type' in relevant_columns:
-            relevant_columns.remove('scene_type')
-        # create filtered dictionary
-        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
-        for scene in scene_types:
-            filters_dict.update({'template_name': scene})
-            # call the generic method from KPIUtils_v2
-            if self.availability.calculate_availability(**filters_dict):
-                passed += 1
-        return (passed / float(scenes_num)) * 100 if scenes_num else 0
+        # make sure that we need to check this field
+        if relevant_columns.__contains__('store_type'):
+            # get the valid stores from the template
+            stores_df = pd.read_excel(self.excel_file_path, sheetname='store types')
+            # create a list of the valid stores
+            stores = stores_df.values
+            return row['store_type'] in stores
+        else:
+            return True
 
-    def calculate_availability_score(self, row, relevant_columns):
-        """
-        this method calculates availability score according to columns from the data frame
-        :param row: data frame to calculate from
-        :param relevant_columns: columns to check in the excel file
-        :return: boolean
-        """
-        # create filtered dictionary
-        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
-        # call the generic method from KPIUtils_v2
-        availability_score = self.availability.calculate_availability(**filters_dict)
-        # check if this score should pass or fail
-        return self.decide_availability_score(row, availability_score)
+# calculation:
 
-    def create_availability_filtered_dictionary(self, relevant_columns, row):
-        """
-        this method creates a dictionary with keys according to the specific row in the template
-        :param relevant_columns: columns to create keys by
-        :param row: the specific row in the template
-        :return: dictionary
-        """
-        # dictionary to send to the generic method
-        filters_dict = {}
-        self.handle_exclude_skus(filters_dict, relevant_columns, row)
-        # fill the dictionary
-        for column_value in relevant_columns:
-            if column_value == 'Store Additional Attribute 4' or column_value == 'store_type' or\
-                    column_value == 'Store Additional Attribute 13':
-                continue
-            filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
-        return filters_dict
+    def main_calculation(self):
+        # calculate geo
+        geo_result = self.geo.calculate_geo_location()
+        self.geo.write_geo_to_db(float(geo_result))
 
-    def handle_exclude_skus(self, filters_dict, relevant_columns, row):
+        # calculate from template
+        self.calculate_kpi_set_from_template()
+        self.common.commit_results_data()
+        self.common2.commit_results_data()
+
+    def calculate_kpi_set_from_template(self):
         """
-        this method checks if there is value in 'exclude skus' column in the template.
-        if exists, it filters out the relevant skus from the calculation
-        :param filters_dict: filtered dictionary
-        :param relevant_columns: columns to create keys by
-        :param row: specific row to calculate
+        this method chooses the correct set to calculate
+        there will always be only on set to calculate, depending on the field 'Store additional attribute 4' from
+        template
         :return: None
         """
-        try:
-            exclude_skus = row['exclude skus'].split(',')
-        except AttributeError:
-            exclude_skus = []
-        if exclude_skus:
-            # filter out some product names according to template
-            product_names = self.filter_product_names(exclude_skus)
-            filters_dict['product_name'] = product_names
-            relevant_columns.remove('exclude skus')
+        # get the template
+        parsed_template = self.parse_template()
+
+        # get all the unique sets
+        # sets = parsed_template['KPI Level 1 Name'].unique()
+
+        # get the session additional_attribute_4 & 13
+        additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
+        additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
+        set_name = self.choose_correct_set_to_calculate(additional_attribute_4,
+                                                        additional_attribute_13, parsed_template)
+        # wrong value in additional attribute 4 - shouldn't calculate
+        if set_name == '':
+            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+            return -1
+        # get only the part of the template that is related to this set
+        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+        # start calculating !
+        self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
-    def decide_availability_score(row, availability_score):
+    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
         """
-        this method decides if the score should pass or fail according to the template
-        :param row: scpecific row from template
-        :param availability_score: score
-        :return: Boolean
+        choose what is the appropriate set to calculate
+        :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
+        :param additional_attribute_13: session additional_attribute_13. if None, will ignore this attribute
+        :param template: parsed template
+        :return: set name to calculate - assuming each additional attribute 4 matches only 1 set name.
         """
-        if availability_score == 0:
-            return False
+        template = template.dropna(subset=['Store Additional Attribute 4'], axis=0)
+        # Makes sure attribute 4 exist
+        if not additional_attribute_4:
+            return ''
+
+        if additional_attribute_13:
+            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
+                            (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
         else:
-            if row['KPI Level 1 Name'] == 'Set Modeloramas' and row['KPI Level 3 Name'] == 'Hay o no hay Pop?':
-                if row['KPI Level 2 Name'] == 'Pop Exterior':
-                    return availability_score > 1
-                elif row['KPI Level 2 Name'] == 'Pop Interior':
-                    return availability_score > 2
+            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
+                            (template['Store Additional Attribute 13'] == '')]
+        if sets.empty:
+            return ''
+        else:
+            return sets['KPI Level 1 Name'].values[0]
+
+        # if additional_attribute_4 == 'BC':
+        #     set_name = sets[0]
+        # elif additional_attribute_4 == 'BA':
+        #     set_name = sets[1]
+        # elif additional_attribute_4 == 'MODELORAMA':
+        #     set_name = sets[2]
+        # else:
+        #     return ''
+        # return set_name
+
+    def calculate_set_score(self, set_df, set_name):
+        """
+        this method iterates kpi set and calculates it's score
+        :param set_df: the set df to calculate score for
+        :param set_name: the kpi set name
+        :return: None
+        """
+        set_score = 0
+        # get array of all kpi level 2 names
+        kpi_names = set_df['KPI Level 2 Name'].unique()
+        # iterate all kpi level 2
+        for kpi_name in kpi_names:
+            # calculate kpi level 2 score
+            kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
+            # accumulate set score
+            set_score += kpi_score
+        # finally, write level 1 kpi set score to DB
+        self.write_kpi_set_score_to_db(set_name, set_score)
+
+    def calculate_kpi_level_2_score(self, kpi_name, set_df, set_name):
+        """
+        this method gets kpi level 2 name, and iterates it's related atomic kpis
+        :param set_name: kpi set name
+        :param kpi_name: kpi level 2 name
+        :param set_df: kpi set df
+        :return: kpi level 2 score
+        """
+        kpi_df = set_df[set_df['KPI Level 2 Name'] == kpi_name]
+        kpi_score = 0
+        # iterate the all related atomic kpis
+        for i, row in kpi_df.iterrows():
+            # get atomic kpi name
+            kpi_level_3_name = row['KPI Level 3 Name']
+            # calculate atomic kpi score
+            atomic_kpi_score = self.calculate_atomic_kpi_score(row, kpi_level_3_name, kpi_name, set_name)
+            # accumulate kpi level 2 score
+            kpi_score += atomic_kpi_score
+        write_to_all_levels = False
+        if len(kpi_df) > 1:  # if there is just one atomic we don't need two levels
+            write_to_all_levels = True
+        self.write_kpi_score_to_db(kpi_name, set_name, kpi_score, write_to_all_levels)
+        return kpi_score
+
+    def calculate_atomic_kpi_score(self, row, kpi_level_3_name, kpi_name, set_name):
+        """
+        this method calculates score for specific atomic kpi
+        :param set_name: kpi set name
+        :param kpi_name: kpi name
+        :param kpi_level_3_name: the atomic kpi name
+        :param row: atomic kpi details
+        :return: atomic kpi score
+        """
+        atomic_kpi_score = 0
+        # get column name to consider in calculation
+        relevant_columns = map(str.strip, str(row['column names']).split(','))
+        is_kpi_passed = 0
+        if self.check_store_type(row, relevant_columns):
+            # get weight of current atomic kpi
+            curr_weight = row['weights']
+            # figure out what type of calculation need to be done
+            if row['KPI type'] == 'Product Availability':
+                if kpi_level_3_name == 'URBAN':
+                    score = self.calculate_weigthed_availability_score(row, relevant_columns)
+                    if score:
+                        atomic_kpi_score = score
+                else:
+                    if self.calculate_availability_score(row, relevant_columns):
+                        is_kpi_passed = 1
+            elif row['KPI type'] == 'SOS':
+                ratio = self.calculate_sos_score(row, relevant_columns)
+                if (row['product_type'] == 'Empty') & (ratio <= 0.2):
+                    is_kpi_passed = 1
+                elif ratio == 1:
+                    is_kpi_passed = 1
+            elif row['KPI type'] == 'Survey':
+                if self.calculate_survey_score(row):
+                    is_kpi_passed = 1
+            if is_kpi_passed == 1:
+                atomic_kpi_score += curr_weight
+            # write result to DB
+                # the customer asked for this specific KPI will write 100 in DB if it passed even if the weight is 0
+            if kpi_level_3_name == 'Sin Espacios Vacios' and curr_weight == 0 and is_kpi_passed == 1:
+                # atomic_kpi_score = 100
+                self.write_atomic_to_db(kpi_level_3_name, 100, kpi_name, set_name, is_kpi_passed, curr_weight)
             else:
-                return True
+                self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed,
+                                        curr_weight)
+        return atomic_kpi_score
+
+# sos
 
     def calculate_sos_score(self, row, relevant_columns):
         """
@@ -231,6 +315,92 @@ class INBEVTRADMXToolBox:
             filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
         return filters_dict
 
+# availability:
+
+    def calculate_weigthed_availability_score(self, row, relevant_columns):
+        """
+        this method calculates availability score according to columns from the data frame
+        :param row: data frame to calculate from
+        :param relevant_columns: columns to check in the excel file
+        :return: boolean
+        """
+        passed = 0
+        # Gets the scene types
+        scene_types = row['template_name'].split(', ')
+        scenes_num = len(scene_types)
+        # man = row['manufacturer_name']
+        if 'scene_type' in relevant_columns:
+            relevant_columns.remove('scene_type')
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for scene in scene_types:
+            filters_dict.update({'template_name': scene})
+            # call the generic method from KPIUtils_v2
+            if self.availability.calculate_availability(**filters_dict):
+                passed += 1
+        return (passed / float(scenes_num)) * 100 if scenes_num else 0
+
+    def calculate_availability_score(self, row, relevant_columns):
+        """
+        this method calculates availability score according to columns from the data frame
+        :param row: data frame to calculate from
+        :param relevant_columns: columns to check in the excel file
+        :return: boolean
+        """
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        # call the generic method from KPIUtils_v2
+        availability_score = self.availability.calculate_availability(**filters_dict)
+        # check if this score should pass or fail
+        return self.decide_availability_score(row, availability_score)
+
+    def create_availability_filtered_dictionary(self, relevant_columns, row):
+        """
+        this method creates a dictionary with keys according to the specific row in the template
+        :param relevant_columns: columns to create keys by
+        :param row: the specific row in the template
+        :return: dictionary
+        """
+        # dictionary to send to the generic method
+        filters_dict = {}
+        self.handle_exclude_skus(filters_dict, relevant_columns, row)
+        # fill the dictionary
+        for column_value in relevant_columns:
+            if column_value == 'Store Additional Attribute 4' or column_value == 'store_type' or \
+                    column_value == 'Store Additional Attribute 13':
+                continue
+            filters_dict[column_value] = map(str.strip, str(row.loc[column_value]).split(','))
+        return filters_dict
+
+    def filter_product_names(self, exclude_skus):
+        """
+        this method filters list of SKUs from self.scif
+        :param exclude_skus:  list of SKUs to exclude from template
+        :return: filtered list
+        """
+        return filter(lambda sku: sku not in exclude_skus, self.scif.product_name.values)
+
+    @staticmethod
+    def decide_availability_score(row, availability_score):
+        """
+        this method decides if the score should pass or fail according to the template
+        :param row: scpecific row from template
+        :param availability_score: score
+        :return: Boolean
+        """
+        if availability_score == 0:
+            return False
+        else:
+            if row['KPI Level 1 Name'] == 'Set Modeloramas' and row['KPI Level 3 Name'] == 'Hay o no hay Pop?':
+                if row['KPI Level 2 Name'] == 'Pop Exterior':
+                    return availability_score > 1
+                elif row['KPI Level 2 Name'] == 'Pop Interior':
+                    return availability_score > 2
+            else:
+                return True
+
+# surveys:
+
     def calculate_survey_score(self, row):
         """
         this method calculates survey score according to columns from the data frame
@@ -250,106 +420,29 @@ class INBEVTRADMXToolBox:
         else:
             return False
 
-    def check_store_type(self, row, relevant_columns):
-        """
-        this method checks if the session store type is valid
-        :type relevant_columns: list
-        :param row: current KPI row
-        :return: boolean
-        """
-        # make sure that we need to check this field
-        if relevant_columns.__contains__('store_type'):
-            # get the valid stores from the template
-            stores_df = pd.read_excel(self.excel_file_path, sheetname='store types')
-            # create a list of the valid stores
-            stores = stores_df.values
-            return row['store_type'] in stores
-        else:
-            return True
+# help functions:
 
-    def calculate_set_score(self, set_df, set_name):
+    def handle_exclude_skus(self, filters_dict, relevant_columns, row):
         """
-        this method iterates kpi set and calculates it's score
-        :param set_df: the set df to calculate score for
-        :param set_name: the kpi set name
+        this method checks if there is value in 'exclude skus' column in the template.
+        if exists, it filters out the relevant skus from the calculation
+        :param filters_dict: filtered dictionary
+        :param relevant_columns: columns to create keys by
+        :param row: specific row to calculate
         :return: None
         """
-        set_score = 0
-        # get array of all kpi level 2 names
-        kpi_names = set_df['KPI Level 2 Name'].unique()
-        # iterate all kpi level 2
-        for kpi_name in kpi_names:
-            # calculate kpi level 2 score
-            kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
-            # write kpi level 2 score to DB
-            try:
-                self.write_kpi_score_to_db(kpi_name, set_name, kpi_score)
-            except:
-                print ''
-            # accumulate set score
-            set_score += kpi_score
-        # finally, write level 1 kpi set score to DB
-        self.write_kpi_set_score_to_db(set_name, set_score)
+        try:
+            exclude_skus = row['exclude skus'].split(',')
+        except AttributeError:
+            exclude_skus = []
+        if exclude_skus:
+            # filter out some product names according to template
+            product_names = self.filter_product_names(exclude_skus)
+            filters_dict['product_name'] = product_names
+        if 'exclude skus' in row.to_dict().keys() and 'exclude skus' in relevant_columns:
+            relevant_columns.remove('exclude skus')
 
-    def calculate_kpi_level_2_score(self, kpi_name, set_df, set_name):
-        """
-        this method gets kpi level 2 name, and iterates it's related atomic kpis
-        :param set_name: kpi set name
-        :param kpi_name: kpi level 2 name
-        :param set_df: kpi set df
-        :return: kpi level 2 score
-        """
-        kpi_df = set_df[set_df['KPI Level 2 Name'] == kpi_name]
-        kpi_score = 0
-        # iterate the all related atomic kpis
-        for i, row in kpi_df.iterrows():
-            # get atomic kpi name
-            kpi_level_3_name = row['KPI Level 3 Name']
-            # calculate atomic kpi score
-            atomic_kpi_score = self.calculate_atomic_kpi_score(row, kpi_level_3_name, kpi_name, set_name)
-            # accumulate kpi level 2 score
-            kpi_score += atomic_kpi_score
-        return kpi_score
-
-    def calculate_atomic_kpi_score(self, row, kpi_level_3_name, kpi_name, set_name):
-        """
-        this method calculates score for specific atomic kpi
-        :param set_name: kpi set name
-        :param kpi_name: kpi name
-        :param kpi_level_3_name: the atomic kpi name
-        :param row: atomic kpi details
-        :return: atomic kpi score
-        """
-        atomic_kpi_score = 0
-        # get column name to consider in calculation
-        relevant_columns = map(str.strip, str(row['column names']).split(','))
-        is_kpi_passed = 0
-        if self.check_store_type(row, relevant_columns):
-            # get weight of current atomic kpi
-            curr_weight = row['weights']
-            # figure out what type of calculation need to be done
-            if row['KPI type'] == 'Product Availability':
-                if kpi_level_3_name == 'URBAN':
-                    score = self.calculate_weigthed_availability_score(row, relevant_columns)
-                    if score:
-                        atomic_kpi_score = score
-                else:
-                    if self.calculate_availability_score(row, relevant_columns):
-                        is_kpi_passed = 1
-            elif row['KPI type'] == 'SOS':
-                ratio = self.calculate_sos_score(row, relevant_columns)
-                if (row['product_type'] == 'Empty') & (ratio <= 0.2):
-                    is_kpi_passed = 1
-                elif ratio == 1:
-                    is_kpi_passed = 1
-            elif row['KPI type'] == 'Survey':
-                if self.calculate_survey_score(row):
-                    is_kpi_passed = 1
-            if is_kpi_passed == 1:
-                atomic_kpi_score += curr_weight
-            # write result to DB
-            self.write_atomic_to_db(kpi_level_3_name, atomic_kpi_score, kpi_name, set_name, is_kpi_passed, curr_weight)
-        return atomic_kpi_score
+# db functions:
 
     def write_kpi_set_score_to_db(self, set_name, set_score):
         """
@@ -360,8 +453,11 @@ class INBEVTRADMXToolBox:
         """
         kpi_set_fk = self.kpi_static_data.kpi_set_fk[self.kpi_static_data.kpi_set_name == set_name].unique()[0]
         self.common.write_to_db_result(kpi_set_fk, self.LEVEL1, set_score)
+        new_kpi_set_fk = self.common2.get_kpi_fk_by_kpi_name(set_name)
+        self.common2.write_to_db_result(fk=new_kpi_set_fk, result=set_score,
+                                        identifier_result=self.common2.get_dictionary(name=set_name))
 
-    def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score):
+    def write_kpi_score_to_db(self, kpi_name, set_name, kpi_score, write_to_all_levels):
         """
         this method writes kpi score to static.kpk_results DB
         :param kpi_name: name of level 2 kpi
@@ -373,6 +469,11 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.kpi_fk[(self.kpi_static_data.kpi_name == kpi_name) &
                                         (self.kpi_static_data.kpi_set_name == set_name)].values[0]
         self.common.write_to_db_result(kpi_fk, self.LEVEL2, kpi_score)
+        if write_to_all_levels:
+            new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
+            self.common2.write_to_db_result(fk=new_kpi_fk, result=kpi_score, should_enter=True,
+                                            identifier_parent=self.common2.get_dictionary(name=set_name),
+                                            identifier_result=self.common2.get_dictionary(name=kpi_name))
 
     def write_atomic_to_db(self, atomic_name, atomic_score, kpi_name, set_name, is_kpi_passed, curr_weight):
         """
@@ -389,76 +490,15 @@ class INBEVTRADMXToolBox:
             self.kpi_static_data.atomic_kpi_fk[(self.kpi_static_data.atomic_kpi_name == atomic_name) &
                                                (self.kpi_static_data.kpi_name == kpi_name) &
                                                (self.kpi_static_data.kpi_set_name == set_name)].values[0]
-
         attrs = self.common.create_attributes_dict(fk=atomic_kpi_fk, score=is_kpi_passed, level=self.LEVEL3)
         attrs['result'] = {0: atomic_score}
         attrs['kpi_weight'] = {0: curr_weight}
         query = insert(attrs, self.common.KPI_RESULT)
         self.common.kpi_results_queries.append(query)
-
-    def calculate_kpi_set_from_template(self):
-        """
-        this method chooses the correct set to calculate
-        there will always be only on set to calculate, depending on the field 'Store additional attribute 4' from
-        template
-        :return: None
-        """
-        # get the template
-        parsed_template = self.parse_template()
-
-        # get all the unique sets
-        # sets = parsed_template['KPI Level 1 Name'].unique()
-
-        # get the session additional_attribute_4 & 13
-        additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
-        additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_name = self.choose_correct_set_to_calculate(additional_attribute_4,
-                                                        additional_attribute_13, parsed_template)
-        # wrong value in additional attribute 4 - shouldn't calculate
-        if set_name == '':
-            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-            return -1
-        # get only the part of the template that is related to this set
-        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-        # start calculating !
-        self.calculate_set_score(set_template_df, set_name)
-
-    @staticmethod
-    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
-        """
-        choose what is the appropriate set to calculate
-        :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
-        :param additional_attribute_4: session additional_attribute_13. if None, will ignore this attribute
-        :return: set name to calculate - assuming each additional attribute 4 matches only 1 set name.
-        """
-        template = template.dropna(subset=['Store Additional Attribute 4'], axis=0)
-        if additional_attribute_13:
-            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
-                            (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
-        else:
-            sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
-                            (pd.isnull(template['Store Additional Attribute 13']))]
-
-        if sets.empty:
-            return ''
-        else:
-            return sets['KPI Level 1 Name'].values[0]
-
-        # if additional_attribute_4 == 'BC':
-        #     set_name = sets[0]
-        # elif additional_attribute_4 == 'BA':
-        #     set_name = sets[1]
-        # elif additional_attribute_4 == 'MODELORAMA':
-        #     set_name = sets[2]
-        # else:
-        #     return ''
-        # return set_name
-
-    def main_calculation(self):
-        # calculate geo
-        geo_result = self.geo.calculate_geo_location()
-        self.geo.write_geo_to_db(float(geo_result))
-
-        # calculate from template
-        self.calculate_kpi_set_from_template()
-        self.common.commit_results_data()
+        identifier_parent = self.common2.get_dictionary(name=kpi_name)
+        if atomic_name == kpi_name:
+            identifier_parent = self.common2.get_dictionary(name=set_name)
+        new_atomic_fk = self.common2.get_kpi_fk_by_kpi_name(atomic_name)
+        self.common2.write_to_db_result(
+            fk=new_atomic_fk, result=atomic_score, weight=curr_weight, should_enter=True, score=is_kpi_passed,
+            identifier_parent=identifier_parent)
