@@ -12,7 +12,7 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.DIAGEOMX_SAND.Utils.ParseTemplates import parse_template
 
-from Projects.DIAGEOMX_SAND.Utils.Fetcher import DIAGEOMX_SANDQueries
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from Projects.DIAGEOMX_SAND.Utils.ToolBox import DIAGEOMX_SANDDIAGEOToolBox
 
 __author__ = 'Nimrod'
@@ -75,7 +75,7 @@ class DIAGEOMX_SANDToolBox:
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = DIAGEOMX_SANDQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = DIAGEOQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -87,7 +87,7 @@ class DIAGEOMX_SANDToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOMX_SANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -96,50 +96,50 @@ class DIAGEOMX_SANDToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOMX_SANDQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        for set_name in set_names:
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name in ('Relative Position'):
-            self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
-            set_score = self.calculate_relative_position_sets(set_name)
-        elif set_name in ('MPA', 'New Products'):
-            set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('Relative Position',):
-        #     set_score = self.calculate_relative_position_sets(set_name)
-        # elif set_name in ('Brand Blocking',):
-        #     set_score = self.calculate_block_together_sets(set_name)
-        elif set_name in ('POSM',):
-            set_score = self.calculate_posm_sets(set_name)
-        # elif set_name in ('Brand Pouring',):
-        #     set_score = self.calculate_brand_pouring_sets(set_name)
-        elif set_name == 'Visible to Consumer %':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name in ('Relative Position',):
-            set_score = self.calculate_relative_position_sets(set_name)
-        # elif set_name == 'Secondary':
-        #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-        #     self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
+            if set_name in ('Relative Position'):
+                self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
+                set_score = self.calculate_relative_position_sets(set_name)
+            elif set_name in ('MPA', 'New Products'):
+                set_score = self.calculate_assortment_sets(set_name)
+            # elif set_name in ('Relative Position',):
+            #     set_score = self.calculate_relative_position_sets(set_name)
+            # elif set_name in ('Brand Blocking',):
+            #     set_score = self.calculate_block_together_sets(set_name)
+            elif set_name in ('POSM',):
+                set_score = self.calculate_posm_sets(set_name)
+            # elif set_name in ('Brand Pouring',):
+            #     set_score = self.calculate_brand_pouring_sets(set_name)
+            elif set_name == 'Visible to Consumer %':
+                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                self.save_level2_and_level3(set_name, set_name, set_score)
+            elif set_name in ('Relative Position',):
+                set_score = self.calculate_relative_position_sets(set_name)
+            # elif set_name == 'Secondary':
+            #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+            #     self.save_level2_and_level3(set_name, set_name, set_score)
+            else:
+                return
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                return
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
