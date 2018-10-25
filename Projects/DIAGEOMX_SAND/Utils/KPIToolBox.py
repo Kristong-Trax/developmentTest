@@ -1,6 +1,6 @@
 import os
 
-import pandas as pd
+inecessarydas as pd
 from datetime import datetime, timedelta
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -10,10 +10,15 @@ from Trax.Utils.Conf.Keys import DbUsers
 
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Projects.DIAGEOMX_SAND.Utils.ParseTemplates import parse_template
 
+from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template
+# from Projects.DIAGEOMX_SAND.Utils.ToolBox import DIAGEOMX_SANDDIAGEOToolBox
+
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
-from Projects.DIAGEOMX_SAND.Utils.ToolBox import DIAGEOMX_SANDDIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Nimrod'
 
@@ -66,10 +71,12 @@ class DIAGEOMX_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOMX_SANDDIAGEOToolBox(self.data_provider, output,
-                                                kpi_static_data=self.kpi_static_data,
-                                                match_display_in_scene=self.match_display_in_scene)
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_business_unit(self):
         """
@@ -104,6 +111,7 @@ class DIAGEOMX_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        set_score=0
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
@@ -113,20 +121,27 @@ class DIAGEOMX_SANDToolBox:
                 set_score = self.calculate_relative_position_sets(set_name)
             elif set_name in ('MPA', 'New Products'):
                 set_score = self.calculate_assortment_sets(set_name)
-            # elif set_name in ('Relative Position',):
-            #     set_score = self.calculate_relative_position_sets(set_name)
             # elif set_name in ('Brand Blocking',):
             #     set_score = self.calculate_block_together_sets(set_name)
             elif set_name in ('POSM',):
                 set_score = self.calculate_posm_sets(set_name)
             # elif set_name in ('Brand Pouring',):
             #     set_score = self.calculate_brand_pouring_sets(set_name)
-            elif set_name == 'Visible to Consumer %':
-                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-                self.save_level2_and_level3(set_name, set_name, set_score)
-            elif set_name in ('Relative Position',):
-                set_score = self.calculate_relative_position_sets(set_name)
+            elif set_name == 'Visible to Customer':
+
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.global_gen.diageo_global_visible_percentage(sku_list)
+
+                if res_dict:
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                    # Saving to old tables
+                    result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
             # elif set_name == 'Secondary':
             #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
             #     self.save_level2_and_level3(set_name, set_name, set_score)
