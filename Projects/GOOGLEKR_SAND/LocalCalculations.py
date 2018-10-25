@@ -22,7 +22,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('googlekr-sand calculations')
     Config.init()
-    project_name = 'googlekr'
+    project_name = 'googlekr-sand'
     sessions = ["8e69ef91-1275-42ba-82a3-12a775683fb6"]
     for session in sessions:
         scenes = [884, 887]
