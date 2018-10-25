@@ -1,10 +1,10 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.GOOGLEKR_SAND.Utils.KPIToolBox import GOOGLEToolBox
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.DB.CommonV2 import Common
 
 
-__author__ = 'Eli'
+__author__ = 'Sam_Shivi'
 
 
 class GOOGLEGenerator:
@@ -12,10 +12,10 @@ class GOOGLEGenerator:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
-        self.common_v2 = CommonV2(self.data_provider)
+        self.common = Common(self.data_provider)
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = GOOGLEToolBox(self.data_provider, self.output, self.common_v2)
+        self.tool_box = GOOGLEToolBox(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -23,7 +23,7 @@ class GOOGLEGenerator:
             Log.warning('Distribution is empty for this session')
         self.google_global_fixture_compliance()
         self.visit_osa_and_pog()
-        self.common_v2.commit_results_data()
+        self.common.commit_results_data()
 
     def google_global_fixture_compliance(self):
         try:
@@ -33,7 +33,6 @@ class GOOGLEGenerator:
 
     def visit_osa_and_pog(self):
         try:
-            self.tool_box.get_visit_osa()
-            self.tool_box.get_planogram_visit_details()
+            self.tool_box.get_osa_and_pog()
         except Exception as e:
             Log.error('{}'.format(e))

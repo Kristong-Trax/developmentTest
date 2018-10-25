@@ -10,21 +10,19 @@ class Const(object):
     EXCLUDE_FILTERS = {
         'product_type': ['Irelevant', 'Empty']
     }
-    SOS_KPIs = {
-        'SOS BRAND out of SCENE': {'pk': 300000,
-                                   'den': None},
-        'SOS BRAND out of BRANDS in SCENE': {'pk': 300001,
-                                             'den': None}
-    }
-    FIXTURE_KPIs = {
-        'FIXTURE COMPLIANCE': {'pk': 300002}
-    }
 
+    SOS_OUT_OF_SCENE = 'SOS BRAND out of SCENE'
+    SOS_IN_SCENE = 'SOS BRAND out of BRANDS in SCENE'
+    FIXTURE_COMPLIANCE = 'FIXTURE COMPLIANCE'
     FIXTURE_POG = "FIXTURE POG COMPLIANCE"
     VISIT_POG = "VISIT POG COMPLIANCE"
     FIXTURE_OSA = "FIXTURE OOS/OSA"
     VISIT_OSA = "VISIT OOS/OSA"
     MISSING_DENOMINATIONS = "missing_denominations"
+    FIXTURE_HIGH_LEVEL = "FIXTURE COMPLIANCE HIGH LEVEL"
+    POG_HIGH_LEVEL = "POG COMPLIANCE HIGH LEVEL"
+    POG_STATUS = "POG STATUS"
+    POG_PRODUCT = "POG PRODUCT"
 
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
@@ -40,4 +38,7 @@ class Const(object):
     ACTUAL_AMOUNT = "actual_amount"
     FIXTURE_FK = "fixture_fk"
 
+    NON_KPI = 0
+
+    SOS_KPIs = [SOS_OUT_OF_SCENE, SOS_IN_SCENE]
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]
