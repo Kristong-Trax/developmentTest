@@ -1,6 +1,6 @@
 import os
 
-inecessarydas as pd
+import pandas as pd
 from datetime import datetime, timedelta
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
