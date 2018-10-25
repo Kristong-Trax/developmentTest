@@ -6,11 +6,13 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from Projects.DIAGEOCO_SAND.Utils.Const import Const
 
+from datetime import datetime
 import pandas as pd
 
 __author__ = 'huntery'
@@ -28,6 +30,7 @@ class DIAGEOCO_SANDToolBox:
         self.output = output
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
+        self.common_v2 = CommonV2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -91,7 +94,11 @@ class DIAGEOCO_SANDToolBox:
 
     def calculate_touch_point(self):
         sub_brands = self.touchpoint_template['Sub Brand'].dropna().unique().tolist()
-        self.global_gen.diageo_global_touch_point_function(sub_brand_list=sub_brands, old_tables=False, new_tables=True)
+        results_list = self.global_gen.diageo_global_touch_point_function(sub_brand_list=sub_brands, old_tables=False,
+                                                                          new_tables=False)
+        if results_list:
+            for result in results_list:
+                self.common_v2.write_to_db_result(**result)
 
     def calculate_block_together(self):
         results_list = self.global_gen.diageo_global_block_together(Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY, self.brand_blocking_template)
@@ -184,3 +191,4 @@ class DIAGEOCO_SANDToolBox:
     def commit_results_data(self):
         # print('success')
         self.common.commit_results_data_to_new_tables()
+        self.common_v2.commit_results_data()
