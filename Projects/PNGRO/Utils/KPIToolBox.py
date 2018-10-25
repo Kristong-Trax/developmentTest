@@ -16,6 +16,8 @@ from Projects.PNGRO.Utils.Fetcher import PNGRO_PRODQueries
 from Projects.PNGRO.Utils.GeneralToolBox import PNGRO_PRODGENERALToolBox
 from Projects.PNGRO.Utils.ParseTemplates import parse_template
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 __author__ = 'Israel'
 
@@ -80,6 +82,13 @@ class PNGRO_PRODToolBox:
 
     SOS_FACING = 'SOS Facing' #Natalya
     EYE_LEVEL = 'Eye Level' #Natalya
+    DISPLAY_PRESENCE = 'Display Presence' #Natalya
+    EXCLUDE_EMPTY = False #Natalya
+    EXCLUDE_FILTER = 0  #Natalya
+    EMPTY = 'Empty' #Natalya
+    PRODUCT_PRESENCE = 'Product Presence' #Natalya
+    BLOCK_ADJACENCY = 'Block Adjacency' #Natalya
+    BLOCKED_TOGETHER_V = 'Blocked Together Vertical'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -116,6 +125,11 @@ class PNGRO_PRODToolBox:
         self.main_shelves = self.are_main_shelves()
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.eye_level_args = self.get_eye_level_shelf_data() #Natalya
+        self.scene_display_bay = self.get_scene_display_bay() #Natalya
+        self.display_scene_count = self.get_display_agg() #Natalya
+        self.displays_per_scene = self.get_number_of_displays_in_scene() #Natalya
+        self.adjacency = Adjancency(self.data_provider) #Natalya
+        self.block_calc = Block(self.data_provider) #Natalya
 
     @property
     def matches(self):
@@ -130,11 +144,26 @@ class PNGRO_PRODToolBox:
             self._match_display = self.get_status_session_by_display(self.session_uid)
         return self._match_display
 
+    #Natalya
     def get_relevant_sbd_kpis(self):
         sbd_kpis = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
-        retailer_targets = parse_template(TEMPLATE_PATH, 'retailer_targets', lower_headers_row_index=1)
-        retailer_targets = retailer_targets[retailer_targets['retailer'] == self.retailer]
-        relevant_df = sbd_kpis.merge()
+        retailer_targets = parse_template(TEMPLATE_PATH, 'retailer_targets')
+        retailer_targets = retailer_targets[retailer_targets['Retailer'] == self.retailer]
+        relevant_df = sbd_kpis.merge(retailer_targets, left_on='KPI Number', right_on='KPI No', how='left')
+        relevant_df.loc[(relevant_df['By Retailer'] == 'Y'), 'Target Policy'] = relevant_df['Retailer Target']
+        sbd_kpis_all_retailers = relevant_df[~(relevant_df['By Retailer']=='Y')]
+        sbd_kpis_retailer_specific = relevant_df[((relevant_df['Retailer'] == self.retailer)
+                                        |(relevant_df['Retailer'] == ''))]
+        relevant_sbd_kpis = sbd_kpis_all_retailers.append(sbd_kpis_retailer_specific, ignore_index=True)
+        # relevant_sbd_kpis = pd.concat([sbd_kpis_all_retailers, sbd_kpis_retailer_specific])
+        return relevant_sbd_kpis
+
+    # Natalya
+    # def get_relevant_sbd_kpis(self):
+    #     sbd_kpis_all = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+    #     relevant_sbd_kpis = sbd_kpis_all[((sbd_kpis_all['Retailer'] == self.retailer)
+    #                                       |(sbd_kpis_all['Retailer'] == ''))]
+    #     return relevant_sbd_kpis
 
     def get_kpi_static_data(self):
         """
@@ -228,6 +257,7 @@ class PNGRO_PRODToolBox:
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
+                        self.rds_conn.connect_rds() # Nataltya - for debugging
                         score = self.calculate_availability(params, **general_filters)
                     elif kpi_type == self.SHELF_POSITION:
                         score = self.calculate_shelf_position(params, **general_filters)
@@ -238,14 +268,31 @@ class PNGRO_PRODToolBox:
                         score, result, threshold = self.calculate_sos(params, is_linear=False, **general_filters)
                     elif kpi_type == self.EYE_LEVEL:
                         score, result, threshold = self.calculate_eye_level(params, **general_filters)
+                    elif kpi_type == self.DISPLAY_PRESENCE:
+                        score, result, threshold = self.calculate_display_presence(params, **general_filters)
+                    elif kpi_type == self.PRODUCT_PRESENCE:
+                        general_filters = self.update_scene_filter(params, general_filters, by_location=True)
+                        score, result, threshold = self.calculate_product_presence(params, **general_filters)
+                    elif kpi_type == self.BLOCKED_TOGETHER_V:
+                        general_filters = self.update_scene_filter(params, general_filters, by_location=True)
+                        score = self.block_together_vertical(params, **general_filters)
+                    elif kpi_type == self.BLOCK_ADJACENCY:
+                        general_filters = self.update_scene_filter(params, general_filters, by_location=True)
+                        score, result, threshold = self.calculate_block_adjacency(params, **general_filters)
+                        # number_of_displays_in_store = self.display_scene_count[
+                        #     'count'].sum()  # manipulate to get the number
+                        # if number_of_displays_in_store > 0:
+                        #     score, result, threshold = self.calculate_product_presence(params,
+                        #                                                                number_of_displays_in_store,
+                        #                                                                **general_filters)
 
-                    atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
-                    if atomic_kpi_fk is not None:
-                        if result and threshold:
-                            self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
-                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
-                        else:
-                            self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
+                    # atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
+                    # if atomic_kpi_fk is not None:
+                    #     if result and threshold:
+                    #         self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
+                    #                                 level=self.LEVEL3, fk=atomic_kpi_fk)
+                    #     else:
+                    #         self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -276,7 +323,6 @@ class PNGRO_PRODToolBox:
         skus_at_eye_lvl=0
         scene_bays = self.matches[self.tools.get_filter_condition(self.matches, **filters)][[
             'scene_fk', 'bay_number']].drop_duplicates()  # do we just select shelves that have products of relevant category?
-                                                          # do we calculate for the session as a whole?
         for index, row in scene_bays.iterrows():
             total_num_of_shelves = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] ==
                                                                 row.bay_number) & (
@@ -289,9 +335,8 @@ class PNGRO_PRODToolBox:
                                                                                                         shelves_in_eye_lvl))&
                                                                (self.match_product_in_scene['scene_fk'] == row.scene_fk)]
                 skus_at_eye_lvl += scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches, **filters)]['facings']
-        score = skus_at_eye_lvl/target * 100
-        #result =  # what should I return?
-        return score, score, target
+        score = min(skus_at_eye_lvl/target * 100, 100)
+        return score, skus_at_eye_lvl, target
 
     # Natalya
     def get_eye_level_shelves(self, shelves_num, eye_lvl_template):
@@ -379,6 +424,50 @@ class PNGRO_PRODToolBox:
 
         return general_filters
 
+    def block_together_vertical(self, params, **general_filters):
+        type1 = params['Param Type (1)/ Numerator']
+        value1 = self.split_and_strip(params['Param (1) Values'])
+        type1_1_block_by = params['Param Type (1-1)'] #maybe i need to change the template
+        value1_1_block_by = params['Param (1-1) Values']
+        type2 = params['Param Type (2)/ Denominator']
+        value2 = self.split_and_strip(params['Param (2) Values'])
+        type3 = params['Param (3)']
+        value3_facings = float(params['Param (3) Values'])
+        type4 = params['Param (4)']
+        value4_min_shelf = float(params['Param (4) Values'])
+        manufacturer = {'manufacturer_name': params['Manufacturer']}
+
+        score = 0
+        min_block_ratio = 0.75
+        if general_filters['scene_id']:
+            filters = {type1: value1}
+            filters.update(manufacturer)
+            if type2:
+                filters.update({type2: value2})
+            general_filters = self.update_scene_filter(params, general_filters, product_filters=filters)
+            filters.update(general_filters)
+            # calculations if we need block by (e.g. brand)
+            if type1_1_block_by:
+                item_blocks_passed = 0
+                block_by_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)][value1_1_block_by].unique().tolist()
+                for item in block_by_list:
+                    filters.update({type1_1_block_by:item})
+                    is_blocked, n_shelves = self.block_calc.calculate_block_together(minimum_block_ratio=min_block_ratio,
+                                                                                     result_by_scene=False, vertical=True,
+                                                                                     **filters)
+                    if is_blocked and n_shelves >= value4_min_shelf:
+                        item_blocks_passed += 1
+                if item_blocks_passed == len(block_by_list):
+                    score = 100
+                return score
+            # calculations for regular block
+            is_blocked, n_shelves = self.block_calc.calculate_block_together(minimum_block_ratio=min_block_ratio,
+                                                                             result_by_scene=False, vertical=True,
+                                                                             **filters)
+            if is_blocked and n_shelves >= value4_min_shelf:
+                score = 100
+        return score
+
     def block_together(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
         type2 = params['Param Type (2)/ Denominator']
@@ -441,12 +530,10 @@ class PNGRO_PRODToolBox:
                                                                               include_empty=True,
                                                                               **general_filters)
         else:
-            numerator_result = self.tools.calculate_facings_share_of_display(numerator_filters,
-                                                                             include_empty=True,
-                                                                             **general_filters)
-            denominator_result = self.tools.calculate_facings_share_of_display(denominator_filters,
-                                                                               include_empty=True,
-                                                                               **general_filters)
+            numerator_result = self.calculate_facings_share_of_display(numerator_filters, include_empty=True,
+                                                                       **general_filters)
+            denominator_result = self.calculate_facings_share_of_display(denominator_filters, include_empty=True,
+                                                                         **general_filters)
         if denominator_result == 0:
             ratio = 0
         else:
@@ -607,8 +694,14 @@ class PNGRO_PRODToolBox:
     #     else:
     #         return False
 
+    @staticmethod
+    def split_and_strip(string):
+        return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
+
     def calculate_linear_share_of_shelf_per_product_display(self):
-        display_agg = self.get_display_agg()
+        # display_agg, display_filter_from_scif = self.get_display_agg() #Natalya
+        # display_agg = self.get_display_agg() #Natalya
+        display_agg = self.display_scene_count #Natalya
         for display in display_agg['display_name'].unique().tolist():
             display_pd = display_agg[display_agg['display_name'] == display]
             display_weight = self.get_display_weight_by_display_name(display)
@@ -760,14 +853,27 @@ class PNGRO_PRODToolBox:
             merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
         return merged_queries
 
-    def get_display_agg(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
+    # def get_display_agg(self):
+    #     secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
+    #         'scene_id'].unique().tolist()
+    #     display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
+    #         .isin(secondary_shelfs)]
+    #     display_filter_from_scif['count'] = 0
+    #     return \
+    #         display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
+
+    def get_scene_display_bay(self):
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][ #can we change to location type
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]
-        display_filter_from_scif['count'] = 0
+        return display_filter_from_scif
+
+    def get_display_agg(self):
+        scene_display_bay = self.scene_display_bay
+        scene_display_bay['count'] = 0
         return \
-            display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
+            scene_display_bay.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
 
     # def get_shelf_level_target(self):
     #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
@@ -778,3 +884,309 @@ class PNGRO_PRODToolBox:
         eye_level_targets = parse_template(TEMPLATE_PATH, 'eye_level_parameters')
         return eye_level_targets
 
+    #Natalya
+    def calculate_facings_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The facings SOS ratio.
+        """
+        if include_empty == self.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+
+        numerator_facings = self.calculate_facings(**dict(sos_filters, **general_filters))
+        denominator_facings = self.calculate_facings(**general_filters)
+
+        if denominator_facings == 0:
+            ratio = 0
+        else:
+            ratio = numerator_facings / float(denominator_facings)
+        return ratio
+
+    # Natalya
+    def calculate_facings(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total number of facings.
+        """
+        filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+        facings = filtered_scif['facings_ign_stack'].sum()
+        return facings
+
+    # Natalya
+    def calculate_display_presence(self, params, **general_filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total number of facings.
+        """
+        type1 = params['Param Type (1)/ Numerator']
+        value1 = params['Param (1) Values']
+        filters = {type1: value1}
+        target = float(params['Target Policy'])
+        # assume that displays cannot be on main shelves
+        number_of_displays = self.display_scene_count[self.tools.get_filter_condition(self.display_scene_count, **filters)]['count'].sum()
+        score = min(number_of_displays/target * 100, 100)
+        return score, number_of_displays, target
+
+    def get_number_of_displays_in_scene(self):
+        display_scene_count = self.display_scene_count
+        displays_per_scene = display_scene_count.groupby(['scene_fk'], as_index=False).agg({'count': np.sum})
+        return displays_per_scene
+
+    def update_scene_filter(self, params, gen_filters, by_location=False, product_filters=None, by_product_majority=False):
+        if by_location:
+            if params['Location Type'] == 'Secondary Shelf':
+                scenes_with_one_display = self.displays_per_scene[self.displays_per_scene['count'] == 1]['scene_fk'].unique().tolist()
+                gen_filters.update({'scene_id': scenes_with_one_display})
+        if product_filters:
+            if gen_filters['scene_id']:
+                if not by_product_majority:
+                    product_filters.update(gen_filters)
+                    filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **product_filters)]
+                    scenes = filtered_scif['scene_id'].unique().tolist()
+                    gen_filters.update({'scene_id': scenes})
+                    return gen_filters
+
+                passed_scenes = []
+                for scene in gen_filters['scene_id']:
+                    scene_filter = {'scene_id': scene}
+                    denom_filters = gen_filters.copy().update(scene_filter)
+                    product_filters.update(denom_filters)
+                    total_facings = self.scif[self.tools.get_filter_condition(self.scif, **denom_filters)]['facings'].sum()
+                    filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **product_filters)]
+                    relevant_categories_df = filtered_scif[['category', 'facings']].groupby(['category']).sum()
+                    relevant_categories_df['cat_share'] = relevant_categories_df['facings']/total_facings
+                    if len(relevant_categories_df[relevant_categories_df['cat_share'] > 0.5]) >= 1:
+                        passed_scenes.append(scene)
+                gen_filters.update({'scene_id': passed_scenes})
+        return gen_filters
+
+        # Natalya
+    def calculate_product_presence(self, params, **general_filters):
+        type1 = params['Param Type (1)/ Numerator']
+        value1 = self.split_and_strip(params['Param (1) Values'])
+        type1_1 = params['Param Type (1-1)']
+        value1_1 = self.split_and_strip(params['Param (1-1) Values'])
+        type2 = params['Param Type (2)/ Denominator']
+        value2 = self.split_and_strip(params['Param (2) Values'])
+        type2_1 = params['Param Type (2-1)']
+        value2_1 = self.split_and_strip(params['Param (2-1) Values'])
+        type3 = params['Param (3)']
+        value3 = float(params['Param (3) Values'])
+        type4_policy = params['Param (4)']
+        value4_policy = self.split_and_strip(params['Param (4) Values'])
+        target = float(params['Target Policy'])
+        manufacturer = {'manufacturer_name': params['Manufacturer']}
+        if type4_policy:
+            product_policy = {type4_policy: value4_policy}.update(manufacturer)
+            general_filters = self.update_scene_filter(params, general_filters, product_filters=product_policy,
+                                                       by_product_majority=True)
+
+        number_of_scenes_passed = 0
+        result = 0
+        if general_filters['scene_id']:
+            group_1_filters = {type1: value1}.update(manufacturer).update(general_filters)
+            if type1_1:
+                group_1_filters.update({type1_1: value1_1})
+
+            group_2_filters = {type2: value2}.update(manufacturer).update(general_filters)
+            if type2_1:
+                group_2_filters.update({type2_1: value2_1})
+
+            group_1_facings = self.scif[self.tools.get_filter_condition(self.scif, **group_1_filters)][type3].sum()
+            group_2_facings = self.scif[self.tools.get_filter_condition(self.scif, **group_2_filters)][type3].sum()
+
+            if group_1_facings >= value3 and group_2_facings >= value3:
+                number_of_scenes_passed += 1
+
+            result = number_of_scenes_passed/len(general_filters['scene_id']) * 100
+        score = min(result/target, 100)
+        return score, result, target
+
+    def calculate_block_adjacency(self, params, **general_filters):
+        target = float(params['Target Policy'])
+        result = score = 0
+        if general_filters['scene_id']:
+            type1 = params['Param Type (1)/ Numerator']
+            value1 = self.split_and_strip(params['Param (1) Values'])
+            type1_1 = params['Param Type (1-1)']
+            value1_1 = self.split_and_strip(params['Param (1-1) Values'])
+            type2 = params['Param Type (2)/ Denominator']
+            value2 = self.split_and_strip(params['Param (2) Values'])
+            type2_1 = params['Param Type (2-1)']
+            value2_1 = self.split_and_strip(params['Param (2-1) Values'])
+            # type3 = params['Param (3)']
+            # value3 = float(params['Param (3) Val'])
+            manufacturer = {'manufacturer_name': params['Manufacturer']}
+
+            group_1_filters = {type1: value1}.update(manufacturer).update(general_filters)
+            if type1_1:
+                group_1_filters.update({type1_1: value1_1})
+
+            group_2_filters = {type2: value2}.update(manufacturer).update(general_filters)
+            if type2_1:
+                group_2_filters.update({type2_1: value2_1})
+
+            scenes_filter = {'scene_fk': general_filters['scene_id']} # not sure about type
+            min_block_ratio = 0.75 # we do not have data from the client on this: this is an assumption
+            is_adjacent = self.adjacency.calculate_adjacency(filter_group_a=group_1_filters, filter_group_b=group_2_filters,
+                                                             scene_type_filter=scenes_filter, allowed_filter=[],
+                                                             allowed_filter_without_other=[], a_target=None,
+                                                             b_target=None, target=min_block_ratio)
+            if is_adjacent:
+                result = target
+                score = 100 if result else 0
+        return score, result, target
+
+    # def calculate_product_presence(self, params, total_displays, **general_filters):
+    #     target = float(params['Target Policy'])
+    #     number_of_displays_that_pass = 0
+    #     # code to get the number of passing displays
+    #
+    #     # for display in scene_display_bay['display_name'].unique().tolist():
+    #     #     display_pd = display_agg[display_agg['display_name'] == display]
+    #     #     display_relevant_scenes = display_pd['scene_fk'].unique().tolist()
+    #     #
+    #     #     display_weight = self.get_display_weight_by_display_name(display)
+    #     #     display_count = sum(display_pd['count'].tolist())
+    #     #
+    #     #     display_width = 0
+    #     #     products_in_display_width = {}
+    #     #
+    #     #     for scene in display_relevant_scenes:
+    #     #         scene_relevant_bays = display_pd[display_pd['scene_fk'] == scene]['bay_number'].unique().tolist()
+    #     #         general_filters = {'scene_fk': scene, 'bay_number': scene_relevant_bays}
+    #     #         filtered_matches = self.matches[self.get_filter_condition(self.matches, **general_filters)]
+    #     #         display_width += filtered_matches['width_mm_advance'].sum()
+    #     #         display_scene_products = filtered_matches['product_fk'].unique().tolist()
+    #     #
+    #     #         for product in display_scene_products:
+    #     #             if not products_in_display_width.get(product):
+    #     #                 products_in_display_width[product] = \
+    #     #                 filtered_matches[filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
+    #     #             else:
+    #     #                 products_in_display_width[product] = products_in_display_width[product] + filtered_matches[
+    #     #                     filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
+    #     #
+    #     #     for product, width in products_in_display.items():
+    #     #         score = (products_in_display_width[product] / float(display_width)) * display_weight * display_count
+    #     #         write_score_to_db()
+    #
+    #     result = number_of_displays_that_pass/total_displays * 100
+    #     score = min(result/target, 100)
+    #     return score, result, target
+
+    def calculate_block_together_custom(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+                                 minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
+                                 block_products1=None, block_products2=None, vertical=False, biggest_block=False,
+                                 n_cluster=None, min_facings_in_block=None, **filters):
+        """
+        :param biggest_block:
+        :param block_products1:
+        :param block_products2:
+        :param block_of_blocks:
+        :param vertical: if needed to check vertical block by average shelf
+        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
+        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+                                False - The result is True if at least one scene has a block, False - otherwise.
+        :param filters: These are the parameters which the blocks are checked for.
+        :return: see 'result_by_scene' above.
+        """
+        filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**filters)
+        if len(relevant_scenes) == 0:
+            if result_by_scene:
+                return 0, 0
+            elif vertical:
+                return False, 0
+            else:
+                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+                return False
+        number_of_blocked_scenes = 0
+        cluster_ratios = []
+        for scene in relevant_scenes:
+            scene_graph = self.block_calc.position_graphs.get(scene).copy()
+            clusters, scene_graph = self.block_calc.get_scene_blocks(scene_graph,
+                                                          allowed_products_filters=allowed_products_filters,
+                                                          include_empty=include_empty, **filters)
+
+            if block_of_blocks:
+                new_relevant_vertices1 = self.block_calc.filter_vertices_from_graph(scene_graph, **block_products1)
+                new_relevant_vertices2 = self.block_calc.filter_vertices_from_graph(scene_graph, **block_products2)
+            else:
+                new_relevant_vertices = self.block_calc.filter_vertices_from_graph(scene_graph, **filters)
+            for cluster in clusters:
+                if block_of_blocks:
+                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
+                    if len(new_relevant_vertices1) > 0:
+                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
+                    else:
+                        cluster_ratio1 = 0
+                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
+                    if len(new_relevant_vertices2) > 0:
+                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
+                    else:
+                        cluster_ratio2 = 0
+                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
+                        if min_facings_in_block:
+                            if len(relevant_vertices_in_cluster1) >= min_facings_in_block \
+                                    and len(relevant_vertices_in_cluster2) >= min_facings_in_block:
+                                return True
+                            else:
+                                return False
+                        return True
+                else:
+                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                    if len(new_relevant_vertices) > 0:
+                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                    else:
+                        cluster_ratio = 0
+                    cluster_ratios.append(cluster_ratio)
+                    if biggest_block:
+                        continue
+
+                    if (cluster_ratio >= minimum_block_ratio and not min_facings_in_block) or \
+                            (len(relevant_vertices_in_cluster) >= min_facings_in_block and
+                                 cluster_ratio >= minimum_block_ratio):
+                        if result_by_scene:
+                            number_of_blocked_scenes += 1
+                            break
+                        else:
+                            all_vertices = {v.index for v in scene_graph.vs}
+                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                            scene_graph.delete_vertices(non_cluster_vertices)
+                            if vertical:
+                                return True, len(
+                                    set(scene_graph.vs['shelf_number']))
+                            return True
+            # for renielsenus - not sure i need to add min facings condition
+            if n_cluster is not None:
+                copy_of_cluster_ratios = cluster_ratios[:]
+                largest_cluster = max(copy_of_cluster_ratios)  # 39
+                copy_of_cluster_ratios.remove(largest_cluster)
+                if len(copy_of_cluster_ratios) > 0:
+                    second_largest_integer = max(copy_of_cluster_ratios)
+                else:
+                    second_largest_integer = 0
+                cluster_ratio = largest_cluster + second_largest_integer
+                if cluster_ratio >= minimum_block_ratio:
+                    if vertical:
+                        return {'block': True}
+
+            if biggest_block:
+                max_ratio = max(cluster_ratios)
+                biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
+                relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
+                all_vertices = {v.index for v in scene_graph.vs}
+                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                scene_graph.delete_vertices(non_cluster_vertices)
+                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+            if result_by_scene:
+                return number_of_blocked_scenes, len(relevant_scenes)
+            elif vertical:
+                return False, 0
+            else:
+                return False
