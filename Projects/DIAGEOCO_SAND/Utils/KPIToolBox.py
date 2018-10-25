@@ -3,8 +3,11 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
+from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 from KPIUtils.DB.Common import Common
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from Projects.DIAGEOCO_SAND.Utils.Const import Const
 
@@ -38,6 +41,9 @@ class DIAGEOCO_SANDToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.set_templates_data = {}
+        self.match_display_in_scene = self.get_match_display()
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def main_calculation(self, *args, **kwargs):
@@ -53,6 +59,8 @@ class DIAGEOCO_SANDToolBox:
         self.brand_pouring_status_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_POURING_SHEET_NAME,
                                                            header=Const.BRAND_POURING_HEADER_ROW).to_dict(orient='records')
         self.touchpoint_template = pd.read_excel(Const.TOUCHPOINT_TEMPLATE_PATH, header=Const.TOUCHPOINT_HEADER_ROW)
+        self.set_templates_data['Brand Blocking'] = self.brand_blocking_template
+        self.set_templates_data['Relative Position'] = self.relative_positioning_template
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
         self.global_gen.tool_box.DIAGEO = 'DIAGEO'
@@ -71,6 +79,9 @@ class DIAGEOCO_SANDToolBox:
         result = self.global_gen.diageo_global_secondary_display_secondary_function()
         if result:
             self.common.write_to_db_result_new_tables(**result)
+        set_name = Const.SECONDARY_DISPLAYS
+        set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
+        self.save_level2_and_level3(set_name, set_name, set_score)
 
     def calculate_brand_pouring_status(self):
         results_list = self.global_gen.diageo_global_brand_pouring_status_function(self.brand_pouring_status_template)
@@ -98,6 +109,77 @@ class DIAGEOCO_SANDToolBox:
         if results_list:
             for result in results_list:
                 self.common.write_to_db_result_new_tables(**result)
+
+    def get_match_display(self):
+        """
+        This function extracts the display matches data and saves it into one global data frame.
+        The data is taken from probedata.match_display_in_scene.
+        """
+        query = DIAGEOQueries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
+
+    def save_level2_and_level3(self, set_name, kpi_name, score):
+        """
+        Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
+        """
+        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
+                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
+        kpi_fk = kpi_data['kpi_fk'].values[0]
+        atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
+        self.write_to_db_result(kpi_fk, score, self.LEVEL2)
+        self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
+
+    def write_to_db_result(self, fk, score, level):
+        """
+        This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
+        and appends the insert SQL query into the queries' list, later to be written to the DB.
+        """
+        attributes = self.create_attributes_dict(fk, score, level)
+        if level == self.LEVEL1:
+            table = KPS_RESULT
+        elif level == self.LEVEL2:
+            table = KPK_RESULT
+        elif level == self.LEVEL3:
+            table = KPI_RESULT
+        else:
+            return
+        query = insert(attributes, table)
+        self.kpi_results_queries.append(query)
+
+    def create_attributes_dict(self, fk, score, level):
+        """
+        This function creates a data frame with all attributes needed for saving in KPI results tables.
+
+        """
+        score = round(score, 2)
+        if level == self.LEVEL1:
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            score_type = '%' if kpi_set_name in self.tools.KPI_SETS_WITH_PERCENT_AS_SCORE else ''
+            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        format(score, '.2f'), score_type, fk)],
+                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
+                                               'score_2', 'kpi_set_fk'])
+
+        elif level == self.LEVEL2:
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        fk, kpi_name, score)],
+                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
+        elif level == self.LEVEL3:
+            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
+            atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
+            kpi_fk = data['kpi_fk'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
+                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
+                                        score, kpi_fk, fk, None, None)],
+                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
+                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
+                                               'result'])
+        else:
+            attributes = pd.DataFrame()
+        return attributes.to_dict()
 
     def commit_results_data(self):
         # print('success')
