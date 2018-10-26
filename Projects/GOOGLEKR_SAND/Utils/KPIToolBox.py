@@ -15,7 +15,7 @@ FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__))
 class GOOGLEToolBox:
 
     def __init__(self, data_provider, output, common_v2):
-        self.common_v2 = common_v2
+        self.common = common_v2
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -70,50 +70,63 @@ class GOOGLEToolBox:
         self.choose_scenes()
 
     def google_global_fixture_compliance(self):
+        num_of_fixtures, all_scores = 0.0, 0.0
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_COMPLIANCE)
         for fixture in self.required_fixtures:
             fixture_pk = fixture[Const.FIXTURE_FK]
             denominator = fixture[Const.REQUIRED_AMOUNT]
-            # fixture_pk = self.templates.set_index(['template_name']).loc[fixture, 'template_fk']
             numerator = self.scene_info[self.scene_info['template_fk'] == fixture_pk].shape[0]
             ratio = self.division(numerator, denominator)
             score = 0
             if ratio >= 100:
                 ratio = 100
                 score = 1
+            num_of_fixtures += 1
+            all_scores += ratio
             fixture[Const.ACTUAL_AMOUNT] = numerator
-            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name('FIXTURE COMPLIANCE')
-            self.common_v2.write_to_db_result(
+            self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=fixture_pk, numerator_result=numerator, denominator_id=fixture_pk,
-                denominator_result=denominator, score=score, result=ratio)
+                denominator_result=denominator, score=score, result=ratio,
+                identifier_parent=Const.FIXTURE_HIGH_LEVEL, should_enter=True)
+        set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
+        set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL)
 
-    def get_planogram_visit_details(self):
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
-        fixture_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
-        kpi_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_kpi_fk]
+    def get_osa_and_pog(self):
+        num_of_fixtures, all_scores = 0.0, 0.0
+        pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
+        fixture_pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
+        pog_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_pog_kpi_fk]
+        osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
+        fixture_osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
+        osa_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_osa_kpi_fk]
         for fixture in self.required_fixtures:
-            entry_results = kpi_scene_results[kpi_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
-            exit_results = kpi_scene_results[kpi_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
-            avg_entry, temporary = self.get_scores_and_results(entry_results, fixture[Const.REQUIRED_AMOUNT])
-            avg_exit, temporary = self.get_scores_and_results(exit_results, fixture[Const.REQUIRED_AMOUNT])
-            delta = avg_exit - avg_entry
-            self.common_v2.write_to_db_result(
-                fk=kpi_fk, numerator_id=fixture[Const.FIXTURE_FK],
-                numerator_result=delta, score=avg_exit)
-
-    def get_visit_osa(self):
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
-        fixture_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
-        kpi_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_kpi_fk]
-        for fixture in self.required_fixtures:
-            entry_results = kpi_scene_results[kpi_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
-            exit_results = kpi_scene_results[kpi_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
-            avg_osa_entry, avg_oos_entry = self.get_scores_and_results(entry_results, fixture[Const.REQUIRED_AMOUNT])
-            avg_osa_exit, avg_oos_exit = self.get_scores_and_results(exit_results, fixture[Const.REQUIRED_AMOUNT])
+            entry_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
+            exit_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
+            avg_osa_entry, avg_oos_entry = self.get_scores_and_results(entry_osa_results, fixture[Const.REQUIRED_AMOUNT])
+            avg_osa_exit, avg_oos_exit = self.get_scores_and_results(exit_osa_results, fixture[Const.REQUIRED_AMOUNT])
             osa_delta = avg_osa_exit - avg_osa_entry
             oos_delta = avg_oos_exit - avg_oos_entry
-            self.common_v2.write_to_db_result(
-                fk=kpi_fk, numerator_id=fixture[Const.FIXTURE_FK],
+            self.common.write_to_db_result(
+                fk=osa_kpi_fk, numerator_id=fixture[Const.FIXTURE_FK],
                 numerator_result=osa_delta, denominator_result=oos_delta, result=avg_oos_exit, score=avg_osa_exit)
+            entry_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
+            exit_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
+            avg_pog_entry, temporary = self.get_scores_and_results(entry_pog_results, fixture[Const.REQUIRED_AMOUNT])
+            avg_pog_exit, temporary = self.get_scores_and_results(exit_pog_results, fixture[Const.REQUIRED_AMOUNT])
+            delta = avg_pog_exit - avg_pog_entry
+            identifier_result = self.common.get_dictionary(fixture=fixture, kpi_fk=pog_kpi_fk)
+            self.common.write_to_db_result(
+                fk=pog_kpi_fk, numerator_id=fixture[Const.FIXTURE_FK], identifier_parent=Const.POG_HIGH_LEVEL,
+                numerator_result=delta, score=avg_pog_exit, should_enter=True, identifier_result=identifier_result)
+            for scene_result_fk in exit_pog_results['pk'].values:
+                self.common.write_to_db_result(fk=Const.NON_KPI, should_enter=True, scene_result_fk=scene_result_fk,
+                                               identifier_parent=identifier_result)
+            num_of_fixtures += 1
+            all_scores += avg_pog_exit
+        set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
+        set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.POG_HIGH_LEVEL)
 
     @staticmethod
     def get_scores_and_results(scene_results, reuired_amount):
@@ -130,8 +143,5 @@ class GOOGLEToolBox:
 
     @staticmethod
     def division(num, den):
-        if den:
-            ratio = num * 100.0 / den
-        else:
-            ratio = 0
+        ratio = num * 100.0 / den if den else 0
         return ratio

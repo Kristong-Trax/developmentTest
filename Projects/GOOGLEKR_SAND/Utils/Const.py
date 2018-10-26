@@ -12,17 +12,18 @@ class Const(object):
         'product_type': ['Irelevant', 'Empty']
     }
 
-    FIXTURE_KPIs = {
-        'FIXTURE COMPLIANCE': {'pk': 300002}
-    }
-
+    SOS_SCENE = 'SOS BRAND out of SCENE'
+    SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
+    FIXTURE_COMPLIANCE = 'FIXTURE COMPLIANCE'
     FIXTURE_POG = "FIXTURE POG COMPLIANCE"
     VISIT_POG = "VISIT POG COMPLIANCE"
     FIXTURE_OSA = "FIXTURE OOS/OSA"
     VISIT_OSA = "VISIT OOS/OSA"
     MISSING_DENOMINATIONS = "missing_denominations"
-    SOS_SCENE = 'SOS BRAND out of SCENE'
-    SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
+    FIXTURE_HIGH_LEVEL = "FIXTURE COMPLIANCE HIGH LEVEL"
+    POG_HIGH_LEVEL = "POG COMPLIANCE HIGH LEVEL"
+    POG_STATUS = "POG STATUS"
+    POG_PRODUCT = "POG PRODUCT"
 
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
@@ -37,5 +38,7 @@ class Const(object):
     REQUIRED_AMOUNT = "required_amount"
     ACTUAL_AMOUNT = "actual_amount"
     FIXTURE_FK = "fixture_fk"
+
+    NON_KPI = 0
 
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]
