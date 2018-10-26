@@ -6,16 +6,12 @@ class Const(object):
 
     FACINGS = 'facings'
     BRAND = 'brand_name'
+    GOOGLE_BRAND = 'Google Play'
     NOTABRAND = {'General', 'General.'}
     EXCLUDE_FILTERS = {
         'product_type': ['Irelevant', 'Empty']
     }
-    SOS_KPIs = {
-        'SOS BRAND out of SCENE': {'pk': 300000,
-                                   'den': None},
-        'SOS BRAND out of BRANDS in SCENE': {'pk': 300001,
-                                             'den': None}
-    }
+
     FIXTURE_KPIs = {
         'FIXTURE COMPLIANCE': {'pk': 300002}
     }
@@ -25,6 +21,8 @@ class Const(object):
     FIXTURE_OSA = "FIXTURE OOS/OSA"
     VISIT_OSA = "VISIT OOS/OSA"
     MISSING_DENOMINATIONS = "missing_denominations"
+    SOS_SCENE = 'SOS BRAND out of SCENE'
+    SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
 
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
