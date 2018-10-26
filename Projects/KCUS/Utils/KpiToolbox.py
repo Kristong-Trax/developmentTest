@@ -20,6 +20,7 @@ __author__ = 'nicolaskeeton'
 CATEGORIES = ['ADULT INCONTINENCE PROTECTION','FEM CARE']
 SUB_CATEGORIES = ['Feminine Hygiene','Feminine Needs']
 KPI_LEVEL_2_cat_space = ['Category Space - Adult Incontinence','Category Space - Feminine Needs','Category Space - Feminine Hygiene']
+ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES = ['Feminine Hygiene']
 UNLIMITED_DISTANCE = 'General'
 TOP_DISTANCE = 'Above distance (shelves)'
 BOTTOM_DISTANCE = 'Below distance (shelves)'
@@ -226,10 +227,20 @@ class KCUS_KPIToolBox:
         """
 
         try:
+            #Remove this line of code when tagging is updated for femini hygiene.
+            if any(item in filters['template_name'] for item in ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES):
+                for k in filters.keys():
+                    if k not in ['template_name','category']:
+
+                        del filters[k]
+
+
+
             filtered_scif = self.scif[
                 self.get_filter_condition(self.scif, **filters)]
             if self.EXCLUDE_EMPTY == True:
                     filtered_scif = filtered_scif[filtered_scif['product_type'] != 'Empty']
+
             space_length = 0
             bay_values = []
             max_linear_of_bays = 0
@@ -284,8 +295,13 @@ class KCUS_KPIToolBox:
                         #  space_length_DEBUG += bay_final_linear_value
                         bay_values.append(4)
                     else:
+
                         bay_values.append(0)
+                if filtered_scif['template_name'].iloc[0] in ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES:
+                    max_bays = len(scene_matches['bay_number'].unique().tolist())
+                    space_length = max_bays * 4
                 space_length = sum(bay_values)
+
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
