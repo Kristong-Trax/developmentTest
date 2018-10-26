@@ -15,8 +15,8 @@ class MarsUsGenerator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
-        # self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
+        # self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
+        self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -26,12 +26,12 @@ class MarsUsGenerator:
         """
         if self.data_provider.scene_item_facts.empty:
             Log.warning('Scene item facts is empty for this session')
-        try:
-            self.tool_box.calculate_scores()
-        except:
-            Log.error('Mars US kpis not calculated')
-
         # try:
-        #     self.purina_tool_box.calculate_purina()
+        #     self.tool_box.calculate_scores()
         # except:
-        #     Log.error('Purina kpis not calculated')
+        #     Log.error('Mars US kpis not calculated')
+
+        try:
+            self.purina_tool_box.calculate_purina()
+        except:
+            Log.error('Purina kpis not calculated')
