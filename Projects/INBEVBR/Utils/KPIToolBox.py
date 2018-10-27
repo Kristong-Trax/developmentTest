@@ -9,13 +9,11 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.Calculations.Survey import Survey
-from Projects.INBEVBR.Utils.Fetcher import INBEVBRQueries
 from Projects.INBEVBR.Utils.GeneralToolBox import INBEVBRGENERALToolBox
 from Projects.INBEVBR.Data.Const import Const
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 
 __author__ = 'ilays'
 
@@ -50,6 +48,8 @@ class INBEVBRToolBox:
         self.tools = INBEVBRGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_fk = self.store_info['store_fk'].values[0]
+
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -68,7 +68,6 @@ class INBEVBRToolBox:
         self.kpi_results_queries = []
         self.survey = Survey(self.data_provider, self.output)
         self.kpi_results_new_tables_queries = []
-        self.New_kpi_static_data = self.get_new_kpi_static_data()
         self.session_id = self.data_provider.session_id
         self.prices_per_session = PsDataProvider(self.data_provider, self.output).get_price(self.session_id)
         self.common_db = Common(self.data_provider)
@@ -92,7 +91,7 @@ class INBEVBRToolBox:
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
         self.write_parent_kpis_results()
-        self.commit_results_data()
+        self.common_db.commit_results_data()
 
     def handle_atomic(self, row):
         atomic_id = row[Const.KPI_ID]
@@ -159,16 +158,17 @@ class INBEVBRToolBox:
                 count_result = weight if percentage >= target else 0
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
         self.parent_kpis[parent_kpi] += count_result
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                       numerator_result=numerator_number_of_facings, denominator_id=3,
-                                       denominator_result=denominator_number_of_total_facings, result=count_result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                   numerator_result=numerator_number_of_facings, denominator_id = self.store_fk,
+                                   denominator_result_after_actions = 3,should_enter=True,
+                                   denominator_result=denominator_number_of_total_facings, result=count_result)
 
     def handle_sos_packs_atomics(self,atomic_id, atomic_name, parent_kpi):
 
@@ -229,7 +229,7 @@ class INBEVBRToolBox:
         number_of_not_valid_scenes = len(df_denominator['scene_fk'].drop_duplicates())
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -237,17 +237,20 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=3,
-                                               numerator_result=number_of_valid_scenes,
-                                               denominator_result=number_of_not_valid_scenes, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                denominator_result_after_actions=3,
+                                numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                denominator_result=number_of_not_valid_scenes, result=count_result, should_enter=True)
         elif result_type == 2:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                               numerator_result=count_of_total_facings,
-                                               denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                numerator_result=count_of_total_facings, identifier_parent=parent_kpi,
+                                denominator_result_after_actions=2,
+                                denominator_result=0, result=count_result, should_enter=True)
         elif result_type == 3:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                           numerator_result=number_of_valid_scenes,
-                                           denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                denominator_result_after_actions=2,
+                                denominator_result=0, result=count_result, should_enter=True)
 
     def handle_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
@@ -279,7 +282,7 @@ class INBEVBRToolBox:
             count_result = weight if (number_of_scenes >= secondary_target) else 0
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -287,13 +290,15 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1,
+                                            numerator_result=0, denominator_id=self.store_fk, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=count_result, should_enter=True)
         elif result_type == 2:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=number_of_facings, denominator_id=2,
-                                           denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                            numerator_result=number_of_facings, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
 
     def handle_group_count_atomics(self, atomic_id, atomic_name, parent_kpi):
 
@@ -329,7 +334,7 @@ class INBEVBRToolBox:
 
         number_of_valid_scenes = len(group_scenes)
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -337,13 +342,15 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += count_result
 
         if result_type == 1:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                           numerator_result=total_facings_number,
-                                           denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                            numerator_result=total_facings_number, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
         elif count_result == 2:
-            self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, denominator_id=2,
-                                           numerator_result=number_of_valid_scenes,
-                                           denominator_result=0, result=count_result)
+            self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, denominator_id=self.store_fk,
+                                            numerator_result=number_of_valid_scenes, identifier_parent=parent_kpi,
+                                            denominator_result_after_actions=2,
+                                            denominator_result=0, result=count_result, should_enter=True)
 
 
 
@@ -463,13 +470,13 @@ class INBEVBRToolBox:
                 survey_result = 1 if answer else -1
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
-                                           denominator_result=0, denominator_id=1, result=survey_result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
+                                       denominator_result=0, denominator_id=1, result=survey_result)
 
     def handle_prod_seq_atomics(self, atomic_id, atomic_name, parent_kpi):
         result = 0
@@ -519,7 +526,7 @@ class INBEVBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
@@ -527,9 +534,10 @@ class INBEVBRToolBox:
         self.parent_kpis[parent_kpi] += result
 
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_shelfs, denominator_id=1,
-                                           denominator_result=denominator_shelfs, result=result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                        denominator_result_after_actions=1,
+                                        numerator_result=numerator_shelfs, denominator_id=self.store_fk,
+                                        should_enter=True, denominator_result=denominator_shelfs, result=result)
 
     def check_order_prod_seq(self, list_df, filtered_rows, num_of_products):
         shelf_fail = False
@@ -614,16 +622,17 @@ class INBEVBRToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
         self.parent_kpis[parent_kpi] += count_result
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_shelfs, denominator_id=1,
-                                           denominator_result=denominator_shelfs, result=count_result)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                          denominator_result_after_actions=1,
+                                          numerator_result=numerator_shelfs, denominator_id=self.store_fk,
+                                          should_enter=True, denominator_result=denominator_shelfs, result=count_result)
 
     def check_order_prod_seq_2(self, working_shelf, groups_outside , groups_inside):
         result = False
@@ -632,6 +641,7 @@ class INBEVBRToolBox:
         # drop adjacent brand duplicates
         df = df.loc[df.shift(-1) != df]
         list_df = df.tolist()
+        list_df = [str(item) for item in list_df]
         str_df = "".join(list_df)
         constraints = self.calc_constraints(groups_outside, groups_inside, list_df)
         for c in constraints:
@@ -712,89 +722,28 @@ class INBEVBRToolBox:
             total_weight = limit
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_db.get_kpi_fk_by_kpi_type(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
         self.parent_kpis[parent_kpi] += total_weight
 
-
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=total_facings, denominator_id=2,
-                                           denominator_result=limit, result=total_weight)
+        self.common_db.write_to_db_result(fk=atomic_pk, numerator_id=1, identifier_parent=parent_kpi,
+                                        numerator_result=total_facings, denominator_id=self.store_fk,
+                                        denominator_result_after_actions=2,
+                                        should_enter=True, denominator_result=0, result=total_weight)
 
     def write_parent_kpis_results(self):
-        self.write_to_db_result_new_tables(fk=1, numerator_id=self.session_id,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.CERVEJA])
-        self.write_to_db_result_new_tables(fk=2, numerator_id=self.session_id,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.GAME_PLAN])
-        self.write_to_db_result_new_tables(fk=3, numerator_id=self.session_id,
-                                           numerator_result=0, denominator_id=1,
-                                           denominator_result=0, result=self.parent_kpis[Const.NAB])
-
-
-    def get_new_kpi_static_data(self):
-        """
-            This function extracts the static new KPI data (new tables) and saves it into one global data frame.
-            The data is taken from static.kpi_level_2.
-            """
-        query = INBEVBRQueries.get_new_kpi_data()
-        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
-        return kpi_static_data
-
-    def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,
-                                      denominator_result=None, score=None):
-        """
-            This function creates the result data frame of new rables KPI,
-            and appends the insert SQL query into the queries' list, later to be written to the DB.
-            """
-        table = KPI_NEW_TABLE
-        attributes = self.create_attributes_dict_new_tables(fk, numerator_id, numerator_result, denominator_id,
-                                                            denominator_result, result, score)
-        query = insert(attributes, table)
-        self.kpi_results_new_tables_queries.append(query)
-
-    def create_attributes_dict_new_tables(self, kpi_fk, numerator_id, numerator_result, denominator_id,
-                                          denominator_result, result, score):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results new tables.
-        """
-        attributes = pd.DataFrame([(kpi_fk, self.session_id, numerator_id, numerator_result, denominator_id,
-                                    denominator_result, result, score)], columns=['kpi_level_2_fk', 'session_fk',
-                                                                                  'numerator_id', 'numerator_result',
-                                                                                  'denominator_id',
-                                                                                  'denominator_result', 'result',
-                                                                                  'score'])
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        insert_queries = self.merge_insert_queries(self.kpi_results_new_tables_queries)
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        delete_query = INBEVBRQueries.get_delete_session_results_query(self.session_uid, self.session_id)
-        cur.execute(delete_query)
-        for query in insert_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
-
-    @staticmethod
-    def merge_insert_queries(insert_queries):
-        query_groups = {}
-        for query in insert_queries:
-            static_data, inserted_data = query.split('VALUES ')
-            if static_data not in query_groups:
-                query_groups[static_data] = []
-            query_groups[static_data].append(inserted_data)
-        merged_queries = []
-        for group in query_groups:
-            merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
-        return merged_queries
+        self.common_db.write_to_db_result(fk=1, numerator_id=1, identifier_result=Const.CERVEJA,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.CERVEJA])
+        self.common_db.write_to_db_result(fk=2, numerator_id=1, identifier_result=Const.GAME_PLAN,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.GAME_PLAN])
+        self.common_db.write_to_db_result(fk=3, numerator_id=1, identifier_result=Const.NAB,
+                                            numerator_result=0, denominator_id=self.store_fk,
+                                            denominator_result_after_actions=1,
+                                            denominator_result=0, result=self.parent_kpis[Const.NAB])
