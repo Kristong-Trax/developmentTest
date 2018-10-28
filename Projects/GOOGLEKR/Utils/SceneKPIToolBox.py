@@ -5,7 +5,7 @@ import pandas as pd
 __author__ = 'Eli_Sam_Shivi'
 
 
-class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
+class SceneToolBox:
 
     def __init__(self, data_provider, common):
         self.common = common
@@ -17,7 +17,7 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
         if self.planograms is None:
             self.planograms = pd.DataFrame(columns=['item_id'])
         else:
-            self.planograms = self.planograms[self.planograms['manufacturer_name'] == "Google"]
+            self.planograms = self.planograms[self.planograms['manufacturer_name'] == Const.GOOGLE]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
 
@@ -76,7 +76,7 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_PRODUCT)
         compliance_products = self.match_product_in_scene[
                               (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
-                              (self.match_product_in_scene['manufacturer_name'] == "Google")]
+                              (self.match_product_in_scene['manufacturer_name'] == Const.GOOGLE)]
         for product_fk in compliance_products['product_fk'].unique().tolist():
             product_facings = len(compliance_products[compliance_products['product_fk'] == product_fk])
             self.common.write_to_db_result(
@@ -90,7 +90,7 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
             score, result = 0, None
         else:
             assortment_products = set(self.planograms['item_id'])
-            fixture_products = set(self.scif[self.scif['manufacturer_name'] == "Google"]['product_fk'])
+            fixture_products = set(self.scif[self.scif['manufacturer_name'] == Const.GOOGLE]['product_fk'])
             common_products = fixture_products & assortment_products
             numerator_result = len(common_products)
             denominator_result = len(assortment_products)

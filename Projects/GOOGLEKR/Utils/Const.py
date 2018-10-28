@@ -45,3 +45,4 @@ class Const(object):
 
     SOS_KPIs = [SOS_OUT_OF_SCENE, SOS_IN_SCENE]
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]
+    GOOGLE = "Google"
