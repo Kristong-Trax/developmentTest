@@ -112,13 +112,16 @@ class DIAGEOMX_SANDToolBox:
         """
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
                                      'Data', 'TOUCH POINT.xlsx')
+
         # self.diageo_generator.diageo_global_assortment_function()
-        result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-        for r in result_sos_dict:
-            self.commonV2.write_to_db_result(**r)
+
+        # result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+        # for r in result_sos_dict:
+        #     self.commonV2.write_to_db_result(**r)
+
         # self.diageo_generator.diageo_global_touch_point_function(template_path)
-        self.common.commit_results_data_to_new_tables()
-        self.common.commit_results_data()  # old tables
+        # self.common.commit_results_data_to_new_tables()
+        # self.common.commit_results_data()  # old tables
 
         set_score=0
         for set_name in set_names:
@@ -126,31 +129,36 @@ class DIAGEOMX_SANDToolBox:
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             if set_name in ('Relative Position'):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name])
+
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
                 set_score = self.calculate_relative_position_sets(set_name)
-            elif set_name in ('MPA', 'New Products'):
-                set_score = self.calculate_assortment_sets(set_name)
-            # elif set_name in ('Brand Blocking',):
-            #     set_score = self.calculate_block_together_sets(set_name)
-            elif set_name in ('POSM',):
-                set_score = self.calculate_posm_sets(set_name)
+            # elif set_name in ('MPA', 'New Products'):
+            #     set_score = self.calculate_assortment_sets(set_name)
+            # # elif set_name in ('Brand Blocking',):
+            # #     set_score = self.calculate_block_together_sets(set_name)
+            # elif set_name in ('POSM',):
+            #     set_score = self.calculate_posm_sets(set_name)
             # elif set_name in ('Brand Pouring',):
             #     set_score = self.calculate_brand_pouring_sets(set_name)
-            elif set_name == 'Visible to Customer':
 
-                # Global function
-                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+            # elif set_name == 'Visible to Customer':
+            #
+            #     # Global function
+            #     sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+            #     res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+            #
+            #     if res_dict:
+            #         # Saving to new tables
+            #         parent_res = res_dict[-1]
+            #         for r in res_dict:
+            #             self.commonV2.write_to_db_result(**r)
+            #
+            #         # Saving to old tables
+            #         result = parent_res['result']
+            #         self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
-                if res_dict:
-                    # Saving to new tables
-                    parent_res = res_dict[-1]
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
-
-                    # Saving to old tables
-                    result = parent_res['result']
-                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
             # elif set_name == 'Secondary display':
             #     res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
             #     if res_json:
@@ -162,7 +170,7 @@ class DIAGEOMX_SANDToolBox:
             #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
             #     self.save_level2_and_level3(set_name, set_name, set_score)
             else:
-                return
+                continue
 
             if set_score == 0:
                 pass
