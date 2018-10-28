@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -93,7 +94,8 @@ class MARSUAEToolBox:
         """
         This function calculates the KPI results.
         """
-        Results(self.data_provider).calculate(self.kpi_sheets['KPI'])
+        assortment_result = Assortment(data_provider=self.data_provider).calculate_lvl3_assortment()
+        Results(self.data_provider, assortment_result).calculate(self.kpi_sheets['KPI'])
         relevant_kpi_res = self.common.get_kpi_fk_by_kpi_type('scene_score')
         scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
         origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()

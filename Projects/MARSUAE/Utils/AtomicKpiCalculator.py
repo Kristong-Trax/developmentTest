@@ -26,10 +26,11 @@ class LinearSOSCalculation(KpiBaseCalculation):
 
     def calculate(self, params):
         common = self._data_provider.common
-        numerator_filters = {params['numerator type'].iloc[0]: params['numerator value'].iloc[0]}
-        general_filters = {params['denominator type'].iloc[0]: params['denominator value'].iloc[0]}
         points = params['Points'].iloc[0]
         kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'].iloc[0])
+
+        numerator_filters = {params['numerator type'].iloc[0]: params['numerator value'].iloc[0]}
+        general_filters = {params['denominator type'].iloc[0]: params['denominator value'].iloc[0]}
 
         sos = SOS(self._data_provider, output=None)
         result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
@@ -37,7 +38,7 @@ class LinearSOSCalculation(KpiBaseCalculation):
                                                                                         **general_filters)
         if result >= params['upper threshold'].iloc[0]:
             result = points
-        elif result < params['upper threshold'].iloc[0]:
+        elif result < params['lower threshold'].iloc[0]:
             result = 0
         else:
             result *= points
@@ -55,10 +56,10 @@ class DisplaySOSCalculation(KpiBaseCalculation):
     def calculate(self, params):
         common = self._data_provider.common
         points = params['Points'].iloc[0]
-        sos_threshold = params[''].iloc[0]
         kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'].iloc[0])
         scif = self._data_provider.scene_item_facts
 
+        sos_threshold = params['minimum_threshold'].iloc[0]
         result = numerator_result = denominator_result = 0
         relevant_scenes = self.get_secondary_shelf_scenes(scif)
         if len(relevant_scenes) > 0:
@@ -67,7 +68,7 @@ class DisplaySOSCalculation(KpiBaseCalculation):
 
             if result >= params['upper threshold'].iloc[0]:
                 result = points
-            elif result < params['upper threshold'].iloc[0]:
+            elif result < params['lower threshold'].iloc[0]:
                 result = 0
             else:
                 result *= points
@@ -105,10 +106,10 @@ class DistributionCalculation(KpiBaseCalculation):
         result_kpi = []
         kpi_fk = 1
         assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0])
-        assortment_result = Assortment(data_provider=self._data_provider).calculate_lvl3_assortment()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
         for i, row in assortment_result.iterrows():
-            result_kpi.append(self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'], score=row['in_store']))
+            result_kpi.append(self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'],
+                                                      numerator_result=row['in_store'], score=row['in_store']))
         return result_kpi
 
     def get_assortment_group_fk(self, assortment_name):
@@ -123,7 +124,7 @@ class AvailabilityBaseCalculation(KpiBaseCalculation):
     def kpi_type(self):
         pass
 
-    def calculate_availability(self, params, attribute_type):
+    def calculate_availability(self, params):
         result = 0
         target = params['minimum products'].iloc[0]
 
@@ -148,7 +149,7 @@ class AvailabilityHangingStripCalculation(AvailabilityBaseCalculation):
         return 'Availability hanging strip'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params, attribute_type='template_name')
+        return self.calculate_availability(params=params)
 
 
 class AvailabilityBasketCalculation(AvailabilityBaseCalculation):
@@ -157,7 +158,7 @@ class AvailabilityBasketCalculation(AvailabilityBaseCalculation):
         return 'Availability basket'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params, attribute_type='product_type')
+        return self.calculate_availability(params=params)
 
 
 class AvailabilityMultipackCalculation(AvailabilityBaseCalculation):
@@ -166,4 +167,13 @@ class AvailabilityMultipackCalculation(AvailabilityBaseCalculation):
         return 'Availability multipack'
 
     def calculate(self, params):
-        return self.calculate_availability(params=params, attribute_type='package')
+        return self.calculate_availability(params=params)
+
+
+class AvailabilitySceneTypeCalculation(AvailabilityBaseCalculation):
+    @classproperty
+    def kpi_type(self):
+        return 'Availability scene type'
+
+    def calculate(self, params):
+        return self.calculate_availability(params=params)

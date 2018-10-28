@@ -1,15 +1,15 @@
 import pandas as pd
-# import numpy as np
 import networkx as nx
 import pydot
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityHangingStripCalculation, CountCalculation, \
-                                                       DistributionCalculation, LinearSOSCalculation
+    DistributionCalculation, LinearSOSCalculation, AvailabilitySceneTypeCalculation, AvailabilityMultipackCalculation, \
+    AvailabilityBasketCalculation
 
 
 class Results(object):
-    def __init__(self, data_provider):
+    def __init__(self, data_provider, assortment_result):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
         self.common = CommonV2(self._data_provider)
@@ -70,8 +70,11 @@ class Results(object):
         return {
             DistributionCalculation.kpi_type: DistributionCalculation,
             CountCalculation.kpi_type: CountCalculation,
-            AvailabilityHangingStripCalculation.kpi_type: AvailabilityHangingStripCalculation,
-            LinearSOSCalculation.kpi_type: LinearSOSCalculation
+            LinearSOSCalculation.kpi_type: LinearSOSCalculation,
+            AvailabilitySceneTypeCalculation.kpi_type: AvailabilitySceneTypeCalculation,
+            AvailabilityBasketCalculation.kpi_type: AvailabilityBasketCalculation,
+            AvailabilityMultipackCalculation.kpi_type: AvailabilityMultipackCalculation,
+            AvailabilityHangingStripCalculation.kpi_type: AvailabilityHangingStripCalculation
         }
 
     def _get_set_result(self, kpi_results):
