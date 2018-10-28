@@ -1,9 +1,9 @@
 import pandas as pd
 import os
 
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output, KEngineDataProvider
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils.GlobalProjects.MARSRU.Utils.ToolBox import GLOBAL_MARSRU_KPIToolBox
 from KPIUtils.GlobalProjects.MARSRU.Utils.JSON import GLOBAL_MARSRU_JsonGenerator
@@ -46,20 +46,20 @@ class NIELSENRUMARSCalculations(BaseCalculationsScript):
         self.timer.stop('NIELSENMARSRUCalculations.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('rinielsenru-mars calculations')
-    Config.init()
-    project_name = 'rinielsenru-mars'
-    session_uids = ['555e59e6-8cc3-11e7-8bba-12ae84a7e6ca']
-    data_provider = KEngineDataProvider(project_name)
-    output = Output()
-    for session in session_uids:
-        data_provider.load_session_data(session)
-        NIELSENRUMARSCalculations(data_provider, output).run_project_calculations()
-
-    # jg = NIELSENMARSRUPOS_SANDJsonGenerator('nielsenmarsrupos-sand')
-    # jg.create_json('template.xlsx')
-    # # tb = NIELSENMARSRUPOS_SANDMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
-    # tb = NIELSENMARSRUPOS_SANDKPIToolBox(data_provider, output, 'NIELSENRU_MARS KPIs 2018')
-    # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
-    # tb.insert_new_kpis_old(project_name)
+# if __name__ == '__main__':
+#     LoggerInitializer.init('rinielsenru-mars calculations')
+#     Config.init()
+#     project_name = 'rinielsenru-mars'
+#     session_uids = ['555e59e6-8cc3-11e7-8bba-12ae84a7e6ca']
+#     data_provider = KEngineDataProvider(project_name)
+#     output = Output()
+#     for session in session_uids:
+#         data_provider.load_session_data(session)
+#         NIELSENRUMARSCalculations(data_provider, output).run_project_calculations()
+#
+#     # jg = NIELSENMARSRUPOS_SANDJsonGenerator('nielsenmarsrupos-sand')
+#     # jg.create_json('template.xlsx')
+#     # # tb = NIELSENMARSRUPOS_SANDMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
+#     # tb = NIELSENMARSRUPOS_SANDKPIToolBox(data_provider, output, 'NIELSENRU_MARS KPIs 2018')
+#     # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
+#     # tb.insert_new_kpis_old(project_name)
