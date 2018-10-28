@@ -18,7 +18,7 @@ class NIELSENRUMARSCalculations(BaseCalculationsScript):
         tool_box = GLOBAL_MARSRU_KPIToolBox(self.data_provider, self.output,
                                             set_name='NIELSENMARSRU KPIs 2018', base_path=base_path)
         tool_box.hadle_update_custom_scif()
-        jg = GLOBAL_MARSRU_JsonGenerator('nielsenru-mars', base_path)
+        jg = GLOBAL_MARSRU_JsonGenerator('rinielsenru-mars', base_path)
         jg.create_json('template.xlsx')
         tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         tool_box.custom_linear_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -43,7 +43,7 @@ class NIELSENRUMARSCalculations(BaseCalculationsScript):
 
         tool_box.write_to_db_result(attributes_for_table1, 'level1', tool_box.set_name)
         tool_box.commit_results_data()
-        self.timer.stop('NIELSENMARSRUCalculations.run_project_calculations')
+        self.timer.stop('RINIELSENMARSRUCalculations.run_project_calculations')
 
 
 # if __name__ == '__main__':
@@ -56,10 +56,3 @@ class NIELSENRUMARSCalculations(BaseCalculationsScript):
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
 #         NIELSENRUMARSCalculations(data_provider, output).run_project_calculations()
-#
-#     # jg = NIELSENMARSRUPOS_SANDJsonGenerator('nielsenmarsrupos-sand')
-#     # jg.create_json('template.xlsx')
-#     # # tb = NIELSENMARSRUPOS_SANDMARSRUKPIToolBox(data_provider, self.output, 'Hypermarket')
-#     # tb = NIELSENMARSRUPOS_SANDKPIToolBox(data_provider, output, 'NIELSENRU_MARS KPIs 2018')
-#     # tb.insert_new_kpis_old(project_name, jg.project_kpi_dict.get('kpi_data')[0])
-#     # tb.insert_new_kpis_old(project_name)
