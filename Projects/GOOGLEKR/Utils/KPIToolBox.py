@@ -23,6 +23,8 @@ class GOOGLEKRGOOGLEToolBox:
         self.templates = self.data_provider.all_templates
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"] == "Google"][
+            "manufacturer_fk"].iloc[0]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -94,7 +96,8 @@ class GOOGLEKRGOOGLEToolBox:
                 identifier_parent=Const.FIXTURE_HIGH_LEVEL, should_enter=True)
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL,
+                                       numerator_id=self.manufacturer_fk)
 
     def get_osa_and_pog(self):
         num_of_fixtures, all_scores = 0.0, 0.0
@@ -130,7 +133,8 @@ class GOOGLEKRGOOGLEToolBox:
             all_scores += avg_pog_exit
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.POG_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.POG_HIGH_LEVEL,
+                                       numerator_id=self.manufacturer_fk)
 
     @staticmethod
     def get_scores_and_results(scene_results, reuired_amount):
