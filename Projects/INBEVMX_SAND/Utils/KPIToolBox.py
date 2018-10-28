@@ -24,7 +24,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.2.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v1.3.xlsx')
 
 
 class INBEVMXToolBox:
@@ -84,7 +84,7 @@ class INBEVMXToolBox:
         This function calculates the KPI results.
         """
         kpis_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.KPIS).fillna("")
-        self.calculate_oos_target()
+        # self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
         self.commit_results_data()
