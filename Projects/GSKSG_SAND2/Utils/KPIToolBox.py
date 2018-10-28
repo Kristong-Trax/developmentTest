@@ -4,6 +4,7 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
+from datetime import datetime
 import numpy as np
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.Common import Common as Common_old
@@ -15,7 +16,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'jasmine'
 
@@ -58,7 +59,7 @@ ORAL_KPI = 2054
 ORANGE_SCORE =2056
 ######################
 ORAL_CARE_LEVEL_1 = 'Orange Score for Oral Care'
-PAIN_LEVEL_1 = 'Orange score for Pain'
+PAIN_LEVEL_1 = 'Orange Score for Pain'
 ORAL_CARE = ' Oral Care'
 PAIN=' Pain'
 SEQUENCE_TARGET = 3
@@ -93,6 +94,7 @@ class GSKSGToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.old_kpi_static_data = self.common_old_tables.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_type = self.store_info[STORE_LVL_1].values[0]
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
@@ -109,7 +111,8 @@ class GSKSGToolBox:
         self.availability = Availability(data_provider, ignore_stacking=True)
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
-        # self.survey_data = self.data_provider.survey_responses
+        self.toolbox = GENERALToolBox(self.data_provider)
+
 
     def main_calculation(self):
         """
@@ -117,7 +120,7 @@ class GSKSGToolBox:
         """
         template = self.get_relevant_calculations()
         self.handle_calculation(template)
-        #self.common.commit_results_data_to_new_tables
+        self.common_old_tables.commit_results_data()
         self.common.commit_results_data()
 
         score = 0
@@ -143,7 +146,7 @@ class GSKSGToolBox:
         return 1 if row['result_bin'] == row['Weight'] else 0
 
     def check_if_sequence_passed(self, row):
-        if row['ATOMIC_TARGET']!= -1:
+        if row['ATOMIC_TARGET'] != -1:
             return 1 if row['scenes_passed'] == row['ATOMIC_TARGET'] else 0
         else:
             return row['result']
@@ -192,10 +195,9 @@ class GSKSGToolBox:
                                               'KPI Score Method': current_kpi['KPI Score Method'],
                                               'Benchmark': current_kpi['Benchmark'],
                                               'ATOMIC_TARGET': current_kpi['ATOMIC_TARGET'],
-
                                               'Conditional Weight': current_kpi['Conditional Weight'],
                                               'result': result, 'valid_template_name': is_template_valid,
-                                              'scenes_passed':scenes_passed,'scenes_total':scenes_total},
+                                              'scenes_passed':scenes_passed, 'scenes_total':scenes_total},
                                              ignore_index=True)
 
         kpi_results['Conditional Weight'] = kpi_results['Conditional Weight'].fillna(-1)
@@ -221,9 +223,9 @@ class GSKSGToolBox:
 
         kpi_results = kpi_results.groupby([SET, KPI, ATOMIC,'ATOMIC_TARGET', 'KPI Weight', 'Weight', 'KPI Score Method','Score Method',
                                                            'Benchmark', 'Conditional Weight'], as_index=False).agg({'result': 'sum',
-                                                                                                    'valid_template_name':'sum',
-                                                                                                    'scenes_passed':'sum' ,
-                                                                                                   'scenes_total':'sum'})
+                                                            'valid_template_name':'sum',
+                                                            'scenes_passed':'sum' ,
+                                                           'scenes_total':'sum'})
 
         kpi_results['result'] = kpi_results.apply(self.check_if_sequence_passed, axis=1)
 
@@ -297,17 +299,38 @@ class GSKSGToolBox:
                                            denominator_result=result['scenes_total'],
                                            weight=result['Weight']*100, should_enter=True)
 
-            # self.common_old_tables.write_to_db_result(kpi_fk, (score, number_of_passed_atomics, number_of_atomics),
-            #                                     level=self.LEVEL3)
+            NAME_ADD = PAIN if result[SET] == PAIN_LEVEL_1 else ORAL_CARE
+            try:
+                old_atomic_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
+                                                      (self.old_kpi_static_data['kpi_name'] == result[KPI]+NAME_ADD) &
+                                                      (self.old_kpi_static_data['atomic_kpi_name'] == result[ATOMIC]+NAME_ADD)][
+                'atomic_kpi_fk'].iloc[0]
+                old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
+                                                          (self.old_kpi_static_data['kpi_name'] == result[
+                                                              KPI] + NAME_ADD) ]['kpi_fk'].iloc[0]
+
+                self.common_old_tables.write_to_db_result(fk=old_atomic_kpi_fk, atomic_kpi_fk=old_atomic_kpi_fk,
+                                                          level=self.LEVEL3,
+                                                         score=result['result_bin'],
+                                                         result=result['result'],
+                                                         session_uid=self.session_uid, store_fk=self.store_id,
+                                                         display_text=result[ATOMIC],
+                                                         visit_date=self.visit_date.isoformat(),
+                                                         calculation_time=datetime.utcnow().isoformat(),
+                                                         kps_name=result[SET],
+                                                         kpi_fk=old_kpi_fk)
+            except:
+                print 'cannot find atomic {} in kpi {} in set {}'.format(result[ATOMIC]+NAME_ADD,result[KPI]+NAME_ADD,
+                                                                         result[SET])
 
         kpi_results['kpi_pass'] = kpi_results.apply(self.check_if_kpi_passed, axis =1)
 
         sum_kpis = kpi_results.loc[(kpi_results['KPI Score Method'] == 'SUM')]
         max_kpis = kpi_results.loc[(kpi_results['KPI Score Method'] == 'MAX')]
-        prop_kpis = kpi_results.loc[(kpi_results['KPI Score Method'] == 'PROPOSITIONAL')]
+        prop_kpis = kpi_results.loc[(kpi_results['KPI Score Method'] == 'Proportional')]
 
         # sum_kpis['kpi_pass']=
-        sum_kpis=sum_kpis.groupby([SET, KPI, 'KPI Weight',SCORE_METHOD, 'Conditional Weight'], as_index=False).agg({
+        sum_kpis=sum_kpis.groupby([SET, KPI, 'KPI Weight', SCORE_METHOD, 'Conditional Weight'], as_index=False).agg({
                                                                                                     'valid_template_name': 'max',
                                                                                                     'kpi_pass' :'sum',
                                                                                                     'result_bin': 'sum',
@@ -328,16 +351,8 @@ class GSKSGToolBox:
             'scenes_passed': 'sum',
             'scenes_total': 'sum'})
 
-        aggs_res_level_2=sum_kpis.append(max_kpis,ignore_index=True)
-        aggs_res_level_2=aggs_res_level_2.append(prop_kpis,ignore_index=True)
-        #
-        # aggs_res_level_2 = kpi_results.groupby([SET, KPI, 'KPI Weight',SCORE_METHOD, 'Conditional Weight'], as_index=False).agg({
-        #                                                                                             'valid_template_name': 'max',
-        #                                                                                             'result_bin': np.sum ,
-        #                                                                                             'scenes_passed': 'sum',
-        #                                                                                             'scenes_total': 'sum'})
-
-
+        aggs_res_level_2 = sum_kpis.append(max_kpis,ignore_index=True)
+        aggs_res_level_2 = aggs_res_level_2.append(prop_kpis, ignore_index=True)
 
         ################### PLUS WEIGHT ###################
         # takes conditional weight for irrelevnat kpis that has it.
@@ -420,7 +435,14 @@ class GSKSGToolBox:
                                            identifier_parent=identifier_parent_fk_web,
                                            weight=result['KPI Weight']*100, should_enter=True)
 
-        # fixind data for 1st level
+            NAME_ADD = PAIN if result[SET] == PAIN_LEVEL_1 else ORAL_CARE
+            try:
+                old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
+                                                      (self.old_kpi_static_data['kpi_name'] == result[KPI]+NAME_ADD)][
+                                                        'kpi_fk'].iloc[0]
+                self.common_old_tables.write_to_db_result(old_kpi_fk, self.LEVEL2,  result['result_bin'])
+            except:
+                print 'kpi {} in set {}'.format(result[KPI]+NAME_ADD, result[SET])
 
         # aggregating to level 1:
         aggs_res_level_1 = aggs_res_level_2.groupby([SET], as_index=False)['result_bin'].sum()
@@ -448,6 +470,10 @@ class GSKSGToolBox:
                                            identifier_result=identifier_child_fk_web
                                            ,should_enter=True)
 
+            old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET])][
+                'kpi_set_fk'].iloc[0]
+            self.common_old_tables.write_to_db_result(old_kpi_fk, self.LEVEL1,  result['result_bin'])
+
 
     def get_relevant_calculations(self):
         # Gets the store type name and the relevant template according to it.
@@ -470,25 +496,66 @@ class GSKSGToolBox:
             Log.info('kpi type {} does not exist'.format(kpi_type))
             return None
 
+    def handle_sos_calculation(self, row, ign_stack=False):
+        """
+        calculates SOS line in the relevant scif.
+        :param kpi_line: line from SOS sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator.
+        :return: boolean
+        """
+
+        target = row['target'] if not pd.isnull(row['target']) else 0
+
+        # templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        # category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
+
+        # valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
+        # scene_passed_count = 0
+        # for scene_id in valid_scenes:
+        #     row['scene_id'] = scene_id
+        #     filters, general_filters = self.get_filters(row)
+        #     res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        #     res = res >= target if not pd.isnull(row['target']) else res
+        #     scene_passed_count = scene_passed_count+1 if res else scene_passed_count
+        # row = row.drop('scene_id')
+
+        filters, general_filters = self.get_filters(row)
+        # general_filters['category_fk'] = category_fk
+        filters.update(general_filters)
+
+        denom_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **general_filters)]
+
+        num_scif = denom_scif[self.toolbox.get_filter_condition(denom_scif, **filters)]
+
+        facings = 'facings_ign_stack' if ign_stack else 'facings'
+        res = num_scif[facings].sum() / denom_scif[facings].sum() if denom_scif[facings].sum() > 0 \
+            else 0
+        # res = res >= target if not pd.isnull(row['target']) else res
+        return res
+
     def calculate_sos(self, row):
         # Calculates the sos kpi according to the template.
 
-        target = row['target'] if not pd.isnull(row['target']) else 0
-        #
+
+        # target = row['target'] if not pd.isnull(row['target']) else 0
+        # #
         # filters, general_filters = self.get_filters(row)
-        templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
-        valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
-        scene_passed_count = 0
-        for scene_id in valid_scenes:
-            row['scene_id'] = scene_id
-            filters, general_filters = self.get_filters(row)
-            res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
-            res = res >= target if not pd.isnull(row['target']) else res
-            scene_passed_count = scene_passed_count+1 if res else scene_passed_count
-        row = row.drop('scene_id')
-        filters, general_filters = self.get_filters(row)
-        res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
-        return res, scene_passed_count, len(valid_scenes)
+        # templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
+        # valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
+        # scene_passed_count = 0
+        # for scene_id in valid_scenes:
+        #     row['scene_id'] = scene_id
+        #     filters, general_filters = self.get_filters(row)
+        #     res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+        #     res = res >= target if not pd.isnull(row['target']) else res
+        #     scene_passed_count = scene_passed_count+1 if res else scene_passed_count
+        # row = row.drop('scene_id')
+        # filters, general_filters = self.get_filters(row)
+        # res = self.sos.calculate_share_of_shelf(sos_filters=filters, **general_filters)
+
+        return self.handle_sos_calculation(row, ign_stack=True), 1, 1
 
     def calculate_presence(self, row):
 
@@ -560,6 +627,7 @@ class GSKSGToolBox:
         # products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
         products = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
+                                 (self.scif['rlv_dist_sc'] == 1) &
                                  (self.scif['category_fk'] == category_fk)]['product_ean_code']
 
         # (self.scif['in_assort_sc'] == 1) &
@@ -579,7 +647,9 @@ class GSKSGToolBox:
                 # kpi_filters['product_ean_code'] = str(product)
                 # kpi_filters['scene_id'] = scene_id
                 # res = self.availability.calculate_availability(**kpi_filters)
-                product_in_scene = self.scif.loc[(self.scif['rlv_dist_sc'] == 1) &
+                product_in_scene = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
+                                                 (self.scif['rlv_dist_sc'] == 1) &
+                                                 (self.scif['dist_sc'] == 1) &
                                                  (self.scif['scene_id'] == scene_id) &
                                                  (self.scif['product_ean_code'] == str(product))
                                                  ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
@@ -664,6 +734,7 @@ class GSKSGToolBox:
                 if col == 'exclude':
                     excludes = self.handle_complex_data(row[col], exclude=True)
                     filters.update(excludes)
+                    general_filters.update(excludes)
                     continue
                 if col in ['target', STORE_TYPE]:
                     continue
@@ -711,3 +782,26 @@ class GSKSGToolBox:
                 exclude_dict[key] = (values, EXCLUDE) if exclude else values
 
         return exclude_dict
+
+
+# ###### to be changed in sdk:
+
+    @staticmethod
+    def get_all_kpi_data():
+        return """
+            select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
+                   kpi.display_text as kpi_name, kpi.pk as kpi_fk,
+                   kps.name as kpi_set_name, kps.pk as kpi_set_fk
+            from static.atomic_kpi api
+            left join static.kpi kpi on kpi.pk = api.kpi_fk
+            join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
+        """
+
+    def get_kpi_static_data(self):
+        """
+        This function extracts the static new KPI data (new tables) and saves it into one global data frame.
+        The data is taken from static.kpi_level_2.
+        """
+        query = self.get_all_kpi_data()
+        kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
+        return kpi_static_data
