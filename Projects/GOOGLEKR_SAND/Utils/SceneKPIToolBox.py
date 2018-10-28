@@ -26,21 +26,26 @@ class SceneGOOGLEToolBox:
         brands_scif = scif[~scif[Const.BRAND].isin(Const.NOTABRAND)]
         if brands_scif.empty:
             return
-        denominators = {
-            Const.SOS_OUT_OF_SCENE: scif[Const.FACINGS].sum(),
-            Const.SOS_IN_SCENE: brands_scif[Const.FACINGS].sum()
-        }
+
         brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND])\
                                   .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS]\
                                   .sum()
 
-        for (brand_name, brand_fk), numerator in brand_totals.iteritems():
-            for kpi in Const.SOS_KPIs:
-                ratio = self.division(numerator, denominators[kpi])
-                kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi)
-                self.common.write_to_db_result(
-                    fk=kpi_fk, numerator_id=brand_fk, numerator_result=numerator, result=ratio, by_scene=True,
-                    denominator_id=self.common.scene_id, denominator_result=denominators[kpi])
+        total_facings = scif[Const.FACINGS].sum()
+        google_fk, google_facings = brand_totals.reset_index(drop=False, level=1).loc[Const.GOOGLE_BRAND]
+
+        for (brand_name, brand_fk), brand_facings in brand_totals.iteritems():
+            scene_ratio = self.division(brand_facings, total_facings)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_SCENE)
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=brand_fk, numerator_result=brand_facings, result=scene_ratio, by_scene=True,
+                denominator_result=total_facings)
+
+            google_ratio = self.division(google_facings, brand_facings)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_RELATIVE)
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=google_fk, numerator_result=google_facings, result=google_ratio, by_scene=True,
+                denominator_result=brand_facings, denominator_id=brand_fk)
 
     def get_planogram_fixture_details(self):
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)

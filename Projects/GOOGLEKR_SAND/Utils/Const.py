@@ -6,13 +6,14 @@ class Const(object):
 
     FACINGS = 'facings'
     BRAND = 'brand_name'
+    GOOGLE_BRAND = 'Google Play'
     NOTABRAND = {'General', 'General.'}
     EXCLUDE_FILTERS = {
         'product_type': ['Irelevant', 'Empty']
     }
 
-    SOS_OUT_OF_SCENE = 'SOS BRAND out of SCENE'
-    SOS_IN_SCENE = 'SOS BRAND out of BRANDS in SCENE'
+    SOS_SCENE = 'SOS BRAND out of SCENE'
+    SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
     FIXTURE_COMPLIANCE = 'FIXTURE COMPLIANCE'
     FIXTURE_POG = "FIXTURE POG COMPLIANCE"
     VISIT_POG = "VISIT POG COMPLIANCE"
@@ -40,5 +41,4 @@ class Const(object):
 
     NON_KPI = 0
 
-    SOS_KPIs = [SOS_OUT_OF_SCENE, SOS_IN_SCENE]
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]

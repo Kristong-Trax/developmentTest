@@ -867,6 +867,8 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         """
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
         parent = self.get_kpi_parent(kpi_name)
+        if score == '' or score is None:
+            score = 0
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
         self.write_to_db_result(
