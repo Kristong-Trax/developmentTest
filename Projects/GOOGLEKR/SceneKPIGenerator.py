@@ -29,7 +29,7 @@ class GOOGLEKRSceneGenerator:
 
     def scene_osa_and_pog(self):
         try:
-            if self.tool_box.get_fixture_osa():
-                self.tool_box.get_planogram_fixture_details()
+            self.tool_box.get_fixture_osa()
+            self.tool_box.get_planogram_fixture_details()
         except Exception as e:
             Log.error('{}'.format(e))

@@ -2,7 +2,7 @@
 __author__ = 'Elyashiv'
 
 
-class GOOGLEKRConst(object):
+class Const(object):
 
     FACINGS = 'facings'
     BRAND = 'brand_name'
