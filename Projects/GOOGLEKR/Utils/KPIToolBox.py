@@ -12,10 +12,10 @@ FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__))
                                      'KR - Google Fixture Targets.xlsx')
 
 
-class GOOGLEKRGOOGLEToolBox:
+class ToolBox:
 
-    def __init__(self, data_provider, output, common_v2):
-        self.common = common_v2
+    def __init__(self, data_provider, output, common):
+        self.common = common
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -23,7 +23,7 @@ class GOOGLEKRGOOGLEToolBox:
         self.templates = self.data_provider.all_templates
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"] == "Google"][
+        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"] == Const.GOOGLE][
             "manufacturer_fk"].iloc[0]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
