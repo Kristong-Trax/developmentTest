@@ -11,6 +11,9 @@ class Const(object):
         'product_type': ['Irelevant', 'Empty']
     }
 
+    GOOGLE_BRAND = 'Google Play'
+    SOS_SCENE = 'SOS BRAND out of SCENE'
+    SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
     SOS_OUT_OF_SCENE = 'SOS BRAND out of SCENE'
     SOS_IN_SCENE = 'SOS BRAND out of BRANDS in SCENE'
     FIXTURE_COMPLIANCE = 'FIXTURE COMPLIANCE'
