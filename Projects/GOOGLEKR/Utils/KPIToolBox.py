@@ -134,6 +134,8 @@ class GOOGLEKRGOOGLEToolBox:
 
     @staticmethod
     def get_scores_and_results(scene_results, reuired_amount):
+        if None in scene_results['result'].tolist():
+            return 0, None
         scores, results = scene_results.sort_values(
             by='score', ascending=False)[['score', 'result']][:reuired_amount].sum() / reuired_amount
         return scores, results
