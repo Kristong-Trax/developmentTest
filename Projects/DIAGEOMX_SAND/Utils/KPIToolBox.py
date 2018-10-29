@@ -130,34 +130,40 @@ class DIAGEOMX_SANDToolBox:
 
             if set_name in ('Relative Position'):
                 # Global function
-                res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name])
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name], location_type='template_group')
+
+                # Saving to new tables
+                if res_dict:
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
 
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
                 set_score = self.calculate_relative_position_sets(set_name)
-            # elif set_name in ('MPA', 'New Products'):
-            #     set_score = self.calculate_assortment_sets(set_name)
+            elif set_name in ('MPA', 'New Products'):
+                set_score = self.calculate_assortment_sets(set_name)
             # # elif set_name in ('Brand Blocking',):
             # #     set_score = self.calculate_block_together_sets(set_name)
-            # elif set_name in ('POSM',):
-            #     set_score = self.calculate_posm_sets(set_name)
+            elif set_name in ('POSM',):
+                set_score = self.calculate_posm_sets(set_name)
             # elif set_name in ('Brand Pouring',):
             #     set_score = self.calculate_brand_pouring_sets(set_name)
 
-            # elif set_name == 'Visible to Customer':
-            #
-            #     # Global function
-            #     sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-            #     res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-            #
-            #     if res_dict:
-            #         # Saving to new tables
-            #         parent_res = res_dict[-1]
-            #         for r in res_dict:
-            #             self.commonV2.write_to_db_result(**r)
-            #
-            #         # Saving to old tables
-            #         result = parent_res['result']
-            #         self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+            elif set_name == 'Visible to Customer':
+
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+
+                if res_dict:
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                    # Saving to old tables
+                    result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
             # elif set_name == 'Secondary display':
             #     res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
