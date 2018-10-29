@@ -108,18 +108,22 @@ class DIAGEOTW_SANDToolBox:
             if set_name in ('Local MPA', 'MPA', 'New Products',):
                 set_score = self.calculate_assortment_sets(set_name)
             elif set_name in ('Relative Position',):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(
+                                                    self.set_templates_data[set_name], location_type='template_name')
+                self.save_json_to_new_tables(res_dict)
+
+                # Saving to old tables
                 set_score = self.calculate_relative_position_sets(set_name)
             elif set_name in ('Brand Blocking',):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_block_together(kpi_name=self.tools.BRAND_BLOCKING_VARIANT,
                                                                 set_templates_data=self.set_templates_data[set_name])
-                if res_dict:
-                    # Saving to new tables
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
+                self.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 set_score = self.calculate_block_together_sets(set_name)
+
             elif set_name in ('POSM',):
                 set_score = self.calculate_posm_sets(set_name)
             # elif set_name in ('SOS',):
@@ -133,8 +137,7 @@ class DIAGEOTW_SANDToolBox:
                 if res_dict:
                     # Saving to new tables
                     parent_res = res_dict[-1]
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
+                    self.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     result = parent_res['result']
@@ -155,10 +158,7 @@ class DIAGEOTW_SANDToolBox:
             elif set_name == 'Survey Questions':
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_calculate_survey_sets(self.set_templates_data[set_name])
-                if res_dict:
-                    # Saving to new tables
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
+                self.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 set_score = self.calculate_survey_sets(set_name)
@@ -175,6 +175,12 @@ class DIAGEOTW_SANDToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
+
+    def save_json_to_new_tables(self, res_dict):
+        if res_dict:
+            # Saving to new tables
+            for r in res_dict:
+                self.commonV2.write_to_db_result(**r)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
