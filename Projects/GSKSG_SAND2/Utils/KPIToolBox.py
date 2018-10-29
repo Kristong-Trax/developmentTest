@@ -107,8 +107,8 @@ class GSKSGToolBox:
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
                              'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
                              'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
-        self.sequence = Sequence(data_provider, ignore_stacking=True)
-        self.availability = Availability(data_provider, ignore_stacking=True)
+        self.sequence = Sequence(data_provider)
+        self.availability = Availability(data_provider)
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
@@ -143,7 +143,7 @@ class GSKSGToolBox:
             return row['result']
 
     def check_if_kpi_passed(self, row):
-        return 1 if row['result_bin'] == row['Weight'] else 0
+        return 1 if (row['result_bin'] == row['Weight']) and (row['Weight'] != 0) else 0
 
     def check_if_sequence_passed(self, row):
         if row['ATOMIC_TARGET'] != -1:
@@ -602,11 +602,8 @@ class GSKSGToolBox:
          if at least one scene has result  > target, atomic passes.
          returns: whether at least one scene passed, number of scene passed, number of scene checked
          """
-        scif = pd.merge(self.match_product_in_scene, self.scif, how='left',
-                                 left_on=['scene_fk', 'product_fk'], right_on=['scene_id',  'item_id'])
-        scif = scif.drop_duplicates(['scene_id', 'item_id'])
         target = row['target'] if not pd.isnull(row['target']) else 0
-
+        scif = self.scif
         scene_passed = False
         products_in_scenes = pd.DataFrame(columns=['product_ean_code', 'scene_id', 'result'])
         # Gets relevant assortment from template according to store attributes.
@@ -621,24 +618,29 @@ class GSKSGToolBox:
 
         kpi_filters, general = self.get_filters(row)
 
+        # filter all products by assortment & template
+        scif = scif.loc[(scif['in_assort_sc'] == 1) &
+                            (scif['rlv_dist_sc'] == 1) &
+                            (scif['category_fk'] == category_fk)]
+
+        if general:
+            # filter conition filters the products without facings, which result incorrect denominator
+            scif = scif.drop(['facings'], axis=1)
+            scif = scif[self.toolbox.get_filter_condition(scif, **general)]
+
+        products = scif['product_ean_code']
+        total_products = len(products)
         # removes all filters which are nans
+        scif = pd.merge(self.match_product_in_scene, scif, how='left',
+                                 left_on=['scene_fk', 'product_fk'], right_on=['scene_id',  'item_id'])
+        scif = scif.drop_duplicates(['scene_id', 'item_id'])
+
         scif = scif.dropna(subset=kpi_filters.keys() + general.keys())
 
         if kpi_filters.get('shelf_number', '') or general.get('shelf_number', ''):
             scif['shelf_number'] = (scif['shelf_number'].astype(int)).astype(str)
 
-        if general:
-            scif = scif[self.toolbox.get_filter_condition(scif, **general)]
-
-        # filter all products by assortment & template
-        scif = scif.loc[(scif['in_assort_sc'] == 1) &
-                            (scif['rlv_dist_sc'] == 1) &
-                            (scif['category_fk'] == category_fk)]
-        products = scif['product_ean_code']
-
         kpi_filters.update(general)
-
-        total_products = len(products)
 
         # get the relevant scene by the template name given
         templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
