@@ -115,7 +115,6 @@ class DIAGEOTW_SANDToolBox:
                 set_score = self.calculate_sos_sets(set_name)
 
             elif set_name == 'Visible to Customer':
-
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
@@ -131,6 +130,7 @@ class DIAGEOTW_SANDToolBox:
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
             elif set_name in ('Secondary display', 'Secondary'):
+                # Global function
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:
                     # Saving to new tables
@@ -142,6 +142,14 @@ class DIAGEOTW_SANDToolBox:
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
             elif set_name == 'Survey Questions':
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_calculate_survey_sets(self.set_templates_data[set_name])
+                if res_dict:
+                    # Saving to new tables
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                # Saving to old tables
                 set_score = self.calculate_survey_sets(set_name)
             else:
                 return
