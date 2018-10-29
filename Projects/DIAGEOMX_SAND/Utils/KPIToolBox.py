@@ -137,9 +137,10 @@ class DIAGEOMX_SANDToolBox:
                     for r in res_dict:
                         self.commonV2.write_to_db_result(**r)
 
-
+                # Saving to old tables
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
                 set_score = self.calculate_relative_position_sets(set_name)
+
             elif set_name in ('MPA', 'New Products'):
                 set_score = self.calculate_assortment_sets(set_name)
             # # elif set_name in ('Brand Blocking',):
