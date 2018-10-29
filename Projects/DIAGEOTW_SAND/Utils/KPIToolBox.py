@@ -113,13 +113,34 @@ class DIAGEOTW_SANDToolBox:
                 set_score = self.calculate_posm_sets(set_name)
             elif set_name in ('SOS',):
                 set_score = self.calculate_sos_sets(set_name)
+
             elif set_name == 'Visible to Customer':
-                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-                self.save_level2_and_level3(set_name, set_name, set_score)
-            elif set_name == 'Secondary':
+
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+
+                if res_dict:
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                    # Saving to old tables
+                    result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+
+            elif set_name in ('Secondary display', 'Secondary'):
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
+
+                # Saving to old tables
                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
                 self.save_level2_and_level3(set_name, set_name, set_score)
+
             elif set_name == 'Survey Questions':
                 set_score = self.calculate_survey_sets(set_name)
             else:
