@@ -107,8 +107,8 @@ class GSKSGToolBox:
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
                              'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
                              'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
-        self.sequence = Sequence(data_provider, ignore_stacking=True)
-        self.availability = Availability(data_provider, ignore_stacking=True)
+        self.sequence = Sequence(data_provider)
+        self.availability = Availability(data_provider)
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
