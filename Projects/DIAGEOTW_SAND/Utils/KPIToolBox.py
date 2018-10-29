@@ -98,6 +98,8 @@ class DIAGEOTW_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        # DIAGEOGenerator(self.data_provider, self.output, self.common).diageo_global_assortment_function()
+        # self.common.commit_results_data_to_new_tables()
         for set_name in set_names:
             set_score=0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -108,16 +110,20 @@ class DIAGEOTW_SANDToolBox:
             elif set_name in ('Relative Position',):
                 set_score = self.calculate_relative_position_sets(set_name)
             elif set_name in ('Brand Blocking',):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_block_together(kpi_name=self.tools.BRAND_BLOCKING_VARIANT,
+                                                                set_templates_data=self.set_templates_data[set_name])
+                if res_dict:
+                    # Saving to new tables
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                # Saving to old tables
                 set_score = self.calculate_block_together_sets(set_name)
             elif set_name in ('POSM',):
                 set_score = self.calculate_posm_sets(set_name)
-            elif set_name in ('SOS',):
-                set_score = self.calculate_sos_sets(set_name)
-                #
-                # result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-                # for r in result_sos_dict:
-                #     self.commonV2.write_to_db_result(**r)
-
+            # elif set_name in ('SOS',):
+            #     set_score = self.calculate_sos_sets(set_name)
 
             elif set_name == 'Visible to Customer':
                 # Global function

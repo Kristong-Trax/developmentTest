@@ -41,6 +41,4 @@ class DIAGEOTW_SANDGenerator:
             calculate_activation_standard = True
 
         self.tool_box.main_calculation(set_names=set_names)
-        # if calculate_activation_standard:
-        #     self.tool_box.calculate_activation_standard()
         self.tool_box.commit_results_data()

@@ -5,8 +5,6 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOTW_SAND.KPIGenerator import DIAGEOTW_SANDGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
 
 __author__ = 'Nimrod'
 
@@ -14,10 +12,7 @@ __author__ = 'Nimrod'
 class DIAGEOTW_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        common = Common(self.data_provider)
         DIAGEOTW_SANDGenerator(self.data_provider, self.output).main_function()
-        # DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
-        common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
