@@ -113,12 +113,16 @@ class DIAGEOMX_SANDToolBox:
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
                                      'Data', 'TOUCH POINT.xlsx')
 
+        # Assortment kpis
         self.diageo_generator.diageo_global_assortment_function()
-        result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-        for r in result_sos_dict:
-            self.commonV2.write_to_db_result(**r)
 
+        # global SOS kpi
+        res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+        self.save_json_to_new_tables(res_dict)
+
+        # global touch point kpi
         self.diageo_generator.diageo_global_touch_point_function(template_path)
+
         self.common.commit_results_data_to_new_tables()
         self.common.commit_results_data()  # old tables
 
@@ -130,11 +134,7 @@ class DIAGEOMX_SANDToolBox:
             if set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name], location_type='template_group')
-
-                # Saving to new tables
-                if res_dict:
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
+                self.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
@@ -158,8 +158,7 @@ class DIAGEOMX_SANDToolBox:
                 if res_dict:
                     # Saving to new tables
                     parent_res = res_dict[-1]
-                    for r in res_dict:
-                        self.commonV2.write_to_db_result(**r)
+                    self.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     result = parent_res['result']
@@ -188,6 +187,12 @@ class DIAGEOMX_SANDToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
+
+    def save_json_to_new_tables(self, res_dict):
+        if res_dict:
+            # Saving to new tables
+            for r in res_dict:
+                self.commonV2.write_to_db_result(**r)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
