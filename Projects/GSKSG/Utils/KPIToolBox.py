@@ -646,7 +646,8 @@ class GSKSGToolBox:
         valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
 
         # save which products were in each relevant scene
-        scif = scif[self.toolbox.get_filter_condition(scif, **kpi_filters)]
+        if kpi_filters:
+            scif = scif[self.toolbox.get_filter_condition(scif, **kpi_filters)]
         for scene_id in valid_scenes:
             # Checks for each product if found in scene, if so, 'count' it.
             for product in set(products):
