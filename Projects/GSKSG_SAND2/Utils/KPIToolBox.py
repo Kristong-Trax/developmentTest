@@ -602,7 +602,9 @@ class GSKSGToolBox:
          if at least one scene has result  > target, atomic passes.
          returns: whether at least one scene passed, number of scene passed, number of scene checked
          """
-
+        scif = pd.merge(self.match_product_in_scene, self.scif, how='left',
+                                 left_on=['scene_fk', 'product_fk'], right_on=['scene_id',  'item_id'])
+        scif = scif.drop_duplicates(['scene_id', 'item_id'])
         target = row['target'] if not pd.isnull(row['target']) else 0
 
         scene_passed = False
@@ -615,25 +617,27 @@ class GSKSGToolBox:
             Log.info('Store attribute {} is not in template.'.format(store_data))
             return 0
 
-        # gets the assortment product's ean codes relevant for store
-        store_assortment = self.msl_list[store_data]
-        store_assortment = store_assortment[store_assortment == 1]
-
-        ##filter the products from the template by category
-        # products = store_assortment.keys()
-        # products = [str(prod) for prod in products ]
         category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
-        # products = self.products.loc[self.products['product_ean_code'].isin(products)]
-        # products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
-        products = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
-                                 (self.scif['rlv_dist_sc'] == 1) &
-                                 (self.scif['category_fk'] == category_fk)]['product_ean_code']
-
-        # (self.scif['in_assort_sc'] == 1) &
-        # (self.scif['rlv_dist_sc'] == 1) &
         kpi_filters, general = self.get_filters(row)
+
+        # removes all filters which are nans
+        scif = scif.dropna(subset=kpi_filters.keys() + general.keys())
+
+        if kpi_filters.get('shelf_number', '') or general.get('shelf_number', ''):
+            scif['shelf_number'] = (scif['shelf_number'].astype(int)).astype(str)
+
+        if general:
+            scif = scif[self.toolbox.get_filter_condition(scif, **general)]
+
+        # filter all products by assortment & template
+        scif = scif.loc[(scif['in_assort_sc'] == 1) &
+                            (scif['rlv_dist_sc'] == 1) &
+                            (scif['category_fk'] == category_fk)]
+        products = scif['product_ean_code']
+
         kpi_filters.update(general)
+
         total_products = len(products)
 
         # get the relevant scene by the template name given
@@ -641,18 +645,16 @@ class GSKSGToolBox:
         valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
 
         # save which products were in each relevant scene
+        scif = scif[self.toolbox.get_filter_condition(scif, **kpi_filters)]
         for scene_id in valid_scenes:
             # Checks for each product if found in scene, if so, 'count' it.
             for product in set(products):
-                # kpi_filters['product_ean_code'] = str(product)
-                # kpi_filters['scene_id'] = scene_id
-                # res = self.availability.calculate_availability(**kpi_filters)
-                product_in_scene = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
-                                                 (self.scif['rlv_dist_sc'] == 1) &
-                                                 (self.scif['dist_sc'] == 1) &
-                                                 (self.scif['scene_id'] == scene_id) &
-                                                 (self.scif['product_ean_code'] == str(product))
-                                                 ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
+                product_in_scene = scif.loc[(scif['in_assort_sc'] == 1) &
+                                            (scif['rlv_dist_sc'] == 1) &
+                                            (scif['dist_sc'] == 1) &
+                                            (scif['scene_id'] == scene_id) &
+                                            (scif['product_ean_code'] == str(product))
+                                            ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
                 res = 1 if not product_in_scene.empty else 0
                 products_in_scenes = products_in_scenes.append({
                     'product_ean_code': product,
