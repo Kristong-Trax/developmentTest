@@ -113,15 +113,14 @@ class DIAGEOMX_SANDToolBox:
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
                                      'Data', 'TOUCH POINT.xlsx')
 
-        # self.diageo_generator.diageo_global_assortment_function()
+        self.diageo_generator.diageo_global_assortment_function()
+        result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+        for r in result_sos_dict:
+            self.commonV2.write_to_db_result(**r)
 
-        # result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-        # for r in result_sos_dict:
-        #     self.commonV2.write_to_db_result(**r)
-
-        # self.diageo_generator.diageo_global_touch_point_function(template_path)
-        # self.common.commit_results_data_to_new_tables()
-        # self.common.commit_results_data()  # old tables
+        self.diageo_generator.diageo_global_touch_point_function(template_path)
+        self.common.commit_results_data_to_new_tables()
+        self.common.commit_results_data()  # old tables
 
         set_score=0
         for set_name in set_names:

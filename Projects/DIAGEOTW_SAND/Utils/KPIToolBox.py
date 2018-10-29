@@ -113,6 +113,11 @@ class DIAGEOTW_SANDToolBox:
                 set_score = self.calculate_posm_sets(set_name)
             elif set_name in ('SOS',):
                 set_score = self.calculate_sos_sets(set_name)
+                #
+                # result_sos_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
+                # for r in result_sos_dict:
+                #     self.commonV2.write_to_db_result(**r)
+
 
             elif set_name == 'Visible to Customer':
                 # Global function
@@ -163,7 +168,7 @@ class DIAGEOTW_SANDToolBox:
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # commiting to new tables
-        # self.commonV2.commit_results_data()
+        self.commonV2.commit_results_data()
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
