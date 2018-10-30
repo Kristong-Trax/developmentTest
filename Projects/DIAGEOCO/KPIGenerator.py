@@ -3,7 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.DIAGEOCO.Utils.KPIToolBox import DIAGEOCOToolBox
 
-from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.Common import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -18,7 +18,7 @@ class DIAGEOCOGenerator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.tool_box = DIAGEOCOToolBox(self.data_provider, self.output)
-        self.common = Common(data_provider)
+        # self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -28,7 +28,5 @@ class DIAGEOCOGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
-            score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-            self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
-        self.common.commit_results_data()
+        self.tool_box.main_calculation()
+        self.tool_box.commit_results_data()
