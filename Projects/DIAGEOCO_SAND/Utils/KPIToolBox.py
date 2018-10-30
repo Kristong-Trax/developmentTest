@@ -65,7 +65,8 @@ class DIAGEOCO_SANDToolBox:
                                                      header=Const.BRAND_BLOCKING_HEADER_ROW).to_dict(orient='records')
         self.brand_pouring_status_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_POURING_SHEET_NAME,
                                                            header=Const.BRAND_POURING_HEADER_ROW).to_dict(orient='records')
-        self.touchpoint_template = pd.read_excel(Const.TOUCHPOINT_TEMPLATE_PATH, header=Const.TOUCHPOINT_HEADER_ROW)
+        self.touchpoint_template = pd.read_excel(Const.TEMPLATE_PATH, Const.TOUCH_POINT_SHEET_NAME,
+                                                 header=Const.TOUCH_POINT_HEADER_ROW)
         self.set_templates_data['Brand Blocking'] = self.brand_blocking_template
         self.set_templates_data['Relative Position'] = self.relative_positioning_template
 
@@ -75,7 +76,7 @@ class DIAGEOCO_SANDToolBox:
         self.calculate_block_together() # working
         self.calculate_secondary_display() # working
         self.calculate_brand_pouring_status() # working
-        self.calculate_touch_point() # working
+        # self.calculate_touch_point() # working
         self.calculate_relative_position() # working
         # self.calculate_activation_standard() # using old tables, needs work
 
@@ -85,7 +86,7 @@ class DIAGEOCO_SANDToolBox:
     def calculate_secondary_display(self):
         result = self.global_gen.diageo_global_secondary_display_secondary_function()
         if result:
-            self.common.write_to_db_result_new_tables(**result)
+            self.common_v2.write_to_db_result(**result)
         set_name = Const.SECONDARY_DISPLAY
         set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
         self.save_level2_and_level3(set_name, set_name, set_score)
@@ -101,12 +102,14 @@ class DIAGEOCO_SANDToolBox:
         results_list = self.global_gen.diageo_global_brand_pouring_status_function(self.brand_pouring_status_template)
         if results_list:
             for result in results_list:
-                self.common.write_to_db_result_new_tables(**result)
+                self.common_v2.write_to_db_result(**result)
 
     def calculate_touch_point(self):
-        sub_brands = self.touchpoint_template['Sub Brand'].dropna().unique().tolist()
-        results_list = self.global_gen.diageo_global_touch_point_function(sub_brand_list=sub_brands, old_tables=False,
-                                                                          new_tables=False)
+        store_attribute = 'additional_attribute_2'
+        self.touchpoint_template = self.touchpoint_template.fillna(method='ffill').set_index(self.touchpoint_template.keys()[0])
+        results_list = self.global_gen.diageo_global_touch_point_function(template=self.touchpoint_template,
+                                                                          old_tables=True, new_tables=False,
+                                                                          store_attribute=store_attribute)
         if results_list:
             for result in results_list:
                 self.common_v2.write_to_db_result(**result)
@@ -115,7 +118,7 @@ class DIAGEOCO_SANDToolBox:
         results_list = self.global_gen.diageo_global_block_together(Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY, self.brand_blocking_template)
         if results_list:
             for result in results_list:
-                self.common.write_to_db_result_new_tables(**result)
+                self.common_v2.write_to_db_result(**result)
         set_name = Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY
         set_score = self.calculate_block_together_sets(set_name)
         if set_score == 0:
@@ -136,7 +139,7 @@ class DIAGEOCO_SANDToolBox:
         results_list = self.global_gen.diageo_global_relative_position_function(self.relative_positioning_template)
         if results_list:
             for result in results_list:
-                self.common.write_to_db_result_new_tables(**result)
+                self.common_v2.write_to_db_result(**result)
         set_name = Const.RELATIVE_POSITION
         set_score = self.calculate_relative_position_sets(set_name)
         if set_score == 0:
