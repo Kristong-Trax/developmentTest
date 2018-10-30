@@ -20,7 +20,6 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 __author__ = 'Uri'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
-SURVEY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'SurveyTemplateV2.xlsx')
 ############
 STORE_TYPES = {
     "CR SOVI RED": "CR&LT",
@@ -31,7 +30,7 @@ STORE_TYPES = {
     "United Test - CR SOVI RED": "CR&LT",
     "FSOP - QSR": "QSR",
 }
-SUB_PROJECT = 'CMA Compliance SW'
+SUB_PROJECT = 'ARA'
 
 
 class CMASOUTHWESTToolBox:
@@ -268,28 +267,6 @@ class CMASOUTHWESTToolBox:
             score = 0
             target = None
         return (sos_value, num, den), score, target
-
-    # Targets:
-    def get_sos_targets(self, kpi_name, sos_range=False):
-        targets_template = self.templates[Const.TARGETS]
-        store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
-                                             (targets_template['region'] == self.region)]
-        filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
-        if sos_range:
-            if not filtered_targets_to_kpi.empty:
-                range = filtered_targets_to_kpi['target'].values[0].split(' - ')
-                upper_limit = int(range[1].replace('%', '').strip())
-                lower_limit = int(range[0].replace('%', '').strip())
-            else:
-                upper_limit, lower_limit = None, None
-            return upper_limit, lower_limit
-        else:
-            if not filtered_targets_to_kpi.empty:
-                target = float(filtered_targets_to_kpi[Const.TARGET].values[0])
-            else:
-                target = None
-            return target
-
 
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
