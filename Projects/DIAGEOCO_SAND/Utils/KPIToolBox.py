@@ -84,24 +84,18 @@ class DIAGEOCO_SANDToolBox:
             elif set_name == 'Brand Pouring':
                 results_list = self.global_gen.diageo_global_brand_pouring_status_function(
                     self.set_templates_data[set_name])
-                if results_list:
-                    for result in results_list:
-                        self.common_v2.write_to_db_result(**result)
+                self.save_results_to_db(results_list)
                 set_score = self.calculate_brand_pouring_sets(set_name)
 
             elif set_name == 'Brand Blocking':
                 results_list = self.global_gen.diageo_global_block_together(set_name,
                                                                             self.set_templates_data[set_name])
-                if results_list:
-                    for result in results_list:
-                        self.common_v2.write_to_db_result(**result)
+                self.save_results_to_db(results_list)
                 set_score = self.calculate_block_together_sets(set_name)
 
             elif set_name == 'Relative Position':
                 results_list = self.global_gen.diageo_global_relative_position_function(self.set_templates_data[set_name])
-                if results_list:
-                    for result in results_list:
-                        self.common_v2.write_to_db_result(**result)
+                self.save_results_to_db(results_list)
                 set_score = self.calculate_relative_position_sets(set_name)
 
             elif set_name == 'Activation Standard':
@@ -116,9 +110,7 @@ class DIAGEOCO_SANDToolBox:
                 results_list = self.global_gen.diageo_global_touch_point_function(template=template,
                                                                                   old_tables=True, new_tables=False,
                                                                                   store_attribute=store_attribute)
-                if results_list:
-                    for result in results_list:
-                        self.common_v2.write_to_db_result(**result)
+                self.save_results_to_db(results_list)
             else:
                 return
 
@@ -127,9 +119,16 @@ class DIAGEOCO_SANDToolBox:
             elif set_score is False:
                 return
 
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            if set_name != 'TOUCH POINT': # we need to do this to prevent duplicate entries in report.kps_results
+                set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return
+
+    def save_results_to_db(self, results_list):
+        if results_list:
+            for result in results_list:
+                if result is not None:
+                    self.common_v2.write_to_db_result(**result)
 
     def calculate_brand_pouring_sets(self, set_name):
         """
