@@ -100,11 +100,12 @@ class SceneGOOGLEToolBox:
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
-        for exclude_filter in filters:
-            if exclude:
-                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
-            else:
-                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+        if not isinstance(filters, list):
+            filters = [filters]
+        if exclude:
+            df = df[~df['product_type'].isin(filters)]
+        else:
+            df = df[df['product_type'].isin(filters)]
         return df
 
     @staticmethod
