@@ -6,7 +6,7 @@ from collections import defaultdict
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
+from Projects.CCBOTTLERSUS_SAND.ARA.Const import Const
 from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -70,8 +70,7 @@ class ARAToolBox:
         self.sub_totals = defaultdict(int)
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
-        for sheet in Const.SHEETS_CMA:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        self.templates = self.get_relevant_template()
         self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
@@ -81,16 +80,12 @@ class ARAToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         main_template = self.templates[Const.KPIS]
-        main_template = main_template[main_template[Const.SESSION_LEVEL] == 'Y']
-        if self.region in Const.REGIONS:
-            for i, main_line in main_template.iterrows():
-                store_type = self.does_exist(main_line, Const.STORE_TYPE)
-                if store_type is None or self.store_type in store_type:
-                    self.calculate_main_kpi(main_line)
-            self.write_scene_parent()
-            self.write_sub_parents()
-            self.write_parent()
-            # self.write_to_db_result(
+        for i, main_line in main_template.iterrows():
+            self.calculate_main_kpi(main_line)
+        self.write_scene_parent()
+        self.write_sub_parents()
+        self.write_parent()
+        # self.write_to_db_result(
 
     def calculate_main_kpi(self, main_line):
         """
@@ -100,15 +95,15 @@ class ARAToolBox:
         """
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
-        if kpi_name not in Const.ALL_SCENE_KPIS:  # placeholder- need to check for unintended consequences
-            relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
-        else:
-            relevant_scif = self.scif.copy()
-        scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-        store_attrs = main_line[Const.PROGRAM].split(',')
+        # if kpi_name not in Const.ALL_SCENE_KPIS:  # placeholder- need to check for unintended consequences
+        #     relevant_scif = self.scif[self.scif['scene_id'].isin(self.sw_scenes)]
+        # else:
+        #     relevant_scif = self.scif.copy()
+        relevant_scif = self.scif.copy()
         result = score = target = None
         general_filters = {}
 
+        scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters['template_name'] = scene_types
@@ -122,35 +117,36 @@ class ARAToolBox:
         function = self.get_kpi_function(kpi_type)
 
         for i, kpi_line in relevant_template.iterrows():
-            if not self.store_attr or (store_attrs[0] != '' and self.store_attr not in store_attrs)\
-                    or relevant_scif.empty:
-                continue
-            result, score, target = function(kpi_line, relevant_scif, general_filters)
+            result, num, den, score, target = function(kpi_line, relevant_scif, general_filters)
             if result is None and score is None and target is None:
                 continue
             self.update_parents(kpi_name, result, score)
-            if isinstance(result, tuple):
-                self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
-                                         num=result[1], den=result[2])
-            else:
-                self.write_to_all_levels(kpi_name=kpi_name, result=result, score=score, target=target)
+            self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
         else:
             pass
 
-    def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False,
-                            num=None, den=None):
-        """
-        Writes the final result in the "all" DF, add the score to the red score and writes the KPI in the DB
-        :param kpi_name: str
-        :param result: int
-        :param display_text: str
-        :param weight: int/float
-        :param scene_fk: for the scene's kpi
-        :param reuse_scene: this kpi can use scenes that were used
-        """
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result, Const.SCORE: score, Const.THRESHOLD: target}
-        # self.all_results = self.all_results.append(result_dict, ignore_index=True)
-        self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
+    def get_relevant_template(self):
+        template = {}
+        for sheet in Const.SHEETS:
+            template[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        kpis = template[Const.KPIS]
+        self.create_hierarchy(kpis)
+        template[Const.KPIS] = kpis[(self.is_or_none(kpis, Const.REGION, self.region)) &
+                                    (self.is_or_none(kpis, Const.STORE_TYPE, self.store_type)) &
+                                    (self.is_or_none(kpis, Const.PROGRAM, self.store_attr)) &
+                                    (kpis[Const.SESSION_LEVEL] == 'Y') &
+                                    (kpis[Const.TYPE] != Const.PARENT)]
+        return template
+
+    def is_or_none(self, template, col, val):
+        if not isinstance(val, list):
+            val = [val]
+        return ((template[col].isin(val)) |
+                (template[col] is None) |
+                (template[col] == ''))
+
+    def create_hierarchy(self, kpis):
+        kpis[[Const.KPI_NAME, Const.TYPE]].to_dict()
 
     # SOS:
     def calculate_sos(self, kpi_line, relevant_scif, general_filters):
@@ -279,21 +275,25 @@ class ARAToolBox:
             else:
                 them += 1
 
-        passed = 0
+        score = 0
         if us - them >= 0:
-            passed = 1
+            score = 1
 
+        target = self.get_sos_targets(kpi_line[Const.KPI_NAME])
         if them != 0:
-            score = round((us/float(them))*100, 2)
+            result = round((us/float(them))*100, 2)
         elif us > 0:
-            score = us
+            result = us
         else:
-            score = 0
-        target = us + them
-        if target != 1:
-            target = round(((us + them) / 2) * 100, 2)
+            result = 0
 
-        return (score, us, them), passed, target
+        return result, us, them, score, target
+
+    def calculate_location(self, kpi_line, relevant_scif, general_filters):
+        pass
+
+    def calculate_min_funk(self, kpi_line, relevant_scif, general_filters):
+        pass
 
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
@@ -408,14 +408,14 @@ class ARAToolBox:
             return self.calculate_sos
         elif kpi_type == Const.MIN_SHELVES:
             return self.calculate_number_of_shelves
-        elif kpi_type == Const.SHELVES_BONUS:
-            return self.calculate_number_of_shelves_bonus
-        elif kpi_type == Const.FACINGS:
-            return self.calculate_facings_ntba
+        elif kpi_type == Const.MIN_FACINGS:
+            return self.calculate_min_funk
+        elif kpi_type == Const.LOCATION:
+            return self.calculate_location
+        elif kpi_type == Const.MIN_SKUS:
+            return self.calculate_min_funk
         elif kpi_type == Const.RATIO:
             return self.calculate_ratio
-        elif kpi_type == Const.PURITY:
-            return self.sos_with_num_and_dem
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None

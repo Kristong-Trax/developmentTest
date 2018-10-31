@@ -6,6 +6,7 @@ class Const(object):
 
     REGIONS = 'UNITED'
     DELIVER = 'United Deliver'
+    SOVI = "SOVI"
     TEMPLATE_PATH = 'ARA Template v0.1.xlsx'
 
     # sheets:
@@ -20,7 +21,7 @@ class Const(object):
     SHEETS = [KPIS, SOS, MIN_SHELVES, MIN_FACINGS, LOCATION, MIN_SKUS, RATIO, TARGETS]
 
     # generic columns:
-    KPI_NAME = "KPI name"
+    KPI_NAME = "KPI Name"
     SHELVES = 'Shelves'
     TARGET = "Target"
     EXCLUDE = 'exclude'
@@ -29,9 +30,9 @@ class Const(object):
     TYPE = "Type"
     PARENT = 'Parent'
     REGION = "Region"
-    SCENE_TYPE_GROUP = "Template Group"
+    TEMPLATE_GROUP = "Template Group"
     SCENE_TYPE = "Scene Type"
-    STORE_TYPE = "Store_Type"
+    STORE_TYPE = "Store Type"
     PROGRAM = 'Program'
     SESSION_LEVEL = "Session Level"
 
