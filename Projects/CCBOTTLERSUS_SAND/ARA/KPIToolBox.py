@@ -152,7 +152,6 @@ class ARAToolBox:
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
 
-
     # SOS:
     def calculate_sos(self, kpi_line, relevant_scif, general_filters):
         """
