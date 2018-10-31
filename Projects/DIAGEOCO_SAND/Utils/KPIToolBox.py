@@ -10,7 +10,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from Projects.DIAGEOCO_SAND.Utils.Const import Const
+from Projects.DIAGEOCO_SAND.Data.Const import Const
 
 from datetime import datetime
 import pandas as pd
@@ -53,103 +53,108 @@ class DIAGEOCO_SANDToolBox:
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
-    def main_calculation(self, *args, **kwargs):
-
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        self.relative_positioning_template = pd.read_excel(Const.TEMPLATE_PATH, Const.RELATIVE_POSITIONING_SHEET_NAME,
-                                                           header=Const.RELATIVE_POSITIONING_HEADER_ROW).to_dict(
-            orient='records')
-        self.brand_blocking_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_BLOCKING_SHEET_NAME,
-                                                     header=Const.BRAND_BLOCKING_HEADER_ROW).to_dict(orient='records')
-        self.brand_pouring_status_template = pd.read_excel(Const.TEMPLATE_PATH, Const.BRAND_POURING_SHEET_NAME,
-                                                           header=Const.BRAND_POURING_HEADER_ROW).to_dict(orient='records')
-        self.touchpoint_template = pd.read_excel(Const.TEMPLATE_PATH, Const.TOUCH_POINT_SHEET_NAME,
-                                                 header=Const.TOUCH_POINT_HEADER_ROW)
-        self.set_templates_data['Brand Blocking'] = self.brand_blocking_template
-        self.set_templates_data['Relative Position'] = self.relative_positioning_template
+        set_names = ['Brand Blocking', 'Secondary Displays', 'Brand Pouring', 'TOUCH POINT',
+                     'Relative Position']
+
+        self.tools.update_templates()
+        self.set_templates_data['TOUCH POINT'] = pd.read_excel(Const.TEMPLATE_PATH, Const.TOUCH_POINT_SHEET_NAME,
+                                                               header=Const.TOUCH_POINT_HEADER_ROW)
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
         self.global_gen.tool_box.DIAGEO = 'DIAGEO'
+        self.global_gen.diageo_global_assortment_function()
 
-        self.calculate_block_together() # working
-        self.calculate_secondary_display() # working
-        self.calculate_brand_pouring_status() # working
-        # self.calculate_touch_point() # working
-        self.calculate_relative_position() # working
-        # self.calculate_activation_standard() # using old tables, needs work
+        for set_name in set_names:
+            set_score = 0
 
-        self.global_gen.diageo_global_assortment_function() # working
-        # self.global_gen.diageo_global_share_of_shelf_function() # need template
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-    def calculate_secondary_display(self):
-        result = self.global_gen.diageo_global_secondary_display_secondary_function()
-        if result:
-            self.common_v2.write_to_db_result(**result)
-        set_name = Const.SECONDARY_DISPLAY
-        set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
-        self.save_level2_and_level3(set_name, set_name, set_score)
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            if set_name == 'Secondary Displays':
+                result = self.global_gen.diageo_global_secondary_display_secondary_function()
+                if result:
+                    self.common_v2.write_to_db_result(**result)
+                set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
+                self.save_level2_and_level3(set_name, set_name, set_score)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            elif set_name == 'Brand Pouring':
+                results_list = self.global_gen.diageo_global_brand_pouring_status_function(
+                    self.set_templates_data[set_name])
+                self.save_results_to_db(results_list)
+                set_score = self.calculate_brand_pouring_sets(set_name)
 
-    def calculate_brand_pouring_status(self):
-        results_list = self.global_gen.diageo_global_brand_pouring_status_function(self.brand_pouring_status_template)
-        if results_list:
-            for result in results_list:
-                self.common_v2.write_to_db_result(**result)
+            elif set_name == 'Brand Blocking':
+                results_list = self.global_gen.diageo_global_block_together(set_name,
+                                                                            self.set_templates_data[set_name])
+                self.save_results_to_db(results_list)
+                set_score = self.calculate_block_together_sets(set_name)
 
-    def calculate_touch_point(self):
-        store_attribute = 'additional_attribute_2'
-        self.touchpoint_template = self.touchpoint_template.fillna(method='ffill').set_index(self.touchpoint_template.keys()[0])
-        results_list = self.global_gen.diageo_global_touch_point_function(template=self.touchpoint_template,
-                                                                          old_tables=True, new_tables=False,
-                                                                          store_attribute=store_attribute)
-        if results_list:
-            for result in results_list:
-                self.common_v2.write_to_db_result(**result)
+            elif set_name == 'Relative Position':
+                results_list = self.global_gen.diageo_global_relative_position_function(self.set_templates_data[set_name])
+                self.save_results_to_db(results_list)
+                set_score = self.calculate_relative_position_sets(set_name)
 
-    def calculate_block_together(self):
-        results_list = self.global_gen.diageo_global_block_together(Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY, self.brand_blocking_template)
-        if results_list:
-            for result in results_list:
-                self.common_v2.write_to_db_result(**result)
-        set_name = Const.BRAND_BLOCKING_BRAND_FROM_CATEGORY
-        set_score = self.calculate_block_together_sets(set_name)
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            elif set_name == 'Activation Standard':
+                pass
+                # result = self.global_gen.diageo_global_activation_standard_function(kpi_scores, set_scores,
+                #                                                                     local_templates_path)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            elif set_name == 'TOUCH POINT':
+                store_attribute = 'additional_attribute_2'
+                template = self.set_templates_data[set_name].fillna(method='ffill').set_index(
+                    self.set_templates_data[set_name].keys()[0])
+                results_list = self.global_gen.diageo_global_touch_point_function(template=template,
+                                                                                  old_tables=True, new_tables=False,
+                                                                                  store_attribute=store_attribute)
+                self.save_results_to_db(results_list)
+            else:
+                return
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                return
+
+            if set_name != 'TOUCH POINT': # we need to do this to prevent duplicate entries in report.kps_results
+                set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return
 
-    def calculate_activation_standard(self):
-        result = self.global_gen.diageo_global_activation_standard_function(kpi_scores, set_scores, local_templates_path)
-        # needs work
-
-    def calculate_relative_position(self):
-        # returns list of dict
-        results_list = self.global_gen.diageo_global_relative_position_function(self.relative_positioning_template)
+    def save_results_to_db(self, results_list):
         if results_list:
             for result in results_list:
-                self.common_v2.write_to_db_result(**result)
-        set_name = Const.RELATIVE_POSITION
-        set_score = self.calculate_relative_position_sets(set_name)
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+                if result is not None:
+                    self.common_v2.write_to_db_result(**result)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+    def calculate_brand_pouring_sets(self, set_name):
+        """
+        This function calculates every Brand-Pouring-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.tools.calculate_number_of_scenes(**{self.tools.BRAND_POURING_FIELD: 'Y'}) > 0:
+                # 'Pouring' scenes
+                result = self.tools.calculate_brand_pouring_status(params.get(self.tools.BRAND_NAME),
+                                                                   **{self.tools.BRAND_POURING_FIELD: 'Y'})
+            elif self.tools.calculate_number_of_scenes(**{self.tools.BRAND_POURING_FIELD: 'back_bar'}) > 0:
+                # 'Back Bar' scenes
+                result = self.tools.calculate_brand_pouring_status(params.get(self.tools.BRAND_NAME),
+                                                                   **{self.tools.BRAND_POURING_FIELD: 'back_bar'})
+            else:
+                result = 0
+            score = 1 if result else 0
+            scores.append(score)
+
+            self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
 
     def calculate_relative_position_sets(self, set_name):
         """
@@ -291,5 +296,8 @@ class DIAGEOCO_SANDToolBox:
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:
+            cur.execute(query)
+        # needed to save Touch Point values
+        for query in self.common.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
