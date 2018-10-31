@@ -6,6 +6,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as Common2
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
+from Projects.CCBOTTLERSUS_SAND.ARA.KPIToolBox import ARAToolBox
 from Projects.CCBOTTLERSUS_SAND.CMA.KPIToolBox import CMAToolBox
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.KPIToolBox import CMASOUTHWESTToolBox
 from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.KPIToolBox import SceneSessionToolBox
@@ -32,14 +33,15 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         # Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()  # should be first, because it can include a deletion from the common
-        # self.calculate_bci()
-        self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
-        self.calculate_sovi()
+        # self.calculate_red_score()  # should be first, because it can include a deletion from the common
+        # # self.calculate_bci()
+        # self.calculate_manufacturer_displays()
+        # self.calculate_cma_compliance()
+        # self.calculate_sovi()
+        self.calculate_ara()
         self.common_db.commit_results_data()
 
-        self.calculate_cma_compliance_sw()
+        # self.calculate_cma_compliance_sw()
 
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
@@ -113,3 +115,12 @@ class CCBOTTLERSUS_SANDGenerator:
         except Exception as e:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
 
+    @log_runtime('ARA CCBOTTLERSUSCalculations')
+    def calculate_ara(self):
+        Log.info('starting calculate_ara')
+        try:
+            tool_box = ARAToolBox(self.data_provider, self.output, self.common_db)
+            tool_box.main_calculation()
+            tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))

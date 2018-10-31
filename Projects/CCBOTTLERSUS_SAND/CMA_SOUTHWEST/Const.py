@@ -7,7 +7,7 @@ class Const(object):
     SOVI = "SOVI"
 
     REGIONS = 'SOUTHWEST'
-    TEMPLATE_PATH = 'ARA Template v0.1.xlsx'
+    TEMPLATE_PATH = 'Southwest CMA Compliance Template_v8.xlsx'
 
     # sheets:
     KPIS = "KPIs"

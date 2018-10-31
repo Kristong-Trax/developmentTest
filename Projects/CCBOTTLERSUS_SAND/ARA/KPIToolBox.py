@@ -8,9 +8,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
-from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.CommonV3 import Common as CommonV3
 from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
@@ -33,7 +31,7 @@ STORE_TYPES = {
 SUB_PROJECT = 'ARA'
 
 
-class CMASOUTHWESTToolBox:
+class ARAToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -41,13 +39,10 @@ class CMASOUTHWESTToolBox:
     def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
-        # self.common_db = Common(self.data_provider, SUB_PROJECT)
-        # self.common_db2 = common_db2
-        self.common_db2 = CommonV3(self.data_provider)
-        self.common_scene = CommonV2(self.data_provider)
+        self.common_db = Common(self.data_provider, SUB_PROJECT)
+        self.common_db2 = common_db2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.manufacturer_fk = 1
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
@@ -58,7 +53,7 @@ class CMASOUTHWESTToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[~(self.scif['product_type'] == 'Irrelevant')]
-        self.sw_scenes = self.get_sw_scenes() # we don't need to check scenes without United products
+        self.sw_scenes = self.get_relevant_scenes() # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.results = self.data_provider[Data.SCENE_KPI_RESULTS]
@@ -71,7 +66,6 @@ class CMASOUTHWESTToolBox:
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
         # self.kpi_static_data = self.common_db.get_kpi_static_data()
-        self.total_score = 0
         self.sub_scores = defaultdict(int)
         self.sub_totals = defaultdict(int)
         self.ignore_stacking = False
@@ -81,7 +75,6 @@ class CMASOUTHWESTToolBox:
         self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
-
     def main_calculation(self, *args, **kwargs):
         """
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
@@ -98,7 +91,6 @@ class CMASOUTHWESTToolBox:
             self.write_sub_parents()
             self.write_parent()
             # self.write_to_db_result(
-            #     self.common_db.get_kpi_fk_by_kpi_name(SUB_PROJECT, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -113,7 +105,6 @@ class CMASOUTHWESTToolBox:
         else:
             relevant_scif = self.scif.copy()
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
-        scene_level = self.does_exist(main_line, Const.SCENE_LEVEL)
         store_attrs = main_line[Const.PROGRAM].split(',')
         result = score = target = None
         general_filters = {}
@@ -126,10 +117,7 @@ class CMASOUTHWESTToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
 
-        if kpi_type == 'shelves bonus':
-            relevant_template = self.templates['shelves']
-        else:
-            relevant_template = self.templates[kpi_type]
+        relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         function = self.get_kpi_function(kpi_type)
 
@@ -149,15 +137,6 @@ class CMASOUTHWESTToolBox:
         else:
             pass
 
-    def write_to_session_level(self, kpi_name, result=0):
-        """
-        Writes a result in the DF
-        :param kpi_name: string
-        :param result: boolean
-        """
-        result_dict = {Const.KPI_NAME: kpi_name, Const.RESULT: result * 1}
-        self.session_results = self.session_results.append(result_dict, ignore_index=True)
-
     def write_to_all_levels(self, kpi_name, result, score, target=None, scene_fk=None, reuse_scene=False,
                             num=None, den=None):
         """
@@ -173,60 +152,8 @@ class CMASOUTHWESTToolBox:
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)
         self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
 
-    # availability:
-
-    def calculate_availability(self, kpi_line, relevant_scif):
-        """
-        checks if all the lines in the availability sheet passes the KPI (there is at least one product
-        in this relevant scif that has the attributes).
-        :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
-        :param kpi_line: line from the availability sheet
-        :return: boolean
-        """
-        filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
-        target = kpi_line[Const.TARGET]
-        return filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= target
-
-    def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
-        """
-        takes scif and filters it from the template
-        :param relevant_scif: the current filtered scif
-        :param kpi_line: line from one sheet (availability for example)
-        :param name_in_template: the column name in the template
-        :param name_in_scif: the column name in SCIF
-        :return:
-        """
-        values = self.does_exist(kpi_line, name_in_template)
-        if values:
-            if name_in_scif in Const.NUMERIC_VALUES_TYPES:
-                values = [float(x) for x in values]
-            return relevant_scif[relevant_scif[name_in_scif].isin(values)]
-        return relevant_scif
-
-    def filter_scif_availability(self, kpi_line, relevant_scif):
-        """
-        calls filter_scif_specific for every column in the template of availability
-        :param kpi_line:
-        :param relevant_scif:
-        :return:
-        """
-        names_of_columns = {
-            Const.MANUFACTURER: "manufacturer_name",
-            Const.BRAND: "brand_name",
-            Const.TRADEMARK: "att2",
-            Const.SIZE: "size",
-            Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            # CCBOTTLERSUSConst.PREMIUM_SSD: "Premium SSD",
-            # CCBOTTLERSUSConst.INNOVATION_BRAND: "Innovation Brand",
-        }
-        for name in names_of_columns:
-            relevant_scif = self.filter_scif_specific(relevant_scif, kpi_line, name, names_of_columns[name])
-        return relevant_scif
 
     # SOS:
-
     def calculate_sos(self, kpi_line, relevant_scif, general_filters):
         """
         calculates SOS line in the relevant scif.
@@ -237,15 +164,9 @@ class CMASOUTHWESTToolBox:
         :return: boolean
         """
         kpi_name = kpi_line[Const.KPI_NAME]
-        # relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
         relevant_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-        if kpi_line['range'] == 'Y':
-            upper_limit, lower_limit = self.get_sos_targets(kpi_name, sos_range=True)
-            target = None
-        else:
-            upper_limit, lower_limit = None, None
-            target = self.get_sos_targets(kpi_name)
+        target = self.get_sos_targets(kpi_name)
 
         sos_filters = self.get_kpi_line_filters(kpi_line, name='numerator')
         general_filters = self.get_kpi_line_filters(kpi_line, name='denominator')
@@ -260,13 +181,10 @@ class CMASOUTHWESTToolBox:
             target *= 100
             score = 1 if sos_value >= target else 0
             target = '{}%'.format(int(target))
-        elif not target and upper_limit and lower_limit:
-            score = 1 if (lower_limit <= sos_value <= upper_limit) else 0
-            target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
             score = 0
             target = None
-        return (sos_value, num, den), score, target
+        return sos_value, num, den, score, target
 
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
@@ -306,19 +224,6 @@ class CMASOUTHWESTToolBox:
         else:
             targets = {}
         return targets
-
-    @staticmethod
-    def extrapolate_target(targets, c):
-        while 1:
-            if targets[c]:
-                target = targets[c]
-                break
-            else:
-                c -= 1
-                if c < 0:
-                    target = 0
-                    break
-        return target
 
     def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
         # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
@@ -473,99 +378,7 @@ class CMASOUTHWESTToolBox:
         score = kpi_res['score'].sum()
         return num, den, score
 
-    # Number of shelves
-    def old_calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
-        """
-        calculates SOS line in the relevant scif.
-        :param kpi_line: line from SOS sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator.
-        :return: boolean
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
-        # relevant_scif = self.filter_by_type_value(relevant_scif, den_type, den_value)
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
-        # num_scif = self.filter_by_type_value(relevant_scif, num_type, num_value)
-        target = self.get_sos_targets(kpi_name)
-        general_filters[den_type] = den_value
-        if kpi_line[Const.DEN_TYPES_2]:
-            den_type_2 = kpi_line[Const.DEN_TYPES_2]
-            den_value_2 = kpi_line[Const.DEN_VALUES_2].split(',')
-            general_filters[den_type_2] = den_value_2
-        numerator_filters = {num_type: num_value}
-        if kpi_line[Const.NUM_TYPES_2]:
-            num_type_2 = kpi_line[Const.NUM_TYPES_2]
-            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
-            numerator_filters[num_type_2] = num_value_2
-        numerator_facings = self.scif[self.get_filter_condition(self.scif, **numerator_filters)][
-            self.facings_field].sum()
-        denominator_facings = self.scif[self.get_filter_condition(self.scif, **general_filters)][
-            self.facings_field].sum()
-        general_filters['Southwest Deliver'] = 'Y'
-        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
-            self.match_product_in_scene, **general_filters)]['shelf_number'].unique().count()
-
-        number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
-
-        if target:
-            score = 1 if number_of_shelves_score >= target else 0
-        else:
-            score = 1
-            target = 0
-        return number_of_shelves_score, score, target
-
     # helpers:
-
-    def get_column_name(self, field_name, df):
-        """
-        checks what the real field name in DttFrame is (if it exists in the DF or exists in the "converter" sheet).
-        :param field_name: str
-        :param df: scif/products
-        :return: real column name (if exists)
-        """
-        if field_name in df.columns:
-            return field_name
-        if field_name.upper() in self.converters[Const.NAME_IN_TEMP].str.upper().tolist():
-            field_name = self.converters[self.converters[Const.NAME_IN_TEMP].str.upper() == field_name.upper()][
-                Const.NAME_IN_DB].iloc[0]
-            return field_name
-        return None
-
-    def filter_by_type_value(self, relevant_scif, type_name, value):
-        """
-        filters scif with the type and value
-        :param relevant_scif: current filtered scif
-        :param type_name: str (from the template)
-        :param value: str
-        :return: new scif
-        """
-        if type_name == "":
-            return relevant_scif
-        values = value.split(', ')
-        new_type_name = self.get_column_name(type_name, relevant_scif)
-        if not new_type_name:
-            print "There is no field '{}'".format(type_name)
-            return relevant_scif
-        if new_type_name in Const.NUMERIC_VALUES_TYPES:
-            values = [float(x) for x in values]
-        return relevant_scif[relevant_scif[new_type_name].isin(values)]
-
-    @staticmethod
-    def exclude_scif(exclude_line, relevant_scif):
-        """
-        filters products out of the scif
-        :param exclude_line: line from the exclusion sheet
-        :param relevant_scif: current filtered scif
-        :return: new scif
-        """
-        exclude_products = exclude_line[Const.PRODUCT_EAN].split(', ')
-        return relevant_scif[~(relevant_scif['product_ean_code'].isin(exclude_products))]
-
     @staticmethod
     def does_exist(kpi_line, column_name):
         """
@@ -592,11 +405,9 @@ class CMASOUTHWESTToolBox:
         :return: function
         """
 
-        if kpi_type == Const.AVAILABILITY:
-            return self.calculate_availability
-        elif kpi_type == Const.SOS:
+        if kpi_type == Const.SOS:
             return self.calculate_sos
-        elif kpi_type == Const.SHELVES or kpi_type == Const.SHELVES_BONUS:
+        elif kpi_type == Const.MIN_SHELVES:
             return self.calculate_number_of_shelves
         elif kpi_type == Const.SHELVES_BONUS:
             return self.calculate_number_of_shelves_bonus
@@ -654,152 +465,8 @@ class CMASOUTHWESTToolBox:
 
         return filter_condition
 
-
-    def choose_and_write_results(self):
-        """
-        writes all the KPI in the DB: first the session's ones, second the scene's ones and in the end the ones
-        that depends on the previous ones. After all it writes the red score
-        """
-        # self.scenes_results.to_csv('results/{}/scene {}.csv'.format(self.calculation_type, self.session_uid))####
-        # self.session_results.to_csv('results/{}/session {}.csv'.format(self.calculation_type, self.session_uid))####
-        main_template = self.templates[Const.KPIS]
-        self.write_session_kpis(main_template)
-        # self.write_condition_kpis(main_template)
-        # self.write_missings(main_template)
-        self.write_to_db(SUB_PROJECT, 0)
-        # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
-        # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
-        # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
-
-    def write_missings(self, main_template):
-        """
-        write 0 in all the KPIs that didn't get score
-        :param main_template:
-        """
-        for i, main_line in main_template.iterrows():
-            kpi_name = main_line[Const.KPI_NAME]
-            if not self.all_results[self.all_results[Const.KPI_NAME] == kpi_name].empty:
-                continue
-            result = 0
-            display_text = main_line[Const.DISPLAY_TEXT]
-            weight = main_line[Const.WEIGHT]
-            self.write_to_all_levels(kpi_name, result, display_text, weight)
-
-    def write_session_kpis(self, main_template):
-        """
-        iterates all the session's KPIs and saves them
-        :param main_template: main_sheet.
-        """
-        # session_template = main_template[main_template[Const.CONDITION] == ""]
-        # if self.calculation_type == Const.SOVI:
-        #     session_template = session_template[session_template[Const.SESSION_LEVEL] == Const.V]
-        for i, main_line in main_template.iterrows():
-            kpi_name = main_line[Const.KPI_NAME]
-            result = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
-            if result.empty:
-                continue
-            result = result.iloc[0][Const.RESULT]
-            display_text = main_line[Const.DISPLAY_TEXT]
-            weight = main_line[Const.WEIGHT]
-            self.write_to_all_levels(kpi_name, result, display_text, weight)
-
-    def write_regular_scene_kpis(self, scene_template):
-        """
-        lets the regular KPIs choose their scenes (if they passed).
-        Like in the incremental part - if KPI passed some scenes, we will choose the scene that the children passed
-        :param scene_template: filtered main_sheet (only scene KPIs, and without the passed incremental)
-        :return: the new template (without the KPI written already)
-        """
-        for i, main_line in scene_template.iterrows():
-            kpi_name = main_line[Const.KPI_NAME]
-            reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
-            if not reuse_scene:
-                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
-            true_results = kpi_results[kpi_results[Const.RESULT] > 0]
-            display_text = main_line[Const.DISPLAY_TEXT]
-            weight = main_line[Const.WEIGHT]
-            if true_results.empty:
-                continue
-            true_results = true_results.sort_values(by=Const.RESULT, ascending=False)
-            scene_fk = true_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, true_results.iloc[0][Const.RESULT], display_text, weight,
-                                     scene_fk=scene_fk, reuse_scene=reuse_scene)
-            scene_template = scene_template[~(scene_template[Const.KPI_NAME] == kpi_name)]
-        return scene_template
-
-    def write_not_passed_scene_kpis(self, scene_template):
-        """
-        lets the KPIs not passed choose their scenes.
-        :param scene_template: filtered main_sheet (only scene KPIs, and without the passed KPIs)
-        """
-        for i, main_line in scene_template.iterrows():
-            kpi_name = main_line[Const.KPI_NAME]
-            reuse_scene = main_line[Const.REUSE_SCENE] == Const.V
-            kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
-            if not reuse_scene:
-                kpi_results = kpi_results[~(kpi_results[Const.SCENE_FK].isin(self.used_scenes))]
-            display_text = main_line[Const.DISPLAY_TEXT]
-            weight = main_line[Const.WEIGHT]
-            if kpi_results.empty:
-                continue
-            scene_fk = kpi_results.iloc[0][Const.SCENE_FK]
-            self.write_to_all_levels(kpi_name, 0, display_text, weight, scene_fk=scene_fk, reuse_scene=reuse_scene)
-
-    def write_scene_kpis(self, main_template):
-        """
-        iterates every scene_kpi that does not depend on others, and choose the scene they will take:
-        1. the incrementals take their scene (if they passed).
-        2. the regular KPIs that passed choose their scenes.
-        3. the ones that didn't pass choose their random scenes.
-        :param main_template: main_sheet.
-        """
-        scene_template = main_template[(main_template[Const.SESSION_LEVEL] != Const.V) &
-                                       (main_template[Const.CONDITION] == "")]
-        scene_template = self.write_incremental_kpis(scene_template)
-        scene_template = self.write_regular_scene_kpis(scene_template)
-        self.write_not_passed_scene_kpis(scene_template)
-
-    def write_condition_kpis(self, main_template):
-        """
-        writes all the KPI that depend on other KPIs by checking if the parent KPI has passed and in which scene.
-        :param main_template: main_sheet
-        """
-        condition_template = main_template[main_template[Const.CONDITION] != '']
-        for i, main_line in condition_template.iterrows():
-            condition = main_line[Const.CONDITION]
-            kpi_name = main_line[Const.KPI_NAME]
-            if self.calculation_type == Const.MANUAL or main_line[Const.SESSION_LEVEL] == Const.V:
-                kpi_results = self.session_results[self.session_results[Const.KPI_NAME] == kpi_name]
-            else:
-                kpi_results = self.scenes_results[self.scenes_results[Const.KPI_NAME] == kpi_name]
-            condition_result = self.all_results[(self.all_results[Const.KPI_NAME] == condition) &
-                                                (self.all_results[Const.RESULT] > 0)]
-            if condition_result.empty:
-                continue
-            condition_result = condition_result.iloc[0]
-            condition_scene = condition_result[Const.SCENE_FK]
-            if condition_scene and Const.SCENE_FK in kpi_results:
-                results = kpi_results[kpi_results[Const.SCENE_FK] == condition_scene]
-            else:
-                results = kpi_results
-            if results.empty:
-                continue
-            result = results.iloc[0][Const.RESULT]
-            display_text = main_line[Const.DISPLAY_TEXT]
-            weight = main_line[Const.WEIGHT]
-            scene_fk = results.iloc[0][Const.SCENE_FK] if Const.SCENE_FK in kpi_results else None
-            self.write_to_all_levels(kpi_name, result, display_text, weight, scene_fk=scene_fk)
-
-    def get_sw_scenes(self):
-        return self.scif[self.scif['Southwest Deliver'] == 'Y']['scene_id'].unique().tolist()
-
-    def get_weight_factor(self):
-        sum_weights = self.templates[Const.KPIS][Const.WEIGHT].sum()
-        return sum_weights / 100.0
-
-    def get_score(self, weight):
-        return weight / self.weight_factor
+    def get_relevant_scenes(self):
+        return self.scif[self.scif[Const.DELIVER] == 'Y']['scene_id'].unique().tolist()
 
     def update_parents(self, kpi_name, result, score):
         parent = self.get_kpi_parent(kpi_name)
@@ -972,7 +639,7 @@ class CMASOUTHWESTToolBox:
             result = self.kpi_parent_result(sub_parent, num, den)
             if 'Bonus' in sub_parent:
                 den = 0
-            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
                                                denominator_id=self.store_id,
                                                denominator_result=den, result=result, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
@@ -987,7 +654,7 @@ class CMASOUTHWESTToolBox:
         den = sum([self.sub_totals[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
         if den:
             # result = float(num) / den
-            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
                                                denominator_id=self.store_id,
                                                denominator_result=den, result=num, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
