@@ -20,6 +20,7 @@ __author__ = 'nicolaskeeton'
 CATEGORIES = ['ADULT INCONTINENCE PROTECTION','FEM CARE']
 SUB_CATEGORIES = ['Feminine Hygiene','Feminine Needs']
 KPI_LEVEL_2_cat_space = ['Category Space - Adult Incontinence','Category Space - Feminine Needs','Category Space - Feminine Hygiene']
+ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES = ['Feminine Hygiene']
 UNLIMITED_DISTANCE = 'General'
 TOP_DISTANCE = 'Above distance (shelves)'
 BOTTOM_DISTANCE = 'Below distance (shelves)'
@@ -124,7 +125,7 @@ class KCUS_KPIToolBox:
         self.max_shelf_of_bay = []
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-
+        self.EXCLUDE_EMPTY = True
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -179,49 +180,46 @@ class KCUS_KPIToolBox:
             values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']]['category'].unique().tolist()
 
         if kpi_template['Value2']:
-            if kpi_template['Value2'] == 'Feminine Needs':
+            if kpi_template['Value2'] in ['Feminine Needs', 'Feminine Hygiene'] :
                 sub_category_att = 'FEM NEEDS'
-                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
+                secondary_values_to_check = self.all_products.loc[self.all_products[sub_category_att] == kpi_template['Value2'] ][
                 sub_category_att].unique().tolist()
 
-            elif kpi_template['Value2'] == 'Feminine Hygiene':
-                sub_category_att = 'FEM HYGINE'
-                secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
-                sub_category_att].unique().tolist()
+            # elif kpi_template['Value2'] == 'Feminine Hygiene':
+            #     sub_category_att = 'FEM HYGINE'
+            #     secondary_values_to_check = self.all_products.loc[self.all_products['category'] == kpi_template['Value1']][
+            #     sub_category_att].unique().tolist()
 
 
 
         for primary_filter in values_to_check:
-            filters[kpi_template['Param1']] = primary_filter #value1?
+            filters[kpi_template['Param1']] = primary_filter
             if secondary_values_to_check:
                 for secondary_filter in secondary_values_to_check:
                     if secondary_filter == None:
                         continue
 
-                    filters['template_name'] = secondary_filter
-                    new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+                    filters[sub_category_att] = secondary_filter
 
-                    result = self.calculate_category_space_length(new_kpi_name,
-                                                                 **filters)
-                    filters['category'] = kpi_template['KPI Level 2 Name']
-                    score = result * self.MM_TO_FEET_CONVERSION
-                    # score = result
-                    self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
+                    result = self.calculate_category_space_length(**filters)
+
+                    score = result
+
+                    self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=kpi_name, score=score)
             else:
-                new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-
-
-                result = self.calculate_category_space_length(new_kpi_name,
-                                                             **filters)
-                filters['Category'] = kpi_template['KPI Level 2 Name']
-                score = result * self.MM_TO_FEET_CONVERSION
-
-                self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
 
 
 
+                result = self.calculate_category_space_length(**filters)
 
-    def calculate_category_space_length(self, kpi_name, threshold=0.5,  **filters):
+                score = result
+
+                self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=kpi_name, score=score)
+
+
+
+
+    def calculate_category_space_length(self,  threshold=0.5,  **filters):
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
@@ -229,44 +227,81 @@ class KCUS_KPIToolBox:
         """
 
         try:
+            #Remove this line of code when tagging is updated for femini hygiene.
+            if any(item in filters['template_name'] for item in ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES):
+                for k in filters.keys():
+                    if k not in ['template_name','category']:
+
+                        del filters[k]
+
+
+
             filtered_scif = self.scif[
                 self.get_filter_condition(self.scif, **filters)]
+            if self.EXCLUDE_EMPTY == True:
+                    filtered_scif = filtered_scif[filtered_scif['product_type'] != 'Empty']
+
             space_length = 0
             bay_values = []
+            max_linear_of_bays = 0
+            product_fk_list = filtered_scif['product_fk'].unique().tolist()
+            # space_length_DEBUG = 0
             for scene in filtered_scif['scene_fk'].unique().tolist():
+
+
+
                 scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
                 scene_filters = filters
                 scene_filters['scene_fk'] = scene
+                scene_filters['product_fk'] = product_fk_list
+
+
+
                 for bay in scene_matches['bay_number'].unique().tolist():
                     bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1) &
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
+                    max_linear_of_bays += bay_total_linear
                     scene_filters['bay_number'] = bay
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
 
-                    tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
+                    tested_group_linear_value = tested_group_linear['width_mm_advance'].loc[tested_group_linear['stacking_layer'] == 1].sum()
 
 
                     if tested_group_linear_value:
-                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
+                        bay_ratio = tested_group_linear_value / float(bay_total_linear)
                     else:
                         bay_ratio = 0
+
+
+
                     if bay_ratio >= threshold:
-                        bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
-                                                                   (scene_matches['stacking_layer'] == 1)][
-                                                     'shelf_number'].unique().tolist())
-                        if kpi_name not in self.average_shelf_values.keys():
-                            self.average_shelf_values[kpi_name] = {'num_of_shelves': bay_num_of_shelves,
-                                                                   'num_of_bays': 1}
-                        else:
-                            self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
-                            self.average_shelf_values[kpi_name]['num_of_bays'] += 1
-                        if bay_num_of_shelves:
-                            bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
-                        else:
-                            bay_final_linear_value = 0
-                        bay_values.append(bay_final_linear_value)
-                        space_length += bay_final_linear_value
+                        # bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
+                        #                                            (scene_matches['stacking_layer'] == 1)][
+                        #                              'shelf_number'].unique().tolist())
+                        # if kpi_name not in self.average_shelf_values.keys():
+                        #     self.average_shelf_values[kpi_name] = {'num_of_shelves': bay_num_of_shelves,
+                        #                                            'num_of_bays': 1}
+                        # else:
+                        #     self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
+                        #     self.average_shelf_values[kpi_name]['num_of_bays'] += 1
+                        # if bay_num_of_shelves:
+                        #     bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
+                        # else:
+                        #     bay_final_linear_value = 0
+
+
+                        #  bay_final_linear_value * self.MM_TO_FEET_CONVERSION
+                        #  space_length_DEBUG += bay_final_linear_value
+                        bay_values.append(4)
+                    else:
+
+                        bay_values.append(0)
+                if filtered_scif['template_name'].iloc[0] in ESTIMATE_SPACE_BY_BAYS_TEMPLATE_NAMES:
+                    max_bays = len(scene_matches['bay_number'].unique().tolist())
+                    space_length = max_bays * 4
+                space_length = sum(bay_values)
+
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0

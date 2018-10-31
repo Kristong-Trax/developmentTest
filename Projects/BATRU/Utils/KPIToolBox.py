@@ -2056,6 +2056,7 @@ class BATRUToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = BATRUQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
@@ -2064,36 +2065,3 @@ class BATRUToolBox:
             cur.execute(query)
             # print query
         self.rds_conn.db.commit()
-
-# @staticmethod
-# def most_common(lst):
-#     product_counter = max(zip((lst.count(item) for item in set(lst)), set(lst)))
-#     if product_counter[0] > 1:
-#         current_value = product_counter[0]
-#         current_product = product_counter[1]
-#         new_lst = lst
-#         new_lst.remove(current_product)
-#         new_product_counter = max(zip((new_lst.count(item) for item in set(new_lst)), set(new_lst)))
-#         new_lst.append(current_product)
-#         if new_product_counter[0] == current_value and new_product_counter[1] != current_product:
-#             return [new_product_counter[1], current_product]
-#         else:
-#             return product_counter[1]
-#     else:
-#         return None
-
-
-# def _get_latest_session_for_cycle(self, previous_sessions_in_store):
-#     """
-#     Find latest session for the in the same store as current session
-#     :param previous_sessions_in_store:
-#     :type previous_sessions_in_store: pandas.DataFrame
-#     :return:
-#     :rtype pd.DataFrame
-#     """
-#     max_start_time_per_cycle = previous_sessions_in_store.groupby('plan_fk', as_index=False)['start_time'].max()
-#     latest_session_for_cycle = previous_sessions_in_store.merge(max_start_time_per_cycle,
-#                                                                 on=['plan_fk', 'start_time'])
-#     latest_single_session_for_cycle = latest_session_for_cycle.groupby(['plan_fk', 'cycle_start_date'],
-#                                                                        as_index=False)['session_id'].max()
-#     return latest_single_session_for_cycle.sort_values(['cycle_start_date'], ascending=False).reset_index(drop=True)
