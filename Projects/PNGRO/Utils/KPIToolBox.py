@@ -256,7 +256,7 @@ class PNGRO_PRODToolBox:
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
-                        self.rds_conn.connect_rds() # Nataltya - for debugging
+                        # self.rds_conn.connect_rds() # for debugging
                         score = self.calculate_availability(params, **general_filters)
                     elif kpi_type == self.SHELF_POSITION:
                         score = self.calculate_shelf_position(params, **general_filters)
