@@ -1,19 +1,19 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GOOGLEKR.Utils.SceneKPIToolBox import GOOGLEKRSceneGOOGLEKRGOOGLEToolBox
+from Projects.GOOGLEKR.Utils.SceneKPIToolBox import SceneToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 __author__ = 'Eli'
 
 
-class GOOGLEKRSceneGenerator:
+class SceneGenerator:
 
     def __init__(self, data_provider):
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = GOOGLEKRSceneGOOGLEKRGOOGLEToolBox(self.data_provider, self.common)
+        self.tool_box = SceneToolBox(self.data_provider, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -29,7 +29,7 @@ class GOOGLEKRSceneGenerator:
 
     def scene_osa_and_pog(self):
         try:
-            if self.tool_box.get_fixture_osa():
-                self.tool_box.get_planogram_fixture_details()
+            self.tool_box.get_fixture_osa()
+            self.tool_box.get_planogram_fixture_details()
         except Exception as e:
             Log.error('{}'.format(e))
