@@ -667,16 +667,10 @@ class GSKSGToolBox:
 
         sum_exist = len(products_in_scenes[products_in_scenes['result'] != 0]['product_ean_code'].unique())
         scene_passed_count = len(products_in_scenes[products_in_scenes['result'] != 0]['scene_id'].unique())
-        # for scene_id in valid_scenes:
-        #     in_scene = products_in_scenes.loc[products_in_scenes['scene_id'] == scene_id]
-        #     exist_products = in_scene['result'].sum()
-        res = float(sum_exist) / total_products if total_products else 0
-        #     if res >= target:
-        #         scene_passed = True
-        #         scene_passed_count += 1
-        # sum_exist = float(sum_exist) / total_products if total_products else 0
 
-        return res, scene_passed_count, len(valid_scenes)
+        res = float(sum_exist) / total_products if total_products else 0
+
+        return float(format(res, '.2f')), scene_passed_count, len(valid_scenes)
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)

@@ -619,23 +619,24 @@ class GSKSGToolBox:
 
         kpi_filters, general = self.get_filters(row)
 
-        # filter all products by assortment & template
+        # filter all products by assortment % category
         scif = scif.loc[(scif['in_assort_sc'] == 1) &
                         (scif['rlv_dist_sc'] == 1) &
                         (scif['category_fk'] == category_fk)]
 
         if general:
-            # filter conition filters the products without facings, which result incorrect denominator
+            # filter condition filters the products without facings, which result incorrect denominator
             scif = scif.drop(['facings'], axis=1)
             scif = scif[self.toolbox.get_filter_condition(scif, **general)]
 
         products = scif['product_ean_code']
         total_products = len(products)
-        # removes all filters which are nans
+
         scif = pd.merge(self.match_product_in_scene, scif, how='left',
                         left_on=['scene_fk', 'product_fk'], right_on=['scene_id', 'item_id'])
         scif = scif.drop_duplicates(['scene_id', 'item_id'])
 
+        # removes all filters which are nans
         scif = scif.dropna(subset=kpi_filters.keys() + general.keys())
 
         if kpi_filters.get('shelf_number', '') or general.get('shelf_number', ''):
@@ -668,16 +669,10 @@ class GSKSGToolBox:
 
         sum_exist = len(products_in_scenes[products_in_scenes['result'] != 0]['product_ean_code'].unique())
         scene_passed_count = len(products_in_scenes[products_in_scenes['result'] != 0]['scene_id'].unique())
-        # for scene_id in valid_scenes:
-        #     in_scene = products_in_scenes.loc[products_in_scenes['scene_id'] == scene_id]
-        #     exist_products = in_scene['result'].sum()
-        res = float(sum_exist) / total_products if total_products else 0
-        #     if res >= target:
-        #         scene_passed = True
-        #         scene_passed_count += 1
-        # sum_exist = float(sum_exist) / total_products if total_products else 0
 
-        return res, scene_passed_count, len(valid_scenes)
+        res = float(sum_exist) / total_products if total_products else 0
+
+        return float(format(res, '.2f')), scene_passed_count, len(valid_scenes)
 
     def calculate_sequence(self, row):
         sequence_filter, general_filters = self.get_filters(row)
