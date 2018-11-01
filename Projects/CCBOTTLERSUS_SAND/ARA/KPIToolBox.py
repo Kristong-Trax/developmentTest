@@ -15,7 +15,7 @@ from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 
 
-__author__ = 'Uri'
+__author__ = 'Uri, Sam'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 ############
@@ -57,7 +57,6 @@ class ARAToolBox:
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.results = self.data_provider[Data.SCENE_KPI_RESULTS]
-        self.templates = {}
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -66,11 +65,14 @@ class ARAToolBox:
             self.store_type = STORE_TYPES[self.store_type] ####
         self.store_attr = self.store_info['additional_attribute_3'].iloc[0]
         # self.kpi_static_data = self.common_db.get_kpi_static_data()
-        self.sub_scores = defaultdict(int)
-        self.sub_totals = defaultdict(int)
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
-        self.templates = self.get_relevant_template()
+        self.sub_scores = defaultdict(int)
+        self.sub_totals = defaultdict(int)
+        self.templates = self.get_template()
+        self.hierarchy = self.templates[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
+        self.templates = self.get_relevant_template(self.templates)
+        self.children = self.templates[Const.KPIS][Const.KPI_NAME]
         self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
@@ -82,9 +84,7 @@ class ARAToolBox:
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-        self.write_scene_parent()
-        self.write_sub_parents()
-        self.write_parent()
+        self.write_family_tree()
         # self.write_to_db_result(
 
     def calculate_main_kpi(self, main_line):
@@ -112,25 +112,28 @@ class ARAToolBox:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(scene_groups)]
             general_filters['template_group'] = scene_groups
 
+        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
         relevant_template = self.templates[kpi_type]
         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
         function = self.get_kpi_function(kpi_type)
 
-        for i, kpi_line in relevant_template.iterrows():
-            result, num, den, score, target = function(kpi_line, relevant_scif, general_filters)
-            if result is None and score is None and target is None:
-                continue
-            self.update_parents(kpi_name, result, score)
-            self.write_to_db(kpi_name, score, result=result, threshold=target, num=num, den=den)
-        else:
-            pass
+        if not relevant_scif.empty:
+            for i, kpi_line in relevant_template.iterrows():
+                result, num, den, score, target = function(kpi_line, relevant_scif, general_filters)
+                if (result is None and score is None and target is None) or not den:
+                    continue
+                self.update_parents(kpi_name, score)
+                self.write_to_db(kpi_name, kpi_type, score, result=result, threshold=target, num=num, den=den)
 
-    def get_relevant_template(self):
+
+    def get_template(self):
         template = {}
         for sheet in Const.SHEETS:
             template[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
+        return template
+
+    def get_relevant_template(self, template):
         kpis = template[Const.KPIS]
-        self.create_hierarchy(kpis)
         template[Const.KPIS] = kpis[(self.is_or_none(kpis, Const.REGION, self.region)) &
                                     (self.is_or_none(kpis, Const.STORE_TYPE, self.store_type)) &
                                     (self.is_or_none(kpis, Const.PROGRAM, self.store_attr)) &
@@ -145,9 +148,6 @@ class ARAToolBox:
                 (template[col] is None) |
                 (template[col] == ''))
 
-    def create_hierarchy(self, kpis):
-        kpis[[Const.KPI_NAME, Const.TYPE]].to_dict()
-
     # SOS:
     def calculate_sos(self, kpi_line, relevant_scif, general_filters):
         """
@@ -161,31 +161,116 @@ class ARAToolBox:
         kpi_name = kpi_line[Const.KPI_NAME]
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
         relevant_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-        target = self.get_sos_targets(kpi_name)
+        target = self.get_targets(kpi_name)
 
         sos_filters = self.get_kpi_line_filters(kpi_line, name='numerator')
         general_filters = self.get_kpi_line_filters(kpi_line, name='denominator')
+        exclude_filters = {key: (val, self.EXCLUDE_FILTER) for key, val in
+                           self.get_kpi_line_filters(kpi_line, name='exclude').items()}
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
+        if exclude_filters:
+            num_scif = num_scif[self.get_filter_condition(num_scif, **exclude_filters)]
         sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
 
-        if sos_value is None:
-            return None, None, None
-        if target:
-            target *= 100
-            score = 1 if sos_value >= target else 0
-            target = '{}%'.format(int(target))
-        else:
-            score = 0
-            target = None
+        target *= 100
+        score = 1 if sos_value >= target else 0
+        target = '{}%'.format(int(target))
+
         return sos_value, num, den, score, target
 
+    def calculate_min_facings(self, kpi_line, relevant_scif, general_filters):
+        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        num = num_scif[self.facings_field].sum()
+        score = 1 if num >= target else 0
+
+        return None, num, None, score, target
+
+    def calculate_min_skus(self, kpi_line, relevant_scif, general_filters):
+        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        location = self.does_exist(kpi_line, Const.LOCATION)
+        num = num_scif.shape[0]
+        score = 1 if num >= target else 0
+
+        return None, num, None, score, target
+
+    def calculate_ratio(self, kpi_line, relevant_scif, general_filters):
+        min_facings_percent = kpi_line[Const.MIN_FACINGS]
+        sos_filters = self.get_kpi_line_filters(kpi_line)
+        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
+        scenes = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]['scene_fk'].unique().tolist()
+        us = 0
+        them = 0
+        if not scenes:
+            return None, None, None
+
+        for scene in scenes:
+            sos_filters['scene_fk'] = scene
+            sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
+            if sos_value >= min_facings_percent:
+                us += 1
+            else:
+                them += 1
+
+        target = self.get_targets(kpi_line[Const.KPI_NAME]) * 100
+        ratio, score = self.ratio_score(us, them, target)
+        target = '{}%'.format(int(target))
+
+        return ratio, us, them, score, target
+
+    def calculate_location(self, kpi_line, relevant_scif, general_filters):
+        location = self.does_exist(kpi_line, Const.SHELVES)
+        mpis = self.match_product_in_scene.merge(self.all_products, on='product_fk')
+        mpis = mpis.merge(self.scene_info, on='scene_fk')
+        mpis = mpis.merge(self.data_provider[Data.TEMPLATES], on='template_fk')
+
+        num_mpis, den_mpis, target = self.generic_funk(kpi_line, mpis, general_filters)
+        den_mpis = num_mpis.copy()
+        num_mpis = num_mpis[num_mpis['shelf_number'].isin(location)]
+        num = num_mpis.shape[0]
+        den = den_mpis.shape[0]
+        target *= 100
+        ratio, score = self.ratio_score(num, den, target)
+        target = '{}%'.format(int(target))
+        return ratio, num, den, score, target
+
+    def calculate_min_shelves(self, kpi_line, relevant_scif, general_filters):
+        """
+        calculates SOS line in the relevant scif.
+        :param kpi_line: line from SOS sheet.
+        :param relevant_scif: filtered scif.
+        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
+        all the DP products out of the numerator.
+        :return: boolean
+        """
+        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        num = num_scif[self.facings_field].sum()
+        den = den_scif[self.facings_field].sum()
+        relevant_scenes = relevant_scif['scene_fk'].unique().tolist()
+        scene_filters = {'scene_fk': relevant_scenes}
+        num_shelves = self.match_product_in_scene[self.get_filter_condition(
+                                                  self.match_product_in_scene, **scene_filters)]\
+                                                  [['scene_fk', 'bay_number', 'shelf_number']]\
+                                                  .drop_duplicates().shape[0]
+        ratio, score = self.ratio_score(num, float(den)/num_shelves, target)
+        return ratio, num, None, score, target
+
+    def generic_funk(self, kpi_line, relevant_scif, general_filters):
+        kpi_name = kpi_line[Const.KPI_NAME]
+        numerator_filters = self.get_kpi_line_filters(kpi_line)
+        target = self.get_targets(kpi_name)
+
+        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
+        num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)]
+        den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
+        return num_scif, den_scif, target
+
+    # helpers:
     def get_targets(self, kpi_name):
         targets_template = self.templates[Const.TARGETS]
-        store_targets = targets_template.loc[(targets_template[Const.PROGRAM] == self.program) &
-                                             (targets_template['region'] == self.region)]
-        filtered_targets_to_kpi = store_targets.loc[targets_template['KPI name'] == kpi_name]
+        store_targets = targets_template.loc[(self.is_or_none(targets_template, Const.PROGRAM, self.program))]
+        filtered_targets_to_kpi = store_targets.loc[targets_template[Const.KPI_NAME] == kpi_name]
         if not filtered_targets_to_kpi.empty:
             target = filtered_targets_to_kpi[Const.TARGET].values[0]
         else:
@@ -193,7 +278,15 @@ class ARAToolBox:
         return target
 
     @staticmethod
-    def get_kpi_line_filters(kpi_line, name=''):
+    def ratio_score(num, den, target):
+        ratio = 0
+        if den:
+            ratio = round(num*100.0/den, 2)
+        score = 1 if ratio >= target else 0
+        return ratio, score
+
+    def get_kpi_line_filters(self, kpi_orig, name=''):
+        kpi_line = kpi_orig.copy()
         if name:
             name = name.lower() + ' '
         filters = defaultdict(list)
@@ -202,7 +295,7 @@ class ARAToolBox:
         c = 1
         while 1:
             if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]:
-                filters[kpi_line['{}param {}'.format(name, c)]] += (kpi_line['{}value {}'.format(name, c)].split(','))
+                filters[kpi_line['{}param {}'.format(name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
@@ -220,164 +313,13 @@ class ARAToolBox:
             targets = {}
         return targets
 
-    def calculate_facings_ntba(self, kpi_line, relevant_scif, general_filters):
-        # if not self.store_attr in kpi_line[Const.PROGRAM].split(','):
-        #     return 0, 0, 0
+    @staticmethod
+    def splitter(blurb, delimiter=','):
+        ret = [blurb]
+        if hasattr(ret, 'split'):
+            ret = ret.split(delimiter)
+        return ret
 
-        scenes = relevant_scif['scene_fk'].unique().tolist()
-        targets = self.get_kpi_line_targets(kpi_line)
-        facings_filters = self.get_kpi_line_filters(kpi_line)
-        score = 0
-        passed = 0
-        sum_facings = 0
-        sum_target = 0
-
-        for scene in scenes:
-            scene_scif = relevant_scif[relevant_scif['scene_fk'] == scene]
-            facings = scene_scif[self.get_filter_condition(scene_scif, **facings_filters)][self.facings_field].sum()
-            num_bays = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]['bay_number'].max()
-            max_given = max(list(targets.keys()))
-            print('Num bays is', num_bays)
-            if num_bays in targets:
-                target = targets[num_bays]
-            else:
-                target = None
-
-            if target is None:  # if num bays exceeds doors given in targets, use largest option as target
-                target = self.extrapolate_target(targets, max_given)
-
-            if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
-                score += 1
-            sum_facings += facings
-            sum_target += target
-
-        if score == len(scenes):
-            passed = 1
-
-        # return score, passed, len(scenes)
-        return score, passed, len(scenes)
-
-
-    def calculate_ratio(self, kpi_line, relevant_scif, general_filters):
-        sos_filters = self.get_kpi_line_filters(kpi_line)
-        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
-        scenes = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]['scene_fk'].unique().tolist()
-        us = 0
-        them = 0
-        if not scenes:
-            return None, None, None
-
-        for scene in scenes:
-            sos_filters['scene_fk'] = scene
-            sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-            if sos_value >= .8:
-                us += 1
-            else:
-                them += 1
-
-        score = 0
-        if us - them >= 0:
-            score = 1
-
-        target = self.get_sos_targets(kpi_line[Const.KPI_NAME])
-        if them != 0:
-            result = round((us/float(them))*100, 2)
-        elif us > 0:
-            result = us
-        else:
-            result = 0
-
-        return result, us, them, score, target
-
-    def calculate_location(self, kpi_line, relevant_scif, general_filters):
-        pass
-
-    def calculate_min_funk(self, kpi_line, relevant_scif, general_filters):
-        pass
-
-    def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
-        """
-        calculates SOS line in the relevant scif.
-        :param kpi_line: line from SOS sheet.
-        :param relevant_scif: filtered scif.
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we should filter
-        all the DP products out of the numerator.
-        :return: boolean
-        """
-        kpi_name = kpi_line[Const.KPI_NAME]
-        relevant_scif = relevant_scif[relevant_scif['product_type'] != "Empty"]
-        relevant_scenes = relevant_scif['scene_fk'].unique().tolist()
-        numerator_filters = self.get_kpi_line_filters(kpi_line)
-        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
-        scene_filters = {'scene_fk': relevant_scenes}
-        target = self.get_targets(kpi_name)
-        if isinstance(target, unicode):
-            target = str(target)
-        if isinstance(target, str):
-            target = float(target.split(' ')[0].strip())
-
-        numerator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **numerator_filters)][
-            self.facings_field].sum()
-        denominator_facings = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)][
-            self.facings_field].sum()
-        # general_filters['Southwest Deliver'] = 'Y'
-        # number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
-        #     self.match_product_in_scene, **general_filters)][['scene_fk', 'bay_number', 'shelf_number']].\
-        #     unique().count()
-        number_of_shelves_value = self.match_product_in_scene[self.get_filter_condition(
-                                        self.match_product_in_scene, **scene_filters)]\
-                                        [['scene_fk', 'bay_number', 'shelf_number']]\
-                                        .drop_duplicates().shape[0]
-
-        number_of_shelves_score = numerator_facings / float(denominator_facings / float(number_of_shelves_value))
-
-        if target:
-            score = 1 if number_of_shelves_score >= target else 0
-        else:
-            score = 1
-            target = 0
-
-        if 'bonus' not in kpi_name.lower():
-            return number_of_shelves_score, score, target
-        elif not kpi_line[Const.TARGET]:
-            return score, None, None
-        else:
-            return number_of_shelves_score, None, None
-
-    def write_scene_parent(self):
-        self.results['parent_kpi'] = [int(Const.SCENE_SESSION_KPI[kpi]) if kpi in Const.SCENE_SESSION_KPI else None
-                                      for kpi in self.results['kpi_level_2_fk']]
-        self.results = self.results[~self.results['parent_kpi'].isnull()]
-        for i, parent_kpi in enumerate(set(self.results['parent_kpi'])):
-            kpi_res = self.results[self.results['parent_kpi'] == parent_kpi]
-            num, den, score = self.aggregate(kpi_res, parent_kpi)
-
-            parent_name = self.common_db2.kpi_static_data.set_index('pk').loc[parent_kpi, 'type']
-            self.sub_totals[parent_name] = den
-            self.sub_scores[parent_name] = num
-
-            self.write_hierarchy(kpi_res, i, parent_name)
-
-    def write_hierarchy(self, kpi_res, i, parent_name):
-        for j, kpi_line in kpi_res.iterrows():
-            kpi_fk = kpi_line['scene_kpi_fk']
-            self.common_db2.write_to_db_result(0, parent_fk=i, scene_result_fk=kpi_fk, should_enter=True,
-                                               identifier_parent=self.common_db2.get_dictionary(
-                                               parent_name=parent_name), hierarchy_only=1)
-
-    def aggregate(self, kpi_res, parent_kpi):
-        if Const.BEHAVIOR[parent_kpi] == 'PASS':
-            num = kpi_res['score'].sum()
-            den = kpi_res['parent_kpi'].count()
-
-        else:
-            num = kpi_res['numerator_result'].sum()
-            den = kpi_res['denominator_result'].sum()
-
-        score = kpi_res['score'].sum()
-        return num, den, score
-
-    # helpers:
     @staticmethod
     def does_exist(kpi_line, column_name):
         """
@@ -407,13 +349,13 @@ class ARAToolBox:
         if kpi_type == Const.SOS:
             return self.calculate_sos
         elif kpi_type == Const.MIN_SHELVES:
-            return self.calculate_number_of_shelves
+            return self.calculate_min_shelves
         elif kpi_type == Const.MIN_FACINGS:
-            return self.calculate_min_funk
+            return self.calculate_min_facings
         elif kpi_type == Const.LOCATION:
             return self.calculate_location
         elif kpi_type == Const.MIN_SKUS:
-            return self.calculate_min_funk
+            return self.calculate_min_skus
         elif kpi_type == Const.RATIO:
             return self.calculate_ratio
         else:
@@ -467,37 +409,29 @@ class ARAToolBox:
     def get_relevant_scenes(self):
         return self.scif[self.scif[Const.DELIVER] == 'Y']['scene_id'].unique().tolist()
 
-    def update_parents(self, kpi_name, result, score):
-        parent = self.get_kpi_parent(kpi_name)
-        if parent != SUB_PROJECT:
-            if 'Bonus' in parent:
-                self.update_sub_score(kpi_name, passed=result)
-            else:
-                self.update_sub_score(kpi_name, passed=score)
+    def get_kpi_name(self, kpi_name, kpi_type):
+        return '{} {} {}'.format(SUB_PROJECT, kpi_name, kpi_type)
 
-    def get_kpi_parent(self, kpi_name):
-        type_name = '{} {}'.format(SUB_PROJECT, kpi_name)
-        kpi_family_fk = int(self.common_db2.kpi_static_data.set_index('type')\
-                                .loc[type_name, 'kpi_family_fk'])
-        if kpi_family_fk in Const.KPI_FAMILY_KEY:
-            return Const.KPI_FAMILY_KEY[kpi_family_fk]
-        else:
-            return SUB_PROJECT
+    def get_parent(self, kpi_name):
+        try:
+            parent = self.hierarchy[kpi_name]
+        except Exception as e:
+            parent = None
+            Log.warning("Warning, Parent KPI not found in column '{}' on template page '{}'"
+                        .format(Const.KPI_NAME, Const.KPIS))
+        return parent
 
-    def update_sub_score(self, kpi_name, passed=0, parent=None):
-        if not parent:
-            parent = self.get_kpi_parent(kpi_name)
-        if parent == SUB_PROJECT:
-            parent = '{} {}'.format(SUB_PROJECT, kpi_name)
-        if 'Bonus' not in kpi_name:
-            self.sub_totals[parent] += 1
-            if passed:
-                self.sub_scores[parent] += passed
-        else:
-            self.sub_totals[parent] += 0
-            self.sub_scores[parent] += 0
+    def update_parents(self, kpi, score):
+        parent = self.get_parent(kpi)
+        while parent:
+            self.update_sub_score(parent, score=score)
+            parent = self.get_parent(parent)
 
-    def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
+    def update_sub_score(self, parent, score=0):
+        self.sub_totals[parent] += 1
+        self.sub_scores[parent] += score
+
+    def write_to_db(self, kpi_name, kpi_type, score, result=None, threshold=None, num=None, den=None):
         """
         writes result in the DB
         :param kpi_name: str
@@ -506,22 +440,22 @@ class ARAToolBox:
         :param result: str
         :param threshold: int
         """
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(SUB_PROJECT, kpi_name))
-        parent = self.get_kpi_parent(kpi_name)
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(self.get_kpi_name(kpi_name, kpi_type))
+        parent = self.get_parent(kpi_name)
         delta = 0
         if isinstance(threshold, str) and '%' in threshold:
+            threshold = float(threshold.split('-')[0].replace('%', ''))
             if score == 0:
-                targ = float(threshold.split('-')[0].replace('%', ''))/100
+                targ = threshold/100
                 delta = round((targ * den) - num)
-            threshold = self.tools.result_values[threshold.replace(' ', '')]
+        else:
+            delta = threshold - num
 
-        if parent != SUB_PROJECT:
+        if kpi_name in self.children:
             if score == 1:
                 score = Const.PASS
             elif score == 0:
                 score = Const.FAIL
-            else:
-                score = 'bonus'
             score = self.tools.result_values[score]
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
                                            numerator_result=num, denominator_result=den, weight=delta,
@@ -629,35 +563,24 @@ class ARAToolBox:
             result = num
         return result
 
-    def write_sub_parents(self):
+    def write_family_tree(self):
         for sub_parent in self.sub_totals.keys():
-        # for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
-            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(sub_parent)
+            # for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
+            kpi_type = sub_parent
+            if sub_parent != SUB_PROJECT:
+                kpi_type = '{} {}'.format(SUB_PROJECT, sub_parent)
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(kpi_type)
             num = self.sub_scores[sub_parent]
             den = self.sub_totals[sub_parent]
-            result = self.kpi_parent_result(sub_parent, num, den)
-            if 'Bonus' in sub_parent:
-                den = 0
+            result = num
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
                                                denominator_id=self.store_id,
                                                denominator_result=den, result=result, score=num, target=den,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=sub_parent),
                                                identifier_parent=self.common_db2.get_dictionary(
-                                                   parent_name=Const.PARENT_HIERARCHY[sub_parent]),
+                                                   parent_name=self.get_parent(sub_parent)),
                                                should_enter=True)
-
-    def write_parent(self):
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(SUB_PROJECT)
-        num = sum([self.sub_scores[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
-        den = sum([self.sub_totals[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
-        if den:
-            # result = float(num) / den
-            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
-                                               denominator_id=self.store_id,
-                                               denominator_result=den, result=num, score=num, target=den,
-                                               identifier_result=self.common_db2.get_dictionary(
-                                                   parent_name=SUB_PROJECT))
 
     def commit_results(self):
         """

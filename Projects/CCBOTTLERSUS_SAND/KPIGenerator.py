@@ -36,7 +36,7 @@ class CCBOTTLERSUS_SANDGenerator:
         # self.calculate_red_score()  # should be first, because it can include a deletion from the common
         # # self.calculate_bci()
         # self.calculate_manufacturer_displays()
-        # self.calculate_cma_compliance()
+        self.calculate_cma_compliance()
         # self.calculate_sovi()
         self.calculate_ara()
         self.common_db.commit_results_data()
