@@ -20,9 +20,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('googlekr-sand calculations')
+    LoggerInitializer.init('googlekr calculations')
     Config.init()
-    project_name = 'googlekr-sand'
+    project_name = 'googlekr'
     sessions = ["8e69ef91-1275-42ba-82a3-12a775683fb6"]
     sessions = [
                 '3985c4f3-8e86-4cd0-8455-9202306e7d3e',
@@ -38,6 +38,7 @@ if __name__ == '__main__':
                 'C23CF630-5953-48A3-AE82-FF1E5BE0C8E0',
                 '698CC197-6902-42AF-8015-AF6FD0DAF8D1'
                 ]
+    sessions = ['1DC734A2-F2A7-478F-9447-DB4C8CAF70B2']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
