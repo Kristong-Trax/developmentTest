@@ -268,6 +268,9 @@ class INBEVBRToolBox:
         count_type = row[Const.COUNT_TYPE].values[0].strip()
 
         df = self.scif.copy()
+        product_size = row[Const.PRODUCT_SIZE].values[0]
+        if product_size != "":
+            df = self.filter_product_size(df, product_size)
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
@@ -409,6 +412,7 @@ class INBEVBRToolBox:
                                 Const.TEMPLATE_NAME: 'template_name',
                                 Const.MANUFACTURER: 'manufacturer_name',
                                 Const.CONTAINER_TYPE: 'form_factor',
+                                Const.PRODUCT: 'product_name',
                                 Const.ATT1: 'att1',
                                 Const.FLAVOR: 'Flavor',
                                 Const.BEER_TYPE: 'att2'}
