@@ -12,8 +12,8 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils.INBEV.UploadNewTemplate import NewTemplate
-from Projects.INBEVBE.Utils.Fetcher import INBEVBEINBEVBEQueries
-from Projects.INBEVBE.Utils.INBEVBEJSON import INBEVBEINBEVBEJsonGenerator
+from Projects.INBEVBE.Utils.Fetcher import Queries
+from Projects.INBEVBE.Utils.INBEVBEJSON import JsonGenerator
 from Projects.INBEVBE.Utils.ToolBox import INBEVBEINBEVBEINBEVToolBox
 
 __author__ = 'urid'
@@ -160,7 +160,7 @@ class INBEVBEINBEVBEToolBox:
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = INBEVBEINBEVBEQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = Queries.get_business_unit_data(self.store_info['store_fk'].values[0])
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
@@ -173,7 +173,7 @@ class INBEVBEINBEVBEToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = INBEVBEINBEVBEQueries.get_all_kpi_data()
+        query = Queries.get_all_kpi_data()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
@@ -183,32 +183,31 @@ class INBEVBEINBEVBEToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = INBEVBEINBEVBEQueries.get_match_display(self.session_uid)
+        query = Queries.get_match_display(self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
-        query = INBEVBEINBEVBEQueries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
+        query = Queries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
-        query = INBEVBEINBEVBEQueries.get_oos_messages(self.session_uid)
+        query = Queries.get_oos_messages(self.store_id, self.session_uid)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
-
     def get_store_number_1(self):
-        query = INBEVBEINBEVBEQueries.get_store_number_1(self.store_id)
+        query = Queries.get_store_number_1(self.store_id)
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
     def get_eye_level_shelves(self, shelves_num):
-        jg = INBEVBEINBEVBEJsonGenerator('inbevbe')
+        jg = JsonGenerator('inbevbe')
         jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
         targets = jg.project_kpi_dict['golden_shelves']
         final_shelves = []
@@ -474,8 +473,9 @@ class INBEVBEINBEVBEToolBox:
 
     def remove_product_from_store_assortment(self, products_list):
         for product in products_list:
-            custom_osa_query = INBEVBEINBEVBEQueries.get_delete_osa_records_query(
-                product, self.store_id, datetime.utcnow())
+            custom_osa_query = Queries.get_delete_osa_records_query(product, self.store_id,
+                                                                                  datetime.utcnow(), self.visit_date,
+                                                                                  datetime.utcnow().date())
             self.kpi_results_queries.append(custom_osa_query)
             self.delisted_products.append(product)
         return
@@ -1274,13 +1274,13 @@ class INBEVBEINBEVBEToolBox:
         return bundle_lead
 
     def get_store_attribute_8(self, store_fk):
-        query = INBEVBEINBEVBEQueries.get_store_attribute_8(store_fk)
+        query = Queries.get_store_attribute_8(store_fk)
         final_df = pd.read_sql_query(query, self.rds_conn.db)
         value = final_df.values[0][0]
         return value
 
     def get_all_products(self):
-        query = INBEVBEINBEVBEQueries.get_att3_att4_for_products()
+        query = Queries.get_att3_att4_for_products()
         attributes = pd.read_sql_query(query, self.rds_conn.db)
         final_df = self.all_project_products.merge(attributes, on='product_fk', suffixes=['', '_1'])
         return final_df
@@ -1463,7 +1463,7 @@ class INBEVBEINBEVBEToolBox:
         return round(set_score, 2)
 
     def get_product_att4(self, product_fk):
-        query = INBEVBEINBEVBEQueries.get_product_att4(product_fk)
+        query = Queries.get_product_att4(product_fk)
         att4 = pd.read_sql_query(query, self.rds_conn.db)
         return att4.values[0][0]
 
@@ -1476,7 +1476,7 @@ class INBEVBEINBEVBEToolBox:
         return factor
 
     # def get_rect_values(self):
-    #     query = INBEVBEINBEVBEQueries.get_rect_values_query(self.session_uid)
+    #     query = Queries.get_rect_values_query(self.session_uid)
     #     rect_values = pd.read_sql_query(query, self.rds_conn.db)
     #     return rect_values
 
@@ -1626,8 +1626,8 @@ class INBEVBEINBEVBEToolBox:
         self.rds_conn.disconnect_rds()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
-        delete_queries = INBEVBEINBEVBEQueries.get_delete_session_results_query(self.session_uid)
-        pservice_tables_delete_query = INBEVBEINBEVBEQueries.get_delete_custom_scif_query(
+        delete_queries = Queries.get_delete_session_results_query(self.session_uid)
+        pservice_tables_delete_query = Queries.get_delete_custom_scif_query(
             self.session_fk)
         for query in delete_queries:
             cur.execute(query)

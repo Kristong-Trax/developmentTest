@@ -9,8 +9,12 @@ from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOBR_SAND.Utils.Fetcher import DIAGEOBR_SANDQueries
-from Projects.DIAGEOBR_SAND.Utils.ToolBox import DIAGEOBR_SANDDIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+
 
 __author__ = 'Nimrod'
 
@@ -41,6 +45,7 @@ class DIAGEOBR_SANDToolBox:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
+        self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -62,16 +67,20 @@ class DIAGEOBR_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOBR_SANDDIAGEOToolBox(self.data_provider, output, kpi_static_data=self.kpi_static_data,
-                                           match_display_in_scene=self.match_display_in_scene)
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+
+
 
     def get_business_unit_name(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOBR_SANDQueries.get_business_unit_name(self.store_id)
+        query = DIAGEOQueries.get_business_unit_name(self.store_id)
         business_unit_name = pd.read_sql_query(query, self.rds_conn.db)
         if business_unit_name['business_unit_name'].empty:
             return ""
@@ -83,7 +92,7 @@ class DIAGEOBR_SANDToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOBR_SANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -92,39 +101,63 @@ class DIAGEOBR_SANDToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOBR_SANDQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        # if set_name in ('MPA', 'New Products'):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('POSM',):
-        #     set_score = self.calculate_posm_sets(set_name)
-        if set_name == 'Visible to Customer':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name == 'Secondary Displays':
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
+            # if set_name in ('MPA', 'New Products'):
+            #     set_score = self.calculate_assortment_sets(set_name)
+            # elif set_name in ('POSM',):
+            #     set_score = self.calculate_posm_sets(set_name)
+            if set_name == 'Visible to Customer':
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.global_gen.diageo_global_visible_percentage(sku_list)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+                if res_dict:
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    for r in res_dict:
+                        self.commonV2.write_to_db_result(**r)
+
+                    # Saving to old tables
+                    result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+
+            elif set_name == 'Secondary Displays':
+                # Global function
+                res_dict = self.global_gen.diageo_global_secondary_display_secondary_function()
+
+                # Saving to new tables
+                if res_dict:
+                    self.commonV2.write_to_db_result(fk=res_dict['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                                                            result=res_dict['result'])
+
+                # Saving to old tables
+                set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                return
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+
+        # commiting to new tables
+        self.commonV2.commit_results_data()
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
@@ -244,7 +277,7 @@ class DIAGEOBR_SANDToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOBR_SANDQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

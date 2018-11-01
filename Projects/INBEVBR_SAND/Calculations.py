@@ -23,6 +23,7 @@ class INBEVBRCalculations(BaseCalculationsScript):
 #
 #     # second report
 #     list_sessions = [
+#                     '8a9232b5-978f-4ba5-96b6-8cc49505a4a8',
 #                     'ee5ed5c4-47dd-487c-af41-4bebfa4b7031',
 #                     'ee6e5b25-7fad-46bd-b56b-3bc10aab3848',
 #                     'b85ef7f1-49a0-4ca3-b1d9-6617d66d6674',

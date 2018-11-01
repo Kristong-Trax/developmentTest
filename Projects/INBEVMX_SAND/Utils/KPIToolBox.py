@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                    '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.2.xlsx')
+                                          '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.2.xlsx')
 
 
 class INBEVMXToolBox:
@@ -64,9 +64,9 @@ class INBEVMXToolBox:
         except:
             Log.error("there is no additional attribute 6 in the db")
             return
-        self.sos_target_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
+        self.sos_target_sheet = pd.read_excel(
+            PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
-
 
     def main_calculation(self):
         """
@@ -86,7 +86,7 @@ class INBEVMXToolBox:
         elif kpi_type == Const.SURVEY:
             self.handle_survey_atomics(atomic_id, atomic_name)
 
-    def handle_sos_target_atomics(self,atomic_id, atomic_name):
+    def handle_sos_target_atomics(self, atomic_id, atomic_name):
 
         denominator_number_of_total_facings = 0
         count_result = -1
@@ -102,7 +102,8 @@ class INBEVMXToolBox:
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
         weight = row[Const.TEMPLATE_SCORE].values[0]
         df = self.scif.copy()
-        df = pd.merge(self.scif,self.store_info,how="left",left_on="store_id",right_on="store_fk")
+        df = pd.merge(self.scif, self.store_info, how="left",
+                      left_on="store_id", right_on="store_fk")
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
@@ -112,7 +113,8 @@ class INBEVMXToolBox:
                 deno_manufacturer = row[Const.TEMPLATE_TARGET_PRECENT].values[0].split()
                 filters['manufacturer_name'] = [item.strip() for item in deno_manufacturer]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
-                percentage = 100 * (numerator_number_of_facings / denominator_number_of_total_facings)
+                percentage = 100 * (numerator_number_of_facings /
+                                    denominator_number_of_total_facings)
                 count_result = weight if percentage >= target else -1
 
         if count_result == -1:
@@ -125,21 +127,19 @@ class INBEVMXToolBox:
             return
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                       numerator_result=numerator_number_of_facings, denominator_id=3,
-                                       denominator_result=denominator_number_of_total_facings, result=count_result
-                                           ,score=0)
-
+                                           numerator_result=numerator_number_of_facings, denominator_id=3,
+                                           denominator_result=denominator_number_of_total_facings, result=count_result, score=0)
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
         rows_stores_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip()
-                                                                        for item in r.split(",")])) | (temp == "")]
+                                                                                   for item in r.split(",")])) | (temp == "")]
         temp = rows_stores_filter[Const.TEMPLATE_REGION]
         rows_regions_filter = rows_stores_filter[(temp.apply(lambda r: self.region_name_filter in [item.strip()
-                                                                        for item in r.split(",")])) | (temp == "")]
+                                                                                                   for item in r.split(",")])) | (temp == "")]
         temp = rows_regions_filter[Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6]
         rows_att6_filter = rows_regions_filter[(temp.apply(lambda r: self.att6_filter in [item.strip()
-                                                                        for item in r.split(",")])) | (temp == "")]
+                                                                                          for item in r.split(",")])) | (temp == "")]
         return rows_att6_filter
 
     def get_filters_from_row(self, row):
@@ -163,9 +163,9 @@ class INBEVMXToolBox:
         return self.create_filters_according_to_scif(filters)
 
     def create_filters_according_to_scif(self, filters):
-        convert_from_scif =    {Const.TEMPLATE_GROUP: 'template_group',
-                                Const.TEMPLATE_MANUFACTURER_NOMINATOR: 'manufacturer_name',
-                                Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_6'}
+        convert_from_scif = {Const.TEMPLATE_GROUP: 'template_group',
+                             Const.TEMPLATE_MANUFACTURER_NOMINATOR: 'manufacturer_name',
+                             Const.TEMPLATE_ADDITIONAL_ATTRIBUTE_6: 'additional_attribute_6'}
 
         for key in filters.keys():
             if key in convert_from_scif:
@@ -183,7 +183,7 @@ class INBEVMXToolBox:
         rows = self.survey_sheet.loc[self.survey_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
         temp = rows[Const.TEMPLATE_STORE_TYPE]
         row_store_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip() for item in
-                                                                                        r.split(",")])) | (temp == "")]
+                                                                                 r.split(",")])) | (temp == "")]
 
         if row_store_filter.empty:
             return
@@ -207,7 +207,8 @@ class INBEVMXToolBox:
                 condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
                     second_question_id = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
-                    second_survey_result = self.survey.get_survey_answer(('question_fk', second_question_id))
+                    second_survey_result = self.survey.get_survey_answer(
+                        ('question_fk', second_question_id))
                     second_numeric_survey_result = int(second_survey_result)
                     survey_result = 1 if numeric_survey_result >= second_numeric_survey_result else -1
                 else:
@@ -228,7 +229,6 @@ class INBEVMXToolBox:
 
         self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
                                            denominator_result=0, denominator_id=1, result=survey_result, score=0)
-
 
     def get_new_kpi_static_data(self):
         """
@@ -261,10 +261,8 @@ class INBEVMXToolBox:
                                                                                   'numerator_id', 'numerator_result',
                                                                                   'denominator_id',
                                                                                   'denominator_result', 'result',
-                                                                                   'score'])
+                                                                                  'score'])
         return attributes.to_dict()
-
-
 
     @log_runtime('Saving to DB')
     def commit_results_data(self):
@@ -275,7 +273,8 @@ class INBEVMXToolBox:
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
-        delete_query = INBEVMXQueries.get_delete_session_results_query(self.session_uid, self.session_id)
+        delete_query = INBEVMXQueries.get_delete_session_results_query(
+            self.session_uid, self.session_id)
         cur.execute(delete_query)
         for query in insert_queries:
             cur.execute(query)

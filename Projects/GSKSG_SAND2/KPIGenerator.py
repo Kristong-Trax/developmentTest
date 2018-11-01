@@ -32,3 +32,5 @@ class Generator:
         score = self.tool_box.main_calculation()
         # self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
         # self.common.commit_results_data()
+
+
