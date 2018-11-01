@@ -164,8 +164,6 @@ class CCBZA_ToolBox:
         self.full_store_type = self.get_full_store_type()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
-        # self.scene_kpi_results = self.ps_data_provider.get_scene_results(
-        #     self.scene_info['scene_fk'].drop_duplicates().values)
         self.ko_id = self.get_ko_pk()
 
         self.availability_for_scene_calc = {AVAILABILITY_POS: self.availability_brand_strips_scene,
