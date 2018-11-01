@@ -81,14 +81,14 @@ class PNGRO_PRODToolBox:
     ASSORTMENT_KPI = 'PSKUs Assortment'
     ASSORTMENT_SKU_KPI = 'PSKUs Assortment - SKU'
 
-    SOS_FACING = 'SOS Facing' #Natalya
-    EYE_LEVEL = 'Eye Level' #Natalya
-    DISPLAY_PRESENCE = 'Display Presence' #Natalya
-    EXCLUDE_EMPTY = False #Natalya
-    EXCLUDE_FILTER = 0  #Natalya
-    EMPTY = 'Empty' #Natalya
-    PRODUCT_PRESENCE = 'Product Presence' #Natalya
-    BLOCK_ADJACENCY = 'Block Adjacency' #Natalya
+    SOS_FACING = 'SOS Facing'
+    EYE_LEVEL = 'Eye Level'
+    DISPLAY_PRESENCE = 'Display Presence'
+    EXCLUDE_EMPTY = False
+    EXCLUDE_FILTER = 0
+    EMPTY = 'Empty'
+    PRODUCT_PRESENCE = 'Product Presence'
+    BLOCK_ADJACENCY = 'Block Adjacency'
     BLOCKED_TOGETHER_V = 'Blocked Together Vertical'
     BINARY = 'Binary'
     PERCENT = 'Precentages'
@@ -127,12 +127,12 @@ class PNGRO_PRODToolBox:
 
         self.main_shelves = self.are_main_shelves()
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
-        self.eye_level_args = self.get_eye_level_shelf_data() #Natalya
-        self.scene_display_bay = self.get_scene_display_bay() #Natalya
-        self.display_scene_count = self.get_display_agg() #Natalya
-        self.displays_per_scene = self.get_number_of_displays_in_scene() #Natalya
-        self.adjacency = Adjancency(self.data_provider) #Natalya
-        self.block_calc = Block(self.data_provider) #Natalya
+        self.eye_level_args = self.get_eye_level_shelf_data()
+        self.scene_display_bay = self.get_scene_display_bay()
+        self.display_scene_count = self.get_display_agg()
+        self.displays_per_scene = self.get_number_of_displays_in_scene()
+        self.adjacency = Adjancency(self.data_provider)
+        self.block_calc = Block(self.data_provider)
 
     @property
     def matches(self):
@@ -147,7 +147,6 @@ class PNGRO_PRODToolBox:
             self._match_display = self.get_status_session_by_display(self.session_uid)
         return self._match_display
 
-    #Natalya
     def get_relevant_sbd_kpis(self):
         sbd_kpis = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
         retailer_targets = parse_template(TEMPLATE_PATH, 'retailer_targets')
@@ -161,7 +160,6 @@ class PNGRO_PRODToolBox:
         # return sbd_kpis_retailer_specific
         return relevant_sbd_kpis
 
-    # Natalya
     # def get_relevant_sbd_kpis(self):
     #     sbd_kpis_all = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
     #     relevant_sbd_kpis = sbd_kpis_all[((sbd_kpis_all['Retailer'] == self.retailer)
@@ -501,7 +499,17 @@ class PNGRO_PRODToolBox:
         return score
 
     # Natalya
-    def calculate_sos(self, params, is_linear, **general_filters):
+    def calculate_sos_facings(self, params, **general_filters):
+        numerator_filters, denominator_filters, target = self.get_sos_filters(params)
+        numerator_result = self.calculate_facings_share_of_display(numerator_filters, include_empty=True,
+                                                                   **general_filters)
+        denominator_result = self.calculate_facings_share_of_display(denominator_filters, include_empty=True,
+                                                                     **general_filters)
+        ratio = 0 if denominator_result == 0 else numerator_result / float(denominator_result)
+        score = 1 if ratio >= target else 0
+        return score, str(ratio), str(target)
+
+    def get_sos_filters(self, params):
         type1 = params['Param Type (1)/ Numerator']
         value1 = map(unicode.strip, params['Param (1) Values'].split(','))
         type2 = params['Param Type (2)/ Denominator']
@@ -510,33 +518,22 @@ class PNGRO_PRODToolBox:
         value3 = params['Param (3) Values']
         target = params['Target Policy']
         try:
-            target = float(target)/100.0
+            target = float(target) / 100.0
         except:
             Log.info('The target: {} cannot parse to int'.format(str(target)))
-
         numerator_filters = {type1: value1, type2: value2, type3: value3}
         denominator_filters = {type2: value2}
+        return numerator_filters, denominator_filters, target
 
-        if is_linear:
-            numerator_result = self.tools.calculate_linear_share_of_display(numerator_filters,
-                                                                            include_empty=True,
-                                                                            **general_filters)
-            denominator_result = self.tools.calculate_linear_share_of_display(denominator_filters,
-                                                                              include_empty=True,
-                                                                              **general_filters)
-        else:
-            numerator_result = self.calculate_facings_share_of_display(numerator_filters, include_empty=True,
+    def calculate_sos_linear_ign_stack(self, params, **general_filters):
+        numerator_filters, denominator_filters, target = self.get_sos_filters(params)
+        numerator_res = self.tools.calculate_linear_share_of_display(numerator_filters, include_empty=True,
+                                                                     **general_filters)
+        denominator_res = self.tools.calculate_linear_share_of_display(denominator_filters, include_empty=True,
                                                                        **general_filters)
-            denominator_result = self.calculate_facings_share_of_display(denominator_filters, include_empty=True,
-                                                                         **general_filters)
-        if denominator_result == 0:
-            ratio = 0
-        else:
-            ratio = numerator_result / float(denominator_result)
-        if ratio >= target:
-            return True, str(ratio), str(target)
-        else:
-            return False, str(ratio), str(target)
+        ratio = 0 if denominator_res == 0 else numerator_res / float(denominator_res)
+        score = 1 if ratio >= target else 0
+        return score, str(ratio), str(target)
 
     #Natalya commented out
     # def calculate_sos(self, params, **general_filters):
