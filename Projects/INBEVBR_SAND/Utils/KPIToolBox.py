@@ -18,7 +18,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.6 - KENGINE - October.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.6 - KENGINE - NOVEMBER.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -268,6 +268,9 @@ class INBEVBRToolBox:
         count_type = row[Const.COUNT_TYPE].values[0].strip()
 
         df = self.scif.copy()
+        product_size = row[Const.PRODUCT_SIZE].values[0]
+        if product_size != "":
+            df = self.filter_product_size(df, product_size)
 
         # get the filters
         filters = self.get_filters_from_row(row.squeeze())
