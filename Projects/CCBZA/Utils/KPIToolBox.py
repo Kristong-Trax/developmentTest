@@ -100,6 +100,7 @@ AVAILABILITY_SKU_FACING_OR_MIN = 'Availability SKU facing Or min'
 KO_PRODUCTS = 'KO PRODUCTS'
 GENERAL_FILTERS = 'general_filters'
 KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
+AVAILABLITY_MAJORITY = 'Availability Majority'
 
 # scif fields
 EAN_CODE = 'product_ean_code'
@@ -170,11 +171,13 @@ class CCBZA_ToolBox:
         self.availability_for_scene_calc = {AVAILABILITY_POS: self.availability_brand_strips_scene,
                                             AVAILABILITY_SKU_FACING_AND: self.availability_and_or_scene,
                                             AVAILABILITY_SKU_FACING_OR: self.availability_and_or_scene,
-                                            AVAILABLITY_IF_THEN: self.availability_against_competitors_scene}
+                                            AVAILABLITY_IF_THEN: self.availability_against_competitors_scene,
+                                            AVAILABLITY_MAJORITY: self.calculate_availability_competitors_majority}
         self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
                                              AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
                                              AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
-                                             AVAILABILITY_POS: self.get_availability_results_scene_table}
+                                             AVAILABILITY_POS: self.get_availability_results_scene_table,
+                                             AVAILABLITY_MAJORITY: self.get_availability_results_scene_table}
         self.availability_router = {AVAILABILITY_SKU_FACING_AND: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_POSM: self.calculate_availability_posm,
@@ -303,6 +306,35 @@ class CCBZA_ToolBox:
         identifier_result['store_fk'] = self.session_info['store_fk'].values[0]
         return identifier_result
 
+
+    def calculate_availability_competitors_majority(self, atomic_kpi, identifier_result):
+        target = float(atomic_kpi[TARGET])
+        filters = {GENERAL_FILTERS:self.get_general_calculation_parameters(atomic_kpi)}
+        filters['1'] = {atomic_kpi[TYPE1]: self.split_and_strip(atomic_kpi[VALUE1])}
+        filters['2'] = {atomic_kpi[TYPE2]: self.split_and_strip(atomic_kpi[VALUE2])}
+        filters['3'] = {atomic_kpi[TYPE3]: self.split_and_strip(atomic_kpi[VALUE3])}
+        scene_result = 0
+        if filters[GENERAL_FILTERS]['scene_fk']:
+            competitor_filters = filters[GENERAL_FILTERS].copy()
+            competitor_filters.update({atomic_kpi[TYPE2]: (self.split_and_strip(atomic_kpi[VALUE2]), 0)})
+            competitor_facings = self.scif[self.tools.get_filter_condition(self.scif, **competitor_filters)][
+                                'facings'].sum()
+            if competitor_facings: # potentially target
+                ko_filters_cond1 = filters[GENERAL_FILTERS].copy()
+                ko_filters_cond1.update(filters['1'])
+                ko_filters_cond1.update(filters['2'])
+                ko_facings_cond1 = self.scif[self.tools.get_filter_condition(self.scif, **ko_filters_cond1)]['facings'].sum()
+
+                ko_filters_cond2 = filters[GENERAL_FILTERS].copy()
+                ko_filters_cond2.update(filters['3'])
+                ko_filters_cond2.update(filters['2'])
+                ko_facings_cond2 = self.scif[self.tools.get_filter_condition(self.scif, **ko_filters_cond2)][
+                    'facings'].sum()
+
+                ko_facings_total = ko_facings_cond1 + ko_facings_cond2
+                scene_result = 100 if (ko_facings_total > competitor_facings and ko_facings_total > target) else False
+        self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
+
 #----------------------session calculations--------------------------
 
     def main_calculation(self, *args, **kwargs):
@@ -427,8 +459,9 @@ class CCBZA_ToolBox:
         return scif[scif[MANUFACTURER_NAME] == KO_PRODUCTS]
 
     def get_template_path(self):
+        new ='_new' if str(self.data_provider.visit_date) > '2018-10-28' else ''
         store_type = self.store_data['store_type'].values[0]
-        template_name = 'Template_{}.xlsx'.format(store_type)
+        template_name = 'Template_{}{}.xlsx'.format(store_type, new)
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
 
     def get_template_data(self):
