@@ -14,8 +14,8 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
-from Projects.MOLSONCOORSHR.Utils.ParseTemplates import parse_template
-from Projects.MOLSONCOORSHR.Utils.Fetcher import MOLSONCOORSHRQueries
+from Projects.MOLSONCOORSHR_SAND.Utils.ParseTemplates import parse_template
+from Projects.MOLSONCOORSHR_SAND.Utils.Fetcher import MOLSONCOORSHR_SANDQueries
 
 
 __author__ = 'sergey'
@@ -46,7 +46,7 @@ CATEGORY_FK = 'category_fk'
 LOCATION_TYPE = 'location_type'
 
 
-class MOLSONCOORSHRToolBox:
+class MOLSONCOORSHR_SANDToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -79,12 +79,12 @@ class MOLSONCOORSHRToolBox:
         self.scores = pd.DataFrame()
 
     def get_sos_store_policies(self, visit_date):
-        query = MOLSONCOORSHRQueries.get_sos_store_policies(visit_date)
+        query = MOLSONCOORSHR_SANDQueries.get_sos_store_policies(visit_date)
         store_policies = pd.read_sql_query(query, self.rds_conn.db)
         return store_policies
 
     def get_result_values(self):
-        query = MOLSONCOORSHRQueries.get_result_values()
+        query = MOLSONCOORSHR_SANDQueries.get_result_values()
         result_values = pd.read_sql_query(query, self.rds_conn.db)
         return result_values
 
