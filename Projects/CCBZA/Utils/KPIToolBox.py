@@ -459,7 +459,7 @@ class CCBZA_ToolBox:
         return scif[scif[MANUFACTURER_NAME] == KO_PRODUCTS]
 
     def get_template_path(self):
-        new ='_new' if str(self.data_provider.visit_date) > '2018-10-28' else ''
+        new = '' if str(self.data_provider.visit_date) < '2018-11-01' else '_November'
         store_type = self.store_data['store_type'].values[0]
         template_name = 'Template_{}{}.xlsx'.format(store_type, new)
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
