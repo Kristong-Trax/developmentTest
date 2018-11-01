@@ -170,8 +170,6 @@ class MOLSONCOORSHR_SANDToolBox:
                                                    should_enter=True
                                                    )
 
-                # self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Potential': potential_score}, ignore_index=True)
-
         return total_score, total_potential_score, total_calculated
 
     @kpi_runtime()
@@ -192,12 +190,14 @@ class MOLSONCOORSHR_SANDToolBox:
                 if row.result_distributed:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                    score = 100
                 else:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+                    score = 0
             else:
                 result = row.result_facings
-            score = round(result*100, 0)
+                score = round(result*100, 0)
             identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
             identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
             self.common.write_to_db_result(fk=row.kpi_fk_lvl3,
