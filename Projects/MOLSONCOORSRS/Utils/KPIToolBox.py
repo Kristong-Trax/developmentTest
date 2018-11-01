@@ -10,9 +10,9 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.MOLSONCOORSRS.Utils.ParseTemplates import parse_template
 from Projects.MOLSONCOORSRS.Utils.Fetcher import MOLSONCOORSRSQueries
@@ -170,10 +170,9 @@ class MOLSONCOORSRSToolBox:
                                                    should_enter=True
                                                    )
 
-                # self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Potential': potential_score}, ignore_index=True)
-
         return total_score, total_potential_score, total_calculated
 
+    @kpi_runtime()
     def calculate_assortment_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the Assortment scores
@@ -191,12 +190,14 @@ class MOLSONCOORSRSToolBox:
                 if row.result_distributed:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                    score = 100
                 else:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+                    score = 0
             else:
                 result = row.result_facings
-            score = round(result*100, 0)
+                score = round(result * 100, 0)
             identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
             identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
             self.common.write_to_db_result(fk=row.kpi_fk_lvl3,
@@ -288,6 +289,7 @@ class MOLSONCOORSRSToolBox:
         else:
             return round(1 * float(x['weight']) / x['weight_total'], 5)
 
+    @kpi_runtime()
     def calculate_sos_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the linear SOS and
