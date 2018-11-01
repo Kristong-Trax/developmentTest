@@ -37,12 +37,7 @@ class CCBOTTLERSUS_SANDGenerator:
         # # self.calculate_bci()
         # self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
-        # self.calculate_sovi()
-        self.calculate_ara()
-        self.common_db.commit_results_data()
-
-        # self.calculate_cma_compliance_sw()
-
+        # self.calculate_sovi()aaaaaaaaaQQQQ
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
