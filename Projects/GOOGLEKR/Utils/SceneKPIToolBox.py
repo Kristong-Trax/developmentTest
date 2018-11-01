@@ -5,19 +5,19 @@ import pandas as pd
 __author__ = 'Eli_Sam_Shivi'
 
 
-class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
+class SceneToolBox:
 
     def __init__(self, data_provider, common):
         self.common = common
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_product_in_scene = pd.merge(self.data_provider[Data.MATCHES], self.all_products, on="product_fk")
         self.planograms = self.data_provider[Data.PLANOGRAM_ITEM_FACTS]
         if self.planograms is None:
             self.planograms = pd.DataFrame(columns=['item_id'])
         else:
-            self.planograms = self.planograms[self.planograms['manufacturer_name'] == "Google"]
+            self.planograms = self.planograms[self.planograms['manufacturer_name'] == Const.GOOGLE]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
 
@@ -49,9 +49,10 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
 
     def get_planogram_fixture_details(self):
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
-        all_facings, numerator_result = 0, 0
-        score, planogram_id = None, None
+        all_facings, numerator_result, result = 0, 0, None
+        score, planogram_id = 0, None
         if not self.planograms.empty:
+            result = 1
             compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_COMPLIANCE)
             all_facings = self.planograms['facings'].sum()
             planogram_id = self.planograms['planogram_id'].iloc[0]
@@ -68,13 +69,14 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
                     score = ratio
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings,
+            denominator_result=all_facings, result=result,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
     def get_compliance_products(self, compliance_status_fk, identifier_parent):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_PRODUCT)
         compliance_products = self.match_product_in_scene[
-            self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk]
+                              (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
+                              (self.match_product_in_scene['manufacturer_name'] == Const.GOOGLE)]
         for product_fk in compliance_products['product_fk'].unique().tolist():
             product_facings = len(compliance_products[compliance_products['product_fk'] == product_fk])
             self.common.write_to_db_result(
@@ -85,10 +87,10 @@ class GOOGLEKRSceneGOOGLEKRGOOGLEToolBox:
     def get_fixture_osa(self):
         if self.planograms.empty:
             numerator_result, denominator_result = 0, 0
-            score, result = None, None
+            score, result = 0, None
         else:
             assortment_products = set(self.planograms['item_id'])
-            fixture_products = set(self.scif[self.scif['manufacturer_name'] == "Google"]['product_fk'])
+            fixture_products = set(self.scif[self.scif['manufacturer_name'] == Const.GOOGLE]['product_fk'])
             common_products = fixture_products & assortment_products
             numerator_result = len(common_products)
             denominator_result = len(assortment_products)
