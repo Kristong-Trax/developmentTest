@@ -54,7 +54,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_3.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -179,6 +179,9 @@ class INBEVTRADMXToolBox:
             kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
             # accumulate set score
             set_score += kpi_score
+        # round set_score if the set is 'Set Urban'
+        if set_name == 'Set Urban':
+            set_score = round(set_score)
         # finally, write level 1 kpi set score to DB
         self.write_kpi_set_score_to_db(set_name, set_score)
 
