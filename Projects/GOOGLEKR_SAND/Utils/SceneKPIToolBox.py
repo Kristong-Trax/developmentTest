@@ -27,9 +27,8 @@ class SceneGOOGLEToolBox:
         if brands_scif.empty:
             return
 
-        brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND])\
-                                  .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS]\
-                                  .sum()
+        brand_totals = brands_scif.set_index([Const.BRAND, 'brand_fk']) \
+                                  .groupby(level=[0, 1], axis=0)[Const.FACINGS].sum()
 
         total_facings = scif[Const.FACINGS].sum()
         google_fk, google_facings = brand_totals.reset_index(drop=False, level=1).loc[Const.GOOGLE_BRAND]
