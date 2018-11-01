@@ -10,9 +10,9 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.MOLSONCOORSHR.Utils.ParseTemplates import parse_template
 from Projects.MOLSONCOORSHR.Utils.Fetcher import MOLSONCOORSHRQueries
@@ -174,6 +174,7 @@ class MOLSONCOORSHRToolBox:
 
         return total_score, total_potential_score, total_calculated
 
+    @kpi_runtime()
     def calculate_assortment_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the Assortment scores
@@ -288,6 +289,7 @@ class MOLSONCOORSHRToolBox:
         else:
             return round(1 * float(x['weight']) / x['weight_total'], 5)
 
+    @kpi_runtime()
     def calculate_sos_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the linear SOS and

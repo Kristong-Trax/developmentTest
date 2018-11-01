@@ -10,17 +10,17 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
-from Projects.MOLSONCOORSRS.Utils.ParseTemplates import parse_template
-from Projects.MOLSONCOORSRS.Utils.Fetcher import MOLSONCOORSRSQueries
+from Projects.MOLSONCOORSHR.Utils.ParseTemplates import parse_template
+from Projects.MOLSONCOORSHR.Utils.Fetcher import MOLSONCOORSHRQueries
 
 
 __author__ = 'sergey'
 
-KPIS_TEMPLATE_NAME = 'MOLSONCOORS_RS_KPIs.xlsx'
+KPIS_TEMPLATE_NAME = 'MOLSONCOORS_HR_KPIs.xlsx'
 KPIS_TEMPLATE_SHEET = 'KPIs'
 
 NUMERATOR = 'numerator'
@@ -46,7 +46,7 @@ CATEGORY_FK = 'category_fk'
 LOCATION_TYPE = 'location_type'
 
 
-class MOLSONCOORSRSToolBox:
+class MOLSONCOORSHRToolBox:
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -79,12 +79,12 @@ class MOLSONCOORSRSToolBox:
         self.scores = pd.DataFrame()
 
     def get_sos_store_policies(self, visit_date):
-        query = MOLSONCOORSRSQueries.get_sos_store_policies(visit_date)
+        query = MOLSONCOORSHRQueries.get_sos_store_policies(visit_date)
         store_policies = pd.read_sql_query(query, self.rds_conn.db)
         return store_policies
 
     def get_result_values(self):
-        query = MOLSONCOORSRSQueries.get_result_values()
+        query = MOLSONCOORSHRQueries.get_result_values()
         result_values = pd.read_sql_query(query, self.rds_conn.db)
         return result_values
 
@@ -174,6 +174,7 @@ class MOLSONCOORSRSToolBox:
 
         return total_score, total_potential_score, total_calculated
 
+    @kpi_runtime()
     def calculate_assortment_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the Assortment scores
@@ -288,6 +289,7 @@ class MOLSONCOORSRSToolBox:
         else:
             return round(1 * float(x['weight']) / x['weight_total'], 5)
 
+    @kpi_runtime()
     def calculate_sos_vs_target(self, kpi):
         """
         The function filters only the relevant scenes by Location Type and calculates the linear SOS and
