@@ -572,7 +572,7 @@ class ARAToolBox:
             kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(kpi_type)
             num = self.sub_scores[sub_parent]
             den = self.sub_totals[sub_parent]
-            result = num
+            result, score = self.ratio_score(num, den, 1)
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
                                                denominator_id=self.store_id,
                                                denominator_result=den, result=result, score=num, target=den,
@@ -589,7 +589,7 @@ class ARAToolBox:
         pass
         # self.common_db.delete_results_data_by_kpi_set()
         # self.common_db.commit_results_data_without_delete()
-        self.common_db2.commit_results_data()
+        # self.common_db2.commit_results_data()
         # if self.common_db_integ:
         #     self.common_db_integ.delete_results_data_by_kpi_set()
         #     self.common_db_integ.commit_results_data_without_delete()

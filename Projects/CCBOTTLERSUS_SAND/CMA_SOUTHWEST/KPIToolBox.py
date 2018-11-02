@@ -977,13 +977,14 @@ class CMASOUTHWESTToolBox:
         return kwargs_dict
 
     def kpi_parent_result(self, parent, num, den):
-        if parent in Const.PARENT_RATIO:
+        if parent in Const.PARENT_NOT_RATIO:
+            result = num
+        else:
             if den:
                 result = round((float(num) / den)*100, 2)
             else:
                 result = 0
-        else:
-            result = num
+
         return result
 
     def write_sub_parents(self):
@@ -997,7 +998,7 @@ class CMASOUTHWESTToolBox:
                 den = 0
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               denominator_result=den, result=result, score=num, target=den,
+                                               denominator_result=den, result=result, score=result, target=100,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=sub_parent),
                                                identifier_parent=self.common_db2.get_dictionary(
@@ -1009,10 +1010,10 @@ class CMASOUTHWESTToolBox:
         num = sum([self.sub_scores[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
         den = sum([self.sub_totals[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
         if den:
-            # result = float(num) / den
+            result = num * 100.0 / den
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               denominator_result=den, result=num, score=num, target=den,
+                                               denominator_result=den, result=result, score=result, target=100,
                                                identifier_result=self.common_db2.get_dictionary(
                                                    parent_name=SUB_PROJECT))
 

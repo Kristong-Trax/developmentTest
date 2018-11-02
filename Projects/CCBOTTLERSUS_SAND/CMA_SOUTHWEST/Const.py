@@ -177,6 +177,6 @@ class Const(object):
                 2161: 'SUM',
                 3047: 'PASS'
                 }
-    PARENT_RATIO = [TOTAL_COKE]
+    PARENT_NOT_RATIO = []
 
 

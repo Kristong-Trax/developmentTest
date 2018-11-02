@@ -52,11 +52,11 @@ if __name__ == '__main__':
     #             '900f9fdb-0f3c-4da1-855b-99afd1b6e006',
     #             'cd059d85-46a6-4bf8-9e46-d2e96fbeac82',
     #           ]
-    ''' CMA '''
+    # ''' CMA '''
     sessions = [
-                # 'ffd9cc9d-9847-402d-9026-54a3bdf10a84',
-                # 'fff64504-26e3-4ddd-b60c-098daab8caa1',
-                # 'FF871FE8-C74A-4C6A-BCE3-42C9021D9C43',
+                'ffd9cc9d-9847-402d-9026-54a3bdf10a84',
+                'fff64504-26e3-4ddd-b60c-098daab8caa1',
+                'FF871FE8-C74A-4C6A-BCE3-42C9021D9C43',
                 'ea9e5f71-1a43-4c44-9b99-4e0f7fa89068',
                 ]
     ''' sw coke cooler sessions '''
@@ -67,6 +67,7 @@ if __name__ == '__main__':
     #             # '337A7F53-9E39-4277-852E-2C7CF2FE3285',
     #             # 'C0692CCD-2373-466C-9510-DC692264C38A',
     #              ]
+    
 
     for session in sessions:
         print('*************************************************************************')

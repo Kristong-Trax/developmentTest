@@ -64,6 +64,7 @@ class CMAToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.total_score = 0
+        self.total_count = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.tools = Shared(self.data_provider, self.output)
@@ -83,7 +84,11 @@ class CMAToolBox:
                     self.calculate_main_kpi(main_line)
             kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(SUB_PROJECT)
 
-            self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score, numerator_id=self.manufacturer_fk,
+            result = 0
+            if self.total_count:
+                result = self.total_score * 100.0 / self.total_count
+            self.common_db2.write_to_db_result(fk=kpi_fk, result=result, numerator_result=self.total_score,
+                                               numerator_id=self.manufacturer_fk, denominator_result=self.total_count,
                                                denominator_id=self.store_id,
                                                identifier_result=self.common_db2.get_dictionary(parent_name=SUB_PROJECT))
             self.write_to_db_result(
@@ -117,6 +122,7 @@ class CMAToolBox:
                 result, score, target = kpi_function(kpi_line, relevant_scif, isnt_dp, general_filters)
         else:
             pass
+        self.total_count += 1
         if score > 0:
             self.total_score += 1
         if isinstance(result, tuple):
