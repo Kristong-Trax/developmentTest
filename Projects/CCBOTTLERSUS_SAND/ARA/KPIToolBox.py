@@ -181,14 +181,14 @@ class ARAToolBox:
         return sos_value, num, den, score, target
 
     def calculate_min_facings(self, kpi_line, relevant_scif, general_filters):
-        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        num_scif, den_scif, target = self.calculation_base(kpi_line, relevant_scif, general_filters)
         num = num_scif[self.facings_field].sum()
         score = 1 if num >= target else 0
 
         return None, num, None, score, target
 
     def calculate_min_skus(self, kpi_line, relevant_scif, general_filters):
-        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        num_scif, den_scif, target = self.calculation_base(kpi_line, relevant_scif, general_filters)
         location = self.does_exist(kpi_line, Const.LOCATION)
         num = num_scif.shape[0]
         score = 1 if num >= target else 0
@@ -225,7 +225,7 @@ class ARAToolBox:
         mpis = mpis.merge(self.scene_info, on='scene_fk')
         mpis = mpis.merge(self.data_provider[Data.TEMPLATES], on='template_fk')
 
-        num_mpis, den_mpis, target = self.generic_funk(kpi_line, mpis, general_filters)
+        num_mpis, den_mpis, target = self.calculation_base(kpi_line, mpis, general_filters)
         den_mpis = num_mpis.copy()
         num_mpis = num_mpis[num_mpis['shelf_number'].isin(location)]
         num = num_mpis.shape[0]
@@ -244,7 +244,7 @@ class ARAToolBox:
         all the DP products out of the numerator.
         :return: boolean
         """
-        num_scif, den_scif, target = self.generic_funk(kpi_line, relevant_scif, general_filters)
+        num_scif, den_scif, target = self.calculation_base(kpi_line, relevant_scif, general_filters)
         num = num_scif[self.facings_field].sum()
         den = den_scif[self.facings_field].sum()
         relevant_scenes = relevant_scif['scene_fk'].unique().tolist()
@@ -256,7 +256,7 @@ class ARAToolBox:
         ratio, score = self.ratio_score(num, float(den)/num_shelves, target)
         return ratio, num, None, score, target
 
-    def generic_funk(self, kpi_line, relevant_scif, general_filters):
+    def calculation_base(self, kpi_line, relevant_scif, general_filters):
         kpi_name = kpi_line[Const.KPI_NAME]
         numerator_filters = self.get_kpi_line_filters(kpi_line)
         target = self.get_targets(kpi_name)
@@ -314,8 +314,8 @@ class ARAToolBox:
         return targets
 
     @staticmethod
-    def splitter(blurb, delimiter=','):
-        ret = [blurb]
+    def splitter(text_str, delimiter=','):
+        ret = [text_str]
         if hasattr(ret, 'split'):
             ret = ret.split(delimiter)
         return ret
