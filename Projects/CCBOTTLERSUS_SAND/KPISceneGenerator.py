@@ -21,7 +21,7 @@ class SceneGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        # self.calculate_scene_redscore()
+        self.calculate_scene_redscore()
         self.calculate_scene_coke_cooler()
 
         self.common.commit_results_data(result_entity='scene')

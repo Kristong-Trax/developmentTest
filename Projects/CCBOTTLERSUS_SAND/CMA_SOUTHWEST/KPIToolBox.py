@@ -412,7 +412,7 @@ class CMASOUTHWESTToolBox:
         if target != 1:
             target = round(((us + them) / 2) * 100, 2)
 
-        return (score, us, them), passed, target
+        return (score, us, them), passed, 100
 
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """

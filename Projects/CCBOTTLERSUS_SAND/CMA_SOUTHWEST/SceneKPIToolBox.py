@@ -131,7 +131,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         den_scif = scif[self.get_filter_condition(scif, **general_filters)]
 
         ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-        return num, den, ratio, None, None
+        return num, den, ratio, 0, None
 
 
     def calculate_facings_ntba(self, kpi_line, scif, general_filters):
