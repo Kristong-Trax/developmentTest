@@ -288,9 +288,10 @@ class DIAGEOCO_SANDToolBox:
         return attributes.to_dict()
 
     def commit_results_data(self):
-        # print('success')
-        self.common.commit_results_data_to_new_tables()
+        # self.common.commit_results_data_to_new_tables()
         self.common_v2.commit_results_data()  # new tables
+
+        # old tables
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
@@ -300,4 +301,10 @@ class DIAGEOCO_SANDToolBox:
         # needed to save Touch Point values
         for query in self.common.kpi_results_queries:
             cur.execute(query)
+
+        # this is only needed temporarily until the global assortment function is updated to use the new commonv2 object
+        insert_queries = self.common.merge_insert_queries(self.common.kpi_results_new_tables_queries)
+        for query in insert_queries:
+            cur.execute(query)
+
         self.rds_conn.db.commit()
