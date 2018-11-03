@@ -157,8 +157,8 @@ class PNGRO_PRODToolBox:
         sbd_kpis_retailer_specific = relevant_df[((relevant_df['Retailer'] == self.retailer)
                                         |(relevant_df['Retailer'] == ''))]
         relevant_sbd_kpis = sbd_kpis_all_retailers.append(sbd_kpis_retailer_specific, ignore_index=True)
-        # return sbd_kpis_retailer_specific
-        return relevant_sbd_kpis
+        return sbd_kpis_retailer_specific
+        # return relevant_sbd_kpis
 
     # def get_relevant_sbd_kpis(self):
     #     sbd_kpis_all = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -250,7 +250,7 @@ class PNGRO_PRODToolBox:
                     elif kpi_type == self.SOS:
                         #Natalya
                         # score, result, threshold = self.calculate_sos(params, **general_filters)
-                        score, result, threshold = self.calculate_sos(params, is_linear=True, **general_filters)
+                        score, result, threshold = self.calculate_sos_linear_ign_stack(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
@@ -262,9 +262,9 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_survey(params)
                     #Natalya
                     elif kpi_type == self.SOS_FACING:
-                        score, result, threshold = self.calculate_sos(params, is_linear=False, **general_filters)
+                        score, result, threshold = self.calculate_sos_facings(params, **general_filters)
                     elif kpi_type == self.EYE_LEVEL:
-                        score, result, threshold = self.calculate_eye_level(params, **general_filters)
+                        score, result, threshold = self.calculate_eye_level_new(params, **general_filters)
                     elif kpi_type == self.DISPLAY_PRESENCE:
                         score, result, threshold = self.calculate_display_presence(params, **general_filters)
                     elif kpi_type == self.PRODUCT_PRESENCE:
@@ -297,6 +297,52 @@ class PNGRO_PRODToolBox:
         else:
             return False
 
+    def calculate_eye_level_shelves(self, row):
+        res_table = \
+        self.eye_level_args[(self.eye_level_args["Number of shelves max"] >= row['shelf_num_from_bottom']) & (
+                self.eye_level_args["Number of shelves min"] <= row['shelf_num_from_bottom'])][["Ignore from top",
+                                                                                                "Ignore from bottom"]]
+        if res_table.empty:
+            return
+        start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+        end_shelf = row['shelf_num_from_bottom'] - res_table['Ignore from top'].iloc[0]
+        final_shelves = range(start_shelf, end_shelf + 1)
+        return final_shelves
+
+    def get_facings_scene_bay_shelf(self, row):
+        facings_at_eye_lvl = 0
+        if row['shelf_range']:
+            relevant_matches_products = self.matches_products[(self.matches_products['bay_number'] == row.bay_number)&
+                                                              (self.matches_products['shelf_number_from_bottom'].isin(
+                                                                                                            row.shelf_range))&
+                                                            (self.matches_products['scene_fk'] == row.scene_fk)]
+            facings_at_eye_lvl = len(relevant_matches_products)
+        return facings_at_eye_lvl
+
+    def calculate_eye_level_new(self, params, **general_filters):
+        type1 = params['Param Type (1)/ Numerator']
+        value1 = map(unicode.strip, params['Param (1) Values'].split(','))
+        type2 = params['Param Type (2)/ Denominator']
+        value2 = map(unicode.strip, params['Param (2) Values'].split(','))
+        type3 = params['Param (3)']
+        value3 = params['Param (3) Values']
+        target = float(params['Target Policy'])
+
+        skus_at_eye_lvl = 0
+        if general_filters['scene_id']:
+            filters = {type1: value1, type2: value2, type3: value3, 'scene_fk': general_filters['scene_id']}
+            filters.update(**general_filters)
+            matches_products = self.match_product_in_scene.merge(self.all_products, left_on='product_fk',
+                                                                 right_on='product_fk', how='left')
+            self.matches_products = matches_products[self.tools.get_filter_condition(matches_products, **filters)]
+            scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number', 'shelf_number_from_bottom']].groupby(
+                ['scene_fk', 'bay_number'], as_index=False).agg({'shelf_number_from_bottom': np.max})
+            scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
+            scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
+            skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
+        score = min(skus_at_eye_lvl / target, 1)
+        return score, skus_at_eye_lvl, target
+
     #Natalya
     def calculate_eye_level(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -314,7 +360,8 @@ class PNGRO_PRODToolBox:
             matches_products = self.match_product_in_scene.merge(self.all_products, left_on='product_fk',
                                                                  right_on='product_fk', how='left')
             scene_bays = matches_products[self.tools.get_filter_condition(matches_products, **filters)][[
-                'scene_fk', 'bay_number']].drop_duplicates()  # do we just select shelves that have products of relevant category?
+                'scene_fk', 'bay_number']].drop_duplicates()
+            # do we just select shelves that have products of relevant category?
             for index, row in scene_bays.iterrows():
                 total_num_of_shelves = matches_products[(matches_products['bay_number'] == row.bay_number) &
                                                         (matches_products['scene_fk'] == row.scene_fk)][
@@ -325,7 +372,8 @@ class PNGRO_PRODToolBox:
                                                                (matches_products['shelf_number_from_bottom'].isin(
                                                                                                             shelves_in_eye_lvl))&
                                                                (matches_products['scene_fk'] == row.scene_fk)]
-                    skus_at_eye_lvl += len(scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches, **filters)])
+                    skus_at_eye_lvl += len(scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches,
+                                                                                                   **filters)])
         score = min(skus_at_eye_lvl/target, 1)
         return score, skus_at_eye_lvl, target
 
