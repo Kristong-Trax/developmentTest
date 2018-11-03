@@ -157,8 +157,8 @@ class PNGRO_PRODToolBox:
         sbd_kpis_retailer_specific = relevant_df[((relevant_df['Retailer'] == self.retailer)
                                         |(relevant_df['Retailer'] == ''))]
         relevant_sbd_kpis = sbd_kpis_all_retailers.append(sbd_kpis_retailer_specific, ignore_index=True)
-        return sbd_kpis_retailer_specific
-        # return relevant_sbd_kpis
+        # return sbd_kpis_retailer_specific
+        return relevant_sbd_kpis
 
     # def get_relevant_sbd_kpis(self):
     #     sbd_kpis_all = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
@@ -299,13 +299,13 @@ class PNGRO_PRODToolBox:
 
     def calculate_eye_level_shelves(self, row):
         res_table = \
-        self.eye_level_args[(self.eye_level_args["Number of shelves max"] >= row['shelf_num_from_bottom']) & (
-                self.eye_level_args["Number of shelves min"] <= row['shelf_num_from_bottom'])][["Ignore from top",
+        self.eye_level_args[(self.eye_level_args["Number of shelves max"] >= row['shelf_number_from_bottom']) & (
+                self.eye_level_args["Number of shelves min"] <= row['shelf_number_from_bottom'])][["Ignore from top",
                                                                                                 "Ignore from bottom"]]
         if res_table.empty:
             return
         start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
-        end_shelf = row['shelf_num_from_bottom'] - res_table['Ignore from top'].iloc[0]
+        end_shelf = row['shelf_number_from_bottom'] - res_table['Ignore from top'].iloc[0]
         final_shelves = range(start_shelf, end_shelf + 1)
         return final_shelves
 
