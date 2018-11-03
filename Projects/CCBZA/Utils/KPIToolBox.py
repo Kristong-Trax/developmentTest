@@ -331,7 +331,7 @@ class CCBZA_ToolBox:
 
                 ko_facings_total = ko_facings_cond1 + ko_facings_cond2
                 scene_result = 100 if (ko_facings_total > competitor_facings and ko_facings_total > target) else False
-        self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
+            self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
 #----------------------session calculations--------------------------
 
