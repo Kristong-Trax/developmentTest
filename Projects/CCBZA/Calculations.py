@@ -27,7 +27,8 @@ class CCBZA_Calculations(BaseCalculationsScript):
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
 #         # 'AD29338A-C2D9-4486-BD94-7B1E32224A11'
-#         'A9202C15-05D8-40B0-920D-B9E1CC758B2B'
+#         # 'A9202C15-05D8-40B0-920D-B9E1CC758B2B' # test L&T
+#         'D80757BB-0B33-4E87-889F-38B2158EBC95' # test QSR
 #     ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)

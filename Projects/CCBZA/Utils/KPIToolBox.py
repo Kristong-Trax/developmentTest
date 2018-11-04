@@ -317,7 +317,7 @@ class CCBZA_ToolBox:
             competitor_filters.update({atomic_kpi[TYPE2]: (self.split_and_strip(atomic_kpi[VALUE2]), 0)})
             competitor_facings = self.scif[self.tools.get_filter_condition(self.scif, **competitor_filters)][
                                 'facings'].sum()
-            if competitor_facings: # potentially target
+            if competitor_facings:
                 ko_filters_cond1 = filters[GENERAL_FILTERS].copy()
                 ko_filters_cond1.update(filters['1'])
                 ko_filters_cond1.update(filters['2'])
