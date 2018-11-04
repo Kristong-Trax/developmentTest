@@ -154,9 +154,9 @@ class ToolBox:
         self.common.write_to_db_result(
             fk=pog_kpi_fk, numerator_id=fixture_fk, identifier_parent=Const.POG_HIGH_LEVEL,
             numerator_result=delta, score=avg_pog_exit, should_enter=True, identifier_result=identifier_result)
-        # for scene_result_fk in exit_pog_results['pk'].values:
-        #     self.common.write_to_db_result(should_enter=True, scene_result_fk=scene_result_fk,
-        #                                    identifier_parent=identifier_result, only_hierarchy=True)
+        for scene_result_fk in exit_pog_results['pk'].values:
+            self.common.write_to_db_result(should_enter=True, scene_result_fk=scene_result_fk,
+                                           identifier_parent=identifier_result, only_hierarchy=True)
         return avg_pog_exit
 
     @staticmethod

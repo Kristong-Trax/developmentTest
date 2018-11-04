@@ -25,19 +25,15 @@ if __name__ == '__main__':
     project_name = 'googlekr'
     sessions = ["68ac2242-d6d5-4a08-ba5c-ba5418c69852"]
     for session in sessions:
-#         scenes = [2048,
-# 2050,
-# 2052,
-# 2058
-# ]
-#         for scene in scenes:
-#             print('scene')
-#             data_provider = KEngineDataProvider(project_name)
-#             data_provider.load_scene_data(session, scene)
-#             output = VanillaOutput()
-#             SceneVanillaCalculations(data_provider, output).run_project_calculations()
-#             save_scene_item_facts_to_data_provider(data_provider, output)
-#             SceneCalculations(data_provider).calculate_kpis()
+        scenes = [2048, 2050, 2052, 2058]
+        for scene in scenes:
+            print('scene')
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
