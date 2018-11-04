@@ -440,7 +440,12 @@ class GSKSGToolBox:
                 old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
                                                       (self.old_kpi_static_data['kpi_name'] == result[KPI]+NAME_ADD)][
                                                         'kpi_fk'].iloc[0]
-                self.common_old_tables.write_to_db_result(old_kpi_fk, self.LEVEL2,  result['result_bin'])
+                kwargs = {'session_uid': self.session_uid, 'store_fk': self.store_id,
+                          'visit_date': self.visit_date.isoformat(), 'kpi_fk': old_kpi_fk,
+                          'kpk_name': result[KPI] + NAME_ADD, 'score_2': result['result_bin']}
+
+                self.common_old_tables.write_to_db_result(fk=old_kpi_fk, level=self.LEVEL2, score=result['result_bin'],
+                                                          **kwargs)
             except:
                 print 'kpi {} in set {}'.format(result[KPI]+NAME_ADD, result[SET])
 
