@@ -30,7 +30,7 @@ class JNJITCalculations(BaseCalculationsScript):
         jnj_generator.secondary_placement_location_quality(survey_template)
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         jnj_generator.calculate_auto_assortment()
-        jnj_generator.promo_calc(by_sales_reps=True)
+        jnj_generator.promo_calc(sales_reps_date='2018-09-30')
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
@@ -41,7 +41,7 @@ class JNJITCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'jnjit'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'b5693138-cf2b-407f-a3ec-95195e62d082'
+#     session = 'EE25A944-7389-482A-95A3-248A077A12D4'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     JNJITCalculations(data_provider, output).run_project_calculations()
