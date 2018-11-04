@@ -119,6 +119,8 @@ class Const(object):
     DOMINANT = "dominant"
     MAJORITY_TARGET = 0.5
     NUMERIC_VALUES_TYPES = ['size']
+    PASS = 'Pass'
+    FAIL = 'Fail'
 
     RED_SCORE = 'Red SCORE'
     RED_SCORE_INTEG = 'Red SCORE Integration'
@@ -126,16 +128,55 @@ class Const(object):
     MANUAL_RED_SCORE_INTEG = 'Red Score Survey Integration'
     MANUAL = "MANUAL"
     CALCULATION_TYPES = [SOVI, MANUAL]
+    ALL_SCENE_KPIS = ['Impulse Zone Cooler']
+
+    # Hierarchy
+    CMA = 'CMA Compliance SW'
+    NUM_OF_SHELVES = 'CMA Compliance SW # of Shelves'
+    IMPULSE_COOLER_ZONE = 'CMA Compliance SW Impulse Zone Cooler'
+    NUM_OF_FACINGS = 'CMA Compliance SW # of Facings'
+    PERCENT_OF_FACINGS = 'CMA Compliance SW % of Facings'
+    NUM_SHELVES_BONUS = 'CMA Compliance SW # of Shelves Bonus'
+    TOTAL_COKE = 'Total Coke Cooler Purity'
+    ''
 
     KPI_FAMILY_KEY = {
-                    18: 'CMA Compliance SW # of Shelves',
-                    # 19: 'CMA Compliance SW Impulse Zone Cooler',
-                    20: 'CMA Compliance SW # of Facings',
-                    2: 'CMA Compliance SW % of Facings',
-                    # 21: 'CMA Compliance SW # of Shelves Bonus'
-                    21: 'CMA Compliance SW # of Shelves'
-                }
+                      18: NUM_OF_SHELVES,
+                      # 19: IMPULSE_COOLER_ZONE,
+                       20:  NUM_OF_FACINGS,
+                       2: PERCENT_OF_FACINGS,
+                       # 21: NUM_SHELVES_BONUS,
+                       21: NUM_OF_SHELVES
+                     }
 
     NO_PRESSURE = ['# of Shelves Bonus']
-    ALL_SCENE_KPIS = ['Impulse Zone Cooler']
+    SCENE_SESSION_KPI = {
+                            2160: 2161,
+                            3048: 2161,
+                            3022: 3047,
+                            3023: 3047,
+                            3024: 3047,
+                            3025: 3047,
+                            3026: 3047,
+                            3027: 3047,
+                            3028: 3047,
+                            3029: 3047,
+                            3030: 3047,
+                            3031: 3047,
+                        }
+    PARENT_HIERARCHY = {
+                        NUM_OF_SHELVES: CMA,
+                        IMPULSE_COOLER_ZONE: CMA,
+                        NUM_OF_FACINGS: CMA,
+                        PERCENT_OF_FACINGS: CMA,
+                        NUM_SHELVES_BONUS: None,
+                        TOTAL_COKE: None,
+                        }
+    BEHAVIOR = {
+                3045: 'SUM',
+                2161: 'SUM',
+                3047: 'PASS'
+                }
+    PARENT_NOT_RATIO = []
+
 
