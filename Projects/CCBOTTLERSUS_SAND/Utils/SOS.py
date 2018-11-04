@@ -1,18 +1,24 @@
 import numpy as np
 from collections import defaultdict
 from Trax.Algo.Calculations.Core.Utils import Validation
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 SEPERATOR = '; '
 COMMA = ','
 
 
 class Shared():
+    def __init__(self, data_provider, output):
+        self.data_provider = data_provider
+        self.output = output
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.result_values = self.ps_data_provider.get_result_values().set_index('value')['pk'].to_dict()
+
     @staticmethod
     def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
 
         try:
             Validation.is_empty_df(den_scif)
-            Validation.is_empty_df(num_scif)
             Validation.df_columns_equality(den_scif, num_scif)
             Validation.is_subset(den_scif, num_scif)
         except Exception, e:
@@ -20,8 +26,15 @@ class Shared():
             # raise Exception(msg)
             # print(msg)
             return None, None, None
-        num = num_scif[facings_field].sum()
+
         den = den_scif[facings_field].sum()
+
+        try:
+            Validation.is_empty_df(num_scif)
+        except Exception as e:
+            return (0, 0, den)
+
+        num = num_scif[facings_field].sum()
         if den:
             ratio = round((num / float(den))*100, 2)
         else:
@@ -100,3 +113,4 @@ class Shared():
     #             Log.warning('field {} is not in the Data Frame'.format(field))
     #
     #     return filter_condition
+
