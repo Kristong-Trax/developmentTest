@@ -19,23 +19,19 @@ class CountCalculation(KpiBaseCalculation):
                 self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
 
 
-class LinearSOSCalculation(KpiBaseCalculation):
+class SOSCalculation(KpiBaseCalculation):
     @classproperty
     def kpi_type(self):
-        return 'linear SOS'
+        pass
 
     def calculate(self, params):
+        pass
+
+    def calculate_result_and_write(self, params, result, numerator_result, denominator_result):
         common = self._data_provider.common
         points = params['Points'].iloc[0]
         kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'].iloc[0])
 
-        numerator_filters = {params['numerator type'].iloc[0]: params['numerator value'].iloc[0]}
-        general_filters = {params['denominator type'].iloc[0]: params['denominator value'].iloc[0]}
-
-        sos = SOS(self._data_provider, output=None)
-        result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
-                                                                                        sos_filters=numerator_filters,
-                                                                                        **general_filters)
         if result >= params['upper threshold'].iloc[0]:
             result = points
         elif result < params['lower threshold'].iloc[0]:
@@ -48,17 +44,29 @@ class LinearSOSCalculation(KpiBaseCalculation):
                                         denominator_id=999, denominator_result=denominator_result)]
 
 
-class DisplaySOSCalculation(KpiBaseCalculation):
+class LinearSOSCalculation(SOSCalculation):
+    @classproperty
+    def kpi_type(self):
+        return 'linear SOS'
+
+    def calculate(self, params):
+        numerator_filters = {params['numerator type'].iloc[0]: params['numerator value'].iloc[0]}
+        general_filters = {params['denominator type'].iloc[0]: params['denominator value'].iloc[0]}
+
+        sos = SOS(self._data_provider, output=None)
+        result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
+                                                                                        sos_filters=numerator_filters,
+                                                                                        **general_filters)
+        return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
+
+
+class DisplaySOSCalculation(SOSCalculation):
     @classproperty
     def kpi_type(self):
         return 'Display SOS'
 
     def calculate(self, params):
-        common = self._data_provider.common
-        points = params['Points'].iloc[0]
-        kpi_fk = common.get_kpi_fk_by_kpi_type(params['Atomic KPI'].iloc[0])
         scif = self._data_provider.scene_item_facts
-
         sos_threshold = params['minimum_threshold'].iloc[0]
         result = numerator_result = denominator_result = 0
         relevant_scenes = self.get_secondary_shelf_scenes(scif)
@@ -66,16 +74,7 @@ class DisplaySOSCalculation(KpiBaseCalculation):
             mars_secondary_count = self.get_mars_secondary_shelf_scenes(scif, relevant_scenes, sos_threshold)
             result = mars_secondary_count / len(relevant_scenes)
 
-            if result >= params['upper threshold'].iloc[0]:
-                result = points
-            elif result < params['lower threshold'].iloc[0]:
-                result = 0
-            else:
-                result *= points
-
-        return [self._create_kpi_result(fk=kpi_fk, result=result, score=result,
-                                        numerator_id=999, numerator_result=numerator_result,
-                                        denominator_id=999, denominator_result=denominator_result)]
+        return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
 
     @staticmethod
     def get_secondary_shelf_scenes(scif):
@@ -106,6 +105,7 @@ class DistributionCalculation(KpiBaseCalculation):
         result_kpi = []
         kpi_fk = 1
         assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0])
+        assortment_result = Assortment(data_provider=self._data_provider).calculate_lvl3_assortment()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
         for i, row in assortment_result.iterrows():
             result_kpi.append(self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'],
@@ -116,15 +116,12 @@ class DistributionCalculation(KpiBaseCalculation):
         return 1
 
 
-class AvailabilityBaseCalculation(KpiBaseCalculation):
-    def calculate(self, params):
-        pass
-
+class AvailabilityCalculation(KpiBaseCalculation):
     @classproperty
     def kpi_type(self):
-        pass
+        return 'Availability'
 
-    def calculate_availability(self, params):
+    def calculate(self, params):
         result = 0
         target = params['minimum products'].iloc[0]
 
@@ -141,39 +138,3 @@ class AvailabilityBaseCalculation(KpiBaseCalculation):
 
         return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999, target=target,
                                         numerator_result=None, denominator_id=999, denominator_result=None)]
-
-
-class AvailabilityHangingStripCalculation(AvailabilityBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'Availability hanging strip'
-
-    def calculate(self, params):
-        return self.calculate_availability(params=params)
-
-
-class AvailabilityBasketCalculation(AvailabilityBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'Availability basket'
-
-    def calculate(self, params):
-        return self.calculate_availability(params=params)
-
-
-class AvailabilityMultipackCalculation(AvailabilityBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'Availability multipack'
-
-    def calculate(self, params):
-        return self.calculate_availability(params=params)
-
-
-class AvailabilitySceneTypeCalculation(AvailabilityBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'Availability scene type'
-
-    def calculate(self, params):
-        return self.calculate_availability(params=params)

@@ -94,8 +94,7 @@ class MARSUAEToolBox:
         """
         This function calculates the KPI results.
         """
-        assortment_result = Assortment(data_provider=self.data_provider).calculate_lvl3_assortment()
-        Results(self.data_provider, assortment_result).calculate(self.kpi_sheets['KPI'])
+        Results(self.data_provider).calculate(self.kpi_sheets['KPI'])
         relevant_kpi_res = self.common.get_kpi_fk_by_kpi_type('scene_score')
         scene_kpi_fks = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['pk'].values
         origin_res = self.scene_results[self.scene_results['kpi_level_2_fk'] == relevant_kpi_res]['result'].sum()

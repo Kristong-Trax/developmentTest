@@ -3,22 +3,21 @@ import networkx as nx
 import pydot
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from Projects.MARSUAE.Utils.AtomicKpiCalculator import AvailabilityHangingStripCalculation, CountCalculation, \
-    DistributionCalculation, LinearSOSCalculation, AvailabilitySceneTypeCalculation, AvailabilityMultipackCalculation, \
-    AvailabilityBasketCalculation
+from Projects.MARSUAE.Utils.AtomicKpiCalculator import CountCalculation, \
+    DistributionCalculation, LinearSOSCalculation, AvailabilityCalculation
 
 
 class Results(object):
-    def __init__(self, data_provider, assortment_result):
+    def __init__(self, data_provider):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
         self.common = CommonV2(self._data_provider)
         self.kpi_results = pd.DataFrame(columns=['kpi_name', 'fk', 'score'])
 
-    def calculate_old_tables(self, hierarchy):
-        atomic_results = self._get_atomic_result(hierarchy)
-        kpi_results = self._get_kpi_results(atomic_results)
-        set_result = self._get_set_result(kpi_results)
+    # def calculate_old_tables(self, hierarchy):
+    #     atomic_results = self._get_atomic_result(hierarchy)
+    #     kpi_results = self._get_kpi_results(atomic_results)
+    #     set_result = self._get_set_result(kpi_results)
 
     def calculate(self, hierarchy):
         dependencies_graph = self.build_dependencies_graph(hierarchy)
@@ -26,7 +25,7 @@ class Results(object):
         for kpi in kpi_list:
             kpi_neighbors = nx.neighbors(dependencies_graph, kpi[0])
             if kpi_neighbors:
-                relevant_kpis = self.kpi_results[self.kpi_results['kpi_name'] in kpi_neighbors]
+                relevant_kpis = self.kpi_results[self.kpi_results['kpi_name'].isin(kpi_neighbors)]
                 results = sum(relevant_kpis['score'])
             else:
                 results = self._get_atomic_result(kpi, kpi_neighbors)
@@ -71,10 +70,7 @@ class Results(object):
             DistributionCalculation.kpi_type: DistributionCalculation,
             CountCalculation.kpi_type: CountCalculation,
             LinearSOSCalculation.kpi_type: LinearSOSCalculation,
-            AvailabilitySceneTypeCalculation.kpi_type: AvailabilitySceneTypeCalculation,
-            AvailabilityBasketCalculation.kpi_type: AvailabilityBasketCalculation,
-            AvailabilityMultipackCalculation.kpi_type: AvailabilityMultipackCalculation,
-            AvailabilityHangingStripCalculation.kpi_type: AvailabilityHangingStripCalculation
+            AvailabilityCalculation.kpi_type: AvailabilityCalculation
         }
 
     def _get_set_result(self, kpi_results):
