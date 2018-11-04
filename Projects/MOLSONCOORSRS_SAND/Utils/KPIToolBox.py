@@ -155,12 +155,14 @@ class MOLSONCOORSRS_SANDToolBox:
                 else:
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
                     parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
+                    numerator_id = self.own_manufacturer_id
+                    denominator_id = self.store_id
                     identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
                     identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
                     self.common.write_to_db_result(fk=kpi_fk,
-                                                   numerator_id=0,
+                                                   numerator_id=numerator_id,
                                                    numerator_result=0,
-                                                   denominator_id=0,
+                                                   denominator_id=denominator_id,
                                                    denominator_result=0,
                                                    result=score,
                                                    score=score,
@@ -183,7 +185,7 @@ class MOLSONCOORSRS_SANDToolBox:
         for row in lvl3_result.itertuples():
             numerator_id = row.product_fk
             numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
-            denominator_id = row.assortment_group_fk
+            denominator_id = self.store_id
             denominator_result = row.target
             # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
             if kpi['KPI Type'] == 'Distribution':
@@ -217,9 +219,9 @@ class MOLSONCOORSRS_SANDToolBox:
         if not lvl3_result.empty:
             lvl2_result = self.calculate_assortment_vs_target_lvl2(lvl3_result)
             for row in lvl2_result.itertuples():
-                numerator_id = row.assortment_group_fk
+                numerator_id = self.own_manufacturer_id
                 numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
-                denominator_id = 0
+                denominator_id = self.store_id
                 denominator_result = row.target
                 result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
                 score += self.score_function(result*100, kpi)
