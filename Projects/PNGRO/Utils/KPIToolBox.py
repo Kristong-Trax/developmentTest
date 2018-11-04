@@ -148,14 +148,14 @@ class PNGRO_PRODToolBox:
         return self._match_display
 
     def get_relevant_sbd_kpis(self):
-        sbd_kpis = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=1)
+        sbd_kpis = parse_template(TEMPLATE_PATH, 'SBD_kpis', lower_headers_row_index=2)
         retailer_targets = parse_template(TEMPLATE_PATH, 'retailer_targets')
         retailer_targets = retailer_targets[retailer_targets['Retailer'] == self.retailer]
         relevant_df = sbd_kpis.merge(retailer_targets, left_on='KPI Number', right_on='KPI No', how='left')
         relevant_df.loc[(relevant_df['By Retailer'] == 'Y'), 'Target Policy'] = relevant_df['Retailer Target']
         sbd_kpis_all_retailers = relevant_df[~(relevant_df['By Retailer']=='Y')]
         sbd_kpis_retailer_specific = relevant_df[((relevant_df['Retailer'] == self.retailer)
-                                        |(relevant_df['Retailer'] == ''))]
+                                                 | (relevant_df['Retailer'] == ''))]
         relevant_sbd_kpis = sbd_kpis_all_retailers.append(sbd_kpis_retailer_specific, ignore_index=True)
         # return sbd_kpis_retailer_specific
         return relevant_sbd_kpis
@@ -326,14 +326,13 @@ class PNGRO_PRODToolBox:
         value2 = map(unicode.strip, params['Param (2) Values'].split(','))
         type3 = params['Param (3)']
         value3 = params['Param (3) Values']
-        target = float(params['Target Policy'])
+        target = float(params.get('Target Policy', 1))
 
         skus_at_eye_lvl = 0
         if general_filters['scene_id']:
             filters = {type1: value1, type2: value2, type3: value3, 'scene_fk': general_filters['scene_id']}
             filters.update(**general_filters)
-            matches_products = self.match_product_in_scene.merge(self.all_products, left_on='product_fk',
-                                                                 right_on='product_fk', how='left')
+            matches_products = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
             self.matches_products = matches_products[self.tools.get_filter_condition(matches_products, **filters)]
             scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number', 'shelf_number_from_bottom']].groupby(
                 ['scene_fk', 'bay_number'], as_index=False).agg({'shelf_number_from_bottom': np.max})
@@ -490,7 +489,7 @@ class PNGRO_PRODToolBox:
                 item_blocks_passed = 0
                 block_by_list = self.scif[self.tools.get_filter_condition(self.scif, **filters)][value1_1_block_by].unique().tolist()
                 for item in block_by_list:
-                    filters.update({value1_1_block_by:item})
+                    filters.update({value1_1_block_by: item})
                     is_blocked, n_shelves = self.calculate_block_together_custom(
                         minimum_block_ratio=min_block_ratio,
                         result_by_scene=False, vertical=True, min_facings_in_block=value3_facings,
@@ -1200,9 +1199,8 @@ class PNGRO_PRODToolBox:
                             if len(relevant_vertices_in_cluster1) >= min_facings_in_block \
                                     and len(relevant_vertices_in_cluster2) >= min_facings_in_block:
                                 return True
-                            else:
-                                return False
-                        return True
+                        else:
+                            return True
                 else:
                     relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
                     if len(new_relevant_vertices) > 0:
