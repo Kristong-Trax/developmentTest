@@ -23,9 +23,9 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlekr calculations')
     Config.init()
     project_name = 'googlekr'
-    sessions = ["8e69ef91-1275-42ba-82a3-12a775683fb6"]
+    sessions = ["68ac2242-d6d5-4a08-ba5c-ba5418c69852"]
     for session in sessions:
-        scenes = [884, 887]
+        scenes = [2048, 2050, 2052, 2058]
         for scene in scenes:
             print('scene')
             data_provider = KEngineDataProvider(project_name)
