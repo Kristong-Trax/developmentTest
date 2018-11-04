@@ -15,9 +15,10 @@ if __name__ == '__main__':
                 'ffd0da53-6fd6-418f-b06d-f5cbff735750',
                 'fff20792-6a60-4a13-bb00-879a308c1ea6',
                 'ffbbcecc-5862-4e47-80ef-230f4ba97f8d',
-                'fff20792-6a60-4a13-bb00-879a308c1ea6',
-                '341a9b53-65ad-43b6-9fe0-2ae56fcbe9bd',
-                '6a19080f-9741-4760-85fb-22a5e774d13b'
+                'c14c74c6-d507-4681-ac77-9c1dfd9b8c3b',
+                # 'fff20792-6a60-4a13-bb00-879a308c1ea6',
+                # '341a9b53-65ad-43b6-9fe0-2ae56fcbe9bd',
+                # '6a19080f-9741-4760-85fb-22a5e774d13b'
             ]
     output = Output()
     for session in list_sessions:
