@@ -103,7 +103,7 @@ class ToolBox:
                 identifier_parent=Const.FIXTURE_HIGH_LEVEL, should_enter=True)
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL,
+        self.common.write_to_db_result(fk=set_kpi_fk, result=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL,
                                        numerator_id=self.manufacturer_fk)
 
     def get_osa_and_pog(self):
@@ -121,7 +121,7 @@ class ToolBox:
             all_scores += avg_pog_exit
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.POG_HIGH_LEVEL,
+        self.common.write_to_db_result(fk=set_kpi_fk, result=set_average, identifier_result=Const.POG_HIGH_LEVEL,
                                        numerator_id=self.manufacturer_fk)
 
     def get_fixture_osa_oos_pog(self, fixture, osa_scene_results, pog_scene_results):
