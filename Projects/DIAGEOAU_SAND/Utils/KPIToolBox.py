@@ -115,9 +115,11 @@ class DIAGEOAU_SANDToolBox:
 
             # if set_name in ('MPA', 'Local MPA', 'New Products',):
             #     set_score = self.calculate_assortment_sets(set_name)
+            # elif set_name in ('POSM',):
+            #     set_score = self.calculate_posm_sets(set_name)
 
             # Global relative position
-            elif set_name in ('Relative Position'):
+            if set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
                     self.set_templates_data[set_name], location_type='template_name')
@@ -125,7 +127,6 @@ class DIAGEOAU_SANDToolBox:
 
                 # Saving to old tables
                 set_score = self.calculate_relative_position_sets(set_name)
-
 
             # Global brand blocking
             elif set_name in ('Brand Blocking'):
@@ -138,10 +139,6 @@ class DIAGEOAU_SANDToolBox:
                 # Saving to old tables
                 set_score = self.calculate_block_together_sets(set_name)
 
-
-            # elif set_name in ('POSM',):
-            #     set_score = self.calculate_posm_sets(set_name)
-
             # Global Brand Pouring
             elif set_name in ('Brand Pouring'):
                 # Global function
@@ -152,7 +149,7 @@ class DIAGEOAU_SANDToolBox:
                 set_score = self.calculate_brand_pouring_sets(set_name)
 
             # Global Visible to Customer / Visible to Consumer
-            if set_name == 'Visible to Customer':
+            elif set_name == 'Visible to Customer':
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
@@ -184,7 +181,7 @@ class DIAGEOAU_SANDToolBox:
                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
                 self.save_level2_and_level3(set_name, set_name, set_score)
             else:
-                return
+               continue
 
             if set_score == 0:
                 pass
