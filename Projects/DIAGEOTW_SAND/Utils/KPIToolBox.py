@@ -146,7 +146,7 @@ class DIAGEOTW_SANDToolBox:
                     result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
-            elif set_name in ('Secondary display', 'Secondary'):
+            elif set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:

@@ -134,7 +134,12 @@ class DIAGEOBR_SANDToolBox:
                     result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
-            elif set_name in ('Secondary display', 'Secondary'):
+                # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                # self.save_level2_and_level3(set_name, set_name, set_score)
+
+
+            elif set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
                 res_dict = self.global_gen.diageo_global_secondary_display_secondary_function()
 
