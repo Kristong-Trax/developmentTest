@@ -22,7 +22,7 @@ class DIAGEOGR_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoau calculations')
+#     LoggerInitializer.init('diageogr calculations')
 #     Config.init()
 #     project_name = 'diageogr-sand'
 #     data_provider = ACEDataProvider(project_name)
