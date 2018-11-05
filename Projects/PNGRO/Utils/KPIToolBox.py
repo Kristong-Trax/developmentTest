@@ -132,7 +132,6 @@ class PNGRO_PRODToolBox:
         self.displays_per_scene = self.get_number_of_displays_in_scene()
         self.adjacency = Adjancency(self.data_provider)
         self.block_calc = Block(self.data_provider)
-        # self.eye_level_target = self.get_shelf_level_target()
 
     @property
     def matches(self):
@@ -242,7 +241,6 @@ class PNGRO_PRODToolBox:
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        #Natalya
                         # score, result, threshold = self.calculate_sos(params, **general_filters)
                         score, result, threshold = self.calculate_sos_linear_ign_stack(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
@@ -317,18 +315,9 @@ class PNGRO_PRODToolBox:
         return facings_at_eye_lvl
 
     def calculate_eye_level_new(self, params, **general_filters):
-        # type1 = params['Param Type (1)/ Numerator']
-        # value1 = map(unicode.strip, params['Param (1) Values'].split(','))
-        # type2 = params['Param Type (2)/ Denominator']
-        # value2 = map(unicode.strip, params['Param (2) Values'].split(','))
-        # type3 = params['Param (3)']
-        # value3 = params['Param (3) Values']
-        # target = float(params.get('Target Policy', 1))
-
         skus_at_eye_lvl = 0
         target = 1.0
         if general_filters['scene_id']:
-            # filters = {type1: value1, type2: value2, type3: value3, 'scene_fk': general_filters['scene_id']}
             filters, target = self.get_eye_lvl_or_display_filters_for_kpi(params)
             filters['scene_fk'] = general_filters['scene_id']
             filters.update(**general_filters)
@@ -356,56 +345,6 @@ class PNGRO_PRODToolBox:
         if type3:
             filters.update({type3: value3})
         return filters, target
-
-    # #Natalya - to delele
-    # def calculate_eye_level(self, params, **general_filters):
-    #     type1 = params['Param Type (1)/ Numerator']
-    #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
-    #     type2 = params['Param Type (2)/ Denominator']
-    #     value2 = map(unicode.strip, params['Param (2) Values'].split(','))
-    #     type3 = params['Param (3)']
-    #     value3 = params['Param (3) Values']
-    #     target = float(params['Target Policy'])
-    #
-    #     skus_at_eye_lvl = 0
-    #     if general_filters['scene_id']:
-    #         filters = {type1: value1, type2: value2, type3: value3, 'scene_fk': general_filters['scene_id']}
-    #         filters.update(**general_filters)
-    #         matches_products = self.match_product_in_scene.merge(self.all_products, left_on='product_fk',
-    #                                                              right_on='product_fk', how='left')
-    #         scene_bays = matches_products[self.tools.get_filter_condition(matches_products, **filters)][[
-    #             'scene_fk', 'bay_number']].drop_duplicates()
-    #         # do we just select shelves that have products of relevant category?
-    #         for index, row in scene_bays.iterrows():
-    #             total_num_of_shelves = matches_products[(matches_products['bay_number'] == row.bay_number) &
-    #                                                     (matches_products['scene_fk'] == row.scene_fk)][
-    #                                                                 'shelf_number_from_bottom'].max()
-    #             shelves_in_eye_lvl = self.get_eye_level_shelves(total_num_of_shelves, self.eye_level_args)
-    #             if shelves_in_eye_lvl:
-    #                 scene_shelf_bay_matches = matches_products[(matches_products['bay_number'] == row.bay_number)&
-    #                                                            (matches_products['shelf_number_from_bottom'].isin(
-    #                                                                                                         shelves_in_eye_lvl))&
-    #                                                            (matches_products['scene_fk'] == row.scene_fk)]
-    #                 skus_at_eye_lvl += len(scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches,
-    #                                                                                                **filters)])
-    #     score = min(skus_at_eye_lvl/target, 1)
-    #     return score, skus_at_eye_lvl, target
-    #
-    # # Natalya - to delete
-    # def get_eye_level_shelves(self, shelves_num, eye_lvl_template):
-    #     """
-    #     :param shelves_num: num of shelves in specific bay
-    #     :return: list of eye shelves
-    #     """
-    #     res_table = eye_lvl_template[(eye_lvl_template["Number of shelves max"] >= shelves_num) & (
-    #                 eye_lvl_template["Number of shelves min"] <= shelves_num)][["Ignore from top",
-    #                                                                               "Ignore from bottom"]]
-    #     if res_table.empty:
-    #         return []
-    #     start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
-    #     end_shelf = shelves_num - res_table['Ignore from top'].iloc[0]
-    #     final_shelves = range(start_shelf, end_shelf + 1)
-    #     return final_shelves
 
     def calculate_assortment_main_shelf(self):
         assortment_result_lvl3 = self.assortment.get_lvl3_relevant_ass()
@@ -567,7 +506,6 @@ class PNGRO_PRODToolBox:
         score = 1 if survey_answer in target_answers else 0
         return score
 
-    # Natalya
     def calculate_sos_facings(self, params, **general_filters):
         numerator_filters, denominator_filters, target = self.get_sos_filters(params)
         numerator_result = self.calculate_facings_share_of_display(numerator_filters, include_empty=True,
@@ -603,39 +541,6 @@ class PNGRO_PRODToolBox:
         ratio = 0 if denominator_res == 0 else numerator_res / float(denominator_res)
         score = 1 if ratio >= target else 0
         return score, str(ratio), str(target)
-
-    #Natalya commented out
-    # def calculate_sos(self, params, **general_filters):
-    #     type1 = params['Param Type (1)/ Numerator']
-    #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
-    #     type2 = params['Param Type (2)/ Denominator']
-    #     value2 = map(unicode.strip, params['Param (2) Values'].split(','))
-    #     type3 = params['Param (3)']
-    #     value3 = params['Param (3) Values']
-    #     target = params['Target Policy']
-    #     try:
-    #         target = int(target)/100.0
-    #     except:
-    #         Log.info('The target: {} cannot parse to int'.format(str(target)))
-    #
-    #     numerator_filters = {type1: value1, type2: value2, type3: value3}
-    #     denominator_filters = {type2: value2}
-    #
-    #     numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
-    #                                                                    include_empty=True,
-    #                                                                    **general_filters)
-    #     denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
-    #                                                                      include_empty=True,
-    #                                                                      **general_filters)
-    #
-    #     if denominator_width == 0:
-    #         ratio = 0
-    #     else:
-    #         ratio = numerator_width / float(denominator_width)
-    #     if ratio >= target:
-    #         return True, str(ratio), str(target)
-    #     else:
-    #         return False, str(ratio), str(target)
 
     def calculate_relative_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -711,58 +616,14 @@ class PNGRO_PRODToolBox:
         else:
             return True
 
-    # def calculate_shelf_position(self, params, **general_filters):
-    #     type1 = params['Param Type (1)/ Numerator']
-    #     value1 = params['Param (1) Values']
-    #     type2 = params['Param Type (2)/ Denominator']
-    #     value2 = params['Param (2) Values']
-    #     type3 = params['Param (3)']
-    #     value3 = params['Param (3) Values']
-    #
-    #     if type3.strip():
-    #         filters = {type1: value1, type2: value2, type3: value3}
-    #     else:
-    #         filters = {type1: value1, type2: value2}
-    #
-    #     product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
-    #                                                                  **dict(filters, **general_filters))][
-    #                                                                 'product_fk'].unique().tolist()
-    #     bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
-    #         self.match_product_in_scene,
-    #         **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
-    #         [['shelf_number', 'bay_number', 'scene_fk']]
-    #
-    #     bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
-    #     bay_shelf_count['count'] = 0
-    #     bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
-    #
-    #     for scene in general_filters['scene_id']:
-    #         for bay in bay_shelf_list['bay_number'].unique().tolist():
-    #             shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
-    #             target = self.eye_level_target.copy()
-    #             number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
-    #                                                 (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
-    #             try:
-    #                 target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
-    #             except IndexError:
-    #                 target = '3,4,5'
-    #             target = map(lambda x: int(x), target.split(','))
-    #             score = len(set(shelf_list) - set(target))
-    #             if score > 0:
-    #                 return False
-    #     if not bay_shelf_list.empty:
-    #         return True
-    #     else:
-    #         return False
-
     @staticmethod
     def split_and_strip(string):
         return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
     def calculate_linear_share_of_shelf_per_product_display(self):
-        # display_agg, display_filter_from_scif = self.get_display_agg() #Natalya
-        # display_agg = self.get_display_agg() #Natalya
-        display_agg = self.display_scene_count #Natalya
+        # display_agg, display_filter_from_scif = self.get_display_agg()
+        # display_agg = self.get_display_agg()
+        display_agg = self.display_scene_count
         for display in display_agg['display_name'].unique().tolist():
             display_pd = display_agg[display_agg['display_name'] == display]
             display_weight = self.get_display_weight_by_display_name(display)
@@ -916,15 +777,6 @@ class PNGRO_PRODToolBox:
             merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
         return merged_queries
 
-    # def get_display_agg(self):
-    #     secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
-    #         'scene_id'].unique().tolist()
-    #     display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
-    #         .isin(secondary_shelfs)]
-    #     display_filter_from_scif['count'] = 0
-    #     return \
-    #         display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
-
     def get_scene_display_bay(self):
         secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][ #can we change to location type
             'scene_id'].unique().tolist()
@@ -938,17 +790,11 @@ class PNGRO_PRODToolBox:
         return \
             scene_display_bay.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
 
-    # def get_shelf_level_target(self):
-    #     eye_level_target = parse_template(TEMPLATE_PATH, 'Eye-level')
-    #     return eye_level_target[eye_level_target['Retailer'] == self.retailer][[self.SHELF_NUMBERS,
-    #                                                                             self.NUMBER_OF_SHELVES]]
-
     def get_eye_level_shelf_data(self):
         eye_level_targets = parse_template(TEMPLATE_PATH, 'eye_level_parameters')
         eye_level_targets = eye_level_targets.astype('int64')
         return eye_level_targets
 
-    #Natalya
     def calculate_facings_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
@@ -968,7 +814,6 @@ class PNGRO_PRODToolBox:
             ratio = numerator_facings / float(denominator_facings)
         return ratio
 
-    # Natalya
     def calculate_facings(self, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
@@ -1112,44 +957,6 @@ class PNGRO_PRODToolBox:
             score = 1 if is_adjacent else 0
         return score
 
-    # def calculate_product_presence(self, params, total_displays, **general_filters):
-    #     target = float(params['Target Policy'])
-    #     number_of_displays_that_pass = 0
-    #     # code to get the number of passing displays
-    #
-    #     # for display in scene_display_bay['display_name'].unique().tolist():
-    #     #     display_pd = display_agg[display_agg['display_name'] == display]
-    #     #     display_relevant_scenes = display_pd['scene_fk'].unique().tolist()
-    #     #
-    #     #     display_weight = self.get_display_weight_by_display_name(display)
-    #     #     display_count = sum(display_pd['count'].tolist())
-    #     #
-    #     #     display_width = 0
-    #     #     products_in_display_width = {}
-    #     #
-    #     #     for scene in display_relevant_scenes:
-    #     #         scene_relevant_bays = display_pd[display_pd['scene_fk'] == scene]['bay_number'].unique().tolist()
-    #     #         general_filters = {'scene_fk': scene, 'bay_number': scene_relevant_bays}
-    #     #         filtered_matches = self.matches[self.get_filter_condition(self.matches, **general_filters)]
-    #     #         display_width += filtered_matches['width_mm_advance'].sum()
-    #     #         display_scene_products = filtered_matches['product_fk'].unique().tolist()
-    #     #
-    #     #         for product in display_scene_products:
-    #     #             if not products_in_display_width.get(product):
-    #     #                 products_in_display_width[product] = \
-    #     #                 filtered_matches[filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
-    #     #             else:
-    #     #                 products_in_display_width[product] = products_in_display_width[product] + filtered_matches[
-    #     #                     filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
-    #     #
-    #     #     for product, width in products_in_display.items():
-    #     #         score = (products_in_display_width[product] / float(display_width)) * display_weight * display_count
-    #     #         write_score_to_db()
-    #
-    #     result = number_of_displays_that_pass/total_displays * 100
-    #     score = min(result/target, 100)
-    #     return score, result, target
-
     def calculate_block_together_custom(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
@@ -1262,3 +1069,178 @@ class PNGRO_PRODToolBox:
                 return False, 0
             else:
                 return False
+
+# --------------------unused functions------------------------------#
+
+    # def calculate_product_presence(self, params, total_displays, **general_filters):
+    #     target = float(params['Target Policy'])
+    #     number_of_displays_that_pass = 0
+    #     # code to get the number of passing displays
+    #
+    #     # for display in scene_display_bay['display_name'].unique().tolist():
+    #     #     display_pd = display_agg[display_agg['display_name'] == display]
+    #     #     display_relevant_scenes = display_pd['scene_fk'].unique().tolist()
+    #     #
+    #     #     display_weight = self.get_display_weight_by_display_name(display)
+    #     #     display_count = sum(display_pd['count'].tolist())
+    #     #
+    #     #     display_width = 0
+    #     #     products_in_display_width = {}
+    #     #
+    #     #     for scene in display_relevant_scenes:
+    #     #         scene_relevant_bays = display_pd[display_pd['scene_fk'] == scene]['bay_number'].unique().tolist()
+    #     #         general_filters = {'scene_fk': scene, 'bay_number': scene_relevant_bays}
+    #     #         filtered_matches = self.matches[self.get_filter_condition(self.matches, **general_filters)]
+    #     #         display_width += filtered_matches['width_mm_advance'].sum()
+    #     #         display_scene_products = filtered_matches['product_fk'].unique().tolist()
+    #     #
+    #     #         for product in display_scene_products:
+    #     #             if not products_in_display_width.get(product):
+    #     #                 products_in_display_width[product] = \
+    #     #                 filtered_matches[filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
+    #     #             else:
+    #     #                 products_in_display_width[product] = products_in_display_width[product] + filtered_matches[
+    #     #                     filtered_matches['product_fk'] == product]['width_mm_advance'].sum()
+    #     #
+    #     #     for product, width in products_in_display.items():
+    #     #         score = (products_in_display_width[product] / float(display_width)) * display_weight * display_count
+    #     #         write_score_to_db()
+    #
+    #     result = number_of_displays_that_pass/total_displays * 100
+    #     score = min(result/target, 100)
+    #     return score, result, target
+
+    # def get_display_agg(self):
+        #     secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
+        #         'scene_id'].unique().tolist()
+        #     display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
+        #         .isin(secondary_shelfs)]
+        #     display_filter_from_scif['count'] = 0
+        #     return \
+        #         display_filter_from_scif.groupby(['scene_fk', 'display_name', 'pk'], as_index=False).agg({'count': np.size})
+
+    # def calculate_shelf_position(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = params['Param (1) Values']
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = params['Param (2) Values']
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #
+    #     if type3.strip():
+    #         filters = {type1: value1, type2: value2, type3: value3}
+    #     else:
+    #         filters = {type1: value1, type2: value2}
+    #
+    #     product_fk_codes = self.scif[self.tools.get_filter_condition(self.scif,
+    #                                                                  **dict(filters, **general_filters))][
+    #                                                                 'product_fk'].unique().tolist()
+    #     bay_shelf_list = self.match_product_in_scene[self.tools.get_filter_condition(
+    #         self.match_product_in_scene,
+    #         **dict({'product_fk': product_fk_codes, 'scene_fk': general_filters['scene_id']}))] \
+    #         [['shelf_number', 'bay_number', 'scene_fk']]
+    #
+    #     bay_shelf_count = self.match_product_in_scene[['shelf_number', 'bay_number', 'scene_fk']].drop_duplicates()
+    #     bay_shelf_count['count'] = 0
+    #     bay_shelf_count = bay_shelf_count.groupby(['bay_number', 'scene_fk'], as_index=False).agg({'count': np.size})
+    #
+    #     for scene in general_filters['scene_id']:
+    #         for bay in bay_shelf_list['bay_number'].unique().tolist():
+    #             shelf_list = bay_shelf_list[(bay_shelf_list['bay_number'] == bay) & (bay_shelf_list['scene_fk'] == scene)]['shelf_number']
+    #             target = self.eye_level_target.copy()
+    #             number_of_shelves = bay_shelf_count[(bay_shelf_count['bay_number'] == bay) &
+    #                                                 (bay_shelf_count['scene_fk'] == scene)]['count'].values[0]
+    #             try:
+    #                 target = target[target['Number of shelves'] == number_of_shelves][self.SHELF_NUMBERS].values[0]
+    #             except IndexError:
+    #                 target = '3,4,5'
+    #             target = map(lambda x: int(x), target.split(','))
+    #             score = len(set(shelf_list) - set(target))
+    #             if score > 0:
+    #                 return False
+    #     if not bay_shelf_list.empty:
+    #         return True
+    #     else:
+    #         return False
+
+    # def calculate_sos(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = map(unicode.strip, params['Param (2) Values'].split(','))
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #     target = params['Target Policy']
+    #     try:
+    #         target = int(target)/100.0
+    #     except:
+    #         Log.info('The target: {} cannot parse to int'.format(str(target)))
+    #
+    #     numerator_filters = {type1: value1, type2: value2, type3: value3}
+    #     denominator_filters = {type2: value2}
+    #
+    #     numerator_width = self.tools.calculate_linear_share_of_display(numerator_filters,
+    #                                                                    include_empty=True,
+    #                                                                    **general_filters)
+    #     denominator_width = self.tools.calculate_linear_share_of_display(denominator_filters,
+    #                                                                      include_empty=True,
+    #                                                                      **general_filters)
+    #
+    #     if denominator_width == 0:
+    #         ratio = 0
+    #     else:
+    #         ratio = numerator_width / float(denominator_width)
+    #     if ratio >= target:
+    #         return True, str(ratio), str(target)
+    #     else:
+    #         return False, str(ratio), str(target)
+
+    # #Natalya - to delele
+    # def calculate_eye_level(self, params, **general_filters):
+    #     type1 = params['Param Type (1)/ Numerator']
+    #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
+    #     type2 = params['Param Type (2)/ Denominator']
+    #     value2 = map(unicode.strip, params['Param (2) Values'].split(','))
+    #     type3 = params['Param (3)']
+    #     value3 = params['Param (3) Values']
+    #     target = float(params['Target Policy'])
+    #
+    #     skus_at_eye_lvl = 0
+    #     if general_filters['scene_id']:
+    #         filters = {type1: value1, type2: value2, type3: value3, 'scene_fk': general_filters['scene_id']}
+    #         filters.update(**general_filters)
+    #         matches_products = self.match_product_in_scene.merge(self.all_products, left_on='product_fk',
+    #                                                              right_on='product_fk', how='left')
+    #         scene_bays = matches_products[self.tools.get_filter_condition(matches_products, **filters)][[
+    #             'scene_fk', 'bay_number']].drop_duplicates()
+    #         # do we just select shelves that have products of relevant category?
+    #         for index, row in scene_bays.iterrows():
+    #             total_num_of_shelves = matches_products[(matches_products['bay_number'] == row.bay_number) &
+    #                                                     (matches_products['scene_fk'] == row.scene_fk)][
+    #                                                                 'shelf_number_from_bottom'].max()
+    #             shelves_in_eye_lvl = self.get_eye_level_shelves(total_num_of_shelves, self.eye_level_args)
+    #             if shelves_in_eye_lvl:
+    #                 scene_shelf_bay_matches = matches_products[(matches_products['bay_number'] == row.bay_number)&
+    #                                                            (matches_products['shelf_number_from_bottom'].isin(
+    #                                                                                                         shelves_in_eye_lvl))&
+    #                                                            (matches_products['scene_fk'] == row.scene_fk)]
+    #                 skus_at_eye_lvl += len(scene_shelf_bay_matches[self.tools.get_filter_condition(scene_shelf_bay_matches,
+    #                                                                                                **filters)])
+    #     score = min(skus_at_eye_lvl/target, 1)
+    #     return score, skus_at_eye_lvl, target
+    #
+    # # Natalya - to delete
+    # def get_eye_level_shelves(self, shelves_num, eye_lvl_template):
+    #     """
+    #     :param shelves_num: num of shelves in specific bay
+    #     :return: list of eye shelves
+    #     """
+    #     res_table = eye_lvl_template[(eye_lvl_template["Number of shelves max"] >= shelves_num) & (
+    #                 eye_lvl_template["Number of shelves min"] <= shelves_num)][["Ignore from top",
+    #                                                                               "Ignore from bottom"]]
+    #     if res_table.empty:
+    #         return []
+    #     start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+    #     end_shelf = shelves_num - res_table['Ignore from top'].iloc[0]
+    #     final_shelves = range(start_shelf, end_shelf + 1)
+    #     return final_shelves
