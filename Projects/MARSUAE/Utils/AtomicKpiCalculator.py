@@ -3,7 +3,6 @@ from KPIUtils_v2.Calculations.KpiStructure.KpiBaseCalculation import KpiBaseCalc
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
-# from Projects.MARSUAE.Utils.Const import Const
 
 __author__ = 'israel'
 
@@ -102,6 +101,8 @@ class DistributionCalculation(KpiBaseCalculation):
         return 'Distribution'
 
     def calculate(self, params):
+        if True:
+            return
         result_kpi = []
         kpi_fk = 1
         assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0])
@@ -137,4 +138,15 @@ class AvailabilityCalculation(KpiBaseCalculation):
             result *= params['Points'].iloc[0]
 
         return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999, target=target,
+                                        numerator_result=None, denominator_id=999, denominator_result=None)]
+
+
+class AggregationCalculation(SOSCalculation):
+    @classproperty
+    def kpi_type(self):
+        return 'Aggregation'
+
+    def calculate(self, params):
+        result = params['score']
+        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999,
                                         numerator_result=None, denominator_id=999, denominator_result=None)]
