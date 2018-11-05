@@ -56,12 +56,13 @@ class DIAGEOUSToolBox:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.ps_data = PsDataProvider(self.data_provider, self.output, assortment_filter=store_number_1)
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.state = self.ps_data.get_state_name()
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
-        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data)
+        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
+                                     assortment_filter=store_number_1)
         if self.on_off == Const.ON:
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
