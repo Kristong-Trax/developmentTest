@@ -111,7 +111,6 @@ class DIAGEOBR_SANDToolBox:
         """
         # old assortment
         self.diageo_generator.diageo_global_assortment_function()
-        self.common.commit_results_data()  # old tables
 
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
@@ -168,7 +167,6 @@ class DIAGEOBR_SANDToolBox:
 
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-
 
         # commiting to new tables
         self.commonV2.commit_results_data()
@@ -296,6 +294,8 @@ class DIAGEOBR_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
