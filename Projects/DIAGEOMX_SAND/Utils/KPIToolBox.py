@@ -113,8 +113,9 @@ class DIAGEOMX_SANDToolBox:
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
                                      'Data', 'TOUCH POINT.xlsx')
 
-        # Assortment kpis
-        self.diageo_generator.diageo_global_assortment_function()
+        # Global assortment kpis
+        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output, self.common).diageo_global_assortment_function_v2()
+        self.save_json_to_new_tables(assortment_res_dict)
 
         # global SOS kpi
         res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
