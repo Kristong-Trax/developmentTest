@@ -14,11 +14,6 @@ __author__ = 'Nimrod'
 class DIAGEOBR_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        common = Common(self.data_provider)
-        diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
-        diageo_generator.diageo_global_assortment_function()
-        common.commit_results_data_to_new_tables()
-        common.commit_results_data()  # old tables
         DIAGEOBR_SANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
