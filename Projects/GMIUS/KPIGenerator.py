@@ -1,10 +1,10 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GOOGLEKR.Utils.KPIToolBox import ToolBox
+from Projects.GMIUS.Utils.KPIToolBox import ToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 
-__author__ = 'Sam_Shivi'
+__author__ = 'Sam'
 
 
 class Generator:
@@ -21,18 +21,5 @@ class Generator:
     def main_function(self):
         if self.tool_box.scif.empty:
             Log.warning('Distribution is empty for this session')
-        self.google_global_fixture_compliance()
-        self.visit_osa_and_pog()
-        self.common.commit_results_data()
-
-    def google_global_fixture_compliance(self):
-        try:
-            self.tool_box.google_global_fixture_compliance()
-        except Exception as e:
-            Log.error('{}'.format(e))
-
-    def visit_osa_and_pog(self):
-        try:
-            self.tool_box.get_osa_and_pog()
-        except Exception as e:
-            Log.error('{}'.format(e))
+        else:
+            self.tool_box.main_calculation()
