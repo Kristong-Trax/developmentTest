@@ -23,9 +23,18 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlekr calculations')
     Config.init()
     project_name = 'googlekr'
-    sessions = ["68ac2242-d6d5-4a08-ba5c-ba5418c69852"]
+    sessions = ['68ac2242-d6d5-4a08-ba5c-ba5418c69852',
+                # '8FCAF6C0-E1EC-4DFC-8B9C-3EE6A8C70432',
+                # '33203324-796f-42f5-af71-9acb0e48b2f4',
+                # 'ba74b587-901d-437d-ab34-2ffc33c49aaa',
+                # '9b33b4d0-cb67-4e9b-82d9-4d4c3c505491'
+                ]
     for session in sessions:
-        scenes = [2048, 2050, 2052, 2058]
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        scif = data_provider['scene_item_facts']
+        scenes = scif['scene_id'].unique().tolist()
+        # scenes = [2048, 2050, 2052, 2058]
         for scene in scenes:
             print('scene')
             data_provider = KEngineDataProvider(project_name)

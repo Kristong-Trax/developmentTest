@@ -72,7 +72,7 @@ class SceneToolBox:
                     score = ratio
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings, result=result,
+            denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
     def get_compliance_products(self, compliance_status_fk, identifier_parent):
