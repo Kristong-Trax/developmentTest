@@ -4,6 +4,7 @@ import shutil
 import time
 import traceback
 from datetime import datetime
+from Trax.Utils.Conf.Configuration import Config
 
 from Trax.Cloud.Services.Connector.Keys import EmailUsers
 from Trax.Cloud.Services.Mailers.Factory import MailerFactory
@@ -16,13 +17,15 @@ from Deployment.fabfile.UtilsDeployment import DeploymentUtils
 KPI_UTILS_V2 = 'KPIUtils_v2'
 KPI_UTILS = 'KPIUtils'
 PROJECT_FOLDER = 'Projects'
+OUT_OF_THE_BOX = 'OutOfTheBox'
 
 ROLLBACK_SUFFIX = '_rollback'
 TRAX_ACE_LIVE = 'trax_ace_live'
 STORAGE_BUCKET = 'trax-k-engine-scripts'
 STORAGE_PATH = 'trax_ace_live_latest'
 TAR_FILE_NAME = 'latest.tar.gz'
-CLOUDS = 'AWS', 'GCP'
+CLOUDS = ['AWS', 'GCP']
+ENVIRONMENTS = ['prod', 'int']
 
 
 class ProjectDeployment(object):
@@ -48,11 +51,13 @@ class ProjectDeployment(object):
 
     @staticmethod
     def make_tarfile(source_dir):
-        files_and_dirs_to_copy = [PROJECT_FOLDER, KPI_UTILS, KPI_UTILS_V2, 'version.txt']
+        files_and_dirs_to_copy = [PROJECT_FOLDER, KPI_UTILS, KPI_UTILS_V2, OUT_OF_THE_BOX]
+        if Config.get_environment().lower() == 'prod':
+            files_and_dirs_to_copy.append('version.txt')
         return DeploymentUtils.make_tar_file_for_files(source_dir, files_and_dirs_to_copy)
 
     @staticmethod
-    def upload_to_live_git(live_git_folder, live_repo, project=None, project_tag=None):
+    def upload_to_live_git(live_git_folder, live_repo, project=None, project_tag=None, tag_pregfix='trax_ace_live'):
         print "upload_to_live_git START"
         author = Actor(getpass.getuser(), '')
         now = datetime.utcnow()
@@ -69,7 +74,7 @@ class ProjectDeployment(object):
                 print "performing commit '{}'".format(version_details)
                 live_repo.index.commit(version_details)
                 print "Creating new tag"
-                live_tag = create_new_tag('trax_ace_live', live_repo)
+                live_tag = create_new_tag(tag_pregfix, live_repo)
                 live_repo.create_tag(path=live_tag, message=version_details)
                 print "pushing tag: {}".format(live_tag)
                 live_repo.remotes.origin.push('master', tags=True)
@@ -116,23 +121,36 @@ class ProjectDeployment(object):
     def copy_to_storage_server(live_folder, live_repo, update_version=True):
         # live_folder, live_repo = get_live_repository()
         try:
-            tag = get_last_tag_on_current_commit(live_repo, TRAX_ACE_LIVE)
-            if not tag:
-                raise Exception('LiveTagNotExistsOnCurrentCommit')
-            if update_version:
-                ProjectDeployment.update_version_file(live_folder, tag)
+            if Config.get_environment().lower() == 'prod':
+                tag = get_last_tag_on_current_commit(live_repo, TRAX_ACE_LIVE)
+                if not tag:
+                    raise Exception('LiveTagNotExistsOnCurrentCommit')
+                if update_version:
+                    ProjectDeployment.update_version_file(live_folder, tag)
             tar_file_stream = ProjectDeployment.make_tarfile(live_folder)
-            # iterate through aes and gcp clouds to deploy in both of them
             for cloud in CLOUDS:
                 print 'bucket name', STORAGE_BUCKET, 'cloud to store', cloud
                 storage_connector = StorageFactory.get_connector(mybucket=STORAGE_BUCKET, region='us-east-1',
                                                                  cloud=cloud)
-                DeploymentUtils.save_file_stream(storage_connector, STORAGE_PATH, TAR_FILE_NAME, tar_file_stream)
+                env = Config.get_environment().lower()
+                if env == 'prod':
+                    s3_envs = ENVIRONMENTS
+                else:
+                    s3_envs = [env]
+
+                for s3_env in s3_envs:
+                    storage_folder_name = ProjectDeployment.get_trax_ace_live_folder(s3_env)
+                    print "Uploading file to Remove folder-> {}".format(storage_folder_name)
+                    DeploymentUtils.save_file_stream(storage_connector, storage_folder_name, TAR_FILE_NAME, tar_file_stream)
         except Exception as e:
             print e
             raise
         finally:
             shutil.rmtree(live_folder)
+
+    @staticmethod
+    def get_trax_ace_live_folder(env):
+        return STORAGE_PATH + '_{}'.format(env)
 
     @staticmethod
     def send_mail(project, tag):

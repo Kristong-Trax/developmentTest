@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 import pandas as pd
-
+import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.GOOGLEKR.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -12,10 +12,10 @@ FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__))
                                      'KR - Google Fixture Targets.xlsx')
 
 
-class GOOGLEKRGOOGLEToolBox:
+class ToolBox:
 
-    def __init__(self, data_provider, output, common_v2):
-        self.common = common_v2
+    def __init__(self, data_provider, output, common):
+        self.common = common
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -23,6 +23,8 @@ class GOOGLEKRGOOGLEToolBox:
         self.templates = self.data_provider.all_templates
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"] == Const.GOOGLE][
+            "manufacturer_fk"].iloc[0]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -46,6 +48,10 @@ class GOOGLEKRGOOGLEToolBox:
         self.get_required_fixtures()
 
     def get_required_fixtures(self):
+        """
+        This function creates a list (self.required_fixtures) the fixture_fk in the template with the required amount
+        of it, the names of its Entry and Exit template_name, and the match scenes of this session
+        """
         store_num = self.store_info['store_number_1'][0]
         fixture_template = self.fixture_template[Const.FIXTURE_TARGETS]
         fixture_template = fixture_template.join(self.fixture_template[Const.PK]
@@ -69,11 +75,14 @@ class GOOGLEKRGOOGLEToolBox:
                                            Const.EXIT_NAME: exit_name})
         for fixture_type in self.required_fixtures:
             fixture_type[Const.ENTRY_SCENES] = self.scif[
-                self.scif['template_name'] == fixture_type[Const.ENTRY_NAME]]['template_fk'].unique().tolist()
+                self.scif['template_name'] == fixture_type[Const.ENTRY_NAME]]['scene_fk'].unique().tolist()
             fixture_type[Const.EXIT_SCENES] = self.scif[
-                self.scif['template_name'] == fixture_type[Const.EXIT_NAME]]['template_fk'].unique().tolist()
+                self.scif['template_name'] == fixture_type[Const.EXIT_NAME]]['scene_fk'].unique().tolist()
 
     def google_global_fixture_compliance(self):
+        """
+        Calculates for every fixture (from the self.required_fixtures) the amount of exist scenes out of the required
+        """
         num_of_fixtures, all_scores = 0.0, 0.0
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_COMPLIANCE)
         for fixture in self.required_fixtures:
@@ -94,50 +103,74 @@ class GOOGLEKRGOOGLEToolBox:
                 identifier_parent=Const.FIXTURE_HIGH_LEVEL, should_enter=True)
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, result=set_average, identifier_result=Const.FIXTURE_HIGH_LEVEL,
+                                       numerator_id=self.manufacturer_fk)
 
     def get_osa_and_pog(self):
+        """
+        Calculates for every fixture the OSA (%), OOS (#) and the POG (%)
+        """
         num_of_fixtures, all_scores = 0.0, 0.0
-        pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
         fixture_pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
         pog_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_pog_kpi_fk]
-        osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
         fixture_osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_OSA)
         osa_scene_results = self.scene_results[self.scene_results['kpi_level_2_fk'] == fixture_osa_kpi_fk]
         for fixture in self.required_fixtures:
-            entry_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
-            exit_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
-            avg_osa_entry, avg_oos_entry = self.get_scores_and_results(entry_osa_results, fixture[Const.REQUIRED_AMOUNT])
-            avg_osa_exit, avg_oos_exit = self.get_scores_and_results(exit_osa_results, fixture[Const.REQUIRED_AMOUNT])
-            osa_delta = avg_osa_exit - avg_osa_entry
-            oos_delta = avg_oos_exit - avg_oos_entry
-            self.common.write_to_db_result(
-                fk=osa_kpi_fk, numerator_id=fixture[Const.FIXTURE_FK],
-                numerator_result=osa_delta, denominator_result=oos_delta, result=avg_oos_exit, score=avg_osa_exit)
-            entry_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(fixture[Const.ENTRY_SCENES])]
-            exit_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(fixture[Const.EXIT_SCENES])]
-            avg_pog_entry, temporary = self.get_scores_and_results(entry_pog_results, fixture[Const.REQUIRED_AMOUNT])
-            avg_pog_exit, temporary = self.get_scores_and_results(exit_pog_results, fixture[Const.REQUIRED_AMOUNT])
-            delta = avg_pog_exit - avg_pog_entry
-            identifier_result = self.common.get_dictionary(fixture=fixture, kpi_fk=pog_kpi_fk)
-            self.common.write_to_db_result(
-                fk=pog_kpi_fk, numerator_id=fixture[Const.FIXTURE_FK], identifier_parent=Const.POG_HIGH_LEVEL,
-                numerator_result=delta, score=avg_pog_exit, should_enter=True, identifier_result=identifier_result)
-            for scene_result_fk in exit_pog_results['pk'].values:
-                self.common.write_to_db_result(fk=Const.NON_KPI, should_enter=True, scene_result_fk=scene_result_fk,
-                                               identifier_parent=identifier_result)
+            avg_pog_exit = self.get_fixture_osa_oos_pog(fixture, osa_scene_results, pog_scene_results)
             num_of_fixtures += 1
             all_scores += avg_pog_exit
         set_average = all_scores / num_of_fixtures if num_of_fixtures > 0 else 0
         set_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_HIGH_LEVEL)
-        self.common.write_to_db_result(fk=set_kpi_fk, score=set_average, identifier_result=Const.POG_HIGH_LEVEL)
+        self.common.write_to_db_result(fk=set_kpi_fk, result=set_average, identifier_result=Const.POG_HIGH_LEVEL,
+                                       numerator_id=self.manufacturer_fk)
+
+    def get_fixture_osa_oos_pog(self, fixture, osa_scene_results, pog_scene_results):
+        """
+        Gets a fixture, and writes in the DB its POG+OOS+OSA score
+        :param fixture: dict with entry + exit names, match scene_fks Etc (from self.required_fixtures)
+        :param osa_scene_results: filtered scene_results
+        :param pog_scene_results: filtered scene_results
+        :return: the POG average (for the set score)
+        """
+        pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_POG)
+        osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.VISIT_OSA)
+        denominator, fixture_fk = fixture[Const.REQUIRED_AMOUNT], fixture[Const.FIXTURE_FK]
+        entry_scenes, exit_scenes = fixture[Const.ENTRY_SCENES], fixture[Const.EXIT_SCENES]
+        entry_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(entry_scenes)]
+        exit_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(exit_scenes)]
+        avg_osa_entry, avg_oos_entry = self.get_scores_and_results(entry_osa_results, denominator)
+        avg_osa_exit, avg_oos_exit = self.get_scores_and_results(exit_osa_results, denominator)
+        osa_delta = avg_osa_exit - avg_osa_entry
+        oos_delta = avg_oos_exit if np.isnan(avg_oos_entry) else avg_oos_exit - avg_oos_entry
+        self.common.write_to_db_result(
+            fk=osa_kpi_fk, numerator_id=fixture_fk,
+            numerator_result=osa_delta, denominator_result=oos_delta, result=avg_oos_exit, score=avg_osa_exit)
+        entry_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(entry_scenes)]
+        exit_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(exit_scenes)]
+        avg_pog_entry, temporary = self.get_scores_and_results(entry_pog_results, denominator)
+        avg_pog_exit, temporary = self.get_scores_and_results(exit_pog_results, denominator)
+        delta = avg_pog_exit - avg_pog_entry
+        identifier_result = self.common.get_dictionary(fixture=fixture_fk, kpi_fk=pog_kpi_fk)
+        self.common.write_to_db_result(
+            fk=pog_kpi_fk, numerator_id=fixture_fk, identifier_parent=Const.POG_HIGH_LEVEL,
+            numerator_result=delta, score=avg_pog_exit, should_enter=True, identifier_result=identifier_result)
+        for scene_result_fk in exit_pog_results['pk'].values:
+            self.common.write_to_db_result(should_enter=True, scene_result_fk=scene_result_fk,
+                                           identifier_parent=identifier_result, only_hierarchy=True)
+        return avg_pog_exit
 
     @staticmethod
-    def get_scores_and_results(scene_results, reuired_amount):
+    def get_scores_and_results(scene_results, required_amount):
+        """
+        :param scene_results: results of specific scenes (one result for every scene)
+        :param required_amount: the required amount of scenes in the scene_results
+        :return: the avg of the scores and results. If there are too many scenes - take the betters, if less than
+                 the required - calculate them as 0
+        """
         if None in scene_results['result'].tolist():
             return 0, None
         scores, results = scene_results.sort_values(
-            by='score', ascending=False)[['score', 'result']][:reuired_amount].sum() / reuired_amount
+            by='score', ascending=False)[['score', 'result']][:required_amount].sum() / required_amount
         return scores, results
 
     @staticmethod

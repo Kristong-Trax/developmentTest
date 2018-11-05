@@ -6,9 +6,10 @@ class Const(object):
 
     FACINGS = 'facings'
     BRAND = 'brand_name'
+    GOOGLE_BRAND = 'Google Play'
     NOTABRAND = {'General', 'General.'}
     EXCLUDE_FILTERS = {
-        'product_type': ['Irelevant', 'Empty']
+        'product_type': ['Irelevant']
     }
 
     GOOGLE_BRAND = 'Google Play'
@@ -45,3 +46,4 @@ class Const(object):
 
     SOS_KPIs = [SOS_OUT_OF_SCENE, SOS_IN_SCENE]
     SHEETS = [FIXTURE_TARGETS, PK, ENTRY_EXIT]
+    GOOGLE = "Google"

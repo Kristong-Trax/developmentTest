@@ -5,8 +5,8 @@ from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.GOOGLEKR.Calculations import GOOGLEKRCalculations
-from Projects.GOOGLEKR.SceneKpis.SceneCalculations import GOOGLEKRSceneCalculations
+from Projects.GOOGLEKR.Calculations import Calculations
+from Projects.GOOGLEKR.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -23,9 +23,9 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlekr calculations')
     Config.init()
     project_name = 'googlekr'
-    sessions = ["8e69ef91-1275-42ba-82a3-12a775683fb6"]
+    sessions = ["68ac2242-d6d5-4a08-ba5c-ba5418c69852"]
     for session in sessions:
-        scenes = [884, 887]
+        scenes = [2048, 2050, 2052, 2058]
         for scene in scenes:
             print('scene')
             data_provider = KEngineDataProvider(project_name)
@@ -33,10 +33,10 @@ if __name__ == '__main__':
             output = VanillaOutput()
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
-            GOOGLEKRSceneCalculations(data_provider).calculate_kpis()
+            SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
-        GOOGLEKRCalculations(data_provider, output).run_project_calculations()
+        Calculations(data_provider, output).run_project_calculations()
         # scif = data_provider['scene_item_facts']
         # scenes = scif['scene_id'].unique().tolist()
