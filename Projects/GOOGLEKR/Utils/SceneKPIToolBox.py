@@ -27,9 +27,8 @@ class SceneToolBox:
         if brands_scif.empty:
             return
 
-        brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND]) \
-            .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS] \
-            .sum()
+        brand_totals = brands_scif.set_index([Const.BRAND, 'brand_fk']) \
+                                  .groupby(level=[0, 1])[Const.FACINGS].sum()
 
         total_facings = scif[Const.FACINGS].sum()
         google_fk, google_facings = brand_totals.reset_index(drop=False, level=1).loc[Const.GOOGLE_BRAND]
@@ -73,7 +72,7 @@ class SceneToolBox:
                     score = ratio
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings, result=result,
+            denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
     def get_compliance_products(self, compliance_status_fk, identifier_parent):
@@ -123,11 +122,13 @@ class SceneToolBox:
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
-        for exclude_filter in filters:
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
             if exclude:
-                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+                df = df[~df[key].isin(val)]
             else:
-                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+                df = df[df[key].isin(val)]
         return df
 
     @staticmethod

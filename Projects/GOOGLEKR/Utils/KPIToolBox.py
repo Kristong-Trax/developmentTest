@@ -37,7 +37,8 @@ class ToolBox:
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
-        self.scene_results = self.ps_data_provider.get_scene_results(self.scenes)
+        if self.scenes:
+            self.scene_results = self.ps_data_provider.get_scene_results(self.scenes)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
         self.fixture_template = {}
