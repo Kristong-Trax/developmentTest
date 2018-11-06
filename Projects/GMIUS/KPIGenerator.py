@@ -23,3 +23,4 @@ class Generator:
             Log.warning('Distribution is empty for this session')
         else:
             self.tool_box.main_calculation()
+            self.common.commit_results_data()

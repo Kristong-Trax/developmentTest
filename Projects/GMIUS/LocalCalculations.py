@@ -3,12 +3,11 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.GMIUS.Calculations import Calculations
 
-
 if __name__ == '__main__':
     LoggerInitializer.init('gmius calculations')
     Config.init()
-    project_name = 'rinielsenus'
-    sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
+    project_name = 'gmius'
+    sessions = ['70ec27f5-457c-4513-8927-697450c4cbe5']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

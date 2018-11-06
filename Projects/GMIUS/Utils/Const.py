@@ -22,6 +22,17 @@ class Const(object):
     SESSION_LEVEL = 'Session Level'
 
     ''' Aggregation Columns'''
-    AGGREGATION_LEVEL = 'Aggregation Level'
+    AGGREGATION_LEVELS = 'Aggregation Levels'
     SOS_TYPE = 'SOS Type'
+
+    ''' Constants '''
+    COMMA_SPACE = ', '
+    COMMA = ','
+    SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
+    SOS_COLUMN_DICT = {
+                        'SOS': 'facings_ign_stack',
+                        'Linear SOS': 'width_mm'
+                       }
+
+
 
