@@ -192,7 +192,7 @@ class CCRUTopSKUAssortment:
             if str(col).count('.'):
                 # Log.warning("Duplicate column {} is encountered in the template and removed from loading"
                 #             "".format(col.split('.')[0]))
-                self.duplicate_columns.append(col.split('.')[0])
+                self.duplicate_columns.append(col)
         data = raw_data.drop(self.duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
         products_from_template = data.columns.tolist()
