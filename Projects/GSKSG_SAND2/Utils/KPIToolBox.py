@@ -107,8 +107,8 @@ class GSKSGToolBox:
         self.calculations = {'SOS': self.calculate_sos, 'MSL': self.calculate_MSL, 'Sequence': self.calculate_sequence,
                              'Presence': self.calculate_presence, 'Facings': self.calculate_facings,
                              'No Facings': self.calculate_no_facings, 'Survey': self.calculate_survey}
-        self.sequence = Sequence(data_provider, ignore_stacking=True)
-        self.availability = Availability(data_provider, ignore_stacking=True)
+        self.sequence = Sequence(data_provider)
+        self.availability = Availability(data_provider)
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
@@ -143,7 +143,7 @@ class GSKSGToolBox:
             return row['result']
 
     def check_if_kpi_passed(self, row):
-        return 1 if row['result_bin'] == row['Weight'] else 0
+        return 1 if (row['result_bin'] == row['Weight']) and (row['Weight'] != 0) else 0
 
     def check_if_sequence_passed(self, row):
         if row['ATOMIC_TARGET'] != -1:
@@ -436,14 +436,19 @@ class GSKSGToolBox:
                                            weight=result['KPI Weight']*100, should_enter=True)
 
             NAME_ADD = PAIN if result[SET] == PAIN_LEVEL_1 else ORAL_CARE
+
             try:
                 old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
-                                                      (self.old_kpi_static_data['kpi_name'] == result[KPI]+NAME_ADD)][
-                                                        'kpi_fk'].iloc[0]
-                self.common_old_tables.write_to_db_result(old_kpi_fk, self.LEVEL2,  result['result_bin'])
-            except:
-                print 'kpi {} in set {}'.format(result[KPI]+NAME_ADD, result[SET])
+                                                          (self.old_kpi_static_data['kpi_name'] == result[KPI] + NAME_ADD)][
+                    'kpi_fk'].iloc[0]
+                kwargs = {'session_uid': self.session_uid, 'store_fk': self.store_id,
+                          'visit_date': self.visit_date.isoformat(), 'kpi_fk': old_kpi_fk,
+                          'kpk_name': result[KPI] + NAME_ADD, 'score_2': result['result_bin']}
 
+                self.common_old_tables.write_to_db_result(fk=old_kpi_fk, level=self.LEVEL2, score=result['result_bin'],
+                                                          **kwargs)
+            except:
+                print 'kpi {} in set {}'.format(result[KPI] + NAME_ADD, result[SET])
         # aggregating to level 1:
         aggs_res_level_1 = aggs_res_level_2.groupby([SET], as_index=False)['result_bin'].sum()
 
@@ -602,9 +607,8 @@ class GSKSGToolBox:
          if at least one scene has result  > target, atomic passes.
          returns: whether at least one scene passed, number of scene passed, number of scene checked
          """
-
         target = row['target'] if not pd.isnull(row['target']) else 0
-
+        scif = self.scif
         scene_passed = False
         products_in_scenes = pd.DataFrame(columns=['product_ean_code', 'scene_id', 'result'])
         # Gets relevant assortment from template according to store attributes.
@@ -615,44 +619,50 @@ class GSKSGToolBox:
             Log.info('Store attribute {} is not in template.'.format(store_data))
             return 0
 
-        # gets the assortment product's ean codes relevant for store
-        store_assortment = self.msl_list[store_data]
-        store_assortment = store_assortment[store_assortment == 1]
-
-        ##filter the products from the template by category
-        # products = store_assortment.keys()
-        # products = [str(prod) for prod in products ]
         category_fk = PAIN_FK if row[SET] == PAIN_LEVEL_1 else ORAL_FK
-        # products = self.products.loc[self.products['product_ean_code'].isin(products)]
-        # products = products.loc[products['category_fk'] == category_fk]['product_ean_code']
 
-        products = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
-                                 (self.scif['rlv_dist_sc'] == 1) &
-                                 (self.scif['category_fk'] == category_fk)]['product_ean_code']
-
-        # (self.scif['in_assort_sc'] == 1) &
-        # (self.scif['rlv_dist_sc'] == 1) &
         kpi_filters, general = self.get_filters(row)
-        kpi_filters.update(general)
+
+        # filter all products by assortment & template
+        scif = scif.loc[(scif['in_assort_sc'] == 1) &
+                            (scif['rlv_dist_sc'] == 1) &
+                            (scif['category_fk'] == category_fk)]
+
+        if general:
+            # filter conition filters the products without facings, which result incorrect denominator
+            scif = scif.drop(['facings'], axis=1)
+            scif = scif[self.toolbox.get_filter_condition(scif, **general)]
+
+        products = scif['product_ean_code']
         total_products = len(products)
+        # removes all filters which are nans
+        scif = pd.merge(self.match_product_in_scene, scif, how='left',
+                                 left_on=['scene_fk', 'product_fk'], right_on=['scene_id',  'item_id'])
+        scif = scif.drop_duplicates(['scene_id', 'item_id'])
+
+        scif = scif.dropna(subset=kpi_filters.keys() + general.keys())
+
+        if kpi_filters.get('shelf_number', '') or general.get('shelf_number', ''):
+            scif['shelf_number'] = (scif['shelf_number'].astype(int)).astype(str)
+
+        kpi_filters.update(general)
 
         # get the relevant scene by the template name given
         templates = [val.strip(' \n') for val in str(row['template_name']).split(',')]
         valid_scenes = self.scif.loc[self.scif['template_name'].isin(templates)]['scene_id'].unique()
 
         # save which products were in each relevant scene
+        if kpi_filters:
+            scif = scif[self.toolbox.get_filter_condition(scif, **kpi_filters)]
         for scene_id in valid_scenes:
             # Checks for each product if found in scene, if so, 'count' it.
             for product in set(products):
-                # kpi_filters['product_ean_code'] = str(product)
-                # kpi_filters['scene_id'] = scene_id
-                # res = self.availability.calculate_availability(**kpi_filters)
-                product_in_scene = self.scif.loc[(self.scif['in_assort_sc'] == 1) &
-                                                 (self.scif['rlv_dist_sc'] == 1) &
-                                                 (self.scif['dist_sc'] == 1) &
-                                                 (self.scif['scene_id'] == scene_id) &
-                                                 (self.scif['product_ean_code'] == str(product))
-                                                 ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
+                product_in_scene = scif.loc[(scif['in_assort_sc'] == 1) &
+                                            (scif['rlv_dist_sc'] == 1) &
+                                            (scif['dist_sc'] == 1) &
+                                            (scif['scene_id'] == scene_id) &
+                                            (scif['product_ean_code'] == str(product))
+                                            ][['product_ean_code', 'scene_id', 'rlv_dist_sc']]
                 res = 1 if not product_in_scene.empty else 0
                 products_in_scenes = products_in_scenes.append({
                     'product_ean_code': product,

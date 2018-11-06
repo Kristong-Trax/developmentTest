@@ -12,6 +12,7 @@ from Deployment.fabfile.ProjectValidation import ProjectValidator
 
 
 def deploy_single_project(ace_live_git_folder, ace_live_repo, project_name, sdk_factory_git_folder):
+    environment = Config.get_environment().lower()
     print 'deploy START project={}'.format(project_name)
     # get the local tmp sdk_factory dir and remote git object
     kpi_factory_git_folder, kpi_repo = get_kpi_factory_repository()
@@ -22,9 +23,11 @@ def deploy_single_project(ace_live_git_folder, ace_live_repo, project_name, sdk_
     copy_to_ace_live(sdk_factory_git_folder, ace_live_git_folder, kpi_factory_git_folder,
                      converted_project_name)
     ProjectValidator.modules_checkup(root_path)
-    kpi_tag = ProjectDeploy.push_factory_new_tag(converted_project_name, kpi_repo)
-    ProjectDeploy.upload_to_live_git(ace_live_git_folder, ace_live_repo,
-                                     converted_project_name, project_tag=kpi_tag)
+    kpi_tag = ''
+    if environment == 'prod':
+        kpi_tag = ProjectDeploy.push_factory_new_tag(converted_project_name, kpi_repo)
+        ProjectDeploy.upload_to_live_git(ace_live_git_folder, ace_live_repo,
+                                         converted_project_name, project_tag=kpi_tag)
     return kpi_tag
 
 
@@ -71,6 +74,6 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    deploy_instance = ProjectDeploy(project=['americas-demo', 'cubau-sand'])
+    deploy_instance = ProjectDeploy(project=['googlekr'])
     deploy_instance.deploy()
     pass

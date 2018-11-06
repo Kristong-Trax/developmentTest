@@ -3,7 +3,24 @@ from haversine import haversine
 import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
+
+# from math import radians, cos, sin, asin, sqrt
+
 __author__ = 'yoava'
+
+
+# def haversine2(lat1, lon1, lat2, lon2):
+#     r = 6272.8
+#
+#     d_lat = radians(lat2 - lat1)
+#     d_lon = radians(lon2 - lon1)
+#     lat1 = radians(lat1)
+#     lat2 = radians(lat2)
+#
+#     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+#     c = 2 * asin(sqrt(a))
+#
+#     return r * c * 1000
 
 
 class INBEVTRADMXGeo:
@@ -13,11 +30,12 @@ class INBEVTRADMXGeo:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data, common):
+    def __init__(self, rds_conn, session_uid, data_provider, kpi_static_data, common, common2):
         self.rds_conn = rds_conn
         self.session_uid = session_uid
         self.data_provider = data_provider
         self.common = common
+        self.common2 = common2
         self.kpi_static_data = kpi_static_data
 
     @staticmethod
@@ -36,12 +54,12 @@ class INBEVTRADMXGeo:
 
     @staticmethod
     def is_probes_location_none(probes_location):
-        return (probes_location.store_uid.values[0] is None) or (probes_location.pos_lat.values[0] is None) or \
+        return (probes_location.store_uid.values[0] is None) and (probes_location.pos_lat.values[0] is None) and \
                (probes_location.pos_long.values[0] is None)
 
     @staticmethod
     def is_store_location_none(store_location):
-        return (store_location.pos_lat.values[0] is None) or (store_location.pos_long.values[0] is None)
+        return (store_location.pos_lat.values[0] is None) and (store_location.pos_long.values[0] is None)
 
     def calculate_geo_location(self):
         """"
@@ -92,7 +110,7 @@ class INBEVTRADMXGeo:
     def write_atomic_kpi(self, kpi_name, geo_result):
         """
         this method prepares insert query to kpi_results table
-        :param kpi_name: INBEVTRADMXGeo location
+        :param kpi_name: Geo location
         :param geo_result: result of GEO location KPI
         :return: None
         """
@@ -103,6 +121,8 @@ class INBEVTRADMXGeo:
         basic_dict['result'] = geo_result
         geo_score = self.get_geo_score(geo_result)
         self.common.write_to_db_result(atomic_kpi_fk, self.LEVEL3, geo_score, **basic_dict)
+        new_kpi_fk = self.common2.get_kpi_fk_by_kpi_name(kpi_name)
+        self.common2.write_to_db_result(fk=new_kpi_fk, result=geo_result, target=self.GEO_THRESHOLD, score=geo_score)
 
     def create_kpi_insert_attributes(self, fk, geo_result, geo_score, level):
         """
