@@ -26,13 +26,16 @@ class Const(object):
     SOS_TYPE = 'SOS Type'
 
     ''' Constants '''
+    MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     SOS_COLUMN_DICT = {
                         'SOS': 'facings_ign_stack',
-                        'Linear SOS': 'width_mm'
+                        'Linear SOS': 'width_mm',
+                        'AVERAGE': 'count',
                        }
+
 
 
 

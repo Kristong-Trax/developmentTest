@@ -83,26 +83,27 @@ class ToolBox:
             # self.write_to_db(kpi_name, kpi_type, score, result=result, threshold=target, num=num, den=den)
 
     def calculate_sos(self, kpi_name, kpi_line):
-        sos_type = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)[0]
+        levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
+        sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
         scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
-        if sos_type in Const.SOS_COLUMN_DICT:
-            sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
-        else:
-            Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
-            return
-
-        den = scif[sos_sum_col].sum()
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        items = scif['brand_fk'].unique().tolist()
-        for item in items:
-            item_scif = scif[scif['brand_fk'] == item]
-            item_pk = item_scif['brand_fk'].iloc[0]
-            num = item_scif[sos_sum_col].sum()
-            ratio, score = self.ratio_score(num, den)
-            self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
-                                           numerator_result=num, denominator_result=den,
-                                           denominator_id=self.store_id)
-
+        scif['count'] = Const.MM_TO_FT
+        for level in levels:
+            level_col = '{}_fk'.format(level).lower()
+            groups = scif.groupby(level_col)
+            for item_pk, df in groups:
+                for sos_type in sos_types:
+                    if sos_type in Const.SOS_COLUMN_DICT:
+                        sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
+                    else:
+                        Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
+                        return
+                    den = scif[sos_sum_col].sum()
+                    kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
+                    num = df[sos_sum_col].sum() / Const.MM_TO_FT
+                    ratio, score = self.ratio_score(num, den)
+                    self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
+                                                   numerator_result=num, denominator_result=den,
+                                                   denominator_id=self.store_id)
     @staticmethod
     def filter_df(df, filters, exclude=0):
         for key, val in filters.items():
