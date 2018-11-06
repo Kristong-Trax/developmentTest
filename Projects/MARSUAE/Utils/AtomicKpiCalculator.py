@@ -7,17 +7,6 @@ from Trax.Utils.DesignPatterns.Decorators import classproperty
 __author__ = 'israel'
 
 
-class CountCalculation(KpiBaseCalculation):
-    @classproperty
-    def kpi_type(self):
-        return 'SESSION_PARENT_1'
-
-    def calculate(self, params):
-        return [self._create_kpi_result(fk=1, numerator_id=1, denominator_id=3),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=2),
-                self._create_kpi_result(fk=1, numerator_id=1, denominator_id=1, context_id=1)]
-
-
 class SOSCalculation(KpiBaseCalculation):
     @classproperty
     def kpi_type(self):
@@ -38,9 +27,9 @@ class SOSCalculation(KpiBaseCalculation):
         else:
             result *= points
 
-        return [self._create_kpi_result(fk=kpi_fk, result=result, score=result,
+        return self._create_kpi_result(fk=kpi_fk, result=result, score=result,
                                         numerator_id=999, numerator_result=numerator_result,
-                                        denominator_id=999, denominator_result=denominator_result)]
+                                        denominator_id=999, denominator_result=denominator_result)
 
 
 class LinearSOSCalculation(SOSCalculation):
@@ -52,10 +41,10 @@ class LinearSOSCalculation(SOSCalculation):
         numerator_filters = {params['numerator type'].iloc[0]: params['numerator value'].iloc[0]}
         general_filters = {params['denominator type'].iloc[0]: params['denominator value'].iloc[0]}
 
-        sos = SOS(self._data_provider, output=None)
-        result, numerator_result, denominator_result = sos.calculate_linear_share_of_shelf_with_numerator_denominator(
-                                                                                        sos_filters=numerator_filters,
-                                                                                        **general_filters)
+        result, numerator_result, denominator_result = \
+            self._data_provider.sos.calculate_linear_share_of_shelf_with_numerator_denominator(
+                sos_filters=numerator_filters,
+                **general_filters)
         return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
 
 
@@ -101,19 +90,37 @@ class DistributionCalculation(KpiBaseCalculation):
         return 'Distribution'
 
     def calculate(self, params):
-        if True:
-            return
-        result_kpi = []
+        target = params['minimum products'].iloc[0]
+        points = params['Points'].iloc[0]
+        count_pass_product = 0
+        result = 0
+
         kpi_fk = 1
         assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0])
-        assortment_result = Assortment(data_provider=self._data_provider).calculate_lvl3_assortment()
+        assortment_result = self._data_provider.assortment.calculate_lvl3_assortment()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        for i, row in assortment_result.iterrows():
-            result_kpi.append(self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'],
-                                                      numerator_result=row['in_store'], score=row['in_store']))
-        return result_kpi
+        for row in assortment_result.itertuples():
+            product_result = self._create_kpi_result(fk=kpi_fk, numerator_id=row['product_fk'],
+                                             numerator_result=row['in_store'], score=row['in_store'] * 100)
+            self._data_provider.common.write_to_db_result(**product_result)
+            if row['in_store']:
+                count_pass_product += 1
 
-    def get_assortment_group_fk(self, assortment_name):
+        if target:
+            if count_pass_product >= target:
+                result = points
+        else:
+            if result >= params['upper threshold'].iloc[0]:
+                result = points
+            elif result < params['lower threshold'].iloc[0]:
+                result = 0
+            else:
+                result *= points
+
+        return self._create_kpi_result(fk=kpi_fk, numerator_id=999, numerator_result=result, score=result)
+
+    @staticmethod
+    def get_assortment_group_fk(assortment_name):
         return 1
 
 
@@ -137,8 +144,8 @@ class AvailabilityCalculation(KpiBaseCalculation):
                 result = 100
             result *= params['Points'].iloc[0]
 
-        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999, target=target,
-                                        numerator_result=None, denominator_id=999, denominator_result=None)]
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999, target=target,
+                                        numerator_result=None, denominator_id=999, denominator_result=None)
 
 
 class AggregationCalculation(SOSCalculation):
@@ -148,5 +155,5 @@ class AggregationCalculation(SOSCalculation):
 
     def calculate(self, params):
         result = params['score']
-        return [self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999,
-                                        numerator_result=None, denominator_id=999, denominator_result=None)]
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, numerator_id=999,
+                                        numerator_result=None, denominator_id=999, denominator_result=None)

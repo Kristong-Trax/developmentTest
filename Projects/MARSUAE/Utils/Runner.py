@@ -5,8 +5,8 @@ import pydot
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
 
-from Projects.MARSUAE.Utils.AtomicKpiCalculator import CountCalculation, AggregationCalculation, \
-    DistributionCalculation, LinearSOSCalculation, AvailabilityCalculation
+from Projects.MARSUAE.Utils.AtomicKpiCalculator import AggregationCalculation, DistributionCalculation, \
+    LinearSOSCalculation, AvailabilityCalculation
 
 
 class Results(object):
@@ -18,39 +18,45 @@ class Results(object):
         self.kpi_results = pd.DataFrame(columns=['kpi_name', 'fk', 'score'])
 
     def calculate(self, hierarchy):
-        for level_1 in hierarchy['Level_1']:
+        for level_1 in hierarchy['Level_1'].unique():
             kpi_level_1_fk = self.get_kpi_fk(level_1)
             sum_level_1_result = 0
             parent_level_1_identifier = self.common.get_dictionary(kpi_fk=kpi_level_1_fk)
 
-            for level_2 in hierarchy['Level_2']:
+            level_2_hierarchy = hierarchy[hierarchy['Level_1'] == level_1]
+            for level_2 in level_2_hierarchy['Level_2'].unique():
                 kpi_level_2_fk = self.get_kpi_fk(level_2)
                 sum_level_2_result = 0
                 parent_level_2_identifier = self.common.get_dictionary(kpi_fk=kpi_level_2_fk)
-                for level_3 in hierarchy['Level_3']:
-                    kpi_level_3_fk = self.get_kpi_fk(level_3)
-                    result = self._get_atomic_result(level_3, kpi_level_3_fk)
-                    result = result.to_dict
-                    result.update({'identifier_parent': parent_level_2_identifier})
+
+                level_3_hierarchy = level_2_hierarchy[level_2_hierarchy['Level_2'] == level_2]
+                for i, row in level_3_hierarchy.iterrows():
+                    kpi_level_3_fk = self.get_kpi_fk(row['Level_3'])
+                    result = self._get_atomic_result([row['Level_3'], row['Level_3_type']], kpi_level_3_fk)
+                    try:
+                        result.update({'identifier_parent': parent_level_2_identifier})
+                    except:
+                        pass
                     self.common.write_to_db_result(**result)
                     self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                                      result_2=float(result['target']), level=3, fk=k[kpi_level_3_fk])
+                                                      result_2=result['target'], level=3, fk=kpi_level_3_fk)
                     sum_level_2_result += result['score']
+
                 calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_2_fk)
-                level_2_result = calculation.calculate(**{'score': sum_level_2_result})
-                result = level_2_result.to_dict
+                level_2_result = calculation.calculate({'score': sum_level_2_result})
+                result = level_2_result
                 result.update({'identifier_parent': parent_level_1_identifier})
                 self.common.write_to_db_result(**result)
                 self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                                  result_2=float(result['target']), level=3, fk=k[kpi_level_2_fk])
+                                                  result_2=result['target'], level=2, fk=kpi_level_2_fk)
                 sum_level_1_result += result['score']
 
             calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_1_fk)
-            level_2_result = calculation.calculate(**{'score': sum_level_1_result})
-            result = level_2_result.to_dict
+            level_1_result = calculation.calculate({'score': sum_level_1_result})
+            result = level_1_result
             self.common.write_to_db_result(**result)
             self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                              result_2=float(result['target']), level=3, fk=k[kpi_level_1_fk])
+                                              result_2=result['target'], level=1, fk=kpi_level_1_fk)
 
         # dependencies_graph = self.build_dependencies_graph(hierarchy)
         # kpi_list = self.build_kpi_list_from_dependencies_graph(dependencies_graph)
@@ -82,7 +88,6 @@ class Results(object):
     def _kpi_type_calculator_mapping(self):
         return {
             DistributionCalculation.kpi_type: DistributionCalculation,
-            CountCalculation.kpi_type: CountCalculation,
             LinearSOSCalculation.kpi_type: LinearSOSCalculation,
             AvailabilityCalculation.kpi_type: AvailabilityCalculation,
             AggregationCalculation.kpi_type: AggregationCalculation
