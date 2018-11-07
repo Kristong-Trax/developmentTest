@@ -221,13 +221,12 @@ class Common(object):
                                           columns=['scene_kpi_results_fk', 'scene_kpi_results_parent_fk']).to_dict()
             elif scene_session_hierarchy:
                 attributes = pd.DataFrame([(parent_result_fk, scene_kpi_results_fk)],
-                                      columns=['session_kpi_results_parent_fk',
-                                               'scene_kpi_results_fk']).to_dict()
+                                          columns=['session_kpi_results_parent_fk',
+                                                   'scene_kpi_results_fk']).to_dict()
             elif result_entity == self.SESSION:
                 attributes = pd.DataFrame([(result_fk, parent_result_fk, scene_kpi_results_fk)],
-                                              columns=['session_kpi_results_fk', 'session_kpi_results_parent_fk',
-                                                       'scene_kpi_results_fk']).to_dict()
-
+                                          columns=['session_kpi_results_fk', 'session_kpi_results_parent_fk',
+                                                   'scene_kpi_results_fk']).to_dict()
             else:
                 Log.error('Cannot Calculate results per {}'.format(result_entity))
                 return
