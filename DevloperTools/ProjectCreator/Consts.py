@@ -389,6 +389,8 @@ class %(planogram_tool_box_class_name)s:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.planogram_item_facts = self.data_provider['planogram_item_facts']
+
 
     def main_function(self):
         score = 0
