@@ -13,7 +13,9 @@ from DevloperTools.ProjectCreator.Consts import MAIN_FILE_NAME, MAIN_FILE, LOCAL
     GEN_DEPENDENCY_SCRIPT, DEPENDENCIES_SCRIPT_NAME, TESTS_SCRIPT_NAME, TEST_SCRIPT, SCENE_TOOLBOX_FILE_NAME, \
     SCENE_TOOLBOX_SCRIPT, SCENE_GENERATOR_SCRIPT, SCENE_GENERATOR_FILE_NAME, SCENE_CALCULATIONS_FILE_NAME, \
     SCENE_CALCULATIONS_SCRIPT, PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME, PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT, \
-    PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME, PLANOGRAM_FINDER_CALCULATIONS_SCRIPT
+    PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME, PLANOGRAM_FINDER_CALCULATIONS_SCRIPT, PLANOGRAM_GENERATOR_FILE_NAME, \
+    PLANOGRAM_CALCULATIONS_SCRIPT, PLANOGRAM_GENERATOR_SCRIPT, PLANOGRAM_CALCULATIONS_FILE_NAME, \
+    PLANOGRAM_TOOLBOX_FILE_NAME, PLANOGRAM_TOOLBOX_SCRIPT
 
 __author__ = 'yoava'
 
@@ -79,12 +81,16 @@ class CreateKPIProject:
                            'project_capital': self.project_capital,
                            'generator_file_name': GENERATOR_FILE_NAME,
                            'scene_generator_file_name': SCENE_GENERATOR_FILE_NAME,
+                           'planogram_generator_file_name': PLANOGRAM_GENERATOR_FILE_NAME,
                            'generator_class_name': 'Generator',
                            'scene_generator_class_name': 'SceneGenerator',
+                           'planogram_generator_class_name': 'PlanogramGenerator',
                            'tool_box_file_name': TOOL_BOX_FILE_NAME,
                            'scene_tool_box_file_name': SCENE_TOOLBOX_FILE_NAME,
+                           'planogram_tool_box_file_name': PLANOGRAM_TOOLBOX_FILE_NAME,
                            'tool_box_class_name': '{}ToolBox'.format(self.project_short),
                            'scene_tool_box_class_name': '{}SceneToolBox'.format(self.project_short),
+                           'planogram_tool_box_class_name': '{}PlanogramToolBox'.format(self.project_short),
                            'main_file_name': MAIN_FILE_NAME,
                            'main_class_name': '{}Calculations'.format(self.project_short)
                            }
@@ -102,7 +108,11 @@ class CreateKPIProject:
         if self.calculate_by_scene:
             files_to_create['Utils'].append((SCENE_TOOLBOX_FILE_NAME, SCENE_TOOLBOX_SCRIPT))
             files_to_create[''].append((SCENE_GENERATOR_FILE_NAME, SCENE_GENERATOR_SCRIPT))
-            files_to_create[''].append((SCENE_CALCULATIONS_FILE_NAME, SCENE_CALCULATIONS_SCRIPT))
+            files_to_create['SceneKpis'] = [(SCENE_CALCULATIONS_FILE_NAME, SCENE_CALCULATIONS_SCRIPT)]
+        if self.calculate_by_planogram:
+            files_to_create['Utils'].append((PLANOGRAM_TOOLBOX_FILE_NAME, PLANOGRAM_TOOLBOX_SCRIPT))
+            files_to_create[''].append((PLANOGRAM_GENERATOR_FILE_NAME, PLANOGRAM_GENERATOR_SCRIPT))
+            files_to_create['PlanogramKpis'] = [(PLANOGRAM_CALCULATIONS_FILE_NAME, PLANOGRAM_CALCULATIONS_SCRIPT)]
         if self.planogram_compliance_calculation:
             files_to_create['PlanogramCompliance'] = [(PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME,
                                                       PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT)]
@@ -114,8 +124,8 @@ class CreateKPIProject:
 if __name__ == '__main__':
     LoggerInitializer.init('new_project')
     Config.init(app_name='new_project_new')
-    project = 'ttttttt'
+    project = 'test-project-2'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project, planogram_compliance=False)
+    new = CreateKPIProject(project, calculate_by_scene=True, calculate_by_planogram=True)
     new.create_new_project()
     Log.info('project {} was created successfully'.format(project))

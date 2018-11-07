@@ -330,6 +330,7 @@ from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_g
 
 __author__ = '%(author)s'
 
+
 class SceneCalculations(SceneBaseClass):
     def __init__(self, data_provider):
         super(SceneCalculations, self).__init__(data_provider)
@@ -414,7 +415,7 @@ class PlanogramGenerator:
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.common = Common(data_provider)
-        self.scene_tool_box = %(scene_tool_box_class_name)s(self.data_provider, self.output, self.common)
+        self.scene_tool_box = %(planogram_tool_box_class_name)s(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def planogram_score(self):
@@ -426,19 +427,19 @@ class PlanogramGenerator:
 """
 
 PLANOGRAM_CALCULATIONS_SCRIPT = """
-from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.%(project_capital)s.%(scene_generator_file_name)s import %(scene_generator_class_name)s
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramBaseClass
+from Projects.%(project_capital)s.%(planogram_generator_file_name)s import %(planogram_generator_class_name)s
 
 __author__ = '%(author)s'
 
+
 class PlanogramCalculations(PlanogramBaseClass):
     def __init__(self, data_provider):
-        super(SceneCalculations, self).__init__(data_provider)
-        self.scene_generator =  %(scene_generator_class_name)s(self._data_provider)
+        super(PlanogramCalculations, self).__init__(data_provider)
+        self.planogram_generator = %(planogram_generator_class_name)s(self._data_provider)
 
-    def calculate_kpis(self):
-        self.planogram_generator.scene_score()
-
+    def calculate_planogram(self):
+        self.planogram_generator.planogram_score()
 """
 
 
