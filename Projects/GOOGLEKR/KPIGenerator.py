@@ -22,6 +22,7 @@ class Generator:
     def main_function(self):
         if self.tool_box.scif.empty:
             Log.warning('Distribution is empty for this session')
+            return
         self.google_global_fixture_compliance()
         self.visit_osa_and_pog()
         self.common.commit_results_data()
