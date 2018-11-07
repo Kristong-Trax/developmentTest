@@ -22,7 +22,7 @@ STORE_TYPES = {
     "VALUE SOVI RED": "Value",
     "FSOP - QSR": "QSR",
 }
-CMA_COMPLIANCE = 'CMA Compliance'
+SUB_PROJECT = 'CMA Compliance'
 
 
 class CMAToolBox:
@@ -50,7 +50,7 @@ class CMAToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
-        self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
+        self.common_db = Common(self.data_provider, SUB_PROJECT)
         self.common_db2 = common_db2
         self.result_values = self.ps_data_provider.get_result_values()
         self.region = self.store_info['region_name'].iloc[0]
@@ -64,9 +64,10 @@ class CMAToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.total_score = 0
+        self.total_count = 0
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.tools = Shared()
+        self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
 
@@ -81,13 +82,17 @@ class CMAToolBox:
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)
                 if store_type is None or self.store_type in self.does_exist(main_line, Const.STORE_TYPE):
                     self.calculate_main_kpi(main_line)
-            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
+            kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(SUB_PROJECT)
 
-            self.common_db2.write_to_db_result(fk=kpi_fk, result=self.total_score, numerator_id=self.manufacturer_fk,
+            result = 0
+            if self.total_count:
+                result = self.total_score * 100.0 / self.total_count
+            self.common_db2.write_to_db_result(fk=kpi_fk, result=result, numerator_result=self.total_score,
+                                               numerator_id=self.manufacturer_fk, denominator_result=self.total_count,
                                                denominator_id=self.store_id,
-                                               identifier_result=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
+                                               identifier_result=self.common_db2.get_dictionary(parent_name=SUB_PROJECT))
             self.write_to_db_result(
-                self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+                self.common_db.get_kpi_fk_by_kpi_name(SUB_PROJECT, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -117,6 +122,7 @@ class CMAToolBox:
                 result, score, target = kpi_function(kpi_line, relevant_scif, isnt_dp, general_filters)
         else:
             pass
+        self.total_count += 1
         if score > 0:
             self.total_score += 1
         if isinstance(result, tuple):
@@ -493,7 +499,10 @@ class CMAToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                if ", " in cell:
+                    return cell.split(", ")
+                else:
+                    return cell.split(',')
         return None
 
     def get_kpi_function(self, kpi_type):
@@ -540,11 +549,11 @@ class CMAToolBox:
             delta = 0
         score_value = Const.PASS if score == 1 else Const.FAIL
         score = self.get_pks_of_result(score_value)
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(CMA_COMPLIANCE + " " + kpi_name)
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(SUB_PROJECT + " " + kpi_name)
         self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=target,
                                            numerator_result=num, denominator_result=den,
                                            weight=delta,
-                                           identifier_parent=self.common_db2.get_dictionary(parent_name=CMA_COMPLIANCE))
+                                           identifier_parent=self.common_db2.get_dictionary(parent_name=SUB_PROJECT))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         self.write_to_db_result(

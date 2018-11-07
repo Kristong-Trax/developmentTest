@@ -36,13 +36,13 @@
 #     data_provider = KEngineDataProvider(project_name)
 #     # session = 'AD29338A-C2D9-4486-BD94-7B1E32224A11'
 #     # session = 'E6BBF9D5-114E-4176-A35E-B84ABD0C11B5'
-#     session = '15431CFF-E6FC-4A74-8BF3-338E35710CE2'
+#     session = '407C7A11-72CA-4144-A8B4-4769283C3CE0'
 # #     data_provider.load_session_data(session)
 # #     output = Output()
 # #     CCBZA_SANDCalculations(data_provider, output).run_project_calculations()
 # #     scenes = [2]
 # #     scenes = [4, 5, 8, 9, 12]
-#     scenes = [25, 26, 27]
+#     scenes = [15439, 15440]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()

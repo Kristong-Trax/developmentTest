@@ -22,6 +22,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
+
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -32,7 +33,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -95,36 +98,41 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
         #         atomic_name = row['product_ean_code'] + '-' + row['product_name']
         #         self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
         #     return
+
+
+        # SOS_Category:
         if kpi_set_fk == 2:
             categories = self.scif['category'].unique().tolist()
             for category in categories:
                 filtered_category = self.scif[self.scif['category'] == category]
                 filtered_manufacturer = filtered_category[
-                                            filtered_category['manufacturer_name'].str.encode('utf-8') == self.NESTLE]
-                for mode in ['facings', 'gross_len_add_stack']:
-                    num_of_products_in_cat = sum(filtered_category[mode])
-                    num_of_products_in_cat_and_manufacturer = sum(filtered_manufacturer[mode])
-                    result = 0 if num_of_products_in_cat == 0 \
-                        else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
-                    name = 'linear' if mode == 'gross_len_add_stack' else mode
-                    atomic_name = 'sos for category_' + name + '_{}'.format(category)
-                    self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+                    filtered_category['manufacturer_name'].str.encode('utf-8') == self.NESTLE]
+                num_of_products_in_cat = sum(filtered_category['facings'])
+                num_of_products_in_cat_and_manufacturer = sum(filtered_manufacturer['facings'])
+                result = 0 if num_of_products_in_cat == 0 \
+                    else num_of_products_in_cat_and_manufacturer / float(num_of_products_in_cat)
+                atomic_name = 'sos for category_{}'.format(category)
+                self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+
+        # SOS_Brand
         elif kpi_set_fk == 3:
             brands = self.scif['brand_name'].unique().tolist()
-            category_groups = self.scif['category_group_x'].unique().tolist()
-            for category_group in category_groups:
-                filtered_scif = self.scif[self.scif['category_group_x'] == category_group]
-                for mode in ['facings', 'gross_len_add_stack']:
-                    num_of_products_in_cat = sum(filtered_scif[mode])
-                    for brand in brands:
-                        brand_filter = filtered_scif.copy()
-                        brand_filter = brand_filter[brand_filter['brand_name'] == brand]
-                        num_of_products_in_brand = sum(brand_filter[mode])
-                        result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(num_of_products_in_cat)
-                        name = 'linear' if mode == 'gross_len_add_stack' else mode
-                        atomic_name = 'sos ' + name + ' for brand_{brand} and category_group_{category}'.format(
-                            brand=brand, category=category_group)
-                        self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+            for brand in brands:
+                brand_filtered = self.scif[self.scif['brand_name'] == brand]
+                num_of_products_in_brand = sum(brand_filtered['facings'])
+
+                category_count = brand_filtered.groupby(['category']).size().reset_index(name='counts')
+                category_count = category_count.sort_values(['counts'], ascending=False)
+                biggest_category = category_count['category'].values[0]
+                category_filtered = self.scif[self.scif['category'] == biggest_category]
+                num_of_products_in_cat = sum(category_filtered['facings'])
+
+                result = 0 if num_of_products_in_cat == 0 else num_of_products_in_brand / float(
+                    num_of_products_in_cat)
+                atomic_name = 'sos for brand_{brand}'.format(brand=brand)
+                self.write_to_db_result(self.LEVEL3, kpi_set_fk, atomic_name, result)
+
+        # facings count per product
         elif kpi_set_fk == 4:
             try:
                 shorted_df = self.scif[['product_ean_code', 'facings', 'facings_ign_stack', 'Customer_ean_code']]
@@ -136,7 +144,6 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                 filtered_df = shorted_df[shorted_df['product_ean_code'] == product_ean_code]
                 num_of_facings = sum(filtered_df['facings'])
                 # num_of_facings_ign_stack = sum(filtered_df['facings_ign_stack'])
-                ean_code = filtered_df.get('Customer_ean_code')
                 try:
                     ean_code = filtered_df.get('Customer_ean_code').dropna().values[0]
                 except:
@@ -144,6 +151,25 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
                 display_name = 'SKU EAN Code: ' + ean_code
                 self.write_to_db_result(self.LEVEL3, kpi_set_fk, result=num_of_facings, display_text=display_name,
                                         score=num_of_facings)
+
+        # linear per product
+        elif kpi_set_fk == 5:
+            try:
+                shorted_df = self.scif[['product_ean_code', 'gross_len_add_stack', 'gross_len_ign_stack', 'Customer_ean_code']]
+            except:
+                shorted_df = self.scif[['product_ean_code', 'gross_len_add_stack', 'gross_len_ign_stack']]
+
+            products_list = shorted_df['product_ean_code'].unique().tolist()
+            for product_ean_code in products_list:
+                filtered_df = shorted_df[shorted_df['product_ean_code'] == product_ean_code]
+                linear_add_stack = sum(filtered_df['gross_len_add_stack'])
+                try:
+                    ean_code = filtered_df.get('Customer_ean_code').dropna().values[0]
+                except:
+                    ean_code = product_ean_code
+                display_name = 'SKU EAN Code: ' + ean_code
+                self.write_to_db_result(self.LEVEL3, kpi_set_fk, result=linear_add_stack, display_text=display_name,
+                                        score=linear_add_stack)
 
         return
 
@@ -168,13 +194,15 @@ class NESTLEAPI2_SANDNESTLEAPIToolBox:
 
         """
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+            kpi_set_name = \
+            self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         None, kpi_set_fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL3:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+            kpi_set_name = \
+            self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
             if display_text:
                 insert_into_display_text = display_text
             else:
