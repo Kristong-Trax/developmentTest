@@ -2,18 +2,10 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+import pandas as pd
 
 __author__ = 'ilays'
 
@@ -21,6 +13,8 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+ASSORTMENT_KPI = 'ASSORTMENT_ON_SKU_LEVEL'
+SESSION_SKU_FACINGS_KPI = 'FACINGS_PER_SKU_SESSION'
 
 class TSINGTAOBEERCNToolBox:
     LEVEL1 = 1
@@ -44,10 +38,33 @@ class TSINGTAOBEERCNToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.assortment = self.data_provider[Data.ASSORTMENTS]
+        self.tools = GENERALToolBox(data_provider)
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        score = 0
-        return score
+        self.calculate_sku_facing_session_level()
+        self.calculate_facings_by_assortment()
+
+    def calculate_sku_facing_session_level(self):
+        result_df = self.scif[(self.scif['product_type'] == 'SKU') &
+                              (self.scif['facings'] > 0)][['product_fk', 'facings']]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(SESSION_SKU_FACINGS_KPI)
+        for index, row in result_df.iterrows():
+            result = row['facings']
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
+                                           score=result, result=result)
+
+    def calculate_facings_by_assortment(self):
+        assortment_scif_merge = pd.merge(self.assortment, self.scif, how="left",
+                                    on=['template_fk', 'product_fk'])[['product_fk', 'template_fk', 'facings']]
+        result_df = assortment_scif_merge.groupby(['product_fk'])['facings'].sum().reset_index()
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(ASSORTMENT_KPI)
+        for index, row in result_df.iterrows():
+            result = row['facings']
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
+                                            score= result, result=result)
+
+
