@@ -22,7 +22,8 @@ __author__ = 'yoava'
 
 class CreateKPIProject:
 
-    def __init__(self, project_name, calculate_by_scene=False, calculate_by_planogram=False, planogram_compliance=False):
+    def __init__(self, project_name, calculate_by_scene=False, calculate_by_planogram=False,
+                 planogram_compliance=False):
         self.project = project_name.lower().replace('_', '-')
         self.project_capital = self.project.upper().replace('-', '_')
         self.project_short = self.project_capital.split('_')[0]
