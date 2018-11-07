@@ -20,14 +20,15 @@ __author__ = 'yoava'
 
 class CreateKPIProject:
 
-    def __init__(self, project_name, calculate_by_scene=False, planogram=False):
+    def __init__(self, project_name, calculate_by_scene=False, calculate_by_planogram=False, planogram_compliance=False):
         self.project = project_name.lower().replace('_', '-')
         self.project_capital = self.project.upper().replace('-', '_')
         self.project_short = self.project_capital.split('_')[0]
         self.author = os.environ.get('USER', '')
         self.project_path = self.get_project_path()
         self.calculate_by_scene = calculate_by_scene
-        self.planogram_calculation = planogram
+        self.calculate_by_planogram = calculate_by_planogram
+        self.planogram_compliance_calculation = planogram_compliance
         self.create_project_directory()
 
     def get_project_path(self):
@@ -102,7 +103,7 @@ class CreateKPIProject:
             files_to_create['Utils'].append((SCENE_TOOLBOX_FILE_NAME, SCENE_TOOLBOX_SCRIPT))
             files_to_create[''].append((SCENE_GENERATOR_FILE_NAME, SCENE_GENERATOR_SCRIPT))
             files_to_create[''].append((SCENE_CALCULATIONS_FILE_NAME, SCENE_CALCULATIONS_SCRIPT))
-        if self.planogram_calculation:
+        if self.planogram_compliance_calculation:
             files_to_create['PlanogramCompliance'] = [(PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME,
                                                       PLANOGRAM_COMPLIANCE_CALCULATIONS_SCRIPT)]
             files_to_create['PlanogramFinder'] = [(PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME,
@@ -115,6 +116,6 @@ if __name__ == '__main__':
     Config.init(app_name='new_project_new')
     project = 'MOLSONCOORSHR'
     Log.info("project name : " + project)
-    new = CreateKPIProject(project, planogram=False)
+    new = CreateKPIProject(project, planogram_compliance=False)
     new.create_new_project()
     Log.info('project {} was created successfully'.format(project))
