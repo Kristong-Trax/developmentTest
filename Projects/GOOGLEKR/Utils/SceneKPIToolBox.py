@@ -15,7 +15,7 @@ class SceneToolBox:
         self.match_product_in_scene = pd.merge(self.data_provider[Data.MATCHES], self.all_products, on="product_fk")
         self.planograms = self.data_provider[Data.PLANOGRAM_ITEM_FACTS]
         if self.planograms is None:
-            self.planograms = pd.DataFrame(columns=['item_id'])
+            self.planograms = pd.DataFrame(columns=['item_id'])  # for the self.planograms will be an empty DF
         else:
             self.planograms = self.planograms[self.planograms['manufacturer_name'] == Const.GOOGLE]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -27,9 +27,8 @@ class SceneToolBox:
         if brands_scif.empty:
             return
 
-        brand_totals = brands_scif.set_index(['brand_fk', Const.BRAND]) \
-            .groupby([Const.BRAND, 'brand_fk'])[Const.FACINGS] \
-            .sum()
+        brand_totals = brands_scif.set_index([Const.BRAND, 'brand_fk']) \
+                                  .groupby(level=[0, 1])[Const.FACINGS].sum()
 
         total_facings = scif[Const.FACINGS].sum()
         google_fk, google_facings = brand_totals.reset_index(drop=False, level=1).loc[Const.GOOGLE_BRAND]
@@ -48,12 +47,16 @@ class SceneToolBox:
                 denominator_result=brand_facings, denominator_id=brand_fk)
 
     def get_planogram_fixture_details(self):
+        """
+        Calculates the fixture level of POG (compliance_status "in place" out of all the other google products)
+        and the status level (for all the 4 statuses)
+        """
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_POG)
         all_facings, numerator_result, result = 0, 0, None
         score, planogram_id = 0, None
         if not self.planograms.empty:
             result = 1
-            compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.FIXTURE_COMPLIANCE)
+            compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_STATUS)
             all_facings = self.planograms['facings'].sum()
             planogram_id = self.planograms['planogram_id'].iloc[0]
             for i in range(1, 5):
@@ -69,10 +72,17 @@ class SceneToolBox:
                     score = ratio
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings, result=result,
+            denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
     def get_compliance_products(self, compliance_status_fk, identifier_parent):
+        """
+        Calculates for every compliance_status the amount of google products in this status,
+        and writes every one of them in the product_level
+        :param compliance_status_fk: 1, 2, 3 or 4
+        :param identifier_parent: for the hierarchy
+        :return: the number of google products with this status
+        """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_PRODUCT)
         compliance_products = self.match_product_in_scene[
                               (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
@@ -85,6 +95,9 @@ class SceneToolBox:
         return len(compliance_products)
 
     def get_fixture_osa(self):
+        """
+        Calculates the assortment based on the POG list, and the level of missing products
+        """
         if self.planograms.empty:
             numerator_result, denominator_result = 0, 0
             score, result = 0, None
@@ -109,11 +122,13 @@ class SceneToolBox:
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
-        for exclude_filter in filters:
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
             if exclude:
-                df = df[~df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+                df = df[~df[key].isin(val)]
             else:
-                df = df[df['product_type'].isin(Const.EXCLUDE_FILTERS[exclude_filter])]
+                df = df[df[key].isin(val)]
         return df
 
     @staticmethod

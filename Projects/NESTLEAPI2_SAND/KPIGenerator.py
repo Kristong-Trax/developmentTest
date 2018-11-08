@@ -23,7 +23,7 @@ class NESTLEAPI2_SANDNESTLEAPIGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        for kpi_set_fk in [2, 3, 4]:
+        for kpi_set_fk in [2, 3, 4, 5]:
             self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
             self.tool_box.write_to_db_result(self.tool_box.LEVEL1, kpi_set_fk)
         self.tool_box.commit_results_data()
