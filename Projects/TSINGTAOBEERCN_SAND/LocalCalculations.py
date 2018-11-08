@@ -35,6 +35,7 @@ if __name__ == '__main__':
         SceneVanillaCalculations(data_provider, output).run_project_calculations()
         save_scene_item_facts_to_data_provider(data_provider, output)
         SceneCalculations(data_provider).calculate_kpis()
+    data_provider = KEngineDataProvider(project_name)
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

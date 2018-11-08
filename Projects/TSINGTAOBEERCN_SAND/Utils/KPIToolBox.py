@@ -47,6 +47,7 @@ class TSINGTAOBEERCNToolBox:
         """
         self.calculate_sku_facing_session_level()
         self.calculate_facings_by_assortment()
+        self.common.commit_results_data()
 
     def calculate_sku_facing_session_level(self):
         result_df = self.scif[(self.scif['product_type'] == 'SKU') &
