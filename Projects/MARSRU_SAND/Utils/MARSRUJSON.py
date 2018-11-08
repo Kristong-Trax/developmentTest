@@ -16,7 +16,7 @@ class MARSRU_SANDMARSRUJsonGenerator:
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.project_kpi_dict = {'project': self.project, 'author': 'urid', 'golden_shelves': '', 'kpi_data': []}
 
-    def create_json(self, file_name):
+    def create_json(self, file_name, year_filter=None):
         # file_input = pd.read_csv(self.path + file_name, encoding='utf-8')
         # file_input = pd.read_excel(self.path + file_name)
         file_input = pd.read_excel(os.path.join(self.base_path, file_name))
@@ -24,6 +24,13 @@ class MARSRU_SANDMARSRUJsonGenerator:
         # json_acceptable_string = output.replace("'", "\"")
         # final_json = json.loads(json_acceptable_string)
         final_json = json.loads(output)
+        final_json_filtered = []
+        if year_filter:
+            for fj in final_json:
+                if fj.get("Year"):
+                    if str(int(fj.get("Year"))) == year_filter:
+                        final_json_filtered.append(fj)
+            final_json = final_json_filtered
         self.project_kpi_dict['kpi_data'].append({'marsru-kpi': final_json})
         # with open('/home/uri/dev/theGarage/Trax/Analytics/Calculation/Ps/CCRU/Utils/data.txt', 'w') as outfile:
         #     json.dump(final_json, outfile)
