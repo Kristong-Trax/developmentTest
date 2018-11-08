@@ -22,6 +22,12 @@ __author__ = 'yoava'
 
 class CreateKPIProject:
 
+    """
+    this class creates new KPI project
+    you can set in the constructor if you want to add to the normal project calculations by scene, by plangoram ,
+    or by planogram compliance by setting the parameters to True
+    all params are False by default
+    """
     def __init__(self, project_name, calculate_by_scene=False, calculate_by_planogram=False,
                  planogram_compliance=False):
         self.project = project_name.lower().replace('_', '-')
