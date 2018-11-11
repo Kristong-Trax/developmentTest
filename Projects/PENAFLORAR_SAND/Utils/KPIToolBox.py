@@ -8,9 +8,11 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.PENAFLORAR_SAND.Utils.Fetcher import PENAFLORAR_SANDDIAGEOARQueries
-from Projects.PENAFLORAR_SAND.Utils.GeneralToolBox import PENAFLORAR_SANDDIAGEOARGENERALToolBox
-from Projects.PENAFLORAR_SAND.Utils.ToolBox import PENAFLORAR_SANDDIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Yasmin'
 
@@ -53,7 +55,6 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = PENAFLORAR_SANDDIAGEOARGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
@@ -63,10 +64,14 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         self.scores = {self.LEVEL1: {},
                        self.LEVEL2: {},
                        self.LEVEL3: {}}
-        self.tools = PENAFLORAR_SANDDIAGEOToolBox(self.data_provider, output,
-                                           kpi_static_data=self.kpi_static_data,
-                                           match_display_in_scene=self.match_display_in_scene)
 
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)  # replace the old one
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
 
 
@@ -75,7 +80,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = PENAFLORAR_SANDDIAGEOARQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -84,35 +89,65 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = PENAFLORAR_SANDDIAGEOARQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global assortment kpis
+        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
+                                              self.common).diageo_global_assortment_function_v2()
+        self.save_json_to_new_tables(assortment_res_dict)
 
-        # if set_name in ('MPA', 'New Products',):
-        #     set_score = self.calculate_assortment_sets(set_name)
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name in ('Visible to Consumer %', 'Visible to Customer'):
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
+            # if set_name in ('MPA', 'New Products',):
+            #     set_score = self.calculate_assortment_sets(set_name)
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            # Global Visible to Customer / Visible to Consumer
+            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+                if res_dict:
+                    # Saving to new tables
+                    # parent_res = res_dict[-1]
+                    self.save_json_to_new_tables(res_dict)
+
+                    # Saving to old tables
+                    # result = parent_res['result']
+                    # self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+
+                # Saving to old tables
+                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                self.save_level2_and_level3(set_name, set_name, set_score)
+            else:
+                return
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # commiting to new tables
+        self.commonV2.commit_results_data()
+
+    def save_json_to_new_tables(self, res_dict):
+        if res_dict:
+            # Saving to new tables
+            for r in res_dict:
+                self.commonV2.write_to_db_result(**r)
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -249,8 +284,10 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
-        delete_queries = PENAFLORAR_SANDDIAGEOARQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:
