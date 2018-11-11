@@ -6,7 +6,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
 
 from Projects.MARSUAE.Utils.AtomicKpiCalculator import AggregationCalculation, DistributionCalculation, \
-    LinearSOSCalculation, AvailabilityCalculation
+    LinearSOSCalculation, AvailabilityCalculation, DisplaySOSCalculation
 
 
 class Results(object):
@@ -33,10 +33,7 @@ class Results(object):
                 for i, row in level_3_hierarchy.iterrows():
                     kpi_level_3_fk = self.get_kpi_fk(row['Level_3'])
                     result = self._get_atomic_result([row['Level_3'], row['Level_3_type']], kpi_level_3_fk)
-                    try:
-                        result.update({'identifier_parent': parent_level_2_identifier})
-                    except:
-                        pass
+                    result.update({'identifier_parent': parent_level_2_identifier})
                     self.common.write_to_db_result(**result)
                     self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
                                                       result_2=result['target'], level=3, fk=kpi_level_3_fk)
@@ -45,7 +42,8 @@ class Results(object):
                 calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_2_fk)
                 level_2_result = calculation.calculate({'score': sum_level_2_result})
                 result = level_2_result
-                result.update({'identifier_parent': parent_level_1_identifier})
+                result.update({'identifier_parent': parent_level_1_identifier,
+                               'identifier_result': parent_level_2_identifier})
                 self.common.write_to_db_result(**result)
                 self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
                                                   result_2=result['target'], level=2, fk=kpi_level_2_fk)
@@ -54,6 +52,7 @@ class Results(object):
             calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_1_fk)
             level_1_result = calculation.calculate({'score': sum_level_1_result})
             result = level_1_result
+            result.update({'identifier_result': parent_level_1_identifier})
             self.common.write_to_db_result(**result)
             self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
                                               result_2=result['target'], level=1, fk=kpi_level_1_fk)
@@ -64,16 +63,6 @@ class Results(object):
 
     def get_kpi_fk(self, kpi_name):
         return self.common.get_kpi_fk_by_kpi_type(kpi_name)
-
-    @staticmethod
-    def _create_atomic_result(atomic_kpi_name, kpi_name, kpi_set_name, result, score=None, threshold=None,
-                              weight=None):
-        return {'result': result,
-                'atomic_kpi_name': atomic_kpi_name,
-                'kpi_name': kpi_name,
-                'atomic': kpi_set_name,
-                'score': score,
-                'weight': weight}
 
     def _get_atomic_result(self, atomic, kpi_fk):
         kpi_params = self.get_kpi_params(atomic)
@@ -90,7 +79,8 @@ class Results(object):
             DistributionCalculation.kpi_type: DistributionCalculation,
             LinearSOSCalculation.kpi_type: LinearSOSCalculation,
             AvailabilityCalculation.kpi_type: AvailabilityCalculation,
-            AggregationCalculation.kpi_type: AggregationCalculation
+            AggregationCalculation.kpi_type: AggregationCalculation,
+            DisplaySOSCalculation.kpi_type: DisplaySOSCalculation
         }
 
     # def recursive_kpi_calculate(self, kpi_list, dependencies_graph):

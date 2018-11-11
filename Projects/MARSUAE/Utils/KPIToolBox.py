@@ -20,7 +20,7 @@ SHEETS_NAME = ['KPI', 'SOS', 'Distribution', 'Availability']
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
-class MARSUAEToolBox:
+class ToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -40,11 +40,10 @@ class MARSUAEToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.channel = self.get_store_channel(self.store_id)
         self.kpi_static_data = self.common.get_kpi_static_data()
-        self.kpi_results_queries = []
-        self.data_provider.kpi_sheets = {}
-        self.kpi_sheets = self.data_provider.kpi_sheets
-        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
+        # self.kpi_results_queries = []
+        self.kpi_sheets = {}
+        # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        # self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         self.old_kpi_static_data = self.common.get_kpi_static_data()
         for name in SHEETS_NAME:
             parsed_template = ParseTemplates.parse_template(TEMPLATE_PATH, sheet_name=name)
