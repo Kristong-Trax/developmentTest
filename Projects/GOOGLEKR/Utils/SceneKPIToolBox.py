@@ -61,7 +61,7 @@ class SceneToolBox:
             planogram_id = self.planograms['planogram_id'].iloc[0]
             for i in range(1, 5):
                 identifier_result = self.common.get_dictionary(compliance_fk=i)
-                status_products = self.get_compliance_products(i, identifier_result)
+                status_products = self.get_compliance_products(i, identifier_result, planogram_id)
                 ratio = self.division(status_products, all_facings)
                 self.common.write_to_db_result(
                     fk=compliance_kpi_fk, numerator_id=i, numerator_result=status_products, denominator_id=planogram_id,
@@ -75,12 +75,13 @@ class SceneToolBox:
             denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
-    def get_compliance_products(self, compliance_status_fk, identifier_parent):
+    def get_compliance_products(self, compliance_status_fk, identifier_parent, planogram_id):
         """
         Calculates for every compliance_status the amount of google products in this status,
         and writes every one of them in the product_level
         :param compliance_status_fk: 1, 2, 3 or 4
         :param identifier_parent: for the hierarchy
+        :param planogram_id: for the POG presentation
         :return: the number of google products with this status
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_PRODUCT)
@@ -91,7 +92,7 @@ class SceneToolBox:
             product_facings = len(compliance_products[compliance_products['product_fk'] == product_fk])
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=product_fk, result=product_facings, denominator_id=compliance_status_fk,
-                by_scene=True, identifier_parent=identifier_parent, should_enter=True)
+                by_scene=True, identifier_parent=identifier_parent, should_enter=True, context_id=planogram_id)
         return len(compliance_products)
 
     def get_fixture_osa(self):
