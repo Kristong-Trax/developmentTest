@@ -7,9 +7,13 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
 from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Utils.Const import Const
+from Projects.GMIUS.Utils.PositionGraph import Block
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+from Projects.GMIUS.Utils.PositionGraph import Block
+# from KPIUtils_v2.Calculations.BlockCalculations import Block
+
 
 __author__ = 'Sam'
 
@@ -66,7 +70,8 @@ class ToolBox:
         """
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
+            # self.calculate_main_kpi(main_line)
+            self.graph(None, None)
 
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
@@ -104,6 +109,19 @@ class ToolBox:
                     self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
                                                    numerator_result=num, denominator_result=den,
                                                    denominator_id=self.store_id)
+    def graph(self, kpi_name, kpi_line):
+        g = Block(self.data_provider2)
+        prod = self.products.drop(['width_mm', 'height_mm'], axis=1)
+        mpis = self.data_provider2[Data.MATCHES].merge(prod, on='product_fk')
+        relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
+        allowed_filter = {'product_type': ['Empty', 'Other']}
+        filtered_mpis = mpis[(mpis['Segment'] == 'DRY DOG NATURAL/GRAIN FREE') |
+                       (mpis['Segment'].isin(['Empty', 'Other']))]
+        g.alt_block(filtered_mpis, relevant_filter, allowed_filter)
+        print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+        relevant_skus = filtered_mpis['product_fk']
+        g.network_x_block_together(relevant_skus, None)
+
     @staticmethod
     def filter_df(df, filters, exclude=0):
         for key, val in filters.items():

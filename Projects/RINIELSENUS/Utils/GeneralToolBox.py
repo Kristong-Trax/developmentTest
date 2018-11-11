@@ -750,9 +750,9 @@ class MarsUsGENERALToolBox:
             else:
                 new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
-                # print('\n\n')
-                # for i in scene_graph.vs[cluster]:
-                #     print(i['Segment'], i['product_name'])
+                print('\n\n')
+                for i in scene_graph.vs[cluster]:
+                    print(i['Segment'], i['product_name'])
                 if block_of_blocks:
                     relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
                     if len(new_relevant_vertices1) > 0:
