@@ -122,8 +122,8 @@ class ToolBox:
                        (mpis['product_type'].isin(['Empty', 'Other']))]
         g.alt_block(filtered_mpis, mpis, relevant_filter, allowed_filter)
         print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
-        relevant_skus = filtered_mpis['product_fk']
-        g2.network_x_block_together(relevant_skus, None)
+        filters = relevant_filter.update(allowed_filter)
+        g2.network_x_block_together(filters, None)
 
     @staticmethod
     def filter_df(df, filters, exclude=0):

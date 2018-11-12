@@ -158,6 +158,7 @@ class HTML_Base:
 
     def __init__(self, orig_html, display_attribs):
         self.mult_factor = 1
+        self.size = [0, 0]
         self.color_num = 0
         self.num_colors = len(self.COLORS)
         self.clusters = []
@@ -204,9 +205,13 @@ class HTML_Base:
 
     def extract_planogram_compliance(self, html):
         self.mult_factor = float(re.findall('transform:scale\((.*?)\);"', html)[0])
+        main_planogram = re.findall('<div class="planogram-compliance"(.*?)px"', html)[0]
+        size = main_planogram.replace('style="', '').replace('px', '').split(';')
+        self.size = [x.split(':')[1] for x in size]
+
         planogram_html ='{}{}{}'.format('<div class="planogram-compliance"',
-                                          re.findall('<div class="planogram-compliance"(.*?)px"', html)[0],
-                                          'px;zoom:.125">')
+                                        main_planogram,
+                                        'px;zoom:.125">')
         stitch_html = '\n'.join(['{}{}{}'.format('<div class="image"', img, '</div>')
                                 for img in re.findall('<div class="image"(.*?)</div>', html)])
         shelf_bay_style = '{}{}{}'.format('<div style="top:', re.findall('div style="top:(.*?)\)', html)[0], ');">')
