@@ -203,8 +203,11 @@ class DIAGEOAU_SANDToolBox:
         """
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
-
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            Log.warning("kpi name or set name don't exist")
+            return
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
