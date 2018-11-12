@@ -18,12 +18,13 @@ class MOLSONCOORSRS_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('molsoncoorshr calculations')
+#     LoggerInitializer.init('molsoncoorsrs calculations')
 #     Config.init()
-#     project_name = 'molsoncoorsrs_sand'
+#     project_name = 'molsoncoorsrs-sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#                 '9a06e981-ce48-4619-9eba-0969490537f3',
+#                 'd95208d8-080e-4f85-a8c4-221b321f79ba',
+#                 '00aed1c0-5d62-4133-b874-c58aa6ee9ed8',
 #     ]
 #     for session in sessions:
 #         data_provider.load_session_data(session)
@@ -31,4 +32,4 @@ class MOLSONCOORSRS_SANDCalculations(BaseCalculationsScript):
 #         MOLSONCOORSRS_SANDCalculations(data_provider, output).run_project_calculations()
 #
 #
-
+#

@@ -9,7 +9,7 @@ class Const(object):
     GOOGLE_BRAND = 'Google Play'
     NOTABRAND = {'General', 'General.'}
     EXCLUDE_FILTERS = {
-        'product_type': ['Irelevant', 'Empty']
+        'product_type': ['Irelevant']
     }
 
     SOS_SCENE = 'SOS BRAND out of SCENE'
