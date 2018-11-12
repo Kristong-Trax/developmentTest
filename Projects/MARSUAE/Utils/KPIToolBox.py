@@ -7,7 +7,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils.DB.Common import Common as CommonV1
+from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.Utils.Parsers import ParseTemplates
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
@@ -24,9 +24,10 @@ class ToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
-        self.common = CommonV2(self.data_provider)
-        self.data_provider.common = self.common
-        self.commonV1 = CommonV1(self.data_provider)
+        self.common_v2 = CommonV2(self.data_provider)
+        self.common_v1 = CommonV1(self.data_provider)
+        self.data_provider.common_v2 = self.common_v2
+        self.data_provider.common_v1 = self.common_v1
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -39,12 +40,10 @@ class ToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.channel = self.get_store_channel(self.store_id)
-        self.kpi_static_data = self.common.get_kpi_static_data()
-        # self.kpi_results_queries = []
-        self.kpi_sheets = {}
-        # self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        # self.scene_results = self.ps_data_provider.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
-        self.old_kpi_static_data = self.common.get_kpi_static_data()
+        self.kpi_static_data = self.common_v2.get_kpi_static_data()
+        self.data_provider.kpi_sheets = {}
+        self.kpi_sheets = self.data_provider.kpi_sheets
+        self.old_kpi_static_data = self.common_v1.get_kpi_static_data()
         for name in SHEETS_NAME:
             parsed_template = ParseTemplates.parse_template(TEMPLATE_PATH, sheet_name=name)
             self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == self.channel]
@@ -56,6 +55,8 @@ class ToolBox:
         This function calculates the KPI results.
         """
         Results(self.data_provider).calculate(self.kpi_sheets['KPI'])
+        self.common_v2.commit_results_data()
+        self.common_v1.commit_results_data()
         return
 
     def get_store_channel(self, store_fk):

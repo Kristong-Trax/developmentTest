@@ -1,6 +1,6 @@
 import pandas as pd
-import networkx as nx
-import pydot
+# import networkx as nx
+# import pydot
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
@@ -13,56 +13,61 @@ class Results(object):
     def __init__(self, data_provider):
         self._data_provider = data_provider
         self.kpi_sheets = self._data_provider.kpi_sheets
-        self.common = CommonV2(self._data_provider)
-        self.common_v1 = CommonV1(self._data_provider)
+        self.common_v2 = self._data_provider.common_v2
+        self.common_v1 = self._data_provider.common_v1
         self.kpi_results = pd.DataFrame(columns=['kpi_name', 'fk', 'score'])
 
     def calculate(self, hierarchy):
         for level_1 in hierarchy['Level_1'].unique():
             kpi_level_1_fk = self.get_kpi_fk(level_1)
+            kpi_level_1_fk_old = self.get_kpi_fk(level_1, kpi_level=1)
             sum_level_1_result = 0
-            parent_level_1_identifier = self.common.get_dictionary(kpi_fk=kpi_level_1_fk)
+            parent_level_1_identifier = self.common_v2.get_dictionary(kpi_fk=kpi_level_1_fk)
 
             level_2_hierarchy = hierarchy[hierarchy['Level_1'] == level_1]
             for level_2 in level_2_hierarchy['Level_2'].unique():
                 kpi_level_2_fk = self.get_kpi_fk(level_2)
+                kpi_level_2_fk_old = self.get_kpi_fk(level_2, kpi_level=2)
                 sum_level_2_result = 0
-                parent_level_2_identifier = self.common.get_dictionary(kpi_fk=kpi_level_2_fk)
+                parent_level_2_identifier = self.common_v2.get_dictionary(kpi_fk=kpi_level_2_fk)
 
                 level_3_hierarchy = level_2_hierarchy[level_2_hierarchy['Level_2'] == level_2]
                 for i, row in level_3_hierarchy.iterrows():
                     kpi_level_3_fk = self.get_kpi_fk(row['Level_3'])
+                    kpi_level_3_fk_old = self.get_kpi_fk(row['Level_3'], kpi_level=3)
                     result = self._get_atomic_result([row['Level_3'], row['Level_3_type']], kpi_level_3_fk)
-                    result.update({'identifier_parent': parent_level_2_identifier})
-                    self.common.write_to_db_result(**result)
-                    self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                                      result_2=result['target'], level=3, fk=kpi_level_3_fk)
-                    sum_level_2_result += result['score']
+                    result.update({'identifier_parent': parent_level_2_identifier, 'should_enter': True})
+                    self.common_v2.write_to_db_result(**result)
+                    self.common_v1.write_to_db_result(score=int(result['score']), level=3, fk=kpi_level_3_fk_old)
+                    sum_level_2_result += int(result['score'])
 
                 calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_2_fk)
                 level_2_result = calculation.calculate({'score': sum_level_2_result})
                 result = level_2_result
                 result.update({'identifier_parent': parent_level_1_identifier,
-                               'identifier_result': parent_level_2_identifier})
-                self.common.write_to_db_result(**result)
-                self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                                  result_2=result['target'], level=2, fk=kpi_level_2_fk)
-                sum_level_1_result += result['score']
+                               'identifier_result': parent_level_2_identifier,
+                               'should_enter': True})
+                self.common_v2.write_to_db_result(**result)
+                self.common_v1.write_to_db_result(score=int(result['score']), level=2, fk=kpi_level_2_fk_old)
+                sum_level_1_result += int(result['score'])
 
             calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_1_fk)
             level_1_result = calculation.calculate({'score': sum_level_1_result})
             result = level_1_result
-            result.update({'identifier_result': parent_level_1_identifier})
-            self.common.write_to_db_result(**result)
-            self.common_v1.write_to_db_result(score=int(result['score']), result=float(result['score']),
-                                              result_2=result['target'], level=1, fk=kpi_level_1_fk)
+            result.update({'identifier_result': parent_level_1_identifier,
+                           'should_enter': True})
+            self.common_v2.write_to_db_result(**result)
+            self.common_v1.write_to_db_result(score=int(result['score']), level=1, fk=kpi_level_1_fk_old)
 
         # dependencies_graph = self.build_dependencies_graph(hierarchy)
         # kpi_list = self.build_kpi_list_from_dependencies_graph(dependencies_graph)
         # self.recursive_kpi_calculate(kpi_list, dependencies_graph)
 
-    def get_kpi_fk(self, kpi_name):
-        return self.common.get_kpi_fk_by_kpi_type(kpi_name)
+    def get_kpi_fk(self, kpi_name, kpi_level=0):
+        if kpi_level:
+            return self.common_v1.get_kpi_fk_by_kpi_name(kpi_name, kpi_level=kpi_level)
+        else:
+            return self.common_v2.get_kpi_fk_by_kpi_type(kpi_name)
 
     def _get_atomic_result(self, atomic, kpi_fk):
         kpi_params = self.get_kpi_params(atomic)
