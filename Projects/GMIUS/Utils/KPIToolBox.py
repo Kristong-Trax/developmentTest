@@ -7,11 +7,11 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
 from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Utils.Const import Const
-from Projects.GMIUS.Utils.PositionGraph import Block
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Projects.GMIUS.Utils.PositionGraph import Block
+from KPIUtils_v2.Calculations.BlockCalculations import Block as Block2
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
 
 
@@ -41,7 +41,8 @@ class ToolBox:
         ''' stop gap until the real data arrives'''
 
         self.data_provider2 = KEngineDataProvider('rinielsenus')
-        self.data_provider2.load_session_data('c5ef379f-54d6-45b3-b907-303a81fc1876')
+        # self.data_provider2.load_session_data('c5ef379f-54d6-45b3-b907-303a81fc1876')
+        self.data_provider2.load_session_data('ff204427-bf76-4af6-8284-462edd4c75ab')
         self.all_products = self.data_provider2[Data.ALL_PRODUCTS]
         self.products = self.data_provider2[Data.PRODUCTS]
         self.store_info = self.data_provider2[Data.STORE_INFO]
@@ -111,16 +112,18 @@ class ToolBox:
                                                    denominator_id=self.store_id)
     def graph(self, kpi_name, kpi_line):
         g = Block(self.data_provider2)
+        g2 = Block2
         prod = self.products.drop(['width_mm', 'height_mm'], axis=1)
         mpis = self.data_provider2[Data.MATCHES].merge(prod, on='product_fk')
+        mpis = self.pos_scrubber(mpis)
         relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
         allowed_filter = {'product_type': ['Empty', 'Other']}
         filtered_mpis = mpis[(mpis['Segment'] == 'DRY DOG NATURAL/GRAIN FREE') |
-                       (mpis['Segment'].isin(['Empty', 'Other']))]
-        g.alt_block(filtered_mpis, relevant_filter, allowed_filter)
+                       (mpis['product_type'].isin(['Empty', 'Other']))]
+        g.alt_block(filtered_mpis, mpis, relevant_filter, allowed_filter)
         print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
         relevant_skus = filtered_mpis['product_fk']
-        g.network_x_block_together(relevant_skus, None)
+        g2.network_x_block_together(relevant_skus, None)
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
@@ -259,3 +262,26 @@ class ToolBox:
     #                                            identifier_parent=self.common_db2.get_dictionary(
     #                                                parent_name=self.get_parent(sub_parent)),
     #                                            should_enter=True)
+
+    def pos_scrubber(self, matches):
+        columns_of_import = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
+        pos_mask = matches['product_type'] == 'POS'
+        pos = matches[pos_mask]
+        for i, row in pos.iterrows():
+            row = matches.loc[i]
+            if row[columns_of_import].iloc[1:].sum() != -3:  # We can ignore POS that was correctly not given shelfspace
+                base_mask = ((matches['scene_fk'] == row['scene_fk']) &
+                             (matches['bay_number'] == row['bay_number']) &
+                             (matches['shelf_number'] == row['shelf_number']))
+                type_mask = (base_mask & (matches['facing_sequence_number'] == row['facing_sequence_number']))
+                stacking_mask = (type_mask & (matches['stacking_layer'] >= row['stacking_layer']))
+                matches.loc[stacking_mask, 'stacking_layer'] -= 1
+
+                if len(set(matches[type_mask]['product_type'])) <= 1:
+                    sequence_mask = (base_mask & (matches['facing_sequence_number'] > row['facing_sequence_number']))
+                    matches.loc[sequence_mask, 'facing_sequence_number'] -= 1
+                    matches.loc[base_mask, 'n_shelf_items'] -= 1
+
+        matches = matches[matches['product_type'] != 'POS']
+        matches.loc[matches['stacking_layer'] == 1, 'status'] = 1
+        return matches

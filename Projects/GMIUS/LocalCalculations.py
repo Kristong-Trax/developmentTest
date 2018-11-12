@@ -8,6 +8,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gmius'
     sessions = ['70ec27f5-457c-4513-8927-697450c4cbe5']
+    # sessions = ['ff204427-bf76-4af6-8284-462edd4c75ab']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

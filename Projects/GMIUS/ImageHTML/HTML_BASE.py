@@ -102,7 +102,7 @@ class HTML_Base:
                         }
                 '''
 
-    B = '''
+    C = '''
                        div div.planogram-compliance {
                         margin: 0px;
                         display: block;
@@ -144,7 +144,7 @@ class HTML_Base:
                 </style>
             '''
 
-    D = '''
+    F = '''
                         </div>
                     </div>
                 </div>
@@ -156,13 +156,15 @@ class HTML_Base:
     '''
     COLORS = ['green', 'blue', 'purple', 'red', 'orange', 'yellow', 'brown']
 
-    def __init__(self, orig_html):
+    def __init__(self, orig_html, display_attribs):
+        self.mult_factor = 1
         self.color_num = 0
         self.num_colors = len(self.COLORS)
         self.clusters = []
         self.products = []
+        self.display_attribs = display_attribs
         self.extracted_html = None
-        self.C = self.extract_planogram_compliance(orig_html)
+        self.D = self.extract_planogram_compliance(orig_html)
 
     def next_color(self):
         next_color = self.color_num + 1
@@ -170,38 +172,41 @@ class HTML_Base:
             next_color = 0
         self.color_num = next_color
 
-    def add_cluster(self, group_num=0, opacity=.75):
+    def add_cluster(self, group_num=0, opacity=.6):
         ''' ex:   .planogram-compliance .Group0	{	background-color:	#CD8C95	;	opacity: .7;}'''
-        self.cluster.append('.planogram-compliance .Group{}	{background-color:	{};	opacity: {};}'\
-                            .format(group_num, self.color, opacity))
-        self.next_color
+        if group_num != -1:
+            color = self.COLORS[self.color_num]
+            self.next_color()
+        else:
+            color = 'black'
+            opacity = .8
+        self.clusters.append('.planogram-compliance .Group{}	{{background-color:	{};	opacity: {};}}'
+                            .format(group_num, color, opacity))
 
-    def add_product(self, **kwargs):
+    def add_product(self, attribs):
         ''' ex:
         <div class="item Group0" style="top:306px;left:0px;height:163px;width:208px;background-color: no color selected;"
             title="category: General
             brand: GENERAL
             sub_brand:
             product: Irrelevant"></div>'
-            product_fk: 0000000
-            mpis_fk: 0000000
         '''
-        self.products.append('''
-                            div class="item Group0" style="top:{}px;left:{]px;height:{}px;width:{}px;background-color: no color selected;"
-                                title="category: {}
-                                brand: {}
-                                sub_brand: {}
-                                product: {}
-                                product_fk: {}
-                                mpis_fk: {}
-                                "></div>
-                            '''.format(top, left, height, width, category, brand, sub_brand, product, product_fk, mpis_fk))
+        new_prod = '''
+                   <div class="item Group{}" style="top:{}px;left:{}px;height:{}px;width:{}px;background-color: no color selected;"
+                   title="
+                   '''.format(attribs['cluster'], attribs['rect_y']*self.mult_factor,
+                              attribs['rect_x']*self.mult_factor,  attribs['h']*self.mult_factor,
+                              attribs['w']*self.mult_factor)
+        for attrib in self.display_attribs:
+            new_prod += "{}: {}\n".format(attrib, attribs[attrib])
+        new_prod += '"></div>'
+        self.products.append(new_prod)
 
     def extract_planogram_compliance(self, html):
-
-        planogram_html = '{}{}{}'.format('<div class="planogram-compliance"',
-                                         re.findall('<div class="planogram-compliance"(.*?)px;', html)[0],
-                                         'px; zoom: .5">')
+        self.mult_factor = float(re.findall('transform:scale\((.*?)\);"', html)[0])
+        planogram_html ='{}{}{}'.format('<div class="planogram-compliance"',
+                                          re.findall('<div class="planogram-compliance"(.*?)px"', html)[0],
+                                          'px;zoom:.125">')
         stitch_html = '\n'.join(['{}{}{}'.format('<div class="image"', img, '</div>')
                                 for img in re.findall('<div class="image"(.*?)</div>', html)])
         shelf_bay_style = '{}{}{}'.format('<div style="top:', re.findall('div style="top:(.*?)\)', html)[0], ');">')
@@ -210,9 +215,10 @@ class HTML_Base:
         bays_html = '\n'.join(['{}{}{}'.format('<div class="bay"', img, '</div>')
                                         for img in re.findall('<div class="bay"(.*?)</div>', html)])
         bays_html += '</div>'
-        C = '\n'.join([planogram_html, stitch_html, shelf_bay_style, shelves_html, bays_html])
-        return C
+        return '\n'.join([planogram_html, stitch_html, shelf_bay_style, shelves_html, bays_html])
 
     def return_html(self):
-        return '\n'.join([self.A, self.B, self.C, self.D])
+        B = '\n'.join(self.clusters)
+        E = '\n'.join(reversed(self.products))
+        return '\n'.join([self.A, B, self.C, self.D, E, self.F])
 
