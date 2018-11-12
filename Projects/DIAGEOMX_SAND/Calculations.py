@@ -4,8 +4,6 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Projects.DIAGEOMX_SAND.KPIGenerator import DIAGEOMX_SANDGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
 
 __author__ = 'Nimrod'
 
@@ -17,12 +15,12 @@ class DIAGEOMX_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('diageomx sand calculations')
-#     Config.init()
-#     project_name = 'diageomx-sand'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'd0924ace-7589-43e2-b666-1249bf4eb664' #,'524397a0-b88b-42b4-a7c4-44cc50307fa2' # d0924ace-7589-43e2-b666-1249bf4eb664, 314f03d1-9150-400a-b0d5-760046b3206a, 9e558522-3149-4f30-92da-20021c574610 , 7f8f5642-80b1-4181-9dea-db06cf9805a5, 524397a0-b88b-42b4-a7c4-44cc50307fa2
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     DIAGEOMX_SANDCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('diageomx sand calculations')
+    Config.init()
+    project_name = 'diageomx-sand'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'cf247826-cae9-4e1e-8bd0-7933cd7e3a73' #,'524397a0-b88b-42b4-a7c4-44cc50307fa2' # d0924ace-7589-43e2-b666-1249bf4eb664, 314f03d1-9150-400a-b0d5-760046b3206a, 9e558522-3149-4f30-92da-20021c574610 , 7f8f5642-80b1-4181-9dea-db06cf9805a5, 524397a0-b88b-42b4-a7c4-44cc50307fa2
+    data_provider.load_session_data(session)
+    output = Output()
+    DIAGEOMX_SANDCalculations(data_provider, output).run_project_calculations()
