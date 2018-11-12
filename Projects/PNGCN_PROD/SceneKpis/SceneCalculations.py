@@ -32,17 +32,17 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     data_provider.set_scene_item_facts(scene_item_facts)
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('pngcn calculations')
-    Config.init()
-    project_name = 'pngcn-prod'
-    data_provider = KEngineDataProvider(project_name)
-    session = '0813b0a8-a104-4994-a3d9-1fcd8dbed465'
-
-    scenes = [9377272, ]
-    for scene in scenes:
-        data_provider.load_scene_data(session, scene)
-        output = VanillaOutput()
-        SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        save_scene_item_facts_to_data_provider(data_provider, output)
-        SceneCalculations(data_provider).calculate_kpis()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('pngcn calculations')
+#     Config.init()
+#     project_name = 'pngcn-prod'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '0813b0a8-a104-4994-a3d9-1fcd8dbed465'
+#
+#     scenes = [9377272, ]
+#     for scene in scenes:
+#         data_provider.load_scene_data(session, scene)
+#         output = VanillaOutput()
+#         SceneVanillaCalculations(data_provider, output).run_project_calculations()
+#         save_scene_item_facts_to_data_provider(data_provider, output)
+#         SceneCalculations(data_provider).calculate_kpis()
