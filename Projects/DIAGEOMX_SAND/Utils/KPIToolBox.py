@@ -110,8 +110,7 @@ class DIAGEOMX_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
-                                     'Data', 'TOUCH POINT.xlsx')
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
 
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output, self.common).diageo_global_assortment_function_v2()
@@ -122,7 +121,7 @@ class DIAGEOMX_SANDToolBox:
         self.save_json_to_new_tables(res_dict)
 
         # global touch point kpi
-        self.diageo_generator.diageo_global_touch_point_function(template_path)
+        self.diageo_generator.diageo_global_touch_point_function(template_path, sub_brand_name='sub_brand_name')
 
         self.common.commit_results_data_to_new_tables()
         self.common.commit_results_data()  # old tables
