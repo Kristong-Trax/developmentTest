@@ -110,32 +110,32 @@ class DIAGEOMX_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX_SAND',
-                                     'Data', 'TOUCH POINT.xlsx')
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
 
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output, self.common).diageo_global_assortment_function_v2()
-        self.save_json_to_new_tables(assortment_res_dict)
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # global SOS kpi
         res_dict = self.diageo_generator.diageo_global_share_of_shelf_function()
-        self.save_json_to_new_tables(res_dict)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         # global touch point kpi
-        self.diageo_generator.diageo_global_touch_point_function(template_path)
+        self.diageo_generator.diageo_global_touch_point_function(template_path, sub_brand_name='sub_brand_name')
 
         self.common.commit_results_data_to_new_tables()
         self.common.commit_results_data()  # old tables
 
         set_score=0
         for set_name in set_names:
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in \
+                                    self.set_templates_data.keys() and set_name not in ('TOUCH POINT'):
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             if set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name], location_type='template_group')
-                self.save_json_to_new_tables(res_dict)
+                self.commonV2.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
@@ -159,7 +159,7 @@ class DIAGEOMX_SANDToolBox:
                 if res_dict:
                     # Saving to new tables
                     parent_res = res_dict[-1]
-                    self.save_json_to_new_tables(res_dict)
+                    self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     result = parent_res['result']
@@ -189,12 +189,6 @@ class DIAGEOMX_SANDToolBox:
         # commiting to new tables
         self.commonV2.commit_results_data()
 
-    def save_json_to_new_tables(self, res_dict):
-        if res_dict:
-            # Saving to new tables
-            for r in res_dict:
-                self.commonV2.write_to_db_result(**r)
-
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
         Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
@@ -202,7 +196,11 @@ class DIAGEOMX_SANDToolBox:
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
 
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            Log.warning("kpi name or set name don't exist")
+            return
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)

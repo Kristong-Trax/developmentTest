@@ -101,7 +101,7 @@ class DIAGEOTW_SANDToolBox:
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
-        self.save_json_to_new_tables(assortment_res_dict)
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score=0
@@ -114,7 +114,7 @@ class DIAGEOTW_SANDToolBox:
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
                                                     self.set_templates_data[set_name], location_type='template_name')
-                self.save_json_to_new_tables(res_dict)
+                self.commonV2.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 set_score = self.calculate_relative_position_sets(set_name)
@@ -122,7 +122,7 @@ class DIAGEOTW_SANDToolBox:
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_block_together(kpi_name=self.tools.BRAND_BLOCKING_VARIANT,
                                                                 set_templates_data=self.set_templates_data[set_name])
-                self.save_json_to_new_tables(res_dict)
+                self.commonV2.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 set_score = self.calculate_block_together_sets(set_name)
@@ -140,7 +140,7 @@ class DIAGEOTW_SANDToolBox:
                 if res_dict:
                     # Saving to new tables
                     parent_res = res_dict[-1]
-                    self.save_json_to_new_tables(res_dict)
+                    self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     result = parent_res['result']
@@ -161,7 +161,7 @@ class DIAGEOTW_SANDToolBox:
             elif set_name == 'Survey Questions':
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_calculate_survey_sets(self.set_templates_data[set_name])
-                self.save_json_to_new_tables(res_dict)
+                self.commonV2.save_json_to_new_tables(res_dict)
 
                 # Saving to old tables
                 set_score = self.calculate_survey_sets(set_name)
@@ -178,12 +178,6 @@ class DIAGEOTW_SANDToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
-
-    def save_json_to_new_tables(self, res_dict):
-        if res_dict:
-            # Saving to new tables
-            for r in res_dict:
-                self.commonV2.write_to_db_result(**r)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
@@ -481,6 +475,8 @@ class DIAGEOTW_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
