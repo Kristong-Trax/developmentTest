@@ -24,12 +24,15 @@ class MARSRU_SANDMARSRUKPIFetcher:
     LEFT = 'shelf_px_left'
     RIGHT = 'shelf_px_right'
 
-    def __init__(self, project_name, scif, matches, set_name, products, session_uid):
+    def __init__(self, project_name, kpi_templates, scif, matches, set_name, products, session_uid):
         self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.project = project_name
+        self.kpi_templates = kpi_templates
         self.scif = scif
         self.matches = matches
         self.set_name = set_name
         self.kpi_static_data = self.get_static_kpi_data()
+        self.kpi_result_values = self.get_kpi_result_values()
         self.products = products
         self.session_uid = session_uid
 
@@ -326,10 +329,25 @@ class MARSRU_SANDMARSRUKPIFetcher:
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
+    def get_kpi_result_values(self):
+        query = \
+            """
+            SELECT
+            rv.pk AS kpi_result_value_fk,
+            rv.value AS kpi_result_value,
+            rv.kpi_result_type_fk,
+            rt.name AS kpi_result_type,
+            rt.kpi_scale_type_fk,
+            st.scale_type AS kpi_scale_type
+            FROM static.kpi_result_value rv
+            JOIN static.kpi_result_type rt ON rt.pk=rv.kpi_result_type_fk
+            JOIN static.kpi_scale_type st ON st.pk=rt.kpi_scale_type_fk;
+            """
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
     def get_golden_shelves(self, shelves_num):
-        jg = MARSRU_SANDMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
-        targets = jg.project_kpi_dict['golden_shelves']
+        targets = self.kpi_templates.project_kpi_dict['golden_shelves']
         final_shelves = []
         for row in targets:
             if row.get('num. of shelves min') <= shelves_num <= row.get('num. of shelves max'):
@@ -341,9 +359,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return final_shelves
 
     def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
-        jg = MARSRU_SANDMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('answers_translation.xlsx', 'survey_answers_translation')
-        targets = jg.project_kpi_dict['survey_answers_translation']
+        targets = self.kpi_templates.project_kpi_dict['survey_answers_translation']
         answers_list = []
         for row in targets:
             if row.get('question code') == int(survey_question_code) and row.get('answer text') in survey_answers_text:
@@ -356,9 +372,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return final_answers
 
     def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
-        jg = MARSRU_SANDMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
-        targets = jg.project_kpi_dict['must_range_skus']
+        targets = self.kpi_templates.project_kpi_dict['must_range_skus'][kpi_name]
         skus_list = []
 
         if store_type and region:  # Validation check
@@ -384,7 +398,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
                             kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
-                            kpi_result = kpi_results[kpi_results['kpi_name'] == kpi_name_to_check]['result']
+                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')
                             if not kpi_result.empty:
                                 if kpi_result[0] in kpi_results_to_check:
                                     skus_list = str(row.get('EAN')).replace('\n', '').split(',')
@@ -430,7 +444,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return skus_list
 
     def get_filtered_matches(self, include_stacking=True):
-        self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
+        self.rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
         matches = self.matches
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches[(matches['status'] == 1) | (matches['status'] == 3)] # include stacking
