@@ -115,7 +115,7 @@ class DIAGEOBR_SANDToolBox:
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
-        self.save_json_to_new_tables(assortment_res_dict)
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
@@ -170,12 +170,6 @@ class DIAGEOBR_SANDToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
-
-    def save_json_to_new_tables(self, res_dict):
-        if res_dict:
-            # Saving to new tables
-            for r in res_dict:
-                self.commonV2.write_to_db_result(**r)
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """

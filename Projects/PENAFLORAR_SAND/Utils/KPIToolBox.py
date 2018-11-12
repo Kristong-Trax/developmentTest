@@ -100,7 +100,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
-        self.save_json_to_new_tables(assortment_res_dict)
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
@@ -119,7 +119,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
                 if res_dict:
                     # Saving to new tables
                     # parent_res = res_dict[-1]
-                    self.save_json_to_new_tables(res_dict)
+                    self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     # result = parent_res['result']
@@ -142,12 +142,6 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
-
-    def save_json_to_new_tables(self, res_dict):
-        if res_dict:
-            # Saving to new tables
-            for r in res_dict:
-                self.commonV2.write_to_db_result(**r)
 
     def calculate_assortment_sets(self, set_name):
         """
