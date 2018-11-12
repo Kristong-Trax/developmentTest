@@ -256,6 +256,8 @@ class GSKSGToolBox:
 
         kpi_results['valid_template_name'] = kpi_results['valid_template_name'].astype(float)
 
+        kpi_results['result_bin'] = kpi_results['result_bin'].apply(lambda x: round(x, 4))
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 4))
 
         ## write level3 to db
         store_fk = self.store_info['store_fk'][0]

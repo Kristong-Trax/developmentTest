@@ -12,7 +12,6 @@ class Const(object):
         'product_type': ['Irelevant']
     }
 
-    GOOGLE_BRAND = 'Google Play'
     SOS_SCENE = 'SOS BRAND out of SCENE'
     SOS_RELATIVE = 'SOS BRAND out of GOOGLE in SCENE'
     SOS_OUT_OF_SCENE = 'SOS BRAND out of SCENE'
@@ -27,6 +26,8 @@ class Const(object):
     POG_HIGH_LEVEL = "POG COMPLIANCE HIGH LEVEL"
     POG_STATUS = "POG STATUS"
     POG_PRODUCT = "POG PRODUCT"
+    CHOSEN_SCENES_POG = "chosen_scenes_POG"
+    CHOSEN_SCENES_OSA = "chosen_scenes_OSA"
 
     FIXTURE_TARGETS = 'Fixture Targets'
     PK = 'pk'
