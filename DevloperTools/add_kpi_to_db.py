@@ -108,8 +108,8 @@ class AddKPIs(Consts, CustomConfigurations):
         kpis = self.data.drop_duplicates(subset=[self.KPI_SET_NAME, self.KPI_NAME], keep='first')
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
-            set_name = kpis.iloc[i][self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = str(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            set_name = (unicode(kpis.iloc[i][self.KPI_SET_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
+            kpi_name = (unicode(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
             if self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                     (self.kpi_static_data['kpi_name'] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
@@ -121,7 +121,7 @@ class AddKPIs(Consts, CustomConfigurations):
                         set_fk = self.sets_added[set_name]
                 level2_query = """
                        INSERT INTO static.kpi (kpi_set_fk, display_text)
-                       VALUES ('{0}', '{1}');""".format(set_fk, kpi_name)
+                       VALUES ('{0}', '{1}');""".format(set_fk, kpi_name.encode('utf-8'))
                 cur.execute(level2_query)
                 if set_name in self.kpis_added.keys():
                     self.kpis_added[set_name][kpi_name] = cur.lastrowid
@@ -135,9 +135,9 @@ class AddKPIs(Consts, CustomConfigurations):
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
-            set_name = atomic[self.KPI_SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = str(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
-            atomic_name = str(atomic[self.ATOMIC_KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            set_name = (unicode(atomic[self.KPI_SET_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
+            kpi_name = (unicode(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
+            atomic_name = (unicode(atomic[self.ATOMIC_KPI_NAME]).replace("'", "\\'").encode('utf-8')).decode('utf-8')
 
             if self.custom_mode:
                 names = []
@@ -169,7 +169,9 @@ class AddKPIs(Consts, CustomConfigurations):
                     level3_query = """
                                INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text,
                                                               presentation_order, display)
-                               VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');""".format(kpi_fk, name, name, name,
+                               VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');""".format(kpi_fk, name.encode('utf-8'),
+                                                                                            name.encode('utf-8'),
+                                                                                            name.encode('utf-8'),
                                                                                             index + 1, 'Y')
                     cur.execute(level3_query)
                     self.kpi_counter['atomic'] += 1
@@ -184,7 +186,7 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('sanofing', '/home/israels/Desktop/US/sanofi/KPIs for DB.xlsx')
+    kpi = AddKPIs('cbcil', '/home/natalyak/Desktop/CBCIL/KPIs for DB.xlsx')
     # kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     kpi.add_kpis_from_template()
     # kpi.add_weights()
