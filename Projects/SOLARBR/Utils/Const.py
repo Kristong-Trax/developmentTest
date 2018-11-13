@@ -38,6 +38,8 @@ class Const(object):
     Type = "Type"
     SCENE_TYPES = "Scene Types"
     STORE_TYPES = "STORE TYPES"
+    TEMPLATE_NAME = "TEMPLATE_NAME"
+    TEMPLATE_GROUP = "TEMPLATE GROUP"
 
     #column of SOVI:
     SOVI_NAME = "KPI NAME"
@@ -48,7 +50,8 @@ class Const(object):
     NUM_VALUES_1 = "numerator value 1"
     NUM_TYPES_2 = "numerator param 2"
     NUM_VALUES_2 = "numerator value 2"
-
+    NUM_TYPES_3 = "numerator param 3"
+    NUM_VALUES_3 = "numerator value 3"
 
     SOS = "SOS"
     TOTAL = "total"
