@@ -15,9 +15,6 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-#  from Projects.DIAGEOUK_SAND.Utils.ParseTemplates import parse_template
-# from Projects.DIAGEOUK_SAND.Utils.Fetcher import DIAGEOUK_SANDQueries
-# from Projects.DIAGEOUK_SAND.Utils.ToolBox import DIAGEOUK_SANDDIAGEOToolBox
 
 __author__ = 'Nimrod'
 
@@ -206,8 +203,8 @@ class DIAGEOUK_SANDToolBox:
                                       params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(
                                       params.get(self.tools.RIGHT_DISTANCE))}
-                if params.get(self.tools.LOCATION, ''):
-                    general_filters = {'template_group': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.LOCATION_OLD, ''):
+                    general_filters = {'template_group': params.get(self.tools.LOCATION_OLD)}
                 else:
                     general_filters = {}
 
