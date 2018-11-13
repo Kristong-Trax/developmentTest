@@ -21,7 +21,7 @@ class DIAGEOTW_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageotw-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '07EDFA13-412C-4A5E-B7B1-CA4B7E3E06A5'
+#     session = 'F5D51F4C-9D1E-4983-A00C-4A0002BA12B6'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOTW_SANDCalculations(data_provider, output).run_project_calculations()
