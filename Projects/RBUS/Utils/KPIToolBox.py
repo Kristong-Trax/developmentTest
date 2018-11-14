@@ -91,7 +91,7 @@ def get_placement_count_atomic_kpi_from_template(template_name):
         return 'K006'
     elif template_name == 'ADDITIONAL CHILLED PLACEMENT':
         return 'K007'
-    elif template_name == 'CHILLED CASHIER COOLER PLACEMENT':
+    elif template_name == 'CHILLED CASHIER PLACEMENT':
         return 'K008'
     elif template_name == 'CHILLED CAN COOLERS':
         return 'K009'
