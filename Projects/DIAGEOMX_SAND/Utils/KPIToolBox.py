@@ -70,11 +70,13 @@ class DIAGEOMX_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_business_unit(self):
@@ -109,7 +111,7 @@ class DIAGEOMX_SANDToolBox:
     def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
-        """
+        # """
         log_runtime('Updating templates')(self.tools.update_templates)()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
 
@@ -282,8 +284,8 @@ class DIAGEOMX_SANDToolBox:
                                       params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(
                                       params.get(self.tools.RIGHT_DISTANCE))}
-                if params.get(self.tools.LOCATION, ''):
-                    general_filters = {'template_group': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.LOCATION_OLD, ''):
+                    general_filters = {'template_group': params.get(self.tools.LOCATION_OLD)}
                 else:
                     general_filters = {}
 
