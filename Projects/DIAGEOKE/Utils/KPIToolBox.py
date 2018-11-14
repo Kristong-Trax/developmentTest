@@ -96,7 +96,7 @@ class DIAGEOKEToolBox:
         # if set_name in ('MPA', 'Local MPA', 'New Products',):
         #     set_score = self.calculate_assortment_sets(set_name)
         # elif set_name in ('POSM',):
-            set_score = self.calculate_posm_sets(set_name)
+        #     set_score = self.calculate_posm_sets(set_name)
         if set_name == 'Visible to Customer':
             filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
             set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
@@ -122,7 +122,10 @@ class DIAGEOKEToolBox:
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
 
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            pass
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
