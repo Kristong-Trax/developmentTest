@@ -57,14 +57,20 @@ class SceneToolBox:
         if not self.planograms.empty:
             result = 1
             planogram_id = self.planograms['planogram_id'].iloc[0]
-            numerator_result, score = self.get_compliance_per_status(planogram_id)
+            numerator_result = self.get_compliance_per_status(planogram_id)
             all_facings = self.planograms['facings'].sum()
+            score = self.division(numerator_result, all_facings)
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
             denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
     def get_compliance_per_status(self, planogram_id):
+        """
+        Calculates every status and writes it on db.
+        :param planogram_id: just for the writing in db.
+        :return: the Correctly Positioned products.
+        """
         numerator_result, score = 0, 0
         compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_STATUS)
         all_facings = self.match_product_in_scene[self.match_product_in_scene[
@@ -79,8 +85,7 @@ class SceneToolBox:
                 score=ratio, by_scene=True, identifier_parent=Const.FIXTURE_POG, denominator_id=planogram_id)
             if compliance_status_fk == 3:
                 numerator_result = status_products
-                score = ratio
-        return numerator_result, score
+        return numerator_result
 
     def get_compliance_products(self, compliance_status_fk, identifier_parent, planogram_id):
         """
