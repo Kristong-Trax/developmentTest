@@ -64,8 +64,8 @@ class TSINGTAOBEERCNToolBox:
         result_df = assortment_scif_merge.groupby(['product_fk'])['facings'].sum().reset_index()
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(ASSORTMENT_KPI)
         for index, row in result_df.iterrows():
-            result = row['facings']
+            result = 1 if row['facings'] else 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
-                                            score= result, result=result)
+                                            score=result, result=result, numerator_result=row['facings'])
 
 

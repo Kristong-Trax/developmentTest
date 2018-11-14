@@ -56,31 +56,44 @@ class SceneToolBox:
         score, planogram_id = 0, None
         if not self.planograms.empty:
             result = 1
-            compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_STATUS)
-            all_facings = self.planograms['facings'].sum()
             planogram_id = self.planograms['planogram_id'].iloc[0]
-            for i in range(1, 5):
-                identifier_result = self.common.get_dictionary(compliance_fk=i)
-                status_products = self.get_compliance_products(i, identifier_result)
-                ratio = self.division(status_products, all_facings)
-                self.common.write_to_db_result(
-                    fk=compliance_kpi_fk, numerator_id=i, numerator_result=status_products, denominator_id=planogram_id,
-                    denominator_result=all_facings, should_enter=True, identifier_result=identifier_result,
-                    score=ratio, by_scene=True, identifier_parent=Const.FIXTURE_POG)
-                if i == 3:
-                    numerator_result = status_products
-                    score = ratio
+            numerator_result = self.get_compliance_per_status(planogram_id)
+            all_facings = self.planograms['facings'].sum()
+            score = self.division(numerator_result, all_facings)
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=planogram_id, numerator_result=numerator_result,
             denominator_result=all_facings, result=result, should_enter=True,
             score=score, by_scene=True, identifier_result=Const.FIXTURE_POG)
 
-    def get_compliance_products(self, compliance_status_fk, identifier_parent):
+    def get_compliance_per_status(self, planogram_id):
+        """
+        Calculates every status and writes it on db.
+        :param planogram_id: just for the writing in db.
+        :return: the Correctly Positioned products.
+        """
+        numerator_result, score = 0, 0
+        compliance_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_STATUS)
+        all_facings = self.match_product_in_scene[self.match_product_in_scene[
+                                                      'manufacturer_name'] == Const.GOOGLE]['product_fk'].count()
+        for compliance_status_fk in [3, 1, 2, 4]:  # the order is important!!! 3 has to be before 1!
+            identifier_result = self.common.get_dictionary(compliance_fk=compliance_status_fk)
+            status_products = self.get_compliance_products(compliance_status_fk, identifier_result, planogram_id)
+            ratio = self.division(status_products, all_facings)
+            self.common.write_to_db_result(
+                fk=compliance_kpi_fk, numerator_id=compliance_status_fk, numerator_result=status_products,
+                denominator_result=all_facings, should_enter=True, identifier_result=identifier_result,
+                score=ratio, by_scene=True, identifier_parent=Const.FIXTURE_POG, denominator_id=planogram_id)
+            if compliance_status_fk == 3:
+                numerator_result = status_products
+        return numerator_result
+
+    def get_compliance_products(self, compliance_status_fk, identifier_parent, planogram_id):
         """
         Calculates for every compliance_status the amount of google products in this status,
         and writes every one of them in the product_level
         :param compliance_status_fk: 1, 2, 3 or 4
         :param identifier_parent: for the hierarchy
+        :param planogram_id: for the POG presentation
         :return: the number of google products with this status
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.POG_PRODUCT)
@@ -88,10 +101,26 @@ class SceneToolBox:
                               (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
                               (self.match_product_in_scene['manufacturer_name'] == Const.GOOGLE)]
         for product_fk in compliance_products['product_fk'].unique().tolist():
-            product_facings = len(compliance_products[compliance_products['product_fk'] == product_fk])
+            planogram_facings = self.planograms[self.planograms['product_fk'] == product_fk]['facings'].sum()
+            match_products = compliance_products[compliance_products['product_fk'] == product_fk]
+            match_product_facings = len(match_products)
+            if compliance_status_fk == 3:
+                if match_product_facings > planogram_facings:
+                    remained = match_product_facings - planogram_facings
+                    remained_pks = match_products[-int(remained):]['scene_match_fk'].tolist()
+                    self.match_product_in_scene.loc[self.match_product_in_scene['scene_match_fk'].isin(remained_pks),
+                                                    'compliance_status_fk'] = 1
+                    products_facings = self.match_product_in_scene[
+                        (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
+                        (self.match_product_in_scene['manufacturer_name'] == Const.GOOGLE) &
+                        (self.match_product_in_scene['product_fk'] == product_fk)]
+                    match_product_facings = len(products_facings)
             self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=product_fk, result=product_facings, denominator_id=compliance_status_fk,
-                by_scene=True, identifier_parent=identifier_parent, should_enter=True)
+                fk=kpi_fk, numerator_id=product_fk, result=match_product_facings, denominator_id=compliance_status_fk,
+                by_scene=True, identifier_parent=identifier_parent, should_enter=True, context_id=planogram_id)
+        compliance_products = self.match_product_in_scene[
+                              (self.match_product_in_scene['compliance_status_fk'] == compliance_status_fk) &
+                              (self.match_product_in_scene['manufacturer_name'] == Const.GOOGLE)]
         return len(compliance_products)
 
     def get_fixture_osa(self):

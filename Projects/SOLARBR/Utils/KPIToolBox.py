@@ -86,7 +86,6 @@ class SOLARBRToolBox:
             self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"),
                                                         keep_default_na=False, encoding="utf-8")
 
-
     def main_calculation(self, *args, **kwargs):
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
@@ -104,7 +103,7 @@ class SOLARBRToolBox:
         # encoding_fixed_list = [template_group.replace("\u2013","-") for template_group in scif_template_groups]
         # scif_template_groups = encoding_fixed_list
 
-        store_type = self.store_info["store_type"].iloc[0].encode("utf-8")
+        store_type = self.store_info["store_type"].iloc[0]
         store_types = self.does_exist_store(main_line, Const.STORE_TYPES)
         if store_type in store_types:
 
@@ -125,6 +124,7 @@ class SOLARBRToolBox:
                         pass
 
             else:
+
                 pass
 
     @staticmethod
@@ -240,7 +240,7 @@ class SOLARBRToolBox:
         return sos_value, score
 
     def get_score_from_range(self, kpi_name, sos_value):
-        store_type = str(self.store_info["store_type"].iloc[0])
+        store_type = str(self.store_info["store_type"].iloc[0].encode("utf-8"))
         self.score_templates[store_type] = self.score_templates[store_type].replace(kpi_name,
                                                                                     kpi_name.encode("utf-8").rstrip())
         score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +

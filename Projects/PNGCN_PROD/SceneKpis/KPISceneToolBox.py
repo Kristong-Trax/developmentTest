@@ -627,6 +627,9 @@ class ShareOfDisplay(object):
     def insert_into_kpi_scene_results(self, display_visit_summary_list_of_dict):
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(DISPLAY_SIZE_KPI_NAME)
         df = pd.DataFrame(display_visit_summary_list_of_dict)
+
+        if df.empty:
+            return
         df.product_size = df.product_size.round(2)
         final_df = df.groupby(['display_group', 'product_fk'])[
             'product_size', 'facings'].sum().reset_index()
