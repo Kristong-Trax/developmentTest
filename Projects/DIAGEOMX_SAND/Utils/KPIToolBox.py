@@ -110,6 +110,7 @@ class DIAGEOMX_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
 
         # Global assortment kpis
@@ -130,7 +131,11 @@ class DIAGEOMX_SANDToolBox:
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in \
                                     self.set_templates_data.keys() and set_name not in ('TOUCH POINT'):
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
 
             if set_name in ('Relative Position'):
                 # Global function

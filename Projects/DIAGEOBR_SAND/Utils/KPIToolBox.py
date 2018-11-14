@@ -109,6 +109,8 @@ class DIAGEOBR_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
         # old assortment
         self.diageo_generator.diageo_global_assortment_function()
 
@@ -120,7 +122,11 @@ class DIAGEOBR_SANDToolBox:
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
 
             # if set_name in ('MPA', 'New Products'):
             #     set_score = self.calculate_assortment_sets(set_name)
