@@ -13,6 +13,10 @@ class Const(object):
     FACING = 'facing'
     SCENES = 'scene'
 
+    # kpis
+    OOS_KPI = 'OOS'
+    OOS_SKU_KPI = 'OOS - SKU'
+
     # const
     TEMPLATE_KPI_ID = 'KPI ID'
     TEMPLATE_ENGLISH_KPI_NAME = 'ENGLISH KPI NAME'

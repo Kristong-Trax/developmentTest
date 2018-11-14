@@ -88,6 +88,8 @@ class INBEVMXToolBox:
 
     def calculate_oos_target(self):
         all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
+        if all_data.empty:
+            return
         json_policies = self.oos_policies.copy()
         json_policies[Const.POLICY] = self.oos_policies[Const.POLICY].apply(lambda line: json.loads(line))
         diff_policies = json_policies[Const.POLICY].drop_duplicates().reset_index()
@@ -109,9 +111,29 @@ class INBEVMXToolBox:
         selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
-        existing_products = all_data[(all_data['product_fk'].isin(products_to_check)) & (all_data['facings'] > 0)]
-        result = len(existing_products) / float(len(products_to_check))
-        return result
+        products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk','facings']].fillna(0)
+        try:
+            atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_SKU_KPI)
+            return
+        for index, row in products_df.iterrows():
+            result = 1 if row['facings'] > 0 else 0
+            self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
+                                        numerator_result=row['facings'], denominator_id=self.store_id,
+                                        result=result, score=result, identifier_parent=Const.OOS_KPI, should_enter=True)
+
+        existing_products_len = len(products_df[products_df['facings'] > 0])
+        result = existing_products_len / float(len(products_to_check))
+        try:
+            atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
+            return
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=existing_products_len, denominator_id=self.store_id,
+                                           denominator_result=len(products_to_check), result=result, score=result,
+                                          identifier_result=Const.OOS_KPI)
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
@@ -163,8 +185,9 @@ class INBEVMXToolBox:
             return
 
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings, denominator_id=3,
-                                           denominator_result=denominator_number_of_total_facings, result=count_result, score=0)
+                                           numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
+                                           denominator_result=denominator_number_of_total_facings, result=count_result,
+                                          score=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -263,7 +286,8 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
-                                           denominator_result=0, denominator_id=1, result=survey_result, score=0)
+                                           denominator_result=0, denominator_id=self.store_id, result=survey_result,
+                                          score=survey_result)
 
     def get_new_kpi_static_data(self):
         """
