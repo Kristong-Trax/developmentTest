@@ -33,7 +33,6 @@ class DIAGEOTW_SANDGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         calculate_activation_standard = False
         if self.tool_box.ACTIVATION_STANDARD in set_names:
