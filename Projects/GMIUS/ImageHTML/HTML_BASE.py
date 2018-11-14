@@ -199,7 +199,10 @@ class HTML_Base:
                               attribs['rect_x']*self.mult_factor,  attribs['h']*self.mult_factor,
                               attribs['w']*self.mult_factor)
         for attrib in self.display_attribs:
-            new_prod += "{}: {}\n".format(attrib, attribs[attrib])
+            try:
+                new_prod += "{}: {}\n".format(attrib, attribs[attrib])
+            except:
+                pass
         new_prod += '"></div>'
         self.products.append(new_prod)
 

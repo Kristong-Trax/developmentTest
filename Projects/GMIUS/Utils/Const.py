@@ -7,9 +7,19 @@ class Const(object):
 
     ''' Sheets '''
     KPIS = 'KPIs'
+    TMB = 'Top-Middle-Bottom'
+    COUNT = 'Count of'
+    BLOCKING = 'Blocking'
+    BASE_MEASURE = 'Base Measure'
+    SURVEY = 'Survey Question'
+    ORIENT = 'Product Orientation'
+    PRESENCE = 'Presence'
+    COUNT_SHELVES = 'Count of Shelves'
+    PERCENT = 'Percent'
     AGGREGATION = 'Aggregation'
-
-    SHEETS = [KPIS, AGGREGATION]
+    TMB_MAP = 'Top-Middle-Bottom Map'
+    SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
+              TMB_MAP]
 
     ''' KPIs Columns '''
     KPI_NAME = 'KPI Name'
@@ -35,6 +45,7 @@ class Const(object):
                         'Linear SOS': 'width_mm',
                         'AVERAGE': 'count',
                        }
+    TMB_VALUES = ['Top', 'Middle', 'Bottom']
 
 
 

@@ -35,7 +35,7 @@ class Block(object):
         # self.toolbox = GENERALToolBox(self.data_provider)
 
     def alt_block(self, mpis, raw, relevant_filter=None, allowed_filter=None):
-        mpis = mpis.drop(mpis.index[mpis['scene_match_fk'] == 554567292][0])
+        # mpis = mpis.drop(mpis.index[mpis['scene_match_fk'] == 554567292][0])
 
 
         img_maker = ImageMaker('rinielsenus', 342186, additional_attribs=['Segment'])
@@ -47,11 +47,12 @@ class Block(object):
         nodes = []
         for scene in scenes:
             matches_df = mpis[mpis['scene_fk'] == scene]
+            prod_df = raw[raw['scene_fk'] == scene]
             raw = raw[(raw['scene_fk'] == scene) &
                       (raw['status'] == 1)]
             if matches_df.empty:
                 continue
-            adj_g = AdjacencyGraph(matches_df, product_attributes=['rect_x', 'rect_y'])
+            adj_g = AdjacencyGraph(matches_df, product_name_df=prod_df, product_attributes=['rect_x', 'rect_y'])
             mpis_indexed = mpis.set_index('scene_match_fk')
             adj_coords = adj_g.scene_data
             x_mm = max(adj_coords['right'] + (adj_coords['right'] - adj_coords['left']) / 2.0)
@@ -77,11 +78,11 @@ class Block(object):
 
                     ratio = attribs['w'] / float(attribs['width_mm'])
 
-                    attribs['w'] = attribs['width'] * ratio
-                    attribs['h'] = attribs['height'] * ratio
+                    attribs['w'] = attribs['width'] * x_ratio
+                    attribs['h'] = attribs['height'] * y_ratio
                     # break
-                    attribs['rect_x'] = attribs['left'] * ratio
-                    attribs['rect_y'] = (y_mm - node['p1'].y) * ratio
+                    attribs['rect_x'] = attribs['left'] * x_ratio
+                    attribs['rect_y'] = (node['p1'].y) * y_ratio
                     attribs['cluster'] = i
 
                     img_maker.html_builder.add_product(attribs)
