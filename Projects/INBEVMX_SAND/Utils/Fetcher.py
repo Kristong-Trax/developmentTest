@@ -30,8 +30,8 @@ class INBEVMXQueries(object):
     @staticmethod
     def get_policies():
         return """ select p.policy_name, p.policy, atag.assortment_group_fk, atp.assortment_fk, atp.product_fk, 
-                    atp.start_date, atp.end_date from pservice.assortment_to_product atp 
+		            atp.start_date, atp.end_date from pservice.assortment_to_product atp 
                     join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk 
-                    join pservice.assortment a on a.pk = atag.assortment_fk
-                    join pservice.policy p on p.pk = atag.assortment_group_fk;
+                    join pservice.assortment a on a.pk = atag.assortment_group_fk
+					join pservice.policy p on p.pk = a.store_policy_group_fk;
                 """

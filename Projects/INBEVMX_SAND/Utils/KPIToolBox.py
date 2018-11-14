@@ -80,7 +80,7 @@ class INBEVMXToolBox:
         This function calculates the KPI results.
         """
         kpis_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.KPIS).fillna("")
-        # self.calculate_oos_target()
+        self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
         self.common_v2.commit_results_data()
@@ -110,7 +110,7 @@ class INBEVMXToolBox:
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
         existing_products = all_data[(all_data['product_fk'].isin(products_to_check)) & (all_data['facings'] > 0)]
-        result = len(existing_products) / len(products_to_check)
+        result = len(existing_products) / float(len(products_to_check))
         return result
 
     def handle_atomic(self, row):
