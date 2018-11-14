@@ -8,10 +8,10 @@ from Projects.INBEVTRADMX_SAND.Calculations import INBEVTRADMX_SANDCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('inbevtradmx-sand calculations')
     Config.init()
-    project_name = 'inbevtradmx-sand'
+    project_name = 'inbevtradmx'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '998ef7a1-bc74-4b8b-be8d-13213980bdee'
+        'c60fa852-d74c-4f86-9494-3e94265d1407'
     ]
     for session in sessions:
         data_provider.load_session_data(session)
