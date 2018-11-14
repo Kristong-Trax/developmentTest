@@ -347,7 +347,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return df
 
     def get_golden_shelves(self, shelves_num):
-        targets = self.kpi_templates.project_kpi_dict['golden_shelves']
+        targets = self.kpi_templates['golden_shelves']
         final_shelves = []
         for row in targets:
             if row.get('num. of shelves min') <= shelves_num <= row.get('num. of shelves max'):
@@ -359,7 +359,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return final_shelves
 
     def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
-        targets = self.kpi_templates.project_kpi_dict['survey_answers_translation']
+        targets = self.kpi_templates['survey_answers_translation']
         answers_list = []
         for row in targets:
             if row.get('question code') == int(survey_question_code) and row.get('answer text') in survey_answers_text:
@@ -372,8 +372,8 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return final_answers
 
     def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
-        targets = self.kpi_templates.project_kpi_dict['must_range_skus'][kpi_name]
-        skus_list = []
+        targets = self.kpi_templates['must_range_skus'][kpi_name]
+        values_list = []
 
         if store_type and region:  # Validation check
 
@@ -401,7 +401,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
                             kpi_result = kpi_results.get(kpi_name_to_check).get('result')
                             if not kpi_result.empty:
                                 if kpi_result[0] in kpi_results_to_check:
-                                    skus_list = str(row.get('EAN')).replace('\n', '').split(',')
+                                    values_list = str(row.get('EAN')).replace('\n', '').split(',')
                                     break
                                 else:
                                     continue
@@ -409,17 +409,51 @@ class MARSRU_SANDMARSRUKPIFetcher:
                                 continue
 
                         else:
-                            skus_list = str(row.get('EAN')).replace('\n', '').split(',')
+                            values_list = str(row.get('EAN')).replace('\n', '').split(',')
                             break
                     else:
                         continue
 
             elif 'Shelf # from the bottom' in targets[0]:
+                # for row in targets:
+                #     store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                #     if store_type.encode('utf-8') in store_types:
+                #         values_list = row.get('Shelf # from the bottom')
+                #         break
+                #     else:
+                #         continue
                 for row in targets:
-                    store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
-                    if store_type.encode('utf-8') in store_types:
-                        skus_list = row.get('Shelf # from the bottom')
-                        break
+
+                    if 'Store type' in row:
+                        store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                    else:
+                        store_types = []
+
+                    if 'Region' in row:
+                        regions = str(row.get('Region').encode('utf-8')).replace('\n', '').split(',')
+                    else:
+                        regions = []
+
+                    if (not store_types or store_type.encode('utf-8') in store_types) and\
+                            (not regions or region.encode('utf-8') in regions):
+
+                        if 'KPI name' in row:
+
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
+                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
+                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')
+                            if not kpi_result.empty:
+                                if kpi_result[0] in kpi_results_to_check:
+                                    values_list = str(row.get('Shelf # from the bottom'))
+                                    break
+                                else:
+                                    continue
+                            else:
+                                continue
+
+                        else:
+                            values_list = str(row.get('Shelf # from the bottom'))
+                            break
                     else:
                         continue
 
@@ -437,11 +471,11 @@ class MARSRU_SANDMARSRUKPIFetcher:
                     except ValueError:
                         shelf_length_to = 10000
                     result = str(row.get('Result'))
-                    skus_list.append({'shelf from': shelf_length_from,
-                                      'shelf to': shelf_length_to,
-                                      'result': result})
+                    values_list.append({'shelf from': shelf_length_from,
+                                   'shelf to': shelf_length_to,
+                                   'result': result})
 
-        return skus_list
+        return values_list
 
     def get_filtered_matches(self, include_stacking=True):
         self.rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)

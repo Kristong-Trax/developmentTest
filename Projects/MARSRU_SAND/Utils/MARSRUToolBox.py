@@ -51,7 +51,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.kpi_templates = kpi_templates
         self.data_provider = data_provider
         self.output = output
-        self.dict_for_2254 = {2261: 0, 2264: 0, 2265: 0, 2351: 0}
+        self.dict_for_planogram = {2261: 0, 2264: 0, 2265: 0, 2351: 0, 4261: 0, 4264: 0, 4265: 0, 4351: 0}
         self.products = self.data_provider[Data.ALL_PRODUCTS]
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.project_name = data_provider.project_name
@@ -414,7 +414,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
         """
         for p in params.values()[0]:
-            if p.get('Formula') != 'number of scenes':
+            if p.get('Formula') not in ['number of scenes', 'number of scenes vs target']:
                 continue
 
             result = 0
@@ -432,6 +432,12 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         result += res
                     except IndexError:
                         continue
+
+                if p.get('Target'):
+                    if result >= p.get('Target'):
+                        result = 1
+                    else:
+                        result = 0
 
             else:  # checking for number of scenes with a complex condition (only certain products/brands/etc)
                 p_copy = p.copy()
@@ -462,7 +468,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
             if p.get('Type') != 'SURVEY' or p.get('Formula') != 'answer for survey':
                 continue
 
-            survey_question_code = str(int(p.get('Survey Question_ID_code')))
+            survey_question_code = str(int(p.get('Values')))
             survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
             if not survey_data.empty:
 
@@ -539,18 +545,23 @@ class MARSRU_SANDMARSRUKPIToolBox:
         return 
     
     @kpi_runtime()
-    def custom_linear_sos(self, params):
-        for p in params.values()[0]:
-            if p.get('Formula') != 'custom_linear_sos':
+    def custom_average_shelves(self, params):
+        for p in params:
+            if p.get('Formula') not in ('custom_average_shelves_1', 'custom_average_shelves_2'):
                 continue
 
             values_list = str(p.get('Values')).split(', ')
             scenes = self.get_relevant_scenes(p)
 
-            result = round(self.calculate_linear_sos(scenes, p.get('Type'), values_list), 2)
+            if p.get('Formula') == 'custom_average_shelves_1':
+                result = round(self.calculate_average_shelves_1(scenes, p.get('Type'), values_list), 1)
+            elif p.get('Formula') == 'custom_average_shelves_2':
+                result = round(self.calculate_average_shelves_2(scenes, p.get('Type'), values_list, p.get('Target')), 1)
+            else:
+                result = 0.0
 
-            if p.get('#Mars KPI NAME') in (2264, 2351):
-                self.dict_for_2254[p.get('#Mars KPI NAME')] = float(result)
+            if p.get('#Mars KPI NAME') in (2264, 2351, 4264, 4351):
+                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
 
@@ -559,7 +570,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         
         return 
 
-    def calculate_linear_sos(self, scenes, object_type, values):  # todo change according to Evgeny's modifications
+    def calculate_average_shelves_1(self, scenes, object_type, values):
         object_field = self.object_type_conversion[object_type]
         scenes_linear_sos_dict = {}
         bay_counter = 0
@@ -599,9 +610,72 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
         return final_linear_sos_values
 
+    def calculate_average_shelves_2(self, scenes, object_type, values, target):
+        object_field = self.object_type_conversion[object_type]
+        matches = pd.merge(self.match_product_in_scene,
+                           self.products,
+                           on=['product_fk'],
+                           suffixes=['', '_products'])
+        matches = matches.loc[(matches['scene_fk'].isin(scenes)) &
+                              (matches[object_field].isin(values))]
+
+        shelves = matches.groupby(['bay_number'])['shelf_number'].nunique()\
+            .reset_index(level=['bay_number'])\
+            .rename(columns={'shelf_number': 'number_of_shelves'})
+
+        if shelves['number_of_shelves'].max() - shelves['number_of_shelves'].min() > target:
+            result = shelves['number_of_shelves'].max()
+        else:
+            result = shelves['number_of_shelves'].mean()
+
+        return result
+
+    @kpi_runtime()
+    def custom_number_bays(self, params):
+        for p in params:
+            if p.get('Formula') != 'custom_number_bays':
+                continue
+
+            values_list = str(p.get('Values')).split(', ')
+            scenes = self.get_relevant_scenes(p)
+
+            result = round(self.calculate_number_bays(scenes, p.get('Type'), values_list, p.get('Target')), 1)
+
+            self.store_results_and_scores(result, p)
+
+            self.store_to_old_kpi_tables(p)
+            self.store_to_new_kpi_tables(p)
+
+        return
+
+    def calculate_number_bays(self, scenes, object_type, values, target):
+        object_field = self.object_type_conversion[object_type]
+        matches = pd.merge(self.match_product_in_scene,
+                           self.products,
+                           on=['product_fk'],
+                           suffixes=['', '_products'])
+
+        result = 0
+        for scene in scenes:
+            bays = matches.loc[(matches['scene_fk'] == scene) &
+                               (matches[object_field].isin(values))]['bay_number'].unique().tolist()
+            for bay in bays:
+                total_length = matches.loc[(matches['scene_fk'] == scene) &
+                                           (matches['bay_number'] == bay) &
+                                           (matches['stacking_layer'] == 1)]['width_mm'].sum()
+
+                object_length = matches.loc[(matches['scene_fk'] == scene) &
+                                            (matches['bay_number'] == bay) &
+                                            (matches['stacking_layer'] == 1) &
+                                            (matches[object_field].isin(values))]['width_mm'].sum()
+                if not target or object_length/float(total_length) > target:
+                    result += 1
+
+        return result
+
     @kpi_runtime()
     def check_layout_size(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'layout size':
                 continue
 
@@ -624,10 +698,10 @@ class MARSRU_SANDMARSRUKPIToolBox:
                                                                       p.get('Stacking'))
                 linear_size += allowed_linear_size
 
-            result = round(linear_size, 2)
+            result = round(linear_size, 1)
             
-            if p.get('#Mars KPI NAME') in (2261, 2265):
-                self.dict_for_2254[p.get('#Mars KPI NAME')] = float(result)
+            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265):
+                self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
 
@@ -729,7 +803,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         """
         This function checks if a shelf size is more than 3 meters
         """
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_1':
                 continue
 
@@ -779,7 +853,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
     @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018':
                 continue
 
@@ -1151,7 +1225,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def multiple_brands_blocked_in_rectangle(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_4' and p.get('Formula') != 'custom_mars_4_2018':
                 continue
 
@@ -1215,7 +1289,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         """
         This function checks if a predefined product is present in golden shelves
         """
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_5':
                 continue
 
@@ -1262,7 +1336,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def facings_by_brand(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_3' and p.get('Formula') != 'custom_mars_3_linear':
                 continue
 
@@ -1324,7 +1398,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def must_range_skus(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_7':
                 continue
 
@@ -1335,7 +1409,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             result = 'FALSE'
             if values_list:
-                if p.get('#Mars KPI NAME') == 2317:
+                if p.get('#Mars KPI NAME') in (2317, 4317):
 
                     top_eans = p.get('Values').split('\n')
                     top_products_in_store = self.scif[self.scif['product_ean_code'].isin(top_eans)]['product_fk'].unique().tolist()
@@ -1359,22 +1433,31 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         result = 'TRUE'
 
                 elif p.get('#Mars KPI NAME') == 2254:
-                    type_value = str(p.get('Type'))
-                    values = str(p.get('Values')).split(', ')
-                    average_number_of_shelves_with_mars = self.calculate_linear_sos(scenes, type_value, values)
-                    if average_number_of_shelves_with_mars:
-                        kpi_part_1 = self.dict_for_2254[2261] / self.dict_for_2254[2264] if self.dict_for_2254[
-                                                                                              2264] > 0 else 0
-                        kpi_part_2 = self.dict_for_2254[2265] / self.dict_for_2254[2351] if self.dict_for_2254[
-                                                                                                2351] > 0 else 0
+                    if self.dict_for_planogram[2264] or self.dict_for_planogram[2351]:
+                        kpi_part_1 = self.dict_for_planogram[2261] / self.dict_for_planogram[2264] \
+                            if self.dict_for_planogram[2264] > 0 else 0
+                        kpi_part_2 = self.dict_for_planogram[2265] / self.dict_for_planogram[2351] \
+                            if self.dict_for_planogram[2351] > 0 else 0
                         mars_shelf_size = kpi_part_1 + kpi_part_2
                         for row in values_list:
                             if row['shelf from'] <= mars_shelf_size < row['shelf to']:
                                 result = str(row['result'])
-                        if not result:
-                            result = 'FALSE'
-                    else:
-                        result = 'FALSE'
+
+                elif p.get('#Mars KPI NAME') == 4254:
+                    if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
+                        for row in values_list:
+                            if row['Length'] == '<' + str(p.get('Target')):
+                                result = str(row['result'])
+                    elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
+                        kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
+                            if self.dict_for_planogram[4264] > 0 else 0
+                        kpi_part_2 = self.dict_for_planogram[4265] / self.dict_for_planogram[4351] \
+                            if self.dict_for_planogram[4351] > 0 else 0
+                        mars_shelf_size = kpi_part_1 + kpi_part_2
+                        for row in values_list:
+                            if row['shelf from'] <= mars_shelf_size < row['shelf to'] \
+                                    and row['Length'] == '>=' + str(p.get('Target')):
+                                result = str(row['result'])
 
                 else:
                     sub_results = []
@@ -1388,7 +1471,6 @@ class MARSRU_SANDMARSRUKPIToolBox:
                             sub_result = 0
                         sub_results.append(sub_result)
                     sum_of_facings = sum(sub_results)
-
                     if sum_of_facings >= len(values_list):
                         result = 'TRUE'
                     else:
@@ -1403,7 +1485,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def negative_neighbors(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'custom_mars_6':
                 continue
 
@@ -1456,7 +1538,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def get_total_linear(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'total_linear':
                 continue
 
@@ -1488,7 +1570,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def get_placed_near(self, params):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'placed_near':
                 continue
 
@@ -1954,7 +2036,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     def store_to_new_kpi_tables(self, p):
         result = self.transform_result(self.results_and_scores[p.get('#Mars KPI NAME')]['result'], p)
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(p.get('#Mars KPI NAME'))
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')))
         parent_fk = self.common.get_kpi_fk_by_kpi_type(self.set_name)
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
@@ -1966,7 +2048,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                                        denominator_id=denominator_id,
                                        denominator_result=0,
                                        result=result,
-                                       score=None,
+                                       score=0,
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
@@ -1984,7 +2066,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                                        denominator_id=denominator_id,
                                        denominator_result=0,
                                        result=None,
-                                       score=None,
+                                       score=0,
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
