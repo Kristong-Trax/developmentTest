@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Eli_Sam_Shivi'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data',
-                                     'KR - Google Fixture Targets.xlsx')
+                                     'KR - Google Fixture Targets v.2.xlsx')
 
 
 class ToolBox:
@@ -59,6 +59,7 @@ class ToolBox:
                                                  .set_index('New Task Name (unique)')[Const.PK],
                                                  on='New Task Name (unique)', how='left')
         relevant_fixtures = fixture_template[fixture_template['Store Number'] == store_num]
+        relevant_fixtures.drop_duplicates(inplace=True)
         relevant_fixtures = relevant_fixtures.set_index(Const.PK).groupby(Const.PK) \
             ['Number of Fixtures(Task)'].sum()
         entry_exit = self.fixture_template[Const.ENTRY_EXIT]

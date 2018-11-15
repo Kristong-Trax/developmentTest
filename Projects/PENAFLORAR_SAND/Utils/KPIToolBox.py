@@ -97,16 +97,21 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
-        self.save_json_to_new_tables(assortment_res_dict)
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
             # if set_name in ('MPA', 'New Products',):
             #     set_score = self.calculate_assortment_sets(set_name)
 
@@ -119,7 +124,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
                 if res_dict:
                     # Saving to new tables
                     # parent_res = res_dict[-1]
-                    self.save_json_to_new_tables(res_dict)
+                    self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
                     # result = parent_res['result']
@@ -142,12 +147,6 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
-
-    def save_json_to_new_tables(self, res_dict):
-        if res_dict:
-            # Saving to new tables
-            for r in res_dict:
-                self.commonV2.write_to_db_result(**r)
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -225,8 +224,11 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         """
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
-
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            Log.warning("kpi name or set name don't exist")
+            return
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
