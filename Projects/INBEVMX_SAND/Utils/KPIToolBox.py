@@ -112,7 +112,7 @@ class INBEVMXToolBox:
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
         products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk','facings']].fillna(0)
-        products_df = products_df.groupby('product_fk').sum()
+        products_df = products_df.groupby('product_fk').sum().reset_index()
         try:
             atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         except IndexError:
