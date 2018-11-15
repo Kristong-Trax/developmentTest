@@ -41,7 +41,8 @@ class MARSRU_SANDMARSRUCalculations(BaseCalculationsScript):
 
         tool_box = MARSRU_SANDMARSRUKPIToolBox(kpi_templates, self.data_provider, self.output, kpi_set_name)
 
-        # tool_box.handle_update_custom_scif()
+        tool_box.handle_update_custom_scif()
+        tool_box.calculate_osa()
 
         tool_box.check_availability(kpi_templates.get('kpi_data'))
         tool_box.check_survey_answer(kpi_templates.get('kpi_data'))

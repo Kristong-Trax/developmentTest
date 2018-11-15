@@ -31,6 +31,8 @@ ALLOWED_DEVIATION_2018 = 3
 NEGATIVE_ADJACENCY_RANGE = (2, 1000)
 POSITIVE_ADJACENCY_RANGE = (0, 1)
 
+OSA_KPI_NAME = 'OSA'
+
 IN_ASSORTMENT = 'in_assortment_osa'
 IS_OOS = 'oos_osa'
 PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
@@ -59,7 +61,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.products = self.data_provider[Data.ALL_PRODUCTS]
         try:
             self.products['sub_brand'] = self.products['Sub Brand']  # the sub_brand column is empty
-        except:
+        except KeyError:
             pass
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
@@ -72,7 +74,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         try:
             self.scif['sub_brand'] = self.scif['Sub Brand']  # the sub_brand column is empty
-        except:
+        except KeyError:
             pass
         self.set_name = set_name
         self.kpi_fetcher = MARSRU_SANDMARSRUKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
@@ -102,6 +104,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                                        'MAN in CAT': 'category',
                                        'MAN': 'manufacturer_name'}
         self.common = Common(self.data_provider)
+        self.osa_kpi_dict = {}
 
     @kpi_runtime()
     def check_for_specific_display(self, params):
@@ -269,8 +272,8 @@ class MARSRU_SANDMARSRUKPIToolBox:
             for scene in scenes:
                 self.get_custom_query(scene, product, 0, 0)
 
-        self.commit_custom_scif()
         Log.info("Done updating PS Custom SCIF... ")
+        self.commit_custom_scif()
 
     def get_static_list(self, type):
         object_static_list = []
@@ -1895,12 +1898,12 @@ class MARSRU_SANDMARSRUKPIToolBox:
                     result_value = self.kpi_fetcher.kpi_result_values[
                         (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'Boolean') &
                         (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'TRUE')][
-                        'kpi_result_value_fk'][0]
+                        'kpi_result_value_fk'].iloc[0]
                 else:
                     result_value = self.kpi_fetcher.kpi_result_values[
                         (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'Boolean') &
                         (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'FALSE')][
-                        'kpi_result_value_fk'][0]
+                        'kpi_result_value_fk'].iloc[0]
             except IndexError:
                 result_value = None
         else:
@@ -2035,13 +2038,13 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.write_to_db_result(attributes_for_table3, level=3)
 
     def store_to_new_kpi_tables(self, p):
-        result = self.transform_result(self.results_and_scores[p.get('#Mars KPI NAME')]['result'], p)
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')))
         parent_fk = self.common.get_kpi_fk_by_kpi_type(self.set_name)
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+        result = self.transform_result(self.results_and_scores[p.get('#Mars KPI NAME')]['result'], p)
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2060,13 +2063,88 @@ class MARSRU_SANDMARSRUKPIToolBox:
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+        result = None
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
                                        denominator_id=denominator_id,
                                        denominator_result=0,
-                                       result=None,
+                                       result=result,
                                        score=0,
+                                       identifier_result=identifier_result,
+                                       identifier_parent=identifier_parent,
+                                       should_enter=True)
+
+    @kpi_runtime()
+    def calculate_osa(self):
+        """
+        This function calculates OSA kpi and writes to new KPI tables.
+        :return:
+        """
+        assortment_products = self.get_assortment_for_store_id()
+        if not assortment_products:
+            return
+
+        product_facings = self.scif.groupby('product_fk')['facings'].sum().reset_index()
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME + ' - SKU')
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
+        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+        denominator_id = self.store_id
+        total_result = 0
+        for product in assortment_products:
+            numerator_id = product
+            try:
+                numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
+            except IndexError:
+                numerator_result = 0
+            denominator_result = 1
+            result = 1 if numerator_result >= denominator_result else 0
+            score = result*100
+
+            try:
+                if result:
+                    result_value = self.kpi_fetcher.kpi_result_values[
+                        (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
+                        (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'DISTRIBUTED')][
+                        'kpi_result_value_fk'].iloc[0]
+                else:
+                    result_value = self.kpi_fetcher.kpi_result_values[
+                        (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
+                        (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'OOS')][
+                        'kpi_result_value_fk'].iloc[0]
+            except IndexError:
+                result_value = None
+
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=numerator_id,
+                                           numerator_result=numerator_result,
+                                           denominator_id=denominator_id,
+                                           denominator_result=denominator_result,
+                                           result=result_value,
+                                           score=score,
+                                           identifier_result=identifier_result,
+                                           identifier_parent=identifier_parent,
+                                           should_enter=True)
+            total_result += result
+
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME)
+        parent_fk = 0
+        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
+        identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
+        numerator_id = self.own_manufacturer_id
+        numerator_result = total_result
+        denominator_result = len(assortment_products)
+        result = numerator_result / float(denominator_result)
+        score = result * 100
+        self.common.write_to_db_result(fk=kpi_fk,
+                                       numerator_id=numerator_id,
+                                       numerator_result=numerator_result,
+                                       denominator_id=denominator_id,
+                                       denominator_result=denominator_result,
+                                       result=result,
+                                       score=score,
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
