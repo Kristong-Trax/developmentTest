@@ -136,7 +136,7 @@ class BATAUToolBox:
                                                           score = score,
                                                           score_after_actions = 0)
 
-            print(kpi_output.format(kpi_fk,numerator_id,numerator,result,denominator_id,denominator,score))
+                print(kpi_output.format(kpi_fk,numerator_id,numerator,result,denominator_id,denominator,score))
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)
