@@ -87,11 +87,11 @@ class ToolBox:
         print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.scif.copy()
-        if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-            general_filters['template_name'] = scene_types
-        if relevant_scif.empty:
-            return
+        # if scene_types:
+        #     relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+        #     general_filters['template_name'] = scene_types
+        # if relevant_scif.empty:
+        #     return
         function = self.get_kpi_function(kpi_type)
         if kpi_type == Const.TMB:
             for i, kpi_line in self.template[kpi_type].iterrows():
@@ -140,16 +140,15 @@ class ToolBox:
 
         for bay, shelves in grouped_mpis:
             sub_map = map[bay_max_shelf[bay]]
-            shelves = shelves.unique()
-            for shelf in shelves:
-                locations.add(sub_map[shelf])
+            shelf_with_most = shelves.groupby('shelf_number')[shelves.columns[0]].count().sort_values().index[-1]
+            locations.add(sub_map[shelf_with_most])
+            # for shelf in shelves:
+            #     locations.add(sub_map[shelf])
             if len(locations) == 3:
                 break
 
-        ordered_result = ''
-        for level in Const.TMB_VALUES:
-            if level in locations:
-                ordered_result += level
+        locations = sorted(list(locations))[::-1]
+        ordered_result = '-'.join(locations)
 
 
     def load_tmb_map(self):
