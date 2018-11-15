@@ -22,6 +22,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+KPI_SHEET = 'KPI'
 
 class BATAUSceneToolBox:
     LEVEL1 = 1
@@ -34,6 +35,9 @@ class BATAUSceneToolBox:
         self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+        self.excel_file_path = os.path.join(self.templates_path, 'Template.xlsx')
+        self.kpi_sheet = pd.read_excel(self.excel_file_path, sheetname=KPI_SHEET)
         self.products = self.data_provider[Data.PRODUCTS]
         self.templates = self.data_provider[Data.TEMPLATES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
