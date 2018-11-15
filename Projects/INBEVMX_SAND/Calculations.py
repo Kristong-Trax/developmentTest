@@ -33,4 +33,4 @@ class Calculations(BaseCalculationsScript):
 #     for session in list_sessions:
 #         data_provider.load_session_data(session)
 #         Calculations(data_provider, output).run_project_calculations()
-#
+

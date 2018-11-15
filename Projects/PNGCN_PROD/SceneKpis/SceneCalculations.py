@@ -1,12 +1,12 @@
 import pandas as pd
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 from Projects.PNGCN_PROD.KPISceneGenerator import SceneGenerator
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
-# from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 
 
 
@@ -37,9 +37,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     Config.init()
 #     project_name = 'pngcn-prod'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '60393d16-f309-4f74-8708-7fc89e211216'
+#     session = '0813b0a8-a104-4994-a3d9-1fcd8dbed465'
 #
-#     scenes = [5384339, ]
+#     scenes = [9377272, ]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()

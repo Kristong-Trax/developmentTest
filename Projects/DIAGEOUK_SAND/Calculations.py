@@ -5,8 +5,6 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOUK_SAND.KPIGenerator import DIAGEOUK_SANDGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
 
 
 __author__ = 'Nimrod'
@@ -16,9 +14,6 @@ class DIAGEOUK_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         DIAGEOUK_SANDGenerator(self.data_provider, self.output).main_function()
-        common = Common(self.data_provider)
-        DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
-        common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
