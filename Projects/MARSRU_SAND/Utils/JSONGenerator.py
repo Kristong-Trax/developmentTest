@@ -2,15 +2,15 @@
 import json
 import os
 import sys
-
 import pandas as pd
 
 sys.path.append('.')
 
+
 __author__ = 'urid'
 
 
-class MARSRU_SANDMARSRUJsonGenerator:
+class JSONGenerator:
     def __init__(self, project):
         self.project = project
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')

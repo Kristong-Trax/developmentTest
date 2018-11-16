@@ -1,6 +1,5 @@
-
 import igraph
-import datetime
+import datetime as dt
 import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -8,12 +7,14 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
+
 __author__ = 'Nimrod'
+
 
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class MARSRU_SANDPositionGraphs:
+class PositionGraphs:
 
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
@@ -99,7 +100,7 @@ class MARSRU_SANDPositionGraphs:
         """
         This function creates a facings Graph for each scene of the given session.
         """
-        calc_start_time = datetime.datetime.utcnow()
+        calc_start_time = dt.datetime.utcnow()
         if scene_id:
             scenes = [scene_id]
         else:
@@ -128,7 +129,7 @@ class MARSRU_SANDPositionGraphs:
                 scene_graph.add_edge(**edge)
 
             self.position_graphs[scene] = scene_graph
-        calc_finish_time = datetime.datetime.utcnow()
+        calc_finish_time = dt.datetime.utcnow()
         Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):

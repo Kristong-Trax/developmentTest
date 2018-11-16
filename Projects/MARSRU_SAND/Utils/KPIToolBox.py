@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
-import datetime
-import pandas as pd
 import ast
+import datetime as dt
+import pandas as pd
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-from Projects.MARSRU_SAND.MARSRUFetcher import MARSRU_SANDMARSRUKPIFetcher
-from Projects.MARSRU_SAND.Utils.PositionGraph import MARSRU_SANDPositionGraphs
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
+from Projects.MARSRU_SAND.Utils.KPIFetcher import KPIFetcher
+from Projects.MARSRU_SAND.Utils.PositionGraph import PositionGraphs
+
+
 __author__ = 'urid'
+
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -43,7 +47,7 @@ EXCLUDE_EMPTY = False
 INCLUDE_EMPTY = True
 
 
-class MARSRU_SANDMARSRUKPIToolBox:
+class KPIToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -61,7 +65,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.products = self.data_provider[Data.ALL_PRODUCTS]
         try:
             self.products['sub_brand'] = self.products['Sub Brand']  # the sub_brand column is empty
-        except KeyError:
+        except:
             pass
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
@@ -70,15 +74,20 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.own_manufacturer_id = int(self.data_provider.own_manufacturer[self.data_provider.own_manufacturer['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
+        self.own_manufacturer_id = int(self.data_provider.own_manufacturer[
+                                           self.data_provider.own_manufacturer['param_name'] == 'manufacturer_id'][
+                                           'param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         try:
             self.scif['sub_brand'] = self.scif['Sub Brand']  # the sub_brand column is empty
-        except KeyError:
+        except:
             pass
-        self.set_name = set_name
-        self.kpi_fetcher = MARSRU_SANDMARSRUKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
-                                                       self.set_name, self.products, self.session_uid)
+        if type(set_name) is tuple:
+            self.set_name, self.kpi_level_0_name = set_name
+        else:
+            self.set_name = self.kpi_level_0_name = set_name
+        self.kpi_fetcher = KPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
+                                      self.set_name, self.products, self.session_uid)
         self.kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
@@ -91,9 +100,9 @@ class MARSRU_SANDMARSRUKPIToolBox:
         self.store_num_1 = self.get_store_number_1_attribute()
         self.results_and_scores = {}
         self.result_df = []
-        self.writing_to_db_time = datetime.timedelta(0)
+        self.writing_to_db_time = dt.timedelta(0)
         self.kpi_results_queries = []
-        self.position_graphs = MARSRU_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+        self.position_graphs = PositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         self.potential_products = {}
         self.custom_scif_queries = []
         self.shelf_square_boundaries = {}
@@ -112,7 +121,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         This function checks if a specific display( = scene type) exists in a store
         """
         formula_type = 'check_specific_display'
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != formula_type:
                 continue
 
@@ -145,7 +154,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         This function is used to calculate availability for given SKU on golden shelves (#3,4 from bottom)
         """
         formula_type = 'availability_on_golden_shelves'
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != formula_type:
                 continue
 
@@ -297,7 +306,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         """
         availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT', 'MAN in CAT', 'BRAND in CAT']
         formula_types = ['number of SKUs', 'number of facings']
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Type') not in availability_types or p.get('Formula') not in formula_types:
                 continue
 
@@ -416,7 +425,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         This function is used to calculate number of scenes
 
         """
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') not in ['number of scenes', 'number of scenes vs target']:
                 continue
 
@@ -424,7 +433,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
             scenes = self.get_relevant_scenes(p)
 
             if p.get('Type') == 'SCENES':
-                values_list = [str(s) for s in p.get('Values').split(', ')]
+                values_list = p.get('Values').split(', ')
                 for scene in scenes:
                     try:
                         scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
@@ -433,11 +442,11 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         else:
                             res = 0
                         result += res
-                    except IndexError:
+                    except:
                         continue
 
-                if p.get('Target'):
-                    if result >= p.get('Target'):
+                if p.get('Formula') == 'number of scenes vs target':
+                    if p.get('Target') and result >= p.get('Target'):
                         result = 1
                     else:
                         result = 0
@@ -465,17 +474,18 @@ class MARSRU_SANDMARSRUKPIToolBox:
         This function is used to calculate survey answer according to given format
 
         """
-        d = {'Yes': [u'Да', u'ДА', u'да'], 'No': [u'Нет', u'НЕТ', u'нет']}
-        for p in params.values()[0]:
+        d = {'Yes': [u'Да', u'ДА', u'да', u'Yes', u'YES', u'yes', u'True', u'TRUE', u'true', u'1'],
+             'No': [u'Нет', u'НЕТ', u'нет', u'No', u'NO', u'no', u'False', u'FALSE', u'false', u'0']}
+        for p in params:
 
-            if p.get('Type') != 'SURVEY' or p.get('Formula') != 'answer for survey':
+            if p.get('Formula') != 'answer for survey':
                 continue
 
             survey_question_code = str(int(p.get('Values')))
             survey_data = self.survey_response.loc[self.survey_response['code'] == survey_question_code]
             if not survey_data.empty:
 
-                if p.get('Answer type') == 'Boolean':
+                if p.get('Type') == 'SURVEY BOOLEAN':
                     result = survey_data['selected_option_text'].values[0]
                     if result in d.get('Yes'):
                         result = 'TRUE'
@@ -484,30 +494,31 @@ class MARSRU_SANDMARSRUKPIToolBox:
                     else:
                         result = None
 
-                elif p.get('Answer type') in ['List', 'String']:
+                elif p.get('Type') == 'SURVEY TEXT':
                     result = []
                     for answer in survey_data['selected_option_text'].unique().tolist():
-                        result += [self.kpi_fetcher.get_survey_answers_codes(survey_question_code, answer)]
+                        result += str(answer)
                     result = ','.join([str(r) for r in result]) if result else None
 
-                elif p.get('Answer type') == 'Int':
-                    try:
-                        result = int(survey_data['number_value'].values[0])
-                    except ValueError:
-                        result = None
+                elif p.get('Type') == 'SURVEY TRANSLATED':
+                    result = []
+                    for answer in survey_data['selected_option_text'].unique().tolist():
+                        result += [self.kpi_fetcher.get_survey_answers_translation(survey_question_code, answer)]
+                    result = ','.join([str(r) for r in result]) if result else None
 
-                elif p.get('Answer type') == 'Float':
+                elif p.get('Type') == 'SURVEY NUMERIC':
                     try:
                         result = float(survey_data['number_value'].values[0])
-                    except ValueError:
+                    except:
                         result = None
+
                 else:
                     Log.info('The answer type {} is not defined for surveys'.format(params.get('Answer type')))
                     result = None
 
             else:
                 Log.warning('No survey data with survey response code {} for this session'
-                            .format(str(int(p.get('Survey Question_ID_code')))))
+                            .format(survey_question_code))
                 result = None
 
             self.store_results_and_scores(result, p)
@@ -519,7 +530,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     @kpi_runtime()
     def check_price(self, params, scenes=[]):
-        for p in params.values()[0]:
+        for p in params:
             if p.get('Formula') != 'price':
                 continue
 
@@ -1459,7 +1470,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         mars_shelf_size = kpi_part_1 + kpi_part_2
                         for row in values_list:
                             if row['shelf from'] <= mars_shelf_size < row['shelf to'] \
-                                    and row['Length'] == '>=' + str(p.get('Target')):
+                                    and row['length_condition'] == '>=' + str(p.get('Target')):
                                 result = str(row['result'])
 
                 else:
@@ -1859,12 +1870,12 @@ class MARSRU_SANDMARSRUKPIToolBox:
             if params.get('Answer type') == 'Int':
                 try:
                     result_value = int(result)
-                except ValueError:
+                except:
                     result_value = None
             elif params.get('Answer type') == 'Float':
                 try:
                     result_value = float(result)
-                except ValueError:
+                except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
                 if result and result != 'FALSE':
@@ -1875,7 +1886,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                 result_value = result
 
         score_value = None if result_value is None else (100 if result_value and result_value != 'FALSE' else 0)
-        self.results_and_scores[params.get('#Mars KPI NAME')] = {'result': result_value, 'score': score_value}
+        self.results_and_scores[str(params.get('#Mars KPI NAME'))] = {'result': result_value, 'score': score_value}
 
     def transform_result(self, result, params):
         """
@@ -1885,12 +1896,12 @@ class MARSRU_SANDMARSRUKPIToolBox:
         if params.get('Answer type') == 'Int':
             try:
                 result_value = int(result)
-            except ValueError:
+            except:
                 result_value = None
         elif params.get('Answer type') == 'Float':
             try:
                 result_value = float(result)
-            except ValueError:
+            except:
                 result_value = None
         elif params.get('Answer type') == 'Boolean':
             try:
@@ -1904,7 +1915,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'Boolean') &
                         (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'FALSE')][
                         'kpi_result_value_fk'].iloc[0]
-            except IndexError:
+            except:
                 result_value = None
         else:
             result_value = result
@@ -1930,11 +1941,11 @@ class MARSRU_SANDMARSRUKPIToolBox:
             self.kpi_results_queries.append(query)
 
     def insert_results_data(self, query):
-        start_time = datetime.datetime.utcnow()
+        start_time = dt.datetime.utcnow()
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         self.rds_conn.db.commit()
-        self.writing_to_db_time += datetime.datetime.utcnow() - start_time
+        self.writing_to_db_time += dt.datetime.utcnow() - start_time
         return cur.lastrowid
 
     def write_to_db_result_level1(self):
@@ -1959,8 +1970,8 @@ class MARSRU_SANDMARSRUKPIToolBox:
         """
         kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI NAME'))
         
-        if self.results_and_scores.get(params.get('#Mars KPI NAME')):
-            score = self.results_and_scores[params.get('#Mars KPI NAME')]['score']
+        if self.results_and_scores.get(str(params.get('#Mars KPI NAME'))):
+            score = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['score']
         else:
             score = None
 
@@ -1987,9 +1998,9 @@ class MARSRU_SANDMARSRUKPIToolBox:
         kpi_fk = self.kpi_fetcher.get_kpi_fk(params.get('#Mars KPI NAME'))
         atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(params.get('#Mars KPI NAME'))
 
-        if self.results_and_scores.get(params.get('#Mars KPI NAME')):
-            result = self.results_and_scores[params.get('#Mars KPI NAME')]['result']
-            score = self.results_and_scores[params.get('#Mars KPI NAME')]['score']
+        if self.results_and_scores.get(str(params.get('#Mars KPI NAME'))):
+            result = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['result']
+            score = self.results_and_scores[str(params.get('#Mars KPI NAME'))]['score']
         else:
             result = None
             score = None
@@ -1999,7 +2010,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                                                self.set_name, 
                                                self.store_id,
                                                self.visit_date.isoformat(), 
-                                               datetime.datetime.utcnow().isoformat(),
+                                               dt.datetime.utcnow().isoformat(),
                                                score,
                                                kpi_fk,
                                                atomic_kpi_fk, 
@@ -2039,12 +2050,12 @@ class MARSRU_SANDMARSRUKPIToolBox:
 
     def store_to_new_kpi_tables(self, p):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(str(p.get('#Mars KPI NAME')))
-        parent_fk = self.common.get_kpi_fk_by_kpi_type(self.set_name)
+        parent_fk = self.common.get_kpi_fk_by_kpi_type(self.kpi_level_0_name)
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        result = self.transform_result(self.results_and_scores[p.get('#Mars KPI NAME')]['result'], p)
+        result = self.transform_result(self.results_and_scores[str(p.get('#Mars KPI NAME'))]['result'], p)
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2097,7 +2108,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
             numerator_id = product
             try:
                 numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
-            except IndexError:
+            except:
                 numerator_result = 0
             denominator_result = 1
             result = 1 if numerator_result >= denominator_result else 0
@@ -2114,7 +2125,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
                         (self.kpi_fetcher.kpi_result_values['kpi_result_type'] == 'PRESENCE') &
                         (self.kpi_fetcher.kpi_result_values['kpi_result_value'] == 'OOS')][
                         'kpi_result_value_fk'].iloc[0]
-            except IndexError:
+            except:
                 result_value = None
 
             self.common.write_to_db_result(fk=kpi_fk,
@@ -2137,7 +2148,7 @@ class MARSRU_SANDMARSRUKPIToolBox:
         numerator_result = total_result
         denominator_result = len(assortment_products)
         result = numerator_result / float(denominator_result)
-        score = result * 100
+        score = result*100
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=numerator_result,

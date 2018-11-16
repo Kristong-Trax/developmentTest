@@ -3,9 +3,10 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Projects.MARSRU_SAND.Utils.MARSRUJSON import MARSRU_SANDMARSRUJsonGenerator
+
 
 __author__ = 'urid'
+
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -18,7 +19,7 @@ SKU = 'SKU'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class MARSRU_SANDMARSRUKPIFetcher:
+class KPIFetcher:
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
     LEFT = 'shelf_px_left'
@@ -358,7 +359,7 @@ class MARSRU_SANDMARSRUKPIFetcher:
                 continue
         return final_shelves
 
-    def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
+    def get_survey_answers_translation(self, survey_question_code, survey_answers_text):
         targets = self.kpi_templates['survey_answers_translation']
         answers_list = []
         for row in targets:
@@ -398,9 +399,10 @@ class MARSRU_SANDMARSRUKPIFetcher:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
                             kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
-                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')
-                            if not kpi_result.empty:
-                                if kpi_result[0] in kpi_results_to_check:
+                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')\
+                                if kpi_results.get(kpi_name_to_check) else None
+                            if kpi_result:
+                                if kpi_result in kpi_results_to_check:
                                     values_list = str(row.get('EAN')).replace('\n', '').split(',')
                                     break
                                 else:
@@ -442,8 +444,8 @@ class MARSRU_SANDMARSRUKPIFetcher:
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
                             kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
                             kpi_result = kpi_results.get(kpi_name_to_check).get('result')
-                            if not kpi_result.empty:
-                                if kpi_result[0] in kpi_results_to_check:
+                            if kpi_result:
+                                if kpi_result in kpi_results_to_check:
                                     values_list = str(row.get('Shelf # from the bottom'))
                                     break
                                 else:
@@ -471,9 +473,11 @@ class MARSRU_SANDMARSRUKPIFetcher:
                     except ValueError:
                         shelf_length_to = 10000
                     result = str(row.get('Result'))
+                    length_condition = row.get('Length condition')
                     values_list.append({'shelf from': shelf_length_from,
-                                   'shelf to': shelf_length_to,
-                                   'result': result})
+                                        'shelf to': shelf_length_to,
+                                        'result': result,
+                                        'length_condition': length_condition})
 
         return values_list
 
@@ -517,11 +521,17 @@ class MARSRU_SANDMARSRUKPIFetcher:
         return store_att5.values[0][0]
 
     def get_store_assortment(self, attribute, visit_date):
+        if not self.rds_conn.is_connected:
+            self.rds_conn.connect_rds()
         query = """
                 select product_fk from pservice.custom_osa
                 where store_fk={0} and start_date <= '{1}' and (end_date >= '{1}'  OR end_date is null)
                 """.format(attribute, visit_date)
-        assortments = pd.read_sql_query(query, self.rds_conn.db)
+        try:
+            assortments = pd.read_sql_query(query, self.rds_conn.db)
+        except:
+            self.rds_conn.connect_rds()
+            assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
     def get_store_number_1(self, store_fk):
