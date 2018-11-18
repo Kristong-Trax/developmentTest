@@ -58,7 +58,8 @@ class DIAGEOCO_SANDToolBox:
         This function calculates the KPI results.
         """
         set_names = ['Brand Blocking', 'Secondary Displays', 'Brand Pouring', 'TOUCH POINT',
-                     'Relative Position']
+                     'Relative Position','Activation Standard']
+        total_scores_dict = []
 
         self.tools.update_templates()
         self.set_templates_data['TOUCH POINT'] = pd.read_excel(Const.TEMPLATE_PATH, Const.TOUCH_POINT_SHEET_NAME,
@@ -76,6 +77,7 @@ class DIAGEOCO_SANDToolBox:
 
             if set_name == 'Secondary Displays':
                 result = self.global_gen.diageo_global_secondary_display_secondary_function()
+                total_scores_dict.append(result)
                 if result:
                     self.common_v2.write_to_db_result(**result)
                 set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
@@ -84,24 +86,27 @@ class DIAGEOCO_SANDToolBox:
             elif set_name == 'Brand Pouring':
                 results_list = self.global_gen.diageo_global_brand_pouring_status_function(
                     self.set_templates_data[set_name])
+                total_scores_dict.append(results_list)
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_brand_pouring_sets(set_name)
 
             elif set_name == 'Brand Blocking':
                 results_list = self.global_gen.diageo_global_block_together(set_name,
                                                                             self.set_templates_data[set_name])
+                total_scores_dict.append(results_list)
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_block_together_sets(set_name)
 
             elif set_name == 'Relative Position':
                 results_list = self.global_gen.diageo_global_relative_position_function(self.set_templates_data[set_name])
+                total_scores_dict.append(results_list)
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_relative_position_sets(set_name)
 
             elif set_name == 'Activation Standard':
-                pass
-                # result = self.global_gen.diageo_global_activation_standard_function(kpi_scores, set_scores,
-                #                                                                     local_templates_path)
+
+                results_list= self.global_gen.diageo_global_activation_standard_function(total_scores_dict)
+
 
             elif set_name == 'TOUCH POINT':
                 store_attribute = 'additional_attribute_2'
@@ -110,6 +115,7 @@ class DIAGEOCO_SANDToolBox:
                 results_list = self.global_gen.diageo_global_touch_point_function(template=template,
                                                                                   old_tables=True, new_tables=False,
                                                                                   store_attribute=store_attribute)
+                total_scores_dict.append(results_list)
                 self.save_results_to_db(results_list)
             else:
                 return
