@@ -5,7 +5,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -54,7 +54,7 @@ class DIAGEOTW_SANDToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:

@@ -26,6 +26,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 DISPLAY_COUNT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'display_to_count.xlsx')
 TOTAL_DISPLAY_COUNT = 'Total_display_count'
+KPS_WITH_SUB_CATEGORY = 'Fem'
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -204,12 +205,15 @@ class PNGToolBox:
                                                                  (self.kpi_static_data['kpi_name'] == sub_category)]
                     sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
                     kpi_fk = sub_category_data['kpi_fk'].values[0]
-
                     self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
                     for kpi in kpi_dict.keys():
                         atomic_kpi_fk = sub_category_data[sub_category_data['atomic_kpi_name'] ==
                                                           kpi]['atomic_kpi_fk'].values[0]
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+                        if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
+                                                          kpi]['kpi_set_name']):
+                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
+                        else:
+                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
                 else:
                     category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category]
                     sets_to_save.add(category_data['kpi_set_fk'].values[0])
@@ -217,7 +221,10 @@ class PNGToolBox:
                         kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
                         atomic_kpi_fk = category_data[category_data['atomic_kpi_name'] == kpi]['atomic_kpi_fk'].values[0]
                         self.write_to_db_result(kpi_fk, kpi_dict[kpi], self.LEVEL2)
-                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+                        if KPS_WITH_SUB_CATEGORY in str(category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
+                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3, (sub_category).encode('utf-8').strip())
+                        else :
+                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
         for set_fk in sets_to_save:
             self.write_to_db_result(set_fk, 100, self.LEVEL1)
 
@@ -345,12 +352,16 @@ class PNGToolBox:
             number_of_shelves = max_shelf
         return False
 
-    def write_to_db_result(self, fk, score, level):
+    def write_to_db_result(self, fk, score, level ,sub_cat=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
-        attributes = self.create_attributes_dict(fk, score, level)
+        if sub_cat:
+            attributes = self.create_attributes_dict(fk, score, level,sub_cat)
+        else:
+            attributes = self.create_attributes_dict(fk, score, level)
+
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -362,7 +373,7 @@ class PNGToolBox:
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, fk, score, level):
+    def create_attributes_dict(self, fk, score, level,sub_cat=None):
         """
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
@@ -385,11 +396,13 @@ class PNGToolBox:
             atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            if sub_cat:
+                atomic_kpi_name = (atomic_kpi_name +" " +sub_cat.decode('utf-8')).encode('utf-8')
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk, None, None)],
+                                        score, kpi_fk, fk, None,score)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
+                                               'calculation_time','score', 'kpi_fk', 'atomic_kpi_fk', 'threshold',
                                                'result'])
         else:
             attributes = pd.DataFrame()

@@ -21,14 +21,14 @@ class Results(object):
         for level_1 in hierarchy['Level_1'].unique():
             kpi_level_1_fk = self.get_kpi_fk(level_1)
             kpi_level_1_fk_old = self.get_kpi_fk(level_1, kpi_level=1)
-            sum_level_1_result = 0
+            sum_level_1_result = sum_level_1_potential = 0
             parent_level_1_identifier = self.common_v2.get_dictionary(kpi_fk=kpi_level_1_fk)
 
             level_2_hierarchy = hierarchy[hierarchy['Level_1'] == level_1]
             for level_2 in level_2_hierarchy['Level_2'].unique():
                 kpi_level_2_fk = self.get_kpi_fk(level_2)
                 kpi_level_2_fk_old = self.get_kpi_fk(level_2, kpi_level=2)
-                sum_level_2_result = 0
+                sum_level_2_result = sum_level_2_potential = 0
                 parent_level_2_identifier = self.common_v2.get_dictionary(kpi_fk=kpi_level_2_fk)
 
                 level_3_hierarchy = level_2_hierarchy[level_2_hierarchy['Level_2'] == level_2]
@@ -36,13 +36,26 @@ class Results(object):
                     kpi_level_3_fk = self.get_kpi_fk(row['Level_3'])
                     kpi_level_3_fk_old = self.get_kpi_fk(row['Level_3'], kpi_level=3)
                     result = self._get_atomic_result([row['Level_3'], row['Level_3_type']], kpi_level_3_fk)
-                    result.update({'identifier_parent': parent_level_2_identifier, 'should_enter': True})
+                    result_level_4 = result.copy()
+                    result.update({'identifier_parent': parent_level_2_identifier,
+                                   'identifier_result': self.common_v2.get_dictionary(kpi_fk=kpi_level_3_fk),
+                                   'should_enter': True})
                     self.common_v2.write_to_db_result(**result)
+
+                    kpi_level_3_fk_2 = self.get_kpi_fk(row['Level_3']+'_2')
+                    if kpi_level_3_fk_2:
+                        parent_level_3_identifier = self.common_v2.get_dictionary(kpi_fk=kpi_level_3_fk)
+                        result_level_4.update({'identifier_parent': parent_level_3_identifier,
+                                               'should_enter': True,
+                                               'fk': kpi_level_3_fk_2})
+                        self.common_v2.write_to_db_result(**result_level_4)
                     self.common_v1.write_to_db_result(score=int(result['score']), level=3, fk=kpi_level_3_fk_old)
                     sum_level_2_result += int(result['score'])
+                    sum_level_2_potential += int(result['weight'])
 
                 calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_2_fk)
-                level_2_result = calculation.calculate({'score': sum_level_2_result})
+                level_2_result = calculation.calculate({'score': sum_level_2_result,
+                                                        'potential': sum_level_2_potential})
                 result = level_2_result
                 result.update({'identifier_parent': parent_level_1_identifier,
                                'identifier_result': parent_level_2_identifier,
@@ -50,9 +63,11 @@ class Results(object):
                 self.common_v2.write_to_db_result(**result)
                 self.common_v1.write_to_db_result(score=int(result['score']), level=2, fk=kpi_level_2_fk_old)
                 sum_level_1_result += int(result['score'])
+                sum_level_1_potential += int(result['weight'])
 
             calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_1_fk)
-            level_1_result = calculation.calculate({'score': sum_level_1_result})
+            level_1_result = calculation.calculate({'score': sum_level_1_result,
+                                                    'potential': sum_level_1_potential})
             result = level_1_result
             result.update({'identifier_result': parent_level_1_identifier,
                            'should_enter': True})
