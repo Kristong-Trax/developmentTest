@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 
 from Trax.Utils.Logging.Logger import Log
@@ -57,7 +57,7 @@ class DIAGEOMX_SANDToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:
@@ -70,11 +70,13 @@ class DIAGEOMX_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_business_unit(self):
@@ -109,7 +111,8 @@ class DIAGEOMX_SANDToolBox:
     def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
-        """
+        # """
+        log_runtime('Updating templates')(self.tools.update_templates)()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
 
         # Global assortment kpis
@@ -130,7 +133,11 @@ class DIAGEOMX_SANDToolBox:
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in \
                                     self.set_templates_data.keys() and set_name not in ('TOUCH POINT'):
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
 
             if set_name in ('Relative Position'):
                 # Global function
@@ -277,8 +284,8 @@ class DIAGEOMX_SANDToolBox:
                                       params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(
                                       params.get(self.tools.RIGHT_DISTANCE))}
-                if params.get(self.tools.LOCATION, ''):
-                    general_filters = {'template_group': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.LOCATION_OLD, ''):
+                    general_filters = {'template_group': params.get(self.tools.LOCATION_OLD)}
                 else:
                     general_filters = {}
 

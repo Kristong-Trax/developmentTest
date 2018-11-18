@@ -4,7 +4,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -54,7 +54,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
@@ -97,6 +97,8 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
@@ -105,8 +107,11 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
             # if set_name in ('MPA', 'New Products',):
             #     set_score = self.calculate_assortment_sets(set_name)
 

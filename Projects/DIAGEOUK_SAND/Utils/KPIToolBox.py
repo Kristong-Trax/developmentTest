@@ -5,7 +5,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -15,9 +15,6 @@ from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-#  from Projects.DIAGEOUK_SAND.Utils.ParseTemplates import parse_template
-# from Projects.DIAGEOUK_SAND.Utils.Fetcher import DIAGEOUK_SANDQueries
-# from Projects.DIAGEOUK_SAND.Utils.ToolBox import DIAGEOUK_SANDDIAGEOToolBox
 
 __author__ = 'Nimrod'
 
@@ -57,7 +54,7 @@ class DIAGEOUK_SANDToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:
@@ -100,6 +97,8 @@ class DIAGEOUK_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
@@ -108,7 +107,11 @@ class DIAGEOUK_SANDToolBox:
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
 
             # Global relative position
             if set_name in ('Relative Position'):
@@ -210,8 +213,8 @@ class DIAGEOUK_SANDToolBox:
                                       params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(
                                       params.get(self.tools.RIGHT_DISTANCE))}
-                if params.get(self.tools.LOCATION, ''):
-                    general_filters = {'template_group': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.LOCATION_OLD, ''):
+                    general_filters = {'template_group': params.get(self.tools.LOCATION_OLD)}
                 else:
                     general_filters = {}
 
