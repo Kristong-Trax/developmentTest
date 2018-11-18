@@ -156,7 +156,6 @@ class PNGRO_PRODToolBox:
         sbd_kpis_retailer_specific = relevant_df[((relevant_df['Retailer'] == self.retailer)
                                                  | (relevant_df['Retailer'] == ''))]
         relevant_sbd_kpis = sbd_kpis_all_retailers.append(sbd_kpis_retailer_specific, ignore_index=True)
-        # return sbd_kpis_retailer_specific
         return relevant_sbd_kpis
 
     def get_kpi_static_data(self):
@@ -241,7 +240,6 @@ class PNGRO_PRODToolBox:
                     if kpi_type == self.BLOCKED_TOGETHER:
                         score = self.block_together(params, **general_filters)
                     elif kpi_type == self.SOS:
-                        # score, result, threshold = self.calculate_sos(params, **general_filters)
                         score, result, threshold = self.calculate_sos_linear_ign_stack(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
                         score = self.calculate_relative_position(params, **general_filters)
@@ -252,7 +250,7 @@ class PNGRO_PRODToolBox:
                         score = self.calculate_shelf_position(params, **general_filters)
                     elif kpi_type == self.SURVEY:
                         score = self.calculate_survey(params)
-                    #Natalya
+
                     elif kpi_type == self.SOS_FACING:
                         score, result, threshold = self.calculate_sos_facings(params, **general_filters)
                     elif kpi_type == self.EYE_LEVEL:
@@ -428,7 +426,7 @@ class PNGRO_PRODToolBox:
                'brand_name'].unique().tolist()
             for brand in brand_list:
                 filters.update({'brand_name': brand})
-                is_blocked, n_shelves = self.calculate_block_together_custom(minimum_block_ratio=0.75,
+                is_blocked, n_shelves = self.block_calc.calculate_block_together(minimum_block_ratio=0.75,
                                                                              result_by_scene=False, vertical=True,
                                                                              min_facings_in_block=facings, **filters)
                 if is_blocked and n_shelves >= min_shelf_num:
@@ -462,9 +460,9 @@ class PNGRO_PRODToolBox:
             filters, facings, min_shelf_num = self.get_block_filters(params)
             general_filters = self.update_scene_filter(params, general_filters, product_filters=filters)
             filters.update(general_filters)
-            is_blocked, n_shelves = self.calculate_block_together_custom(minimum_block_ratio=0.75, result_by_scene=False,
-                                                                         vertical=True, min_facings_in_block=facings,
-                                                                         **filters)
+            is_blocked, n_shelves = self.block_calc.calculate_block_together(minimum_block_ratio=0.75, result_by_scene=False,
+                                                                             vertical=True, min_facings_in_block=facings,
+                                                                             **filters)
             if is_blocked and n_shelves >= min_shelf_num:
                 score = 1
         return score
@@ -527,7 +525,7 @@ class PNGRO_PRODToolBox:
         try:
             target = float(target) / 100.0
         except:
-            Log.info('The target: {} cannot parse to int'.format(str(target)))
+            Log.info('The target: {} cannot parse to float'.format(str(target)))
         numerator_filters = {type1: value1, type2: value2, type3: value3}
         denominator_filters = {type2: value2}
         return numerator_filters, denominator_filters, target
@@ -829,9 +827,10 @@ class PNGRO_PRODToolBox:
         :return: The total number of facings.
         """
         filters, target = self.get_eye_lvl_or_display_filters_for_kpi(params)
-        # assume that displays cannot be on main shelves
-        number_of_displays = self.display_scene_count[self.tools.get_filter_condition(self.display_scene_count,
-                                                                                      **filters)]['count'].sum()
+        filters.update(general_filters)
+        number_of_displays = self.scif[self.tools.get_filter_condition(self.scif, **filters)]['facings'].sum()
+        # number_of_displays = self.display_scene_count[self.tools.get_filter_condition(self.display_scene_count,
+        #                                                                               **filters)]['count'].sum()
         score = min(number_of_displays/target, 1)
         return score, number_of_displays, target
 
@@ -876,6 +875,7 @@ class PNGRO_PRODToolBox:
         value3_policy = self.split_and_strip(params['Param (3) Values'])
         manufacturer = {'manufacturer_name': params['Manufacturer']}
         score_type = params['KPI Calc. Type']
+        target_kpi = float(params['Target Policy'])/100
 
         # filtering out scenes in case we need select scenes that follow certain product policy
         if type3_policy:
@@ -885,8 +885,8 @@ class PNGRO_PRODToolBox:
             general_filters = self.update_scene_filter(params, general_filters, product_filters=product_policy,
                                                        by_product_majority=is_prod_majority)
 
-        target = float(len(general_filters['scene_id']))
-        result = 0
+        target_scenes = float(len(general_filters['scene_id']))
+        number_of_scenes_pass = 0
         if general_filters['scene_id']:
             group_1_filters.update(general_filters)
             group_2_filters.update(general_filters)
@@ -902,13 +902,15 @@ class PNGRO_PRODToolBox:
             merged = group_2_facings_scene.merge(group_1_facings_scene, left_on='scene_id', right_on='scene_id',
                                                  how='outer')
             scenes_pass = merged[(merged['facings_x'] >= facings) & (merged['facings_y'] >= facings)]
-            result = len(scenes_pass)
+            number_of_scenes_pass = len(scenes_pass)
 
         if score_type == self.BINARY:
+            result = number_of_scenes_pass
             score = 1 if result > 0 else 0
         else:
-            score = min(result/target, 1) if target else 0
-        return score, result, target
+            result = min(number_of_scenes_pass/target_scenes, 1) if target_scenes else 0
+            score = 1 if result > target_kpi else 0
+        return score, result, target_kpi
 
     def get_adjacency_and_product_presence_filters(self, params):
         type1 = params['Param Type (1)/ Numerator']
@@ -925,7 +927,7 @@ class PNGRO_PRODToolBox:
         type2_2 = params['Param Type (2-2)']
         value2_2 = self.split_and_strip(params['Param (2-2) Values'])
 
-        facings = float(params['Facings'])
+        facings = float(params['Facings']) if params['Facings'] else None
         manufacturer = {'manufacturer_name': params['Manufacturer']}
 
         group_1_filters = dict({type1: value1}, **dict(manufacturer))
@@ -956,119 +958,6 @@ class PNGRO_PRODToolBox:
                                                              b_target=None, target=0.75)
             score = 1 if is_adjacent else 0
         return score
-
-    def calculate_block_together_custom(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
-                                 block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-                                 n_cluster=None, min_facings_in_block=None, **filters):
-        """
-        :param biggest_block:
-        :param block_products1:
-        :param block_products2:
-        :param block_of_blocks:
-        :param vertical: if needed to check vertical block by average shelf
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
-                                False - The result is True if at least one scene has a block, False - otherwise.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: see 'result_by_scene' above.
-        """
-        filters, relevant_scenes = self.tools.separate_location_filters_from_product_filters(**filters)
-        if len(relevant_scenes) == 0:
-            if result_by_scene:
-                return 0, 0
-            elif vertical:
-                return False, 0
-            else:
-                Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
-                return False
-        number_of_blocked_scenes = 0
-        cluster_ratios = []
-        for scene in relevant_scenes:
-            scene_graph = self.block_calc.position_graphs.get(scene).copy()
-            clusters, scene_graph = self.block_calc.get_scene_blocks(scene_graph,
-                                                          allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **filters)
-
-            if block_of_blocks:
-                new_relevant_vertices1 = self.block_calc.filter_vertices_from_graph(scene_graph, **block_products1)
-                new_relevant_vertices2 = self.block_calc.filter_vertices_from_graph(scene_graph, **block_products2)
-            else:
-                new_relevant_vertices = self.block_calc.filter_vertices_from_graph(scene_graph, **filters)
-            for cluster in clusters:
-                if block_of_blocks:
-                    relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
-                    if len(new_relevant_vertices1) > 0:
-                        cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
-                    else:
-                        cluster_ratio1 = 0
-                    relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
-                    if len(new_relevant_vertices2) > 0:
-                        cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
-                    else:
-                        cluster_ratio2 = 0
-                    if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
-                        if min_facings_in_block:
-                            if len(relevant_vertices_in_cluster1) >= min_facings_in_block \
-                                    and len(relevant_vertices_in_cluster2) >= min_facings_in_block:
-                                return True
-                        else:
-                            return True
-                else:
-                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                    if len(new_relevant_vertices) > 0:
-                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                    else:
-                        cluster_ratio = 0
-                    cluster_ratios.append(cluster_ratio)
-                    if biggest_block:
-                        continue
-
-                    if (cluster_ratio >= minimum_block_ratio and not min_facings_in_block) or \
-                            (len(relevant_vertices_in_cluster) >= min_facings_in_block and
-                                 cluster_ratio >= minimum_block_ratio):
-                        if result_by_scene:
-                            number_of_blocked_scenes += 1
-                            break
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return True, len(
-                                    set(scene_graph.vs['shelf_number']))
-                            return True
-            # for renielsenus - not sure i need to add min facings condition
-            if n_cluster is not None:
-                copy_of_cluster_ratios = cluster_ratios[:]
-                largest_cluster = max(copy_of_cluster_ratios)  # 39
-                copy_of_cluster_ratios.remove(largest_cluster)
-                if len(copy_of_cluster_ratios) > 0:
-                    second_largest_integer = max(copy_of_cluster_ratios)
-                else:
-                    second_largest_integer = 0
-                cluster_ratio = largest_cluster + second_largest_integer
-                if cluster_ratio >= minimum_block_ratio:
-                    if vertical:
-                        return {'block': True}
-
-            if biggest_block:
-                max_ratio = max(cluster_ratios)
-                biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
-                relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
-                all_vertices = {v.index for v in scene_graph.vs}
-                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                scene_graph.delete_vertices(non_cluster_vertices)
-                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
-            if result_by_scene:
-                return number_of_blocked_scenes, len(relevant_scenes)
-            elif vertical:
-                return False, 0
-            else:
-                return False
 
 # --------------------unused functions------------------------------#
 
@@ -1195,7 +1084,7 @@ class PNGRO_PRODToolBox:
     #     else:
     #         return False, str(ratio), str(target)
 
-    # #Natalya - to delele
+
     # def calculate_eye_level(self, params, **general_filters):
     #     type1 = params['Param Type (1)/ Numerator']
     #     value1 = map(unicode.strip, params['Param (1) Values'].split(','))
@@ -1229,7 +1118,7 @@ class PNGRO_PRODToolBox:
     #     score = min(skus_at_eye_lvl/target, 1)
     #     return score, skus_at_eye_lvl, target
     #
-    # # Natalya - to delete
+
     # def get_eye_level_shelves(self, shelves_num, eye_lvl_template):
     #     """
     #     :param shelves_num: num of shelves in specific bay

@@ -14,7 +14,7 @@ class PNGRO_PRODCalculations(BaseCalculationsScript):
         self.timer.start()
         PNGRO_PRODGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
-#
+# #
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngro calculations')
 #     Config.init()
