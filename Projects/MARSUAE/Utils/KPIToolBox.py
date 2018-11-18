@@ -4,7 +4,7 @@ import pandas as pd
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
@@ -38,7 +38,7 @@ class ToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.channel = self.get_store_channel(self.store_id)
         self.kpi_static_data = self.common_v2.get_kpi_static_data()
         self.data_provider.kpi_sheets = {}

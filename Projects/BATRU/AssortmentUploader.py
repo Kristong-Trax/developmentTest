@@ -1,6 +1,6 @@
 import pandas as pd
 import argparse
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer, Log
 from datetime import datetime, timedelta
@@ -75,12 +75,12 @@ class BATRUAssortment:
 
     @property
     def rds_connect(self):
-        self.rds_conn = ProjectConnector(self.project, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self.rds_conn.db)
         except Exception as e:
             self.rds_conn.disconnect_rds()
-            self.rds_conn = ProjectConnector(self.project, DbUsers.CalculationEng)
+            self.rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         return self.rds_conn
 
     @property

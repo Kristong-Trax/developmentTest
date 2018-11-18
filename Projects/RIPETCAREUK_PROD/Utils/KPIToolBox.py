@@ -1,7 +1,7 @@
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.RIPETCAREUK_PROD.Utils.AtomicKpisCalculator import SosCalculator, ShelfLevelCalculator, ClipStripCalculator, \
@@ -27,7 +27,7 @@ class MarsUkPerfectScore(object):
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]

@@ -2,7 +2,7 @@
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from KPIUtils.GlobalProjects.MARSRU.Utils.JSON_V2 import Json_V2Generator as JsonGenerator
 
@@ -16,7 +16,7 @@ TCCC = 'TCCC'
 
 class MARSRU2_SANDMARSRUKPIFetcher:
     def __init__(self, project_name, scif, matches, set_name):
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.scif = scif
         self.matches = matches
         self.set_name = set_name

@@ -5,7 +5,7 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'Nimrod'
@@ -27,7 +27,7 @@ class DIAGEOKE_SANDPositionGraphs:
         self.flexibility = flexibility
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_product_in_scene = self.get_filtered_matches()
         self.position_graphs = self.create_position_graphs()
 

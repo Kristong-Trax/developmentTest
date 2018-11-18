@@ -23,7 +23,7 @@
 
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from Trax.Data.Testing.SeedNew import Seeder
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.CCBZA_SAND.Utils.KPIToolBox import CCBZA_SANDToolBox
 from Projects.CCBZA_SAND.Tests.data_test_unit_ccbza_sand import DataTestUnitCCBZA_SAND, DataScores, SCIFDataTestCCBZA_SAND, MatchProdSceneDataTestCCBZA_SAND
