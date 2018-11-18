@@ -14,11 +14,6 @@ __author__ = 'Nimrod'
 class DIAGEOBR_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        common = Common(self.data_provider)
-        diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
-        diageo_generator.diageo_global_assortment_function()
-        common.commit_results_data_to_new_tables()
-        common.commit_results_data()  # old tables
         DIAGEOBR_SANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
@@ -28,6 +23,9 @@ class DIAGEOBR_SANDCalculations(BaseCalculationsScript):
 #     project_name = 'diageobr-sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     for session in [
+#         '0027724d-6c5d-44bb-a477-aafa8314adfb',
+#         '001c4f99-41d5-434d-a1f0-1bfc027758d6',
+#         '001cca61-cc64-4739-b956-5704911bd44c',
 #         '6f31e63d-6a1a-4222-9a14-bf3f24ce1eec',
 #         '3f333d63-50c3-4a98-b095-6684106d7cd7',
 #         '15d492cb-cce9-49c8-89d4-5c41d57573ac'

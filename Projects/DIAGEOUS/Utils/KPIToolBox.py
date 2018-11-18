@@ -52,7 +52,11 @@ class DIAGEOUSToolBox:
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         store_type = self.store_info['store_type'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
-        self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in ('On-Premise') else Const.OFF
+        if self.store_info['additional_attribute_6'].iloc[0]:
+            self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in ('On-Premise') else Const.OFF
+        else:
+            Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
+            self.on_off = Const.OFF
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []

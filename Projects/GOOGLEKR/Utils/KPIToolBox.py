@@ -9,7 +9,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Eli_Sam_Shivi'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data',
-                                     'KR - Google Fixture Targets.xlsx')
+                                     'KR - Google Fixture Targets v.2.xlsx')
 
 
 class ToolBox:
@@ -59,6 +59,7 @@ class ToolBox:
                                                  .set_index('New Task Name (unique)')[Const.PK],
                                                  on='New Task Name (unique)', how='left')
         relevant_fixtures = fixture_template[fixture_template['Store Number'] == store_num]
+        relevant_fixtures.drop_duplicates(inplace=True)
         relevant_fixtures = relevant_fixtures.set_index(Const.PK).groupby(Const.PK) \
             ['Number of Fixtures(Task)'].sum()
         entry_exit = self.fixture_template[Const.ENTRY_EXIT]
@@ -139,8 +140,8 @@ class ToolBox:
         entry_scenes, exit_scenes = fixture[Const.ENTRY_SCENES], fixture[Const.EXIT_SCENES]
         entry_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(entry_scenes)]
         exit_osa_results = osa_scene_results[osa_scene_results['scene_fk'].isin(exit_scenes)]
-        avg_osa_entry, avg_oos_entry = self.get_scores_and_results(entry_osa_results, denominator)
-        avg_osa_exit, avg_oos_exit = self.get_scores_and_results(exit_osa_results, denominator)
+        avg_osa_entry, avg_oos_entry, temporary = self.get_scores_and_results(entry_osa_results, denominator)
+        avg_osa_exit, avg_oos_exit, osa_scenes = self.get_scores_and_results(exit_osa_results, denominator)
         osa_delta = avg_osa_exit - avg_osa_entry
         oos_delta = avg_oos_exit if np.isnan(avg_oos_entry) else avg_oos_exit - avg_oos_entry
         self.common.write_to_db_result(
@@ -148,8 +149,8 @@ class ToolBox:
             numerator_result=osa_delta, denominator_result=oos_delta, result=avg_oos_exit, score=avg_osa_exit)
         entry_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(entry_scenes)]
         exit_pog_results = pog_scene_results[pog_scene_results['scene_fk'].isin(exit_scenes)]
-        avg_pog_entry, temporary = self.get_scores_and_results(entry_pog_results, denominator)
-        avg_pog_exit, temporary = self.get_scores_and_results(exit_pog_results, denominator)
+        avg_pog_entry, temporary, temporary = self.get_scores_and_results(entry_pog_results, denominator)
+        avg_pog_exit, temporary, pog_scenes = self.get_scores_and_results(exit_pog_results, denominator)
         delta = avg_pog_exit - avg_pog_entry
         identifier_result = self.common.get_dictionary(fixture=fixture_fk, kpi_fk=pog_kpi_fk)
         self.common.write_to_db_result(
@@ -158,7 +159,19 @@ class ToolBox:
         for scene_result_fk in exit_pog_results['pk'].values:
             self.common.write_to_db_result(should_enter=True, scene_result_fk=scene_result_fk,
                                            identifier_parent=identifier_result, only_hierarchy=True)
+        self.write_chosen_scenes_in_db(osa_scenes, pog_scenes)
         return avg_pog_exit
+
+    def write_chosen_scenes_in_db(self, osa_scenes, pog_scenes):
+        """
+        This kpi is writing which of the scenes are the required scenes, the scenes calculated in the POG and OSA score.
+        """
+        osa_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.CHOSEN_SCENES_OSA)
+        pog_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.CHOSEN_SCENES_POG)
+        for scene_fk in osa_scenes:
+            self.common.write_to_db_result(fk=osa_kpi_fk, numerator_id=scene_fk, result=1)
+        for scene_fk in pog_scenes:
+            self.common.write_to_db_result(fk=pog_kpi_fk, numerator_id=scene_fk, result=1)
 
     @staticmethod
     def get_scores_and_results(scene_results, required_amount):
@@ -170,9 +183,10 @@ class ToolBox:
         """
         if None in scene_results['result'].tolist():
             return 0, None
-        scores, results = scene_results.sort_values(
-            by='score', ascending=False)[['score', 'result']][:required_amount].sum() / required_amount
-        return scores, results
+        best_scores = scene_results.sort_values(by='score', ascending=False)[:required_amount]
+        scenes = best_scores['scene_fk'].unique().tolist()
+        scores, results = best_scores[['score', 'result']].sum() / required_amount
+        return scores, results, scenes
 
     @staticmethod
     def division(num, den):

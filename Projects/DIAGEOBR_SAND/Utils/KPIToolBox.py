@@ -5,7 +5,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -54,7 +54,7 @@ class DIAGEOBR_SANDToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_channel = self.store_info['store_type'].values[0]
@@ -71,7 +71,7 @@ class DIAGEOBR_SANDToolBox:
         self.kpi_results_queries = []
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
 
 
@@ -109,10 +109,24 @@ class DIAGEOBR_SANDToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
+        # old assortment
+        self.diageo_generator.diageo_global_assortment_function()
+
+        # Global assortment kpis
+        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
+                                              self.common).diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
 
             # if set_name in ('MPA', 'New Products'):
             #     set_score = self.calculate_assortment_sets(set_name)
@@ -122,7 +136,7 @@ class DIAGEOBR_SANDToolBox:
 
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.global_gen.diageo_global_visible_percentage(sku_list)
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
                 if res_dict:
                     # Saving to new tables
@@ -134,9 +148,14 @@ class DIAGEOBR_SANDToolBox:
                     result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
-            elif set_name == 'Secondary Displays':
+                # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                # self.save_level2_and_level3(set_name, set_name, set_score)
+
+
+            elif set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
-                res_dict = self.global_gen.diageo_global_secondary_display_secondary_function()
+                res_dict = self.diageo_generator.diageo_global_secondary_display_secondary_function()
 
                 # Saving to new tables
                 if res_dict:
@@ -155,7 +174,6 @@ class DIAGEOBR_SANDToolBox:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
-
         # commiting to new tables
         self.commonV2.commit_results_data()
 
@@ -165,7 +183,11 @@ class DIAGEOBR_SANDToolBox:
         """
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            Log.warning("kpi name or set name don't exist")
+            return
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)
@@ -276,6 +298,8 @@ class DIAGEOBR_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn.disconnect_rds()
+        self.rds_conn.connect_rds()
         cur = self.rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
