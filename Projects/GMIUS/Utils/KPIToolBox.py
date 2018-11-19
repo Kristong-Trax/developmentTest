@@ -151,8 +151,26 @@ class ToolBox:
         ordered_result = '-'.join(locations)
 
 
-    def load_tmb_map(self):
+    def is_integrated(self, clusters, a_list, b_list ):
+
         pass
+
+    def load_graph(self):
+        # g = Block(self.data_provider2)
+        g2 = Block2(self.data_provider2)
+        prod = self.all_products.drop(['width_mm', 'height_mm'], axis=1)
+        mpis = self.mpis.copy()
+        mpis = self.pos_scrubber(mpis)
+        relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
+        allowed_filter = {'product_type': ['Empty', 'Other']}
+        filtered_mpis = mpis[(mpis['Segment'] == 'DRY DOG NATURAL/GRAIN FREE') |
+                       (mpis['product_type'].isin(['Empty', 'Other']))]
+        # g.alt_block(filtered_mpis, mpis, relevant_filter, allowed_filter)
+        print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+        # relevant_filter.update(allowed_filter)
+        g, c = g2.network_x_block_together2(relevant_filter, additional={'allowed_products_filters': allowed_filter,
+                                                                     'include_stacking': False})
+
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # g = Block(self.data_provider2)
