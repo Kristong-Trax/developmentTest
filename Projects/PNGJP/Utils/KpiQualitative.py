@@ -588,7 +588,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                         separate_filters.update({'bay_number': relevant_bay[direction]})
                         edge = self.tools.calculate_products_on_edge(position=direction,
                                                                      edge_population=filter_products_after_exclude,
-                                                                     min_number_of_shelves=3,
+                                                                     min_number_of_shelves=2,
                                                                      **separate_filters)
                         if edge[0] > 0:
                             score = 100
