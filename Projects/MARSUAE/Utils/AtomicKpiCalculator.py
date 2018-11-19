@@ -59,27 +59,32 @@ class DisplaySOSCalculation(SOSCalculation):
     def calculate(self, params):
         sos_threshold = params['minimum threshold'].iloc[0]
         result = numerator_result = denominator_result = 0
-        relevant_scenes = self.get_secondary_shelf_scenes()
+        relevant_scenes = self.get_secondary_shelf_scenes(params)
         if len(relevant_scenes) > 0:
             mars_secondary_count = self.get_mars_secondary_shelf_scenes(relevant_scenes, sos_threshold)
             result = mars_secondary_count / self.get_scenes_weights(relevant_scenes)
 
         return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
 
-    def get_secondary_shelf_scenes(self):
-        relevant_scenes = self._scif.loc[self._scif['template_group'] == 'Secondary Shelf']
+    def get_secondary_shelf_scenes(self, params):
+        scene_types = self.split_and_strip(params['scene type'].iloc[0])
+        relevant_scenes = self._scif.loc[self._scif['template_name'].isin(scene_types)]
         return relevant_scenes[['scene_id', 'additional_attribute_1']].drop_duplicates()
 
+    @staticmethod
+    def split_and_strip(param):
+        return map(lambda x: x.strip(), param.split(','))
+
     def get_mars_secondary_shelf_scenes(self, relevant_scenes, sos_threshold):
-        mars_displays = 0
+        mars_displays = 0.0
         for scene in relevant_scenes['scene_id']:
-            scene_weight = relevant_scenes[relevant_scenes['scene_id'] == scene]['additional_attribute_1'].iloc[0]
+            scene_weight = float(relevant_scenes[relevant_scenes['scene_id'] == scene]['additional_attribute_1'].iloc[0])
             scene_scif = self._scif[self._scif['scene_id'] == scene]
-            mars_products = scene_scif[scene_scif['manufacturer_name'] == 'Mars'].facings
+            mars_products = sum(scene_scif[scene_scif['manufacturer_name'] == 'MARS GCC'].facings)
             if mars_products > 0:
-                competitors_products = scene_scif[scene_scif['manufacturer_name'] != 'Mars'].facings
+                competitors_products = sum(scene_scif[scene_scif['manufacturer_name'] != 'MARS GCC'].facings)
                 if competitors_products > 0:
-                    if mars_products / competitors_products >= sos_threshold:
+                    if mars_products >= competitors_products:
                         mars_displays += scene_weight
                 else:
                     mars_displays += scene_weight
@@ -87,7 +92,7 @@ class DisplaySOSCalculation(SOSCalculation):
 
     @staticmethod
     def get_scenes_weights(relevant_scenes):
-        return sum(relevant_scenes['additional_attribute_1'])
+        return float(relevant_scenes['additional_attribute_1'].sum())
 
 
 class DistributionCalculation(KpiBaseCalculation):
