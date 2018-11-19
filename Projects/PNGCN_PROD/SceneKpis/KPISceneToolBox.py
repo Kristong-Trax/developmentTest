@@ -11,10 +11,10 @@ import pandas as pd
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
+#
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
@@ -357,10 +357,19 @@ class ShareOfDisplay(object):
                     display_visit_by_display_product_enrich_sos_type['linear'] / \
                     display_visit_by_display_product_enrich_sos_type['tot_linear'] * \
                     display_visit_by_display_product_enrich_sos_type['display_size']
+
                 # irrlevant products, should be counted in total facings/ linear of display for product size value,
                 #  but should be removed from display size share %
-                irrelvant_products = self.data_provider.all_products.loc[self.data_provider.all_products['product_type'] == 'Irrelevant'][
-                    'product_fk'].tolist()
+                # sub_category was excluded by customer request
+
+                excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
+                irrelvant_products = self.data_provider.all_products.loc[
+                    (self.data_provider.all_products['product_type'] == 'Irrelevant') |
+                    (self.data_provider.all_products['sub_category'] == 'Skin Care Men')|
+                    (self.data_provider.all_products['product_fk'].isin(excluded_products))
+
+                ]['product_fk'].tolist()
+
                 not_in_sos_condition = ((display_visit_by_display_product_enrich_sos_type['in_sos'] == 0) |
                                         (display_visit_by_display_product_enrich_sos_type['product_fk'].isin(irrelvant_products)))
                 display_visit_by_display_product_enrich_sos_type.loc[not_in_sos_condition,
@@ -426,18 +435,24 @@ class ShareOfDisplay(object):
         excluded_template_products = self.data_provider._data[Fields.SOS_EXCLUDED_TEMPLATE_PRODUCTS]
         excluded_template_products['excluded_template_products'] = 1
 
-        excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
-        excluded_products['excluded_products'] = 1
+        # excluded_products = self.data_provider._data[Fields.SOS_EXCLUDED_PRODUCTS]
+        # excluded_products['excluded_products'] = 1
+
+        # df = df.merge(excluded_templates, how='left', on='template_fk') \
+        #        .merge(excluded_products, how='left', on='product_fk') \
+        #        .merge(excluded_template_products, how='left', on=['product_fk', 'template_fk'])
 
         df = df.merge(excluded_templates, how='left', on='template_fk') \
-               .merge(excluded_products, how='left', on='product_fk') \
                .merge(excluded_template_products, how='left', on=['product_fk', 'template_fk'])
 
-        condition = (df['excluded_templates'] == 1) | \
-                    (df['excluded_template_products'] == 1) | (df['excluded_products'] == 1)
+        # condition = (df['excluded_templates'] == 1) | \
+        #             (df['excluded_template_products'] == 1) | (df['excluded_products'] == 1)
 
-        df = df.drop(['excluded_templates', 'excluded_template_products',
-                      'excluded_products'], axis=1)
+        condition = (df['excluded_templates'] == 1) | (df['excluded_template_products'] == 1)
+
+        # df = df.drop(['excluded_templates', 'excluded_template_products',
+        #               'excluded_products'], axis=1)
+        df = df.drop(['excluded_templates', 'excluded_template_products'], axis=1)
 
         df.loc[condition, 'in_sos'] = 0
         df.loc[~condition, 'in_sos'] = 1
@@ -643,7 +658,7 @@ class ShareOfDisplay(object):
 
 def calculate_share_of_display(project_conn, session, data_provider=None):
     ShareOfDisplay(project_conn, session, data_provider).process_session()
-
+#
 # if __name__ == '__main__':
 #     # Config.init()
 #     LoggerInitializer.init('TREX')
