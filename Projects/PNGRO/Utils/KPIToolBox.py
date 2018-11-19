@@ -427,8 +427,8 @@ class PNGRO_PRODToolBox:
             for brand in brand_list:
                 filters.update({'brand_name': brand})
                 is_blocked, n_shelves = self.block_calc.calculate_block_together(minimum_block_ratio=0.75,
-                                                                             result_by_scene=False, vertical=True,
-                                                                             min_facings_in_block=facings, **filters)
+                                                                                 result_by_scene=False, vertical=True,
+                                                                                 min_facings_in_block=facings, **filters)
                 if is_blocked and n_shelves >= min_shelf_num:
                     item_blocks_passed += 1
             if item_blocks_passed == len(brand_list):
@@ -776,7 +776,7 @@ class PNGRO_PRODToolBox:
         return merged_queries
 
     def get_scene_display_bay(self):
-        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][ #can we change to location type
+        secondary_shelfs = self.scif.loc[self.scif['template_group'] == 'Secondary Shelf'][
             'scene_id'].unique().tolist()
         display_filter_from_scif = self.match_display_in_scene.loc[self.match_display_in_scene['scene_fk']
             .isin(secondary_shelfs)]
