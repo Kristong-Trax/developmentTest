@@ -17,9 +17,13 @@ PLANOGRAM_CALCULATIONS_FILE_NAME = 'PlanogramCalculations'
 LIVE_SCENE_TOOLBOX_FILE_NAME = 'LiveSceneToolBox'
 LIVE_SCENE_GENERATOR_FILE_NAME = 'LiveSceneGenerator'
 LIVE_SCENE_CALCULATIONS_FILE_NAME = 'LiveSceneCalculations'
+LIVE_SESSION_TOOLBOX_FILE_NAME = 'LiveSessionToolBox'
+LIVE_SESSION_GENERATOR_FILE_NAME = 'LiveSessionGenerator'
+LIVE_SESSION_CALCULATIONS_FILE_NAME = 'LiveSessionCalculations'
 PLANOGRAM_COMPLIANCE_CALCULATIONS_FILE_NAME = 'PlanogramComplianceCalculation'
 PLANOGRAM_FINDER_CALCULATIONS_FILE_NAME = 'PlanogramFinderCalculation'
 LIVE_SCENE_GENERATOR_CLASS_NAME = 'LiveSceneGenerator'
+LIVE_SESSION_GENERATOR_CLASS_NAME = 'LiveSessionGenerator'
 PLANOGRAM_GENERATOR_CLASS_NAME = 'PlanogramGenerator'
 SCENE_GENERATOR_CLASS_NAME = 'SceneGenerator'
 
@@ -542,5 +546,72 @@ class LiveSceneCalculations(LiveSceneBaseClass):
 
     def calculate_scene_live_kpi(self):
         self.live_scene_generator.live_scene_score()
+
+"""
+
+
+LIVE_SESSION_TOOLBOX_SCRIPT = """
+from Trax.Apps.Services.LiKEngine.DataProvider.DataProvider import LiveDataProvider
+from Trax.Utils.Logging.Logger import Log
+
+
+__author__ = '%(author)s'
+
+
+class %(live_session_tool_box_class_name)s:
+
+    def __init__(self, data_provider, output, common):
+        self.output = output
+        self.data_provider = data_provider
+        self.common = common
+        self.project_name = self.data_provider.project_name
+        self.session_uid = self.data_provider.level_uid
+
+    def main_function(self):
+        score = 0
+        return score
+"""
+
+LIVE_SESSION_GENERATOR_SCRIPT = """
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Projects.%(project_capital)s.Utils.%(live_session_tool_box_file_name)s import %(live_session_tool_box_class_name)s
+
+from KPIUtils_v2.DB.LiveCommon import LiveCommon
+
+
+__author__ = '%(author)s'
+
+
+class LiveSessionGenerator:
+
+    def __init__(self, data_provider, output=None):
+        self.data_provider = data_provider
+        self.output = output
+        self.project_name = data_provider.project_name
+        self.session_uid = self.data_provider.level_uid
+        self.common = LiveCommon(data_provider)
+        self.live_session_tool_box = %(live_session_tool_box_class_name)s(self.data_provider, self.output, self.common)
+
+    @log_runtime('Total Calculations', log_start=True)
+    def live_session_score(self):
+        self.live_session_tool_box.main_function()
+"""
+
+LIVE_SESSION_CALCULATIONS_SCRIPT = """
+from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
+from Projects.%(project_capital)s.%(live_session_generator_file_name)s import %(live_session_generator_class_name)s
+
+__author__ = '%(author)s'
+
+
+class LiveSessionCalculations(LiveSessionBaseClass):
+    def __init__(self, data_provider):
+        super(LiveSessionCalculations, self).__init__(data_provider)
+        self.live_session_generator = %(live_session_generator_class_name)s(self._data_provider)
+
+    def calculate_session_live_kpi(self):
+        self.live_session_generator.live_session_score()
 
 """
