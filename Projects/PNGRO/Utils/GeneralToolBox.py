@@ -227,7 +227,6 @@ class PNGRO_PRODGENERALToolBox:
             ratio = numerator_width / float(denominator_width)
         return ratio
 
-    #Natalya
     def calculate_facings_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
         """
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
@@ -247,7 +246,6 @@ class PNGRO_PRODGENERALToolBox:
             ratio = numerator_facings / float(denominator_facings)
         return ratio
 
-    # Natalya
     def calculate_facings(self, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
