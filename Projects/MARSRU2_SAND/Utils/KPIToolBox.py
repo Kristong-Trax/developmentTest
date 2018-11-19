@@ -2164,7 +2164,7 @@ class MARSRU2_SANDKPIToolBox:
                                        numerator_result=0,
                                        denominator_id=denominator_id,
                                        denominator_result=0,
-                                       result=self.kpi_count,
+                                       result=result,
                                        score=0,
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
@@ -2177,7 +2177,7 @@ class MARSRU2_SANDKPIToolBox:
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        result = None
+        result = self.kpi_count
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
