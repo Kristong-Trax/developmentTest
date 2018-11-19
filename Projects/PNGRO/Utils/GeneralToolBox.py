@@ -227,6 +227,34 @@ class PNGRO_PRODGENERALToolBox:
             ratio = numerator_width / float(denominator_width)
         return ratio
 
+    def calculate_facings_share_of_display(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The facings SOS ratio.
+        """
+        if include_empty == self.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+
+        numerator_facings = self.calculate_facings(**dict(sos_filters, **general_filters))
+        denominator_facings = self.calculate_facings(**general_filters)
+
+        if denominator_facings == 0:
+            ratio = 0
+        else:
+            ratio = numerator_facings / float(denominator_facings)
+        return ratio
+
+    def calculate_facings(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total number of facings.
+        """
+        filtered_scif = self.scif[self.get_filter_condition(self.scif, **filters)]
+        facings = filtered_scif['facings_ign_stack'].sum()
+        return facings
+
     def calculate_display(self, **filters):
         """
         :param filters: These are the parameters which the data frame is filtered by.
