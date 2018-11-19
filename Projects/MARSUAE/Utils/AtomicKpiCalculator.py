@@ -142,7 +142,8 @@ class DistributionCalculation(KpiBaseCalculation):
             product_result = self._create_kpi_result(fk=kpi_sku, numerator_id=row['product_fk'],
                                                      numerator_result=row['in_store'], score=row['in_store'] * 100,
                                                      result=self.get_result_value(row['in_store']))
-            product_result.update({'identifier_parent': parent_level_2_identifier,
+            product_result.update({'identifier_parent':
+                                       self._data_provider.common_v2.get_dictionary(kpi_fk=parent_level_2_identifier),
                                    'should_enter': True})
             self._data_provider.common_v2.write_to_db_result(**product_result)
             if row['in_store']:
