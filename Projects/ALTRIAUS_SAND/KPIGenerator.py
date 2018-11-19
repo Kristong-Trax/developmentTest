@@ -30,4 +30,4 @@ class Generator:
             Log.warning('Scene item facts is empty for this session')
         for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
             score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-        self.common.commit_results_data()
+        self.tool_box.commit_results_data()

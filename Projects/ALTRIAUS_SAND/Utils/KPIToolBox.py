@@ -16,7 +16,7 @@ import os
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Projects.KCUS_SAND.Utils.ParseTemplates import parse_template
+from Projects.ALTRIAUS_SAND.Utils.ParseTemplates import parse_template
 import datetime
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
@@ -80,6 +80,7 @@ class ALTRIAUSToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.all_template_data = parse_template(TEMPLATE_PATH, "KPI")
+        self.spacing_template_data = parse_template(TEMPLATE_PATH, "Spacing")
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
@@ -143,18 +144,7 @@ class ALTRIAUSToolBox:
             values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
                 category_att].unique().tolist()
 
-        if kpi_template['Value2']:
-            if kpi_template['Value2'] == 'Feminine Needs':
-                sub_category_att = 'FEM NEEDS'
-                secondary_values_to_check = \
-                self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
-                    sub_category_att].unique().tolist()
 
-            elif kpi_template['Value2'] == 'Feminine Hygiene':
-                sub_category_att = 'FEM HYGINE'
-                secondary_values_to_check = \
-                self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
-                    sub_category_att].unique().tolist()
 
         for primary_filter in values_to_check:
             filters[kpi_template['Param1']] = primary_filter
@@ -177,8 +167,8 @@ class ALTRIAUSToolBox:
                 result = self.calculate_category_space_length(new_kpi_name,
                                                               **filters)
                 filters['Category'] = kpi_template['KPI Level 2 Name']
-                score = result * self.MM_TO_FEET_CONVERSION
-                # score = result
+                # score = result * self.MM_TO_FEET_CONVERSION
+                score = result
                 self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
@@ -211,21 +201,14 @@ class ALTRIAUSToolBox:
                     else:
                         bay_ratio = 0
                     if bay_ratio >= threshold:
-                        bay_num_of_shelves = len(scene_matches.loc[(scene_matches['bay_number'] == bay) &
-                                                                   (scene_matches['stacking_layer'] == 1)][
-                                                     'shelf_number'].unique().tolist())
-                        if kpi_name not in self.average_shelf_values.keys():
-                            self.average_shelf_values[kpi_name] = {'num_of_shelves': bay_num_of_shelves,
-                                                                   'num_of_bays': 1}
-                        else:
-                            self.average_shelf_values[kpi_name]['num_of_shelves'] += bay_num_of_shelves
-                            self.average_shelf_values[kpi_name]['num_of_bays'] += 1
-                        if bay_num_of_shelves:
-                            bay_final_linear_value = tested_group_linear_value / float(bay_num_of_shelves)
-                        else:
-                            bay_final_linear_value = 0
-                        bay_values.append(bay_final_linear_value)
-                        space_length += bay_final_linear_value
+                         category = filters['Category']
+                         max_facing = scene_matches.loc[(scene_matches['bay_number'] == bay) &
+                                                       (scene_matches['stacking_layer'] == 1)]['facing_sequence_number'].max()
+                         shelf_length = self.spacing_template_data.query('Category == "' + category+
+                                      '" & Low <= "' + str(max_facing)  + '" & High >= "' + str(max_facing) + '"' )
+                         shelf_length = int(shelf_length['Size'].iloc[-1])
+                         bay_values.append(shelf_length)
+                         space_length += shelf_length
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
