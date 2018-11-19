@@ -3,6 +3,7 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from Trax.Utils.Logging.Logger import Log
 
 
 __author__ = 'urid'
@@ -36,6 +37,18 @@ class MARSRU2_SANDKPIFetcher:
         self.kpi_result_values = self.get_kpi_result_values()
         self.products = products
         self.session_uid = session_uid
+
+    def check_connection(self, rds_conn):
+        try:
+            rds_conn.db.cursor().execute(
+                "select pk from probedata.session where session_uid = '{}';"
+                    .format(self.session_uid))
+        except:
+            rds_conn.disconnect_rds()
+            rds_conn.connect_rds()
+            Log.warning('DB is reconnected')
+            return False
+        return True
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
                            brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
@@ -507,8 +520,7 @@ class MARSRU2_SANDKPIFetcher:
         return matches
 
     def get_match_product_in_scene(self):
-        if not self.rds_conn.is_connected:
-            self.rds_conn.connect_rds()
+        self.check_connection(self.rds_conn)
         query = """
                 select ms.pk as scene_match_fk, ms.shelf_px_total, ms.n_shelf_items, ms.{}, ms.{}, ms.{}, ms.{}
                 from probedata.match_product_in_scene ms
@@ -534,17 +546,12 @@ class MARSRU2_SANDKPIFetcher:
         return store_att5.values[0][0]
 
     def get_store_assortment(self, attribute, visit_date):
-        if not self.rds_conn.is_connected:
-            self.rds_conn.connect_rds()
+        self.check_connection(self.rds_conn)
         query = """
                 select product_fk from pservice.custom_osa
                 where store_fk={0} and start_date <= '{1}' and (end_date >= '{1}'  OR end_date is null)
                 """.format(attribute, visit_date)
-        try:
-            assortments = pd.read_sql_query(query, self.rds_conn.db)
-        except:
-            self.rds_conn.connect_rds()
-            assortments = pd.read_sql_query(query, self.rds_conn.db)
+        assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
     def get_store_number_1(self, store_fk):

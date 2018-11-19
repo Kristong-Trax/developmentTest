@@ -118,6 +118,18 @@ class MARSRU2_SANDKPIToolBox:
         self.osa_kpi_dict = {}
         self.kpi_count = 0
 
+    def check_connection(self, rds_conn):
+        try:
+            rds_conn.db.cursor().execute(
+                "select pk from probedata.session where session_uid = '{}';"
+                    .format(self.session_uid))
+        except:
+            rds_conn.disconnect_rds()
+            rds_conn.connect_rds()
+            Log.warning('DB is reconnected')
+            return False
+        return True
+
     @kpi_runtime()
     def check_for_specific_display(self, params):
         """
@@ -240,12 +252,13 @@ class MARSRU2_SANDKPIToolBox:
         return scenes
 
     def commit_custom_scif(self):
-        if not self.rds_conn.is_connected:
-            self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
+        self.check_connection(self.rds_conn)
+
         delete_query = self.kpi_fetcher.get_delete_session_custom_scif(self.session_fk)
+        cur = self.rds_conn.db.cursor()
         cur.execute(delete_query)
         self.rds_conn.db.commit()
+
         for query in self.custom_scif_queries:
             try:
                 cur.execute(query)
@@ -891,6 +904,7 @@ class MARSRU2_SANDKPIToolBox:
 
     @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
+        self.rds_conn.disconnect_rds()
         self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
         for p in params:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018':
@@ -900,8 +914,7 @@ class MARSRU2_SANDKPIToolBox:
             values_list = str(p.get('Values')).split(', ')
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
-            if not self.rds_conn.is_connected:
-                self.rds_conn.connect_rds()
+            self.check_connection(self.rds_conn)
             if p.get('Stacking'):
                 matches = self.kpi_fetcher.get_filtered_matches()
             else:
@@ -2263,3 +2276,4 @@ class MARSRU2_SANDKPIToolBox:
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
+
