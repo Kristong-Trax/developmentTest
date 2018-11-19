@@ -116,6 +116,7 @@ class MARSRU2_SANDKPIToolBox:
                                        'MAN': 'manufacturer_name'}
         self.common = Common(self.data_provider)
         self.osa_kpi_dict = {}
+        self.kpi_count = 0
 
     @kpi_runtime()
     def check_for_specific_display(self, params):
@@ -2147,6 +2148,8 @@ class MARSRU2_SANDKPIToolBox:
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
 
+        self.kpi_count += 1
+
     def store_to_new_kpi_tables_level0(self, kpi_level_0_name):
         # API KPIs
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_level_0_name + ' API')
@@ -2174,7 +2177,7 @@ class MARSRU2_SANDKPIToolBox:
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        result = None
+        result = self.kpi_count
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2248,7 +2251,7 @@ class MARSRU2_SANDKPIToolBox:
         numerator_id = self.own_manufacturer_id
         numerator_result = total_result
         denominator_result = len(assortment_products)
-        result = numerator_result / float(denominator_result)
+        result = round(numerator_result / float(denominator_result), 3)
         score = result*100
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
