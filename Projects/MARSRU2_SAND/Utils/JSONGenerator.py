@@ -10,7 +10,7 @@ sys.path.append('.')
 __author__ = 'urid'
 
 
-class MARSRU_SANDJSONGenerator:
+class MARSRU2_SANDJSONGenerator:
     def __init__(self, project):
         self.project = project
         self.base_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
@@ -34,12 +34,3 @@ class MARSRU_SANDJSONGenerator:
             self.project_kpi_dict[key] = \
                 json.loads(pd.read_excel(os.path.join(self.base_path, file_name))
                            .to_json(orient='records'))
-
-
-
-
-
-
-
-
-

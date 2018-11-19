@@ -19,7 +19,7 @@ SKU = 'SKU'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class MARSRU_SANDKPIFetcher:
+class MARSRU2_SANDKPIFetcher:
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
     LEFT = 'shelf_px_left'
@@ -54,7 +54,8 @@ class MARSRU_SANDKPIFetcher:
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['manufacturer_name'] == MARS) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
+            merged_dfs = initial_result.merge(
+                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         elif object_type == 'BRAND in CAT':
@@ -65,7 +66,8 @@ class MARSRU_SANDKPIFetcher:
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['category'].isin(brand_category)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
+            merged_dfs = initial_result.merge(
+                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         else:
@@ -89,7 +91,8 @@ class MARSRU_SANDKPIFetcher:
         # if size:
         #     final_result = final_result[final_result['size'].isin(size)]
         if shelves:
-            merged_dfs = pd.merge(final_result, self.matches, on=['product_fk'], suffixes=['', '_1'])
+            merged_dfs = pd.merge(final_result, self.matches, on=[
+                                  'product_fk'], suffixes=['', '_1'])
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
             merged_filter = merged_dfs.loc[merged_dfs['shelf_number_x'].isin(shelves_list)]
             final_result = merged_filter
@@ -100,7 +103,8 @@ class MARSRU_SANDKPIFetcher:
         if cl_sub_cats:
             final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
         if cl_sub_cats_to_exclude:
-            final_result = final_result[~final_result['Client Sub Category Name'].isin(cl_sub_cats_to_exclude)]
+            final_result = final_result[~final_result['Client Sub Category Name'].isin(
+                cl_sub_cats_to_exclude)]
 
         try:
             if "number of SKUs" in formula:
@@ -275,8 +279,9 @@ class MARSRU_SANDKPIFetcher:
             self.scif.loc[
                 (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
                     self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (self.scif['form_factor'].isin(
-                    form_factor))]
-        merged_dfs = pd.merge(final_result, match_product_details, on=['product_fk'], suffixes=['', '_1'])
+                        form_factor))]
+        merged_dfs = pd.merge(final_result, match_product_details,
+                              on=['product_fk'], suffixes=['', '_1'])
         if not include_stacking:
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
         else:
@@ -302,7 +307,8 @@ class MARSRU_SANDKPIFetcher:
 
     @staticmethod
     def get_delete_session_custom_scif(session_fk):
-        query = "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(session_fk)
+        query = "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(
+            session_fk)
         return query
 
     def get_kpi_set_fk(self):
@@ -383,12 +389,14 @@ class MARSRU_SANDKPIFetcher:
                 for row in targets:
 
                     if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                        store_types = str(row.get('Store type').encode(
+                            'utf-8')).replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
-                        regions = str(row.get('Region').encode('utf-8')).replace('\n', '').split(',')
+                        regions = str(row.get('Region').encode(
+                            'utf-8')).replace('\n', '').split(',')
                     else:
                         regions = []
 
@@ -398,7 +406,8 @@ class MARSRU_SANDKPIFetcher:
                         if 'KPI name' in row:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
-                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
+                            kpi_results_to_check = str(row.get('KPI result')).encode(
+                                'utf-8').replace('\n', '').split(',')
                             kpi_result = kpi_results.get(kpi_name_to_check).get('result')\
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:
@@ -427,12 +436,14 @@ class MARSRU_SANDKPIFetcher:
                 for row in targets:
 
                     if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                        store_types = str(row.get('Store type').encode(
+                            'utf-8')).replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
-                        regions = str(row.get('Region').encode('utf-8')).replace('\n', '').split(',')
+                        regions = str(row.get('Region').encode(
+                            'utf-8')).replace('\n', '').split(',')
                     else:
                         regions = []
 
@@ -442,7 +453,8 @@ class MARSRU_SANDKPIFetcher:
                         if 'KPI name' in row:
 
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
-                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
+                            kpi_results_to_check = str(row.get('KPI result')).encode(
+                                'utf-8').replace('\n', '').split(',')
                             kpi_result = kpi_results.get(kpi_name_to_check).get('result')
                             if kpi_result:
                                 if kpi_result in kpi_results_to_check:
@@ -462,7 +474,7 @@ class MARSRU_SANDKPIFetcher:
             elif 'Attribute 5' in targets[0]:
                 for row in targets:
                     if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8') or \
-                                    store_type.encode('utf-8') != row.get('Store type').encode('utf-8'):
+                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8'):
                         continue
                     try:
                         shelf_length_from = float(row.get('Shelf length FROM INCLUDING'))
@@ -485,10 +497,11 @@ class MARSRU_SANDKPIFetcher:
         self.rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
         matches = self.matches
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches[(matches['status'] == 1) | (matches['status'] == 3)] # include stacking
+        matches = matches[(matches['status'] == 1) | (matches['status'] == 3)]  # include stacking
         if not include_stacking:
             matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_1'])
+        matches = matches.merge(self.get_match_product_in_scene(), how='left',
+                                on='scene_match_fk', suffixes=['', '_1'])
         matches = matches.merge(self.products, how='left', on='product_fk', suffixes=['', '_1'])
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches

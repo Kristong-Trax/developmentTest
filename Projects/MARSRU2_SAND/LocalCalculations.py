@@ -1,13 +1,13 @@
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.MARSRU_SAND.Calculations import MARSRU_SANDCalculations
+# from Projects.MARSRU2_SAND.Calculations import MARSRU2_SANDCalculations
 #
 #
 # if __name__ == '__main__':
 #     LoggerInitializer.init('MARSRU calculations')
 #     Config.init()
-#     project_name = 'marsru-sand'
+#     project_name = 'marsru2-sand'
 #     session_uids = [
 #         '265666b4-07ca-4529-88d2-bd686c44786a',
 #         'f2c37663-24e5-4942-bea0-eabb03f9704b',
@@ -25,5 +25,5 @@
 #     output = Output()
 #     for session in session_uids:
 #         data_provider.load_session_data(session)
-#         MARSRU_SANDCalculations(data_provider, output).run_project_calculations()
+#         MARSRU2_SANDCalculations(data_provider, output).run_project_calculations()
 #
