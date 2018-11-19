@@ -98,22 +98,63 @@ class DistributionCalculation(KpiBaseCalculation):
     def calculate(self, params):
         target = params['minimum products'].iloc[0]
         points = float(params['Points'].iloc[0])
-        count_pass_product = 0
-        result = 0
+        product_total_in_assortment = result = 0
 
-        # kpi_fk = 1
-        assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0])
-        assortment_result = self._data_provider.assortment.calculate_lvl3_assortment()
+        kpi_sku = self._data_provider.common_v2.get_kpi_fk_by_kpi_type(params['Atomic KPI'].iloc[0]+'_SKU')
+        assortment_fk = self.get_assortment_group_fk(params['Assortment group'].iloc[0], self._data_provider)
+
+        if kpi_sku and assortment_fk:
+            assortment_result = self.get_assortment_result(assortment_fk)
+            count_pass_product = self.write_to_db_per_sku_and_count_pass(kpi_sku, assortment_result, self.kpi_fk)
+            result = self.check_result_vs_threshold(params, count_pass_product)
+            product_total_in_assortment = len(assortment_result)
+        # else:
+        #     log.debug('Assortment name: {} not exists in DB'.format(params['Assortment group'].iloc[0]))
+        return self._create_kpi_result(fk=self.kpi_fk, numerator_id=3,
+                                       numerator_result=result, denominator_id=self._data_provider.store_fk,
+                                       denominator_result=product_total_in_assortment,
+                                       score=result, result=result, weight=points, target=target)
+
+    @staticmethod
+    def get_assortment_group_fk(assortment_name, data_provider):
+        return data_provider.assortment.get_assortment_fk_by_name(assortment_name)
+
+    @staticmethod
+    def get_result_value(score):
+        result = 4 if score is 1 else 5
+        return result
+
+    def get_assortment_result(self, assortment_fk):
+        import json
+        assortment_result = self._data_provider.assortment.get_lvl3_relevant_ass()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        for row in assortment_result.itertuples():
-            product_result = self._create_kpi_result(fk=self.kpi_fk, numerator_id=row['product_fk'],
+        scene_type = json.loads(assortment_result.iloc[0]['additional_attributes']).get('scene_type')
+        scif = self._data_provider.scene_item_facts.copy()
+        products_in_session = scif.loc[scif['facings'] > 0]
+        products_in_session = products_in_session[products_in_session['template_name'] == scene_type][
+            'product_fk'].values
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        return assortment_result
+
+    def write_to_db_per_sku_and_count_pass(self, kpi_sku, assortment_result, parent_level_2_identifier):
+        count_pass_product = 0
+        for i, row in assortment_result.iterrows():
+            product_result = self._create_kpi_result(fk=kpi_sku, numerator_id=row['product_fk'],
                                                      numerator_result=row['in_store'], score=row['in_store'] * 100,
                                                      result=self.get_result_value(row['in_store']))
-            product_result.update({'should_enter': True})
-            self._data_provider.common.write_to_db_result(**product_result)
+            product_result.update({'identifier_parent':
+                                       self._data_provider.common_v2.get_dictionary(kpi_fk=parent_level_2_identifier),
+                                   'should_enter': True})
+            self._data_provider.common_v2.write_to_db_result(**product_result)
             if row['in_store']:
                 count_pass_product += 1
+        return count_pass_product
 
+    @staticmethod
+    def check_result_vs_threshold(params, count_pass_product):
+        target = params['minimum products'].iloc[0]
+        points = float(params['Points'].iloc[0])
+        result = 0
         if target:
             if count_pass_product >= float(target):
                 result = points
@@ -124,18 +165,6 @@ class DistributionCalculation(KpiBaseCalculation):
                 result = 0
             else:
                 result *= points
-        product_total_in_assortment = len(assortment_result)
-        return self._create_kpi_result(fk=self.kpi_fk, numerator_id=3,
-                                       numerator_result=result, denominator_id=self._data_provider.store_fk,
-                                       denominator_result=product_total_in_assortment,
-                                       score=result, result=result, weight=points, target=target)
-
-    @staticmethod
-    def get_assortment_group_fk(assortment_name):
-        return 1
-
-    def get_result_value(self, score):
-        result = 4 if score is 1 else 5
         return result
 
 
@@ -176,7 +205,8 @@ class AggregationCalculation(KpiBaseCalculation):
 
     def calculate(self, params):
         result = params['score']
+        potential = params['potential']
         return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
-                                       numerator_id=3,
+                                       numerator_id=3, weight=potential,
                                        numerator_result=None, denominator_id=self._data_provider.store_fk,
                                        denominator_result=None)

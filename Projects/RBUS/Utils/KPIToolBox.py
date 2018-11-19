@@ -87,16 +87,18 @@ def get_placement_count_atomic_kpi_from_template(template_name):
     :param template_name: template name from scif
     :return: atomic kpi value if template is appropriate
     """
-    if template_name == 'ADDITIONAL AMBIENT PLACEMENT':
-        return 'K006'
-    elif template_name == 'ADDITIONAL CHILLED PLACEMENT':
-        return 'K007'
-    elif template_name == 'CHILLED CASHIER PLACEMENT':
-        return 'K008'
-    elif template_name == 'CHILLED CAN COOLERS':
-        return 'K009'
-    else:
-        return 'no'
+
+
+    # if template_name == 'ADDITIONAL AMBIENT PLACEMENT':
+    #     return 'K006'
+    # elif template_name == 'ADDITIONAL CHILLED PLACEMENT':
+    #     return 'K007'
+    # elif template_name == 'CHILLED CASHIER PLACEMENT':
+    #     return 'K008'
+    # elif template_name == 'CHILLED CAN COOLERS':
+    #     return 'K009'
+    # else:
+    #     return 'no'
 
 
 class RBUSRBUSToolBox:
@@ -122,6 +124,9 @@ class RBUSRBUSToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+        self.template_dict = self.get_df_from_excel_path()
+        self.template_dict = self.template_dict[self.template_dict['Template for KPI'] != 'none']\
+                                                .set_index('Template for KPI')['KPI Level 3 Name'].to_dict()
         self.excluded_sub_categories = self.get_excluded_sub_categories(self.get_df_from_excel_path())
 
     def get_kpi_static_data(self):
@@ -149,7 +154,9 @@ class RBUSRBUSToolBox:
             # get number of occurrences of this scene type
             value = self.get_scene_count(df, template_name)
             # get the atomic kpi name
-            atomic_kpi_name = get_placement_count_atomic_kpi_from_template(template_name)
+            atomic_kpi_name = 'no'
+            if template_name in self.template_dict:
+                atomic_kpi_name = self.template_dict[template_name]
             if atomic_kpi_name != 'no':
                 # get the atomic kpi fk of template name
                 atomic_kpi_fk = self.get_atomic_kpi_fk(atomic_kpi_name, PLACEMENT_COUNT)
