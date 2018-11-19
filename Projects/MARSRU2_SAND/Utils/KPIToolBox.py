@@ -1502,7 +1502,7 @@ class MARSRU2_SANDKPIToolBox:
                 elif p.get('#Mars KPI NAME') == 4254:
                     if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
                         for row in values_list:
-                            if row['Length'] == '<' + str(p.get('Target')):
+                            if row['length_condition'] == '<' + str(p.get('Target')):
                                 result = str(row['result'])
                     elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
                         kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
