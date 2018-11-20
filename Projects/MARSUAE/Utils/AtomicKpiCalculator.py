@@ -189,7 +189,7 @@ class AvailabilityCalculation(KpiBaseCalculation):
             filters.update({params['Type_2'].iloc[0]: self.split_and_strip(params['Value_2'].iloc[0])})
         filtered_scif = self._scif[self._toolbox.get_filter_condition(self._scif, **filters)]
         if not filtered_scif.empty:
-            actual, score, result = self.check_result_by_type(params['Type_1'].iloc[0], filtered_scif, target, points)
+            actual, score, result = self.check_result_by_type(params, filtered_scif, target, points)
 
         return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score, weight=points, target=target,
                                        numerator_id=3, numerator_result=actual,
@@ -199,10 +199,14 @@ class AvailabilityCalculation(KpiBaseCalculation):
     def split_and_strip(param):
         return map(lambda x: x.strip(), param.split(','))
 
-    @staticmethod
-    def check_result_by_type(type, filtered_scif, target, points):
+    def check_result_by_type(self, params, filtered_scif, target, points):
+        type = params['Type_1'].iloc[0]
+        value = params['Value_1'].iloc[0]
         if type == 'template_name':
             score = len(filtered_scif['scene_fk'].unique().tolist())
+        elif type == 'display_brand':
+            display_df = self._data_provider.match_display_in_scene
+            score = len(display_df[display_df['name'] == value])
         else:
             score = sum(filtered_scif.facings)
 
