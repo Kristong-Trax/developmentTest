@@ -11,7 +11,7 @@ from Projects.DIAGEOZA_SAND.Utils.KPIToolBox import DIAGEOZASANDToolBox, log_run
 __author__ = 'Nimrod'
 
 
-class DIAGEOZA_SANDGenerator:
+class DIAGEOZASANDGenerator:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
