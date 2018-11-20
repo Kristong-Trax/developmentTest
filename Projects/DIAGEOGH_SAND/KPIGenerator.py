@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOGHSAND.Utils.KPIToolBox import DIAGEOGHSandToolBox, log_runtime
+from Projects.DIAGEOGH_SAND.Utils.KPIToolBox import DIAGEOGHSandToolBox, log_runtime
 
 __author__ = 'Yasmin'
 
