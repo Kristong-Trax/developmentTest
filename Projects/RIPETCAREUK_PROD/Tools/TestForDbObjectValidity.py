@@ -1,5 +1,5 @@
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
@@ -22,7 +22,7 @@ class CheckValidity(object):
 
     @staticmethod
     def get_db_objects(project_name):
-        rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         brand_names = pd.read_sql_query('select name from static.brand', rds_conn.db)['name'].tolist()
         product_ean_codes = pd.read_sql_query('select product_ean_code from static.product', rds_conn.db)['product_ean_code'].tolist()
         scene_type_names = pd.read_sql_query('select display_name from static.template', rds_conn.db)['display_name'].tolist()

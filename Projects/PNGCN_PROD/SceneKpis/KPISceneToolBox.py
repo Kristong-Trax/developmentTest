@@ -2,7 +2,7 @@ import os
 import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import ShareOfDisplayDataProvider, Fields
 from Trax.Utils.Logging.Logger import Log
@@ -647,7 +647,7 @@ def calculate_share_of_display(project_conn, session, data_provider=None):
 # if __name__ == '__main__':
 #     # Config.init()
 #     LoggerInitializer.init('TREX')
-#     conn = ProjectConnector('integ3', DbUsers.CalculationEng)
+#     conn = PSProjectConnector('integ3', DbUsers.CalculationEng)
 #     # session = 'd4b46e1d-b4ed-406d-a20b-8ec9b64f5c5e'
 #     # session = '14f71194-e843-4a3c-94f0-f712775e8ea2'
 #     # session = '9f0244de-66c3-4378-8b46-16c9f79dc978'

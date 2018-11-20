@@ -3,7 +3,7 @@ from datetime import timedelta
 import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
@@ -52,12 +52,12 @@ class CCRU_SANDTopSKUAssortment:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property
@@ -393,7 +393,7 @@ class CCRU_SANDTopSKUAssortment:
         :return: rds connection and cursor connection
         """
         self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         return rds_conn, cur
 

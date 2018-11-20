@@ -2,7 +2,7 @@
 import os
 import MySQLdb
 
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -14,7 +14,7 @@ from Tests.Data.Templates.diageoza.MPA import mpa
 from Tests.Data.Templates.diageoza.NewProducts import products
 from Tests.Data.Templates.diageoza.POSM import posm
 from Tests.Data.TestData.test_data_diageoza_sand_sanity import ProjectsSanityData
-from Projects.DIAGEOZA_SAND.Calculations import DIAGEOZA_SANDCalculations
+from Projects.DIAGEOZA_SAND.Calculations import DIAGEOZASANDCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
@@ -34,7 +34,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     seeder = Seeder()
     
     def _assert_kpi_results_filled(self):
-        connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
         SELECT * FROM report.kpi_results
@@ -60,5 +60,5 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            DIAGEOZA_SANDCalculations(data_provider, output).run_project_calculations()
+            DIAGEOZASANDCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()

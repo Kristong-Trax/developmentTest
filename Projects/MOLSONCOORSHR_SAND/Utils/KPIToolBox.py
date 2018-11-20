@@ -6,7 +6,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -65,7 +65,7 @@ class MOLSONCOORSHR_SANDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(self.data_provider[Data.OWN_MANUFACTURER][self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(data_provider)
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.kpi_static_data = self.common.get_kpi_static_data()

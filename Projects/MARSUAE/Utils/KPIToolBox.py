@@ -1,7 +1,6 @@
 import os
 
 import pandas as pd
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 

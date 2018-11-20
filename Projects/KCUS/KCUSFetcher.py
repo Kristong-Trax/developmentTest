@@ -2,7 +2,7 @@
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'ortalk'
 
@@ -22,7 +22,7 @@ class KCUSFetcher:
     RIGHT = 'shelf_px_right'
 
     def __init__(self, project_name, scif, matches, set_name, products, session_uid):
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.scif = scif
         self.matches = matches
         self.set_name = set_name
