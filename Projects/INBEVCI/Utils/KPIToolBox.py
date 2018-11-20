@@ -6,7 +6,7 @@ import numpy as np
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.INBEVCI.Utils.Fetcher import INBEVCIINBEVCIQueries
 from Projects.INBEVCI.Utils.Const import Const
@@ -52,7 +52,7 @@ class INBEVCIINBEVCIToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
         self.attr5 = self.get_attribute5()
         self.match_display_in_scene = self.get_match_display()

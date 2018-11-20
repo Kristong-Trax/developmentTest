@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Orm.OrmCore import OrmSession
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from Projects.KCUS.KCUSFetcher import KCUSFetcher
@@ -87,7 +87,7 @@ class KCUS_KPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_data = self.data_provider[Data.STORE_INFO]
@@ -458,14 +458,14 @@ class KCUS_KPIToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = KCUSFetcher.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         # for query in self.kpi_results_queries:
         #     try:

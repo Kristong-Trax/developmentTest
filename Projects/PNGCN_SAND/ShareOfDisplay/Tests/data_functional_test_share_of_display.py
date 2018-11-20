@@ -1,7 +1,7 @@
 import os
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import BaseSeedData, DATA_TYPE,  FILES_RELATIVE_PATH
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Conventions.Events import AwsRegions
@@ -32,7 +32,7 @@ class PNGCN_SANDSodTestSeedData(BaseSeedData):
 
 class PNGCN_SANDInsertDataIntoMySqlProjectSOD(object):
     def __init__(self, project):
-        self._conn = ProjectConnector(project, DbUsers.Garage)
+        self._conn = PSProjectConnector(project, DbUsers.Garage)
         self._cur = self._conn.db.cursor()
 
     def update_all_scenes_to_same_session(self):

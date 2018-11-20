@@ -2,7 +2,7 @@
 # import pandas as pd
 # from pandas.util.testing import assert_frame_equal
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestCase
 # from mock import patch
@@ -48,19 +48,19 @@
 #
 #     @staticmethod
 #     def _get_static_kpi_set():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from static.kpi_set;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_static_atomic_kpi():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from static.atomic_kpi;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_static_kpi():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from static.kpi;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -11,7 +11,7 @@ __author__ = 'Sergey'
 class CCRURunSql:
     def __init__(self, project):
         self.project = project
-        self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+        self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
 
     def run_it(self):
         statements = \

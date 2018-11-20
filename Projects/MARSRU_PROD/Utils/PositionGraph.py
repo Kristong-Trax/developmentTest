@@ -5,7 +5,7 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'Nimrod'
@@ -39,7 +39,7 @@ class MARSRU_PRODPositionGraphs:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property
@@ -86,7 +86,7 @@ class MARSRU_PRODPositionGraphs:
         return data
 
     def get_match_product_in_scene(self):
-        self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         query = """
                 select ms.pk as scene_match_fk, ms.*
                 from probedata.match_product_in_scene ms

@@ -6,10 +6,10 @@ import numpy as np
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from KPIUtils_v2.DB.Common import Common
 from Projects.PNGRO_SAND.Utils.Fetcher import PNGRO_SAND_PRODQueries
@@ -80,7 +80,7 @@ class PNGRO_SAND_PRODToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_display_in_scene = self.get_match_display()
         self.match_stores_by_retailer = self.get_match_stores_by_retailer()
         self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
@@ -91,7 +91,7 @@ class PNGRO_SAND_PRODToolBox:
         # self.retailer = \
         # self.match_stores_by_retailer[self.match_stores_by_retailer['pk'] == self.store_id]['name'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = PNGRO_SAND_PRODGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -122,7 +122,7 @@ class PNGRO_SAND_PRODToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = PNGRO_SAND_PRODQueries.get_all_kpi_data()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -132,7 +132,7 @@ class PNGRO_SAND_PRODToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = PNGRO_SAND_PRODQueries.get_match_display(self.session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -142,7 +142,7 @@ class PNGRO_SAND_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_SAND_PRODQueries.get_match_stores_by_retailer()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -152,19 +152,19 @@ class PNGRO_SAND_PRODToolBox:
         The data is taken from static.stores.
         """
         query = PNGRO_SAND_PRODQueries.get_template_fk_by_category_fk()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_display(self, session_uid):
         query = PNGRO_SAND_PRODQueries.get_status_session_by_display(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_status_session_by_category(self, session_uid):
         query = PNGRO_SAND_PRODQueries.get_status_session_by_category(session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
@@ -546,7 +546,7 @@ class PNGRO_SAND_PRODToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
         delete_queries = PNGRO_SAND_PRODQueries.get_delete_session_results_query(self.session_uid)

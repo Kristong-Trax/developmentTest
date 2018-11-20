@@ -10,7 +10,7 @@ from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
@@ -65,7 +65,7 @@ class CCRUKPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -106,12 +106,12 @@ class CCRUKPIToolBox:
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     # def validate_scenes_and_location(self, location, scene_type, sub_location, kpi_data):

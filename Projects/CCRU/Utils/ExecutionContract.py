@@ -4,7 +4,7 @@ import argparse
 import datetime
 import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
@@ -48,12 +48,12 @@ class CCRUContract:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property

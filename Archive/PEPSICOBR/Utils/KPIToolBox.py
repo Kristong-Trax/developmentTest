@@ -5,7 +5,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 
 from Trax.Utils.Logging.Logger import Log
@@ -100,7 +100,7 @@ class PEPSICOBRToolBox(PEPSICOBRConsts):
         self.number_of_checkouts = self.store_info['additional_attribute_1'].values[0]
 
         self.region = self.store_info['region_name'].values[0]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.get_additional_attribute_10()
         self.segmentation = self.store_info['additional_attribute_10'].values[0]
         self.match_display_in_scene = self.get_match_display()
