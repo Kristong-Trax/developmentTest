@@ -1,5 +1,5 @@
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 import pandas as pd
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Configuration import Config
@@ -17,7 +17,7 @@ class UpdateStaticData(object):
     def __init__(self, project_name):
         self.kpi_level_hierarchy_creator = CreateMarsUkKpiHierarchy()
         self.project_name = project_name
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.cur = self.rds_conn.db.cursor()
         self.current_kpi_set = get_kpi_set_static_data(self.rds_conn.db)
         self.current_kpi = get_kpi_static_data(self.rds_conn.db)

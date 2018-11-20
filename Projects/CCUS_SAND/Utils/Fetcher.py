@@ -70,7 +70,7 @@ class CCUS_SANDQueries:
 # import numpy
 #
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 #
 #
 # __author__ = 'nimrodp'
@@ -84,7 +84,7 @@ class CCUS_SANDQueries:
 #
 # class CCUSKPIFetcher:
 #     def __init__(self, project_name, scif, matches):
-#         self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+#         self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
 #         self.scif = scif
 #         self.matches = matches
 #

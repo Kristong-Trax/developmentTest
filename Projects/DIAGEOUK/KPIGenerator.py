@@ -3,7 +3,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils.DB.Common import Common
 from Projects.DIAGEOUK.Utils.KPIToolBox import DIAGEOUKToolBox, log_runtime
@@ -20,7 +20,7 @@ class DIAGEOUKGenerator:
         self.output = output
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.common = Common(self.data_provider)

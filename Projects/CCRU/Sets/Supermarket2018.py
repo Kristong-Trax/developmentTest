@@ -8,10 +8,10 @@ from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsG
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 from KPIUtils.Utils.Helpers.LogHandler import log_handler
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -32,7 +32,7 @@ class CCRUSupermarket2018Calculations:
         self.output = output
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -41,12 +41,12 @@ class CCRUSupermarket2018Calculations:
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     # @log_handler.log_runtime('Total Calculations', log_start=True)

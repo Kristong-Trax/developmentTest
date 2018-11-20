@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -51,7 +51,7 @@ class DIAGEOKEToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:
@@ -96,7 +96,7 @@ class DIAGEOKEToolBox:
         # if set_name in ('MPA', 'Local MPA', 'New Products',):
         #     set_score = self.calculate_assortment_sets(set_name)
         # elif set_name in ('POSM',):
-            set_score = self.calculate_posm_sets(set_name)
+        #     set_score = self.calculate_posm_sets(set_name)
         if set_name == 'Visible to Customer':
             filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
             set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
@@ -122,7 +122,10 @@ class DIAGEOKEToolBox:
         kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]
 
-        kpi_fk = kpi_data['kpi_fk'].values[0]
+        try:
+            kpi_fk = kpi_data['kpi_fk'].values[0]
+        except:
+            pass
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
         self.write_to_db_result(atomic_kpi_fk, score, self.LEVEL3)

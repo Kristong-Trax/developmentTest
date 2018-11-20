@@ -576,7 +576,7 @@ def calculate_share_of_display(project_conn, session, data_provider=None):
 # if __name__ == '__main__':
 #     # Config.init()
 #     LoggerInitializer.init('TREX')
-#     conn = ProjectConnector('integ3', DbUsers.CalculationEng)
+#     conn = PSProjectConnector('integ3', DbUsers.CalculationEng)
 #     # session = 'd4b46e1d-b4ed-406d-a20b-8ec9b64f5c5e'
 #     # session = '14f71194-e843-4a3c-94f0-f712775e8ea2'
 #     # session = '9f0244de-66c3-4378-8b46-16c9f79dc978'
