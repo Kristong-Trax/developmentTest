@@ -8,4 +8,4 @@ class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         Generator(self.data_provider, self.output).main_function()
-        self.timer.stop('KPIGOOGLEKR_SANDGenerator.run_project_calculations')
+        self.timer.stop('KPIGOOGLEKRGenerator.run_project_calculations')
