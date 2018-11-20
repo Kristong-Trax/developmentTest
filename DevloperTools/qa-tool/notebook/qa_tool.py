@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
@@ -23,7 +23,7 @@ class qa:
         self.expected = pd.read_csv('expected.csv')
 
     def _get_static_kpi(self):
-        connector = ProjectConnector(self._project,self._dbUser)
+        connector = PSProjectConnector(self._project,self._dbUser)
         try:
             static = '''SELECT * FROM  static.kpi_level_2;'''
             return pd.read_sql_query(static, connector.db)
@@ -33,7 +33,7 @@ class qa:
             connector.disconnect_rds()
 
     def _get_kpi_results(self):
-        connector = ProjectConnector(self._project, self._dbUser)
+        connector = PSProjectConnector(self._project, self._dbUser)
         try:
             results = '''    
                     SELECT 

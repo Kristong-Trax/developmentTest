@@ -2,8 +2,8 @@
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 
@@ -21,7 +21,7 @@ class CCRU_SANDCCHKPIFetcher:
     TCCC = ['TCCC', 'BF']
 
     def __init__(self, project_name, scif, matches, set_name, products):
-        # self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.project_name = project_name
         self.rds_conn = self.rds_connection()
         self.scif = scif
@@ -33,12 +33,12 @@ class CCRU_SANDCCHKPIFetcher:
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     def get_object_facings(self, scenes, objects, object_type, formula, size=[], form_factor=[],

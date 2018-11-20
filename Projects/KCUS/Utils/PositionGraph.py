@@ -5,7 +5,7 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'Nimrod'
@@ -44,7 +44,7 @@ class KCUSPositionGraphs:
         if rds_conn is not None:
             self._rds_conn = rds_conn
         else:
-            self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_uid = self.data_provider.session_uid
         self.position_graphs = {}
         self._match_product_in_scene = self.get_filtered_matches()

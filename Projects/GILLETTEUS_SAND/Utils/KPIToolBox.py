@@ -6,7 +6,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -78,7 +78,7 @@ class GILLETTEUS_SANDToolBox(GILLETTEUS_SANDTemplateConsts):
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
         self.match_display_in_scene = self.get_match_display()
         self.general_tools = GILLETTEUS_SANDGENERALToolBox(self.data_provider, output)

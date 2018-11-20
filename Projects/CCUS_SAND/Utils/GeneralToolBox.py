@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCUS_SAND.Utils.PositionGraph import CCUS_SANDPositionGraphs
@@ -34,7 +34,7 @@ class CCUS_SANDGENERALCCUS_SANDToolBox:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalcAdmin)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.scif = self.scif.merge(self.data_provider[Data.STORE_INFO], how='left', left_on='store_id',
                                     right_on='store_fk')
         self.match_display_in_scene = data.get('match_display_in_scene')

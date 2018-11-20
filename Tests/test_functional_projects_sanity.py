@@ -5,7 +5,7 @@ import MySQLdb
 from Trax.Utils.Testing.Case import MockingTestCase
 
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
@@ -44,7 +44,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     seeder = Seeder()
 
     def _assert_kpi_results_filled(self):
-        connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""
         SELECT * FROM report.kpi_results
@@ -54,7 +54,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         connector.disconnect_rds()
 
     def _assert_table_row_count(self, table, row_count):
-        connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""SELECT * FROM {table}""".format(table=table))
         self.assertEquals(cursor.rowcount, row_count)

@@ -3,7 +3,7 @@ from collections import defaultdict
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 
 __author__ = 'Sam'
@@ -190,7 +190,7 @@ class SceneSessionToolBox:
                 where kh.session_kpi_results_fk  is not null
                 and session_uid = '{}'
                 '''.format(self.session_uid)
-        con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         data = pd.read_sql(query, con.db)
         con.disconnect_rds()
         return data
@@ -200,7 +200,7 @@ class SceneSessionToolBox:
         if not insert_queries:
             return
 
-        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = local_con.db.cursor()
 
         Log.info('Start committing results')
