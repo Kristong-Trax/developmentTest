@@ -89,7 +89,7 @@ class MARSRU2_SANDPositionGraphs:
         return data
 
     def get_match_product_in_scene(self):
-        self._rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         query = """
                 select ms.pk as scene_match_fk, ms.*
                 from probedata.match_product_in_scene ms
