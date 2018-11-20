@@ -6,12 +6,12 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOZA_SAND.Utils.KPIToolBox import DIAGEOZA_SANDToolBox, log_runtime
+from Projects.DIAGEOZA_SAND.Utils.KPIToolBox import DIAGEOZASANDToolBox, log_runtime
 
 __author__ = 'Nimrod'
 
 
-class DIAGEOZA_SANDGenerator:
+class DIAGEOZASANDGenerator:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -23,7 +23,7 @@ class DIAGEOZA_SANDGenerator:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = DIAGEOZA_SANDToolBox(self.data_provider, self.output)
+        self.tool_box = DIAGEOZASANDToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -35,6 +35,5 @@ class DIAGEOZA_SANDGenerator:
             Log.warning('Scene item facts is empty for this session')
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
-        for kpi_set_name in set_names:
-            self.tool_box.main_calculation(set_name=kpi_set_name)
+        self.tool_box.main_calculation(set_names=set_names)
         self.tool_box.commit_results_data()
