@@ -9,7 +9,7 @@ import webbrowser
 
 from pyspark.sql import SparkSession ,functions as F
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
@@ -48,7 +48,7 @@ class qa:
         self.start_date = start_date
         self.end_date = end_date
         self.batch_size = batch_size
-        self.connector = ProjectConnector(self._project,self._dbUser)
+        self.connector = PSProjectConnector(self._project,self._dbUser)
         self.project_url = 'jdbc:mysql://{}/report'.format(self.connector.project_params['rds_name'])
 
         #const

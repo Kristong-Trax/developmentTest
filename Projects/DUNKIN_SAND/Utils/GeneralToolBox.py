@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 from Projects.DUNKIN_SAND.Utils.PositionGraph import DUNKINPositionGraphs
 from Projects.DUNKIN_SAND.Utils.Fetcher import DUNKINQueries
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
 
@@ -37,7 +37,7 @@ class DUNKINDONATSGENERALToolBox:
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalcAdmin)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.scif = self.scif.merge(self.data_provider[Data.STORE_INFO], how='left', left_on='store_id',
                                     right_on='store_fk')
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]

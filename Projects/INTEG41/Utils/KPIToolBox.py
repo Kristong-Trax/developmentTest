@@ -4,7 +4,7 @@ import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Projects.INTEG41.Utils.Const import INTEG41Const
 from Projects.INTEG41.Utils.Fetcher import INTEG41Queries
@@ -44,7 +44,7 @@ class INTEG41ToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.state = self.get_state()
         self.sub_brands = self.get_sub_brands()
         # this function is temporary

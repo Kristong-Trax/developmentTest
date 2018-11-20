@@ -3,7 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGCN_SAND.SceneKpis.KPISceneToolBox import PNGCN_SANDPNGShareOfDisplay
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.CommonV2 import Common
 

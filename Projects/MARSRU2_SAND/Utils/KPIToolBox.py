@@ -6,7 +6,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
@@ -72,7 +72,7 @@ class MARSRU2_SANDKPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(self.data_provider.own_manufacturer[
@@ -116,6 +116,19 @@ class MARSRU2_SANDKPIToolBox:
                                        'MAN': 'manufacturer_name'}
         self.common = Common(self.data_provider)
         self.osa_kpi_dict = {}
+        self.kpi_count = 0
+
+    def check_connection(self, rds_conn):
+        try:
+            rds_conn.db.cursor().execute(
+                "select pk from probedata.session where session_uid = '{}';"
+                    .format(self.session_uid))
+        except:
+            rds_conn.disconnect_rds()
+            rds_conn.connect_rds()
+            Log.warning('DB is reconnected')
+            return False
+        return True
 
     @kpi_runtime()
     def check_for_specific_display(self, params):
@@ -239,12 +252,13 @@ class MARSRU2_SANDKPIToolBox:
         return scenes
 
     def commit_custom_scif(self):
-        if not self.rds_conn.is_connected:
-            self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
+        self.check_connection(self.rds_conn)
+
         delete_query = self.kpi_fetcher.get_delete_session_custom_scif(self.session_fk)
+        cur = self.rds_conn.db.cursor()
         cur.execute(delete_query)
         self.rds_conn.db.commit()
+
         for query in self.custom_scif_queries:
             try:
                 cur.execute(query)
@@ -890,7 +904,8 @@ class MARSRU2_SANDKPIToolBox:
 
     @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn.disconnect_rds()
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         for p in params:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018':
                 continue
@@ -899,8 +914,7 @@ class MARSRU2_SANDKPIToolBox:
             values_list = str(p.get('Values')).split(', ')
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
-            if not self.rds_conn.is_connected:
-                self.rds_conn.connect_rds()
+            self.check_connection(self.rds_conn)
             if p.get('Stacking'):
                 matches = self.kpi_fetcher.get_filtered_matches()
             else:
@@ -1502,7 +1516,7 @@ class MARSRU2_SANDKPIToolBox:
                 elif p.get('#Mars KPI NAME') == 4254:
                     if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
                         for row in values_list:
-                            if row['Length'] == '<' + str(p.get('Target')):
+                            if row['length_condition'] == '<' + str(p.get('Target')):
                                 result = str(row['result'])
                     elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
                         kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
@@ -2088,7 +2102,7 @@ class MARSRU2_SANDKPIToolBox:
 
     def commit_results_data(self):
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = self.kpi_fetcher.get_delete_session_results(self.session_uid)
         for query in delete_queries:
@@ -2147,6 +2161,8 @@ class MARSRU2_SANDKPIToolBox:
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
 
+        self.kpi_count += 1
+
     def store_to_new_kpi_tables_level0(self, kpi_level_0_name):
         # API KPIs
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_level_0_name + ' API')
@@ -2174,7 +2190,7 @@ class MARSRU2_SANDKPIToolBox:
         denominator_id = self.store_id
         identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
         identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
-        result = None
+        result = self.kpi_count
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
                                        numerator_result=0,
@@ -2248,7 +2264,7 @@ class MARSRU2_SANDKPIToolBox:
         numerator_id = self.own_manufacturer_id
         numerator_result = total_result
         denominator_result = len(assortment_products)
-        result = numerator_result / float(denominator_result)
+        result = round(numerator_result / float(denominator_result), 3)
         score = result*100
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
@@ -2260,3 +2276,4 @@ class MARSRU2_SANDKPIToolBox:
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
+

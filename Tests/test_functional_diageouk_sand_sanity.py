@@ -2,7 +2,7 @@
 import os
 import MySQLdb
 
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -36,7 +36,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     seeder = Seeder()
     
     def _assert_kpi_results_filled(self):
-        connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
         SELECT * FROM report.kpi_results
