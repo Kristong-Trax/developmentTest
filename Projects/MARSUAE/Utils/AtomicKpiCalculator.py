@@ -115,10 +115,10 @@ class DistributionCalculation(KpiBaseCalculation):
             product_total_in_assortment = len(assortment_result)
         # else:
         #     log.debug('Assortment name: {} not exists in DB'.format(params['Assortment group'].iloc[0]))
-        return self._create_kpi_result(fk=self.kpi_fk, numerator_id=3,
-                                       numerator_result=result, denominator_id=self._data_provider.store_fk,
-                                       denominator_result=product_total_in_assortment,
-                                       score=result, result=result, weight=points, target=target)
+        return self._create_kpi_result(fk=self.kpi_fk, score=result, result=result, weight=points, target=target,
+                                       numerator_id=3, numerator_result=result,
+                                       denominator_id=self._data_provider.store_fk,
+                                       denominator_result=product_total_in_assortment)
 
     @staticmethod
     def get_assortment_group_fk(assortment_name, data_provider):
@@ -144,9 +144,9 @@ class DistributionCalculation(KpiBaseCalculation):
     def write_to_db_per_sku_and_count_pass(self, kpi_sku, assortment_result, parent_level_2_identifier):
         count_pass_product = 0
         for i, row in assortment_result.iterrows():
-            product_result = self._create_kpi_result(fk=kpi_sku, numerator_id=row['product_fk'],
-                                                     numerator_result=row['in_store'], score=row['in_store'] * 100,
-                                                     result=self.get_result_value(row['in_store']))
+            product_result = self._create_kpi_result(fk=kpi_sku, score=row['in_store'] * 100,
+                                                     result=self.get_result_value(row['in_store']),
+                                                     numerator_id=row['product_fk'], numerator_result=row['in_store'])
             product_result.update({'identifier_parent':
                                        self._data_provider.common_v2.get_dictionary(kpi_fk=parent_level_2_identifier),
                                    'should_enter': True})
@@ -191,10 +191,9 @@ class AvailabilityCalculation(KpiBaseCalculation):
         if not filtered_scif.empty:
             actual, score, result = self.check_result_by_type(params['Type_1'].iloc[0], filtered_scif, target, points)
 
-        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score,
-                                       numerator_id=3, target=target, numerator_result=actual,
-                                       denominator_id=self._data_provider.store_fk,
-                                       denominator_result=None, weight=points)
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score, weight=points, target=target,
+                                       numerator_id=3, numerator_result=actual,
+                                       denominator_id=self._data_provider.store_fk, denominator_result=None)
 
     @staticmethod
     def split_and_strip(param):
@@ -221,7 +220,6 @@ class AggregationCalculation(KpiBaseCalculation):
     def calculate(self, params):
         result = params['score']
         potential = params['potential']
-        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
-                                       numerator_id=3, weight=potential,
-                                       numerator_result=None, denominator_id=self._data_provider.store_fk,
-                                       denominator_result=None)
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, weight=potential,
+                                       numerator_id=3, numerator_result=result,
+                                       denominator_id=self._data_provider.store_fk, denominator_result=result)
