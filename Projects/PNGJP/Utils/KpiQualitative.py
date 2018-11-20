@@ -642,9 +642,11 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     # b = self.scif[self.scif['product_fk'].isin(b)]['product_name'].drop_duplicates()
 
                     edges_a = self.tools.calculate_block_edges(
-                        minimum_block_ratio=a_target, **dict(group_a, **{'scene_fk': scene}))
+                        minimum_block_ratio=a_target, **dict(group_a, allowed_products_filters=allowed_filter,
+                                                             **{'scene_fk': scene}))
                     edges_b = self.tools.calculate_block_edges(
-                        minimum_block_ratio=b_target, **dict(group_b, **{'scene_fk': scene}))
+                        minimum_block_ratio=b_target, **dict(group_b, allowed_products_filters=allowed_filter,
+                                                             **{'scene_fk': scene}))
 
                     if edges_a and edges_b:
                         if direction == 'Vertical':

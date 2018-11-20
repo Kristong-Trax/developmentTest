@@ -849,14 +849,14 @@ class PNGJPGENERALToolBox:
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{'product_fk': product_list})
 
             for cluster in clusters:
-                relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                relevant_vertices_in_cluster = list(set(cluster).intersection(new_relevant_vertices))
                 if len(new_relevant_vertices) > 0:
                     cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
                 else:
                     cluster_ratio = 0
                 if cluster_ratio >= minimum_block_ratio:
-                    cluster.sort(reverse=True)
-                    edges = self.get_block_edges(scene_graph.copy().vs[cluster])
+                    relevant_vertices_in_cluster.sort(reverse=True)
+                    edges = self.get_block_edges(scene_graph.copy().vs[relevant_vertices_in_cluster])
                     if biggest_block:
                         minimum_block_ratio = cluster_ratio
                     else:
