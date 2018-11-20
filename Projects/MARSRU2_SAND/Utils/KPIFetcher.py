@@ -2,7 +2,7 @@
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -27,7 +27,7 @@ class MARSRU2_SANDKPIFetcher:
     RIGHT = 'shelf_px_right'
 
     def __init__(self, project_name, kpi_templates, scif, matches, set_name, products, session_uid):
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.project = project_name
         self.kpi_templates = kpi_templates
         self.scif = scif
@@ -507,7 +507,7 @@ class MARSRU2_SANDKPIFetcher:
         return values_list
 
     def get_filtered_matches(self, include_stacking=True):
-        self.rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         matches = self.matches
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches[(matches['status'] == 1) | (matches['status'] == 3)]  # include stacking

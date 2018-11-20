@@ -6,7 +6,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
@@ -72,7 +72,7 @@ class MARSRU2_SANDKPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(self.data_provider.own_manufacturer[
@@ -905,7 +905,7 @@ class MARSRU2_SANDKPIToolBox:
     @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         for p in params:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018':
                 continue
@@ -2102,7 +2102,7 @@ class MARSRU2_SANDKPIToolBox:
 
     def commit_results_data(self):
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = self.kpi_fetcher.get_delete_session_results(self.session_uid)
         for query in delete_queries:
