@@ -1,7 +1,8 @@
 from datetime import datetime
 import os
 import pandas as pd
-from collections import defaultdict
+from functools import reduce
+from collections import defaultdict, Counter
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Utils import Validation
@@ -15,6 +16,8 @@ from KPIUtils_v2.Calculations.BlockCalculations import Block as Block2
 from Projects.GMIUS.Utils.BlockCalculations import Block as Block2
 
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
+from Projects.GMIUS.ImageHTML.Image import ImageMaker
+
 
 
 __author__ = 'Sam'
@@ -28,38 +31,28 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
+        self.block = Block2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.templates = self.data_provider.all_templates
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.result_values_dict = self.make_result_values_dict()
-        # self.store_assortment = self.ps_data_provider.get_store_assortment()
-        # self.store_sos_policies = self.ps_data_provider.get_store_policies()
-        # self.all_products = self.ps_data_provider.get_sub_category(self.all_products)
-        # self.labels = self.ps_data_provider.get_labels()
-        # self.scene_results = self.ps_data_provider.get_scene_results(self.scenes)
-
-
-
-        ''' stop gap until the real data arrives'''
-
-        self.data_provider2 = KEngineDataProvider('rinielsenus')
-        # self.data_provider2.load_session_data('c5ef379f-54d6-45b3-b907-303a81fc1876')
-        self.data_provider2.load_session_data('ff204427-bf76-4af6-8284-462edd4c75ab')
-        self.scene_info = self.data_provider2[Data.SCENES_INFO]
-        self.all_products = self.data_provider2[Data.ALL_PRODUCTS]
-        self.products = self.data_provider2[Data.PRODUCTS]
-        self.store_info = self.data_provider2[Data.STORE_INFO]
-        self.store_id = self.data_provider2[Data.STORE_FK]
-        self.match_product_in_scene = self.data_provider2[Data.MATCHES]
+        self.store_assortment = self.ps_data_provider.get_store_assortment()
+        self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        self.labels = self.ps_data_provider.get_labels()
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.products = self.data_provider[Data.PRODUCTS]
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_id = self.data_provider[Data.STORE_FK]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk')\
                                                .merge(self.scene_info, on='scene_fk')\
                                                .merge(self.templates, on='template_fk')
-        self.visit_date = self.data_provider2[Data.VISIT_DATE]
-        self.session_info = self.data_provider2[Data.SESSION_INFO]
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
-        self.scif = self.data_provider2[Data.SCENE_ITEM_FACTS]
-
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.template = {}
         for sheet in Const.SHEETS:
             self.template[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
@@ -78,7 +71,6 @@ class ToolBox:
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-            # self.graph(None, None)
 
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
@@ -87,12 +79,13 @@ class ToolBox:
         print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.scif.copy()
-        # if scene_types:
-        #     relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-        #     general_filters['template_name'] = scene_types
-        # if relevant_scif.empty:
-        #     return
+        if scene_types:
+            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+            general_filters['template_name'] = scene_types
+        if relevant_scif.empty:
+            return
         function = self.get_kpi_function(kpi_type)
+        function = self.load_graph
         if kpi_type == Const.TMB:
             for i, kpi_line in self.template[kpi_type].iterrows():
                 function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -155,21 +148,49 @@ class ToolBox:
 
         pass
 
-    def load_graph(self):
-        # g = Block(self.data_provider2)
-        g2 = Block2(self.data_provider2)
-        prod = self.all_products.drop(['width_mm', 'height_mm'], axis=1)
+    def load_graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        block_thres = .75
+        directional_diversity_max = .75
+
         mpis = self.mpis.copy()
         mpis = self.pos_scrubber(mpis)
-        relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
-        allowed_filter = {'product_type': ['Empty', 'Other']}
-        filtered_mpis = mpis[(mpis['Segment'] == 'DRY DOG NATURAL/GRAIN FREE') |
-                       (mpis['product_type'].isin(['Empty', 'Other']))]
-        # g.alt_block(filtered_mpis, mpis, relevant_filter, allowed_filter)
-        print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
-        # relevant_filter.update(allowed_filter)
-        g, c = g2.network_x_block_together2(relevant_filter, additional={'allowed_products_filters': allowed_filter,
-                                                                     'include_stacking': False})
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            mpis = self.filter_df(mpis, scene_filter)
+            allowed = {'product_type': ['Other', 'Empty']}
+            a_filter = {'sub_category_local_name': 'COOKIE DOUGH'}
+            b_filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
+            a_items = set(self.filter_df(mpis, a_filter)['scene_match_fk'].values)
+            b_items = set(self.filter_df(mpis, b_filter)['scene_match_fk'].values)
+            if not (a_items and b_items):
+                return
+
+            filters = self.filter_join([a_filter, b_filter])
+            graph, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
+                                                                 additional={'allowed_products_filters': allowed,
+                                                                             'include_stacking': False})
+            z = self.gen_html(scene, blocks, graph, mpis)
+
+            for block in blocks:
+                nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
+                nodes = set(nodes_dict.values())
+                a_pass = len(nodes & a_items) / len(a_items) >= block_thres
+                b_pass = len(nodes & b_items) / len(b_items) >= block_thres
+
+                if a_pass and b_pass:
+                    cond_1 = lambda x, y: (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
+                    cond_2 = lambda x, y: (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
+                    edges = [d['direction'] for x, y, d in block.to_undirected().edges(data=True) if cond_1 or cond_2]
+                    if not edges:
+                        break
+                    counts = Counter(edges)
+                    integ = True
+                    if min([val / len(edges) for val in counts.values()]) > directional_diversity_max:
+                        integ = False
+                    break
+            print('fin')
+
+
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -198,6 +219,26 @@ class ToolBox:
             else:
                 df = df[df[key].isin(val)]
         return df
+
+    @staticmethod
+    def filter_mask(df, filters, exclude=0):
+        mask = []
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                mask.append(~df[key].isin(val))
+            else:
+                mask.append(df[key].isin(val))
+        return reduce((lambda x, y: x & y), mask)
+
+    @staticmethod
+    def filter_join(filters):
+        final_filter = defaultdict(list)
+        filters = reduce((lambda x, y: x + y.items() if isinstance(x, list) else x.items() + y.items()), filters)
+        for (key, val) in filters:
+            final_filter[key].append(val)
+        return final_filter
 
     @staticmethod
     def ratio_score(num, den, target=None):
@@ -379,3 +420,61 @@ class ToolBox:
         matches = matches[matches['product_type'] != 'POS']
         matches.loc[matches['stacking_layer'] == 1, 'status'] = 1
         return matches
+
+    def gen_html(self, scene, components, adj_g, mpis):
+        img_maker = ImageMaker('gmius', scene, additional_attribs=['sub_category_local_name'])
+        html_x = float(img_maker.html_builder.size[1])
+        html_y = float(img_maker.html_builder.size[0])
+        adj_coords = adj_g.scene_data
+        x_mm = max(adj_coords['right'] + (adj_coords['right'] - adj_coords['left']) / 2.0)
+        y_mm = max(adj_coords['top'] + (adj_coords['top'] - adj_coords['bottom']) / 2.0)
+        x_ratio = html_x / x_mm
+        y_ratio = html_y / y_mm
+        nodes = []
+        mpis_indexed = mpis.set_index('scene_match_fk')
+        for i, component in enumerate(components):
+            img_maker.html_builder.add_cluster(group_num=i)
+            # print(len(component))
+            # print('~~~~~~~')
+            # print(len(component))
+            for j, node in component.nodes(data=True):
+                # attribs = self.gen_relevant_node_attribs(node, mpis_indexed, i)
+                # node = node['group_attributes']
+                # mpis_fk = node['match_fk_list']
+                # print(len(mpis_fk))
+                mpis_fk = node['match_fk']
+                attribs = mpis_indexed.loc[mpis_fk].to_dict()
+                attribs['scene_match_fk'] = mpis_fk
+                attribs['left'] = node['p1'].x
+                attribs['top'] = node['p2'].y
+                attribs['width'] = node['p2'].x - node['p1'].x
+                attribs['height'] = node['p2'].y - node['p1'].y
+                attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
+                attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
+
+                # attribs['w'] = attribs['width'] * x_ratio
+                # attribs['h'] = attribs['height'] * y_ratio
+                # # break
+                # attribs['rect_x'] = attribs['left'] * x_ratio
+                # attribs['rect_y'] = (node['p1'].y) * y_ratio
+                attribs['cluster'] = i
+
+                img_maker.html_builder.add_product(attribs)
+                nodes.append(attribs['scene_match_fk'])
+
+        img_maker.html_builder.add_cluster(group_num=-1)
+        remaining = mpis[~mpis['scene_match_fk'].isin(nodes)]
+        for i, node in remaining.iterrows():
+            attribs = self.gen_irrelevant_node_attribs(node)
+            img_maker.html_builder.add_product(attribs)
+
+        img_maker.html_builder.products = img_maker.html_builder.products
+        return img_maker.html_builder.return_html()
+
+    def gen_irrelevant_node_attribs(self, node):
+        attribs = node.to_dict()
+        # attribs['scene_match_fk'] = node['scene_match_fk']
+        attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
+        attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
+        attribs['cluster'] = -1
+        return attribs

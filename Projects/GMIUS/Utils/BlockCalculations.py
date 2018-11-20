@@ -295,7 +295,7 @@ class Block(BaseCalculation):
                 block (Graph), scene_fk, orientation (string - vertical or horizontal), facing_percentage.
 
         """
-        img_maker = ImageMaker('rinielsenus', 342186, additional_attribs=['Segment'])
+        img_maker = ImageMaker('gmius', 986, additional_attribs=['sub_category_local_name'])
 
         block_parameters = {'minimum_block_ratio': 0.75,
                             'check_vertical_horizontal': self.check_vertical_horizontal,
@@ -321,8 +321,8 @@ class Block(BaseCalculation):
 
         # Separate the filters on products from the filters on scene and get the relevant scenes
         ''' error if none '''
-        # relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
-        relevant_scenes = self.scif.scene_id.unique()
+        relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
+        # relevant_scenes = self.scif.scene_id.unique()
 
         if not relevant_scenes.any():
             Log.info('No scenes with the requested location filter.')
@@ -346,8 +346,8 @@ class Block(BaseCalculation):
         html_x = float(img_maker.html_builder.size[1])
         html_y = float(img_maker.html_builder.size[0])
         # For each relevant scene check if a block is exist
-        scenes = [342186]
-        for scene in scenes:
+        for scene in relevant_scenes:
+            print(scene)
             # Get the specific scene data
             scene_matches = self.data_provider.matches[self.data_provider.matches.scene_fk == scene]
             product_data_df = self.data_provider.all_products[list(set(['product_fk'] + unified_filters.keys()))]
