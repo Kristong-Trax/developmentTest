@@ -3,15 +3,15 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import pandas as pd
-from Projects.TSINGTAOBEERCN.Utils.KPIToolBox import TSINGTAOBEERCNToolBox
+from Projects.TSINGTAOBEERCN_SAND.Utils.KPIToolBox import TSINGTAOBEERCNToolBox
 
 
 __author__ = 'ilays'
 
 
-class TestTSINGTAOBEERCN(TestCase):
+class TestTSINGTAOBEERCN_SAND(TestCase):
 
-    @mock.patch('Projects.TSINGTAOBEERCN.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.TSINGTAOBEERCN_SAND.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
