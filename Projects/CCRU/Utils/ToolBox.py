@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
-
 import os
-import datetime
-# from datetime import datetime
-import pandas as pd
 import numpy as np
+import pandas as pd
+import datetime as dt
 
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
-from Trax.Utils.Conf.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.CCRU.Fetcher import CCRUCCHKPIFetcher
@@ -36,19 +34,6 @@ EQUIPMENT_SET_NAME = 'Equipment Execution 2018'
 CONTRACT_SET_NAME = 'Contract Execution 2018'
 CCH_INTEGRATION = 'CCH Integration'
 MARKETING = 'Marketing 2017'
-
-# def log_runtime(description, log_start=False):
-#     def decorator(func):
-#         def wrapper(*args, **kwargs):
-#             calc_start_time = datetime.utcnow()
-#             if log_start:
-#                 Log.info('{} started at {}'.format(description, calc_start_time))
-#             result = func(*args, **kwargs)
-#             calc_end_time = datetime.utcnow()
-#             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-#             return result
-#         return wrapper
-#     return decorator
 
 
 class CCRUKPIToolBox:
@@ -2552,7 +2537,7 @@ class CCRUKPIToolBox:
                                                        kpi_set_name,
                                                        self.store_id,
                                                        self.visit_date.isoformat(),
-                                                       datetime.datetime.utcnow().isoformat(),
+                                                       dt.datetime.utcnow().isoformat(),
                                                        None,
                                                        kpi_fk,
                                                        kf.get("atomic_kpi_fk"),
@@ -2630,7 +2615,7 @@ class CCRUKPIToolBox:
         if params.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
                                                    self.session_uid, self.set_name, self.store_id,
-                                                   self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
+                                                   self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text', 'session_uid', 'kps_name',
@@ -2640,7 +2625,7 @@ class CCRUKPIToolBox:
         else:
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Eng').replace("'", "\\'"),
                                                    self.session_uid, self.set_name, self.store_id,
-                                                   self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
+                                                   self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text', 'session_uid', 'kps_name',
@@ -2800,9 +2785,9 @@ class CCRUKPIToolBox:
 
         target_data = None
         for data in target_data_raw:
-            start_date = datetime.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
-            end_date = datetime.datetime.now().date() if not data['End Date'] else \
-                datetime.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
+            start_date = dt.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
+            end_date = dt.datetime.now().date() if not data['End Date'] else \
+                dt.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
             if start_date <= self.visit_date <= end_date:
                 target_data = data
 

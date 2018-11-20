@@ -3,7 +3,6 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 
