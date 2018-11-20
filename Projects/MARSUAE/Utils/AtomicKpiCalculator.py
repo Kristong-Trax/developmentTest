@@ -179,28 +179,38 @@ class AvailabilityCalculation(KpiBaseCalculation):
         return 'Availability'
 
     def calculate(self, params):
-        result = score = 0
+        result = score = actual = 0
         target = float(params['minimum products'].iloc[0])
         points = float(params['Points'].iloc[0])
 
-        filters = {params['Type_1'].iloc[0]: self.split_and_strip(params['Value_1'].iloc[0]),
-                   'template_name': self.split_and_strip(params['scene type'].iloc[0])}
+        filters = {'template_name': self.split_and_strip(params['scene type'].iloc[0])}
+        filters.update({params['Type_1'].iloc[0]: self.split_and_strip(params['Value_1'].iloc[0])})
         if params['Type_2'].iloc[0]:
             filters.update({params['Type_2'].iloc[0]: self.split_and_strip(params['Value_2'].iloc[0])})
         filtered_scif = self._scif[self._toolbox.get_filter_condition(self._scif, **filters)]
         if not filtered_scif.empty:
-            if sum(filtered_scif.facings) >= target:
-                result = score = 100
-            score *= points
+            actual, score, result = self.check_result_by_type(params['Type_1'].iloc[0], filtered_scif, target, points)
 
         return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score,
-                                       numerator_id=3, target=target, numerator_result=None,
+                                       numerator_id=3, target=target, numerator_result=actual,
                                        denominator_id=self._data_provider.store_fk,
                                        denominator_result=None, weight=points)
 
     @staticmethod
     def split_and_strip(param):
         return map(lambda x: x.strip(), param.split(','))
+
+    @staticmethod
+    def check_result_by_type(type, filtered_scif, target, points):
+        if type == 'template_name':
+            score = len(filtered_scif['scene_fk'].unique().tolist())
+        else:
+            score = sum(filtered_scif.facings)
+
+        if score >= target:
+            return score, points, 100
+        else:
+            return score, 0, 0
 
 
 class AggregationCalculation(KpiBaseCalculation):
