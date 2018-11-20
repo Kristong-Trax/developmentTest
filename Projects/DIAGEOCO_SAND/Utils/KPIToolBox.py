@@ -104,9 +104,12 @@ class DIAGEOCO_SANDToolBox:
                 set_score = self.calculate_relative_position_sets(set_name)
 
             elif set_name == 'Activation Standard':
-
-                results_list= self.global_gen.diageo_global_activation_standard_function(total_scores_dict)
-
+                manufacturer_fk = 74# Diageo manfacutrer
+                results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
+                                                                                          self.set_templates_data
+                                                                                          [set_name], self.store_id,
+                                                                                          manufacturer_fk)
+                self.save_results_to_db(results_list)
 
             elif set_name == 'TOUCH POINT':
                 store_attribute = 'additional_attribute_2'
