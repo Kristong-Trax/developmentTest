@@ -1,6 +1,6 @@
 # from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 # from Trax.Data.Testing.SeedNew import Seeder
-# from Trax.Data.Projects.Connector import ProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from mock import MagicMock
 # from Projects.CBCIL.Utils.KPIToolBox import CBCILCBCIL_ToolBox
 #

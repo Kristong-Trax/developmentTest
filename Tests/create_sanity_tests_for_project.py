@@ -1,6 +1,6 @@
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
 
@@ -24,7 +24,7 @@ class SeedCreator:
     """
     def __init__(self, project):
         self.project = project
-        self.rds_conn = ProjectConnector(project, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project, DbUsers.CalculationEng)
         self.user = os.environ.get('USER')
         self.exporter_outputs_dir = os.path.join('/home', self.user, 'exporter')
         if not os.path.exists(self.exporter_outputs_dir):
@@ -93,7 +93,7 @@ class SanityTestsCreator:
 import os
 import MySQLdb
 
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -121,7 +121,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     seeder = Seeder()
     
     def _assert_kpi_results_filled(self):
-        connector = ProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
+        connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
         SELECT * FROM report.kpi_results

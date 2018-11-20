@@ -7,7 +7,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -89,7 +89,7 @@ class JTIUAToolBox:
         store_type = self.data_provider[Data.STORE_INFO]['store_type'].values[0]
         self.store_type = '' if not store_type else store_type
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = JTIUAGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.matches = self.tools.match_product_in_scene
         self.scene_info = self.tools.scenes_info

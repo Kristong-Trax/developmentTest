@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
@@ -79,7 +79,7 @@ class INBEVFR_PRODINBEVBEToolBox:
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_project_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.all_products = self.get_all_products()
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -1486,7 +1486,7 @@ class INBEVFR_PRODINBEVBEToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = INBEVFR_PRODINBEVBEQueries.get_delete_session_results_query(self.session_uid)
         pservice_tables_delete_query = INBEVFR_PRODINBEVBEQueries.get_delete_custom_scif_query(self.session_fk)
