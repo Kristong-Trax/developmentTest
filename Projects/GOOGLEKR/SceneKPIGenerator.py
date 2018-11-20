@@ -1,8 +1,8 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GOOGLEKR.Utils.SceneKPIToolBox import SceneToolBox
+from KPIUtils.GlobalProjects.GOOGLE.Utils.SceneKPIToolBox import SceneToolBox
 # from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.GOOGLEKR.CommonV2 import Common
+from KPIUtils.GlobalProjects.GOOGLE.CommonV2 import Common
 
 __author__ = 'Eli'
 
