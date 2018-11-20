@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.DIAGEOGHSAND.KPIGenerator import DiageoGHSandGenerator
+from Projects.DIAGEOGH_SAND.KPIGenerator import DiageoGHSandGenerator
 
 __author__ = 'Nimrod'
 
