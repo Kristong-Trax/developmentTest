@@ -657,13 +657,14 @@ class CCRUKPIToolBox:
         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, params.get('Type'),
                                                              formula=params.get('Formula'),
                                                              shelves=params.get("shelf_number", None),
-                                                             size=sizes, form_factor=form_factors,
+                                                             size=sizes,
+                                                             form_factor=form_factors,
                                                              products_to_exclude=products_to_exclude,
                                                              form_factors_to_exclude=form_factors_to_exclude,
                                                              product_categories=product_categories,
                                                              product_sub_categories=product_sub_categories,
-                                                             product_brands = product_brands,
-                                                             product_manufacturers = product_manufacturers)
+                                                             product_brands=product_brands,
+                                                             product_manufacturers=product_manufacturers)
 
         return object_facings
 

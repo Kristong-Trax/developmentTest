@@ -176,12 +176,15 @@ class CCRUContract:
                     try:
                         start_date_cur = dt.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
                         end_date_cur = dt.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                        store_number_cur = data_cur[self.STORE_NUMBER]
                     except:
                         # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
                         #             .format(store_id, store_number))
                         self.stores_with_invalid_targets += [store_number]
                         continue
-                    if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
+                    if store_number_cur == store_number \
+                            and start_date_cur <= end_date_new \
+                            and end_date_cur >= start_date_new:
                         details_new = data_new.copy()
                         del details_new[self.START_DATE]
                         del details_new[self.END_DATE]
