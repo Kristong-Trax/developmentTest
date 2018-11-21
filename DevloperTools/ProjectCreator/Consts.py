@@ -484,19 +484,16 @@ class PlanogramFinderCalculation(PlanogramFinderBaseClass):
 """
 
 LIVE_SCENE_TOOLBOX_SCRIPT = """
-from Trax.Apps.Services.LiKEngine.DataProvider.DataProvider import LiveDataProvider
 from Trax.Utils.Logging.Logger import Log
-
 
 __author__ = '%(author)s'
 
 
 class %(live_scene_tool_box_class_name)s:
 
-    def __init__(self, data_provider, output, common):
-        self.output = output
+    def __init__(self, data_provider, common):
         self.data_provider = data_provider
-        self.common = common
+        self.live_common = common
         self.project_name = self.data_provider.project_name
         self.scene_uid = self.data_provider.level_uid
 
@@ -519,13 +516,11 @@ __author__ = '%(author)s'
 
 class LiveSceneGenerator:
 
-    def __init__(self, data_provider, output=None):
+    def __init__(self, data_provider):
         self.data_provider = data_provider
-        self.output = output
-        self.project_name = data_provider.project_name
         self.scene_uid = self.data_provider.level_uid
         self.common = LiveCommon(data_provider)
-        self.live_scene_tool_box = %(live_scene_tool_box_class_name)s(self.data_provider, self.output, self.common)
+        self.live_scene_tool_box = %(live_scene_tool_box_class_name)s(self.data_provider, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def live_scene_score(self):
@@ -551,7 +546,6 @@ class LiveSceneCalculations(LiveSceneBaseClass):
 
 
 LIVE_SESSION_TOOLBOX_SCRIPT = """
-from Trax.Apps.Services.LiKEngine.DataProvider.DataProvider import LiveDataProvider
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -560,10 +554,9 @@ __author__ = '%(author)s'
 
 class %(live_session_tool_box_class_name)s:
 
-    def __init__(self, data_provider, output, common):
-        self.output = output
+    def __init__(self, data_provider, common):
         self.data_provider = data_provider
-        self.common = common
+        self.live_common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.level_uid
 
@@ -586,13 +579,11 @@ __author__ = '%(author)s'
 
 class LiveSessionGenerator:
 
-    def __init__(self, data_provider, output=None):
+    def __init__(self, data_provider):
         self.data_provider = data_provider
-        self.output = output
-        self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.level_uid
         self.common = LiveCommon(data_provider)
-        self.live_session_tool_box = %(live_session_tool_box_class_name)s(self.data_provider, self.output, self.common)
+        self.live_session_tool_box = %(live_session_tool_box_class_name)s(self.data_provider, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def live_session_score(self):
