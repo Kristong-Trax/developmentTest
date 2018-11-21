@@ -12,7 +12,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Projects.GMIUS.Utils.PositionGraph import Block
-from KPIUtils_v2.Calculations.BlockCalculations import Block as Block2
+from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
 from Projects.GMIUS.Utils.BlockCalculations import Block as Block2
 
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
@@ -85,7 +85,8 @@ class ToolBox:
         if relevant_scif.empty:
             return
         function = self.get_kpi_function(kpi_type)
-        function = self.load_graph
+        function = self.integrated_adjacency
+        function = self.adjacency
         if kpi_type == Const.TMB:
             for i, kpi_line in self.template[kpi_type].iterrows():
                 function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -143,14 +144,11 @@ class ToolBox:
         locations = sorted(list(locations))[::-1]
         ordered_result = '-'.join(locations)
 
-
-    def is_integrated(self, clusters, a_list, b_list ):
-
-        pass
-
-    def load_graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         block_thres = .75
         directional_diversity_max = .75
+        cond_1 = lambda x, y: (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
+        cond_2 = lambda x, y: (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
 
         mpis = self.mpis.copy()
         mpis = self.pos_scrubber(mpis)
@@ -166,21 +164,23 @@ class ToolBox:
                 return
 
             filters = self.filter_join([a_filter, b_filter])
-            graph, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
+            res = self.block.network_x_block_together(filters, location=scene_filter,
                                                                  additional={'allowed_products_filters': allowed,
                                                                              'include_stacking': False})
-            z = self.gen_html(scene, blocks, graph, mpis)
+            # graph, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
+            #                                                      additional={'allowed_products_filters': allowed,
+            #                                                                  'include_stacking': False})
+            # z = self.gen_html(scene, blocks, graph, mpis)
 
-            for block in blocks:
+            for block in res['block']:
                 nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
                 nodes = set(nodes_dict.values())
                 a_pass = len(nodes & a_items) / len(a_items) >= block_thres
                 b_pass = len(nodes & b_items) / len(b_items) >= block_thres
 
                 if a_pass and b_pass:
-                    cond_1 = lambda x, y: (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
-                    cond_2 = lambda x, y: (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
-                    edges = [d['direction'] for x, y, d in block.to_undirected().edges(data=True) if cond_1 or cond_2]
+                    edges = [d['direction'] for x, y, d in block.to_undirected().edges(data=True) if cond_1(x, y) or
+                                                                                                     cond_2(x, y)]
                     if not edges:
                         break
                     counts = Counter(edges)
@@ -190,7 +190,31 @@ class ToolBox:
                     break
             print('fin')
 
+    def adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            mpis = self.filter_df(self.mpis, scene_filter)
+            allowed = {'product_type': ['Other', 'Empty']}
+            filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
+            items = set(self.filter_df(mpis, filter)['scene_match_fk'].values)
+            allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
+            if not (items):
+                return
 
+            blocks = self.block.network_x_block_together2(filter, location=scene_filter,
+                                                                  additional={'allowed_products_filters': allowed,
+                                                                              'include_stacking': False})
+            for block in blocks:
+                block = blocks[0]
+                nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
+                peripherals = []
+                for a, b in block.edges():
+                    if a == b:
+                        block.remove_edge(a, b)
+                for i, node in block.nodes(data=True):
+                for i, node in block.nodes(data=True):
+                    if nodes_dict[node] in allowed_items:
+                        block.remove_node(node)
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):

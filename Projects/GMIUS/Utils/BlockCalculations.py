@@ -4,12 +4,9 @@ import pandas as pd
 
 from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from KPIUtils_v2.Calculations.BaseCalculations import BaseCalculation
-from Trax.Algo.Geometry.SceneAnalysis.HtmlCreators import FactsForHtmls
+import KPIUtils_v2.Calculations.CalculationsUtils.CalculationUtils as CalculationUtils
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 from Trax.Utils.Logging.Logger import Log
-
-
-from Projects.GMIUS.ImageHTML.Image import ImageMaker
 
 
 # class Block(object):
@@ -29,13 +26,14 @@ class Block(BaseCalculation):
     TOP = 'Top'
     BOTTOM = 'Bottom'
 
-    def __init__(self, data_provider, output=None, ps_data_provider=None, common=None, rds_conn=None, **kwargs):
+    def __init__(self, data_provider, output=None, ps_data_provider=None, common=None, rds_conn=None, front_facing=False, **kwargs):
         super(Block, self).__init__(data_provider, output, ps_data_provider, common, rds_conn, **kwargs)
         self._position_graphs = PositionGraphs(self.data_provider)
         self.horizontal_bucket_size = self.MM_TO_FEET_CONVERSION
         self.outliers_threshold = 0.4
         self.check_vertical_horizontal = False
-        self.include_stacking = True
+        self.include_stacking = False
+        self.front_facing = front_facing
 
     @property
     def position_graphs(self):
@@ -170,7 +168,7 @@ class Block(BaseCalculation):
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=0.9, result_by_scene=False, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
-                                 n_cluster=None, **filters):
+                                 n_cluster=None, min_facings_in_block=None, **filters):
         """
         :param biggest_block:
         :param block_products1:
@@ -221,7 +219,12 @@ class Block(BaseCalculation):
                     else:
                         cluster_ratio2 = 0
                     if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
-                        return True
+                        if min_facings_in_block:
+                            if len(relevant_vertices_in_cluster1) >= min_facings_in_block \
+                                    and len(relevant_vertices_in_cluster2) >= min_facings_in_block:
+                                return True
+                        else:
+                            return True
                 else:
                     relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
                     if len(new_relevant_vertices) > 0:
@@ -232,17 +235,32 @@ class Block(BaseCalculation):
                     if biggest_block:
                         continue
                     if cluster_ratio >= minimum_block_ratio:
-                        if result_by_scene:
-                            number_of_blocked_scenes += 1
-                            break
+                        if min_facings_in_block:
+                            if len(relevant_vertices_in_cluster) >= min_facings_in_block:
+                                if result_by_scene:
+                                    number_of_blocked_scenes += 1
+                                    break
+                                else:
+                                    all_vertices = {v.index for v in scene_graph.vs}
+                                    non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                                    scene_graph.delete_vertices(non_cluster_vertices)
+                                    if vertical:
+                                        return True, len(
+                                            set(scene_graph.vs['shelf_number']))
+                                    return True
                         else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return True, len(
-                                    set(scene_graph.vs['shelf_number']))
-                            return True
+                            if result_by_scene:
+                                number_of_blocked_scenes += 1
+                                break
+                            else:
+                                all_vertices = {v.index for v in scene_graph.vs}
+                                non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                                scene_graph.delete_vertices(non_cluster_vertices)
+                                if vertical:
+                                    return True, len(
+                                        set(scene_graph.vs['shelf_number']))
+                                return True
+
             if n_cluster is not None:
                 copy_of_cluster_ratios = cluster_ratios[:]
                 largest_cluster = max(copy_of_cluster_ratios)  # 39
@@ -263,7 +281,12 @@ class Block(BaseCalculation):
                 all_vertices = {v.index for v in scene_graph.vs}
                 non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
                 scene_graph.delete_vertices(non_cluster_vertices)
-                return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+                if min_facings_in_block:
+                    if len(relevant_vertices_in_cluster) >= min_facings_in_block:
+                        return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+                else:
+                    return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+
             if result_by_scene:
                 return number_of_blocked_scenes, len(relevant_scenes)
             elif vertical:
@@ -271,184 +294,13 @@ class Block(BaseCalculation):
             else:
                 return False
 
-    def network_x_block_together2(self, population, location=None, additional=None):
-
-        """
-        :param location: The location parameters which the blocks are checked for (scene_type for example).
-        :param population: These are the parameters which the blocks are checked for.
-        :param additional: Additional attributes for the blocks calculation:
-        1. return_block_percentage: whether to return the % of the blocks found.
-                If True, the function will search for blocks in all scenes (which will affect the performance!!).
-                If False, the function will stop running once a scene was found with the relevant block.
-        2. horizontal_bucket_size: Used to calculate the number of products in order to determine whether a block
-                is vertical or horizontal. Usually 1ft - the length of the bay
-        3. outliers_threshold: The threshold for removing the outliers for the horizontal/vertical calculation.
-        4. include_stacking: Whether the products can be stacked on the shelf or not
-        5. minimum_facing_for_block: Minimum number of facings that needs to be in a block to consider it as one.
-        6. adjacency_overlap_ratio: Minimal threshold the overlap between the products must exceeds to be considered
-                as adjacent.
-        7. allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        8. minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        9. check_vertical_horizontal: True if the orientation (vertical or horizontal) of the block should be checked for.
-        :return: df with the following fields;
-                block (Graph), scene_fk, orientation (string - vertical or horizontal), facing_percentage.
-
-        """
-        img_maker = ImageMaker('gmius', 986, additional_attribs=['sub_category_local_name'])
-
-        block_parameters = {'minimum_block_ratio': 0.75,
-                            'check_vertical_horizontal': self.check_vertical_horizontal,
-                            'allowed_products_filters': None,
-                            'adjacency_overlap_ratio': 0.4,
-                            'minimum_facing_for_block': 1,
-                            'include_stacking': False,
-                            'horizontal_bucket_size': self.horizontal_bucket_size,
-                            'outliers_threshold': self.outliers_threshold,
-                            'return_block_percentage': True}
-
-        ''' error if none '''
-        block_parameters.update(additional)
-
-
-        self.horizontal_bucket_size = block_parameters['horizontal_bucket_size']
-        self.outliers_threshold = block_parameters['outliers_threshold']
-        self.check_vertical_horizontal = block_parameters['check_vertical_horizontal']
-        self.include_stacking = block_parameters['include_stacking']
-
-        # Constructing the result_df that will be returned if return_block_percentage = True
-        results_df = pd.DataFrame(columns=['block', 'scene_fk', 'orientation', 'facing_percentage'])
-
-        # Separate the filters on products from the filters on scene and get the relevant scenes
-        ''' error if none '''
-        relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
-        # relevant_scenes = self.scif.scene_id.unique()
-
-        if not relevant_scenes.any():
-            Log.info('No scenes with the requested location filter.')
-            # return results_df
-
-        # df = self.data_provider.matches[self.data_provider.matches.scene_fk.isin(relevant_scenes)]
-        # df.to_pickle('/home/TRAX/nissand/dev/sdk_factory/KPIUtils_v2/Calculations/Tests/block_matches_df.pkl')
-
-        # Constructing the product_name_df for the adj graph
-        product_name_df_columns = set(
-            ['product_fk', 'product_name', 'product_short_name', 'brand_name', 'product_type'] + population.keys())
-        product_name_df = self.data_provider.all_products[list(product_name_df_columns)]
-        product_name_df['index'] = range(len(product_name_df))
-
-        # Creating unified filters from the block filters and the allowed filters
-        unified_filters = population.copy()
-        if block_parameters['allowed_products_filters']:
-            for key in block_parameters['allowed_products_filters'].keys():
-                unified_filters[key] = block_parameters['allowed_products_filters'][key]
-
-        html_x = float(img_maker.html_builder.size[1])
-        html_y = float(img_maker.html_builder.size[0])
-        # For each relevant scene check if a block is exist
-        for scene in relevant_scenes:
-            print(scene)
-            # Get the specific scene data
-            scene_matches = self.data_provider.matches[self.data_provider.matches.scene_fk == scene]
-            product_data_df = self.data_provider.all_products[list(set(['product_fk'] + unified_filters.keys()))]
-            relevant_matches_for_block = self.filter_graph_data(scene_matches, product_data_df, population)
-
-            scene_data, matches_df = self.get_raw_data(scene_matches, product_data_df, unified_filters)
-
-            if (matches_df is None and scene_data.empty) or (scene_data is None and matches_df.empty):
-                continue
-
-            # Create the adjacency graph on the data we filtered above
-            adj_g = AdjacencyGraph(matches_df, scene_data, product_name_df,
-                                   product_attributes=['rect_x', 'rect_y'] + list(population.keys()),
-                                   name=None, adjacency_overlap_ratio=block_parameters['adjacency_overlap_ratio'])
-
-            # Creating the condensed graph based on the adjacency graph created above
-            condensed_graph_sku = adj_g.build_adjacency_graph_from_base_graph_by_level(population.keys()[0])
-
-            # Transferring the graph to be undirected
-            # condensed_graph_sku = condensed_graph_sku.to_undirected()
-
-            # Calculating all the components in the graph
-            # components = list(nx.connected_component_subgraphs(condensed_graph_sku))
-            components = list(nx.connected_component_subgraphs(adj_g.base_adjacency_graph.to_undirected()))
-
-            # Constructing the block_res df that will contain each block's data
-            blocks_res = pd.DataFrame(columns=['component', 'sum_of_facings', 'num_of_shelves'])
-            if matches_df is not None:
-                mpis_indexed = matches_df.set_index('scene_match_fk')
-            else:
-                mpis_indexed = scene_data.set_index('scene_match_fk')
-                mpis_indexed = mpis_indexed.join(scene_matches.set_index('scene_match_fk')[['shelf_px_right',
-                                                                                             'shelf_px_left',
-                                                                                             'shelf_px_bottom',
-                                                                                             'shelf_px_top',
-                                                                                             'rect_x',
-                                                                                             'rect_y',]])
-            adj_coords = adj_g.scene_data
-            x_mm = max(adj_coords['right'] + (adj_coords['right'] - adj_coords['left']) / 2.0)
-            y_mm = max(adj_coords['top'] + (adj_coords['top'] - adj_coords['bottom']) / 2.0)
-            x_ratio = html_x / x_mm
-            y_ratio = html_y / y_mm
-            # For each component in the graph calculate the blocks data
-            nodes = []
-            for i, component in enumerate(components):
-                img_maker.html_builder.add_cluster(group_num=i)
-                # print(len(component))
-                print('~~~~~~~')
-                print(len(component))
-                for j, node in component.nodes(data=True):
-
-                    # attribs = self.gen_relevant_node_attribs(node, mpis_indexed, i)
-                    # node = node['group_attributes']
-                    # mpis_fk = node['match_fk_list']
-                    # print(len(mpis_fk))
-                    mpis_fk = node['match_fk']
-                    attribs = mpis_indexed.loc[mpis_fk].to_dict()
-                    attribs['scene_match_fk'] = mpis_fk
-                    attribs['left'] = node['p1'].x
-                    attribs['top'] = node['p2'].y
-                    attribs['width'] = node['p2'].x - node['p1'].x
-                    attribs['height'] = node['p2'].y - node['p1'].y
-                    attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
-                    attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
-
-
-                    # attribs['w'] = attribs['width'] * x_ratio
-                    # attribs['h'] = attribs['height'] * y_ratio
-                    # # break
-                    # attribs['rect_x'] = attribs['left'] * x_ratio
-                    # attribs['rect_y'] = (node['p1'].y) * y_ratio
-                    attribs['cluster'] = i
-
-                    img_maker.html_builder.add_product(attribs)
-                    nodes.append(attribs['scene_match_fk'])
-
-            img_maker.html_builder.add_cluster(group_num=-1)
-            remaining = scene_matches[~scene_matches['scene_match_fk'].isin(nodes)]
-            for i, node in remaining.iterrows():
-                attribs = self.gen_irrelevant_node_attribs(node)
-                img_maker.html_builder.add_product(attribs)
-
-            img_maker.html_builder.products = img_maker.html_builder.products
-            z = img_maker.html_builder.return_html()
-        return adj_g, components
-
-    def gen_irrelevant_node_attribs(self, node):
-        attribs = node.to_dict()
-        # attribs['scene_match_fk'] = node['scene_match_fk']
-        attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
-        attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
-        attribs['cluster'] = -1
-        return attribs
-
     def network_x_block_together(self, population, location=None, additional=None):
 
         """
         :param location: The location parameters which the blocks are checked for (scene_type for example).
         :param population: These are the parameters which the blocks are checked for.
         :param additional: Additional attributes for the blocks calculation:
-        1. return_block_percentage: whether to return the % of the blocks found.
+        1. calculate_all_scenes: whether to check all the relevant scenes for a block or stop once a block was found.
                 If True, the function will search for blocks in all scenes (which will affect the performance!!).
                 If False, the function will stop running once a scene was found with the relevant block.
         2. horizontal_bucket_size: Used to calculate the number of products in order to determine whether a block
@@ -475,31 +327,25 @@ class Block(BaseCalculation):
                             'include_stacking': self.include_stacking,
                             'horizontal_bucket_size': self.horizontal_bucket_size,
                             'outliers_threshold': self.outliers_threshold,
-                            'return_block_percentage': True}
+                            'calculate_all_scenes': True}
 
-        ''' error if none '''
         block_parameters.update(additional)
 
+        # TODO - add tests
 
         self.horizontal_bucket_size = block_parameters['horizontal_bucket_size']
         self.outliers_threshold = block_parameters['outliers_threshold']
         self.check_vertical_horizontal = block_parameters['check_vertical_horizontal']
         self.include_stacking = block_parameters['include_stacking']
 
-        # Constructing the result_df that will be returned if return_block_percentage = True
+        # Constructing the result_df that will be returned if calculate_all_scenes = True
         results_df = pd.DataFrame(columns=['block', 'scene_fk', 'orientation', 'facing_percentage'])
 
         # Separate the filters on products from the filters on scene and get the relevant scenes
-        ''' error if none '''
-        # relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
-        relevant_scenes = self.scif.scene_id.unique()
+        relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
         if not relevant_scenes.any():
             Log.info('No scenes with the requested location filter.')
             return results_df
-        relevant_scenes = [342186]
-
-        # df = self.data_provider.matches[self.data_provider.matches.scene_fk.isin(relevant_scenes)]
-        # df.to_pickle('/home/TRAX/nissand/dev/sdk_factory/KPIUtils_v2/Calculations/Tests/block_matches_df.pkl')
 
         # Constructing the product_name_df for the adj graph
         product_name_df_columns = set(
@@ -566,14 +412,11 @@ class Block(BaseCalculation):
                         if block_parameters['check_vertical_horizontal']:
                             orientation = self.handle_horizontal_and_vertical(row.component, row.num_of_shelves)
 
-                            # if not return_block_percentage:
-                            #     return True, orientation
-
                         results_df = results_df.append(pd.DataFrame(columns=['block', 'scene_fk', 'orientation',
                                                                              'facing_percentage'],
                                                                     data=[[row.component, scene, orientation,
                                                                            facing_percentage]]))
-                        if not block_parameters['return_block_percentage']:
+                        if not block_parameters['calculate_all_scenes']:
                             return results_df
 
             except Exception as err:
@@ -588,6 +431,7 @@ class Block(BaseCalculation):
         :param num_of_shelves: num of shelves the block is spread on.
         :return: The threshold for removing the outliers for the horizontal/vertical calculation.
         """
+        #TODO - Optimize the function we should have some predefined calcs in pandas
 
         num_of_shelves = int(num_of_shelves)
         x_values = sorted(self.get_matches_by_graph_att(graph, 'rect_x'))
@@ -706,7 +550,7 @@ class Block(BaseCalculation):
     def get_raw_data(self, scene_matches, product_data_df, unified_filters):
         # Where we should look only on products with stacking_layer == 1
         if not self.include_stacking:
-            scene_data = adjust_stacking(scene_matches)
+            scene_data = CalculationUtils.adjust_stacking(scene_matches)
             # Filtering the scene_data to contain only the data relevant for the block
             scene_data = self.filter_graph_data(scene_data, product_data_df, unified_filters)
             matches_df = None
@@ -716,64 +560,81 @@ class Block(BaseCalculation):
             scene_data = None
         return scene_data, matches_df
 
+    def network_x_block_together2(self, population, location=None, additional=None):
 
-def adjust_stacking(matches):
-    """
-    :param matches df filtered  to a specific scene
-    :return: scene df with products only with stacking_layer = 1 and mask adjusted.
-    """
-    # Group of all the products in a single bay, shelf, sequence coordinate.
-    grouped_products = matches.groupby(
-        ['bay_number', 'shelf_number', 'facing_sequence_number'], as_index=False)['scene_match_fk'].apply(list)
-    grouped_products = grouped_products.reset_index(drop=False).rename(columns={0:'scene_match_fk'})
+        """
+        :param location: The location parameters which the blocks are checked for (scene_type for example).
+        :param population: These are the parameters which the blocks are checked for.
+        :param additional: Additional attributes for the blocks calculation:
+        1. calculate_all_scenes: whether to check all the relevant scenes for a block or stop once a block was found.
+                If True, the function will search for blocks in all scenes (which will affect the performance!!).
+                If False, the function will stop running once a scene was found with the relevant block.
+        2. horizontal_bucket_size: Used to calculate the number of products in order to determine whether a block
+                is vertical or horizontal. Usually 1ft - the length of the bay
+        3. outliers_threshold: The threshold for removing the outliers for the horizontal/vertical calculation.
+        4. include_stacking: Whether the products can be stacked on the shelf or not
+        5. minimum_facing_for_block: Minimum number of facings that needs to be in a block to consider it as one.
+        6. adjacency_overlap_ratio: Minimal threshold the overlap between the products must exceeds to be considered
+                as adjacent.
+        7. allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+        8. minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
+        9. check_vertical_horizontal: True if the orientation (vertical or horizontal) of the block should be checked for.
+        :return: df with the following fields;
+                block (Graph), scene_fk, orientation (string - vertical or horizontal), facing_percentage.
 
-    # The bottom product of each group (stalking layer = 1) - the significant product.
-    match_fk_location = matches[matches.stacking_layer==1][
-        ['bay_number', 'shelf_number', 'facing_sequence_number','scene_match_fk', 'product_fk']].drop_duplicates()
+        """
 
-    # Generating the scene data
-    coordinates = FactsForHtmls.calculate_coordinates_for_html(matches)
-    normalized_coordinates = FactsForHtmls.normalize_coordinates(coordinates)
-    scene_data = FactsForHtmls.calculate_properties(normalized_coordinates)
+        block_parameters = {'minimum_block_ratio': 0.75,
+                            'check_vertical_horizontal': self.check_vertical_horizontal,
+                            'allowed_products_filters': None,
+                            'adjacency_overlap_ratio': 0.4,
+                            'minimum_facing_for_block': 1,
+                            'include_stacking': self.include_stacking,
+                            'horizontal_bucket_size': self.horizontal_bucket_size,
+                            'outliers_threshold': self.outliers_threshold,
+                            'calculate_all_scenes': True}
 
-    # Constructing the new scene data.
-    new_scene_data = pd.DataFrame(
-        columns=['scene_match_fk', 'product_fk', 'bay_number', 'shelf_number', 'left', 'right', 'top', 'bottom'])
+        block_parameters.update(additional)
 
-    # For each significant product we construct a row with a bounding box over all the products in the group.
-    for match_fk in match_fk_location.scene_match_fk.unique():
+        # TODO - add tests
 
-        # The significant product coordinate
-        coordinate = match_fk_location[match_fk_location.scene_match_fk == match_fk][
-            ['bay_number', 'shelf_number', 'facing_sequence_number']]
+        self.horizontal_bucket_size = block_parameters['horizontal_bucket_size']
+        self.outliers_threshold = block_parameters['outliers_threshold']
+        self.check_vertical_horizontal = block_parameters['check_vertical_horizontal']
+        self.include_stacking = block_parameters['include_stacking']
 
-        # The significant product group matches.
-        relevant_matches = pd.merge(
-            grouped_products,
-            coordinate,
-            on=['bay_number', 'shelf_number', 'facing_sequence_number'])['scene_match_fk'].values.tolist()[0]
+        # Constructing the result_df that will be returned if calculate_all_scenes = True
+        results_df = pd.DataFrame(columns=['block', 'scene_fk', 'orientation', 'facing_percentage'])
 
-        # The significant product group matches df.
-        relevant_scene_data = scene_data[scene_data.scene_match_fk.isin(relevant_matches)]
+        # Constructing the product_name_df for the adj graph
+        product_name_df_columns = set(
+            ['product_fk', 'product_name', 'product_short_name', 'brand_name', 'product_type'] + population.keys())
+        product_name_df = self.data_provider.all_products[list(product_name_df_columns)]
+        product_name_df['index'] = range(len(product_name_df))
 
-        # product_fk of the bottom product
-        product_fk = match_fk_location[match_fk_location.scene_match_fk == match_fk].product_fk.values[0]
+        # Creating unified filters from the block filters and the allowed filters
+        unified_filters = population.copy()
+        if block_parameters['allowed_products_filters']:
+            for key in block_parameters['allowed_products_filters'].keys():
+                unified_filters[key] = block_parameters['allowed_products_filters'][key]
 
-        # bay and shelf number of the significant product group
-        bay_number, shelf_number = coordinate.values[0][:2]
+        try:
+            # Get the specific scene data
+            relevant_scenes = self.input_parser.filter_df_by_conditions(location, self.scif).scene_id.unique()
+            scene_matches = self.data_provider.matches[self.data_provider.matches.scene_fk.isin(relevant_scenes)]
+            product_data_df = self.data_provider.all_products[list(set(['product_fk'] + unified_filters.keys()))]
+            relevant_matches_for_block = self.filter_graph_data(scene_matches, product_data_df, population)
 
-        # Bounding box of the significant product group
-        left = min(relevant_scene_data.left.values)
-        right = max(relevant_scene_data.right.values)
-        bottom = min(relevant_scene_data.bottom.values)
-        top = max(relevant_scene_data.top.values)
+            scene_data, matches_df = self.get_raw_data(scene_matches, product_data_df, unified_filters)
 
-        row = pd.DataFrame(
-            data=[[match_fk, product_fk, bay_number, shelf_number, left, right, top, bottom]],
-            columns=['scene_match_fk', 'product_fk', 'bay_number', 'shelf_number', 'left', 'right', 'top', 'bottom'])
+            # Create the adjacency graph on the data we filtered above
+            adj_g = AdjacencyGraph(matches_df, scene_data, product_name_df,
+                                   product_attributes=['rect_x', 'rect_y'] + list(population.keys()),
+                                   name=None, adjacency_overlap_ratio=block_parameters['adjacency_overlap_ratio'])
 
-        new_scene_data = new_scene_data.append(row)
+            components = list(nx.connected_component_subgraphs(adj_g.base_adjacency_graph.to_undirected()))
+        except:
+            components = []
 
-    # new_scene_data.to_pickle('/home/TRAX/nissand/dev/sdk_factory/KPIUtils_v2/Calculations/Tests/real_scene_data.pkl')
-    return new_scene_data
-
+        return components
