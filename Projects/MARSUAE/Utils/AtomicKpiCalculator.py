@@ -133,13 +133,18 @@ class DistributionCalculation(KpiBaseCalculation):
         import json
         assortment_result = self._data_provider.assortment.get_lvl3_relevant_ass()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        scene_type = json.loads(assortment_result.iloc[0]['additional_attributes']).get('scene_type')
+        scene_types = json.loads(assortment_result.iloc[0]['additional_attributes']).get('scene_type')
+        scene_types = self.split_and_strip(scene_types)
         scif = self._data_provider.scene_item_facts.copy()
         products_in_session = scif.loc[scif['facings'] > 0]
-        products_in_session = products_in_session[products_in_session['template_name'] == scene_type][
+        products_in_session = products_in_session[products_in_session['template_name'].isin(scene_types)][
             'product_fk'].values
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
+
+    @staticmethod
+    def split_and_strip(param):
+        return map(lambda x: x.strip(), param.split(','))
 
     def write_to_db_per_sku_and_count_pass(self, kpi_sku, assortment_result, parent_level_2_identifier):
         count_pass_product = 0
