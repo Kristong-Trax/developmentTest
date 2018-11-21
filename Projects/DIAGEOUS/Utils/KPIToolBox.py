@@ -56,7 +56,7 @@ class DIAGEOUSToolBox:
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
-        self.ps_data = PsDataProvider(self.data_provider, self.output, assortment_filter=store_number_1)
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.state = self.ps_data.get_state_name()
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
