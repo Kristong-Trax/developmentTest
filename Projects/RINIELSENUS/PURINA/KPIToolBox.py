@@ -1,7 +1,7 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 from KPIUtils_v2.DB.Common import Common
@@ -75,7 +75,7 @@ class PURINAToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.session_fk = self.session_info['pk'].values[0]
@@ -411,7 +411,7 @@ class PURINAToolBox:
         return False
 
     def get_session_category_data(self):
-        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         query = """select category_fk, resolution_fk, exclude_status_fk from probedata.session_category
                 where session_fk = {}""".format(self.session_fk)
         # query = """select c.category_fk, s.resolution_code_fk, s.exclude_status_fk from probedata.session_category c

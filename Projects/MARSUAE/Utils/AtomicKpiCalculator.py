@@ -115,10 +115,10 @@ class DistributionCalculation(KpiBaseCalculation):
             product_total_in_assortment = len(assortment_result)
         # else:
         #     log.debug('Assortment name: {} not exists in DB'.format(params['Assortment group'].iloc[0]))
-        return self._create_kpi_result(fk=self.kpi_fk, numerator_id=3,
-                                       numerator_result=result, denominator_id=self._data_provider.store_fk,
-                                       denominator_result=product_total_in_assortment,
-                                       score=result, result=result, weight=points, target=target)
+        return self._create_kpi_result(fk=self.kpi_fk, score=result, result=result, weight=points, target=target,
+                                       numerator_id=3, numerator_result=result,
+                                       denominator_id=self._data_provider.store_fk,
+                                       denominator_result=product_total_in_assortment)
 
     @staticmethod
     def get_assortment_group_fk(assortment_name, data_provider):
@@ -133,20 +133,25 @@ class DistributionCalculation(KpiBaseCalculation):
         import json
         assortment_result = self._data_provider.assortment.get_lvl3_relevant_ass()
         assortment_result = assortment_result[assortment_result['assortment_group_fk'] == assortment_fk]
-        scene_type = json.loads(assortment_result.iloc[0]['additional_attributes']).get('scene_type')
+        scene_types = json.loads(assortment_result.iloc[0]['additional_attributes']).get('scene_type')
+        scene_types = self.split_and_strip(scene_types)
         scif = self._data_provider.scene_item_facts.copy()
         products_in_session = scif.loc[scif['facings'] > 0]
-        products_in_session = products_in_session[products_in_session['template_name'] == scene_type][
+        products_in_session = products_in_session[products_in_session['template_name'].isin(scene_types)][
             'product_fk'].values
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
 
+    @staticmethod
+    def split_and_strip(param):
+        return map(lambda x: x.strip(), param.split(','))
+
     def write_to_db_per_sku_and_count_pass(self, kpi_sku, assortment_result, parent_level_2_identifier):
         count_pass_product = 0
         for i, row in assortment_result.iterrows():
-            product_result = self._create_kpi_result(fk=kpi_sku, numerator_id=row['product_fk'],
-                                                     numerator_result=row['in_store'], score=row['in_store'] * 100,
-                                                     result=self.get_result_value(row['in_store']))
+            product_result = self._create_kpi_result(fk=kpi_sku, score=row['in_store'] * 100,
+                                                     result=self.get_result_value(row['in_store']),
+                                                     numerator_id=row['product_fk'], numerator_result=row['in_store'])
             product_result.update({'identifier_parent':
                                        self._data_provider.common_v2.get_dictionary(kpi_fk=parent_level_2_identifier),
                                    'should_enter': True})
@@ -179,28 +184,41 @@ class AvailabilityCalculation(KpiBaseCalculation):
         return 'Availability'
 
     def calculate(self, params):
-        result = score = 0
+        result = score = actual = 0
         target = float(params['minimum products'].iloc[0])
         points = float(params['Points'].iloc[0])
 
-        filters = {params['Type_1'].iloc[0]: self.split_and_strip(params['Value_1'].iloc[0]),
-                   'template_name': self.split_and_strip(params['scene type'].iloc[0])}
+        filters = {'template_name': self.split_and_strip(params['scene type'].iloc[0])}
+        filters.update({params['Type_1'].iloc[0]: self.split_and_strip(params['Value_1'].iloc[0])})
         if params['Type_2'].iloc[0]:
             filters.update({params['Type_2'].iloc[0]: self.split_and_strip(params['Value_2'].iloc[0])})
         filtered_scif = self._scif[self._toolbox.get_filter_condition(self._scif, **filters)]
         if not filtered_scif.empty:
-            if sum(filtered_scif.facings) >= target:
-                result = score = 100
-            score *= points
+            actual, score, result = self.check_result_by_type(params, filtered_scif, target, points)
 
-        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score,
-                                       numerator_id=3, target=target, numerator_result=None,
-                                       denominator_id=self._data_provider.store_fk,
-                                       denominator_result=None, weight=points)
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=score, weight=points, target=target,
+                                       numerator_id=3, numerator_result=actual,
+                                       denominator_id=self._data_provider.store_fk, denominator_result=None)
 
     @staticmethod
     def split_and_strip(param):
         return map(lambda x: x.strip(), param.split(','))
+
+    def check_result_by_type(self, params, filtered_scif, target, points):
+        type = params['Type_1'].iloc[0]
+        value = params['Value_1'].iloc[0]
+        if type == 'template_name':
+            score = len(filtered_scif['scene_fk'].unique().tolist())
+        elif type == 'display_brand':
+            display_df = self._data_provider.match_display_in_scene
+            score = len(display_df[display_df['name'] == value])
+        else:
+            score = sum(filtered_scif.facings)
+
+        if score >= target:
+            return score, points, 100
+        else:
+            return score, 0, 0
 
 
 class AggregationCalculation(KpiBaseCalculation):
@@ -211,7 +229,6 @@ class AggregationCalculation(KpiBaseCalculation):
     def calculate(self, params):
         result = params['score']
         potential = params['potential']
-        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result,
-                                       numerator_id=3, weight=potential,
-                                       numerator_result=None, denominator_id=self._data_provider.store_fk,
-                                       denominator_result=None)
+        return self._create_kpi_result(fk=self.kpi_fk, result=result, score=result, weight=potential,
+                                       numerator_id=3, numerator_result=result,
+                                       denominator_id=self._data_provider.store_fk, denominator_result=result)

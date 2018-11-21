@@ -9,6 +9,9 @@
 #     Config.init()
 #     project_name = 'marsru2-sand'
 #     session_uids = [
+#         '8a3d85bf-b31c-4951-9c1a-afdc79b03ba2',
+#         '955d47a6-5c8d-4f83-9646-2f9b4f0c46b9',
+#
 #         '265666b4-07ca-4529-88d2-bd686c44786a',
 #         'f2c37663-24e5-4942-bea0-eabb03f9704b',
 #         'cf6ec220-ec7c-4dfa-8538-5d28c749ff47',

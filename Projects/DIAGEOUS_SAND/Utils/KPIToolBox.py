@@ -12,7 +12,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 # from Projects.DIAGEOUS_SAND.Utils.Fetcher import Queries
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.Connector import ProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from KPIUtils_v2.DIAGEOUS_SANDCalculations.AvailabilityDIAGEOUS_SANDCalculations import Availability
 # from KPIUtils_v2.DIAGEOUS_SANDCalculations.NumberOfScenesDIAGEOUS_SANDCalculations import NumberOfScenes
 # from KPIUtils_v2.DIAGEOUS_SANDCalculations.PositionGraphsDIAGEOUS_SANDCalculations import PositionGraphs

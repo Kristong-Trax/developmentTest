@@ -6,10 +6,10 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CCUS.DISPLAYS.GeneralToolBox import DISPLAYSGENERALToolBox
 from Projects.CCUS.DISPLAYS.Fetcher import DISPLAYSQueries
 from Projects.CCUS.DISPLAYS.ParseTemplates import parse_template
@@ -71,7 +71,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         # self.all_products = self.all_products.merge(self.get_additional_attributes(), on='product_fk', how='left')
         self.match_display_in_scene = self.get_match_display()
@@ -260,7 +260,7 @@ class DISPLAYSToolBox(DISPLAYSConsts):
         This function writes all KPI results to the DB, and commits the changes.
         """
         self.rds_conn.disconnect_rds()
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = DISPLAYSQueries.get_delete_session_results_query(self.session_uid, self.kpi_static_data)
         for query in delete_queries:

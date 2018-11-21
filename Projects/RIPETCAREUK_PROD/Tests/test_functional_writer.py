@@ -3,7 +3,7 @@
 # from datetime import date, datetime
 # from pandas.util.testing import assert_frame_equal
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestCase
 # from mock import patch
@@ -46,19 +46,19 @@
 #
 #     @staticmethod
 #     def _get_kpk_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kpk_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_kpi_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kpi_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_kps_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kps_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
@@ -185,7 +185,7 @@
 #
 #     def initialize_writer(self):
 #         project_name = 'test_project_1'
-#         rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+#         rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
 #         UpdateStaticData(project_name).update_static_data()
 #         writer = KpiResultsWriter(session_uid='2459490b-8333-41fc-be40-3ac046dfb885',
 #                                   store_id=1365,

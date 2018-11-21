@@ -4,7 +4,7 @@ import numpy as np
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -55,7 +55,7 @@ class RISPARKWINEDEToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(
+        self.rds_conn = PSProjectConnector(
             self.project_name, DbUsers.CalculationEng)
         self.tools = RISPARKWINEDEGENERALToolBox(
             self.data_provider, self.output, rds_conn=self.rds_conn)
@@ -166,7 +166,7 @@ class RISPARKWINEDEToolBox:
         delete_query = RISPARKWINEDEQueries.get_delete_session_results_query(
             self.session_uid, self.session_id)
         Log.info('Start committing results')
-        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = local_con.db.cursor()
         # for query in delete_queries:
         cur.execute(delete_query)

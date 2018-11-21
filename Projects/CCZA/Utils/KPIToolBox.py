@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.Utils import ToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CCZA.Utils.Fetcher import CCZAQueries
 from Projects.CCZA.Utils.ParseTemplates import parse_template
 from Projects.CCZA.Utils.Const import Const
@@ -33,7 +33,7 @@ class CCZAToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         # self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
         query_store_type = CCZAQueries.get_attr3(self.session_uid)
         store_type = pd.read_sql_query(query_store_type, self.rds_conn.db)
