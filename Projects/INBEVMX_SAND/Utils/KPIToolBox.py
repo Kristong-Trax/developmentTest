@@ -8,7 +8,7 @@ import json
 from pandas.io.json import json_normalize
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common as Common_V2, log_runtime
 from Projects.INBEVMX_SAND.Data.Const import Const
@@ -43,7 +43,7 @@ class INBEVMXToolBox:
         self.tools = GENERALToolBox(self.data_provider)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.survey = Survey(self.data_provider, self.output)
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common_v2.get_kpi_static_data()
         self.kpi_results_queries = []
         self.kpi_results_new_tables_queries = []
@@ -112,6 +112,7 @@ class INBEVMXToolBox:
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
         products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk','facings']].fillna(0)
+        products_df = products_df.groupby('product_fk').sum().reset_index()
         try:
             atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         except IndexError:

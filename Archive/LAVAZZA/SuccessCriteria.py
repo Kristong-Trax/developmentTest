@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 
 __author__ = 'Nimrod'
@@ -29,7 +29,7 @@ class LAVAZZAGSuccessCriteria:
         self.session_uid = self.data_provider.session_uid
         self.session_id = self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.scene_info = self.get_scenes_data()
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.review_date = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
 
     def get_scenes_data(self):

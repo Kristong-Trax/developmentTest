@@ -1,10 +1,11 @@
-import pandas as pd
 import os
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Utils.Logging.Logger import Log
+import pandas as pd
+
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'Nimrod'
 
@@ -36,7 +37,7 @@ class CCRUAddKPIs(CCRUConsts):
     """
     def __init__(self, project, template_path):
         self.project = project
-        self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+        self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
         self.data = pd.read_excel(template_path)
         self.sets_added = {}

@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
@@ -68,12 +68,12 @@ class BATRUGENERALToolBox:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property
@@ -1047,7 +1047,7 @@ class BATRUGENERALToolBox:
 
     def commit_results(self, queries):
         self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         for query in self.update_queries:
             try:
@@ -1056,12 +1056,12 @@ class BATRUGENERALToolBox:
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+                rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
                 continue
         rds_conn.db.commit()
         rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         for query in queries:
             try:
@@ -1070,7 +1070,7 @@ class BATRUGENERALToolBox:
             except Exception as e:
                 Log.info('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector('batru', DbUsers.CalculationEng)
+                rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
                 continue
         rds_conn.db.commit()

@@ -9,7 +9,7 @@ from Projects.RINIELSENUS.Exceptions import AtomicKpiNotInStaticException, KpiNo
 from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
 from Projects.RINIELSENUS.Utils.Utils import log_runtime, get_all_kpi_static_data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -18,7 +18,7 @@ KPS_RESULT = 'report.kps_results'
 
 class KpiResultsWriter(object):
     def __init__(self, session_uid, store_id, visit_date, project_name):
-        rds_conn = AwsProjectConnector(project_name, DbUsers.ReadOnly)
+        rds_conn = PSProjectConnector(project_name, DbUsers.ReadOnly)
         self._kpi_static_data = get_all_kpi_static_data(rds_conn.db)
         rds_conn.disconnect_rds()
         self._project_name = project_name
@@ -120,7 +120,7 @@ class KpiResultsWriter(object):
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        rds_conn = AwsProjectConnector(self._project_name, DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector(self._project_name, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         delete_queries = MarsUsQueries.get_delete_session_results_query(self._session_uid)
         for query in delete_queries:
