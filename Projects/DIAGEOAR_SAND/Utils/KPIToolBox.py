@@ -18,6 +18,11 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+# Relative Position params
+TESTED_VALUE = 'Tested Product Name'
+ANCHOR_VALUE = 'Anchor Product Name'
+TESTED_TYPE = 'Tested Type'
+ANCHOR_TYPE = 'Anchor Type'
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -103,6 +108,11 @@ class DIAGEOARToolBox:
             filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
             set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
             self.save_level2_and_level3(set_name, set_name, set_score)
+
+        elif set_name in ('Relative Position'):
+            # since migration is imminent, we aren't using self.tools within the project folder
+            set_score = self.calculate_relative_position_sets(set_name)
+
         else:
             return
 
@@ -114,6 +124,43 @@ class DIAGEOARToolBox:
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return
+
+    def calculate_relative_position_sets(self, set_name):
+        """
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_info.at[0, 'additional_attribute_2'] == params.get('additional_attribute_2', 'Empty'):
+                tested_filters = {params.get(TESTED_TYPE): params.get(TESTED_VALUE)}
+                anchor_filters = {params.get(ANCHOR_TYPE): params.get(ANCHOR_VALUE)}
+                direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
+                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
+                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
+
+    def _get_direction_for_relative_position(self, value):
+        """
+        This function converts direction data from the template (as string) to a number.
+        """
+        if value == self.tools.UNLIMITED_DISTANCE:
+            value = 1000
+        elif not value or not str(value).isdigit():
+            value = 0
+        else:
+            value = int(value)
+        return value
 
     def calculate_assortment_sets(self, set_name):
         """
