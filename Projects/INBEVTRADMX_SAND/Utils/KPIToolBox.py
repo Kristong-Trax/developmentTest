@@ -363,7 +363,8 @@ class INBEVTRADMXToolBox:
         for brand in brand_names:
             filters_dict.update({'brand_name': brand})
             # call the generic method from KPIUtils_v2
-            if self.availability.calculate_availability(**filters_dict):
+            availability_score = self.availability.calculate_availability(**filters_dict)
+            if self.decide_availability_score(row, availability_score):
                 return True
         return False
 
