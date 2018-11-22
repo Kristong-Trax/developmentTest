@@ -8,9 +8,10 @@
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
 # from Trax.Data.Testing.TestProjects import TestProjectsNames
 # from Trax.Utils.Testing.Case import MockingTestCase
+# from mock import patch
 #
-# from Tests.Data.TestData.test_data_nestleapi_sand_sanity import ProjectsSanityData
-# from Projects.NESTLEAPI_SAND.Calculations import NESTLEAPICalculations
+# from Tests.Data.TestData.test_data_diageoru_sand_sanity import ProjectsSanityData
+# from Projects.DIAGEORU_SAND.Calculations import DIAGEORUCalculations
 # from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 #
 #
@@ -39,13 +40,16 @@
 #         self.assertNotEquals(len(kpi_results), 0)
 #         connector.disconnect_rds()
 #
-#     @seeder.seed(["nestleapi_sand_seed"], ProjectsSanityData())
-#     def test_nestleapi_sand_sanity(self):
+#     @patch('Projects.DIAGEORU_SAND.Utils.ToolBox.DIAGEORUDIAGEOToolBox.get_latest_directory_date_from_cloud',
+#            return_value='2018-05-18')
+#     @patch('Projects.DIAGEORU_SAND.Utils.ToolBox.DIAGEORUDIAGEOToolBox.save_latest_templates')
+#     @seeder.seed(["diageoru_sand_seed"], ProjectsSanityData())
+#     def test_diageoru_sand_sanity(self, x, y):
 #         project_name = ProjectsSanityData.project_name
 #         data_provider = KEngineDataProvider(project_name)
-#         sessions = ['ade42e23-4c25-4cf9-944b-b0016bf46403']
+#         sessions = ['aef8cee0-682a-4972-9359-c83ec5547653']
 #         for session in sessions:
 #             data_provider.load_session_data(session)
 #             output = Output()
-#             NESTLEAPICalculations(data_provider, output).run_project_calculations()
+#             DIAGEORUCalculations(data_provider, output).run_project_calculations()
 #             self._assert_kpi_results_filled()
