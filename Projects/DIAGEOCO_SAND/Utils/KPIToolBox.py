@@ -106,9 +106,9 @@ class DIAGEOCO_SANDToolBox:
             elif set_name == 'Activation Standard':
                 manufacturer_fk = 74# Diageo manfacutrer
                 results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
-                                                                                          self.set_templates_data
-                                                                                          [set_name], self.store_id,
+                                                                                          self.set_templates_data[set_name], self.store_id,
                                                                                           manufacturer_fk)
+
                 self.save_results_to_db(results_list)
 
             elif set_name == 'TOUCH POINT':
@@ -128,9 +128,9 @@ class DIAGEOCO_SANDToolBox:
             elif set_score is False:
                 return
 
-            if set_name != 'TOUCH POINT': # we need to do this to prevent duplicate entries in report.kps_results
-                set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-                self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            # if set_name != 'TOUCH POINT': # we need to do this to prevent duplicate entries in report.kps_results
+            #     set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            #     self.write_to_db_result(set_fk, set_score, self.LEVEL1)
         return
 
     def save_results_to_db(self, results_list):
