@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
-from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'Sergey'
 

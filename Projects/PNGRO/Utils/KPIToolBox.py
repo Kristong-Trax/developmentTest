@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import json
 
 import pandas as pd
 import numpy as np
@@ -296,10 +297,10 @@ class PNGRO_PRODToolBox:
                 self.eye_level_args["Number of shelves min"] <= row['shelf_number_from_bottom'])][["Ignore from top",
                                                                                                 "Ignore from bottom"]]
         if res_table.empty:
-            return
+            return []
         start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
         end_shelf = row['shelf_number_from_bottom'] - res_table['Ignore from top'].iloc[0]
-        final_shelves = range(start_shelf, end_shelf + 1)
+        final_shelves = json.dumps(range(start_shelf, end_shelf + 1))
         return final_shelves
 
     def get_facings_scene_bay_shelf(self, row):
@@ -307,7 +308,7 @@ class PNGRO_PRODToolBox:
         if row['shelf_range']:
             relevant_matches_products = self.matches_products[(self.matches_products['bay_number'] == row.bay_number)&
                                                               (self.matches_products['shelf_number_from_bottom'].isin(
-                                                                                                            row.shelf_range))&
+                                                                                        json.loads(row.shelf_range)))&
                                                             (self.matches_products['scene_fk'] == row.scene_fk)]
             facings_at_eye_lvl = len(relevant_matches_products)
         return facings_at_eye_lvl
@@ -319,15 +320,48 @@ class PNGRO_PRODToolBox:
             filters, target = self.get_eye_lvl_or_display_filters_for_kpi(params)
             filters['scene_fk'] = general_filters['scene_id']
             filters.update(**general_filters)
-            matches_products = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
-            self.matches_products = matches_products[self.tools.get_filter_condition(matches_products, **filters)]
-            scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number', 'shelf_number_from_bottom']].groupby(
-                ['scene_fk', 'bay_number'], as_index=False).agg({'shelf_number_from_bottom': np.max})
+            matches_products_all = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
+            self.matches_products = matches_products_all[self.tools.get_filter_condition(matches_products_all,
+                                                                                         **filters)]
+            scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number']].drop_duplicates()
+            scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
+                                                                                      axis=1)
+            scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
+            # scene_bays_shelves['count'] = 0
+            # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
+            #                                                 as_index=False).agg({'count': np.size})
             scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
+            # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
             scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
             skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
         score = min(skus_at_eye_lvl / target, 1)
         return score, skus_at_eye_lvl, target
+
+    def add_eye_level_shelf_range(self, scene_bays_shelves):
+        scene_bays_shelves = scene_bays_shelves.assign(shelf_range='')
+        for i, row in scene_bays_shelves.iterrows():
+            res_table = \
+                self.eye_level_args[
+                    (self.eye_level_args["Number of shelves max"] >= row['shelf_number_from_bottom']) & (
+                            self.eye_level_args["Number of shelves min"] <= row['shelf_number_from_bottom'])][
+                    ["Ignore from top",
+                     "Ignore from bottom"]]
+            if res_table.empty:
+                final_shelves = []
+            else:
+                start_shelf = res_table['Ignore from bottom'].iloc[0] + 1
+                end_shelf = row['shelf_number_from_bottom'] - res_table['Ignore from top'].iloc[0]
+                final_shelves = range(start_shelf, end_shelf + 1)
+            scene_bays_shelves.at[i,'shelf_range'] = final_shelves
+        return scene_bays_shelves
+
+
+    def add_max_shelves_number(self, row):
+        total_shelves = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] ==
+                                                     row.bay_number) & (
+                                                            self.match_product_in_scene['scene_fk'] == row.scene_fk)][
+            'shelf_number_from_bottom'].max()
+        return total_shelves
 
     def get_eye_lvl_or_display_filters_for_kpi(self, params):
         type1 = params['Param Type (1)/ Numerator']

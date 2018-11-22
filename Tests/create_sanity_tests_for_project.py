@@ -43,8 +43,13 @@ class SeedCreator:
         """
         Log.info('Fetching {} sessions'.format(number_of_sessions))
         query = """
-     "'6A8F68EB-9092-4F13-8230-F77CB3452A43','80519624-CE27-44CE-9343-264F27ECDBD6'"
-            LIMIT {0};
+        SELECT s.session_uid, s.pk FROM probedata.session s
+        join reporting.scene_item_facts r on r.session_id = s.pk
+        WHERE
+            status = 'Completed' 
+            and r.session_id is not null  
+            ORDER BY s.visit_date , s.number_of_scenes DESC
+            LIMIT {};
         """.format(number_of_sessions)
         sessions_df = pd.read_sql(query, self.rds_conn.db)
         for session in sessions_df.session_uid.values:
@@ -222,10 +227,10 @@ class ProjectsSanityData(BaseSeedData):
 if __name__ == '__main__':
     LoggerInitializer.init('')
     Config.init()
-    project_to_test = 'ccru'
+    project_to_test = 'penaflorar-sand'
     creator = SeedCreator(project_to_test)
     creator.activate_exporter(specific_sessions=
-                              ['6A8F68EB-9092-4F13-8230-F77CB3452A43', '80519624-CE27-44CE-9343-264F27ECDBD6'])
+                              ['d3e06f7a-fdcc-4814-a1fa-3eb5878ba183'])
     creator.rds_conn.disconnect_rds()
     data_class = CreateTestDataProjectSanity(project_to_test)
     data_class.create_data_class()

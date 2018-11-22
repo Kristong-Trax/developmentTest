@@ -42,18 +42,18 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.PENAFLORAR_SAND.Utils.ToolBox.PENAFLORAR_SANDDIAGEOToolBox.get_latest_directory_date_from_cloud',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-02-20')
-    @patch('Projects.PENAFLORAR_SAND.Utils.ToolBox.PENAFLORAR_SANDDIAGEOToolBox.save_latest_templates')
-    @patch('Projects.PENAFLORAR_SAND.Utils.ToolBox.PENAFLORAR_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=mpa)
-    @patch('Projects.PENAFLORAR_SAND.Utils.ToolBox.PENAFLORAR_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=products)
     @seeder.seed(["penaflorar_sand_seed"], ProjectsSanityData())
     def test_penaflorar_sand_sanity(self, x, y, json, json2):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['cb1f5608-488a-4eb3-bb50-68298b255390']
+        sessions = ['d3e06f7a-fdcc-4814-a1fa-3eb5878ba183']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
