@@ -20,7 +20,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageobenelux-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = '0CE0A1EB-D44B-42F9-8259-118F5739F770'
+    session = ' '
     data_provider.load_session_data(session)
     output = Output()
     DIAGEOBENELUX_SANDCalculations(data_provider, output).run_project_calculations()
