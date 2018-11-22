@@ -114,6 +114,7 @@ class DIAGEOIESandToolBox:
             # I see diageoie-prod will have the same problem so we need to remember it.
             #
             # Also, I changed the configuration on the sql, come to me and I'll explain you all about the change
+            # Job is done but i didn't push to master yet'
 
 
             # Global Secondary Displays
