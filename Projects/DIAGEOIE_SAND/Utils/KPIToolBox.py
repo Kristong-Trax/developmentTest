@@ -97,6 +97,7 @@ class DIAGEOIESandToolBox:
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
+        # Global Tap Brand Score
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
         res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
