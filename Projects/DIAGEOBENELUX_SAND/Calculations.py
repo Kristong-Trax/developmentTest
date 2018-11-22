@@ -15,12 +15,12 @@ class DIAGEOBENELUX_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageobenelux-sand calculations')
-    Config.init()
-    project_name = 'diageobenelux-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = ' '
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOBENELUX_SANDCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageobenelux-sand calculations')
+#     Config.init()
+#     project_name = 'diageobenelux-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = ' '
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOBENELUX_SANDCalculations(data_provider, output).run_project_calculations()
