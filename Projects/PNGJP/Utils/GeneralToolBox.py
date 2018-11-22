@@ -306,6 +306,7 @@ class PNGJPGENERALToolBox:
                         if len(edge_facings) > 1:
                             edge_facings = edge_facings.append(shelf_matches.iloc[-1])
             edge_facings = edge_facings[self.get_filter_condition(edge_facings, **filters)]
+            edge_facings = edge_facings[edge_facings['shelf_number_from_bottom'] > 1]
             total_edge = total_edge.append(edge_facings)
             if len(edge_facings) >= min_number_of_facings \
                     and len(edge_facings['shelf_number'].unique()) >= min_number_of_shelves:
