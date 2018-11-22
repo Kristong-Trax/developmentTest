@@ -1,6 +1,7 @@
 
 from datetime import datetime
 import pandas as pd
+import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -93,20 +94,27 @@ class DIAGEOIESandToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE_SAND',
+                                     'Data', 'Brand Score.xlsx')
+        self.diageo_generator.diageo_global_tap_brand_score_function(template_path)
+
 
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
+            # Idan, I found the reason the project was failing, in KPIGenerator the line was
+            # set_names = self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist()
+            # instead of:
+            # set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
+            # I see diageoie-prod will have the same problem so we need to remember it.
+            #
             # todo: Add diageo_global_tap_brand_score_function
-            # Ilay, take to your attention the this function already is a global function.
-            # I think that we need to add just diageo_generator.diageo_global_tap_brand_score_function(template_path)
-            # But I'm not 100% sure and not sure how do you prefer to handle with the template.
-            # Toda raba and let me know if I can assist somehow (:
+
 
             # Global Secondary Displays
             if set_name in ('Secondary Displays', 'Secondary'):
@@ -126,28 +134,13 @@ class DIAGEOIESandToolBox:
                 # Global function
                 sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+                # Saving to new tables
+                self.commonV2.save_json_to_new_tables(res_dict)
 
-                if res_dict:
-                    # Saving to new tables
-                    parent_res = res_dict[-1]
-                    self.commonV2.save_json_to_new_tables(res_dict)
-
-                    # Saving to old tables
-                    result = parent_res['result']
-                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-
-            # todo: delete after the migration is done
-            # if set_name in ('MPA', 'Local MPA', 'New Products',):
-            #     set_score = self.calculate_assortment_sets(set_name)
-            # if set_name == 'Secondary Displays':
-            #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-            #     if not set_score:
-            #         set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            #     self.save_level2_and_level3(set_name, set_name, set_score)
-            # elif set_name == 'Visible to Consumer %':
-            #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            #     self.save_level2_and_level3(set_name, set_name, set_score)
+                # Saving to old tables
+                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                self.save_level2_and_level3(set_name, set_name, set_score)
 
             if set_score == 0:
                 pass
