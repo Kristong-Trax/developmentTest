@@ -49,9 +49,9 @@ class Results(object):
                                                'should_enter': True,
                                                'fk': kpi_level_3_fk_2})
                         self.common_v2.write_to_db_result(**result_level_4)
-                    self.common_v1.write_to_db_result(score=int(result['score']), level=3, fk=kpi_level_3_fk_old)
-                    sum_level_2_result += int(result['score'])
-                    sum_level_2_potential += int(result['weight'])
+                    self.common_v1.write_to_db_result(score=float(result['score']), level=3, fk=kpi_level_3_fk_old)
+                    sum_level_2_result += float(result['score'])
+                    sum_level_2_potential += float(result['weight'])
 
                 calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_2_fk)
                 level_2_result = calculation.calculate({'score': sum_level_2_result,
@@ -62,8 +62,8 @@ class Results(object):
                                'should_enter': True})
                 self.common_v2.write_to_db_result(**result)
                 self.common_v1.write_to_db_result(score=int(result['score']), level=2, fk=kpi_level_2_fk_old)
-                sum_level_1_result += int(result['score'])
-                sum_level_1_potential += int(result['weight'])
+                sum_level_1_result += float(result['score'])
+                sum_level_1_potential += float(result['weight'])
 
             calculation = self._kpi_type_calculator_mapping['Aggregation'](self._data_provider, kpi_level_1_fk)
             level_1_result = calculation.calculate({'score': sum_level_1_result,
@@ -72,7 +72,7 @@ class Results(object):
             result.update({'identifier_result': parent_level_1_identifier,
                            'should_enter': True})
             self.common_v2.write_to_db_result(**result)
-            self.common_v1.write_to_db_result(score=int(result['score']), level=1, fk=kpi_level_1_fk_old)
+            self.common_v1.write_to_db_result(score=float(result['score']), level=1, fk=kpi_level_1_fk_old)
 
         # dependencies_graph = self.build_dependencies_graph(hierarchy)
         # kpi_list = self.build_kpi_list_from_dependencies_graph(dependencies_graph)

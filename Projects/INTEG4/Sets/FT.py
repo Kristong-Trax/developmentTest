@@ -9,7 +9,7 @@ from Projects.INTEG4.Utils.JSON import INTEG4JsonGenerator
 from Projects.INTEG4.Utils.ToolBox import INTEG4KPIToolBox
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'urid'
@@ -25,7 +25,7 @@ class INTEG4FTCalculations:
         self.output = output
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.tool_box = INTEG4KPIToolBox(self.data_provider, self.output, FT)

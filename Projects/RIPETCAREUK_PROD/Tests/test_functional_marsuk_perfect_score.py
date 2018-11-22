@@ -3,7 +3,7 @@
 # from MySQLdb.cursors import DictCursor
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Data.Testing.SeedNew import Seeder
 # from Trax.Utils.Testing.Case import TestCase, skip
 # from Trax.Utils.Testing.ConfigTest import TempTestConfig
@@ -56,7 +56,7 @@
 #         self.patchers.append(patcher)
 #
 #     def delete_atomic_kpi_by_atomic_and_set(self, atomic_name, set_name):
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = """
 #         delete static.atomic_kpi from static.atomic_kpi
 #         join static.kpi on static.kpi.pk = static.atomic_kpi.kpi_fk
@@ -67,7 +67,7 @@
 #         rds_conn.db.commit()
 #
 #     def delete_kpi_by_name_and_set(self, kpi_name, set_name):
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = """
 #         delete static.kpi from static.kpi
 #         join static.kpi_set on static.kpi_set.pk = static.kpi.kpi_set_fk
@@ -77,7 +77,7 @@
 #         rds_conn.db.commit()
 #
 #     def delete_kpi_set_by_name(self, set_name):
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = """
 #         delete from static.kpi_set
 #         where static.kpi_set.name = '{}';""".format(set_name)
@@ -87,19 +87,19 @@
 #
 #     @staticmethod
 #     def _get_kpk_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kpk_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_kpi_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kpi_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
 #     @staticmethod
 #     def _get_kps_results():
-#         rds_conn = AwsProjectConnector('test_project_1', DbUsers.ReadOnly)
+#         rds_conn = PSProjectConnector('test_project_1', DbUsers.ReadOnly)
 #         query = 'select * from report.kps_results;'
 #         return pd.read_sql_query(query, rds_conn.db)
 #
