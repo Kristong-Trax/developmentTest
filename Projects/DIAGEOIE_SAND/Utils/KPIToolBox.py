@@ -99,23 +99,13 @@ class DIAGEOIESandToolBox:
 
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
-        self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
-
+        res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
-            # Idan, I found the reason the project was failing, in KPIGenerator the line was
-            # set_names = self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist()
-            # instead of:
-            # set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
-            # I see diageoie-prod will have the same problem so we need to remember it.
-            #
-            # Also, I changed the configuration on the sql, come to me and I'll explain you all about the change
-            # Job is done but i didn't push to master yet'
-
 
             # Global Secondary Displays
             if set_name in ('Secondary Displays', 'Secondary'):
