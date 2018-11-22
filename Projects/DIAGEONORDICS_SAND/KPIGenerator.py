@@ -35,7 +35,7 @@ class DIAGEONORDICSGenerator:
             Log.warning('Scene item facts is empty for this session')
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
 
-        # Todo: Handle Activation Standard
+        # Todo: Handle Activation Standard ?
         # calculate_activation_standard = False
         # if self.tool_box.ACTIVATION_STANDARD in set_names:
         #     set_names.remove(self.tool_box.ACTIVATION_STANDARD)
