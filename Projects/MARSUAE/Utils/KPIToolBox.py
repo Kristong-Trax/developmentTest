@@ -1,13 +1,13 @@
 import os
 
 import pandas as pd
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.Common import Common as CommonV1
+from KPIUtils_v2.DB.Queries import Queries
 from KPIUtils_v2.Utils.Parsers import ParseTemplates
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SOSCalculations import SOS
@@ -49,6 +49,7 @@ class ToolBox:
             self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == self.channel]
         self.data_provider.sos = SOS(self.data_provider, output=None)
         self.data_provider.assortment = Assortment(self.data_provider, output=None)
+        self.data_provider.match_display_in_scene = self.get_match_display()
 
     def main_function(self):
         """
@@ -63,6 +64,11 @@ class ToolBox:
         query = self.get_store_attribute(1, store_fk)
         att15 = pd.read_sql_query(query, self.rds_conn.db)
         return att15.values[0][0]
+
+    def get_match_display(self):
+        query = Queries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
 
     @staticmethod
     def get_store_attribute(attribute, store_fk):
