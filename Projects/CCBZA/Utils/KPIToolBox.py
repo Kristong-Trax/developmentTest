@@ -550,6 +550,18 @@ class CCBZA_ToolBox:
         return result_list
 
     @staticmethod
+    def split_with_groups(string):
+        str_to_groups = string.split('|')
+        if len(str_to_groups) <= 1:
+            result_str = map(lambda x: x.strip(' '), str(str_to_groups[0]).split(',')) if str_to_groups else []
+        else:
+            result_str = []
+            for item in str_to_groups:
+                if item.strip(' '):
+                    result_str.append(map(lambda x: x.strip(' '), str(item).split(',')))
+        return result_str
+
+    @staticmethod
     def split_and_strip(string):
         return map(lambda x: x.strip(' '), str(string).split(',')) if string else []
 
