@@ -99,7 +99,7 @@ class DIAGEOIESandToolBox:
 
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE_SAND',
                                      'Data', 'Brand Score.xlsx')
-        self.diageo_generator.diageo_global_tap_brand_score_function(template_path)
+        self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
 
 
         for set_name in set_names:
