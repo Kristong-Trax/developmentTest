@@ -97,7 +97,7 @@ class DIAGEOIESandToolBox:
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE_SAND',
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
         self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
 
@@ -113,7 +113,7 @@ class DIAGEOIESandToolBox:
             # set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
             # I see diageoie-prod will have the same problem so we need to remember it.
             #
-            # todo: Add diageo_global_tap_brand_score_function
+            # Also, I changed the configuration on the sql, come to me and I'll explain you all about the change
 
 
             # Global Secondary Displays
