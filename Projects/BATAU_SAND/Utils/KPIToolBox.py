@@ -185,8 +185,6 @@ class BATAUToolBox:
                                                                        identifier_result=kpi_name,
                                                                        should_enter=True)
 
-                            #print(kpi_output.format(kpi_parent_name,kpi_name,numerator,denominator,result))
-
     def calculate_share_of_range_category(self):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
