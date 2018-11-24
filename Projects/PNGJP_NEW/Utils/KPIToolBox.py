@@ -6,7 +6,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -111,7 +111,7 @@ class PNGJPToolBox(PNGJPConsts):
         self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.brand_to_manufacturer = self.scif[['brand_name', 'manufacturer_name']].drop_duplicates()
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_display_in_scene = self.get_match_display()
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.template_data = parse_template(TEMPLATE_PATH, 'KPIs')

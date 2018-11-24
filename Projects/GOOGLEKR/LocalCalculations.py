@@ -33,10 +33,10 @@ if __name__ == '__main__':
     sessions = ['6da55dc7-440d-4e86-966d-e5fa803e78c8']
 
     for session in sessions:
-        # data_provider = KEngineDataProvider(project_name)
-        # data_provider.load_session_data(session)
-        # # scif = data_provider['scene_item_facts']
-        # # scenes = scif['scene_id'].unique().tolist()
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        # scif = data_provider['scene_item_facts']
+        # scenes = scif['scene_id'].unique().tolist()
         #
         # # scenes = [392]
         #
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
         #     save_scene_item_facts_to_data_provider(data_provider, output)
         #     SceneCalculations(data_provider).calculate_kpis()
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
+        # data_provider = KEngineDataProvider(project_name)
+        # data_provider.load_session_data(session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()

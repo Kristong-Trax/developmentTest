@@ -4,7 +4,7 @@ import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Projects.PEPSICORU.Utils.Const import Const
@@ -47,7 +47,7 @@ class PEPSICORUToolBox:
         self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif.loc[~(self.scif[Const.PRODUCT_TYPE] == Const.IRRELEVANT)]    # Vitaly's request
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.k_engine = BaseCalculationsGroup(data_provider, output)

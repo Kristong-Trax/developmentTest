@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
@@ -54,7 +54,7 @@ class GOLD_PEAK_BLOCKCCUS_SANDToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CCUS_SANDGOLD_PEAK_BLOCKGeneralCCUS_SANDToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -202,7 +202,7 @@ class GOLD_PEAK_BLOCKCCUS_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         atomic_pks = tuple()
         if kpi_set_fk is not None:
             query = CCUS_SANDGOLD_PEAK_BLOCKQueries.get_atomic_pk_to_delete(self.session_uid, kpi_set_fk)

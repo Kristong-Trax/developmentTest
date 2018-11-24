@@ -6,10 +6,10 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-# from Trax.Data.Projects.Connector import ProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CBCIL.Utils.Fetcher import CBCILCBCIL_Queries
 from Projects.CBCIL.Utils.GeneralToolBox import CBCILCBCIL_GENERALToolBox
@@ -96,7 +96,7 @@ class CBCILCBCIL_ToolBox(object):
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_display_in_scene = self.get_match_display()
         self.match_stores_by_retailer = self.get_match_stores_by_retailer()
         self.match_template_fk_by_category_fk = self.get_template_fk_by_category_fk()
@@ -105,7 +105,7 @@ class CBCILCBCIL_ToolBox(object):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CBCILCBCIL_GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.session_fk = self.session_info['pk'][0]
 

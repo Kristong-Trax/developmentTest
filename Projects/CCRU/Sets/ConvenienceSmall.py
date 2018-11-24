@@ -1,17 +1,14 @@
-import datetime
-
 import pandas as pd
+import datetime as dt
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
-from Trax.Data.Projects.Connector import ProjectConnector
-from KPIUtils.Utils.Helpers.LogHandler import log_handler
-
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
-from Trax.Utils.Logging.Logger import Log
 
 
 __author__ = 'shanim'
@@ -32,7 +29,7 @@ class CCRUConvenienceSmallCalculations:
         self.ps_data_provider = ps_data_provider
         self.session_uid = self.data_provider.session_uid
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -42,12 +39,12 @@ class CCRUConvenienceSmallCalculations:
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     # @log_handler.log_runtime('Total Calculations', log_start=True)
@@ -55,7 +52,7 @@ class CCRUConvenienceSmallCalculations:
         jg = CCRUJsonGenerator('ccru')
         jg.create_json('Convenience Small PoS 2018.xlsx', CONVENIENCE_SMALL_2018)
 
-        calc_start_time = datetime.datetime.utcnow()
+        calc_start_time = dt.datetime.utcnow()
         Log.info('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
@@ -90,7 +87,7 @@ class CCRUConvenienceSmallCalculations:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), sheet_name)
-            calc_start_time = datetime.datetime.utcnow()
+            calc_start_time = dt.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
@@ -118,6 +115,6 @@ class CCRUConvenienceSmallCalculations:
             self.tool_box.calculate_contract_execution(jg.project_kpi_dict.get('equipment'))
 
         self.tool_box.commit_results_data()
-        # calc_finish_time = datetime.datetime.utcnow()
+        # calc_finish_time = dt.datetime.utcnow()
         # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
 

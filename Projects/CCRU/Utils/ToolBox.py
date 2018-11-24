@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
-
 import os
-import datetime
-# from datetime import datetime
-import pandas as pd
 import numpy as np
+import pandas as pd
+import datetime as dt
 
 from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
-from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
+from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.CCRU.Fetcher import CCRUCCHKPIFetcher
@@ -37,19 +35,6 @@ CONTRACT_SET_NAME = 'Contract Execution 2018'
 CCH_INTEGRATION = 'CCH Integration'
 MARKETING = 'Marketing 2017'
 
-# def log_runtime(description, log_start=False):
-#     def decorator(func):
-#         def wrapper(*args, **kwargs):
-#             calc_start_time = datetime.utcnow()
-#             if log_start:
-#                 Log.info('{} started at {}'.format(description, calc_start_time))
-#             result = func(*args, **kwargs)
-#             calc_end_time = datetime.utcnow()
-#             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
-#             return result
-#         return wrapper
-#     return decorator
-
 
 class CCRUKPIToolBox:
     def __init__(self, data_provider, output, ps_data_provider, set_name=None):
@@ -65,7 +50,7 @@ class CCRUKPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        # self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -106,12 +91,12 @@ class CCRUKPIToolBox:
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
 
     # def validate_scenes_and_location(self, location, scene_type, sub_location, kpi_data):
@@ -672,13 +657,14 @@ class CCRUKPIToolBox:
         object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, params.get('Type'),
                                                              formula=params.get('Formula'),
                                                              shelves=params.get("shelf_number", None),
-                                                             size=sizes, form_factor=form_factors,
+                                                             size=sizes,
+                                                             form_factor=form_factors,
                                                              products_to_exclude=products_to_exclude,
                                                              form_factors_to_exclude=form_factors_to_exclude,
                                                              product_categories=product_categories,
                                                              product_sub_categories=product_sub_categories,
-                                                             product_brands = product_brands,
-                                                             product_manufacturers = product_manufacturers)
+                                                             product_brands=product_brands,
+                                                             product_manufacturers=product_manufacturers)
 
         return object_facings
 
@@ -2552,7 +2538,7 @@ class CCRUKPIToolBox:
                                                        kpi_set_name,
                                                        self.store_id,
                                                        self.visit_date.isoformat(),
-                                                       datetime.datetime.utcnow().isoformat(),
+                                                       dt.datetime.utcnow().isoformat(),
                                                        None,
                                                        kpi_fk,
                                                        kf.get("atomic_kpi_fk"),
@@ -2630,7 +2616,7 @@ class CCRUKPIToolBox:
         if params.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
                                                    self.session_uid, self.set_name, self.store_id,
-                                                   self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
+                                                   self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text', 'session_uid', 'kps_name',
@@ -2640,7 +2626,7 @@ class CCRUKPIToolBox:
         else:
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Eng').replace("'", "\\'"),
                                                    self.session_uid, self.set_name, self.store_id,
-                                                   self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
+                                                   self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text', 'session_uid', 'kps_name',
@@ -2800,9 +2786,9 @@ class CCRUKPIToolBox:
 
         target_data = None
         for data in target_data_raw:
-            start_date = datetime.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
-            end_date = datetime.datetime.now().date() if not data['End Date'] else \
-                datetime.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
+            start_date = dt.datetime.strptime(data['Start Date'], '%Y-%m-%d').date()
+            end_date = dt.datetime.now().date() if not data['End Date'] else \
+                dt.datetime.strptime(data['End Date'], '%Y-%m-%d').date()
             if start_date <= self.visit_date <= end_date:
                 target_data = data
 

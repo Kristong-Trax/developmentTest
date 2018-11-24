@@ -1,16 +1,19 @@
 
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOGR_SAND.Utils.Fetcher import DIAGEOGR_SANDQueries
-from Projects.DIAGEOGR_SAND.Utils.ToolBox import DIAGEOGR_SANDDIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Nimrod'
 
@@ -33,7 +36,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class DIAGEOGR_SANDToolBox:
+class DIAGEOGRSANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -48,7 +51,7 @@ class DIAGEOGR_SANDToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_channel = self.store_info['store_type'].values[0]
         if self.store_channel:
@@ -60,17 +63,21 @@ class DIAGEOGR_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOGR_SANDDIAGEOToolBox(self.data_provider, output,
-                                                kpi_static_data=self.kpi_static_data,
-                                                match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
+
+        self.output = output
+        self.common = Common(self.data_provider)
+
+        self.commonV2 = CommonV2(self.data_provider)
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOGR_SANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -79,20 +86,26 @@ class DIAGEOGR_SANDToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOGR_SANDQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global assortment kpis
+        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
+                                              self.common).diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
+        for set_name in set_names:
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+            set_score = 0
         # if set_name in ('MPA', 'Local MPA'):
         #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('Relative Position',):
+        # elif set_name in ('Relative Position',): #  todo: delete after the migration is done
         #     set_score = self.calculate_relative_position_sets(set_name)
         # elif set_name in ('Brand Blocking',):
         #     set_score = self.calculate_block_together_sets(set_name)
@@ -104,19 +117,29 @@ class DIAGEOGR_SANDToolBox:
         #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
         #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
         #     self.save_level2_and_level3(set_name, set_name, set_score)
-        if set_name == 'Secondary':
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            if set_name in ('Secondary Displays', 'Secondary'):
+                # Global function
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+                # Saving to old tables
+                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # committing to new tables
+        self.commonV2.commit_results_data()
         return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
@@ -182,7 +205,8 @@ class DIAGEOGR_SANDToolBox:
 
     def calculate_relative_position_sets(self, set_name):
         """
-        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns
+        the set's final score.
         """
         scores = []
         for params in self.set_templates_data[set_name]:
@@ -190,11 +214,15 @@ class DIAGEOGR_SANDToolBox:
                 tested_filters = {'product_ean_code': params.get(self.tools.TESTED)}
                 anchor_filters = {'product_ean_code': params.get(self.tools.ANCHOR)}
                 direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
-                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
-                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
-                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
+                                  'bottom': self._get_direction_for_relative_position(
+                                      params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(
+                                      params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(
+                                      params.get(self.tools.RIGHT_DISTANCE))}
                 general_filters = {'template_name': params.get(self.tools.LOCATION)}
-                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                                **general_filters)
                 score = 1 if result else 0
                 scores.append(score)
 
@@ -296,7 +324,6 @@ class DIAGEOGR_SANDToolBox:
         set_score = (sum(scores) / float(len(scores))) * 100
         return set_score
 
-
     # def calculate_sos_sets(self, set_name):
     #     """
     #     This function calculates every SOS-typed KPI from the relevant sets, and returns the set final score.
@@ -346,7 +373,8 @@ class DIAGEOGR_SANDToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -371,7 +399,7 @@ class DIAGEOGR_SANDToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOGR_SANDQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:
