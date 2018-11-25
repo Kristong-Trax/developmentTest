@@ -9,12 +9,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-# from Projects.DIAGEOBENELUX_SAND.Utils.Fetcher import DIAGEOBENELUX_SANDQueries
-# from Projects.DIAGEOBENELUX_SAND.Utils.ToolBox import DIAGEOBENELUX_SANDDIAGEOToolBox
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
