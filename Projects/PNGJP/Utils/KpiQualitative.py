@@ -725,8 +725,6 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                 group=str(group),
                 ean_code=str(ean_code),
                 question=kpi_name.encode('utf-8'))
-            while '  ' in kpi_name:
-                kpi_name = kpi_name.replace('  ', ' ')
         else:
             kpi_name = self.KPI_FORMAT.format(
                 category=category.encode('utf-8'),
@@ -734,6 +732,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                 group='XX',
                 ean_code='XX',
                 question=kpi_name.encode('utf-8'))
+        while '  ' in kpi_name:
+            kpi_name = kpi_name.replace('  ', ' ')
         atomic_kpi_fk = \
             self.kpi_static_data[
                 self.kpi_static_data['fixed atomic_kpi_name'].str.encode('utf-8') == kpi.encode('utf-8')][
