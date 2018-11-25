@@ -20,38 +20,35 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('googlekr-sand calculations')
+    LoggerInitializer.init('googlekr calculations')
     Config.init()
-    project_name = 'googlekr-sand'
-    sessions = ["8e69ef91-1275-42ba-82a3-12a775683fb6"]
+    project_name = 'googlekr_sand'
     sessions = [
-                '3985c4f3-8e86-4cd0-8455-9202306e7d3e',
-                'A7330F2D-620A-4821-A62C-329CFB45D867',
-                'A4CDE6E6-9145-484C-9894-3B78B08085CA',
-                '78949CC4-5E67-47CF-A043-ED832497C1C5',
-                '924d3ce8-10f1-4083-9aa6-39b023eca812',
-                '9595AA6E-CB9C-49DE-B043-0920DCF9EEE0',
-                'f3a1a34e-043d-4c8b-99a5-3f9b7f9e0847',
-                '7c73be34-20b9-4d6c-b48f-ec4a04745660',
-                '5E35A64E-6B49-4106-AC14-BFBFC6BFF4DB',
-                'ECFEEC98-4C2C-46F6-851F-97DBE14A3254',
-                'C23CF630-5953-48A3-AE82-FF1E5BE0C8E0',
-                '698CC197-6902-42AF-8015-AF6FD0DAF8D1'
-                ]
+        '68ac2242-d6d5-4a08-ba5c-ba5418c69852',
+        'dd7452bb-134c-4b5a-a695-be6355695b48',
+        '33203324-796f-42f5-af71-9acb0e48b2f4',
+        'ba74b587-901d-437d-ab34-2ffc33c49aaa',
+        '9b33b4d0-cb67-4e9b-82d9-4d4c3c505491'
+    ]
+    sessions = ['6da55dc7-440d-4e86-966d-e5fa803e78c8']
+
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
-        scif = data_provider['scene_item_facts']
-        scenes = scif['scene_id'].unique().tolist()
-        # scenes = [887]
-        for scene in scenes:
-            print('scene')
-            data_provider = KEngineDataProvider(project_name)
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            SceneCalculations(data_provider).calculate_kpis()
+        # scif = data_provider['scene_item_facts']
+        # scenes = scif['scene_id'].unique().tolist()
+        #
+        # # scenes = [392]
+        #
+        # for scene in scenes:
+        #     print('scene')
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        # SceneCalculations(data_provider).calculate_kpis()
+        # data_provider = KEngineDataProvider(project_name)
+        # data_provider.load_session_data(session)
         output = Output()
         GOOGLEKR_SANDCalculations(data_provider, output).run_project_calculations()
-

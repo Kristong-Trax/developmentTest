@@ -3,7 +3,7 @@ import pandas as pd
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
 # from KPIUtils_v2.DB.Common import Common as commonV1
@@ -58,7 +58,7 @@ class CCITToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.old_kpi_static_data = self.commonV1.get_kpi_static_data()

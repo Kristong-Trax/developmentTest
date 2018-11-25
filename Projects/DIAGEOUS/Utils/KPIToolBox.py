@@ -12,7 +12,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 # from Projects.DIAGEOUS.Utils.Fetcher import Queries
 # from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from Trax.Data.Projects.Connector import ProjectConnector
+# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from KPIUtils_v2.DIAGEOUSCalculations.AvailabilityDIAGEOUSCalculations import Availability
 # from KPIUtils_v2.DIAGEOUSCalculations.NumberOfScenesDIAGEOUSCalculations import NumberOfScenes
 # from KPIUtils_v2.DIAGEOUSCalculations.PositionGraphsDIAGEOUSCalculations import PositionGraphs
@@ -52,7 +52,11 @@ class DIAGEOUSToolBox:
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
         store_type = self.store_info['store_type'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
-        self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in ('On-Premise') else Const.OFF
+        if self.store_info['additional_attribute_6'].iloc[0]:
+            self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] in ('On-Premise') else Const.OFF
+        else:
+            Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
+            self.on_off = Const.OFF
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
@@ -61,7 +65,8 @@ class DIAGEOUSToolBox:
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
-        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data)
+        self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
+                                     assortment_filter=store_number_1)
         if self.on_off == Const.ON:
             self.sales_data = self.ps_data.get_sales_data()
             self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,

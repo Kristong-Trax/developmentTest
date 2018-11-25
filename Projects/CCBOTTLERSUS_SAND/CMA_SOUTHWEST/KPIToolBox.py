@@ -8,6 +8,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.CMA_SOUTHWEST.Const import Const
 from Projects.CCBOTTLERSUS_SAND.Utils.SOS import Shared
+from Projects.CCBOTTLERSUS_SAND.SCENE_SESSION.CommonV3 import Common as CommonV3
 from KPIUtils_v2.DB.Common import Common as Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
@@ -30,7 +31,7 @@ STORE_TYPES = {
     "United Test - CR SOVI RED": "CR&LT",
     "FSOP - QSR": "QSR",
 }
-CMA_COMPLIANCE = 'CMA Compliance SW'
+SUB_PROJECT = 'CMA Compliance SW'
 
 
 class CMASOUTHWESTToolBox:
@@ -41,6 +42,10 @@ class CMASOUTHWESTToolBox:
     def __init__(self, data_provider, output, common_db2):
         self.output = output
         self.data_provider = data_provider
+        # self.common_db = Common(self.data_provider, SUB_PROJECT)
+        # self.common_db2 = common_db2
+        self.common_db2 = CommonV3(self.data_provider)
+        self.common_scene = CommonV2(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.manufacturer_fk = 1
@@ -57,10 +62,8 @@ class CMASOUTHWESTToolBox:
         self.sw_scenes = self.get_sw_scenes() # we don't need to check scenes without United products
         self.survey = Survey(self.data_provider, self.output)
         self.sos = SOS(self.data_provider, self.output)
+        self.results = self.data_provider[Data.SCENE_KPI_RESULTS]
         self.templates = {}
-        # self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
-        self.common_db2 = common_db2
-        self.common_scene = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -76,7 +79,7 @@ class CMASOUTHWESTToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         for sheet in Const.SHEETS_CMA:
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.tools = Shared()
+        self.tools = Shared(self.data_provider, self.output)
 
     # main functions:
 
@@ -92,10 +95,11 @@ class CMASOUTHWESTToolBox:
                 store_type = self.does_exist(main_line, Const.STORE_TYPE)
                 if store_type is None or self.store_type in store_type:
                     self.calculate_main_kpi(main_line)
+            self.write_scene_parent()
             self.write_sub_parents()
             self.write_parent()
             # self.write_to_db_result(
-            #     self.common_db.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE, 1), score=self.total_score, level=1)
+            #     self.common_db.get_kpi_fk_by_kpi_name(SUB_PROJECT, 1), score=self.total_score, level=1)
 
     def calculate_main_kpi(self, main_line):
         """
@@ -137,14 +141,7 @@ class CMASOUTHWESTToolBox:
             result, score, target = function(kpi_line, relevant_scif, general_filters)
             if result is None and score is None and target is None:
                 continue
-
-            parent = self.get_kpi_parent(kpi_name)
-            if parent != CMA_COMPLIANCE:
-                if 'Bonus' in parent:
-                    self.update_sub_score(kpi_name, passed=result)
-                else:
-                    self.update_sub_score(kpi_name, passed=score)
-
+            self.update_parents(kpi_name, result, score)
             if isinstance(result, tuple):
                 self.write_to_all_levels(kpi_name=kpi_name, result=result[0], score=score, target=target,
                                          num=result[1], den=result[2])
@@ -256,21 +253,20 @@ class CMASOUTHWESTToolBox:
 
         num_scif = relevant_scif[self.get_filter_condition(relevant_scif, **sos_filters)]
         den_scif = relevant_scif[self.get_filter_condition(relevant_scif, **general_filters)]
-        # sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         sos_value, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-        # sos_value *= 100
-        # sos_value = round(sos_value, 2)
 
+        if sos_value is None:
+            return None, None, None
         if target:
             target *= 100
             score = 1 if sos_value >= target else 0
-            target = '{}%'.format(target)
+            target = '{}%'.format(int(target))
         elif not target and upper_limit and lower_limit:
             score = 1 if (lower_limit <= sos_value <= upper_limit) else 0
             target = '{}% - {}%'.format(lower_limit, upper_limit)
         else:
             score = 0
-            target = 0
+            target = None
         return (sos_value, num, den), score, target
 
     # Targets:
@@ -416,7 +412,7 @@ class CMASOUTHWESTToolBox:
         if target != 1:
             target = round(((us + them) / 2) * 100, 2)
 
-        return (score, us, them), passed, target
+        return (score, us, them), passed, 100
 
     def calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
         """
@@ -466,6 +462,39 @@ class CMASOUTHWESTToolBox:
             return score, None, None
         else:
             return number_of_shelves_score, None, None
+
+    def write_scene_parent(self):
+        self.results['parent_kpi'] = [int(Const.SCENE_SESSION_KPI[kpi]) if kpi in Const.SCENE_SESSION_KPI else None
+                                      for kpi in self.results['kpi_level_2_fk']]
+        self.results = self.results[~self.results['parent_kpi'].isnull()]
+        for i, parent_kpi in enumerate(set(self.results['parent_kpi'])):
+            kpi_res = self.results[self.results['parent_kpi'] == parent_kpi]
+            num, den, score = self.aggregate(kpi_res, parent_kpi)
+
+            parent_name = self.common_db2.kpi_static_data.set_index('pk').loc[parent_kpi, 'type']
+            self.sub_totals[parent_name] = den
+            self.sub_scores[parent_name] = num
+
+            self.write_hierarchy(kpi_res, i, parent_name)
+
+    def write_hierarchy(self, kpi_res, i, parent_name):
+        for j, kpi_line in kpi_res.iterrows():
+            kpi_fk = kpi_line['scene_kpi_fk']
+            self.common_db2.write_to_db_result(0, parent_fk=i, scene_result_fk=kpi_fk, should_enter=True,
+                                               identifier_parent=self.common_db2.get_dictionary(
+                                               parent_name=parent_name), hierarchy_only=1)
+
+    def aggregate(self, kpi_res, parent_kpi):
+        if Const.BEHAVIOR[parent_kpi] == 'PASS':
+            num = kpi_res['score'].sum()
+            den = kpi_res['parent_kpi'].count()
+
+        else:
+            num = kpi_res['numerator_result'].sum()
+            den = kpi_res['denominator_result'].sum()
+
+        score = kpi_res['score'].sum()
+        return num, den, score
 
     # Number of shelves
     def old_calculate_number_of_shelves(self, kpi_line, relevant_scif, general_filters):
@@ -660,7 +689,7 @@ class CMASOUTHWESTToolBox:
         self.write_session_kpis(main_template)
         # self.write_condition_kpis(main_template)
         # self.write_missings(main_template)
-        self.write_to_db(CMA_COMPLIANCE, 0)
+        self.write_to_db(SUB_PROJECT, 0)
         # result_dict = {Const.KPI_NAME: 'RED SCORE', Const.SCORE: self.red_score}####
         # self.all_results = self.all_results.append(result_dict, ignore_index=True)####
         # self.all_results.to_csv('results/{}/{}.csv'.format(self.calculation_type, self.session_uid))####
@@ -795,24 +824,35 @@ class CMASOUTHWESTToolBox:
     def get_score(self, weight):
         return weight / self.weight_factor
 
+    def update_parents(self, kpi_name, result, score):
+        parent = self.get_kpi_parent(kpi_name)
+        if parent != SUB_PROJECT:
+            if 'Bonus' in parent:
+                self.update_sub_score(kpi_name, passed=result)
+            else:
+                self.update_sub_score(kpi_name, passed=score)
+
     def get_kpi_parent(self, kpi_name):
-        type_name = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
+        type_name = '{} {}'.format(SUB_PROJECT, kpi_name)
         kpi_family_fk = int(self.common_db2.kpi_static_data.set_index('type')\
                                 .loc[type_name, 'kpi_family_fk'])
         if kpi_family_fk in Const.KPI_FAMILY_KEY:
             return Const.KPI_FAMILY_KEY[kpi_family_fk]
         else:
-            return CMA_COMPLIANCE
+            return SUB_PROJECT
 
     def update_sub_score(self, kpi_name, passed=0, parent=None):
         if not parent:
             parent = self.get_kpi_parent(kpi_name)
-        if parent == CMA_COMPLIANCE:
-            parent = '{} {}'.format(CMA_COMPLIANCE, kpi_name)
-        if kpi_name not in Const.NO_PRESSURE:
+        if parent == SUB_PROJECT:
+            parent = '{} {}'.format(SUB_PROJECT, kpi_name)
+        if 'Bonus' not in kpi_name:
             self.sub_totals[parent] += 1
             if passed:
                 self.sub_scores[parent] += passed
+        else:
+            self.sub_totals[parent] += 0
+            self.sub_scores[parent] += 0
 
     def write_to_db(self, kpi_name, score, result=None, threshold=None, num=None, den=None):
         """
@@ -823,11 +863,25 @@ class CMASOUTHWESTToolBox:
         :param result: str
         :param threshold: int
         """
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type('{} {}'.format(SUB_PROJECT, kpi_name))
         parent = self.get_kpi_parent(kpi_name)
-        # if parent != CMA_COMPLIANCE:
+        delta = 0
+        if isinstance(threshold, str) and '%' in threshold:
+            if score == 0:
+                targ = float(threshold.split('-')[0].replace('%', ''))/100
+                delta = round((targ * den) - num)
+            threshold = self.tools.result_values[threshold.replace(' ', '')]
+
+        if parent != SUB_PROJECT:
+            if score == 1:
+                score = Const.PASS
+            elif score == 0:
+                score = Const.FAIL
+            else:
+                score = 'bonus'
+            score = self.tools.result_values[score]
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
-                                           numerator_result=num, denominator_result=den,
+                                           numerator_result=num, denominator_result=den, weight=delta,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
         # self.write_to_db_result(
         #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
@@ -922,37 +976,46 @@ class CMASOUTHWESTToolBox:
 
         return kwargs_dict
 
+    def kpi_parent_result(self, parent, num, den):
+        if parent in Const.PARENT_NOT_RATIO:
+            result = num
+        else:
+            if den:
+                result = round((float(num) / den)*100, 2)
+            else:
+                result = 0
+
+        return result
+
     def write_sub_parents(self):
         for sub_parent in self.sub_totals.keys():
         # for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
             kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(sub_parent)
             num = self.sub_scores[sub_parent]
             den = self.sub_totals[sub_parent]
-            if den:
-                # result = float(num) / den
-                if 'Bonus' in sub_parent:
-                    den = 0
-                self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
-                                                   denominator_id=self.store_id,
-                                                   denominator_result=den, result=num, score=num, target=den,
-                                                   identifier_result=self.common_db2.get_dictionary(
-                                                       parent_name=sub_parent),
-                                                   identifier_parent=self.common_db2.get_dictionary(
-                                                       parent_name=CMA_COMPLIANCE),
-                                                   should_enter=True)
-    def write_parent(self):
-        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(CMA_COMPLIANCE)
-        # del self.sub_scores['CMA Compliance SW # of Shelves Bonus']
-        # del self.sub_totals['CMA Compliance SW # of Shelves Bonus']
-        num = sum(self.sub_scores.values())
-        den = sum(self.sub_totals.values())
-        if den:
-            # result = float(num) / den
+            result = self.kpi_parent_result(sub_parent, num, den)
+            if 'Bonus' in sub_parent:
+                den = 0
             self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
                                                denominator_id=self.store_id,
-                                               denominator_result=den, result=num, score=num, target=den,
+                                               denominator_result=den, result=result, score=result, target=100,
                                                identifier_result=self.common_db2.get_dictionary(
-                                                   parent_name=CMA_COMPLIANCE))
+                                                   parent_name=sub_parent),
+                                               identifier_parent=self.common_db2.get_dictionary(
+                                                   parent_name=Const.PARENT_HIERARCHY[sub_parent]),
+                                               should_enter=True)
+
+    def write_parent(self):
+        kpi_fk = self.common_db2.get_kpi_fk_by_kpi_name(SUB_PROJECT)
+        num = sum([self.sub_scores[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
+        den = sum([self.sub_totals[key] for key, value in Const.PARENT_HIERARCHY.items() if value == Const.CMA])
+        if den:
+            result = num * 100.0 / den
+            self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=self.manufacturer_fk,
+                                               denominator_id=self.store_id,
+                                               denominator_result=den, result=result, score=result, target=100,
+                                               identifier_result=self.common_db2.get_dictionary(
+                                                   parent_name=SUB_PROJECT))
 
     def commit_results(self):
         """
@@ -961,7 +1024,7 @@ class CMASOUTHWESTToolBox:
         pass
         # self.common_db.delete_results_data_by_kpi_set()
         # self.common_db.commit_results_data_without_delete()
-        # self.common_db2.commit_results_data()
+        self.common_db2.commit_results_data()
         # if self.common_db_integ:
         #     self.common_db_integ.delete_results_data_by_kpi_set()
         #     self.common_db_integ.commit_results_data_without_delete()

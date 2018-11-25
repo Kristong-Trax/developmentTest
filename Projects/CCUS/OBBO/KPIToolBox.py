@@ -5,7 +5,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
@@ -90,7 +90,7 @@ class OBBOToolBox(OBBOConsts):
                                                                       how='left', on='template_fk', suffixes=['', '_y'])
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_type = self.data_provider[Data.STORE_INFO]['store_type'].iloc[0]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.scif = self.get_missing_attributes(self.data_provider[Data.SCENE_ITEM_FACTS])
         self.display_matches = self.get_match_display()
         self.custom_templates = {}

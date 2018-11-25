@@ -7,7 +7,7 @@ from openpyxl.utils import column_index_from_string, coordinate_from_string
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 PROJECT = 'pngamerica'
@@ -38,12 +38,12 @@ class AutoAssortmentHandler:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property
@@ -285,7 +285,7 @@ class AutoAssortmentHandler:
 
     def commit_results(self, queries):
         self.rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         for query in self.update_queries:
             print query
@@ -294,12 +294,12 @@ class AutoAssortmentHandler:
             except Exception as e:
                 Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+                rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
                 continue
         rds_conn.db.commit()
         rds_conn.disconnect_rds()
-        rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+        rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         for query in queries:
             print query
@@ -308,7 +308,7 @@ class AutoAssortmentHandler:
             except Exception as e:
                 Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
-                rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+                rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
                 continue
         rds_conn.db.commit()
@@ -356,7 +356,7 @@ class AutoAssortmentHandler:
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('test')
-#     rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+#     rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
 #     ts = AutoAssortmentHandler(rds_conn=rds_conn)
 #     ts.upload_top_sku_file(file_path='/home/uri/Documents/pngamerica/assortments_300318/assortment_2.csv', data_first_cell='D2',
 #                            ean_row_index=1, store_number_column_index='B')

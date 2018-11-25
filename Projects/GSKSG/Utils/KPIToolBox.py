@@ -1,6 +1,6 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
@@ -92,7 +92,7 @@ class GSKSGToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.old_kpi_static_data = self.common_old_tables.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -255,7 +255,8 @@ class GSKSGToolBox:
 
 
         kpi_results['valid_template_name'] = kpi_results['valid_template_name'].astype(float)
-
+        kpi_results['result_bin'] = kpi_results['result_bin'].apply(lambda x: round(x, 4))
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 4))
 
         ## write level3 to db
         store_fk = self.store_info['store_fk'][0]
@@ -440,7 +441,12 @@ class GSKSGToolBox:
                 old_kpi_fk = self.old_kpi_static_data.loc[(self.old_kpi_static_data['kpi_set_name'] == result[SET]) &
                                                       (self.old_kpi_static_data['kpi_name'] == result[KPI]+NAME_ADD)][
                                                         'kpi_fk'].iloc[0]
-                self.common_old_tables.write_to_db_result(old_kpi_fk, self.LEVEL2,  result['result_bin'])
+                kwargs = {'session_uid': self.session_uid, 'store_fk': self.store_id,
+                          'visit_date': self.visit_date.isoformat(), 'kpi_fk': old_kpi_fk,
+                          'kpk_name': result[KPI] + NAME_ADD, 'score_2': result['result_bin']}
+
+                self.common_old_tables.write_to_db_result(fk=old_kpi_fk, level=self.LEVEL2, score=result['result_bin'],
+                                                          **kwargs)
             except:
                 print 'kpi {} in set {}'.format(result[KPI]+NAME_ADD, result[SET])
 

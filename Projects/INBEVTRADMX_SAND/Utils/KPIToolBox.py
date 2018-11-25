@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 # from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -50,11 +50,11 @@ class INBEVTRADMXToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_4_v2.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -179,6 +179,9 @@ class INBEVTRADMXToolBox:
             kpi_score = self.calculate_kpi_level_2_score(kpi_name, set_df, set_name)
             # accumulate set score
             set_score += kpi_score
+        # round set_score if the set is 'Set Urban'
+        if set_name == 'Set Urban':
+            set_score = round(set_score)
         # finally, write level 1 kpi set score to DB
         self.write_kpi_set_score_to_db(set_name, set_score)
 
@@ -224,10 +227,13 @@ class INBEVTRADMXToolBox:
             curr_weight = row['weights']
             # figure out what type of calculation need to be done
             if row['KPI type'] == 'Product Availability':
-                if kpi_level_3_name == 'URBAN':
+                if kpi_level_3_name == 'URBAN':  # this might need to be removed now...
                     score = self.calculate_weigthed_availability_score(row, relevant_columns)
                     if score:
                         atomic_kpi_score = score
+                elif kpi_level_3_name == 'Hay o no hay # frentes':
+                    if self.calculate_lead_availability_score(row, relevant_columns):
+                        is_kpi_passed = 1
                 else:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
@@ -340,6 +346,28 @@ class INBEVTRADMXToolBox:
                 passed += 1
         return (passed / float(scenes_num)) * 100 if scenes_num else 0
 
+    def calculate_lead_availability_score(self, row, relevant_columns):
+        """
+        this method calculates availability score according to columns from the data frame
+        :param row: data frame to calculate from
+        :param relevant_columns: columns to check in the excel file
+        :return: boolean
+        """
+        # Gets the brand names
+        brand_names = row['brand_name'].split(', ')
+        if 'scene_type' in relevant_columns:
+            relevant_columns.remove('scene_type')
+
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for brand in brand_names:
+            filters_dict.update({'brand_name': brand})
+            # call the generic method from KPIUtils_v2
+            availability_score = self.availability.calculate_availability(**filters_dict)
+            if self.decide_availability_score(row, availability_score):
+                return True
+        return False
+
     def calculate_availability_score(self, row, relevant_columns):
         """
         this method calculates availability score according to columns from the data frame
@@ -395,7 +423,9 @@ class INBEVTRADMXToolBox:
                 if row['KPI Level 2 Name'] == 'Pop Exterior':
                     return availability_score > 1
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
-                    return availability_score > 2
+                    return availability_score > 1
+            elif row['KPI Level 1 Name'] == 'Set Self Execution' and row['KPI Level 3 Name'] == 'Hay o no hay # frentes':
+                return availability_score > 19
             else:
                 return True
 

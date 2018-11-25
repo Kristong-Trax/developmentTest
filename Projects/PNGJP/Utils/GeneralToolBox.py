@@ -306,6 +306,7 @@ class PNGJPGENERALToolBox:
                         if len(edge_facings) > 1:
                             edge_facings = edge_facings.append(shelf_matches.iloc[-1])
             edge_facings = edge_facings[self.get_filter_condition(edge_facings, **filters)]
+            edge_facings = edge_facings[edge_facings['shelf_number_from_bottom'] > 1]
             total_edge = total_edge.append(edge_facings)
             if len(edge_facings) >= min_number_of_facings \
                     and len(edge_facings['shelf_number'].unique()) >= min_number_of_shelves:
@@ -849,14 +850,14 @@ class PNGJPGENERALToolBox:
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **{'product_fk': product_list})
 
             for cluster in clusters:
-                relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+                relevant_vertices_in_cluster = list(set(cluster).intersection(new_relevant_vertices))
                 if len(new_relevant_vertices) > 0:
                     cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
                 else:
                     cluster_ratio = 0
                 if cluster_ratio >= minimum_block_ratio:
-                    cluster.sort(reverse=True)
-                    edges = self.get_block_edges(scene_graph.copy().vs[cluster])
+                    relevant_vertices_in_cluster.sort(reverse=True)
+                    edges = self.get_block_edges(scene_graph.copy().vs[relevant_vertices_in_cluster])
                     if biggest_block:
                         minimum_block_ratio = cluster_ratio
                     else:

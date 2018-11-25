@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
@@ -83,7 +83,7 @@ class INBEVNLINBEVBEToolBox:
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_project_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.all_products = self.get_all_products()
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -165,7 +165,7 @@ class INBEVNLINBEVBEToolBox:
         This function returns the session's business unit (equal to store type for some KPIs)
         """
         query = Queries.get_business_unit_data(self.store_info['store_fk'].values[0])
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -178,7 +178,7 @@ class INBEVNLINBEVBEToolBox:
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
         query = Queries.get_all_kpi_data()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -188,26 +188,26 @@ class INBEVNLINBEVBEToolBox:
         The data is taken from probedata.match_display_in_scene.
         """
         query = Queries.get_match_display(self.session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
     def get_osa_table(self):
         query = Queries.get_osa_table(self.store_id, self.visit_date, datetime.utcnow().date(),
                                                     self.data_provider.session_info.status)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         osa_table = pd.read_sql_query(query, self.rds_conn.db)
         return osa_table
 
     def get_oos_messages(self):
         query = Queries.get_oos_messages(self.store_id, self.session_uid)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         oos_messages = pd.read_sql_query(query, self.rds_conn.db)
         return oos_messages
 
     def get_store_number_1(self):
         query = Queries.get_store_number_1(self.store_id)
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         store_number = pd.read_sql_query(query, self.rds_conn.db)
         return store_number.values[0]
 
@@ -1510,7 +1510,7 @@ class INBEVNLINBEVBEToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = Queries.get_delete_session_results_query(self.session_uid)
         pservice_tables_delete_query = Queries.get_delete_custom_scif_query(

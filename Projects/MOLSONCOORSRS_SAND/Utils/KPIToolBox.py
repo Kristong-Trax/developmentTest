@@ -6,7 +6,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -65,7 +65,7 @@ class MOLSONCOORSRS_SANDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.own_manufacturer_id = int(self.data_provider[Data.OWN_MANUFACTURER][self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(data_provider)
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.kpi_static_data = self.common.get_kpi_static_data()
@@ -155,12 +155,14 @@ class MOLSONCOORSRS_SANDToolBox:
                 else:
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
                     parent_fk = self.common.get_kpi_fk_by_kpi_type(kpi['KPI Group']) if kpi['KPI Group'] else 0
+                    numerator_id = self.own_manufacturer_id
+                    denominator_id = self.store_id
                     identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk)
                     identifier_parent = self.common.get_dictionary(kpi_fk=parent_fk)
                     self.common.write_to_db_result(fk=kpi_fk,
-                                                   numerator_id=0,
+                                                   numerator_id=numerator_id,
                                                    numerator_result=0,
-                                                   denominator_id=0,
+                                                   denominator_id=denominator_id,
                                                    denominator_result=0,
                                                    result=score,
                                                    score=score,
@@ -169,8 +171,6 @@ class MOLSONCOORSRS_SANDToolBox:
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
                                                    )
-
-                # self.scores = self.scores.append({'KPI': kpi['KPI name Eng'], 'Score': score, 'Weight': weight, 'Potential': potential_score}, ignore_index=True)
 
         return total_score, total_potential_score, total_calculated
 
@@ -185,19 +185,21 @@ class MOLSONCOORSRS_SANDToolBox:
         for row in lvl3_result.itertuples():
             numerator_id = row.product_fk
             numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
-            denominator_id = row.assortment_group_fk
+            denominator_id = self.store_id
             denominator_result = row.target
             # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
             if kpi['KPI Type'] == 'Distribution':
                 if row.result_distributed:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                    score = 100
                 else:
                     result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
                                                 (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+                    score = 0
             else:
                 result = row.result_facings
-            score = round(result*100, 0)
+                score = round(result*100, 0)
             identifier_details = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl3)
             identifier_kpi = self.common.get_dictionary(kpi_fk=row.kpi_fk_lvl2)
             self.common.write_to_db_result(fk=row.kpi_fk_lvl3,
@@ -217,9 +219,9 @@ class MOLSONCOORSRS_SANDToolBox:
         if not lvl3_result.empty:
             lvl2_result = self.calculate_assortment_vs_target_lvl2(lvl3_result)
             for row in lvl2_result.itertuples():
-                numerator_id = row.assortment_group_fk
+                numerator_id = self.own_manufacturer_id
                 numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
-                denominator_id = 0
+                denominator_id = self.store_id
                 denominator_result = row.target
                 result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
                 score += self.score_function(result*100, kpi)

@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.PNGRO.KPIGenerator import PNGRO_PRODGenerator
 
@@ -14,14 +14,14 @@ class PNGRO_PRODCalculations(BaseCalculationsScript):
         self.timer.start()
         PNGRO_PRODGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
-#
+# #
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngro calculations')
 #     Config.init()
 #     project_name = 'pngro'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         'b65ac5c9-af17-4486-ba6d-100d9edb9334',
+#         'bb5637c5-961c-487e-8e63-c9f4d72b3370',
 #         # '42FF3F61-87AF-45FE-8389-CF8E5FA600BB',
 #         # '43061462-282C-47D4-BDB2-AE15C9413171',
 #         # '659cbb3d-5e2f-44a2-81ed-7dd68dfb8d7d',

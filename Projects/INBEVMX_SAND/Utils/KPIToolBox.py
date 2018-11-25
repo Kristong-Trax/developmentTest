@@ -3,16 +3,16 @@
 
 import pandas as pd
 import os
+import json
 
+from pandas.io.json import json_normalize
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.Common import Common, log_runtime
+from KPIUtils_v2.DB.CommonV2 import Common as Common_V2, log_runtime
 from Projects.INBEVMX_SAND.Data.Const import Const
 from Projects.INBEVMX_SAND.Utils.Fetcher import INBEVMXQueries
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from KPIUtils.DB.Common import Common
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_survey_and_sos_target_template_v1.2.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v1.4.xlsx')
 
 
 class INBEVMXToolBox:
@@ -29,12 +29,11 @@ class INBEVMXToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.session_id = self.data_provider.session_id
         self.products = self.data_provider[Data.PRODUCTS]
-        self.common_db = Common(self.data_provider)
+        self.common_v2 = Common_V2(self.data_provider)
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -44,11 +43,14 @@ class INBEVMXToolBox:
         self.tools = GENERALToolBox(self.data_provider)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.survey = Survey(self.data_provider, self.output)
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.kpi_static_data = self.common.get_kpi_static_data()
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.kpi_static_data = self.common_v2.get_kpi_static_data()
         self.kpi_results_queries = []
         self.kpi_results_new_tables_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.oos_policies = self.get_policies()
+
+
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -68,14 +70,71 @@ class INBEVMXToolBox:
             PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
 
+    def get_policies(self):
+        query = INBEVMXQueries.get_policies()
+        policies = pd.read_sql_query(query, self.rds_conn.db)
+        return policies
+
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
         kpis_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.KPIS).fillna("")
+        self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
-        self.commit_results_data()
+        self.common_v2.commit_results_data()
+
+
+    def calculate_oos_target(self):
+        all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
+        if all_data.empty:
+            return
+        json_policies = self.oos_policies.copy()
+        json_policies[Const.POLICY] = self.oos_policies[Const.POLICY].apply(lambda line: json.loads(line))
+        diff_policies = json_policies[Const.POLICY].drop_duplicates().reset_index()
+        diff_table = json_normalize(diff_policies[Const.POLICY].tolist())
+
+        # remove all lists from df
+        diff_table = diff_table.applymap(lambda x: x[0] if isinstance(x, list) else x)
+        for col in diff_table.columns:
+            att = all_data.iloc[0][col]
+            if att is None:
+                return
+            diff_table = diff_table[diff_table[col] == att]
+            all_data = all_data[all_data[col] == att]
+        if len(diff_table) > 1:
+            Log.warning ("There is more than one possible match")
+            return
+        if diff_table.empty:
+            return
+        selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
+        json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
+        products_to_check = json_policies['product_fk'].tolist()
+        products_df = all_data[(all_data['product_fk'].isin(products_to_check))][['product_fk','facings']].fillna(0)
+        products_df = products_df.groupby('product_fk').sum().reset_index()
+        try:
+            atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_SKU_KPI)
+            return
+        for index, row in products_df.iterrows():
+            result = 1 if row['facings'] > 0 else 0
+            self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
+                                        numerator_result=row['facings'], denominator_id=self.store_id,
+                                        result=result, score=result, identifier_parent=Const.OOS_KPI, should_enter=True)
+
+        existing_products_len = len(products_df[products_df['facings'] > 0])
+        result = existing_products_len / float(len(products_to_check))
+        try:
+            atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
+            return
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=existing_products_len, denominator_id=self.store_id,
+                                           denominator_result=len(products_to_check), result=result, score=result,
+                                          identifier_result=Const.OOS_KPI)
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
@@ -121,14 +180,15 @@ class INBEVMXToolBox:
             return
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=numerator_number_of_facings, denominator_id=3,
-                                           denominator_result=denominator_number_of_total_facings, result=count_result, score=0)
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
+                                           numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
+                                           denominator_result=denominator_number_of_total_facings, result=count_result,
+                                          score=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -222,13 +282,13 @@ class INBEVMXToolBox:
                     survey_result = -1
 
         try:
-            atomic_pk = self.common_db.get_kpi_fk_by_kpi_name_new_tables(atomic_name)
+            atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
-
-        self.write_to_db_result_new_tables(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
-                                           denominator_result=0, denominator_id=1, result=survey_result, score=0)
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
+                                           denominator_result=0, denominator_id=self.store_id, result=survey_result,
+                                          score=survey_result)
 
     def get_new_kpi_static_data(self):
         """
@@ -238,58 +298,3 @@ class INBEVMXToolBox:
         query = INBEVMXQueries.get_new_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
-
-    def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,
-                                      denominator_result=None, score=None):
-        """
-            This function creates the result data frame of new rables KPI,
-            and appends the insert SQL query into the queries' list, later to be written to the DB.
-            """
-        table = KPI_NEW_TABLE
-        attributes = self.create_attributes_dict_new_tables(fk, numerator_id, numerator_result, denominator_id,
-                                                            denominator_result, result, score)
-        query = insert(attributes, table)
-        self.kpi_results_new_tables_queries.append(query)
-
-    def create_attributes_dict_new_tables(self, kpi_fk, numerator_id, numerator_result, denominator_id,
-                                          denominator_result, result, score):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results new tables.
-        """
-        attributes = pd.DataFrame([(kpi_fk, self.session_id, numerator_id, numerator_result, denominator_id,
-                                    denominator_result, result, score)], columns=['kpi_level_2_fk', 'session_fk',
-                                                                                  'numerator_id', 'numerator_result',
-                                                                                  'denominator_id',
-                                                                                  'denominator_result', 'result',
-                                                                                  'score'])
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        insert_queries = self.merge_insert_queries(self.kpi_results_new_tables_queries)
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        delete_query = INBEVMXQueries.get_delete_session_results_query(
-            self.session_uid, self.session_id)
-        cur.execute(delete_query)
-        for query in insert_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
-
-    @staticmethod
-    def merge_insert_queries(insert_queries):
-        query_groups = {}
-        for query in insert_queries:
-            static_data, inserted_data = query.split('VALUES ')
-            if static_data not in query_groups:
-                query_groups[static_data] = []
-            query_groups[static_data].append(inserted_data)
-        merged_queries = []
-        for group in query_groups:
-            merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
-        return merged_queries
