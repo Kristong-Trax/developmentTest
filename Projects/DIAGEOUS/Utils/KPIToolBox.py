@@ -556,6 +556,7 @@ class DIAGEOUSToolBox:
         flag = False
         target = 1
         comp_facings_df = pd.DataFrame()
+        comp_product_fk = -1
         if self.does_exist(competition[Const.COMP_EAN_CODE]):
             comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
             comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
@@ -564,6 +565,7 @@ class DIAGEOUSToolBox:
                 target = 0
             else:
                 comp_fks = comp_lines['product_fk'].unique().tolist()
+                comp_product_fk = comp_fks[0]
                 comp_facings_df = self.calculate_shelf_facings_of_sku_per_scene(comp_fks, relevant_scenes)
                 bench_value = competition[Const.BENCH_VALUE]
                 if type(bench_value) in (unicode, str):
@@ -600,10 +602,10 @@ class DIAGEOUSToolBox:
                 product_facings_comp = comp_facings_df.iloc[0]['facings_comp']
             if not our_facings_df.empty:
                 product_facings_ours = our_facings_df.iloc[0]['facings']
-
-        self.common.write_to_db_result(
-                        fk=kpi_fk, numerator_id=product_fk, result=product_facings_comp, denominator_id=None,
-                        should_enter=True, identifier_parent=result_identifier, target=target)
+        if self.does_exist(competition[Const.COMP_EAN_CODE]):
+            self.common.write_to_db_result(
+                            fk=kpi_fk, numerator_id=comp_product_fk, result=product_facings_comp, denominator_id=None,
+                            should_enter=True, identifier_parent=result_identifier, target=target)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=product_facings_ours, denominator_id=self.manufacturer_fk,
             should_enter=True, identifier_parent=result_identifier, target=target)
