@@ -459,7 +459,8 @@ class CCBZA_ToolBox:
     def get_template_path(self):
         new = '' if str(self.data_provider.visit_date) < '2018-11-01' else '_November'
         store_type = self.store_data['store_type'].values[0]
-        template_name = 'Template_{}{}.xlsx'.format(store_type, new)
+        # template_name = 'Template_{}{}.xlsx'.format(store_type, new)
+        template_name = 'TestTemplate_{}{}.xlsx'.format(store_type, new) #for debug
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
 
     def get_template_data(self):
@@ -553,13 +554,15 @@ class CCBZA_ToolBox:
     def split_with_groups(string):
         str_to_groups = string.split('|')
         if len(str_to_groups) <= 1:
-            result_str = map(lambda x: x.strip(' '), str(str_to_groups[0]).split(',')) if str_to_groups else []
+            result_list = map(lambda x: x.strip(' '), str(str_to_groups[0]).split(',')) if str_to_groups else []
         else:
-            result_str = []
+            result_list = []
             for item in str_to_groups:
                 if item.strip(' '):
-                    result_str.append(map(lambda x: x.strip(' '), str(item).split(',')))
-        return result_str
+                    result_list.append(map(lambda x: x.strip(' '), str(item).split(',')))
+            if len(result_list) == 1:
+                result_list = result_list[0]
+        return result_list
 
     @staticmethod
     def split_and_strip(string):
@@ -1126,19 +1129,53 @@ class CCBZA_ToolBox:
 
     def calculate_availability_sku_and_or(self, atomic_kpi, identifier_parent):
         max_score = atomic_kpi[SCORE]
+        # filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
+        #            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+                   KPI_SPECIFIC_FILTERS: self.get_availability_only_calc_params(atomic_kpi)}
         atomic_result = 0
         list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
+        # if list_of_scenes: # current code
+        #     filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+        #     if not filtered_scif.empty:
+        #         atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+        #                                                                       filters[KPI_SPECIFIC_FILTERS],
+        #                                                                       identifier_parent,
+        #                                                                       is_by_scene=False)
+        # score = self.calculate_atomic_score(atomic_result, max_score)
+        # return score
+
         if list_of_scenes:
             filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
             if not filtered_scif.empty:
-                atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
-                                                                              filters[KPI_SPECIFIC_FILTERS],
-                                                                              identifier_parent,
-                                                                              is_by_scene=False)
+                key, list_of_groups = self.get_filter_arguments_for_groups(filters[KPI_SPECIFIC_FILTERS])
+                if key and list_of_groups:
+                    groups_results = []
+                    for group in list_of_groups:
+                        filters[KPI_SPECIFIC_FILTERS].update({key: group})
+                        result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+                                                                               filters[KPI_SPECIFIC_FILTERS],
+                                                                               identifier_parent,
+                                                                               is_by_scene=False)
+                        groups_results.append(result)
+                    atomic_result = 100 if any(groups_results) else 0
+                else:
+                    atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
+                                                                                  filters[KPI_SPECIFIC_FILTERS],
+                                                                                  identifier_parent,
+                                                                                  is_by_scene=False)
         score = self.calculate_atomic_score(atomic_result, max_score)
         return score
+
+    def get_filter_arguments_for_groups(self, filters):
+        key = ''
+        list_of_groups = []
+        for filter_key, filter_value in filters.items():
+            if any(isinstance(element, list) for element in filter_value):
+                key = filter_key
+                list_of_groups = filter_value
+                break
+        return key, list_of_groups
 
     def retrieve_availability_result_all_any_sku(self, scif, atomic_kpi, filters, identifier_parent, is_by_scene, or_min_facings=None):
         target = float(atomic_kpi[TARGET])
@@ -1188,9 +1225,46 @@ class CCBZA_ToolBox:
                     if value_col:
                         value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
                                          self.split_and_strip(atomic_kpi[value_col]))
+                        condition_filters.update(
+                            {atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
+        return condition_filters
+
+    # def get_price_calc_params(self, atomic_kpi):
+    #     condition_filters = {}
+    #     relevant_columns = filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values)
+    #     for column in relevant_columns:
+    #         if atomic_kpi[column]:
+    #             if column.startswith('type'):
+    #                 condition_number = str(column.strip('type'))
+    #                 matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
+    #                                             relevant_columns)
+    #                 value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+    #                 if value_col:
+    #                     value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
+    #                                      self.split_and_strip(atomic_kpi[value_col]))
+    #                     condition_filters.update(
+    #                         {atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
+    #     return condition_filters
+
+    def get_availability_only_calc_params(self, atomic_kpi):
+        condition_filters = {}
+        relevant_columns = filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values)
+        for column in relevant_columns:
+            if atomic_kpi[column]:
+                if column.startswith('type'):
+                    condition_number = str(column.strip('type'))
+                    matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
+                                                relevant_columns)
+                    value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
+                    if value_col:
+                        value_list = self.split_with_groups(atomic_kpi[value_col])
+                        if any([isinstance(item, list) for item in value_list]):
+                            value_list = [map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
+                                              item) for item in value_list]
+                        else:
+                            value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
+                                             value_list)
                         condition_filters.update({atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
-                    # else:
-                    #     Log.info('condition {} does not have corresponding value column'.format(column)) # should it be error?
         return condition_filters
 
     @staticmethod
