@@ -537,7 +537,7 @@ class DIAGEOUSToolBox:
         :return: passed, product_fk, standard_type
         """
 
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
+        kpi_fk_total = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
         our_eans = str(competition[Const.OUR_EAN_CODE]).split(', ')
         our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
@@ -551,7 +551,7 @@ class DIAGEOUSToolBox:
             return None
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
         standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
-        result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
+        result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk_total, product_fk=product_fk, index=index)
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
         flag = False
         target = 1
@@ -610,7 +610,7 @@ class DIAGEOUSToolBox:
 
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
+            fk=kpi_fk_total, numerator_id=product_fk, score=comparison * 100,
             result=product_facings_ours, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
