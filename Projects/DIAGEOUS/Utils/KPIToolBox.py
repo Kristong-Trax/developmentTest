@@ -582,9 +582,13 @@ class DIAGEOUSToolBox:
             comparison_result = comparison_df[(comparison_df['facings'] >= comparison_df['facings_comp']) &
                                                                                     (comparison_df['facings'] > 0)]
             comparison_len = len(comparison_result)
-            comparison = 1 if comparison_len > 0 else 0
+            if comparison_len > 0:
+                comparison = 1
+                comparison_result = comparison_result.sort_values(by=['template_name'])
+            else:
+                comparison = 0
         else:
-            comparison_df = comparison_result = our_facings_df.copy()
+            comparison_df = comparison_result = our_facings_df.sort_values(by=['template_name'])
             comparison = 1 if len(comparison_df[comparison_df['facings'] >= target]) else 0
 
         product_facings_comp = product_facings_ours = 0
