@@ -696,6 +696,9 @@ class DIAGEOUSToolBox:
         relevant_products = self.match_product_in_scene[
             (self.match_product_in_scene['product_fk'].isin(product_fk_with_substs)) &
             (self.match_product_in_scene['scene_fk'].isin(relevant_scenes))]
+        relevant_products = pd.merge(relevant_products, self.scif[['scene_id', 'template_name']], how='left',
+                                     left_on='scene_fk', right_on='scene_id').drop_duplicates()
+        relevant_products = relevant_products.sort_values(by=['template_name'])
         if relevant_products.empty:
             passed, result = 0, Const.NO_PLACEMENT
         else:
