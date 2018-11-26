@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOES_SAND.KPIGenerator import DIAGEOESSANDGenerator
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
@@ -21,12 +21,12 @@ class DIAGEOESSANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageoes-sand calculations')
-    Config.init()
-    project_name = 'diageoes-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = 'fea0cd76-24b1-4d5c-b0ae-b49227c59cd7'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOESSANDCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageoes-sand calculations')
+#     Config.init()
+#     project_name = 'diageoes-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'fea0cd76-24b1-4d5c-b0ae-b49227c59cd7'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOESSANDCalculations(data_provider, output).run_project_calculations()
