@@ -60,8 +60,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
-# import pandas as pd
-# import os
+import pandas as pd
+import os
 
 from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -246,8 +246,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-# import pandas as pd
-# import os
+import pandas as pd
+import os
 
 # from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.DB.CommonV2 import Common
@@ -350,8 +350,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
-# import pandas as pd
-# import os
+import pandas as pd
+import os
 
 # from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.DB.CommonV2 import Common
