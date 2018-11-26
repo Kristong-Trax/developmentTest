@@ -67,8 +67,10 @@ class Calculations(BaseCalculationsScript):
 TOOL_BOX = """
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
+# import pandas as pd
+# import os
 
 from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -107,7 +109,7 @@ class %(tool_box_class_name)s:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -251,8 +253,10 @@ class Test%(project_capital)s(TestCase):
 SCENE_TOOLBOX_SCRIPT = """
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
+# import pandas as pd
+# import os
 
 # from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.DB.CommonV2 import Common
@@ -293,7 +297,7 @@ class %(scene_tool_box_class_name)s:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_type = self.data_provider.store_type
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -353,8 +357,10 @@ class SceneCalculations(SceneBaseClass):
 PLANOGRAM_TOOLBOX_SCRIPT = """
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
+# import pandas as pd
+# import os
 
 # from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.DB.CommonV2 import Common
@@ -395,7 +401,7 @@ class %(planogram_tool_box_class_name)s:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_type = self.data_provider.store_type
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.planogram_item_facts = self.data_provider['planogram_item_facts']

@@ -3,7 +3,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.CARREFOURAR.Utils.Fetcher import CARREFOUR_ARKPIFetcher
 
@@ -156,7 +156,7 @@ class CarrefourArKpiToolBox:
 
         """
         query = self.kpi_fetcher.get_pk_to_delete(self.session_fk)
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         pk = pd.read_sql_query(query, self.rds_conn.db)
         if not pk.empty:
             pk_to_delete = tuple(pk['pk'].unique().tolist())
@@ -167,7 +167,7 @@ class CarrefourArKpiToolBox:
         self.insert_results_data(query)
 
     def delete_results_data(self, query):
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
 
@@ -175,7 +175,7 @@ class CarrefourArKpiToolBox:
         return
 
     def insert_results_data(self, query):
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
 
