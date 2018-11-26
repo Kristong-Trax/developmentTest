@@ -130,8 +130,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
     GROUP_GOLDEN_ZONE_THRESHOLD = 'Threshold'
     PRODUCT_GROUP_ID = 'Product Group Id'
     ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
-    KPI_FORMAT = 'Category: {category} - Brand: {brand} - Product group id: {group} ' \
-                 '                                              - Ean_code: {ean_code} - KPI Question: {question}'
+    KPI_FORMAT = 'Category: {category} - Brand: {brand} - Product group id: {group} - KPI Question: {question}'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -495,11 +494,6 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         else:
             extra_df['brand'] = 'XX'
 
-        if 'Product EAN Code' in params.columns and params['Product EAN Code'].values[0] != "":
-            extra_df['ean_code'] = params['Product EAN Code'].values[0]
-        else:
-            extra_df['ean_code'] = 'XX'
-
         if 'Product Group Id' in params.columns and params['Product Group Id'].values[0] != "":
             extra_df['group'] = params['Product Group Id'].values[0]
         elif 'Product Group Id;A' in params.columns and 'Product Group Id;B' in params.columns:
@@ -718,19 +712,16 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         if extra_data is not None:
             brand = extra_data['brand']
             group = extra_data['group']
-            ean_code = extra_data['ean_code']
             kpi_name = self.KPI_FORMAT.format(
                 category=category.encode('utf-8'),
                 brand=brand.encode('utf-8'),
                 group=str(group),
-                ean_code=str(ean_code),
                 question=kpi_name.encode('utf-8'))
         else:
             kpi_name = self.KPI_FORMAT.format(
                 category=category.encode('utf-8'),
                 brand='XX',
                 group='XX',
-                ean_code='XX',
                 question=kpi_name.encode('utf-8'))
         while '  ' in kpi_name:
             kpi_name = kpi_name.replace('  ', ' ')
