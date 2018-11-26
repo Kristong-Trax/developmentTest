@@ -39,7 +39,12 @@ class Const(object):
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
+    INTEGRATED = 'Fully Integrated'
+    ADJACENT = 'Adjacent Section'
+    SAME_AISLE = 'Same Aisle, Not Adjacent'
+    NO_CONNECTION = 'Not In The Same Aisle'
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
+
     SOS_COLUMN_DICT = {
                         'SOS': 'facings_ign_stack',
                         'Linear SOS': 'width_mm',

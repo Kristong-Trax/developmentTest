@@ -14,6 +14,8 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Projects.GMIUS.Utils.PositionGraph import Block
 from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
 from Projects.GMIUS.Utils.BlockCalculations import Block as Block2
+from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
+
 
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Projects.GMIUS.ImageHTML.Image import ImageMaker
@@ -46,9 +48,10 @@ class ToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk')\
-                                               .merge(self.scene_info, on='scene_fk')\
-                                               .merge(self.templates, on='template_fk')
+        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
+                                               .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
+                                               .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
@@ -59,8 +62,6 @@ class ToolBox:
         self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
         self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
                                                               (~self.template[Const.KPIS][Const.TYPE].isnull())]
-        self.sub_scores = defaultdict(int)
-        self.sub_totals = defaultdict(int)
 
     # main functions:
     def main_calculation(self, *args, **kwargs):
@@ -78,14 +79,14 @@ class ToolBox:
         scene_types = self.read_cell_from_line(main_line, Const.SCENE_TYPE)
         print(kpi_name, kpi_type)
         general_filters = {}
-        relevant_scif = self.scif.copy()
+        relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
         function = self.get_kpi_function(kpi_type)
-        function = self.integrated_adjacency
+        # function = self.integrated_adjacency
         function = self.adjacency
         if kpi_type == Const.TMB:
             for i, kpi_line in self.template[kpi_type].iterrows():
@@ -143,54 +144,100 @@ class ToolBox:
 
         locations = sorted(list(locations))[::-1]
         ordered_result = '-'.join(locations)
+        result_fk = self.result_values_dict[ordered_result]
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        ''' I think this should be a scene level kpi, i will need to move it to scene_kpi_toolbox '''
         block_thres = .75
         directional_diversity_max = .75
-        cond_1 = lambda x, y: (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
-        cond_2 = lambda x, y: (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
-
         mpis = self.mpis.copy()
-        mpis = self.pos_scrubber(mpis)
+
         for scene in relevant_scif.scene_fk.unique():
             scene_filter = {'scene_fk': scene}
             mpis = self.filter_df(mpis, scene_filter)
+            mpis = self.filter_df(mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
             allowed = {'product_type': ['Other', 'Empty']}
+
             a_filter = {'sub_category_local_name': 'COOKIE DOUGH'}
             b_filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
             a_items = set(self.filter_df(mpis, a_filter)['scene_match_fk'].values)
             b_items = set(self.filter_df(mpis, b_filter)['scene_match_fk'].values)
+
+            integ = False
+            adjac = False
+            aisle = False
+
             if not (a_items and b_items):
-                return
+                continue
 
+            if a_items and b_items:
+                aisle = True
             filters = self.filter_join([a_filter, b_filter])
-            res = self.block.network_x_block_together(filters, location=scene_filter,
-                                                                 additional={'allowed_products_filters': allowed,
-                                                                             'include_stacking': False})
-            # graph, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
-            #                                                      additional={'allowed_products_filters': allowed,
-            #                                                                  'include_stacking': False})
-            # z = self.gen_html(scene, blocks, graph, mpis)
-
-            for block in res['block']:
+            g, blocks = self.block.network_x_block_together2(filters, location=scene_filter,
+                                                               additional={'allowed_products_filters': allowed,
+                                                                           'include_stacking': False})
+            for block in blocks:
+                block = blocks[0] # for testing only, so I can pick which block stays alive in the local namespace
                 nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
+                def cond_1(x, y): return (nodes_dict[x] in a_items and nodes_dict[y] in b_items)
+                def cond_2(x, y): return (nodes_dict[x] in b_items and nodes_dict[y] in a_items)
                 nodes = set(nodes_dict.values())
                 a_pass = len(nodes & a_items) / len(a_items) >= block_thres
                 b_pass = len(nodes & b_items) / len(b_items) >= block_thres
 
                 if a_pass and b_pass:
+                    adjac = True
                     edges = [d['direction'] for x, y, d in block.to_undirected().edges(data=True) if cond_1(x, y) or
                                                                                                      cond_2(x, y)]
                     if not edges:
-                        break
+                        ''' This happens when the 2 groups are only connected by allowed products-
+                            a decision on how to handle this is pending from elizabeth '''
+                        continue
                     counts = Counter(edges)
-                    integ = True
-                    if min([val / len(edges) for val in counts.values()]) > directional_diversity_max:
-                        integ = False
-                    break
-            print('fin')
+                    if max([val / len(edges) for val in counts.values()]) <= directional_diversity_max:
+                        integ = True
+                break  # there can only be one. block.
+
+            if integ:
+                result = Const.INTEGRATED
+            elif adjac:
+                result = Const.ADJACENT
+            elif aisle:
+                result = Const.SAME_AISLE
+            else:
+                result = Const.NO_CONNECTION
+
+            result_fk = self.result_values_dict[result]
 
     def adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            mpis = self.filter_df(self.mpis, scene_filter)
+            allowed = {'product_type': ['Other', 'Empty']}
+            filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
+            items = set(self.filter_df(mpis, filter)['scene_match_fk'].values)
+            allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
+            items.update(allowed_items)
+            if not (items):
+                return
+
+            all_graph = AdjacencyGraph(mpis, None, self.products,
+                                       product_attributes=['rect_x', 'rect_y'],
+                                       name=None, adjacency_overlap_ratio=.4)
+
+            match_to_node = {int(node['match_fk']): i for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+            node_to_match = {val: key for key, val in match_to_node.items()}
+            edge_matches = set(sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[item]].keys()]
+                                    for item in items], []))
+            adjacent_items = edge_matches - items
+            adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items)) &
+                            (~mpis['product_type'].isin(Const.SOS_EXCLUDE_FILTERS))]
+            result_items = adj_mpis[desired_column].unique().to_list() # desired column to be read in from template
+            for item in result_items:
+                pass # save each to DB
+
+    def adjacency_by_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        ''' variant limited by block '''
         for scene in relevant_scif.scene_fk.unique():
             scene_filter = {'scene_fk': scene}
             mpis = self.filter_df(self.mpis, scene_filter)
@@ -201,20 +248,21 @@ class ToolBox:
             if not (items):
                 return
 
-            blocks = self.block.network_x_block_together2(filter, location=scene_filter,
+            graph, blocks = self.block.network_x_block_together2(filter, location=scene_filter,
                                                                   additional={'allowed_products_filters': allowed,
                                                                               'include_stacking': False})
+            all_graph = AdjacencyGraph(mpis, None, self.products,
+                                       product_attributes=['rect_x', 'rect_y'],
+                                       name=None, adjacency_overlap_ratio=.4)
+            match_to_node = {int(node['match_fk']): 1 for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+            all_nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
             for block in blocks:
                 block = blocks[0]
                 nodes_dict = {i: n['match_fk'] for i, n in block.nodes(data=True)}
-                peripherals = []
-                for a, b in block.edges():
-                    if a == b:
-                        block.remove_edge(a, b)
-                for i, node in block.nodes(data=True):
-                for i, node in block.nodes(data=True):
-                    if nodes_dict[node] in allowed_items:
-                        block.remove_node(node)
+                all_points = set()
+                for match in nodes_dict.values():
+                    all_points.update(all_graph.base_adjacency_graph[match_to_node[match]].keys())
+                break
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -422,28 +470,6 @@ class ToolBox:
     #                                                parent_name=self.get_parent(sub_parent)),
     #                                            should_enter=True)
 
-    def pos_scrubber(self, matches):
-        columns_of_import = ['scene_fk', 'bay_number', 'shelf_number', 'facing_sequence_number']
-        pos_mask = matches['product_type'] == 'POS'
-        pos = matches[pos_mask]
-        for i, row in pos.iterrows():
-            row = matches.loc[i]
-            if row[columns_of_import].iloc[1:].sum() != -3:  # We can ignore POS that was correctly not given shelfspace
-                base_mask = ((matches['scene_fk'] == row['scene_fk']) &
-                             (matches['bay_number'] == row['bay_number']) &
-                             (matches['shelf_number'] == row['shelf_number']))
-                type_mask = (base_mask & (matches['facing_sequence_number'] == row['facing_sequence_number']))
-                stacking_mask = (type_mask & (matches['stacking_layer'] >= row['stacking_layer']))
-                matches.loc[stacking_mask, 'stacking_layer'] -= 1
-
-                if len(set(matches[type_mask]['product_type'])) <= 1:
-                    sequence_mask = (base_mask & (matches['facing_sequence_number'] > row['facing_sequence_number']))
-                    matches.loc[sequence_mask, 'facing_sequence_number'] -= 1
-                    matches.loc[base_mask, 'n_shelf_items'] -= 1
-
-        matches = matches[matches['product_type'] != 'POS']
-        matches.loc[matches['stacking_layer'] == 1, 'status'] = 1
-        return matches
 
     def gen_html(self, scene, components, adj_g, mpis):
         img_maker = ImageMaker('gmius', scene, additional_attribs=['sub_category_local_name'])

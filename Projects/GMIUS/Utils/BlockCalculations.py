@@ -396,7 +396,7 @@ class Block(BaseCalculation):
 
                     blocks_res = blocks_res.append(component_data)
 
-                total_facings = blocks_res['sum_of_facings'].sum()
+                # total_facings = blocks_res['sum_of_facings'].sum()
 
                 # For each block check if its valid or not
                 for row in blocks_res.itertuples():
@@ -637,4 +637,4 @@ class Block(BaseCalculation):
         except:
             components = []
 
-        return components
+        return adj_g.base_adjacency_graph, components
