@@ -122,8 +122,6 @@ class DIAGEOZAToolBox:
                     # Saving to the old tables
                     result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            else:
-                return
 
             if set_score == 0:
                 pass
