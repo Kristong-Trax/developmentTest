@@ -7,6 +7,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('gmius calculations')
     Config.init()
     project_name = 'gmius'
+    project_name = 'rinielsenus'
     sessions = [
                 'ab70f0f1-7ea1-4e76-a21e-45b45809d301',
                 '039907ec-6e6f-4d41-b1a1-595152e21225',
@@ -26,6 +27,7 @@ if __name__ == '__main__':
                 '26175b23-f786-4564-a9a4-e8810ce231d9',
                   ]
     sessions = ['936360d6-9b90-40b4-9af9-4841312a9a1b']
+    sessions = ['70ec27f5-457c-4513-8927-697450c4cbe5']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

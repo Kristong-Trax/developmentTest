@@ -196,7 +196,7 @@ class ToolBox:
                     counts = Counter(edges)
                     if max([val / len(edges) for val in counts.values()]) <= directional_diversity_max:
                         integ = True
-                break  # there can only be one. block.
+                    break  # there can only be one. block.
 
             if integ:
                 result = Const.INTEGRATED
