@@ -5,27 +5,23 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOKE_SAND.KPIGenerator import DIAGEOKE_SANDGenerator
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.DB.Common import Common
+
 __author__ = 'Nimrod'
 
 
 class DIAGEOKE_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        common = Common(self.data_provider)
         DIAGEOKE_SANDGenerator(self.data_provider, self.output).main_function()
-        DIAGEOGenerator(self.data_provider, self.output, common).diageo_global_assortment_function()
-        common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoau calculations')
+#     LoggerInitializer.init('diageoke-sand calculations')
 #     Config.init()
-#     project_name = 'diageoke_sand'
+#     project_name = 'diageoke-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '41dd9f2c-4a92-4a70-bb64-a4d24e349fbd'
+#     session = '7c301f16-6384-4d4f-83a6-fa1a6b46c26d'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOKE_SANDCalculations(data_provider, output).run_project_calculations()

@@ -2,17 +2,29 @@
 import xlrd
 import json
 import pandas as pd
-
+import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
+from datetime import datetime
 
-from Projects.DIAGEOUK.Utils.PositionGraph import DIAGEOUKPositionGraphs
+from Projects.DIAGEOES.Utils.PositionGraph import DIAGEOESPositionGraphs
 
 __author__ = 'Nimrod'
 
+BUCKET = 'traxuscalc'
 
-class DIAGEOUKGENERALToolBox:
+EMPTY = 'Empty'
+POURING_SURVEY_TEXT = 'Are the below brands pouring?'
+UPDATED_DATE_FILE = 'LastUpdated'
+UPDATED_DATE_FORMAT = '%Y-%m-%d'
+CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
+
+KPI_NAME = 'Atomic'
+GROUP_NAME = 'Group Name'
+PRODUCT_NAME = 'Product Name'
+
+class DIAGEOESSANDGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -27,32 +39,75 @@ class DIAGEOUKGENERALToolBox:
     TOP = 'Top'
     BOTTOM = 'Bottom'
 
-    def __init__(self, data_provider, output, **kwargs):
+    DIAGEO = 'Diageo'
+    ASSORTMENT = 'assortment'
+    AVAILABILITY = 'availability'
+
+    RELEVANT_FOR_STORE = 'Y'
+    IRRELEVANT_FOR_STORE = 'N'
+    OR_OTHER_PRODUCTS = 'Or'
+
+
+    def __init__(self, data_provider, output, rds_conn=None, ignore_stacking=False, front_facing=False, **kwargs):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
+        self.rds_conn = rds_conn
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
+        self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
+                                                                      how='left', on='template_fk', suffixes=['', '_y'])
+        self.ignore_stacking = ignore_stacking
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
+        self.front_facing = front_facing
         for data in kwargs.keys():
             setattr(self, data, kwargs[data])
+        if self.front_facing:
+            self.scif = self.scif[self.scif['front_face_count'] == 1]
 
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = DIAGEOUKPositionGraphs(self.data_provider)
+            self._position_graphs = DIAGEOESPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
     def match_product_in_scene(self):
         if not hasattr(self, '_match_product_in_scene'):
             self._match_product_in_scene = self.position_graphs.match_product_in_scene
+            if self.front_facing:
+                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
+            if self.ignore_stacking:
+                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
         return self._match_product_in_scene
+
+    def get_survey_answer(self, survey_data, answer_field=None):
+        """
+        :param survey_data:     1) str - The name of the survey in the DB.
+                                2) tuple - (The field name, the field value). For example: ('question_fk', 13)
+        :param answer_field: The DB field from which the answer is extracted. Default is the usual hierarchy.
+        :return: The required survey response.
+        """
+        if not isinstance(survey_data, (list, tuple)):
+            entity = 'question_text'
+            value = survey_data
+        else:
+            entity, value = survey_data
+        survey = self.survey_response[self.survey_response[entity] == value]
+        if survey.empty:
+            return None
+        survey = survey.iloc[0]
+        if answer_field is None or answer_field not in survey.keys():
+            answer_field = 'selected_option_text' if survey['selected_option_text'] else 'number_value'
+        survey_answer = survey[answer_field]
+        return survey_answer
 
     def check_survey_answer(self, survey_text, target_answer):
         """
-        :param survey_text: The name of the survey in the DB.
+        :param survey_text:     1) str - The name of the survey in the DB.
+                                2) tuple - (The field name, the field value). For example: ('question_fk', 13)
         :param target_answer: The required answer/s for the KPI to pass.
         :return: True if the answer matches the target; otherwise - False.
         """
@@ -79,7 +134,14 @@ class DIAGEOUKGENERALToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The number of scenes matching the filtered Scene Item Facts data frame.
         """
-        number_of_scenes = self.calculate_assortment(assortment_entity='scene_id', **filters)
+        if filters:
+            if set(filters.keys()).difference(self.scenes_info.keys()):
+                scene_data = self.scif[self.get_filter_condition(self.scif, **filters)]
+            else:
+                scene_data = self.scenes_info[self.get_filter_condition(self.scenes_info, **filters)]
+        else:
+            scene_data = self.scenes_info
+        number_of_scenes = len(scene_data['scene_fk'].unique().tolist())
         return number_of_scenes
 
     def calculate_availability(self, **filters):
@@ -87,8 +149,14 @@ class DIAGEOUKGENERALToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
         """
-        filtered_scif = self.scif[self.get_filter_condition(self.scif, **filters)]
-        availability = filtered_scif['facings'].sum()
+        if set(filters.keys()).difference(self.scif.keys()):
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        else:
+            filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+        if self.facings_field in filtered_df.columns:
+            availability = filtered_df[self.facings_field].sum()
+        else:
+            availability = len(filtered_df)
         return availability
 
     def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1, **filters):
@@ -100,17 +168,23 @@ class DIAGEOUKGENERALToolBox:
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            if not filters:
+                filtered_df = self.match_product_in_scene.copy()
+            else:
+                filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         else:
-            filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+            if not filters:
+                filtered_df = self.scif.copy()
+            else:
+                filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if minimum_assortment_for_entity == 1:
             assortment = len(filtered_df[assortment_entity].unique())
         else:
             assortment = 0
             for entity_id in filtered_df[assortment_entity].unique():
                 assortment_for_entity = filtered_df[filtered_df[assortment_entity] == entity_id]
-                if 'facings' in filtered_df.columns:
-                    assortment_for_entity = assortment_for_entity['facings'].sum()
+                if self.facings_field in filtered_df.columns:
+                    assortment_for_entity = assortment_for_entity[self.facings_field].sum()
                 else:
                     assortment_for_entity = len(assortment_for_entity)
                 if assortment_for_entity >= minimum_assortment_for_entity:
@@ -122,9 +196,9 @@ class DIAGEOUKGENERALToolBox:
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
         :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
         :param general_filters: These are the parameters which the general data frame is filtered by.
-        :return: The ratio of the SOS.
+        :return: The ratio of the Facings SOS.
         """
-        if include_empty == self.EXCLUDE_EMPTY:
+        if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
             general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
         pop_filter = self.get_filter_condition(self.scif, **general_filters)
         subset_filter = self.get_filter_condition(self.scif, **sos_filters)
@@ -137,6 +211,34 @@ class DIAGEOUKGENERALToolBox:
         if not isinstance(ratio, (float, int)):
             ratio = 0
         return ratio
+
+    def calculate_linear_share_of_shelf(self, sos_filters, include_empty=EXCLUDE_EMPTY, **general_filters):
+        """
+        :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
+        :param include_empty: This dictates whether Empty-typed SKUs are included in the calculation.
+        :param general_filters: These are the parameters which the general data frame is filtered by.
+        :return: The Linear SOS ratio.
+        """
+        if include_empty == self.EXCLUDE_EMPTY:
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+
+        numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
+        denominator_width = self.calculate_share_space_length(**general_filters)
+
+        if denominator_width == 0:
+            ratio = 0
+        else:
+            ratio = numerator_width / float(denominator_width)
+        return ratio
+
+    def calculate_share_space_length(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        space_length = filtered_matches['width_mm_advance'].sum()
+        return space_length
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, **filters):
         """
@@ -249,7 +351,7 @@ class DIAGEOUKGENERALToolBox:
         return result
 
     def calculate_product_sequence(self, sequence_filters, direction, empties_allowed=True, irrelevant_allowed=False,
-                                   min_required_to_pass=STRICT_MODE, **general_filters):
+                                   min_required_to_pass=STRICT_MODE, custom_graph=None, **general_filters):
         """
         :param sequence_filters: One of the following:
                         1- a list of dictionaries, each containing the filters values of an organ in the sequence.
@@ -261,111 +363,125 @@ class DIAGEOUKGENERALToolBox:
                                    not in the sequence.
         :param min_required_to_pass: The number of sequences needed to exist in order for KPI to pass.
                                      If STRICT_MODE is activated, the KPI passes only if it has NO rejects.
+        :param custom_graph: A filtered Positions graph - given in case only certain vertices need to be checked.
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: True if the KPI passes; otherwise False.
         """
         if isinstance(sequence_filters, (list, tuple)) and isinstance(sequence_filters[0], (str, unicode)):
-            entity, sequence_filters = sequence_filters
-        else:
-            entity = None
-        filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        scenes = set(filtered_scif['scene_id'].unique())
-        for filters in sequence_filters:
-            if isinstance(filters, dict):
-                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
-            else:
-                scene_for_filters = filtered_scif[filtered_scif[entity] == filters]['scene_id'].unique()
-            scenes = scenes.intersection(scene_for_filters)
-            if not scenes:
-                Log.debug('None of the scenes include products from all types relevant for sequence')
-                return True
+            sequence_filters = [{sequence_filters[0]: values} for values in sequence_filters[1]]
 
         pass_counter = 0
         reject_counter = 0
-        for scene in scenes:
-            scene_graph = self.position_graphs.get(scene)
-            # removing unnecessary edges
-            filtered_scene_graph = scene_graph.copy()
-            edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
-            filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
-            reversed_scene_graph = scene_graph.copy()
-            edges_to_remove = reversed_scene_graph.es.select(direction_ne=self._reverse_direction(direction))
-            reversed_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
-
-            vertices_list = []
+        if not custom_graph:
+            filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+            scenes = set(filtered_scif['scene_id'].unique())
             for filters in sequence_filters:
-                if not isinstance(filters, dict):
-                    filters = {entity: filters}
-                vertices_list.append(self.filter_vertices_from_graph(scene_graph, **filters))
-            tested_vertices, sequence_vertices = vertices_list[0], vertices_list[1:]
-            vertices_list = reduce(lambda x, y: x + y, sequence_vertices)
+                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
+                scenes = scenes.intersection(scene_for_filters)
+                if not scenes:
+                    Log.debug('None of the scenes include products from all types relevant for sequence')
+                    return True
 
-            sequences = []
-            for vertex in tested_vertices:
-                previous_sequences = self.get_positions_by_direction(reversed_scene_graph, vertex)
-                if previous_sequences and set(vertices_list).intersection(reduce(lambda x, y: x + y, previous_sequences)):
-                    reject_counter += 1
-                    if min_required_to_pass == self.STRICT_MODE:
-                        return False
-                    continue
-
-                next_sequences = self.get_positions_by_direction(filtered_scene_graph, vertex)
-                sequences.extend(next_sequences)
-
-            sequences = self._filter_sequences(sequences)
-            for sequence in sequences:
-                all_products_appeared = True
-                empties_found = False
-                irrelevant_found = False
-                full_sequence = False
-                broken_sequence = False
-                current_index = 0
-                previous_vertices = list(tested_vertices)
-
-                for vertices in sequence_vertices:
-                    if not set(sequence).intersection(vertices):
-                        all_products_appeared = False
-                        break
-
-                for vindex in sequence:
-                    vertex = scene_graph.vs[vindex]
-                    if vindex not in vertices_list and vindex not in tested_vertices:
-                        if current_index < len(sequence_vertices):
-                            if vertex['product_type'] == self.EMPTY:
-                                empties_found = True
-                            else:
-                                irrelevant_found = True
-                    elif vindex in previous_vertices:
-                        pass
-                    elif vindex in sequence_vertices[current_index]:
-                        previous_vertices = list(sequence_vertices[current_index])
-                        current_index += 1
-                    else:
-                        broken_sequence = True
-
-                if current_index == len(sequence_vertices):
-                    full_sequence = True
-
-                if broken_sequence:
-                    reject_counter += 1
-                elif full_sequence:
-                    if not empties_allowed and empties_found:
-                        reject_counter += 1
-                    elif not irrelevant_allowed and irrelevant_found:
-                        reject_counter += 1
-                    elif all_products_appeared:
-                        pass_counter += 1
+            for scene in scenes:
+                scene_graph = self.position_graphs.get(scene)
+                scene_passes, scene_rejects = self.calculate_sequence_for_graph(scene_graph, sequence_filters, direction,
+                                                                                empties_allowed, irrelevant_allowed)
+                pass_counter += scene_passes
+                reject_counter += scene_rejects
 
                 if pass_counter >= min_required_to_pass:
                     return True
                 elif min_required_to_pass == self.STRICT_MODE and reject_counter > 0:
                     return False
 
-        if reject_counter == 0:
+        else:
+            scene_passes, scene_rejects = self.calculate_sequence_for_graph(custom_graph, sequence_filters, direction,
+                                                                            empties_allowed, irrelevant_allowed)
+            pass_counter += scene_passes
+            reject_counter += scene_rejects
+
+        if pass_counter >= min_required_to_pass or reject_counter == 0:
             return True
         else:
             return False
+
+    def calculate_sequence_for_graph(self, graph, sequence_filters, direction, empties_allowed, irrelevant_allowed):
+        """
+        This function checks for a sequence given a position graph (either a full scene graph or a customized one).
+        """
+        pass_counter = 0
+        reject_counter = 0
+
+        # removing unnecessary edges
+        filtered_scene_graph = graph.copy()
+        edges_to_remove = filtered_scene_graph.es.select(direction_ne=direction)
+        filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
+
+        reversed_scene_graph = graph.copy()
+        edges_to_remove = reversed_scene_graph.es.select(direction_ne=self._reverse_direction(direction))
+        reversed_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
+
+        vertices_list = []
+        for filters in sequence_filters:
+            vertices_list.append(self.filter_vertices_from_graph(graph, **filters))
+        tested_vertices, sequence_vertices = vertices_list[0], vertices_list[1:]
+        vertices_list = reduce(lambda x, y: x + y, sequence_vertices)
+
+        sequences = []
+        for vertex in tested_vertices:
+            previous_sequences = self.get_positions_by_direction(reversed_scene_graph, vertex)
+            if previous_sequences and set(vertices_list).intersection(reduce(lambda x, y: x + y, previous_sequences)):
+                reject_counter += 1
+                continue
+
+            next_sequences = self.get_positions_by_direction(filtered_scene_graph, vertex)
+            sequences.extend(next_sequences)
+
+        sequences = self._filter_sequences(sequences)
+        for sequence in sequences:
+            all_products_appeared = True
+            empties_found = False
+            irrelevant_found = False
+            full_sequence = False
+            broken_sequence = False
+            current_index = 0
+            previous_vertices = list(tested_vertices)
+
+            for vertices in sequence_vertices:
+                if not set(sequence).intersection(vertices):
+                    all_products_appeared = False
+                    break
+
+            for vindex in sequence:
+                vertex = graph.vs[vindex]
+                if vindex not in vertices_list and vindex not in tested_vertices:
+                    if current_index < len(sequence_vertices):
+                        if vertex['product_type'] == self.EMPTY:
+                            empties_found = True
+                        else:
+                            irrelevant_found = True
+                elif vindex in previous_vertices:
+                    pass
+                elif vindex in sequence_vertices[current_index]:
+                    previous_vertices = list(sequence_vertices[current_index])
+                    current_index += 1
+                else:
+                    broken_sequence = True
+
+            if current_index == len(sequence_vertices):
+                full_sequence = True
+
+            if broken_sequence:
+                reject_counter += 1
+            elif full_sequence:
+                if not empties_allowed and empties_found:
+                    reject_counter += 1
+                elif not irrelevant_allowed and irrelevant_found:
+                    reject_counter += 1
+                elif all_products_appeared:
+                    pass_counter += 1
+        return pass_counter, reject_counter
 
     @staticmethod
     def _reverse_direction(direction):
@@ -485,8 +601,7 @@ class DIAGEOUKGENERALToolBox:
             Log.debug('None of the scenes contain both anchor and tested SKUs')
             return False
 
-    @staticmethod
-    def filter_vertices_from_graph(graph, **filters):
+    def filter_vertices_from_graph(self, graph, **filters):
         """
         This function is given a graph and returns a set of vertices calculated by a given set of filters.
         """
@@ -502,6 +617,9 @@ class DIAGEOUKGENERALToolBox:
             else:
                 vertices_indexes = vertices_indexes.intersection(field_vertices)
         vertices_indexes = vertices_indexes if vertices_indexes is not None else [v.index for v in graph.vs]
+        if self.front_facing:
+            front_facing_vertices = [v.index for v in graph.vs.select(front_facing='Y')]
+            vertices_indexes = set(vertices_indexes).intersection(front_facing_vertices)
         return list(vertices_indexes)
 
     @staticmethod
@@ -544,6 +662,7 @@ class DIAGEOUKGENERALToolBox:
                 Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
                 return True
         number_of_blocked_scenes = 0
+        cluster_ratios = []
         for scene in relevant_scenes:
             scene_graph = self.position_graphs.get(scene).copy()
 
@@ -565,29 +684,72 @@ class DIAGEOUKGENERALToolBox:
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                if len(new_relevant_vertices) > 0:
+                    cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                else:
+                    cluster_ratio = 0
+                cluster_ratios.append(cluster_ratio)
                 if cluster_ratio >= minimum_block_ratio:
                     if result_by_scene:
                         number_of_blocked_scenes += 1
                         break
                     else:
-                        return True
+                        if minimum_block_ratio == 1:
+                            return True
+                        else:
+                            all_vertices = {v.index for v in scene_graph.vs}
+                            non_cluster_vertices = all_vertices.difference(cluster)
+                            scene_graph.delete_vertices(non_cluster_vertices)
+                            return cluster_ratio, scene_graph
         if result_by_scene:
             return number_of_blocked_scenes, len(relevant_scenes)
         else:
-            return False
+            if minimum_block_ratio == 1:
+                return False
+            elif cluster_ratios:
+                return max(cluster_ratios)
+            else:
+                return None
+
+    def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
+        """
+        :param scene_id: The scene ID.
+        :param shelf_number: The number of shelf in question (from top).
+        :param include_empty: This dictates whether or not to include empties as valid positions.
+        :param filters: These are the parameters which the unique position is checked for.
+        :return: The position of the first SKU (from the given filters) to appear in the specific shelf.
+        """
+        shelf_matches = self.match_product_in_scene[(self.match_product_in_scene['scene_fk'] == scene_id) &
+                                                    (self.match_product_in_scene['shelf_number'] == shelf_number)]
+        if not include_empty:
+            filters['product_type'] = ('Empty', self.EXCLUDE_FILTER)
+        if filters and shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
+            Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
+            return None
+        shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
+        shelf_matches = shelf_matches.drop_duplicates(subset=['product_ean_code'])
+        positions = []
+        for m in xrange(len(shelf_matches)):
+            match = shelf_matches.iloc[m]
+            match_name = 'Empty' if match['product_type'] == 'Empty' else match['product_ean_code']
+            if positions and positions[-1] == match_name:
+                continue
+            positions.append(match_name)
+        return positions
 
     def get_filter_condition(self, df, **filters):
         """
         :param df: The data frame to be filters.
         :param filters: These are the parameters which the data frame is filtered by.
                        Every parameter would be a tuple of the value and an include/exclude flag.
-                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOUKGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUDIAGEOIEDIAGEOIEGENERALToolBox.INCLUDE_FILTER)
                        INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
         :return: a filtered Scene Item Facts data frame.
         """
-        if 'facings' in df.keys():
-            filter_condition = (df['facings'] > 0)
+        if not filters:
+            return df['pk'].apply(bool)
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
         else:
             filter_condition = None
         for field in filters.keys():
@@ -626,7 +788,7 @@ class DIAGEOUKGENERALToolBox:
         """
         location_filters = {}
         for field in filters.keys():
-            if field not in self.all_products.columns:
+            if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
         relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
