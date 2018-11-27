@@ -1,6 +1,6 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
@@ -17,10 +17,10 @@ class DIAGEOGRCalculations(BaseCalculationsScript):
 
 #
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoau calculations')
+#     LoggerInitializer.init('diageogr calculations')
 #     Config.init()
 #     project_name = 'diageogr'
-#     data_provider = ACEDataProvider(project_name)
+#     data_provider = KEngineDataProvider(project_name)
 #     session = '6C40C5E4-42D8-4606-947B-D31E072AC625'
 #     data_provider.load_session_data(session)
 #     output = Output()

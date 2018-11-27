@@ -4,7 +4,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
@@ -61,7 +61,7 @@ class CUBAUCUBAUToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CUBAUCUBAUGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.common = Common(self.data_provider)
         self.common_sos = SOS(self.data_provider, self.output)
@@ -213,7 +213,7 @@ class CUBAUCUBAUToolBox:
 
     def get_match_product_in_scene_with_direction(self):
         query = CUBAUCUBAUQueries.get_facings_by_direction(self.session_uid)
-        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         products_per_direction = pd.read_sql_query(query, local_con.db)
         matches_with_direction = self.match_product_in_scene.merge(products_per_direction, left_on='scene_match_fk', right_on='match_product_fk')
         return matches_with_direction

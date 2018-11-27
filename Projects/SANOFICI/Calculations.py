@@ -23,7 +23,7 @@ class SANOFIAUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofici'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '3D081D8D-D6EF-4944-8926-9BC07D2DB22C'
+#     session = '37ED8630-CD54-47F8-BE78-8698B5CE9EDB'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIAUCalculations(data_provider, output).run_project_calculations()

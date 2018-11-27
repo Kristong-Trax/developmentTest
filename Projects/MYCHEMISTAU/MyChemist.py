@@ -2,7 +2,7 @@ import os
 import datetime
 import pandas as pd
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Simon.Connectors import SimonConnectors
 from Trax.Utils.Logging.Logger import Log
 
@@ -87,7 +87,7 @@ class MyChemistReport(object):
         return query_result['session_start_time'][0]
 
     def connect(self):
-        self.rds_conn = ProjectConnector(self.project, DbUsers.ReadOnly)
+        self.rds_conn = PSProjectConnector(self.project, DbUsers.ReadOnly)
         self.cur = self.rds_conn.db.cursor()
         queries = ['SET group_concat_max_len = 1000000']
         for query in queries:

@@ -11,7 +11,7 @@ if __name__ == '__main__':
     project_name = 'inbevtradmx'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        'e7f41e7f-b4ce-456b-9d24-ff700980ee82'
+        'e077d60c-eb83-490e-b453-c6a93e46f04d'
     ]
     for session in sessions:
         data_provider.load_session_data(session)

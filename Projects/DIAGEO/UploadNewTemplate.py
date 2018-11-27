@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
@@ -51,7 +51,7 @@ class NewTemplate:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property

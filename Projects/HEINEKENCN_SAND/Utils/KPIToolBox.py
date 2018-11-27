@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
@@ -62,7 +62,7 @@ class HEINEKENCNToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = HEINEKENCNGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.kpi_static_data = self.get_kpi_static_data()
         self.tamplate_tools = HandleTemplate(self.data_provider, output, kpi_static_data=self.kpi_static_data)

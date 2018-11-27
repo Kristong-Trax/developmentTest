@@ -6,7 +6,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -82,7 +82,7 @@ class CCTH_UATToolBox(CCTH_UATConsts):
         self.store_type = '' if self.store_type is None else self.store_type
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.segmentation, self.region = self.get_segmentation_and_region()
         self.kpi_static_data = self.get_kpi_static_data()
         self.tools = CCTH_UATGENERALToolBox(self.data_provider, self.output)

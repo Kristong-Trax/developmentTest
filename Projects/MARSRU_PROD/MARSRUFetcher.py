@@ -2,7 +2,7 @@
 import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
 
 __author__ = 'urid'
@@ -25,7 +25,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
     RIGHT = 'shelf_px_right'
 
     def __init__(self, project_name, scif, matches, set_name, products, session_uid):
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.scif = scif
         self.matches = matches
         self.set_name = set_name
@@ -430,7 +430,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
         return skus_list
 
     def get_filtered_matches(self, include_stacking=True):
-        self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector('marsru-prod', DbUsers.CalculationEng)
         matches = self.matches
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches[(matches['status'] == 1) | (matches['status'] == 3)] # include stacking

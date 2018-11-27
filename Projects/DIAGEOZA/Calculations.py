@@ -17,7 +17,7 @@ class DIAGEOZACalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoau calculations')
+#     LoggerInitializer.init('diageoza calculations')
 #     Config.init()
 #     project_name = 'diageoza'
 #     data_provider = KEngineDataProvider(project_name)

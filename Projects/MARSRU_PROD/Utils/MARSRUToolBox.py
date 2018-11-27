@@ -9,7 +9,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data, Keys
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Orm.OrmCore import OrmSession
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from Projects.MARSRU_PROD.MARSRUFetcher import MARSRU_PRODMARSRUKPIFetcher
@@ -68,7 +68,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
@@ -1226,7 +1226,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
     @kpi_runtime()
     def brand_blocked_in_rectangle(self, params):
-        self.rds_conn = AwsProjectConnector('marsru-prod', DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector('marsru-prod', DbUsers.CalculationEng)
         for p in params.values()[0]:
             if p.get('Formula') != 'custom_mars_2' and p.get('Formula') != 'custom_mars_2_2018': #todo: insert it back after testing
                 continue
@@ -2397,7 +2397,7 @@ class MARSRU_PRODMARSRUKPIToolBox:
 
     def commit_results_data(self):
         self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = self.kpi_fetcher.get_delete_session_results(self.session_uid)
         for query in delete_queries:

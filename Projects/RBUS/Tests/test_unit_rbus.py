@@ -10,7 +10,7 @@ __author__ = 'yoava'
 
 class TestRbusSand(TestCase):
 
-    @mock.patch('Projects.RBUS.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.RBUS.Utils.KPIToolBox.PSProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()

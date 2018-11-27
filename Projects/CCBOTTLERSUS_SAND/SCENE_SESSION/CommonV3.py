@@ -1,7 +1,7 @@
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
@@ -39,7 +39,7 @@ class Common(object):
         self.scene_id = self.data_provider.scene_id
         self.store_id = self.data_provider[Data.STORE_FK]
         self.visit_date = self.data_provider[Data.VISIT_DATE] if self.data_provider[Data.STORE_FK] else None
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
         self.queries = Queries
         self.kpi_results = pd.DataFrame(columns=self.COLUMNS)
@@ -228,7 +228,7 @@ class Common(object):
         else:
             Log.error('Cannot Calculate results per {}'.format(result_entity))
             return
-        local_con = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = local_con.db.cursor()
         for key, value in delete_queries.iteritems():
             if key == 'delete_old_session_specific_tree_query' and not value:

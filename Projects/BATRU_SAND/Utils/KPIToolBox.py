@@ -6,7 +6,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.BATRU_SAND.Utils.ParseTemplates import parse_template
@@ -128,7 +128,7 @@ class BATRU_SANDToolBox:
             .merge(self.templates[['template_fk', 'template_name']], how='left', on='template_fk')
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.merged_additional_data = self.get_additional_product_data()
         self.tools = BATRU_SANDGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.match_display_in_scene = self.tools.get_match_display()

@@ -1,12 +1,13 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 import numpy as np
+import pandas as pd
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -63,7 +64,7 @@ class HEINEKENTWToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_new_kpi_static_data()
         self.kpi_results_queries = []
         self.assortment = Assortment(self.data_provider, self.output)
@@ -153,7 +154,7 @@ class HEINEKENTWToolBox:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
-                if result.target and result.group_target_date <= self.current_date:
+                if not pd.isnull(result.target) and not pd.isnull(result.group_target_date) and result.group_target_date <= self.assortment.current_date:
                     denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res))
                 # Distrubtion
