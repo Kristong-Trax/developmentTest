@@ -232,9 +232,9 @@ class ToolBox:
             adjacent_items = edge_matches - items
             adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items)) &
                             (~mpis['product_type'].isin(Const.SOS_EXCLUDE_FILTERS))]
-            result_items = adj_mpis[desired_column].unique().to_list() # desired column to be read in from template
-            for item in result_items:
-                pass # save each to DB
+            # result_items = adj_mpis[desired_column].unique().to_list() # desired column to be read in from template
+            # for item in result_items:
+            #     pass # save each to DB
 
     def adjacency_by_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' variant limited by block '''
