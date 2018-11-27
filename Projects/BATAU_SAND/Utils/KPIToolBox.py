@@ -28,7 +28,7 @@ KPI_FAMILY='kpi_family_fk'
 TYPE = "type"
 
 #GENERAL
-ROUNDING_DIGITS = 2
+ROUNDING_DIGITS = 4
 MAPPINGS = {'manufacturer_name':'manufacturer_fk',
             'brand_name':'brand_fk',
             'category':'category_fk',
