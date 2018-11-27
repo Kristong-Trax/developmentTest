@@ -80,14 +80,15 @@ class ToolBox:
         print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
-        if scene_types:
-            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-            general_filters['template_name'] = scene_types
+        # if scene_types:
+        #     relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+        #     general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
         function = self.get_kpi_function(kpi_type)
         # function = self.integrated_adjacency
         function = self.adjacency
+        function = self.graph
         if kpi_type == Const.TMB:
             for i, kpi_line in self.template[kpi_type].iterrows():
                 function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -266,20 +267,16 @@ class ToolBox:
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        # g = Block(self.data_provider2)
-        g2 = Block2(self.data_provider2)
-        prod = self.all_products.drop(['width_mm', 'height_mm'], axis=1)
-        mpis = self.mpis.copy()
-        mpis = self.pos_scrubber(mpis)
+        x = Block(self.data_provider)
         relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
         allowed_filter = {'product_type': ['Empty', 'Other']}
-        filtered_mpis = mpis[(mpis['Segment'] == 'DRY DOG NATURAL/GRAIN FREE') |
-                       (mpis['product_type'].isin(['Empty', 'Other']))]
-        # g.alt_block(filtered_mpis, mpis, relevant_filter, allowed_filter)
-        print('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
-        # relevant_filter.update(allowed_filter)
-        g, c = g2.network_x_block_together2(relevant_filter, additional={'allowed_products_filters': allowed_filter,
-                                                                     'include_stacking': False})
+        scene_filter = {'scene_fk': 342186}
+        res = x.network_x_block_together(relevant_filter, location=scene_filter,
+                                         additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
+
+        for block in blocks_res['component']:
+            print(sum([len(node[1]['members']) for node in block.nodes(data=True)]))
+
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
