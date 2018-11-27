@@ -80,18 +80,19 @@ class ToolBox:
         print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
-        # if scene_types:
-        #     relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
-        #     general_filters['template_name'] = scene_types
+        if scene_types:
+            relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+            general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
         function = self.get_kpi_function(kpi_type)
         # function = self.integrated_adjacency
-        function = self.adjacency
-        function = self.graph
-        if kpi_type == Const.TMB:
-            for i, kpi_line in self.template[kpi_type].iterrows():
-                function(kpi_name, kpi_line, relevant_scif, general_filters)
+        # function = self.adjacency
+        # function = self.graph
+        if kpi_name != 'Aggregation':
+            return
+        for i, kpi_line in self.template[kpi_type].iterrows():
+            function(kpi_name, kpi_line, relevant_scif, general_filters)
                 # result, num, den, score, target = function(kpi_line)
                 # if (result is None and score is None and target is None) or not den:
                 #     continue
@@ -99,6 +100,7 @@ class ToolBox:
                 # self.write_to_db(kpi_name, kpi_type, score, result=result, threshold=target, num=num, den=den)
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        print('running sos')
         levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
         sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
         scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
@@ -115,7 +117,7 @@ class ToolBox:
                         return
                     den = scif[sos_sum_col].sum()
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
-                    num = df[sos_sum_col].sum() / Const.MM_TO_FT
+                    num = df[sos_sum_col].sum()
                     ratio, score = self.ratio_score(num, den)
                     self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
                                                    numerator_result=num, denominator_result=den,
@@ -320,9 +322,9 @@ class ToolBox:
     @staticmethod
     def read_cell_from_line(line, col):
         try:
-            val = line[col]
+            val = line[col] if not pd.isnull(line[col]) else []
         except:
-            val = None
+            val = []
         if val:
             if hasattr(val, 'split'):
                 if ', ' in val:
@@ -331,8 +333,7 @@ class ToolBox:
                     val = val.split(',')
             if not isinstance(val, list):
                 val = [val]
-        # if pd.isnull(val[0]):
-        #     val = []
+
         return val
 
     def get_kpi_line_filters(self, kpi_orig, name=''):

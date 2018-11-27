@@ -47,8 +47,8 @@ class Const(object):
 
     SOS_COLUMN_DICT = {
                         'SOS': 'facings_ign_stack',
-                        'Linear SOS': 'width_mm',
-                        'AVERAGE': 'count',
+                        'Linear SOS': 'net_len_ign_stack',
+                        'Average': 'count',
                        }
     TMB_VALUES = ['Top', 'Middle', 'Bottom']
 
