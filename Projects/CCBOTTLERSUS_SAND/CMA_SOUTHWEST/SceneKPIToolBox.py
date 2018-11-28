@@ -132,25 +132,36 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
 
-        brand_list = num_scif['brand_name'].unique().tolist()
+        competitor_facings = den - num
+
+        # get all brands in the scene
+        brand_list = den_scif['brand_name'].unique().tolist()
 
         for brand in brand_list:
-            brand_filters = {'Southwest Deliver': 'Y', 'brand_name': brand}
+            brand_filters = {'brand_name': brand}
             brand_scif = scif[self.get_filter_condition(scif, **brand_filters)]
             try:
                 brand_fk = brand_scif['brand_fk'].values[0]
+                southwest_deliver = brand_scif['Southwest Deliver'].values[0] == 'Y'
             except IndexError:
-                Log.error('Foreign key for brand name "{}" not found'.format(brand))
+                Log.error(
+                    'Foreign key for brand name "{}" not found or bottler delivery status indeterminable'.format(brand))
                 continue
 
             brand_ratio, brand_num, brand_den = self.tools.sos_with_num_and_dem(kpi_line, brand_scif, den_scif,
                                                                                 self.facings_field)
 
+            competitor_brand_facings = 0
+
+            if not southwest_deliver:
+                competitor_brand_facings = brand_num
+                brand_num = 0
+
             brand_result_dict = self.build_dictionary_for_db_insert(kpi_name=Const.COKE_COOLER_PURITY_BRAND,
                                                                     numerator_result=brand_num,
                                                                     denominator_result=brand_den,
-                                                                    result=brand_ratio, numerator_id=brand_fk,
-                                                                    denominator_id=self.scene,
+                                                                    result=brand_ratio, score=competitor_brand_facings,
+                                                                    numerator_id=brand_fk, denominator_id=self.scene,
                                                                     by_scene=True, should_enter=True,
                                                                     identifier_parent=self.scene)
 
@@ -158,7 +169,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_name, numerator_result=num,
                                                           denominator_result=den,
-                                                          result=ratio, numerator_id=self.scene,
+                                                          result=ratio, score=competitor_facings, numerator_id=self.scene,
                                                           denominator_id=MANUFACTURER_FK,
                                                           by_scene=True, should_enter=True,
                                                           identifier_result=self.scene)
