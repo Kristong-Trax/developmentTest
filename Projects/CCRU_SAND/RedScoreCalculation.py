@@ -1,20 +1,23 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
 
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
+from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 
-from Projects.CCRU_SAND.Sets.Canteen import CCRU_SANDCanteenCalculations
-from Projects.CCRU_SAND.Sets.FT import CCRU_SANDFTCalculations
-from Projects.CCRU_SAND.Sets.FastFood import CCRU_SANDFastFoodCalculations
-from Projects.CCRU_SAND.Sets.HoReCa import CCRU_SANDHoReCaCalculations
-from Projects.CCRU_SAND.Sets.Hypermarket import CCRU_SANDHypermarketCalculations
-from Projects.CCRU_SAND.Sets.Petrol import CCRU_SANDPetrolCalculations
-from Projects.CCRU_SAND.Sets.Superette import CCRU_SANDSuperetteCalculations
-from Projects.CCRU_SAND.Sets.Supermarket import CCRU_SANDSupermarketCalculations
+# from Projects.CCRU_SAND.Sets.Canteen import CCRU_SANDCanteenCalculations
+# from Projects.CCRU_SAND.Sets.FT import CCRU_SANDFTCalculations
+# from Projects.CCRU_SAND.Sets.FastFood import CCRU_SANDFastFoodCalculations
+# from Projects.CCRU_SAND.Sets.HoReCa import CCRU_SANDHoReCaCalculations
+# from Projects.CCRU_SAND.Sets.Hypermarket import CCRU_SANDHypermarketCalculations
+# from Projects.CCRU_SAND.Sets.Petrol import CCRU_SANDPetrolCalculations
+# from Projects.CCRU_SAND.Sets.Superette import CCRU_SANDSuperetteCalculations
+# from Projects.CCRU_SAND.Sets.Supermarket import CCRU_SANDSupermarketCalculations
 
 from Projects.CCRU_SAND.Sets.FT2018 import CCRU_SANDFT2018Calculations
 from Projects.CCRU_SAND.Sets.Hypermarket2018 import CCRU_SANDHypermarket2018Calculations
@@ -28,9 +31,6 @@ from Projects.CCRU_SAND.Sets.ConvenienceSmall import CCRU_SANDConvenienceSmallCa
 from Projects.CCRU_SAND.Sets.QSR2018 import CCRU_SANDQsr2018Calculations
 from Projects.CCRU_SAND.Sets.Petrol2018 import CCRU_SANDPetrol2018Calculations
 
-from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -78,24 +78,24 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
             kpi_set_name = tool_box.set_name
             test_store = ps_data.get_ps_store_info(self.data_provider['store_info'])['test_store']
 
-            if kpi_set_name == CANTEEN:
-                CCRU_SANDCanteenCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == PETROL:
-                CCRU_SANDPetrolCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == HORECA:
-                CCRU_SANDHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == FT:
-                CCRU_SANDFTCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == HYPERMARKET:
-                CCRU_SANDHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == SUPERMARKET:
-                CCRU_SANDSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == SUPERETTE:
-                CCRU_SANDSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
-            elif kpi_set_name == FAST_FOOD:
-                CCRU_SANDFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
+            # if kpi_set_name == CANTEEN:
+            #     CCRU_SANDCanteenCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == PETROL:
+            #     CCRU_SANDPetrolCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HORECA:
+            #     CCRU_SANDHoReCaCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FT:
+            #     CCRU_SANDFTCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == HYPERMARKET:
+            #     CCRU_SANDHypermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERMARKET:
+            #     CCRU_SANDSupermarketCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == SUPERETTE:
+            #     CCRU_SANDSuperetteCalculations(self.data_provider, self.output, store_area).main_function()
+            # elif kpi_set_name == FAST_FOOD:
+            #     CCRU_SANDFastFoodCalculations(self.data_provider, self.output, store_area).main_function()
 
-            elif kpi_set_name == FT2018:
+            if kpi_set_name == FT2018:
                 CCRU_SANDFT2018Calculations(self.data_provider, self.output, store_area).main_function()
             elif kpi_set_name == CANTEEN_2018:
                 CCRU_SANDCanteen2018Calculations(self.data_provider, self.output, store_area).main_function()
@@ -120,10 +120,11 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
             elif test_store.values[0] == "Y":
                 Log.info('Session Store ID {} is a test store'.format(tool_box.store_id))
             else:
-                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'.format(tool_box.store_id, kpi_set_name))
+                Log.error('Session Store ID {} cannot be calculated. POS KPI Set name in store attribute is invalid: {}'
+                          ''.format(tool_box.store_id, kpi_set_name))
 
         else:
-            Log.info('Promo session, no calculation implied')
+            Log.info('Promo session, no Custom KPI calculation implied')
 
         # self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
@@ -134,7 +135,7 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
 #     project_name = 'ccru_sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     session_uids = [
-#         'DAD315B9-30EA-4AA7-B8FA-684115B1F404',
+#         '692a8a3e-d187-4a20-8636-379492335010',
 #     ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)

@@ -1,16 +1,14 @@
-import datetime
-
 import pandas as pd
+import datetime as dt
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
 
 __author__ = 'urid'
 
@@ -49,7 +47,7 @@ class CCRU_SANDSupermarketCalculations:
 
     def main_function(self):
         jg = CCRU_SANDJsonGenerator('ccru_sand')
-        calc_start_time = datetime.datetime.utcnow()
+        calc_start_time = dt.datetime.utcnow()
         Log.info('Calculation Started at {}'.format(calc_start_time))
 
         sets_to_calculate = [(SUPERMARKET, 'Supermarket'), (BFSUPER, 'BFSuper')]
@@ -83,7 +81,7 @@ class CCRU_SANDSupermarketCalculations:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
-            calc_start_time = datetime.datetime.utcnow()
+            calc_start_time = dt.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
@@ -103,5 +101,5 @@ class CCRU_SANDSupermarketCalculations:
         self.tool_box.calculate_contract_execution()
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
-        calc_finish_time = datetime.datetime.utcnow()
+        calc_finish_time = dt.datetime.utcnow()
         Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))

@@ -3,7 +3,6 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 
@@ -121,7 +120,7 @@ class CCRU_SANDCCHKPIFetcher:
 
 # Sergey
     def get_static_kpi_data(self, set_name=None):
-#        self.rds_conn.connect_rds()
+        self.rds_conn.connect_rds()
         if set_name is None:
             set_name = self.set_name
         query = """
@@ -131,7 +130,8 @@ class CCRU_SANDCCHKPIFetcher:
                 from static.atomic_kpi api
                 join static.kpi kpi on kpi.pk = api.kpi_fk
                 join static.kpi_set kps on kps.pk = kpi.kpi_set_fk
-                where kps.name = '{}'""".format(set_name)
+                where kps.name = '{}'
+                """.format(set_name)
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 # Sergey

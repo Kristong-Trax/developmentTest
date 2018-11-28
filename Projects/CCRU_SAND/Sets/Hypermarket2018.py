@@ -1,17 +1,14 @@
-import datetime
-
 import pandas as pd
+import datetime as dt
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
-from KPIUtils.Utils.Helpers.LogHandler import log_handler
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Utils.Logging.Logger import Log
 
 
 __author__ = 'urid'
@@ -53,7 +50,7 @@ class CCRU_SANDHypermarket2018Calculations:
         jg = CCRU_SANDJsonGenerator('ccru_sand')
         jg.create_json('Hypermarket PoS 2018.xlsx', HYPERMARKET2018)
 
-        calc_start_time = datetime.datetime.utcnow()
+        calc_start_time = dt.datetime.utcnow()
         Log.info('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
@@ -74,9 +71,9 @@ class CCRU_SANDHypermarket2018Calculations:
                                                                                         'score_1',
                                                                                         'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', HYPERMARKET2018)
-# Sergey
-#         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
-# Sergey
+
+        self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
+
         jg.create_gaps_json('gaps_guide_2018.xlsx', sheet_name=HYPERMARKET2018)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
         self.tool_box.write_gaps()
@@ -88,7 +85,7 @@ class CCRU_SANDHypermarket2018Calculations:
             self.tool_box.change_set(extra_set_name)
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), sheet_name)
-            calc_start_time = datetime.datetime.utcnow()
+            calc_start_time = dt.datetime.utcnow()
             Log.info('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
@@ -116,5 +113,5 @@ class CCRU_SANDHypermarket2018Calculations:
             self.tool_box.calculate_contract_execution(jg.project_kpi_dict.get('equipment'))
 
         self.tool_box.commit_results_data()
-        # calc_finish_time = datetime.datetime.utcnow()
+        # calc_finish_time = dt.datetime.utcnow()
         # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
