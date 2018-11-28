@@ -100,7 +100,8 @@ class RISPARKWINEDEToolBox:
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         for result in lvl2_result.itertuples():
             denominator_res = result.total
-            if result.target is not None and result.group_target_date > self.current_date:
+            if not pd.isnull(result.target) and not pd.isnull(
+                    result.group_target_date) and result.group_target_date <= self.current_date:
                 denominator_res = result.target
             res = np.divide(float(result.passes), float(denominator_res)) * 100
             if res >= 100:
