@@ -331,8 +331,6 @@ class Block(BaseCalculation):
 
         block_parameters.update(additional)
 
-        # TODO - add tests
-
         self.horizontal_bucket_size = block_parameters['horizontal_bucket_size']
         self.outliers_threshold = block_parameters['outliers_threshold']
         self.check_vertical_horizontal = block_parameters['check_vertical_horizontal']
@@ -431,8 +429,6 @@ class Block(BaseCalculation):
         :param num_of_shelves: num of shelves the block is spread on.
         :return: The threshold for removing the outliers for the horizontal/vertical calculation.
         """
-        #TODO - Optimize the function we should have some predefined calcs in pandas
-
         num_of_shelves = int(num_of_shelves)
         x_values = sorted(self.get_matches_by_graph_att(graph, 'rect_x'))
         y_values = sorted(self.get_matches_by_graph_att(graph, 'rect_y'))
@@ -488,7 +484,7 @@ class Block(BaseCalculation):
 
     def filter_graph_data(self, df1, df2, filters):
         """
-        :param df1: df with all the scene data
+        :param df1: df with all the scene dataF
         :param df2: additional df with products data
         :param filters: the keys and values the merged data will be filtered on
         :return: filtered df.
@@ -597,7 +593,6 @@ class Block(BaseCalculation):
 
         block_parameters.update(additional)
 
-        # TODO - add tests
 
         self.horizontal_bucket_size = block_parameters['horizontal_bucket_size']
         self.outliers_threshold = block_parameters['outliers_threshold']
