@@ -1,11 +1,14 @@
+import os
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.GOOGLEKR.Utils.KPIToolBox import ToolBox
+from KPIUtils.GlobalProjects.GOOGLE.Utils.KPIToolBox import ToolBox
 # from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.GOOGLEKR.CommonV2 import Common
+from KPIUtils.GlobalProjects.GOOGLE.CommonV2 import Common
 
 
 __author__ = 'Sam_Shivi'
+FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
+                                     'KR - Google Fixture Targets v.3.xlsx')
 
 
 class Generator:
@@ -16,7 +19,7 @@ class Generator:
         self.common = Common(self.data_provider)
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = ToolBox(self.data_provider, self.output, self.common)
+        self.tool_box = ToolBox(self.data_provider, self.output, self.common, FIXTURE_TEMPLATE_PATH)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

@@ -5,7 +5,7 @@ import pandas as pd
 import getpass
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.BATRU.Utils.ParseTemplates import parse_template
@@ -81,11 +81,11 @@ class BATRUNewTemplate:
         self.set_fk = self.get_set_fk(set_name)
         if set_name == BATRUConst.SK_SET_NAME:
             self.delete_static_DB()
-            self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+            self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
             self.kpi_static_data = self.get_kpi_data()
             self.get_kpis_from_template()
         elif set_name == BATRUConst.SAS_SET_NAME:
-            self.aws_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+            self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
             self.kpi_static_data = self.get_kpi_data()
             self.get_kpis_from_template_sas()
         elif set_name == BATRUConst.P4_SET_NAME:
@@ -161,7 +161,7 @@ class BATRUNewTemplate:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = AwsProjectConnector(self.project, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         return self._rds_conn
 
     def delete_static_DB(self):

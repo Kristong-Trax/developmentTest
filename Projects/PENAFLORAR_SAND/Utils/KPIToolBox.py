@@ -4,7 +4,7 @@ from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -20,6 +20,11 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+# Relative Position params
+TESTED_VALUE = 'Tested Product Name'
+ANCHOR_VALUE = 'Anchor Product Name'
+TESTED_TYPE = 'Tested Type'
+ANCHOR_TYPE = 'Anchor Type'
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -54,7 +59,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
@@ -97,6 +102,8 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         """
         This function calculates the KPI results.
         """
+        log_runtime('Updating templates')(self.tools.update_templates)()
+
         # Global assortment kpis
         assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
                                               self.common).diageo_global_assortment_function_v2()
@@ -105,8 +112,11 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
+                try:
+                    self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                except:
+                    Log.warning("Couldn't find a template for set name: " + str(set_name))
+                    continue
             # if set_name in ('MPA', 'New Products',):
             #     set_score = self.calculate_assortment_sets(set_name)
 
@@ -129,6 +139,16 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
                 filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
                 set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
                 self.save_level2_and_level3(set_name, set_name, set_score)
+
+            elif set_name in ('Relative Position'):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name])
+
+                if res_dict:
+                    # Saving to new tables
+                    self.commonV2.save_json_to_new_tables(res_dict)
+
+                set_score = self.calculate_relative_position_sets(set_name)
             else:
                 return
 
@@ -142,6 +162,43 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
+
+    def calculate_relative_position_sets(self, set_name):
+        """
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_info.at[0, 'additional_attribute_2'] == params.get('additional_attribute_2', 'Empty'):
+                tested_filters = {params.get(TESTED_TYPE): params.get(TESTED_VALUE)}
+                anchor_filters = {params.get(ANCHOR_TYPE): params.get(ANCHOR_VALUE)}
+                direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
+                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
+                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
+
+    def _get_direction_for_relative_position(self, value):
+        """
+        This function converts direction data from the template (as string) to a number.
+        """
+        if value == self.tools.UNLIMITED_DISTANCE:
+            value = 1000
+        elif not value or not str(value).isdigit():
+            value = 0
+        else:
+            value = int(value)
+        return value
 
     def calculate_assortment_sets(self, set_name):
         """

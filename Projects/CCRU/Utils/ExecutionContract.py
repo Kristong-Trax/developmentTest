@@ -1,14 +1,14 @@
 import os
 import json
 import argparse
-import datetime
+import datetime as dt
 import pandas as pd
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+
 from Trax.Utils.Logging.Logger import Log
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
 __author__ = 'Nimrod'
@@ -48,12 +48,12 @@ class CCRUContract:
     @property
     def rds_conn(self):
         if not hasattr(self, '_rds_conn'):
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
             self._rds_conn.disconnect_rds()
-            self._rds_conn = ProjectConnector(PROJECT, DbUsers.CalculationEng)
+            self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
     @property
@@ -101,7 +101,7 @@ class CCRUContract:
                           list(pd.read_excel(file_path, skipcols=3, sheetname=TARGETS_SHEET_NAME).iloc[0].values))
         kpi_weights = {x[0]: x[1] for x in kpi_weights}
 
-        raw_data = pd.read_excel(file_path, skiprows=1, sheetname=TARGETS_SHEET_NAME).fillna('')
+        raw_data = pd.read_excel(file_path, skiprows=2, sheetname=TARGETS_SHEET_NAME).fillna('')
         if self.STORE_NUMBER not in raw_data.columns:
             Log.error('File must contain a {} column header'.format(self.STORE_NUMBER))
             return
@@ -155,8 +155,8 @@ class CCRUContract:
         for x, store_id in enumerate(target_data_new.keys()):
 
             data_new = target_data_new[store_id][0]
-            start_date_new = datetime.datetime.strptime(data_new[self.START_DATE], '%Y-%m-%d').date()
-            end_date_new = datetime.datetime.strptime(data_new[self.END_DATE], '%Y-%m-%d').date()
+            start_date_new = dt.datetime.strptime(data_new[self.START_DATE], '%Y-%m-%d').date()
+            end_date_new = dt.datetime.strptime(data_new[self.END_DATE], '%Y-%m-%d').date()
             store_number = data_new[self.STORE_NUMBER]
 
             if not start_date_new <= end_date_new:
@@ -174,14 +174,17 @@ class CCRUContract:
                 #              .format(store_id, store_number))
                 for data_cur in target_data_cur:
                     try:
-                        start_date_cur = datetime.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
-                        end_date_cur = datetime.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                        start_date_cur = dt.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
+                        end_date_cur = dt.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                        store_number_cur = data_cur[self.STORE_NUMBER]
                     except:
                         # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
                         #             .format(store_id, store_number))
                         self.stores_with_invalid_targets += [store_number]
                         continue
-                    if start_date_cur <= end_date_new and end_date_cur >= start_date_new:
+                    if store_number_cur == store_number \
+                            and start_date_cur <= end_date_new \
+                            and end_date_cur >= start_date_new:
                         details_new = data_new.copy()
                         del details_new[self.START_DATE]
                         del details_new[self.END_DATE]
@@ -191,7 +194,7 @@ class CCRUContract:
                         if details_cur == details_new:
                             data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
                         else:
-                            end_date_cur = start_date_new - datetime.timedelta(days=1)
+                            end_date_cur = start_date_new - dt.timedelta(days=1)
                             if start_date_cur <= end_date_cur:
                                 data_cur[self.END_DATE] = str(end_date_cur)
                                 target_data += [data_cur]

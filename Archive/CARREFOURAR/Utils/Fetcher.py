@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.ProjectConnector import AwsProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CARREFOURAR.Utils.carrefour_tool_box import GENERALToolBox
 
 __author__ = 'ortal'
@@ -17,7 +17,7 @@ KPS_RESULT = 'report.kps_results'
 
 class CARREFOUR_ARKPIFetcher:
     def __init__(self, project_name, scif, matches):
-        self.rds_conn = AwsProjectConnector(project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
         self.scif = scif
         self.matches = matches
         self.general_tools = GENERALToolBox

@@ -4,7 +4,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 # from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Data.Projects.Connector import ProjectConnector
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -50,11 +50,11 @@ class INBEVTRADMXToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_3_partial.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_3_partial_v2.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -117,19 +117,21 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_name = self.choose_correct_set_to_calculate(additional_attribute_4,
-                                                        additional_attribute_13, parsed_template)
-        # wrong value in additional attribute 4 - shouldn't calculate
-        if set_name == '':
-            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-            return -1
-        # get only the part of the template that is related to this set
-        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-        # start calculating !
-        self.calculate_set_score(set_template_df, set_name)
+        set_names = self.choose_correct_sets_to_calculate(additional_attribute_4,
+                                                          additional_attribute_13, parsed_template)
+
+        for set_name in set_names:
+            # wrong value in additional attribute 4 - shouldn't calculate
+            if set_name == '':
+                Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+                return -1
+            # get only the part of the template that is related to this set
+            set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+            # start calculating !
+            self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
-    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
+    def choose_correct_sets_to_calculate(additional_attribute_4, additional_attribute_13, template):
         """
         choose what is the appropriate set to calculate
         :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
@@ -144,14 +146,15 @@ class INBEVTRADMXToolBox:
 
         if additional_attribute_13:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
-                            (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
+                            ((template['Store Additional Attribute 13'].str.contains(additional_attribute_13)) |
+                            (template['Store Additional Attribute 13'] == ''))]
         else:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
                             (template['Store Additional Attribute 13'] == '')]
         if sets.empty:
             return ''
         else:
-            return sets['KPI Level 1 Name'].values[0]
+            return sets['KPI Level 1 Name'].unique().tolist()
 
         # if additional_attribute_4 == 'BC':
         #     set_name = sets[0]
@@ -398,7 +401,7 @@ class INBEVTRADMXToolBox:
                 if row['KPI Level 2 Name'] == 'Pop Exterior':
                     return availability_score > 1
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
-                    return availability_score > 2
+                    return availability_score > 1
             else:
                 return True
 
