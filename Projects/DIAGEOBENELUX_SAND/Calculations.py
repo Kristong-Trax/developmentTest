@@ -1,7 +1,7 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOBENELUX_SAND.KPIGenerator import DIAGEOBENELUXGenerator
 
@@ -20,7 +20,7 @@ class DIAGEOBENELUX_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageobenelux-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'BE315C13-D09B-4184-A63C-61C35658937B'
+#     session = ' '
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOBENELUX_SANDCalculations(data_provider, output).run_project_calculations()

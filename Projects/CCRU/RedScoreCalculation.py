@@ -1,10 +1,14 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
 
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
 
 # from Projects.CCRU.Sets.Canteen import CCRUCanteenCalculations
 # from Projects.CCRU.Sets.FT import CCRUFTCalculations
@@ -27,9 +31,6 @@ from Projects.CCRU.Sets.ConvenienceSmall import CCRUConvenienceSmallCalculations
 from Projects.CCRU.Sets.QSR2018 import CCRUQsr2018Calculations
 from Projects.CCRU.Sets.Petrol2018 import CCRUPetrol2018Calculations
 
-from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
 __author__ = 'urid'
@@ -134,7 +135,7 @@ class CCRUCalculations(BaseCalculationsScript):
 #     project_name = 'ccru'
 #     data_provider = KEngineDataProvider(project_name)
 #     session_uids = [
-#         'DAD315B9-30EA-4AA7-B8FA-684115B1F404',
+#         '692a8a3e-d187-4a20-8636-379492335010',
 #     ]
 #     for session in session_uids:
 #         data_provider.load_session_data(session)

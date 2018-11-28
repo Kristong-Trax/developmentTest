@@ -7,6 +7,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 import numpy as np
+import pandas as pd
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -153,7 +154,7 @@ class HEINEKENTWToolBox:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
-                if result.target and result.group_target_date <= self.current_date:
+                if not pd.isnull(result.target) and not pd.isnull(result.group_target_date) and result.group_target_date <= self.assortment.current_date:
                     denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res))
                 # Distrubtion

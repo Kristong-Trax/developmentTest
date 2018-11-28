@@ -1,11 +1,12 @@
 import argparse
-from datetime import timedelta
 import pandas as pd
+import datetime as dt
+
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
 PROJECT = 'ccru'
@@ -126,7 +127,7 @@ class CCRUTopSKUAssortment:
             Log.warning("Store number '{}' is not defined in DB".format(self.STORE_NUMBER))
             return
         start_date = data.pop(self.START_DATE, None).date()
-        start_date_minus_day = start_date - timedelta(1)
+        start_date_minus_day = start_date - dt.timedelta(1)
         end_date = data.pop(self.END_DATE, None).date()
         for key in data.keys():
             validation = False
