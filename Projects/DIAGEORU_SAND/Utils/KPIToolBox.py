@@ -129,7 +129,7 @@ class DIAGEORUToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
             else:
                 return
