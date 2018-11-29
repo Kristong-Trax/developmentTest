@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -31,7 +30,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -100,19 +101,14 @@ class DIAGEOESSANDToolBox:
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             # Global Secondary Displays
-            if set_name in ('Secondary Displays', 'Secondary'):
-                # Global function
+            if set_name in ('Secondary Displays',):
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:
                     # Saving to new tables
-                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1,
-                                                     denominator_id=self.store_id,
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                                      result=res_json['result'])
-
-                # Saving to old tables
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-                self.save_level2_and_level3(set_name, set_name, set_score)
-
+                    set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                    self.save_level2_and_level3(set_name, set_name, set_score)
             if set_score == 0:
                 pass
             elif set_score is False:
@@ -209,24 +205,25 @@ class DIAGEOESSANDToolBox:
         if level == self.LEVEL1:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score,'.2f'), fk)],
+                                        format(score, '.2f'), fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
             kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name.replace("'","''"), score)],
+                                        fk, kpi_name.replace("'", "''"), score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.LEVEL3:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(atomic_kpi_name.replace("'","''"), self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
+            attributes = pd.DataFrame(
+                [(atomic_kpi_name.replace("'", "''"), self.session_uid, kpi_set_name, self.store_id,
+                  self.visit_date.isoformat(), datetime.utcnow().isoformat(),
+                  score, kpi_fk, fk)],
+                columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
+                         'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
