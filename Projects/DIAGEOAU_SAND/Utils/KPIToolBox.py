@@ -68,7 +68,6 @@ class DIAGEOAU_SANDToolBox:
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
