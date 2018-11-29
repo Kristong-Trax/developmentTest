@@ -551,8 +551,8 @@ class CMAToolBox:
         score = self.get_pks_of_result(score_value)
         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(SUB_PROJECT + " " + kpi_name)
         self.common_db2.write_to_db_result(fk=kpi_fk, result=result, score=score, should_enter=True, target=target,
-                                           numerator_result=num, denominator_result=den,
-                                           weight=delta,
+                                           numerator_result=num, denominator_result=den, weight=delta,
+                                           numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id,
                                            identifier_parent=self.common_db2.get_dictionary(parent_name=SUB_PROJECT))
         self.write_to_db_result(
             self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
