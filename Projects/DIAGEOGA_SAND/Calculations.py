@@ -14,12 +14,12 @@ class DIAGEOGACalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageoga-sand calculations')
-    Config.init()
-    project_name = 'diageoga-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = '274d5acb-9331-4d7f-ad8a-d260df249596'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOGACalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageoga-sand calculations')
+#     Config.init()
+#     project_name = 'diageoga-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '274d5acb-9331-4d7f-ad8a-d260df249596'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOGACalculations(data_provider, output).run_project_calculations()
