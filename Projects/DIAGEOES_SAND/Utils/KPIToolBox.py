@@ -11,7 +11,6 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
-from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
@@ -61,7 +60,7 @@ class DIAGEOESSANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
-                                   match_display_in_scene=self.match_display_in_scene)  # replace the old one
+                                   match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -92,8 +91,7 @@ class DIAGEOESSANDToolBox:
     def main_calculation(self, set_names):
 
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
@@ -138,7 +136,7 @@ class DIAGEOESSANDToolBox:
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
-        # commiting to new tables
+        # committing to new tables
         self.commonV2.commit_results_data()
 
     def calculate_assortment_sets(self, set_name):
