@@ -145,13 +145,12 @@ class DIAGEOBR_SANDToolBox:
                         self.commonV2.write_to_db_result(**r)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
                 # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
                 # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
                 # self.save_level2_and_level3(set_name, set_name, set_score)
-
 
             elif set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
