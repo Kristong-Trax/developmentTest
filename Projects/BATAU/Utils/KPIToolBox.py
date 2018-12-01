@@ -133,6 +133,7 @@ class BATAUToolBox:
 
                     if df_denominator.empty:
                         denominator_id = self.store_id
+                        print("Denomenator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
                     else:
                         for denominator_index, denominator_row in df_denominator.iterrows():
                             denominator_id = int(denominator_row[denominator_fk])
@@ -141,11 +142,10 @@ class BATAUToolBox:
                             df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
                             if df_numerator.empty:
-                                print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                                print("Numerator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
                             else:
                                 for numerator_index, numerator_row in df_numerator.iterrows():
                                     numerator_id = int(numerator_row[numerator_fk])
-                                    denominator_id = int(numerator_row[denominator_fk])
                                     numerator = int(numerator_row['count'])
 
                                     try:
