@@ -137,7 +137,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
                                            denominator_result=len(products_to_check), result=result, score=result,
-                                          identifier_result=Const.OOS_KPI, score_after_actions=1)
+                                          identifier_result=Const.OOS_KPI)
 
 
     def handle_atomic(self, row):
@@ -163,7 +163,7 @@ class INBEVMXToolBox:
             return
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
-        weight = row[Const.TEMPLATE_SCORE].values[0]
+        score = row[Const.TEMPLATE_SCORE].values[0]
         df = pd.merge(self.scif, self.store_info, how="left",
                       left_on="store_id", right_on="store_fk")
 
@@ -177,7 +177,8 @@ class INBEVMXToolBox:
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings /
                                     denominator_number_of_total_facings)
-                count_result = weight if percentage >= target else -1
+                count_result = score if percentage >= target else -1
+
 
         if count_result == -1:
             return
@@ -191,7 +192,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
-                                          score=count_result, score_after_actions=1)
+                                          score=count_result)
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -254,6 +255,7 @@ class INBEVMXToolBox:
             # find the answer to the survey in session
             question_id = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_ID].values[0]
             question_answer_template = row_store_filter[Const.TEMPLATE_TARGET_ANSWER].values[0]
+            score = row_store_filter[Const.TEMPLATE_SCORE].values[0]
 
             survey_result = self.survey.get_survey_answer(('question_fk', question_id))
             if not survey_result:
@@ -283,6 +285,7 @@ class INBEVMXToolBox:
                     survey_result = 1
                 else:
                     survey_result = -1
+        final_score = score if survey_result == 1 else 0
 
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
@@ -291,7 +294,7 @@ class INBEVMXToolBox:
             return
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
                                            denominator_result=0, denominator_id=self.store_id, result=survey_result,
-                                          score=survey_result, score_after_actions=1)
+                                          score=final_score)
 
     def get_new_kpi_static_data(self):
         """
