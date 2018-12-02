@@ -160,7 +160,6 @@ class INBEVMXToolBox:
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
         weight = row[Const.TEMPLATE_SCORE].values[0]
-        df = self.scif.copy()
         df = pd.merge(self.scif, self.store_info, how="left",
                       left_on="store_id", right_on="store_fk")
 
