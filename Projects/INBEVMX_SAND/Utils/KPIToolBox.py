@@ -118,23 +118,27 @@ class INBEVMXToolBox:
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_SKU_KPI)
             return
+        for product in products_to_check:
+            if product not in products_df['product_fk'].values:
+                products_df = products_df.append({'product_fk': product, 'facings': 0.0}, ignore_index=True)
         for index, row in products_df.iterrows():
             result = 0 if row['facings'] > 0 else 1
             self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
                                         numerator_result=row['facings'], denominator_id=self.store_id,
                                         result=result, score=result, identifier_parent=Const.OOS_KPI, should_enter=True)
 
-        existing_products_len = len(products_df[products_df['facings'] == 0])
-        result = existing_products_len / float(len(products_to_check))
+        not_existing_products_len = len(products_df[products_df['facings'] == 0])
+        result = not_existing_products_len / float(len(products_to_check))
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
             return
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
-                                           numerator_result=existing_products_len, denominator_id=self.store_id,
+                                           numerator_result=not_existing_products_len, denominator_id=self.store_id,
                                            denominator_result=len(products_to_check), result=result, score=result,
                                           identifier_result=Const.OOS_KPI)
+
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
