@@ -82,18 +82,18 @@ class BATAUToolBox:
         This function calculates the KPI results.
         """
         self.scif = self.scif[self.scif['facings'] > 0]
-        self.calculate_share_of_range()
-        self.calculate_share_of_range_filter('SOR-Category')
-        self.calculate_share_of_range_filter('SOR-Brand')
+        self.calculate_share_of_range_denominator_constant('SOR')
+        self.calculate_share_of_range_denominator_change('SOR-Brand')
+        self.calculate_share_of_range_denominator_change('SOR-Category')
 
         self.common.commit_results_data()
         score = 0
         return score
 
-    def calculate_share_of_range(self):
+    def calculate_share_of_range_denominator_constant(self,filter):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR']
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]==filter]
 
         print(df_tp_ps_kpis.shape)
 
@@ -167,16 +167,6 @@ class BATAUToolBox:
                                                                        identifier_result=kpi_name,
                                                                        should_enter=False)
                                     else:
-                                        print("fk:{}".format(kpi_fk))
-                                        print("numerator_id:{}".format(numerator_id))
-                                        print("numerator_result:{}".format(numerator))
-                                        print("denominator_id:{}".format(denominator_id))
-                                        print("denominator_result:{}".format(denominator))
-                                        print("result:{}".format(result))
-                                        print("score:{}".format(score))
-                                        print("identifier_parent:{}".format(kpi_parent_name))
-                                        print("identifier_result:{}".format(kpi_name))
-                                        print("\n")
                                         self.common.write_to_db_result(fk=kpi_fk,
                                                                        numerator_id=numerator_id,
                                                                        numerator_result=numerator,
@@ -187,8 +177,18 @@ class BATAUToolBox:
                                                                        identifier_parent=kpi_parent_name,
                                                                        identifier_result=kpi_name,
                                                                        should_enter=True)
+                                        print("fk:{}".format(kpi_fk))
+                                        print("numerator_id:{}".format(numerator_id))
+                                        print("numerator_result:{}".format(numerator))
+                                        print("denominator_id:{}".format(denominator_id))
+                                        print("denominator_result:{}".format(denominator))
+                                        print("result:{}".format(result))
+                                        print("score:{}".format(score))
+                                        print("identifier_parent:{}".format(kpi_parent_name))
+                                        print("identifier_result:{}".format(kpi_name))
+                                        print("\n")
 
-    def calculate_share_of_range_filter(self,filter):
+    def calculate_share_of_range_denominator_change(self,filter):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
         df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]==filter]
@@ -263,16 +263,6 @@ class BATAUToolBox:
                                                            identifier_result=kpi_name,
                                                            should_enter=False)
                         else:
-                            print("fk:{}".format(kpi_fk))
-                            print("numerator_id:{}".format(numerator_id))
-                            print("numerator_result:{}".format(numerator))
-                            print("denominator_id:{}".format(denominator_id))
-                            print("denominator_result:{}".format(denominator))
-                            print("result:{}".format(result))
-                            print("score:{}".format(score))
-                            print("identifier_parent:{}".format(kpi_parent_name))
-                            print("identifier_result:{}".format(kpi_name))
-                            print("\n")
                             self.common.write_to_db_result(fk=kpi_fk,
                                                            numerator_id=numerator_id,
                                                            numerator_result=numerator,
@@ -283,6 +273,16 @@ class BATAUToolBox:
                                                            identifier_parent=kpi_parent_name,
                                                            identifier_result=kpi_name,
                                                            should_enter=True)
+                        print("fk:{}".format(kpi_fk))
+                        print("numerator_id:{}".format(numerator_id))
+                        print("numerator_result:{}".format(numerator))
+                        print("denominator_id:{}".format(denominator_id))
+                        print("denominator_result:{}".format(denominator))
+                        print("result:{}".format(result))
+                        print("score:{}".format(score))
+                        print("identifier_parent:{}".format(kpi_parent_name))
+                        print("identifier_result:{}".format(kpi_name))
+                        print("\n")
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)
