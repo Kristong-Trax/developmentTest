@@ -107,10 +107,10 @@ class DIAGEOCO_SANDToolBox:
                 manufacturer_fk = 74# Diageo manfacutrer
                 results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
                                                                                           self.set_templates_data[set_name], self.store_id,
-                                                                                      manufacturer_fk)
-                # for result in results_list[1]:
-                #     self.save_level2_and_level3(result[0], result[1], result[2])
-                #self.write_to_db_result(results_list[1][0], results_list[1][1], results_list[1][2])
+                                                                                          manufacturer_fk)
+                for result in results_list[1]:
+                    self.save_level2_and_level3(result[0], result[1], result[2])
+                self.write_to_db_result(results_list[2][0], results_list[2][1], results_list[2][2])
                 self.save_results_to_db(results_list[0])
 
             elif set_name == 'TOUCH POINT':
