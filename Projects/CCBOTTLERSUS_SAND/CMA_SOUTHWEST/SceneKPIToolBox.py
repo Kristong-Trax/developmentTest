@@ -10,7 +10,9 @@ __author__ = 'Sam'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 CMA_COMPLIANCE = 'CMA Compliance SW'
 
+
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
+
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -67,29 +69,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         # self.write_results_to_db()
         return True
 
-    def write_results_to_db(self):
-        """
-        Now we are just writing all the scene results to db
-        """
-        for i, scene_result in self.scenes_results.iterrows():
-            self.common.write_to_db_result(
-                fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME] + Const.SCENE_SUFFIX),
-                result=round(scene_result[Const.DB_RESULT], 2), by_scene=True)
-
-    def write_to_scene_level(self, kpi_name, result=False, parent=""):
-        """
-        Writes a result in the DF (and "tells" its parent if it passed)
-        :param kpi_name: string
-        :param result: boolean
-        :param parent: if the kpi is a condition kpi and it passed, we want the parent to know that
-                        because we want the kpi to choose the scene with the most passed children
-        """
-        if parent and result:
-            self.scenes_results.loc[(self.scenes_results[Const.KPI_NAME] == parent) &
-                                    (self.scenes_results[Const.DB_RESULT] > 0), Const.DB_RESULT] += 1
-        result_dict = {Const.KPI_NAME: kpi_name, Const.DB_RESULT: result * 1}
-        # self.scenes_results = self.scenes_results.append(result_dict, ignore_index=True)
-
     def calculate_main_kpi(self, main_line):
         """
         This function gets a line from the main_sheet, transfers it to the match function, and checks all of the
@@ -111,9 +90,9 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
                 # score = Const.PASS if score == 1 else Const.FAIL
                 # score = self.tools.result_values[score]
-                self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-                                               result=result, score=score, target=target,
-                                               by_scene=True, should_enter=True)
+                self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den, target=target,
+                                               result=result, score=score, by_scene=True, should_enter=True,
+                                               numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id)
 
     def calculate_coke_cooler_purity(self, kpi_line, scif, general_filters):
         """
@@ -132,7 +111,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
         return num, den, ratio, 0, None
-
 
     def calculate_facings_ntba(self, kpi_line, scif, general_filters):
         targets = self.tools.get_kpi_line_targets(kpi_line)
@@ -155,23 +133,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         # return score, passed, len(scenes)
         return facings, None, facings, score, target
-
-    def calculate_ratio(self, kpi_line, scif, general_filters):
-        sos_filters = self.get_kpi_line_filters(kpi_line)
-        general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
-        num_scif = scif[self.get_filter_condition(scif, **sos_filters)]
-        den_scif = scif[self.get_filter_condition(scif, **general_filters)]
-        score = 0
-        target = .8
-        if den_scif.empty:
-            return None, None, None
-
-        # sos_value = self.shared.sos.calculate_share_of_shelf(sos_filters, **general_filters)
-        ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-        if ratio >= target:
-            score = 1
-
-        return num, den, ratio, score, target
 
     @staticmethod
     def extrapolate_target(targets, c):

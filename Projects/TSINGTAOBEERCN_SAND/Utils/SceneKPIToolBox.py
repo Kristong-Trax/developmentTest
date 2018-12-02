@@ -33,10 +33,10 @@ class SceneToolBox:
     def calculate_facings_per_sku(self, location_type_1, kpi_name):
         if location_type_1:
             result_df = self.count_facings_by_scenes(self.scif, {'location_type_fk':(1, self.tools.INCLUDE_FILTER),
-                                                                "product_type":"SKU"})[['product_fk', 'facings']]
+                                                                "product_type":["SKU","Other"]})[['product_fk', 'facings']]
         else:
             result_df = self.count_facings_by_scenes(self.scif, {'location_type_fk':(1, self.tools.EXCLUDE_FILTER),
-                                                                "product_type":"SKU"})[['product_fk', 'facings']]
+                                                                "product_type":["SKU","Other"]})[['product_fk', 'facings']]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name=kpi_name)
         for index, row in result_df.iterrows():
             result = row['facings']

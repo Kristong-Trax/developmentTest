@@ -99,15 +99,11 @@ class DIAGEOKE_SANDToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in \
-                    self.set_templates_data.keys() and set_name not in ('MPA', 'New Products', 'Local MPA', 'SOS'):
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             # Global Visible to Customer / Visible to Consumer
             if set_name in ('Visible to Customer', 'Visible to Consumer %'):
@@ -121,7 +117,7 @@ class DIAGEOKE_SANDToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
             if set_score == 0:
