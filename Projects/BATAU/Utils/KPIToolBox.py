@@ -241,6 +241,7 @@ class BATAUToolBox:
                     for numerator_index, numerator_row in df_result.iterrows():
                         numerator_id =   int(numerator_row[numerator_fk])
                         denominator_id = int(numerator_row[denominator_fk])
+
                         numerator = int(numerator_row['count_x'])
                         denominator = int(numerator_row['count_y'])
 
