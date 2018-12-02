@@ -137,7 +137,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
                                            denominator_result=len(products_to_check), result=result, score=result,
-                                          identifier_result=Const.OOS_KPI)
+                                          identifier_result=Const.OOS_KPI, score_after_actions=1)
 
 
     def handle_atomic(self, row):
@@ -191,7 +191,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
-                                          score=count_result)
+                                          score=count_result, score_after_actions=1)
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -291,7 +291,7 @@ class INBEVMXToolBox:
             return
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
                                            denominator_result=0, denominator_id=self.store_id, result=survey_result,
-                                          score=survey_result)
+                                          score=survey_result, score_after_actions=1)
 
     def get_new_kpi_static_data(self):
         """
