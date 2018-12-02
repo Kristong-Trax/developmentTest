@@ -83,7 +83,7 @@ class BATAUToolBox:
         """
         self.scif = self.scif[self.scif['facings'] > 0]
         self.calculate_share_of_range_denominator_constant('SOR')
-        self.calculate_share_of_range_denominator_constant('SOR-Brand')
+        self.calculate_share_of_range_denominator_change('SOR-Brand')
         self.calculate_share_of_range_denominator_change('SOR-Category')
 
         self.common.commit_results_data()
