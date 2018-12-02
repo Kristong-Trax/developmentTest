@@ -119,12 +119,12 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_SKU_KPI)
             return
         for index, row in products_df.iterrows():
-            result = 1 if row['facings'] > 0 else 0
+            result = 0 if row['facings'] > 0 else 1
             self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
                                         numerator_result=row['facings'], denominator_id=self.store_id,
                                         result=result, score=result, identifier_parent=Const.OOS_KPI, should_enter=True)
 
-        existing_products_len = len(products_df[products_df['facings'] > 0])
+        existing_products_len = len(products_df[products_df['facings'] == 0])
         result = existing_products_len / float(len(products_to_check))
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
@@ -160,7 +160,6 @@ class INBEVMXToolBox:
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
         weight = row[Const.TEMPLATE_SCORE].values[0]
-        df = self.scif.copy()
         df = pd.merge(self.scif, self.store_info, how="left",
                       left_on="store_id", right_on="store_fk")
 
