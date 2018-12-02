@@ -81,54 +81,55 @@ class RISPARKWINEDEToolBox:
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
-        for result in lvl3_result.itertuples():
-            # start_new_date = datetime(2018, 2, 26) - timedelta(self.TIME_DELTA)
-            start_new_date = self.current_date - timedelta(self.TIME_DELTA)
-            is_new = 0
-            # ass_start_date = datetime(2017, 2, 9)
-            ass_start_date = self.store_assortment[(self.store_assortment['product_fk'] == result.product_fk) &
-                                                   (self.store_assortment['assortment_fk'] == result.assortment_fk) &
-                                                   (self.store_assortment['assortment_group_fk'] ==
-                                                    result.assortment_group_fk)]['start_date'].values[0]
-            if np.datetime64(start_new_date) <= ass_start_date:
-                is_new = 1
-            score = result.in_store * 100
-            self.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
-                                               score, result.assortment_fk, 1, score, is_new)
-            kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
-                                              == self.OOS_SKU_KPI]['pk'].values[0]
-            parent_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
-                                                     == self.OOS_KPI]['pk'].values[0]
-            is_oos = 1
-            if result.in_store:
-                is_oos = 0
-            self.write_to_db_result_new_tables(
-                kpi_fk, result.product_fk, is_oos, is_oos, parent_kpi_fk)
-        lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-        for result in lvl2_result.itertuples():
-            denominator_res = result.total
-            if result.target is not None and result.group_target_date > self.current_date:
-                denominator_res = result.target
-            res = np.divide(float(result.passes), float(denominator_res)) * 100
-            if res >= 100:
-                score = 100
-            else:
-                score = 0
-            self.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_fk, result.passes,
-                                               res, result.assortment_group_fk, denominator_res, score)
-        oos_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
-                                              == self.OOS_KPI]['pk'].values[0]
-        dist_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
-                                               == self.DIST]['pk'].values[0]
-        oos_numerator = len(lvl3_result[lvl3_result['in_store'] == 0])
-        dist_numerator = len(lvl3_result[lvl3_result['in_store'] == 1])
-        denominator = len(lvl3_result['in_store'])
-        oos_res = np.divide(float(oos_numerator), float(denominator)) * 100
-        dist_res = np.divide(float(dist_numerator), float(denominator)) * 100
-        self.write_to_db_result_new_tables(oos_kpi_fk, oos_kpi_fk, oos_numerator, oos_res, denominator_result=denominator,
-                                           score=oos_res)
-        self.write_to_db_result_new_tables(dist_kpi_fk, dist_kpi_fk, dist_numerator, dist_res, denominator_result=denominator,
-                                           score=dist_res)
+        if not lvl3_result.empty:
+            for result in lvl3_result.itertuples():
+                # start_new_date = datetime(2018, 2, 26) - timedelta(self.TIME_DELTA)
+                start_new_date = self.current_date - timedelta(self.TIME_DELTA)
+                is_new = 0
+                # ass_start_date = datetime(2017, 2, 9)
+                ass_start_date = self.store_assortment[(self.store_assortment['product_fk'] == result.product_fk) &
+                                                       (self.store_assortment['assortment_fk'] == result.assortment_fk) &
+                                                       (self.store_assortment['assortment_group_fk'] ==
+                                                        result.assortment_group_fk)]['start_date'].values[0]
+                if np.datetime64(start_new_date) <= ass_start_date:
+                    is_new = 1
+                score = result.in_store * 100
+                self.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
+                                                   score, result.assortment_fk, 1, score, is_new)
+                kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
+                                                  == self.OOS_SKU_KPI]['pk'].values[0]
+                parent_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
+                                                         == self.OOS_KPI]['pk'].values[0]
+                is_oos = 1
+                if result.in_store:
+                    is_oos = 0
+                self.write_to_db_result_new_tables(
+                    kpi_fk, result.product_fk, is_oos, is_oos, parent_kpi_fk)
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if not pd.isnull(result.target) and not pd.isnull(result.group_target_date) and result.group_target_date <= self.current_date:
+                    denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_fk, result.passes,
+                                                   res, result.assortment_group_fk, denominator_res, score)
+            oos_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
+                                                  == self.OOS_KPI]['pk'].values[0]
+            dist_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
+                                                   == self.DIST]['pk'].values[0]
+            oos_numerator = len(lvl3_result[lvl3_result['in_store'] == 0])
+            dist_numerator = len(lvl3_result[lvl3_result['in_store'] == 1])
+            denominator = len(lvl3_result['in_store'])
+            oos_res = np.divide(float(oos_numerator), float(denominator)) * 100
+            dist_res = np.divide(float(dist_numerator), float(denominator)) * 100
+            self.write_to_db_result_new_tables(oos_kpi_fk, oos_kpi_fk, oos_numerator, oos_res, denominator_result=denominator,
+                                               score=oos_res)
+            self.write_to_db_result_new_tables(dist_kpi_fk, dist_kpi_fk, dist_numerator, dist_res, denominator_result=denominator,
+                                               score=dist_res)
         return
 
     def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,

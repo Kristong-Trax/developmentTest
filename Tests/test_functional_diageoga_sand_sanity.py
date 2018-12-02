@@ -40,16 +40,16 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.DIAGEOGA_SAND.Utils.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-02-20')
-    @patch('Projects.DIAGEOGA_SAND.Utils.ToolBox.DIAGEOToolBox.save_latest_templates')
-    @patch('Projects.DIAGEOGA_SAND.Utils.ToolBox.DIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=diageoga_sand_template)
     @seeder.seed(["diageoga_sand_seed"], ProjectsSanityData())
     def test_diageoga_sand_sanity(self, x, y, json):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['11de22ce-2056-4064-9c78-21fce74bb764']
+        sessions = ['274d5acb-9331-4d7f-ad8a-d260df249596']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

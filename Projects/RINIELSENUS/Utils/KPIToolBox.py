@@ -24,7 +24,7 @@ class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
         self.project_name = self._data_provider.project_name
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.ReadOnly)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
         self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
         self._template = ParseMarsUsTemplates()

@@ -1,7 +1,6 @@
 
 import os
 import json
-import shutil
 import pandas as pd
 from datetime import datetime
 
@@ -10,7 +9,7 @@ from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOKE_SAND.Utils.GeneralToolBox import DIAGEOKE_SANDGENERALToolBox
+from Projects.DIAGEOES.Utils.GeneralToolBox import DIAGEOESGENERALToolBox
 
 
 __author__ = 'Nimrod'
@@ -19,16 +18,16 @@ BUCKET = 'traxuscalc'
 
 EMPTY = 'Empty'
 POURING_SURVEY_TEXT = 'Are the below brands pouring?'
-KPI_NAME = 'Atomic'
-PRODUCT_NAME = 'Product Name'
 UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
-GROUP_NAME = 'Group Name'
-
 CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'CacheData')
 
+KPI_NAME = 'Atomic'
+GROUP_NAME = 'Group Name'
+PRODUCT_NAME = 'Product Name'
 
-class DIAGEOKE_SANDDIAGEOToolBox:
+
+class DIAGEORUConsts(object):
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -41,13 +40,13 @@ class DIAGEOKE_SANDDIAGEOToolBox:
     RELEVANT_FOR_STORE = 'Y'
     IRRELEVANT_FOR_STORE = 'N'
     OR_OTHER_PRODUCTS = 'Or'
-    GROUP_NAME = GROUP_NAME
 
     UNLIMITED_DISTANCE = 'General'
 
     # Templates fields #
 
     # Availability KPIs
+    GROUP_NAME = GROUP_NAME
     PRODUCT_NAME = PRODUCT_NAME
     PRODUCT_EAN_CODE = 'Leading Product EAN'
     PRODUCT_EAN_CODE2 = 'Product EAN'
@@ -57,6 +56,12 @@ class DIAGEOKE_SANDDIAGEOToolBox:
 
     # POSM KPIs
     DISPLAY_NAME = 'Product Name'
+
+    # Survey KPIs
+    SURVEY_QUESTION = 'Question Text'
+    SURVEY_ANSWER = 'Targeted Text'
+    SURVEY_ANSWER_TYPE = 'Answer Type'
+    SURVEY_CONDITION = 'Execution Condition'
 
     # Relative Position
     CHANNEL = 'Channel'
@@ -81,14 +86,18 @@ class DIAGEOKE_SANDDIAGEOToolBox:
                              'Category': 'category',
                              'display': 'display_name'}
 
-    KPI_SETS = ['MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
-                'Brand Pouring', 'Visible to Customer']
-    KPI_SETS_WITH_PRODUCT_AS_NAME = ['MPA', 'New Products', 'POSM']
-    KPI_SETS_WITH_PERCENT_AS_SCORE = KPI_SETS_WITH_PRODUCT_AS_NAME + ['Visible to Customer', 'Relative Position',
-                                                                      'Brand Blocking', 'Local SOS']
-    KPI_SETS_WITHOUT_A_TEMPLATE = ['Local SOS', 'Secondary', 'Visible to Customer']
+    KPI_SETS = ['MPA', 'Local MPA', 'New Products', 'POSM', 'Secondary', 'Relative Position', 'Brand Blocking',
+                'Visible to Customer', 'Activation Standard', 'Survey Questions', 'Brand Pouring',
+                'Visible to Consumer %']
+    KPI_SETS_WITH_PERCENT_AS_SCORE = ['MPA', 'New Products', 'POSM', 'Visible to Customer', 'Relative Position',
+                                      'Brand Blocking', 'Activation Standard', 'Survey Questions', 'Local MPA',
+                                      'Visible to Consumer %']
+    KPI_SETS_WITHOUT_A_TEMPLATE = ['Secondary', 'Visible to Customer', 'Visible to Consumer %', 'Secondary Displays']
     TEMPLATES_PATH = 'Diageo_templates/'
     KPI_NAME = KPI_NAME
+
+
+class DIAGEOESSANDDIAGEOToolBox(DIAGEORUConsts):
 
     def __init__(self, data_provider, output, **data):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -98,13 +107,16 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = DIAGEOKE_SANDGENERALToolBox(data_provider, output, self.kpi_static_data,
-                                                         geometric_kpi_flag=True)
-        self.amz_conn = StorageFactory.get_connector(BUCKET)
+        self.general_tools = DIAGEOESGENERALToolBox(data_provider, output, **data)
         self.cloud_templates_path = '{}{}/{}'.format(self.TEMPLATES_PATH, self.project_name, {})
         self.local_templates_path = os.path.join(CACHE_PATH, 'templates')
+
+    @property
+    def amz_conn(self):
+        if not hasattr(self, '_amz_conn'):
+            self._amz_conn = StorageFactory.get_connector(BUCKET)
+        return self._amz_conn
 
     def check_survey_answer(self, survey_text, target_answer):
         """
@@ -162,8 +174,7 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         assortment = len(filtered_display['display_name'].unique())
         return assortment
 
-    def calculate_share_of_shelf(self, manufacturer=DIAGEO, sos_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 **general_filters):
+    def calculate_share_of_shelf(self, manufacturer=None, sos_filters=None, include_empty=None, **general_filters):
         """
         :param manufacturer: This is taken as a lone sos-filter in case sos_filters param is None.
         :param sos_filters: These are the parameters on which ths SOS is calculated (out of the general DF).
@@ -171,6 +182,10 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         :param general_filters: These are the parameters which the general data frame is filtered by.
         :return: The ratio of the SOS.
         """
+        if manufacturer is None:
+            manufacturer = self.DIAGEO
+        if include_empty is None:
+            include_empty = self.EXCLUDE_EMPTY
         if not sos_filters:
             sos_filters = {'manufacturer_name': manufacturer}
         return self.general_tools.calculate_share_of_shelf(sos_filters, include_empty, **general_filters)
@@ -183,8 +198,8 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         """
         brand_pouring_status = False
 
-        sub_category = self.scif[(self.scif['brand_name'] == brand) &
-                                 (self.scif['category'] == 'Spirit')]['sub_category'].values[0]
+        sub_category = self.all_products[(self.all_products['brand_name'] == brand) &
+                                         (self.all_products['category'] == 'Spirit')]['sub_category'].values[0]
         filtered_df = self.scif[self.get_filter_condition(self.scif, sub_category=sub_category, **filters)]
         if filtered_df[filtered_df['brand_name'] == brand].empty:
             return False
@@ -220,7 +235,7 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         return self.general_tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
                                                               min_required_to_pass, **general_filters)
 
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
+    def calculate_block_together(self, allowed_products_filters=None, include_empty=None, **filters):
         """
         :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
@@ -228,6 +243,8 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         :return: True - if in (at least) one of the scenes all the relevant SKUs are grouped together in one block;
                  otherwise - returns False.
         """
+        if include_empty is None:
+            include_empty = self.EXCLUDE_EMPTY
         return self.general_tools.calculate_block_together(allowed_products_filters, include_empty, **filters)
 
     def get_filter_condition(self, df, **filters):
@@ -265,12 +282,6 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         """
         This function receives a KPI set name and return its relevant template as a JSON.
         """
-        # temp_file_path = '{}/{}'.format(self.new_dir, set_name)
-        # f = open(temp_file_path, 'wb')
-        # self.amz_conn.download_file('{}{}.xlsx'.format(self.templates_path, set_name), f)
-        # f.close()
-        # json_data = self.get_json_data(temp_file_path)
-        # os.remove(temp_file_path)
         with open(os.path.join(self.local_templates_path, set_name), 'rb') as f:
             json_data = json.load(f)
         return json_data
@@ -317,14 +328,18 @@ class DIAGEOKE_SANDDIAGEOToolBox:
         This function gets a file's path and extract its content into a JSON.
         """
         output = pd.read_excel(file_path)
-        if KPI_NAME not in output.keys() and PRODUCT_NAME not in output.keys():
+        if KPI_NAME not in output.keys() and PRODUCT_NAME not in output.keys() and GROUP_NAME not in output.keys():
             for index in xrange(len(output)):
                 row = output.iloc[index].tolist()
-                if KPI_NAME in row or PRODUCT_NAME in row:
+                if KPI_NAME in row or PRODUCT_NAME in row or GROUP_NAME in row:
                     output = output[index+1:]
                     output.columns = row
                     break
-        output = output[[key for key in output.keys() if isinstance(key, (str, unicode))]]
+        output = output[[key for key in output.keys() if isinstance(key, (str, unicode, int))]]
+        duplicated_rows = set([head for head in output.keys() if output.keys().tolist().count(head) > 1])
+        if duplicated_rows:
+            Log.warning('The following columns titles appear more than once: {}'.format(', '.join(duplicated_rows)))
+            return None
         output = output.to_json(orient='records')
         json_data = json.loads(output)
         # Removing None values + Converting all values to unicode-typed + Removing spaces from headers
@@ -335,7 +350,7 @@ class DIAGEOKE_SANDDIAGEOToolBox:
                 else:
                     json_data[i][key] = unicode(json_data[i][key]).strip()
                 try:
-                    json_data[i][key.strip()] = json_data[i].pop(key)
+                    json_data[i][str(key).strip()] = json_data[i].pop(key)
                 except KeyError:
                     continue
-        return json_data
+        return filter(bool, json_data)
