@@ -83,7 +83,8 @@ class BATAUToolBox:
         """
         self.scif = self.scif[self.scif['facings'] > 0]
         self.calculate_share_of_range()
-        self.calculate_share_of_range_category()
+        self.calculate_share_of_range_filter('SOR-Category')
+        self.calculate_share_of_range_filter('SOR-Brand')
 
         self.common.commit_results_data()
         score = 0
@@ -133,7 +134,7 @@ class BATAUToolBox:
 
                     if df_denominator.empty:
                         denominator_id = self.store_id
-                        print("Denomenator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
+                        print("Denominator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
                     else:
                         for denominator_index, denominator_row in df_denominator.iterrows():
                             denominator_id = int(denominator_row[denominator_fk])
@@ -187,10 +188,10 @@ class BATAUToolBox:
                                                                        identifier_result=kpi_name,
                                                                        should_enter=True)
 
-    def calculate_share_of_range_category(self):
+    def calculate_share_of_range_filter(self,filter):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR-Category']
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]==filter]
 
         print(df_tp_ps_kpis.shape)
 
@@ -232,7 +233,7 @@ class BATAUToolBox:
                 df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
                 df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
-                df_result = df_numerator.merge(df_denominator, how='inner', on='category_fk')
+                df_result = df_numerator.merge(df_denominator, how='inner', on=denominator_fk)
 
                 if df_result.empty:
                     print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
