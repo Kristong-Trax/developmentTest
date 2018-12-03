@@ -125,7 +125,7 @@ class DIAGEOARToolBox:
             elif set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
-                            self.set_templates_data[set_name], location_type='template_name')
+                            self.set_templates_data[set_name], location_type='template_display_name')
 
                 self.commonV2.save_json_to_new_tables(res_dict)
 
