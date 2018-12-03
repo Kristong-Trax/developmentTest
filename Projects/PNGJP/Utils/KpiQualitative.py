@@ -670,9 +670,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
-                            elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
-                                score = 100
-                                result = 1
+                            # elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
+                            #     score = 100
+                            #     result = 1
                         elif direction == 'Horizontal':
                             if set(edges_a['shelfs']).intersection(edges_b['shelfs']):
                                 extra_margin_a = (
