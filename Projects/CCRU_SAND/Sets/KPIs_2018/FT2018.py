@@ -14,13 +14,13 @@ from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 __author__ = 'urid'
 
 
-FT2018 = 'Pos 2018 - FT'
-TARGET_EXECUTION = 'Target Execution 2018'
-MARKETING = 'Marketing 2017'
-SPIRITS = 'Spirits 2018 - FT'
-
-
 class CCRU_SANDFT2018Calculations:
+
+    FT2018 = 'Pos 2018 - FT'
+    TARGET_EXECUTION = 'Target Execution 2018'
+    MARKETING = 'Marketing 2017'
+    SPIRITS = 'Spirits 2018 - FT'
+
     def __init__(self, data_provider, output, ps_data_provider):  # All relevant session data with KPI static info will trigger the KPI calculation
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider

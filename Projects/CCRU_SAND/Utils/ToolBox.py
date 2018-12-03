@@ -14,11 +14,13 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
-from Projects.CCRU_SAND.Fetcher import CCRU_SANDCCHKPIFetcher
+from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.ExecutionContract import CCRU_SANDContract
 from Projects.CCRU_SAND.Utils.TopSKU import CCRU_SANDTopSKUAssortment
 
+
 __author__ = 'urid'
+
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -37,57 +39,60 @@ MARKETING = 'Marketing 2017'
 
 
 class CCRU_SANDKPIToolBox:
-    def __init__(self, data_provider, output, ps_data_provider, set_name=None):
+    def __init__(self, data_provider, output, kpi_set_name=None):
         self.data_provider = data_provider
-        self.ps_data_provider = ps_data_provider
         self.output = output
-        self.products = self.data_provider[Data.ALL_PRODUCTS]
-        self.k_engine = BaseCalculationsGroup(data_provider, output)
-        self.project_name = data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.templates = self.data_provider[Data.ALL_TEMPLATES]
-        self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.scenes_info = self.data_provider[Data.SCENES_INFO]
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.project_name = self.data_provider.project_name
         self.rds_conn = self.rds_connection()
-        self.session_info = SessionInfo(data_provider)
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        if set_name is None:
-            self.set_name = self.get_set(self.visit_date)
-        else:
-            self.set_name = set_name
-        self.pos_set_name = self.set_name
-        self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
-                                                  self.set_name, self.products)
-        self.store_number = self.kpi_fetcher.get_store_number(self.store_id)
-        self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
-        self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
+
+        self.pos_kpi_set_name = self.get_pos_kpi_set_name()
+        self.kpi_set_name = kpi_set_name if kpi_set_name else self.pos_kpi_set_name
+
+        self.k_engine = BaseCalculationsGroup(self.data_provider, self.output)
+        self.session_info = SessionInfo(self.data_provider)
+
+        self.session_uid = self.data_provider.session_uid
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.store_id = self.data_provider[Data.STORE_FK]
+        self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
+        self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
+
+        self.products = self.data_provider[Data.ALL_PRODUCTS]
+        self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.scenes_info = self.data_provider[Data.SCENES_INFO]
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.matches = self.data_provider[Data.MATCHES].merge(self.products, on='product_fk')
+
+        self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name)
+        self.external_session_id = self.kpi_fetcher.get_external_session_id(self.session_uid)
+        self.store_number = self.kpi_fetcher.get_store_number(self.store_id)
+        self.test_store = self.kpi_fetcher.get_test_store(self.store_id)
+        self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
+
+        self.store_areas = self.kpi_fetcher.get_store_area_df(self.session_uid)
+
+        self.execution_contract = CCRU_SANDContract(rds_conn=self.rds_conn)
+        self.top_sku = CCRU_SANDTopSKUAssortment(rds_conn=self.rds_conn)
+
         self.thresholds_and_results = {}
-        self.result_df = []
         self.kpi_results_queries = []
+        self.result_df = []
         self.kpk_scores = {}
         self.gaps_dict = {}
         self.gaps_queries = []
         self.top_sku_queries = []
         self.gap_groups_limit = {'Availability': 2, 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
-        self.execution_contract = CCRU_SANDContract(rds_conn=self.rds_conn)
-        self.top_sku = CCRU_SANDTopSKUAssortment(rds_conn=self.rds_conn)
         self.execution_results = {}
-        self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
         self.kpi_facts_hidden = []
         self.kpi_facts_hidden_calculated = []
-        self.external_session_id = self.kpi_fetcher.get_external_session_id(self.session_uid)
         self.equipment_execution_score = None
         self.osa_score = None
 
-    def change_set(self, set_name):
-        self.set_name = set_name
-        self.kpi_fetcher = CCRU_SANDCCHKPIFetcher(self.project_name, self.scif, self.match_product_in_scene,
-                                                  self.set_name, self.products)
+    def set_kpi_set(self, kpi_set_name):
+        self.kpi_set_name = kpi_set_name
+        self.kpi_fetcher.kpi_set_name = kpi_set_name
+        self.kpi_fetcher.kpi_static_data = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
@@ -98,36 +103,6 @@ class CCRU_SANDKPIToolBox:
             self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
-
-    # def validate_scenes_and_location(self, location, scene_type, sub_location, kpi_data):
-    #     if kpi_data.get('Scenes to include'):
-    #         if scene_type in kpi_data.get('Scenes to include').split(", "):
-    #             #return True
-    #             pass
-    #         else:
-    #             return False
-    #     if kpi_data.get('Scenes to exclude'):
-    #         if scene_type in kpi_data.get('Scenes to exclude').split(", "):
-    #             return False
-    #     if kpi_data.get('Sub locations to include'):
-    #         if sub_location in str(kpi_data.get('Sub locations to include')).split(", "):
-    #             #return True
-    #             pass
-    #         else:
-    #             return False
-    #     if kpi_data.get('Sub locations to exclude'):
-    #         if sub_location in str(kpi_data.get('Sub locations to exclude')).split(", "):
-    #             return False
-    #     if kpi_data.get('Locations to include'):
-    #         if location in kpi_data.get('Locations to include').split(", "):
-    #             #return True
-    #             pass
-    #         else:
-    #             return False
-    #     if kpi_data.get('Locations to exclude'):
-    #         if location in kpi_data.get('Locations to exclude').split(", "):
-    #             return False
-    #     return True
 
     def convert_kpi_level_1(self, kpi_level_1):
         kpi_level_1_df = self.data_provider[Data.KPI_LEVEL_1]
@@ -345,7 +320,7 @@ class CCRU_SANDKPIToolBox:
             sub_location_data[sub_location].append(scene)
 
             store_area = list(
-                self.ps_data_provider.loc[self.ps_data_provider['scene_fk'] == scene]['store_area_name'].values)
+                self.store_areas.loc[self.store_areas['scene_fk'] == scene]['store_area_name'].values)
             if store_area:
                 store_area = store_area[0]
                 if store_area not in store_area_data.keys():
@@ -654,17 +629,19 @@ class CCRU_SANDKPIToolBox:
         if not product_manufacturers:
             product_manufacturers = ['TCCC']
 
-        object_facings = self.kpi_fetcher.get_object_facings(scenes, values_list, params.get('Type'),
-                                                             formula=params.get('Formula'),
-                                                             shelves=params.get("shelf_number", None),
-                                                             size=sizes,
-                                                             form_factor=form_factors,
-                                                             products_to_exclude=products_to_exclude,
-                                                             form_factors_to_exclude=form_factors_to_exclude,
-                                                             product_categories=product_categories,
-                                                             product_sub_categories=product_sub_categories,
-                                                             product_brands=product_brands,
-                                                             product_manufacturers=product_manufacturers)
+        object_facings = self.get_object_facings(scenes=scenes,
+                                                 objects=values_list,
+                                                 object_type=params.get('Type'),
+                                                 formula=params.get('Formula'),
+                                                 shelves=params.get("shelf_number", None),
+                                                 size=sizes,
+                                                 form_factor=form_factors,
+                                                 products_to_exclude=products_to_exclude,
+                                                 form_factors_to_exclude=form_factors_to_exclude,
+                                                 product_categories=product_categories,
+                                                 product_sub_categories=product_sub_categories,
+                                                 product_brands=product_brands,
+                                                 product_manufacturers=product_manufacturers)
 
         return object_facings
 
@@ -685,260 +662,6 @@ class CCRU_SANDKPIToolBox:
                     return total_res
         total_res = self.calculate_availability(params)
         return total_res
-
-
-    # def calculate_availability(self, p, object_static_list, scene, level=None, shelves=None):
-    #     """
-    #     This function calculates availability given one KPI
-    #
-    #     """
-    #     atomic_total_res = 0
-    #     values_list = str(p.get('Values')).split(', ')
-    #     for object in values_list:  # iterating through all KPI objects
-    #         res = 0
-    #         if str(object) not in object_static_list:
-    #             Log.warning('The object {} does not exist in the database'.format(object))
-    #         else:
-    #             if p.get("Products to exclude"):
-    #                 products_to_exclude = [int(float(product)) for product in \
-    #                                        str(p.get("Products to exclude")).split(", ")]
-    #             else:
-    #                 products_to_exclude = []
-    #             if p.get("Form factors to exclude"):
-    #                 form_factors_to_exclude = str(p.get("Form factors to exclude")).split(", ")
-    #             else:
-    #                 form_factors_to_exclude = []
-    #             if not p.get('Form Factor') and not p.get('Size'):
-    #                 # pop_filter = self.create_filter_by_type_and_single_value(self.scif, p.get('Type'), object, d)
-    #                 # facings_sum = TBox.calculate_frame_column_sum(self.scif[pop_filter], Fd.FACINGS, default_value=0)
-    #                 if not shelves:
-    #                     object_facings = self.kpi_fetcher.get_object_facings(scene, object, p.get('Type'),
-    #                                                                          products_to_exclude=products_to_exclude,
-    #                                                                          form_factors_to_exclude=form_factors_to_exclude)
-    #                 else:
-    #                     object_facings = self.kpi_fetcher.get_object_facings(scene, object, p.get('Type'),
-    #                                                                          shelves=shelves,
-    #                                                                          products_to_exclude=products_to_exclude,
-    #                                                                          form_factors_to_exclude=form_factors_to_exclude)
-    #             elif p.get('Form Factor') and not p.get('Size'):
-    #                 object_facings = self.kpi_fetcher.get_object_facings(scene, object, p.get('Type'),
-    #                                                                      form_factor=p.get('Form Factor'),
-    #                                                                      products_to_exclude=products_to_exclude,
-    #                                                                      form_factors_to_exclude=form_factors_to_exclude)
-    #             elif not p.get('Form Factor') and p.get('Size'):
-    #                 sizes = [float(size) for size in str(p.get('Size')).split(", ")]
-    #                 sizes = [int(size) if int(size) == size else size for size in sizes]
-    #                 object_facings = self.kpi_fetcher.get_object_facings(scene, object, p.get('Type'),
-    #                                                                      size=sizes,
-    #                                                                      products_to_exclude=products_to_exclude,
-    #                                                                      form_factors_to_exclude=form_factors_to_exclude)
-    #             else:
-    #                 sizes = [float(size) for size in str(p.get('Size')).split(", ")]
-    #                 sizes = [int(size) if int(size) == size else size for size in sizes]
-    #                 object_facings = self.kpi_fetcher.get_object_facings(scene, object, p.get('Type'),
-    #                                                                      size=sizes, form_factor=p.get('Form Factor'),
-    #                                                                      products_to_exclude=products_to_exclude,
-    #                                                                      form_factors_to_exclude=form_factors_to_exclude)
-    #             if object_facings > 0:
-    #                 if 'number of facings' in p.get('Formula'):
-    #                     res = round(object_facings)
-    #                 else:
-    #                     res = 1.0
-    #             else:
-    #                 res = 0
-    #             atomic_total_res += res
-    #     # kpi_total_res += atomic_total_res
-    #
-    #     if atomic_total_res >= p.get('Target') and 'number of SKUs' in p.get('Formula'):
-    #         atomic_total_res_for_db = atomic_total_res / len(values_list)
-    #     elif atomic_total_res >= p.get('Target') and 'number of SKUs' not in p.get('Formula'):
-    #         atomic_total_res_for_db = atomic_total_res
-    #     else:
-    #         atomic_total_res_for_db = 0
-    #     if p.get('operator') == 'AND' and atomic_total_res != p.get('weight') * len(p.get('values')):
-    #         atomic_total_res_for_db = 0
-    #     else:
-    #         pass
-    #
-    #     return atomic_total_res_for_db
-
-    # def get_relevant_scenes(self, params):
-    #     relevant_scenes = []
-    #     for scene in self.scenes_info['scene_fk'].unique().tolist():  # iterating thorugh each scene
-    #         try:
-    #             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
-    #             location = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[0]
-    #             sub_location = self.scif.loc[self.scif['template_name'] == scene_type]['additional_attribute_2'].values[0]
-    #             location_and_scene_validity = self.validate_scenes_and_location(location, scene_type,
-    #                                                                             sub_location, params)
-    #             if location_and_scene_validity:
-    #                 relevant_scenes.append(scene)
-    #         except IndexError as e:
-    #             Log.warning('Scene {} is not defined in reporting.scene_item_facts table'.format(scene))
-    #     return relevant_scenes
-
-    # def _check_availability(self, params):
-    #     """
-    #     This function is used to calculate availability given a set pf parameters
-    #
-    #     """
-    #     set_total_res = 0
-    #     availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT', 'MAN in CAT']
-    #     formula_types = ['number of SKUs', 'number of facings']
-    #     for p in params.values()[0]:
-    #         results_dict = {}
-    #         is_atomic = False
-    #         if p.get('Type') not in availability_types or p.get('Formula') not in formula_types:
-    #             continue
-    #         if p.get('level') == 3:
-    #             continue
-    #         kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'), self.set_name)
-    #         kpi_total_res = 0
-    #         object_static_list = self.get_static_list(p.get('Type'))  # generating static list of object for validation
-    #         for scene in self.scenes_info['scene_fk'].unique().tolist():  # iterating thorugh each scene
-    #             try:
-    #                 scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[
-    #                     0]  # extracting the scene type
-    #                 location = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[
-    #                     0]  # extracting the location type
-    #                 sub_location = self.scif.loc[self.scif['template_name'] == scene_type][
-    #                     'additional_attribute_2'].values[0]
-    #                 location_and_scene_validity = self.validate_scenes_and_location(location, scene_type,
-    #                                                                                 sub_location, p)
-    #             except IndexError as e:
-    #                 Log.warning('Scene {} is not defined in reporting.scene_item_facts table'.format(scene))
-    #                 continue
-    #             if location_and_scene_validity:  # scene types and locations validation
-    #                 atomic_total_res = 0
-    #                 if p.get('children') is not None:
-    #                     is_atomic = True
-    #                     score = 0
-    #                     for child in params.values()[
-    #                         0]:  # todo temporary solution, should be refactored to df which extracts static KPIs
-    #                         if child.get('KPI ID') in [int(kpi) for kpi in p.get('children').split(', ')]:
-    #                             kpi_total_res += self.calculate_availability(child, object_static_list,
-    #                                                                          scene)  # todo add level as a parameter to this function
-    #                             if child.get('KPI name Eng') not in results_dict.keys():
-    #                                 results_dict[child.get('KPI name Eng')] = [0, child.get('KPI name Rus')]
-    #                             results_dict[child.get('KPI name Eng')][0] += kpi_total_res
-    #                         else:
-    #                             continue
-    #                 else:
-    #                     if not p.get('shelf_number'):
-    #                         kpi_total_res += self.calculate_availability(p, object_static_list, scene)
-    #                     else:
-    #                         kpi_total_res += self.calculate_availability(p, object_static_list, scene,
-    #                                                                      shelves=p.get('shelf_number'))
-    #             else:
-    #                 Log.debug('Scene {} has no relevant location type for this KPI'.format(scene))
-    #         score = self.calculate_score(kpi_total_res, p)
-    #         # Saving to old tables
-    #         attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_table2, 'level2', kpi_fk)
-    #         if not is_atomic:  # saving also to level3 in case this KPI has only one level
-    #             attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
-    #             self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
-    #         else:  # write all level3 results
-    #             for key in results_dict.keys():
-    #                 # kpi_fk = self.kpi_fetcher.get_kpi_fk(key, self.set_name)
-    #                 params_for_level3 = {'KPI name Eng': key, 'KPI name Rus': results_dict[key][1]}
-    #                 attributes_for_table3 = self.create_attributes_for_level3_df(params_for_level3,
-    #                                                                              results_dict[key][0], kpi_fk)
-    #                 self.write_to_db_result(attributes_for_table3, 'level3', kpi_fk)
-    #         ##saving to new tables##
-    #         # level2_output = {'result': kpi_total_res, 'score': score,
-    #         #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-    #         #                  'kpi_name': p.get('KPI name Eng')}
-    #         # self.output.add_kpi_results(Keys.KPI_LEVEL_2_RESULTS, self.convert_kpi_level_2(level2_output))
-    #         weight = p.get('KPI Weight')
-    #         if p.get('additional_weight') is not None:
-    #             weight *= kpi_total_res
-    #         set_total_res += score * weight
-    #     Log.info('Calculation finished')
-    #
-    #     return set_total_res
-
-    # def calculate_top_k_skus(self, params):
-    #     set_total_res = 0
-    #     for p in params.values()[0]:
-    #         if not p.get('Type') == 'TOP K' or not p.get('children'):
-    #             continue
-    #         results_dict = {}
-    #         kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'), self.set_name)
-    #         children = [int(child) for child in p.get('children').split(", ")]
-    #         for child in params.values()[0]:
-    #             if child.get('KPI ID') in children:
-    #                 atomic_res = self.calculate_availability(child)
-    #                 atomic_score = self.calculate_score(atomic_res, child)
-    #                 results_dict[child.get('KPI name Eng')] = atomic_score
-    #                 # writing to db
-    #                 attributes_for_table3 = self.create_attributes_for_level3_df(child, atomic_score, kpi_fk)
-    #                 self.write_to_db_result(attributes_for_table3, 'level3')
-    #         kpi_total_res = len([result for result in results_dict.keys() if results_dict[result] > 0])
-    #         kpi_score = self.calculate_score(kpi_total_res, p)
-    #         set_total_res += kpi_score * p.get('KPI Weight')
-    #         # writing to db
-    #         attributes_for_table2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_table2, 'level2')
-    #
-    #     return set_total_res
-
-    # def calculate_top_k_skus(self, params):
-    #     """
-    #     This function calculates the top K SKUs KPI
-    #
-    #     """
-    #     set_total_res = 0
-    #     for p in params.values()[0]:
-    #         if not p.get('Type') == 'TOP K':
-    #             continue
-    #         results_dict = {}
-    #         kpi_total_res = 0
-    #         for scene in self.scenes_info['scene_fk'].unique().tolist():  # iterating thorugh each scene
-    #             try:
-    #                 scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[
-    #                     0]  # extracting the scene type
-    #                 location = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[
-    #                     0]  # extracting the location type
-    #                 sub_location = self.scif.loc[self.scif['template_name'] == scene_type][
-    #                     'additional_attribute_2'].values[0]
-    #             except IndexError as e:
-    #                 Log.error('Scene {} is not defined in reporting.scene_item_facts table'.format(scene))
-    #                 continue
-    #             location_and_scene_validity = self.validate_scenes_and_location(location, scene_type,
-    #                                                                             sub_location, p)
-    #             if location_and_scene_validity:  # scene types and locations validation
-    #                 if p.get('children') is not None:
-    #                     for child in params.values()[0]:  # todo temporary solution, should be refactored to df which extracts static KPIs
-    #                         if child.get('KPI ID') in [int(kpi) for kpi in p.get('children').split(', ')]:
-    #                             object_static_list = self.get_static_list(child.get('Type'))
-    #                             res = self.calculate_availability(child, object_static_list, scene)
-    #                             if not results_dict.get(child.get('KPI name Eng')): # if result doesn't exist or == 0
-    #                                 results_dict[child.get('KPI name Eng')] = [self.calculate_score(res, child),
-    #                                                                            child.get('KPI name Rus')]
-    #                                 kpi_total_res += res
-    #
-    #             else:
-    #                 Log.debug('Scene {} has no relevant location type for this KPI'.format(scene))
-    #
-    #         score = self.calculate_score(kpi_total_res, p)
-    #         # level2_output = {'result': kpi_total_res, 'score': score,
-    #         #                  'target': p.get('Target'), 'weight': p.get('KPI Weight'),
-    #         #                  'kpi_name': p.get('KPI name Eng')}
-    #         # self.output.add_kpi_results(Keys.KPI_LEVEL_2_RESULTS, self.convert_kpi_level_2(level2_output))
-    #         for key in results_dict.keys():
-    #             kpi_fk = self.kpi_fetcher.get_kpi_fk(key, self.set_name)
-    #             params_for_level3 = {'KPI name Eng': key, 'KPI name Rus': results_dict[key][1]}
-    #             attributes_for_table3 = self.create_attributes_for_level3_df(params_for_level3,
-    #                                                                          results_dict[key][0], kpi_fk)
-    #             self.write_to_db_result(attributes_for_table3, 'level3')
-    #         kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'), self.set_name)
-    #         attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-    #         self.write_to_db_result(attributes_for_level2, 'level2')
-    #
-    #         set_total_res += score * p.get('KPI Weight')
-    #     Log.info('Calculation finished')
-    #     return set_total_res
 
     @kpi_runtime()
     def check_number_of_scenes_with_target(self, params, scenes=[]):
@@ -1212,7 +935,7 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def facings_sos(self, params):
+    def check_facings_sos(self, params):
         """
         This function is used to calculate facing share of shelf
 
@@ -1799,7 +1522,7 @@ class CCRU_SANDKPIToolBox:
         return float(facings) / 40
 
     @kpi_runtime()
-    def customer_cooler_doors(self, params):
+    def check_customer_cooler_doors(self, params):
         set_total_res = 0
         for p in params.values()[0]:
             if p.get('Formula') != "facings TCCC/40":
@@ -2222,7 +1945,7 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def calculate_number_of_scenes_no_tagging(self, params, level = None):
+    def check_number_of_scenes_no_tagging(self, params, level = None):
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
@@ -2285,29 +2008,32 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_db_result(attributes_for_level3, 'level3')
             return set_total_res
 
-    def build_dict(self, seq, key):
+    @staticmethod
+    def build_dict(seq, key):
         return dict((d[key], dict(d, index=index)) for (index, d) in enumerate(seq))
 
-    def get_max_in_dict(self, dict):
+    @staticmethod
+    def get_max_in_dict(dictionary):
         max_value = 0
         closest_to_pass_scenes = []
-        for row in dict.values():
+        for row in dictionary.values():
             if row.get('num_passed_kpi') > max_value:
                 max_value = row.get('num_passed_kpi')
-        for scene, value in dict.items():
+        for scene, value in dictionary.items():
             if value.get('num_passed_kpi') == max_value:
                 closest_to_pass_scenes.append(scene)
         return closest_to_pass_scenes
 
-    def get_favorite_scene(self, potential_scenes, dict):
+    @staticmethod
+    def get_favorite_scene(potential_scenes, dictionary):
+        favorite_scene = None
         for scene in potential_scenes:
             priority = 999
-            if dict[scene]['total_row_no_passed'] < priority:
+            if dictionary[scene]['total_row_no_passed'] < priority:
                 favorite_scene = scene
         return favorite_scene
 
-
-    def write_to_db_result(self, df=None, level=None, kps_name_temp=None):
+    def write_to_db_result(self, df=None, level=None):
         """
         This function writes KPI results to old tables
 
@@ -2383,11 +2109,11 @@ class CCRU_SANDKPIToolBox:
         return
 
     @kpi_runtime()
-    def prepare_hidden_set(self, params):
+    def prepare_hidden_set(self, params, kpi_set_name):
         # table3 = pd.DataFrame([])  # for debugging
 
-        kpi_set_name = kpi_name = "CCH Integration"
-        kpi_df = self.kpi_fetcher.get_static_kpi_data(kpi_set_name)
+        self.set_kpi_set(kpi_set_name)
+        kpi_df = self.kpi_fetcher.kpi_static_data
 
         kpi_set_fk = kpi_df['kpi_set_fk'].values[0]
         attributes_for_table1 = pd.DataFrame([(kpi_set_name,
@@ -2588,7 +2314,7 @@ class CCRU_SANDKPIToolBox:
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk',
                                                       'kpk_name', 'score'])
 
-        if self.set_name not in (MARKETING, TARGET_EXECUTION, EQUIPMENT_SET_NAME, CONTRACT_SET_NAME, CCH_INTEGRATION):
+        if self.kpi_set_name not in (MARKETING, TARGET_EXECUTION, EQUIPMENT_SET_NAME, CONTRACT_SET_NAME, CCH_INTEGRATION):
             self.kpk_scores[params.get('KPI name Eng')] = {'score': score, 'rus_name': params.get('KPI name Rus')}
 
         return attributes_for_table2
@@ -2615,7 +2341,7 @@ class CCRU_SANDKPIToolBox:
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(params.get('KPI name Eng'))
         if params.get('KPI name Rus'):
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Rus').encode('utf-8').replace("'", "\\'"),
-                                                   self.session_uid, self.set_name, self.store_id,
+                                                   self.session_uid, self.kpi_set_name, self.store_id,
                                                    self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
@@ -2625,7 +2351,7 @@ class CCRU_SANDKPIToolBox:
                                                           'atomic_kpi_fk', 'threshold', 'result', 'name'])
         else:
             attributes_for_table3 = pd.DataFrame([(params.get('KPI name Eng').replace("'", "\\'"),
-                                                   self.session_uid, self.set_name, self.store_id,
+                                                   self.session_uid, self.kpi_set_name, self.store_id,
                                                    self.visit_date.isoformat(), dt.datetime.utcnow().isoformat(),
                                                    score, kpi_fk, atomic_kpi_fk, threshold, result,
                                                    params.get('KPI name Eng').replace("'", "\\'"))],
@@ -2634,7 +2360,7 @@ class CCRU_SANDKPIToolBox:
                                                           'calculation_time', 'score', 'kpi_fk',
                                                           'atomic_kpi_fk', 'threshold', 'result', 'name'])
 
-        if self.set_name == TARGET_EXECUTION:
+        if self.kpi_set_name == TARGET_EXECUTION:
             self.execution_results[params.get('KPI name Eng')] = {'score_func': params.get('score_func'),
                                                                   'result': result,
                                                                   'score': score}
@@ -2712,8 +2438,8 @@ class CCRU_SANDKPIToolBox:
 
         return set_total_res
 
-    def get_set(self, visit_date):
-        if str(visit_date) < '2017-11-25':  # todo: change the date to the relevant one before deployment
+    def get_pos_kpi_set_name(self):
+        if str(self.visit_date) < '2017-11-25':  # todo: change the date to the relevant one before deployment
             query = """
                     select ss.pk , ss.additional_attribute_12
                     from static.stores ss
@@ -2722,11 +2448,11 @@ class CCRU_SANDKPIToolBox:
                     """.format(self.session_uid)
         else:
             query = """
-                select ss.pk , ss.additional_attribute_11
-                from static.stores ss
-                join probedata.session ps on ps.store_fk=ss.pk
-                where ss.delete_date is null and ps.session_uid = '{}';
-                """.format(self.session_uid)
+                    select ss.pk , ss.additional_attribute_11
+                    from static.stores ss
+                    join probedata.session ps on ps.store_fk=ss.pk
+                    where ss.delete_date is null and ps.session_uid = '{}';
+                    """.format(self.session_uid)
 
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
@@ -2803,7 +2529,7 @@ class CCRU_SANDKPIToolBox:
             total_weight = 0
             count_of_kpis = 0
 
-            self.change_set(EQUIPMENT_SET_NAME)
+            self.change_kpi_set(EQUIPMENT_SET_NAME)
             for param in params:
                 if param.get('level') == 2 and param.get('KPI Set Type') == 'Equipment':
 
@@ -2889,7 +2615,7 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_contract_execution(self, params):
         if self.osa_score is not None or self.equipment_execution_score is not None:
-            self.change_set(CONTRACT_SET_NAME)
+            self.change_kpi_set(CONTRACT_SET_NAME)
 
             total_score = 0
             total_weight = 0
@@ -3032,3 +2758,62 @@ class CCRU_SANDKPIToolBox:
             self.write_to_db_result(attributes_for_level3, 'level3')
 
         return set_total_res
+
+    def get_object_facings(self,
+                           scenes,
+                           objects,
+                           object_type,
+                           formula,
+                           size=[],
+                           form_factor=[],
+                           shelves=None,
+                           products_to_exclude=[],
+                           form_factors_to_exclude=[],
+                           product_categories=[],
+                           product_sub_categories=[],
+                           product_brands=[],
+                           product_manufacturers=[]):
+        object_type_conversion = {'SKUs': 'product_ean_code',
+                                  'BRAND': 'brand_name',
+                                  'CAT': 'category',
+                                  'MAN in CAT': 'category',
+                                  'MAN': 'manufacturer_name',
+                                  'SUB_BRAND': 'sub_brand_name',
+                                  'SUB_CATEGORY': 'sub_category'}
+        object_field = object_type_conversion[object_type]
+        if shelves is None:
+            df = self.scif[self.scif['facings'] > 0]
+        else:
+            shelves_list = [int(shelf) for shelf in shelves.split(',')]
+            df = self.matches[self.matches['shelf_number'].isin(shelves_list)]
+
+        final_result = df[(df['scene_fk'].isin(scenes)) &
+                          (df[object_field].isin(objects)) &
+                          (~df['product_ean_code'].isin(products_to_exclude)) &
+                          (~df['form_factor'].isin(form_factors_to_exclude)) &
+                          (df['manufacturer_name'].isin(product_manufacturers)) &
+                          (~df['product_type'].isin(['Empty']))]
+
+        if form_factor:
+            final_result = final_result[final_result['form_factor'].isin(form_factor)]
+        if size:
+            final_result = final_result[final_result['size'].isin(size)]
+        if product_categories:
+            final_result = final_result[final_result['category'].isin(product_categories)]
+        if product_sub_categories:
+            final_result = final_result[final_result['sub_category'].isin(product_sub_categories)]
+        if product_brands:
+            final_result = final_result[final_result['brand_name'].isin(product_brands)]
+
+        try:
+            if "number of SKUs" in formula:
+                object_facings = len(final_result['product_ean_code'].unique())
+            else:
+                if 'facings' in final_result.columns:
+                    object_facings = final_result['facings'].sum()
+                else:
+                    object_facings = len(final_result)
+        except IndexError:
+            object_facings = 0
+        return object_facings
+
