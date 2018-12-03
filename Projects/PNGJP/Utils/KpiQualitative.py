@@ -572,7 +572,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         product_eans = self._get_ean_codes_by_product_group_id(**params)
         kpi_filter[self.PRODUCT_EAN_CODE_FIELD] = product_eans
 
-        allowed = {'product_type': ['Other', 'Empty']}
+        allowed = {'product_type': ['Other', 'Empty', 'Irrelevant']}
         # allowed = params['allowed']
         allowed_products = self._get_allowed_products(allowed)
         filtered_products_all = self._get_filtered_products()
