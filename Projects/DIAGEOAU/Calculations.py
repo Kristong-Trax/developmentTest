@@ -22,7 +22,7 @@ class DIAGEOAUCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageoau'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'B24409C4-891D-458B-BDB1-6D11D8B05C2D'
+#     session = '13CA7DB5-9B04-4C18-9460-471ABA9A9416'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOAUCalculations(data_provider, output).run_project_calculations()
