@@ -44,16 +44,16 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.get_latest_directory_date_from_cloud',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-06-14')
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.save_latest_templates')
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=mpa)
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=local_mpa)
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=products)
-    @patch('Projects.DIAGEOKE_SAND.Utils.ToolBox.DIAGEOKE_SANDDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=posm)
     @seeder.seed(["diageoke_sand_seed"], ProjectsSanityData())
     def test_diageoke_sand_sanity(self, x, y, json, json2, json3, json4):
