@@ -4,15 +4,15 @@
 _author_ = 'NicolasKeeton'
 
 class Const(object):
-    TEMPLATE_PATH = "Projects/PERNODUS_SAND/Data/Pernod_US KPI_PS v0.1.xlsx"
+
 
     #sheets
-    PRESENCE, ADJACENCY, BLOCKING, ANCHOR, BASE_SPACE, EYE_LEVEL = 'Presence', 'Blocking', 'Anchor',
-    'Base Measurement','Eye Level'
+    # PRESENCE, ADJACENCY, BLOCKING, ANCHOR, BASE_SPACE, EYE_LEVEL = 'Presence','Adjacency', 'Blocking', 'Anchor',
+    # 'Base Measurement','Eye Level'
 
 
 
-    SHEETS_MAIN= { PRESENCE, ADJACENCY, BLOCKING, ANCHOR, BASE_SPACE, EYE_LEVEL}
+    # SHEETS_MAIN= { PRESENCE, ADJACENCY, BLOCKING, ANCHOR, BASE_SPACE, EYE_LEVEL}
 
     #generic columns
     KPI_NAME = "KPI NAME"
