@@ -15,7 +15,7 @@ class DIAGEOMXCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOMX',
-                                     'Data', 'TOUCH POINT.xlsx')
+                                     'Data', 'TOUCH POINT v2.xlsx')
         common = Common(self.data_provider)
         diageo_generator = DIAGEOGenerator(self.data_provider, self.output, common)
         diageo_generator.diageo_global_assortment_function()
