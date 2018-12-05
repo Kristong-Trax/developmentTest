@@ -40,6 +40,8 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         SELECT * FROM report.kpi_results
         ''')
         kpi_results = cursor.fetchall()
+
+        # silent test, diageomx are no longer using those templates and the test is failing
         # self.assertNotEquals(len(kpi_results), 0)
 
         connector.disconnect_rds()
