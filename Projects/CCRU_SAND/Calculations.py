@@ -14,7 +14,7 @@ from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
 
 __author__ = 'sergey'
 
-
+SOURCE = 'SOURCE'
 SET = 'SET'
 FILE = 'FILE'
 SHEET = 'SHEET'
@@ -66,7 +66,10 @@ class ProjectCalculations:
             return
 
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
-        kpi_source = self.json.project_kpi_dict.get('kpi_data').get(self.pos_kpi_set_name)
+        kpi_source_json = self.json.project_kpi_dict.get('kpi_data').get(self.pos_kpi_set_name)
+        kpi_source = {}
+        for row in kpi_source_json:
+            kpi_source[row.pop(SOURCE)] = row
 
         if kpi_source:
             pass
