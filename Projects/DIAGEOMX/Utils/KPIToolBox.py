@@ -398,5 +398,8 @@ class DIAGEOMXToolBox:
         cur = self.rds_conn.db.cursor()
         for query in self.kpi_results_queries:
             cur.execute(query)
+        # needed to save Touch Point values
+        for query in self.common.kpi_results_queries:
+            cur.execute(query)
         self.rds_conn.db.commit()
 
