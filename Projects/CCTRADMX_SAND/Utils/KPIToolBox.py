@@ -78,7 +78,8 @@ class CCTRADMXToolBox:
             return 2
         elif cooler_type == 'Competencia':
             return 3
-
+        else:
+            return 4
 
 
 
