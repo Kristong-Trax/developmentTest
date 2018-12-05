@@ -648,7 +648,7 @@ class BATRUToolBox:
         cur = self.rds_conn.db.cursor()
         for i in xrange(len(new_kpi_list)):
             kpi = new_kpi_list.iloc[i]
-            kpi_name = kpi['product_short_name'].encode('utf-8')
+            kpi_name = kpi['product_short_name'].replace("'", "\\'").encode('utf-8')
             product_fk = kpi['product_fk']
             level3_query = """
                    INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text, model_id)
