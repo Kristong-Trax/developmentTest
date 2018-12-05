@@ -253,7 +253,10 @@ class MOLSONCOORSRS_SANDToolBox:
         kpi_fk_lvl2 = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
 
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        assortment_result = assortment_result[(assortment_result['kpi_fk_lvl3'] == kpi_fk_lvl3) & (assortment_result['kpi_fk_lvl2'] == kpi_fk_lvl2)]
+        if assortment_result.empty:
+            return assortment_result
+        assortment_result = assortment_result[(assortment_result['kpi_fk_lvl3'] == kpi_fk_lvl3) &
+                                              (assortment_result['kpi_fk_lvl2'] == kpi_fk_lvl2)]
         if assortment_result.empty:
             return assortment_result
 
