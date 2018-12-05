@@ -75,26 +75,30 @@ class MILLERCOORSToolBox:
         """
         This function calculates the KPI results.
         """
-        main_template = self.templates[Const.KPIS]
-        for i, main_line in main_template.iterrows():
-            relevant_scif = self.scif[self.scif['product_type'] != 'Empty']
-            kpi_name = main_line[Const.KPI_NAME]
-            kpi_type = main_line[Const.KPI_TYPE]
-            scene_types = self.does_exist(main_line, Const.STORE_LOCATION)
-            if scene_types:
-                relevant_scif = self.scif[self.scif['template_name'].isin(scene_types)]
-
-            relevant_template = self.templates[kpi_type]
-            relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            relevant_template = relevant_template.merge(main_template, how='left', left_on=Const.KPI_NAME, right_on=Const.KPI_NAME)
-            kpi_function = self.get_kpi_function(kpi_type)
-            for idx, kpi_line in relevant_template.iterrows():
-                result_dict = kpi_function(kpi_line, relevant_scif)
+        self.calculate_block_adjacency(None, None)
+        # main_template = self.templates[Const.KPIS]
+        # for i, main_line in main_template.iterrows():
+        #     relevant_scif = self.scif[self.scif['product_type'] != 'Empty']
+        #     kpi_name = main_line[Const.KPI_NAME]
+        #     kpi_type = main_line[Const.KPI_TYPE]
+        #     scene_types = self.does_exist(main_line, Const.STORE_LOCATION)
+        #     if scene_types:
+        #         relevant_scif = self.scif[self.scif['template_name'].isin(scene_types)]
+        #
+        #     relevant_template = self.templates[kpi_type]
+        #     relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
+        #     relevant_template = relevant_template.merge(main_template, how='left', left_on=Const.KPI_NAME, right_on=Const.KPI_NAME)
+        #     kpi_function = self.get_kpi_function(kpi_type)
+        #     for idx, kpi_line in relevant_template.iterrows():
+        #         result_dict = kpi_function(kpi_line, relevant_scif)
         return
 
     def calculate_anchor(self, kpi_line, relevant_scif):
 
-        filters = {kpi_line[Const.PARAM]: kpi_line[Const.VALUE]}
+        filters = {
+            kpi_line[Const.PARAM]: kpi_line[Const.VALUE],
+            'template_name': kpi_line[Const.STORE_LOCATION]
+        }
 
         result = self.calculate_products_on_edge(min_number_of_facings=1, min_number_of_shelves=1, **filters)
         return result
@@ -113,10 +117,26 @@ class MILLERCOORSToolBox:
         return result
 
     def calculate_block_adjacency(self, kpi_line, relevant_scif):
-        pass
+
+        filters = {
+            'brand_name': 'Miller Lite',
+        }
+        location = {
+            'template_name': 'Beer, Flavored Beer, Alcoholic Ciders and Alcoholic Malt Beverages - Cold Shelf (Open Deck Cooler)'
+        }
+        result = self.block.network_x_block_together(filters, location)
+        return result
+
 
     def calculate_adjacency(self, kpi_line, relevant_scif):
-        pass
+        if self.does_exist(kpi_line, Const.LIST_ATTRIBUTE):
+            pass
+        else:
+            filters = {
+                'brand_name': 'Miller Lite',
+                'template_name': ''
+            }
+            self.block.network_x_block_together()
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, **filters):
         """
