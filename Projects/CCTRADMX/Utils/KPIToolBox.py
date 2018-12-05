@@ -2,27 +2,16 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 import pandas as pd
-import os
-
-from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.DB.CommonV2 import Common
 
 __author__ = 'ilays'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-
+KPI_COOLER_AVAILABILITY = 'Cooler_Availability'
 
 class CCTRADMXToolBox:
     LEVEL1 = 1
@@ -46,15 +35,49 @@ class CCTRADMXToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.templates = self.data_provider[Data.ALL_TEMPLATES]
+        self.all_data = pd.merge(self.scif, self.match_product_in_scene[['bay_number','scene_fk']],
+                                 how="inner", left_on='scene_id', right_on='scene_fk').drop_duplicates()
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        score = 0
-        return score
+        self.calculate_cooler_availability()
+        self.common.commit_results_data()
 
+
+    def calculate_cooler_availability(self):
+        template_bays = self.all_data[['template_fk', 'additional_attribute_1',
+                                       'additional_attribute_2', 'bay_number']].drop_duplicates()
+        template_bays = template_bays[(template_bays['additional_attribute_2'].isin(['Frio',]))]
+        if template_bays.empty:
+            return
+        template_bays_max = template_bays.groupby(['template_fk'], sort=False).max().reset_index()
+        template_bays_max['number_of_scenes'] = 1
+        template_bays_final_df = template_bays_max.groupby(['additional_attribute_1'], sort=False).sum().reset_index()
+
+        try:
+            atomic_pk = self.common.get_kpi_fk_by_kpi_type(KPI_COOLER_AVAILABILITY)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + KPI_COOLER_AVAILABILITY)
+            return
+
+        for index, row in template_bays_final_df.iterrows():
+            cooler_type = row['additional_attribute_1']
+            count_of_doors = row['bay_number']
+            count_of_coolers = row['number_of_scenes']
+            numerator_id = self.check_numerator_id(cooler_type)
+            self.common.write_to_db_result(fk=atomic_pk, numerator_id=numerator_id,
+                                                numerator_result=count_of_coolers, denominator_id=self.store_id,
+                                                denominator_result=count_of_doors,result=count_of_coolers)
+
+    def check_numerator_id(self, cooler_type):
+        if cooler_type == 'KO':
+            return 1
+        elif cooler_type == 'Propio':
+            return 2
+        elif cooler_type == 'Competencia':
+            return 3
 
 
 
