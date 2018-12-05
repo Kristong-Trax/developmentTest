@@ -46,6 +46,7 @@ class CCTRADMXToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.templates = self.data_provider[Data.ALL_TEMPLATES]
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -53,3 +54,30 @@ class CCTRADMXToolBox:
         """
         score = 0
         return score
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
