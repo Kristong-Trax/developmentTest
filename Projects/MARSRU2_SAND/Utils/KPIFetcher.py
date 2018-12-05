@@ -421,7 +421,7 @@ class MARSRU2_SANDKPIFetcher:
                             kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
                             kpi_results_to_check = str(row.get('KPI result')).encode(
                                 'utf-8').strip().replace('\n', '').split(',')
-                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')\
+                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:
                                 if kpi_result in kpi_results_to_check:
