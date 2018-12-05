@@ -230,6 +230,10 @@ class PNGRO_PRODToolBox:
         self.calculate_linear_share_of_shelf_per_product_display()
 
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
+        if self.main_shelves:
+            self.calculate_sbd()
+
+    def calculate_sbd(self):
         for x, params in self.sbd_kpis_data.iterrows():
             # if self.check_if_blade_ok(params, self.match_display, category_status_ok):
             if True:
@@ -278,6 +282,7 @@ class PNGRO_PRODToolBox:
                                                     level=self.LEVEL3, fk=atomic_kpi_fk)
                         else:
                             self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
+
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
