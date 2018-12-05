@@ -331,8 +331,8 @@ class MOLSONCOORSHRToolBox:
             numerator_sos_filters = {MANUFACTURER_NAME: sos_policy[NUMERATOR][MANUFACTURER], CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
             denominator_sos_filters = {CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
 
-            numerator_id = self.scif.loc[self.scif[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
-            denominator_id = self.scif.loc[self.scif[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
+            numerator_id = self.all_products.loc[self.all_products[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
+            denominator_id = self.all_products.loc[self.all_products[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
 
             ignore_stacking = kpi['Ignore Stacking'] if kpi['Ignore Stacking'] else 0
 
