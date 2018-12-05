@@ -67,7 +67,7 @@ class CCTRADMXToolBox:
             count_of_coolers = row['number_of_scenes']
             numerator_id = self.check_numerator_id(cooler_type)
             self.common.write_to_db_result(fk=atomic_pk, numerator_id=numerator_id,
-                                                numerator_result=count_of_coolers, denominator_id=self.store_id,
+                                                numerator_result=count_of_coolers, denominator_id=0,
                                                 denominator_result=count_of_doors,result=count_of_coolers)
 
     def check_numerator_id(self, cooler_type):
