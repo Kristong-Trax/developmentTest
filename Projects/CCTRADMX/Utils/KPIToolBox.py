@@ -45,11 +45,10 @@ class CCTRADMXToolBox:
         self.calculate_cooler_availability()
         self.common.commit_results_data()
 
-
     def calculate_cooler_availability(self):
         template_bays = self.all_data[['template_fk', 'additional_attribute_1',
                                        'additional_attribute_2', 'bay_number']].drop_duplicates()
-        template_bays = template_bays[(template_bays['additional_attribute_2'].isin(['Frio',]))]
+        template_bays = template_bays[(template_bays['additional_attribute_2'].isin(['Frio', 'Fr'+u'\xed'+'o']))]
         if template_bays.empty:
             return
         template_bays_max = template_bays.groupby(['template_fk'], sort=False).max().reset_index()
