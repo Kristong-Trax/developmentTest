@@ -62,6 +62,8 @@ class ToolBox:
         self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
         self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
                                                               (~self.template[Const.KPIS][Const.TYPE].isnull())]
+        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        self.dependency_reorder()
 
     # main functions:
     def main_calculation(self, *args, **kwargs):
@@ -85,12 +87,24 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        function = self.get_kpi_function(kpi_type)
+        dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        if dependent_result and self.dependencies[kpi_name] not in dependent_result:
+            return
+
+        # function = self.get_kpi_function(kpi_type)
         # function = self.integrated_adjacency
+        function = self.calculate_stocking_location
         # function = self.adjacency
         # function = self.graph
-        if kpi_name != 'Aggregation':
+        if kpi_name != 'What best describes the stocking location of Organic Yogurt?':
             return
+        # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
+        #                     'How is RTS Progresso blocked?',
+        #                     'How is RTS Private Label blocked?',
+        #                     'When RTS Progresso is vertically blocked, what is adjacent?',
+        #                     'If not blocked, where is RTS Private Label stocked?',
+        #                     ]:
+        #     return
         for i, kpi_line in self.template[kpi_type].iterrows():
             function(kpi_name, kpi_line, relevant_scif, general_filters)
                 # result, num, den, score, target = function(kpi_line)
@@ -267,16 +281,28 @@ class ToolBox:
                     all_points.update(all_graph.base_adjacency_graph[match_to_node[match]].keys())
                 break
 
+    def calculate_stocking_location(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        max_criteria = max([int(col.split(' ')[1]) for col in kpi_line.index if col != Const.KPI_NAME])
+        results_map = self.template[Const.YOGURT_MAP].set_index('Result').to_dict('index')
+        for i in xrange(1, max_criteria + 1):
+            level = 'Criteria {}'.format(i)
+            filters = self.get_kpi_line_filters(kpi_line, name=level)
+            sub_func = self.read_cell_from_line(kpi_line, '{} Type'.format(level))
+            msl = self.read_cell_from_line(kpi_line, '{} MSL'.format(level))
+            pass
+
+    def calculate_block(self):
+        pass
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
-        relevant_filter = {'Segment': 'DRY DOG NATURAL/GRAIN FREE'}
+        relevant_filter = {'Segment': 'BISCUIT DOUGH'}
         allowed_filter = {'product_type': ['Empty', 'Other']}
-        scene_filter = {'scene_fk': 342186}
+        scene_filter = {'scene_fk': 78}
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
                                          additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
 
-        for block in blocks_res['component']:
+        for block in res['block']:
             print(sum([len(node[1]['members']) for node in block.nodes(data=True)]))
 
 
@@ -385,6 +411,34 @@ class ToolBox:
 
         return ratio, num, den
 
+    def dependency_reorder(self):
+        kpis = self.template[Const.KPIS].copy()
+        name_to_index = kpis.reset_index().set_index(Const.KPI_NAME)['index'].to_dict()
+        dependent_index = list(kpis[kpis[Const.DEPENDENT].notnull()].index)
+        kpis_index = list(set(kpis.index) - set(dependent_index))
+        set_index = set(kpis_index)
+        c = 0
+        while dependent_index:
+            print(dependent_index)
+            i = dependent_index.pop(0)
+            kpi = kpis.loc[i, Const.KPI_NAME]
+            dependencies = self.read_cell_from_line(kpis.loc[i, :], Const.DEPENDENT)
+            met = True
+            for dependency in dependencies:
+                if name_to_index[dependency] not in set_index:
+                    met = False
+            if met:
+                kpis_index.append(i)
+                set_index.add(i)
+            else:
+                dependent_index.append(i)
+                c += 1
+                if c > kpis.shape[0] * 5:
+                    Log.error('Circular Dependency Found: KPIs Affected {}'.format(
+                        [kpis.loc[i, Const.KPI_NAME] for i in dependent_index]))
+                    break
+        self.template[Const.KPIS] = kpis.reindex(index=pd.Index(kpis_index)).reset_index(drop=True)
+
     def get_kpi_function(self, kpi_type):
         """
         transfers every kpi to its own function
@@ -395,6 +449,12 @@ class ToolBox:
             return self.calculate_sos
         elif kpi_type == Const.TMB:
             return self.calculate_topmiddlebottom
+        elif kpi_type == Const.ADJACENCY:
+            return self.calculate_adjacency
+        elif kpi_type == Const.IADJACENCY:
+            return self.calculate_integrated_adjacency
+        elif kpi_type == Const.STOCKING:
+            return self.calculate_stocking_location
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None

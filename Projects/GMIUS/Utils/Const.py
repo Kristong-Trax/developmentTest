@@ -18,13 +18,19 @@ class Const(object):
     PERCENT = 'Percent'
     AGGREGATION = 'Aggregation'
     TMB_MAP = 'Top-Middle-Bottom Map'
+    ADJACENCY = 'Adjacency'
+    IADJACENCY = 'Integrated Adjacency'
+    STOCKING = 'Stocking Location'
+    YOGURT_MAP = 'Yogurt Location Map'
     SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
-              TMB_MAP]
+              TMB_MAP, STOCKING, YOGURT_MAP]
 
     ''' KPIs Columns '''
     KPI_NAME = 'KPI Name'
     TYPE = 'Type'
     PARENT = 'Parent'
+    DEPENDENT = 'Dependent'
+    DEPENDENT_RESULT = 'Dependent Result'
     TEMPLATE_GROUP = 'Template Group'
     SCENE_TYPE = 'Scene Type'
     STORE_TYPE = 'Store Type'
@@ -34,6 +40,7 @@ class Const(object):
     ''' Aggregation Columns'''
     AGGREGATION_LEVELS = 'Aggregation Levels'
     SOS_TYPE = 'SOS Type'
+
 
     ''' Constants '''
     MM_TO_FT = 304.8
