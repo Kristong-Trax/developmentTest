@@ -3,6 +3,7 @@
 import pandas as pd
 from datetime import datetime
 import os
+import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -239,8 +240,8 @@ class BATRU_SANDToolBox:
         return self.custom_templates[name]
 
     def get_relevant_template_sheet(self, template_name, sheet_name): #Natalya
-        if template_name is self.all_templates.keys():
-            if sheet_name in self.all_templates[template_name]:
+        if template_name in self.all_templates.keys():
+            if sheet_name in self.all_templates[template_name].keys():
                 return self.all_templates[template_name][sheet_name]
         else:
             return self.fall_back_to_excel_files(template_name, sheet_name)
@@ -254,7 +255,7 @@ class BATRU_SANDToolBox:
         all_templates = {}
         query = BATRU_SANDQueries.get_templates_data()
         templates_data = pd.read_sql_query(query, self.rds_conn.db)
-        # make sure all jsons retrieved are dictionaries
+        templates_data['key_json'] = templates_data['key_json'].apply(lambda x: json.loads(x))
         templates_data['template_name'] = templates_data['key_json'].apply(lambda x: x['template'])
         templates_data['sheet_name'] = templates_data['key_json'].apply(lambda x: x['sheet'])
         for i, row in templates_data.iterrows():
@@ -262,7 +263,8 @@ class BATRU_SANDToolBox:
             if all_templates.get(template_name) is None:
                 all_templates.update({template_name: {}})
             sheet_name = row['sheet_name']
-            sheet_content = pd.DataFrame.from_records(row['data_json'])
+            # sheet_content = pd.DataFrame.from_records(row['data_json'])
+            sheet_content = pd.read_json(row['data_json'])
             all_templates[template_name].update({sheet_name: sheet_content})
         return all_templates
 
@@ -1591,6 +1593,8 @@ class BATRU_SANDToolBox:
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
         # posm_template = self.get_custom_template(P4_PATH, 'Availability')
         posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability') #Natalya
+        if 'Filter stores by attribute 3' in posm_template.columns.values.tolist():
+            posm_template = posm_template.rename(columns={'Filter stores by attribute 3': ATTRIBUTE_3}) #Natalya
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
