@@ -204,6 +204,7 @@ class BATAUToolBox:
             if kpi.empty:
                 print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
             else:
+                print("KPI Name:{}".format(row[KPI_NAME]))
                 kpi_fk = int(kpi['pk'])
                 kpi_parent_name = str(row[KPI_PARENT])
                 kpi_name = str(row[KPI_NAME])
