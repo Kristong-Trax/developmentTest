@@ -7,6 +7,8 @@ import pandas as pd
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
+from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
+from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 from KPIUtils_v2.Calculations.BlockCalculations  import Block
 from KPIUtils_v2.Calculations.EyeLevelCalculations import EYE_LEVEL_DEFINITION
 from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -18,6 +20,7 @@ from Projects.PERNODUS_SAND.Utils.ParseTemplates import parse_template
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
 from Projects.PERNODUS_SAND.Utils.Const import Const
+
 
 __author__ = 'nicolaske'
 
@@ -48,6 +51,7 @@ class PERNODUSToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.templates = self.data_provider.all_templates
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -66,58 +70,71 @@ class PERNODUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.availability = Availability(self.data_provider)
         self.blocking_calc = Block(self.data_provider)
+        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.templates, on='template_fk', suffixes=['', '_t'])
 
     def main_calculation(self, *args, **kwargs):
 
 
-        #Base Measurement
-        for i, row in self.BaseMeasure_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    value = row ['value']
-                    location = row['Store Location']
-
-                    self.calculate_category_space(135, kpi_name, value, location)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-
+        # #Base Measurement
+        # for i, row in self.BaseMeasure_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             value = row ['value']
+        #             location = row['Store Location']
+        #
+        #             self.calculate_category_space(135, kpi_name, value, location)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
 
-        # Anchor
-        for i, row in self.Anchor_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    value = row ['value']
 
 
-                    self.calculate_anchor(kpi_name)
+        # # Anchor
+        # for i, row in self.Anchor_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             value = row ['value']
+        #
+        #
+        #             self.calculate_anchor(kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
 
+        # #Presence
+        # self.calculate_presence()
+        #
+        # #Blocking
+        # for i, row in self.Blocking_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             self.calculate_blocking(kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # #Eye Level
+        # for i, row in self.Eye_Level_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         self.calculate_eye_level(kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
-        #Presence
-        self.calculate_presence()
-
-        #Blocking
-        for i, row in self.Blocking_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    self.calculate_blocking(kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        #Eye Level
-        for i, row in self.Eye_Level_template.iterrows():
+        #Adjacency
+        for i, row in self.Adjaceny_template.iterrows():
             try:
                 kpi_name = row['KPI']
-                self.calculate_eye_level(kpi_name)
+                self.adjacency(kpi_name, 'Shelf')
 
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
@@ -210,85 +227,72 @@ class PERNODUSToolBox:
                                                    result=1, score=1)
         return
 
-    def calculate_adjacency(self):
-        score = result = threshold = 0
+    def adjacency(self, kpi_name, relevant_scif):
+        relevant_scif = self.filter_df(self.scif.copy(), {'template_name':'Shelf'})
+        template = self.Adjaceny_template.loc[self.Adjaceny_template['KPI'] == kpi_name]
+        kpi_template = template.loc[template['KPI'] == kpi_name]
+        if kpi_template.empty:
+            return None
+        kpi_template = kpi_template.iloc[0]
+        Param = kpi_template['param']
+        Value1 = kpi_template['Product Att']
+        filter = {Param: Value1}
 
-        params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == 'kpi_variable']
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            mpis = self.filter_df(self.mpis, scene_filter)
+            allowed = {'product_type': ['Other', 'Empty']}
+            # filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
+            items = set(self.filter_df(mpis, filter)['scene_match_fk'].values)
+            allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
+            items.update(allowed_items)
+            if not (items):
+                return
 
-        group_a = {self.PRODUCT_EAN_CODE_FIELD: self._get_ean_codes_by_product_group_id(
-            'Product Group Id;A', **params)}
-        group_b = {self.PRODUCT_EAN_CODE_FIELD: self._get_ean_codes_by_product_group_id(
-            'Product Group Id;B', **params)}
+            all_graph = AdjacencyGraph(mpis, None, self.products,
+                                       product_attributes=['rect_x', 'rect_y'],
+                                       name=None, adjacency_overlap_ratio=.4)
 
-        allowed_filter = self._get_allowed_products(
-            {'product_type': ['Irrelevant', 'Empty', 'Other']})
-        allowed_filter_without_other = self._get_allowed_products(
-            {'product_type': ['Irrelevant', 'Empty']})
-        scene_filters = {'template_name': ''} #Get the templte names
-
-
-        # list = calculate_adjacency_list()
-        pass
+            match_to_node = {int(node['match_fk']): i for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+            node_to_match = {val: key for key, val in match_to_node.items()}
+            edge_matches = set(
+                sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[item]].keys()]
+                     for item in items], []))
+            adjacent_items = edge_matches - items
+            adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
 
 
-    def calculate_adjacency_list(self, filter_group_a, filter_group_b, scene_type_filter, allowed_filter,
-                            allowed_filter_without_other, a_target, b_target, target):
-        a_product_list = self.toolbox._get_group_product_list(filter_group_a)
-        b_product_list = self.toolbox._get_group_product_list(filter_group_b)
+            if Value1 == 'sub_category':
+                c = dict(adj_mpis['sub_category'].value_counts().head(10))
+                list_of_adjacent_sub_categories = c.keys()
 
-        adjacency = self._check_groups_adjacency(a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                                                 allowed_filter_without_other, a_target, b_target, target)
+                for adjacent_sub_category in list_of_adjacent_sub_categories:
+                    if kpi_template['param'] == 'sub_category':
+                        numerator_id = self.all_products['sub_category'][self.all_products['sub_category'] == Value1].iloc[0]
+                        denominator_id = self.all_products['sub_category'][self.all_products['sub_category'] == adjacent_sub_category].iloc[0]
 
-    def _check_groups_adjacency(self, a_product_list, b_product_list, scene_type_filter, allowed_filter,
-                                allowed_filter_without_other, a_target, b_target, target):
-        a_b_union = list(set(a_product_list) | set(b_product_list))
+            if Value1 == 'sub_category':
+                b = dict(adj_mpis['brand_name'].value_counts().head(10))
+                list_of_adjacent_brands = b.keys()
 
-        a_filter = {'product_fk': a_product_list}
-        b_filter = {'product_fk': b_product_list}
-        a_b_filter = {'product_fk': a_b_union}
-        a_b_filter.update(scene_type_filter)
+                for adjacent_brand in list_of_adjacent_brands:
+                    if Param == 'sub_brand':
+                        numerator_id = self.all_products['sub_brand_fk'][self.all_products['sub_brand'] == Value1].iloc[0]
+                        denominator_id = self.all_products['brand_fk'][self.all_products['brand'] == adjacent_brand].iloc[0]
+                    if Param == 'brand_name':
+                        numerator_id = self.all_products['brand_name_fk'][self.all_products['brand_name'] == Value1].iloc[0]
+                        denominator_id = self.all_products['brand_fk'][self.all_products['brand'] == adjacent_brand].iloc[0]
 
-        matches = self.data_provider.matches
-        relevant_scenes = matches[self.toolbox.get_filter_condition(matches, **a_b_filter)][
-            'scene_fk'].unique().tolist()
 
-        result = False
-        for scene in relevant_scenes:
-            a_filter_for_block = a_filter.copy()
-            a_filter_for_block.update({'scene_fk': scene})
-            b_filter_for_block = b_filter.copy()
-            b_filter_for_block.update({'scene_fk': scene})
-            try:
-                a_products = self.toolbox.get_products_by_filters('product_fk', **a_filter_for_block)
-                b_products = self.toolbox.get_products_by_filters('product_fk', **b_filter_for_block)
-                if sorted(a_products.tolist()) == sorted(b_products.tolist()):
-                    return False
-            except:
-                pass
-            if a_target:
-                brand_a_blocked = self.block.calculate_block_together(allowed_products_filters=allowed_filter,
-                                                                      minimum_block_ratio=a_target,
-                                                                      vertical=False, **a_filter_for_block)
-                if not brand_a_blocked:
-                    continue
+            self.common.write_to_db_result(fk=136, numerator_id=numerator_id,
+                                               numerator_result=999,
+                                               denominator_result=999,
+                                               denominator_id=denominator_id, result=1, score=1)
 
-            if b_target:
-                brand_b_blocked = self.block.calculate_block_together(allowed_products_filters=allowed_filter,
-                                                                      minimum_block_ratio=b_target,
-                                                                      vertical=False, **b_filter_for_block)
-                if not brand_b_blocked:
-                    continue
 
-            a_b_filter_for_block = a_b_filter.copy()
-            a_b_filter_for_block.update({'scene_fk': scene})
 
-            block = self.block.calculate_block_together(allowed_products_filters=allowed_filter_without_other,
-                                                        minimum_block_ratio=target, block_of_blocks=True,
-                                                        block_products1=a_filter, block_products2=b_filter,
-                                                        **a_b_filter_for_block)
-            if block:
-                return True
-        return result
+
+
 
     def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types=None):
         template = self.BaseMeasure_template.loc[(self.BaseMeasure_template['KPI'] == kpi_name) &
@@ -580,3 +584,13 @@ class PERNODUSToolBox:
         return filter_condition
 
 
+    @staticmethod
+    def filter_df(df, filters, exclude=0):
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
