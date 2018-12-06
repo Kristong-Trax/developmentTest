@@ -9,7 +9,14 @@
 #     Config.init()
 #     project_name = 'marsru2-sand'
 #     session_uids = [
-#         'ffde89c6-23be-4bda-9de4-e51656f4b912'
+#         'fedf7bf0-eab8-48f0-bd57-268b74eedc3c',
+#         'f864e7b6-1e2d-4254-8a41-2bbbc7bdb1ae',
+#         'fe73636c-c26a-41bf-9367-9414088e8904',
+#         '3572b477-ed1c-47e7-871c-acf5dc8f963c',
+#         '9a748454-96fe-4dda-a95a-e6b96ca00c31',
+#         'c20fb9c7-b0ff-4525-85d9-1194424bda8f',
+#         '4222fcc4-db17-4300-a9ac-c105b9ea7107',
+#         '1f779b63-0c2f-4ebb-89a5-e7df4376a560',
 #         # 'ffca80a8-917a-4091-8216-cd8e1393d235',
 #         # 'ff69dea6-b0df-4a81-bed7-94c2011c8c18'
 #

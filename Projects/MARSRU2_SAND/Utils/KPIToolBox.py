@@ -1620,7 +1620,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'total_linear':
                 continue
 
-            result = 'FALSE'
+            result = 'TRUE'
             target_linear_size_total = 0
             others_linear_size_total = 0
             for values in p.get('Values').split('\nOR\n'):
@@ -1633,13 +1633,14 @@ class MARSRU2_SANDKPIToolBox:
                 others_linear_size = self.calculate_layout_size_by_filters(other_filter)
                 target_linear_size_total += target_linear_size
                 others_linear_size_total += others_linear_size
-                if target_linear_size > 0 and others_linear_size > 0\
-                        and target_linear_size >= float(percent) * others_linear_size:
-                    result = 'TRUE'
+                if target_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
+                    pass
+                else:
+                    result = 'FALSE'
                     break
 
-            if target_linear_size_total > 0 and others_linear_size_total == 0:
-                result = 'TRUE'
+            if target_linear_size_total == 0:
+                result = None
 
             self.store_results_and_scores(result, p)
 
