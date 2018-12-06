@@ -18,7 +18,10 @@ class CCRU_SANDJsonGenerator:
 
     def create_kpi_data_json(self, kpi_data, file_name, sheet_name=None):
         sheet_name = str(sheet_name) if sheet_name else None
-        file_input = pd.read_excel(os.path.join(self.base_path, file_name), sheetname=sheet_name)
+        if sheet_name:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name), sheetname=sheet_name)
+        else:
+            file_input = pd.read_excel(os.path.join(self.base_path, file_name))
         output = file_input.to_json(orient='records')
         final_json = json.loads(output)
 

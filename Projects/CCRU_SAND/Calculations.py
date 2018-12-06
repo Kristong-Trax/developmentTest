@@ -27,6 +27,7 @@ CONTRACT = 'CONTRACT'
 EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
+KPI_CONVERSION = 'KPI_CONVERSION'
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
@@ -61,12 +62,13 @@ class ProjectCalculations:
 
     def main_function(self):
 
-        if not self.tool_box.external_session_id.find('EasyMerch-P') < 0:
+        if self.tool_box.external_session_id\
+                and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
             Log.info('Promo session, no Custom KPI calculation implied')
             return
 
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
-        kpi_source_json = self.json.project_kpi_dict.get('kpi_data').get(self.pos_kpi_set_name)
+        kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
         for row in kpi_source_json:
             kpi_source[row.pop(SOURCE)] = row
@@ -89,6 +91,9 @@ class ProjectCalculations:
 
         kpi_sets_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
         for kpi_set in kpi_sets_to_calculate:
+            if not kpi_source[kpi_set][SET]:
+                continue
+
             Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set][SET])
             self.json.project_kpi_dict['kpi_data'] = []
@@ -136,7 +141,7 @@ class ProjectCalculations:
         Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
         self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
         if self.json.project_kpi_dict.get('contract'):
-            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'))
+            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'), kpi_source[KPI_CONVERSION][FILE])
             self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'))
 
         Log.info('KPI calculation stage: {}'.format('Committing results'))
