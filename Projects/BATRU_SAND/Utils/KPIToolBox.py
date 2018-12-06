@@ -1593,8 +1593,6 @@ class BATRU_SANDToolBox:
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
         # posm_template = self.get_custom_template(P4_PATH, 'Availability')
         posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability') #Natalya
-        if 'Filter stores by attribute 3' in posm_template.columns.values.tolist():
-            posm_template = posm_template.rename(columns={'Filter stores by attribute 3': ATTRIBUTE_3}) #Natalya
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
