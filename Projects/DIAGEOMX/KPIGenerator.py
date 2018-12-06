@@ -35,4 +35,3 @@ class DIAGEOMXGenerator:
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         self.tool_box.main_calculation(set_names=set_names)
-        self.tool_box.commit_results_data()
