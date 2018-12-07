@@ -95,7 +95,7 @@ class ProjectCalculations:
                 continue
 
             Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set][SET]))
-            self.tool_box.set_kpi_set(kpi_source[kpi_set][SET])
+            self.tool_box.set_kpi_set(kpi_source[kpi_set][SET], kpi_set)
             self.json.project_kpi_dict['kpi_data'] = []
             self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set][FILE], sheet_name=kpi_source[kpi_set][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
@@ -141,7 +141,9 @@ class ProjectCalculations:
         Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
         self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
         if self.json.project_kpi_dict.get('contract'):
-            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'), kpi_source[KPI_CONVERSION][FILE])
+            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
+                                                        kpi_source[EQUIPMENT][SET],
+                                                        kpi_source[KPI_CONVERSION][FILE])
             self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'))
 
         Log.info('KPI calculation stage: {}'.format('Committing results'))
