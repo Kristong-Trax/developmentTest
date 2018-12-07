@@ -93,10 +93,12 @@ class ToolBox:
 
         # function = self.get_kpi_function(kpi_type)
         # function = self.integrated_adjacency
-        function = self.calculate_stocking_location
+        # function = self.calculate_stocking_location
         # function = self.adjacency
         # function = self.graph
-        if kpi_name != 'What best describes the stocking location of Organic Yogurt?':
+        # if kpi_name != 'What best describes the stocking location of Organic Yogurt?':
+        #     return
+        if kpi_name != 'Aggregation':
             return
         # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
         #                     'How is RTS Progresso blocked?',
