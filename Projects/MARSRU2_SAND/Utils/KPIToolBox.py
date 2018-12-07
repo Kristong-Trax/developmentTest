@@ -629,10 +629,16 @@ class MARSRU2_SANDKPIToolBox:
                 filtered_products = pd.merge(bay_filter, self.products, on=[
                                              'product_fk'], suffixes=['', '_1'])
                 for shelf in shelves:
-                    #  All MARS products with object type filters
-                    shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
-                        filtered_products['manufacturer_name'] == MARS) & (
-                        filtered_products['shelf_number'] == shelf)]
+                    if object_type == 'MAN in CAT':
+                        # Only MARS products with object type filters
+                        shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
+                                filtered_products['manufacturer_name'] == MARS) & (
+                                filtered_products['shelf_number'] == shelf)]
+                    else:
+                        # All products with object type filters
+                        shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
+                                filtered_products['shelf_number'] == shelf)]
+
                     if not shelf_data.empty:
                         shelves_linear_sos_dict[shelf] = 1
                     else:
@@ -1476,7 +1482,7 @@ class MARSRU2_SANDKPIToolBox:
                                                                                        '#Mars KPI NAME'),
                                                                                    self.results_and_scores)
             scenes = self.get_relevant_scenes(p)
-            result = 'FALSE'
+            result = None
             if values_list:
                 if p.get('#Mars KPI NAME') in (2317, 4317):
 
@@ -1614,7 +1620,7 @@ class MARSRU2_SANDKPIToolBox:
             if p.get('Formula') != 'total_linear':
                 continue
 
-            result = 'FALSE'
+            result = 'TRUE'
             target_linear_size_total = 0
             others_linear_size_total = 0
             for values in p.get('Values').split('\nOR\n'):
@@ -1627,13 +1633,14 @@ class MARSRU2_SANDKPIToolBox:
                 others_linear_size = self.calculate_layout_size_by_filters(other_filter)
                 target_linear_size_total += target_linear_size
                 others_linear_size_total += others_linear_size
-                if target_linear_size > 0 and others_linear_size > 0\
-                        and target_linear_size >= float(percent) * others_linear_size:
-                    result = 'TRUE'
+                if target_linear_size > 0 and target_linear_size >= float(percent) * others_linear_size:
+                    pass
+                else:
+                    result = 'FALSE'
                     break
 
-            if target_linear_size_total > 0 and others_linear_size_total == 0:
-                result = 'TRUE'
+            if target_linear_size_total == 0:
+                result = None
 
             self.store_results_and_scores(result, p)
 
@@ -1733,7 +1740,7 @@ class MARSRU2_SANDKPIToolBox:
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
-            scene_graph = self.position_graphs.get(scene).copy()
+            scene_graph = self.position_graphs.get(scene, horizontal_block_only=True).copy()
             clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
                                                           include_empty=include_empty, **filters)
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
@@ -1950,10 +1957,7 @@ class MARSRU2_SANDKPIToolBox:
                 except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
-                if result and result != 'FALSE':
-                    result_value = 'TRUE'
-                else:
-                    result_value = 'FALSE'
+                    result_value = None if result is None else ('FALSE' if result == 'FALSE' else 'TRUE')
             else:
                 result_value = result
 
@@ -1967,7 +1971,9 @@ class MARSRU2_SANDKPIToolBox:
         This function result to store it in new kpi tables
 
         """
-        if params.get('Answer type') == 'Int':
+        if result is None:
+            result_value = None
+        elif params.get('Answer type') == 'Int':
             try:
                 result_value = int(result)
             except:

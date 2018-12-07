@@ -21,7 +21,7 @@ class PENAFLORAR_SANDDIAGEOARCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'penaflorar-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '98918211-50f7-47c1-a722-fed4ae3ba7b8'
+#     session = '31710BC9-9A86-44AE-94BC-2C1D326937AF'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PENAFLORAR_SANDDIAGEOARCalculations(data_provider, output).run_project_calculations()

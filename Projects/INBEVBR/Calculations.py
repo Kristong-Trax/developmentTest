@@ -14,6 +14,7 @@ class INBEVBRCalculations(BaseCalculationsScript):
         INBEVBRGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('inbevbr calculations')
 #     Config.init()
