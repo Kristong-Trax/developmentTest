@@ -148,6 +148,7 @@ class MOLSONCOORSHRToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -167,6 +168,7 @@ class MOLSONCOORSHRToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -233,9 +235,10 @@ class MOLSONCOORSHRToolBox:
                                                numerator_result=numerator_result,
                                                denominator_id=denominator_id,
                                                denominator_result=denominator_result,
-                                               result=result,
+                                               result=score,
                                                score=score,
                                                weight=potential_score,
+                                               target=potential_score,
                                                identifier_result=identifier_kpi,
                                                identifier_parent=identifier_parent,
                                                should_enter=True
