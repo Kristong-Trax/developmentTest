@@ -123,12 +123,11 @@ class DIAGEOMX_SANDToolBox:
         self.commonV2.save_json_to_new_tables(res_dict)
 
         # global touch point kpi
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT v2.xlsx')
         res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path, sub_brand_name='sub_brand_name')
         self.commonV2.save_json_to_new_tables(res_dict)
 
-        self.common.commit_results_data_to_new_tables()
-        self.common.commit_results_data()  # old tables
+        self.common.commit_results_data()  # commit to old tables
 
         set_score=0
         for set_name in set_names:
@@ -149,15 +148,6 @@ class DIAGEOMX_SANDToolBox:
                 self.set_templates_data[set_name] = parse_template(RELATIVE_PATH, lower_headers_row_index=2)
                 set_score = self.calculate_relative_position_sets(set_name)
 
-            # elif set_name in ('MPA', 'New Products'):
-            #     set_score = self.calculate_assortment_sets(set_name)
-            # # elif set_name in ('Brand Blocking',):
-            # #     set_score = self.calculate_block_together_sets(set_name)
-            # elif set_name in ('POSM',):
-            #     set_score = self.calculate_posm_sets(set_name)
-            # elif set_name in ('Brand Pouring',):
-            #     set_score = self.calculate_brand_pouring_sets(set_name)
-
             elif set_name == 'Visible to Customer':
 
                 # Global function
@@ -170,7 +160,7 @@ class DIAGEOMX_SANDToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
             # elif set_name in ('Secondary Displays', 'Secondary'):
@@ -183,6 +173,14 @@ class DIAGEOMX_SANDToolBox:
             #     # Saving to old tables
             #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
             #     self.save_level2_and_level3(set_name, set_name, set_score)
+            # elif set_name in ('MPA', 'New Products'):
+            #     set_score = self.calculate_assortment_sets(set_name)
+            # # elif set_name in ('Brand Blocking',):
+            # #     set_score = self.calculate_block_together_sets(set_name)
+            # elif set_name in ('POSM',):
+            #     set_score = self.calculate_posm_sets(set_name)
+            # elif set_name in ('Brand Pouring',):
+            #     set_score = self.calculate_brand_pouring_sets(set_name)
             else:
                 continue
 
@@ -428,16 +426,3 @@ class DIAGEOMX_SANDToolBox:
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-

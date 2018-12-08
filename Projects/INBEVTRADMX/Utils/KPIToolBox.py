@@ -54,7 +54,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_3_partial_v2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_4.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMXGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -234,6 +234,9 @@ class INBEVTRADMXToolBox:
                     score = self.calculate_weigthed_availability_score(row, relevant_columns)
                     if score:
                         atomic_kpi_score = score
+                elif kpi_level_3_name == 'Hay o no hay # frentes':
+                    if self.calculate_lead_availability_score(row, relevant_columns):
+                        is_kpi_passed = 1
                 else:
                     if self.calculate_availability_score(row, relevant_columns):
                         is_kpi_passed = 1
@@ -346,6 +349,28 @@ class INBEVTRADMXToolBox:
                 passed += 1
         return (passed / float(scenes_num)) * 100 if scenes_num else 0
 
+    def calculate_lead_availability_score(self, row, relevant_columns):
+        """
+        this method calculates availability score according to columns from the data frame
+        :param row: data frame to calculate from
+        :param relevant_columns: columns to check in the excel file
+        :return: boolean
+        """
+        # Gets the brand names
+        brand_names = row['brand_name'].split(', ')
+        if 'scene_type' in relevant_columns:
+            relevant_columns.remove('scene_type')
+
+        # create filtered dictionary
+        filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
+        for brand in brand_names:
+            filters_dict.update({'brand_name': brand})
+            # call the generic method from KPIUtils_v2
+            availability_score = self.availability.calculate_availability(**filters_dict)
+            if self.decide_availability_score(row, availability_score):
+                return True
+        return False
+
     def calculate_availability_score(self, row, relevant_columns):
         """
         this method calculates availability score according to columns from the data frame
@@ -402,6 +427,9 @@ class INBEVTRADMXToolBox:
                     return availability_score > 1
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
                     return availability_score > 1
+            elif row['KPI Level 1 Name'] == 'Set Self Execution' and row[
+                'KPI Level 3 Name'] == 'Hay o no hay # frentes':
+                return availability_score > 24
             else:
                 return True
 

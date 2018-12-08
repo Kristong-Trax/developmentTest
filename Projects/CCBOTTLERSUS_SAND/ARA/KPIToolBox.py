@@ -459,7 +459,8 @@ class ARAToolBox:
             score = self.tools.result_values[score]
         self.common_db2.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
                                            numerator_result=num, denominator_result=den, weight=delta,
-                                           identifier_parent=self.common_db2.get_dictionary(parent_name=parent))
+                                           identifier_parent=self.common_db2.get_dictionary(parent_name=parent),
+                                           numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id)
         # self.write_to_db_result(
         #     self.common_db.get_kpi_fk_by_kpi_name(kpi_name, 2), score=score, level=2)
         # self.write_to_db_result(

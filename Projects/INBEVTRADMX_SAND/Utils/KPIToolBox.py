@@ -428,7 +428,7 @@ class INBEVTRADMXToolBox:
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
                     return availability_score > 1
             elif row['KPI Level 1 Name'] == 'Set Self Execution' and row['KPI Level 3 Name'] == 'Hay o no hay # frentes':
-                return availability_score > 19
+                return availability_score > 24
             else:
                 return True
 

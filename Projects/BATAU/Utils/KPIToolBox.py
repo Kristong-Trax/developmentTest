@@ -82,17 +82,114 @@ class BATAUToolBox:
         This function calculates the KPI results.
         """
         self.scif = self.scif[self.scif['facings'] > 0]
-        self.calculate_share_of_range()
-        self.calculate_share_of_range_category()
+
+        self.calculate_share_of_range_SOR_Type_1()
+        self.calculate_share_of_range_SOR_Type_2()
+        self.calculate_share_of_range_SOR_Type_3()
 
         self.common.commit_results_data()
         score = 0
         return score
 
-    def calculate_share_of_range(self):
+    def calculate_share_of_range_SOR_Type_3(self):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR']
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_3']
+
+        print(df_tp_ps_kpis.shape)
+
+        kpi_output =  "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
+        kpi_output += "denominator_result:{}, result:{}"
+
+        for index, row in df_tp_ps_kpis.iterrows():
+            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+                                 & (self.kpi_static_data[TYPE] == row[KPI_NAME])]
+            if kpi.empty:
+                print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
+                continue
+
+            kpi_fk = int(kpi['pk'])
+            kpi_parent_name = str(row[KPI_PARENT])
+            kpi_name = str(row[KPI_NAME])
+
+            numerator_filter = str(row[NUMERATOR_FILTER])
+            denominator_filter = str(row[DENOMINATOR_FILTER])
+
+            numerator_entities = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+            denominator_entities = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+
+            denominator = int(len((self.scif.query(denominator_filter)['product_fk']).drop_duplicates()))
+
+            numerator_fk = MAPPINGS[str(row[NUMERATOR_FK]).strip()]
+            denominator_fk = MAPPINGS[str(row[DENOMINATOR_FK]).strip()]
+
+            list_numerator_columns = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+            list_numerator_columns.append('product_fk')
+
+            list_denominator_columns = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+            list_denominator_columns.append('product_fk')
+
+            df_denominator=pd.DataFrame(self.scif.query(denominator_filter)[list_denominator_columns]).drop_duplicates()
+            df_denominator=pd.DataFrame(df_denominator.groupby(denominator_entities).size().reset_index(name='count'))
+
+            if df_denominator.empty:
+                denominator_id = self.store_id
+                print("Denominator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
+            else:
+                df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
+                df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
+
+                if df_numerator.empty:
+                    print("Numerator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                else:
+                    for numerator_index, numerator_row in df_numerator.iterrows():
+                        numerator_id = int(numerator_row[numerator_fk])
+                        denominator_id = int(numerator_row[denominator_fk])
+                        numerator = int(numerator_row['count'])
+
+                        try:
+                            score = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                        except:
+                            score = 0.0
+
+                        result = score
+
+                        if len(kpi_parent_name.strip()) ==0:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=False)
+                        else:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_parent=kpi_parent_name,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=True)
+                            print("fk:{}".format(kpi_fk))
+                            print("numerator_id:{}".format(numerator_id))
+                            print("numerator_result:{}".format(numerator))
+                            print("denominator_id:{}".format(denominator_id))
+                            print("denominator_result:{}".format(denominator))
+                            print("result:{}".format(result))
+                            print("score:{}".format(score))
+                            print("identifier_parent:{}".format(kpi_parent_name))
+                            print("identifier_result:{}".format(kpi_name))
+                            print("\n")
+
+    def calculate_share_of_range_SOR_Type_1(self):
+
+        df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_1']
 
         print(df_tp_ps_kpis.shape)
 
@@ -133,6 +230,7 @@ class BATAUToolBox:
 
                     if df_denominator.empty:
                         denominator_id = self.store_id
+                        print("Denominator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
                     else:
                         for denominator_index, denominator_row in df_denominator.iterrows():
                             denominator_id = int(denominator_row[denominator_fk])
@@ -141,7 +239,7 @@ class BATAUToolBox:
                             df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
                             if df_numerator.empty:
-                                print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                                print("Numerator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
                             else:
                                 for numerator_index, numerator_row in df_numerator.iterrows():
                                     numerator_id = int(numerator_row[numerator_fk])
@@ -165,16 +263,6 @@ class BATAUToolBox:
                                                                        identifier_result=kpi_name,
                                                                        should_enter=False)
                                     else:
-                                        print("fk:{}".format(kpi_fk))
-                                        print("numerator_id:{}".format(numerator_id))
-                                        print("numerator_result:{}".format(numerator))
-                                        print("denominator_id:{}".format(denominator_id))
-                                        print("denominator_result:{}".format(denominator))
-                                        print("result:{}".format(result))
-                                        print("score:{}".format(score))
-                                        print("identifier_parent:{}".format(kpi_parent_name))
-                                        print("identifier_result:{}".format(kpi_name))
-                                        print("\n")
                                         self.common.write_to_db_result(fk=kpi_fk,
                                                                        numerator_id=numerator_id,
                                                                        numerator_result=numerator,
@@ -185,11 +273,21 @@ class BATAUToolBox:
                                                                        identifier_parent=kpi_parent_name,
                                                                        identifier_result=kpi_name,
                                                                        should_enter=True)
+                                        print("fk:{}".format(kpi_fk))
+                                        print("numerator_id:{}".format(numerator_id))
+                                        print("numerator_result:{}".format(numerator))
+                                        print("denominator_id:{}".format(denominator_id))
+                                        print("denominator_result:{}".format(denominator))
+                                        print("result:{}".format(result))
+                                        print("score:{}".format(score))
+                                        print("identifier_parent:{}".format(kpi_parent_name))
+                                        print("identifier_result:{}".format(kpi_name))
+                                        print("\n")
 
-    def calculate_share_of_range_category(self):
+    def calculate_share_of_range_SOR_Type_2(self):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR-Category']
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_2']
 
         print(df_tp_ps_kpis.shape)
 
@@ -202,6 +300,7 @@ class BATAUToolBox:
             if kpi.empty:
                 print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
             else:
+                print("KPI Name:{}".format(row[KPI_NAME]))
                 kpi_fk = int(kpi['pk'])
                 kpi_parent_name = str(row[KPI_PARENT])
                 kpi_name = str(row[KPI_NAME])
@@ -231,7 +330,7 @@ class BATAUToolBox:
                 df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
                 df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
-                df_result = df_numerator.merge(df_denominator, how='inner', on='category_fk')
+                df_result = df_numerator.merge(df_denominator, how='inner', on=denominator_fk)
 
                 if df_result.empty:
                     print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
@@ -239,6 +338,7 @@ class BATAUToolBox:
                     for numerator_index, numerator_row in df_result.iterrows():
                         numerator_id =   int(numerator_row[numerator_fk])
                         denominator_id = int(numerator_row[denominator_fk])
+
                         numerator = int(numerator_row['count_x'])
                         denominator = int(numerator_row['count_y'])
 
@@ -260,16 +360,6 @@ class BATAUToolBox:
                                                            identifier_result=kpi_name,
                                                            should_enter=False)
                         else:
-                            print("fk:{}".format(kpi_fk))
-                            print("numerator_id:{}".format(numerator_id))
-                            print("numerator_result:{}".format(numerator))
-                            print("denominator_id:{}".format(denominator_id))
-                            print("denominator_result:{}".format(denominator))
-                            print("result:{}".format(result))
-                            print("score:{}".format(score))
-                            print("identifier_parent:{}".format(kpi_parent_name))
-                            print("identifier_result:{}".format(kpi_name))
-                            print("\n")
                             self.common.write_to_db_result(fk=kpi_fk,
                                                            numerator_id=numerator_id,
                                                            numerator_result=numerator,
@@ -280,6 +370,16 @@ class BATAUToolBox:
                                                            identifier_parent=kpi_parent_name,
                                                            identifier_result=kpi_name,
                                                            should_enter=True)
+                        print("fk:{}".format(kpi_fk))
+                        print("numerator_id:{}".format(numerator_id))
+                        print("numerator_result:{}".format(numerator))
+                        print("denominator_id:{}".format(denominator_id))
+                        print("denominator_result:{}".format(denominator))
+                        print("result:{}".format(result))
+                        print("score:{}".format(score))
+                        print("identifier_parent:{}".format(kpi_parent_name))
+                        print("identifier_result:{}".format(kpi_name))
+                        print("\n")
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)

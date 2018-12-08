@@ -50,8 +50,8 @@ class TSINGTAOBEERCNToolBox:
         self.common.commit_results_data()
 
     def calculate_sku_facing_session_level(self):
-        result_df = self.scif[(self.scif['product_type'] == 'SKU') &
-                              (self.scif['facings'] > 0)][['product_fk', 'facings']]
+        filters = {"product_type": ["SKU", "Other"]}
+        result_df = self.scif[self.tools.get_filter_condition(self.scif, **filters)][['product_fk', 'facings']]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(SESSION_SKU_FACINGS_KPI)
         for index, row in result_df.iterrows():
             result = row['facings']
