@@ -89,15 +89,15 @@ class ProjectCalculations:
                       .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        kpi_sets_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
-        for kpi_set in kpi_sets_to_calculate:
-            if not kpi_source[kpi_set][SET]:
+        kpi_sets_types_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
+        for kpi_set_type in kpi_sets_types_to_calculate:
+            if not kpi_source[kpi_set_type][SET]:
                 continue
 
-            Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set][SET]))
-            self.tool_box.set_kpi_set(kpi_source[kpi_set][SET], kpi_set)
+            Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
+            self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set][FILE], sheet_name=kpi_source[kpi_set][SHEET])
+            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
             score = 0
             score += self.tool_box.check_availability(kpi_data)
@@ -113,7 +113,7 @@ class ProjectCalculations:
             score += self.tool_box.check_sum_atomics(kpi_data)
             score += self.tool_box.check_weighted_average(kpi_data)
             score += self.tool_box.check_kpi_scores(kpi_data)
-            attributes_for_table1 = pd.DataFrame([(kpi_source[kpi_set][SET],
+            attributes_for_table1 = pd.DataFrame([(kpi_source[kpi_set_type][SET],
                                                    self.session_uid,
                                                    self.store_id,
                                                    self.visit_date.isoformat(),
@@ -125,8 +125,17 @@ class ProjectCalculations:
                                                           'score_1',
                                                           'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
+            self.tool_box.update_scores_and_results(
+                {'KPI ID': 0,
+                 'KPI name Eng': kpi_source[kpi_set_type][SET],
+                 'KPI name Rus': kpi_source[kpi_set_type][SET],
+                 'KPI Weight': 1,
+                 'level': 1,
+                 'new_level': 0,
+                 'parent': None},
+                {'score': score})
 
-            if kpi_set == POS:
+            if kpi_set_type == POS:
                 Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
                 self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
@@ -144,7 +153,8 @@ class ProjectCalculations:
             self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
                                                         kpi_source[EQUIPMENT][SET],
                                                         kpi_source[KPI_CONVERSION][FILE])
-            self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'))
+            self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
+                                                       kpi_source[CONTRACT][SET])
 
         Log.info('KPI calculation stage: {}'.format('Committing results'))
         self.tool_box.commit_results_data()
