@@ -121,6 +121,8 @@ class DIAGEOMXToolBox:
         res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path)
         self.commonV2.save_json_to_new_tables(res_dict)
 
+        self.common.commit_results_data()  # commit to old tables
+
         # for set_name in set_names:
         #     if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
         #         self.set_templates_data[set_name] = self.tools.download_template(set_name)

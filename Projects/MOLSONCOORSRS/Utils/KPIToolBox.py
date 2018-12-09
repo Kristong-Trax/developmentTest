@@ -148,6 +148,7 @@ class MOLSONCOORSRSToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -167,6 +168,7 @@ class MOLSONCOORSRSToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -190,12 +192,12 @@ class MOLSONCOORSRSToolBox:
             # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
             if kpi['KPI Type'] == 'Distribution':
                 if row.result_distributed:
-                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
-                                                (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                    result = self.result_values[(self.result_values['result_type'] == 'PRESENCE') &
+                                                (self.result_values['result_value'] == 'DISTRIBUTED')]['result_value_fk'].tolist()[0]
                     score = 100
                 else:
-                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
-                                                (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+                    result = self.result_values[(self.result_values['result_type'] == 'PRESENCE') &
+                                                (self.result_values['result_value'] == 'OOS')]['result_value_fk'].tolist()[0]
                     score = 0
             else:
                 result = row.result_facings
@@ -233,9 +235,10 @@ class MOLSONCOORSRSToolBox:
                                                numerator_result=numerator_result,
                                                denominator_id=denominator_id,
                                                denominator_result=denominator_result,
-                                               result=result,
+                                               result=score,
                                                score=score,
                                                weight=potential_score,
+                                               target=potential_score,
                                                identifier_result=identifier_kpi,
                                                identifier_parent=identifier_parent,
                                                should_enter=True
