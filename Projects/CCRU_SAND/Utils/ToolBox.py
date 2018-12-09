@@ -12,6 +12,7 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
+from KPIUtils_v2.DB.CommonV2 import Common
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.ExecutionContract import CCRU_SANDContract
@@ -53,6 +54,7 @@ class CCRU_SANDKPIToolBox:
         self.project_name = self.data_provider.project_name
         self.rds_conn = self.rds_connection()
 
+        self.common = Common(self.data_provider)
         self.k_engine = BaseCalculationsGroup(self.data_provider, self.output)
         self.session_info = SessionInfo(self.data_provider)
 
@@ -115,7 +117,9 @@ class CCRU_SANDKPIToolBox:
                      'score_func': params.get('score_func'),
                      'old_level': params.get('level'),
                      'new_level': params.get('new level'),
-                     'parent': params.get('Parent')}
+                     'parent': params.get('Parent'),
+                     'group': params.get('KPI Group Eng'),
+                     'subgroup': params.get('KPI Subgroup Eng')}
             self.scores_and_results[self.kpi_set_type][params.get('KPI ID')].update(scores_and_results)
 
     def rds_connection(self):
@@ -1837,8 +1841,8 @@ class CCRU_SANDKPIToolBox:
         kpi_facts = []
         for p in params.values()[1]:
             atomic_kpi_id = p.get("KPI ID")
-            atomic_kpi_name = p.get("CCH KPI ID").upper().replace(" ", "_")
-            atomic_kpi = kpi_df[kpi_df['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk']
+            atomic_kpi_name = p.get("KPI name Eng").upper().replace(" ", "_")
+            atomic_kpi = kpi_df[kpi_df["atomic_kpi_name"] == atomic_kpi_name]["atomic_kpi_fk"]
             if atomic_kpi.size > 0:
                 atomic_kpi_fk = atomic_kpi.values[0]
             else:
