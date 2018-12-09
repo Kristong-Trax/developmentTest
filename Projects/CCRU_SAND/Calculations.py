@@ -114,7 +114,7 @@ class ProjectCalculations:
             score += self.tool_box.check_weighted_average(kpi_data)
             score += self.tool_box.check_kpi_scores(kpi_data)
 
-            self.tool_box.write_to_db_result(
+            self.tool_box.write_to_kpi_results_old(
                 pd.DataFrame([(kpi_source[kpi_set_type][SET],
                                self.session_uid,
                                self.store_id,
