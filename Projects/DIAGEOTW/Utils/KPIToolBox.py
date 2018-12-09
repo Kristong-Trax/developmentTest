@@ -105,8 +105,8 @@ class DIAGEOTWToolBox:
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+            # if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+            #     self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             # if set_name in ('Local MPA', 'MPA', 'New Products',):
             #     set_score = self.calculate_assortment_sets(set_name)
