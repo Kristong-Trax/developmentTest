@@ -2421,7 +2421,7 @@ class CCRUKPIToolBox:
 
         kpi_facts = []
         for p in params.values()[1]:
-            atomic_kpi_name = p.get("CCH KPI ID").upper().replace(" ", "_")
+            atomic_kpi_name = p.get("KPI name Eng").upper().replace(" ", "_")
             atomic_kpi = kpi_df[kpi_df['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk']
             if atomic_kpi.size > 0:
                 atomic_kpi_fk = atomic_kpi.values[0]
