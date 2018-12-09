@@ -23,32 +23,24 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlehk calculations')
     Config.init()
     project_name = 'googlehk'
-    sessions = [
-        '68ac2242-d6d5-4a08-ba5c-ba5418c69852',
-        'dd7452bb-134c-4b5a-a695-be6355695b48',
-        '33203324-796f-42f5-af71-9acb0e48b2f4',
-        'ba74b587-901d-437d-ab34-2ffc33c49aaa',
-        '9b33b4d0-cb67-4e9b-82d9-4d4c3c505491'
-    ]
-    sessions = ['6da55dc7-440d-4e86-966d-e5fa803e78c8']
-
+    sessions = ['FFC36D27-7923-4C15-A6BE-44C9BC4A5319', 'FF1B0385-395B-4C62-9955-BF4ACC6983AD']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
-        # scif = data_provider['scene_item_facts']
-        # scenes = scif['scene_id'].unique().tolist()
-        #
-        # # scenes = [392]
-        #
-        # for scene in scenes:
-        #     print('scene')
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
-        # data_provider = KEngineDataProvider(project_name)
-        # data_provider.load_session_data(session)
+        scif = data_provider['scene_item_facts']
+        scenes = scif['scene_id'].unique().tolist()
+
+        # scenes = [392]
+
+        for scene in scenes:
+            print('scene')
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
