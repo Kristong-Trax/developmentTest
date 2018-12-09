@@ -113,18 +113,20 @@ class ProjectCalculations:
             score += self.tool_box.check_sum_atomics(kpi_data)
             score += self.tool_box.check_weighted_average(kpi_data)
             score += self.tool_box.check_kpi_scores(kpi_data)
-            attributes_for_table1 = pd.DataFrame([(kpi_source[kpi_set_type][SET],
-                                                   self.session_uid,
-                                                   self.store_id,
-                                                   self.visit_date.isoformat(),
-                                                   format(score, '.2f'), None)],
-                                                 columns=['kps_name',
-                                                          'session_uid',
-                                                          'store_fk',
-                                                          'visit_date',
-                                                          'score_1',
-                                                          'kpi_set_fk'])
-            self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
+
+            self.tool_box.write_to_db_result(
+                pd.DataFrame([(kpi_source[kpi_set_type][SET],
+                               self.session_uid,
+                               self.store_id,
+                               self.visit_date.isoformat(),
+                               format(score, '.2f'), None)],
+                             columns=['kps_name',
+                                      'session_uid',
+                                      'store_fk',
+                                      'visit_date',
+                                      'score_1',
+                                      'kpi_set_fk']), 'level1')
+
             self.tool_box.update_scores_and_results(
                 {'KPI ID': 0,
                  'KPI name Eng': kpi_source[kpi_set_type][SET],
