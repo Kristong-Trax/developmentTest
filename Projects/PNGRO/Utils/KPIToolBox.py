@@ -228,7 +228,6 @@ class PNGRO_PRODToolBox:
         # if not self.match_display.empty:
         #     if self.match_display['exclude_status_fk'][0] in (1, 4):
         self.calculate_linear_share_of_shelf_per_product_display()
-
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         if self.main_shelves:
             self.calculate_sbd()
