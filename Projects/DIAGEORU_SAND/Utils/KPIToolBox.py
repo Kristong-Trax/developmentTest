@@ -103,9 +103,6 @@ class DIAGEORUToolBox:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        # if set_name in ('MPA', 'Local MPA', 'New Products',):  #todo: delete after the migration is done
-        #     set_score = self.calculate_assortment_sets(set_name)
-
             if set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
@@ -131,8 +128,6 @@ class DIAGEORUToolBox:
                     # Saving to old tables
                     set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            else:
-                return
 
             if set_score == 0:
                 pass
