@@ -446,7 +446,7 @@ class CCRUKPIToolBox:
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             first_atomic_score = 0
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).split("\n"))
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula") == "atomic answer to survey":
                     first_atomic_score = self.check_answer_to_survey_level3(c)
@@ -1905,7 +1905,7 @@ class CCRUKPIToolBox:
             if p.get('Formula') != "number of atomic KPI Passed" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).split("\n"))
             kpi_total = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
@@ -1976,7 +1976,7 @@ class CCRUKPIToolBox:
             if p.get('Formula') != "number of atomic KPI Passed on the same scene" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).split("\n"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
             if 'depends on' in p.keys():
                 depends_on_kpi_name = p.get('depends on')
@@ -2075,7 +2075,7 @@ class CCRUKPIToolBox:
                     # score = self.calculate_score(kpi_total, p)
                 else:
                     if c.get("Formula") == "number of sub atomic KPI Passed":
-                        sub_atomic_children = map(int, c.get("Children").split("\n"))
+                        sub_atomic_children = map(int, str(c.get("Children")).split("\n"))
                         for sub_atomic in sub_atomic_children:
                             sub_atomic_info = info_by_kpi_id.get(sub_atomic)
                             atomic_res = 0
@@ -2127,7 +2127,7 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
-        children = map(int, params.get("Children").split("\n"))
+        children = map(int, str(params.get("Children")).split("\n"))
         total_res = 0
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
@@ -2178,7 +2178,7 @@ class CCRUKPIToolBox:
                         if c.get('Formula') == 'number of doors with more than Target facings':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, p.get("Children").split("\n"))
+            children = map(int, str(p.get("Children")).split("\n"))
             kpi_total = 0
             kpi_total_weight = 0
             for c in params.values()[0]:
@@ -2421,7 +2421,7 @@ class CCRUKPIToolBox:
 
         kpi_facts = []
         for p in params.values()[1]:
-            atomic_kpi_name = p.get("CCH KPI ID").upper().replace(" ", "_")
+            atomic_kpi_name = p.get("KPI name Eng").upper().replace(" ", "_")
             atomic_kpi = kpi_df[kpi_df['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk']
             if atomic_kpi.size > 0:
                 atomic_kpi_fk = atomic_kpi.values[0]
