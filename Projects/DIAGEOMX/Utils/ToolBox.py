@@ -269,8 +269,8 @@ class DIAGEOMXDIAGEOToolBox(DIAGEOMXDIAGEOConsts):
         This function reads all files from a given path (in the Cloud), and extracts the dates of their mother dirs
         by their name. Later it returns the latest date (up to today).
         """
-        files = amz_conn.bucket.list(cloud_path)
-        files = [f.key.replace(cloud_path, '') for f in files]
+        files = amz_conn.get_files_list(cloud_path)
+        files = [f.replace(cloud_path, '') for f in files]
         files = [f for f in files if len(f.split('/')) > 1]
         files = [f.split('/')[0] for f in files]
         files = [f for f in files if f.isdigit()]
@@ -317,7 +317,7 @@ class DIAGEOMXDIAGEOToolBox(DIAGEOMXDIAGEOConsts):
         if not os.path.exists(self.local_templates_path):
             os.makedirs(self.local_templates_path)
         dir_name = self.get_latest_directory_date_from_cloud(self.cloud_templates_path.format(''), self.amz_conn)
-        files = [f.key for f in self.amz_conn.bucket.list(self.cloud_templates_path.format(dir_name))]
+        files = [f for f in self.amz_conn.get_files_list(self.cloud_templates_path.format(dir_name))]
         for file_path in files:
             file_name = file_path.split('/')[-1]
             with open(os.path.join(self.local_templates_path, file_name), 'wb') as f:
