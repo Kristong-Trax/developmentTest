@@ -22,12 +22,14 @@ class DIAGEOBRCalculations(BaseCalculationsScript):
         DIAGEOBRGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-# if __name__ == '__main__':
-#    LoggerInitializer.init('diageobr calculations')
-#    Config.init()
-#    project_name = 'diageobr'
-#    data_provider = KEngineDataProvider(project_name)
-#    session = '9bbd244e-c59b-44fb-b4d8-1f402b5514ce'
-#    data_provider.load_session_data(session)
-#    output = Output()
-#    DIAGEOBRCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+   LoggerInitializer.init('diageobr calculations')
+   Config.init()
+   project_name = 'diageobr'
+   data_provider = KEngineDataProvider(project_name)
+   session = '9bbd244e-c59b-44fb-b4d8-1f402b5514ce'
+   # session = 'ff8fb4f1-6a75-47f0-b2c1-841e49344212'
+
+   data_provider.load_session_data(session)
+   output = Output()
+   DIAGEOBRCalculations(data_provider, output).run_project_calculations()

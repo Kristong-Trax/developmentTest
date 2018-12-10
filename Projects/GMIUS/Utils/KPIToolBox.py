@@ -91,7 +91,7 @@ class ToolBox:
         if dependent_result and self.dependencies[kpi_name] not in dependent_result:
             return
 
-        # function = self.get_kpi_function(kpi_type)
+        function = self.get_kpi_function(kpi_type)
         # function = self.integrated_adjacency
         # function = self.calculate_stocking_location
         # function = self.adjacency
