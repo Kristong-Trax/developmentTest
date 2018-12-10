@@ -94,8 +94,10 @@ class RISPARKWINEDEToolBox:
                 if np.datetime64(start_new_date) <= ass_start_date:
                     is_new = 1
                 score = result.in_store * 100
-                self.write_to_db_result_new_tables(result.kpi_fk_lvl3, result.product_fk, result.in_store,
-                                                   score, result.assortment_fk, 1, score, is_new)
+                self.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                                                   numerator_result=result.in_store, result=score,
+                                                   denominator_id=result.assortment_fk, denominator_result=1,
+                                                   score=score, score_after_actions=is_new)
                 kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
                                                   == self.OOS_SKU_KPI]['pk'].values[0]
                 parent_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
@@ -103,8 +105,8 @@ class RISPARKWINEDEToolBox:
                 is_oos = 1
                 if result.in_store:
                     is_oos = 0
-                self.write_to_db_result_new_tables(
-                    kpi_fk, result.product_fk, is_oos, is_oos, parent_kpi_fk)
+                self.write_to_db_result_new_tables(fk=kpi_fk, numerator_id=result.product_fk, numerator_result=is_oos,
+                                                   result=is_oos, denominator_id=parent_kpi_fk)
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
@@ -115,8 +117,10 @@ class RISPARKWINEDEToolBox:
                     score = 100
                 else:
                     score = 0
-                self.write_to_db_result_new_tables(result.kpi_fk_lvl2, result.assortment_fk, result.passes,
-                                                   res, result.assortment_group_fk, denominator_res, score)
+                self.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_fk,
+                                                   numerator_result=result.passes, result=res,
+                                                   denominator_id=result.assortment_group_fk,
+                                                   denominator_result=denominator_res, score=score)
             oos_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
                                                   == self.OOS_KPI]['pk'].values[0]
             dist_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name']
@@ -126,10 +130,12 @@ class RISPARKWINEDEToolBox:
             denominator = len(lvl3_result['in_store'])
             oos_res = np.divide(float(oos_numerator), float(denominator)) * 100
             dist_res = np.divide(float(dist_numerator), float(denominator)) * 100
-            self.write_to_db_result_new_tables(oos_kpi_fk, oos_kpi_fk, oos_numerator, oos_res, denominator_result=denominator,
+            self.write_to_db_result_new_tables(fk=oos_kpi_fk, numerator_id=oos_kpi_fk, numerator_result=oos_numerator,
+                                               result=oos_res, denominator_result=denominator,
                                                score=oos_res)
-            self.write_to_db_result_new_tables(dist_kpi_fk, dist_kpi_fk, dist_numerator, dist_res, denominator_result=denominator,
-                                               score=dist_res)
+            self.write_to_db_result_new_tables(fk=dist_kpi_fk, numerator_id=dist_kpi_fk,
+                                               numerator_result=dist_numerator, result=dist_res,
+                                               denominator_result=denominator, score=dist_res)
         return
 
     def write_to_db_result_new_tables(self, fk, numerator_id, numerator_result, result, denominator_id=None,
