@@ -116,7 +116,8 @@ class DIAGEOPT_SANDToolBox:
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
         total_scores_dict = []
         # saving in dictionary for  activation standard use
-        total_scores_dict.append(assortment_res_dict)
+        if assortment_res_dict:
+            total_scores_dict.append(assortment_res_dict)
         for set_name in set_names:
             set_score = 0
 
