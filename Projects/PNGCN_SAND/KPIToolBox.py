@@ -164,7 +164,7 @@ class PNGCN_SANDPNGToolBox:
                                      (self.scif['rlv_sos_sc'] == 1) &
                                      (self.scif['location_type'] == PRIMARY_SHELF) &
                                      (self.scif['facings'] > 0)]
-
+#fd
         sets_to_save = set()
         for category in self.empty_spaces.keys():
             for sub_category in self.empty_spaces[category].keys():
