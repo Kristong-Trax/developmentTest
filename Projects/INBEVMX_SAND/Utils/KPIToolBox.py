@@ -129,14 +129,15 @@ class INBEVMXToolBox:
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
+        score = (1 - result) * Const.OOS_WEIGHT
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
-                                           denominator_result=len(products_to_check), result=result, score=result,
+                                           denominator_result=len(products_to_check), result=result, score=score,
                                           identifier_result=Const.OOS_KPI)
 
 
@@ -189,7 +190,7 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
                                           score=count_result)
@@ -292,7 +293,7 @@ class INBEVMXToolBox:
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.session_id, numerator_result=0,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter, numerator_result=0,
                                            denominator_result=0, denominator_id=self.store_id, result=survey_result,
                                           score=final_score)
 
