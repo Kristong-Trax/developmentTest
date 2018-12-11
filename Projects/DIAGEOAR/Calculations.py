@@ -1,12 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-
-from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.DIAGEOAR.KPIGenerator import DIAGEOARDIAGEOARGenerator
-from KPIUtils.DB.Common import Common
 
 __author__ = 'Yasmin'
 
@@ -19,11 +16,11 @@ class DIAGEOARDIAGEOARCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoar-sand calculations')
+#     LoggerInitializer.init('diageoar calculations')
 #     Config.init()
 #     project_name = 'diageoar'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '46199985-c389-11e7-af51-12d95a7ac5ac'
+#     session = 'df6add11-8fc6-4503-8e82-21d79e9870c0'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOARDIAGEOARCalculations(data_provider, output).run_project_calculations()
