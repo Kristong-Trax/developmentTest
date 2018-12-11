@@ -112,7 +112,7 @@ class DIAGEOPT_SANDToolBox:
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-
+        total_scores_dict = []
         for set_name in set_names:
             set_score = 0
 
@@ -125,6 +125,10 @@ class DIAGEOPT_SANDToolBox:
                 res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
                 if res_dict:
+
+                    #saving in dictionary for  activation standard use
+                    total_scores_dict.append(res_dict)
+
                     # Saving to new tables
                     parent_res = res_dict[-1]
                     self.commonV2.save_json_to_new_tables(res_dict)
@@ -137,12 +141,31 @@ class DIAGEOPT_SANDToolBox:
                 # Global function
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:
+                    # saving in dictionary for  activation standard use
+                    total_scores_dict.append(res_json)
                     # Saving to new tables
                     self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
                                                      result=res_json['result'])
                     # Saving to old tables
                     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
                     self.save_level2_and_level3(set_name, set_name, set_score)
+
+            elif set_name in ('Activation Standard'):
+                manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] == self.DIAGEO_MANUFACTURER]['manufacturer_fk'].values[0]
+
+                results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
+                                                                                          self.set_templates_data[set_name], self.store_id
+                                                                                          , manufacturer_fk)
+
+                for result in results_list['old_tables_level2and3']:
+                    self.save_level2_and_level3(result['kpi_set_name'], result['kpi_name'], result['score'])
+
+                # saving results to old table
+                self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list['old_tables_level1']['score'], results_list['old_tables_level1']['level'])
+
+                # saving results to new tables
+                self.save_results_to_db(results_list['new_tables_result'])
+
 
             if set_score == 0:
                 pass
