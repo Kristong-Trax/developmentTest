@@ -20,7 +20,7 @@ class PENAFLORARDIAGEOARCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'penaflorar'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '30bd8dec-78c0-43cf-8028-5587f0819e19'
+#     session = 'b778b179-3053-48ad-841e-6db656d670b2'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PENAFLORARDIAGEOARCalculations(data_provider, output).run_project_calculations()
