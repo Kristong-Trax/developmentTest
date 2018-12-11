@@ -1,6 +1,6 @@
 
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
