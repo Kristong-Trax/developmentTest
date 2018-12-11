@@ -41,6 +41,8 @@ class DIAGEOPT_SANDToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
     ACTIVATION_STANDARD = 'Activation Standard'
+    DIAGEO_MANUFACTURER = 'Diageo'
+
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -113,6 +115,8 @@ class DIAGEOPT_SANDToolBox:
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
         total_scores_dict = []
+        # saving in dictionary for  activation standard use
+        total_scores_dict.append(assortment_res_dict)
         for set_name in set_names:
             set_score = 0
 
@@ -152,10 +156,10 @@ class DIAGEOPT_SANDToolBox:
 
             elif set_name in ('Activation Standard'):
                 manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] == self.DIAGEO_MANUFACTURER]['manufacturer_fk'].values[0]
-
-                results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                results_list = self.diageo_generator.diageo_global_activation_standard_function(total_scores_dict,
                                                                                           self.set_templates_data[set_name], self.store_id
-                                                                                          , manufacturer_fk)
+                                                                                          ,manufacturer_fk)
 
                 for result in results_list['old_tables_level2and3']:
                     self.save_level2_and_level3(result['kpi_set_name'], result['kpi_name'], result['score'])
