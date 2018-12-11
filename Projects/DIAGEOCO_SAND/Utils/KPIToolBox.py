@@ -113,7 +113,7 @@ class DIAGEOCO_SANDToolBox:
                                                                                           manufacturer_fk)
                 for result in results_list['old_tables_level2and3']:
                     self.save_level2_and_level3(result['kpi_set_name'], result['kpi_name'], result['score'])
-                self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list[2]['score'], results_list[2]['level'])
+                self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list['old_tables_level1']['score'], results_list['old_tables_level1']['level'])
                 self.save_results_to_db(results_list['new_tables_result'])
 
             elif set_name == 'TOUCH POINT':
