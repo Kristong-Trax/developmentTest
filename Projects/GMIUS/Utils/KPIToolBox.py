@@ -432,10 +432,11 @@ class ToolBox:
             if met:
                 kpis_index.append(i)
                 set_index.add(i)
+                c = 0
             else:
                 dependent_index.append(i)
                 c += 1
-                if c > kpis.shape[0] * 5:
+                if c > kpis.shape[0] * 1.1:
                     Log.error('Circular Dependency Found: KPIs Affected {}'.format(
                         [kpis.loc[i, Const.KPI_NAME] for i in dependent_index]))
                     break
