@@ -109,19 +109,19 @@ class DIAGEOARDIAGEOARToolBox:
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             # Global Visible to Customer / Visible to Consumer
-            if set_name in ('Visible to Consumer %', 'Visible to Customer'):
-                # Global function
-                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-                self.commonV2.save_json_to_new_tables(res_dict)
-
-                # Saving to old tables
-                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-                self.save_level2_and_level3(set_name, set_name, set_score)
+            # if set_name in ('Visible to Consumer %', 'Visible to Customer'):
+            #     # Global function
+            #     sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+            #     res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+            #     self.commonV2.save_json_to_new_tables(res_dict)
+            #
+            #     # Saving to old tables
+            #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+            #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+            #     self.save_level2_and_level3(set_name, set_name, set_score)
 
             # Global relative position
-            elif set_name in ('Relative Position'):
+            if set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
                     self.set_templates_data[set_name], location_type='template_display_name')

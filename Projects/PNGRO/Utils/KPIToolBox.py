@@ -947,7 +947,7 @@ class PNGRO_PRODToolBox:
             score = 1 if result > 0 else 0
         else:
             result = min(number_of_scenes_pass/target_scenes, 1) if target_scenes else 0
-            score = 1 if result > target_kpi else 0
+            score = 1 if result >= target_kpi else 0
         return score, result, target_kpi
 
     def get_adjacency_and_product_presence_filters(self, params):
