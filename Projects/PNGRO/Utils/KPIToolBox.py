@@ -230,6 +230,7 @@ class PNGRO_PRODToolBox:
         self.calculate_assortment_main_shelf()
         self.calculate_linear_share_of_shelf_per_product_display()
         self.calculate_linear_sos_per_product_by_scene_type_secondary_shelves()
+        self.calculate_sos_pallets_per_product_by_scene_type_secondary_shelves()
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         if self.main_shelves:
             self.calculate_sbd()
@@ -283,6 +284,18 @@ class PNGRO_PRODToolBox:
                                                     level=self.LEVEL3, fk=atomic_kpi_fk)
                         else:
                             self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
+
+    def calculate_sos_pallets_per_product_by_scene_type_secondary_shelves(self):
+        scene_display_bay = self.scene_display_bay
+        scene_bay_product = self.get_product_width_df()
+        # scene_bay_display = self.get_display_width_df()
+        pass
+
+    def get_product_width_df(self):
+        matches = self.match_product_in_scene
+        scene_bay_product = matches[matches['stacking_layer'] == 1][['scene_fk', 'bay_number', 'product_fk', '']]
+
+
 
     def calculate_linear_sos_per_product_by_scene_type_secondary_shelves(self):
         filters = {self.LOCATION_TYPE: 'Secondary Shelf'}
@@ -975,7 +988,7 @@ class PNGRO_PRODToolBox:
             score = 1 if result > 0 else 0
         else:
             result = min(number_of_scenes_pass/target_scenes, 1) if target_scenes else 0
-            score = 1 if result > target_kpi else 0
+            score = 1 if result >= target_kpi else 0
         return score, result, target_kpi
 
     def get_adjacency_and_product_presence_filters(self, params):
