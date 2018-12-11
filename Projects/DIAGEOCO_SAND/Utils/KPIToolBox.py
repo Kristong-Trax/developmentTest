@@ -111,10 +111,10 @@ class DIAGEOCO_SANDToolBox:
                 results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
                                                                                           self.set_templates_data[set_name], self.store_id,
                                                                                           manufacturer_fk)
-                for result in results_list[1]:
-                    self.save_level2_and_level3(result[0], result[1], result[2])
-                self.write_to_db_result(results_list[2]['fk'], results_list[2]['score'], results_list[2]['level'])
-                self.save_results_to_db(results_list[0])
+                for result in results_list['old_tables_level2and3']:
+                    self.save_level2_and_level3(result['kpi_set_name'], result['kpi_name'], result['score'])
+                self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list[2]['score'], results_list[2]['level'])
+                self.save_results_to_db(results_list['new_tables_result'])
 
             elif set_name == 'TOUCH POINT':
                 store_attribute = 'additional_attribute_2'
