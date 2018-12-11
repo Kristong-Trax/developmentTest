@@ -25,6 +25,7 @@ class DIAGEOCO_SANDToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
+    diageo_manufacturer_fk = 74
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -104,7 +105,7 @@ class DIAGEOCO_SANDToolBox:
                 set_score = self.calculate_relative_position_sets(set_name)
 
             elif set_name == 'Activation Standard':
-                manufacturer_fk = 74# Diageo manfacutrer
+                manufacturer_fk = self.diageo_manufacturer_fk
                 results_list = self.global_gen.diageo_global_activation_standard_function(total_scores_dict,
                                                                                           self.set_templates_data[set_name], self.store_id,
                                                                                           manufacturer_fk)
