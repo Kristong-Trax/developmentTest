@@ -50,7 +50,6 @@ class INBEVMXToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.oos_policies = self.get_policies()
 
-
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -58,6 +57,7 @@ class INBEVMXToolBox:
             return
         try:
             self.region_name_filter = self.store_info['region_name'].values[0].strip()
+            self.region_fk = self.store_info['region_fk'].values[0]
         except:
             Log.error("there is no region in the db")
             return
@@ -129,15 +129,14 @@ class INBEVMXToolBox:
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
-        score = (1 - result) * Const.OOS_WEIGHT
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
-                                           denominator_result=len(products_to_check), result=result, score=score,
+                                           denominator_result=len(products_to_check), result=result, score=result,
                                           identifier_result=Const.OOS_KPI)
 
 
@@ -190,7 +189,7 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
                                           score=count_result)
@@ -293,7 +292,7 @@ class INBEVMXToolBox:
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter, numerator_result=0,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=0,
                                            denominator_result=0, denominator_id=self.store_id, result=survey_result,
                                           score=final_score)
 
