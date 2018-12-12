@@ -199,3 +199,17 @@ class CCRU_SANDCCHKPIFetcher:
         res = cur.fetchall()
         df = pd.DataFrame(list(res), columns=['scene_fk', 'store_area_name', 'session_uid'])
         return df
+
+    def get_kpi_result_values(self):
+        self.rds_conn.connect_rds()
+        query = """
+                select 
+                rt.pk as result_type_fk,
+                rt.name as result_type, 
+                rv.pk as result_value_fk, 
+                rv.value as result_value
+                from static.kpi_result_value rv
+                join static.kpi_result_type rt on rt.pk=rv.kpi_result_type_fk;
+                """
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df

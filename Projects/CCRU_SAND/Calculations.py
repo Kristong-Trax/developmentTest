@@ -127,39 +127,49 @@ class ProjectCalculations:
                                       'score_1',
                                       'kpi_set_fk']), 'level1')
 
-            self.tool_box.update_scores_and_results(
+            self.tool_box.update_kpi_scores_and_results(
                 {'KPI ID': 0,
                  'KPI name Eng': kpi_source[kpi_set_type][SET],
-                 'KPI name Rus': kpi_source[kpi_set_type][SET],
-                 'KPI Weight': 1,
-                 'level': 1,
-                 'new_level': 0,
-                 'parent': None},
-                {'score': score})
+                 'KPI name Rus': kpi_source[kpi_set_type][SET]},
+                {'weight': 1,
+                 'score': score,
+                 'level': 0,
+                 'parent': None})
+            self.tool_box.write_to_kpi_results_new(kpi_data.values()[0])
 
             if kpi_set_type == POS:
                 Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
                 self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
+        self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
         self.json.create_kpi_data_json('gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
-        self.tool_box.calculate_gaps(self.json.project_kpi_dict.get('gaps'))
-        self.tool_box.write_gaps()
+        self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
+        self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'))
+
+        Log.info('Importing Contract Execution template')
+        self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
 
         Log.info('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
-        self.tool_box.calculate_top_sku()
+        self.tool_box.set_kpi_set(kpi_source[TOPSKU][SET], TOPSKU)
+        self.tool_box.calculate_top_sku(self.json.project_kpi_dict.get('contract'),
+                                        kpi_source[TOPSKU][SET])
 
         Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
-        self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
         if self.json.project_kpi_dict.get('contract'):
+            self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], CONTRACT)
             self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
                                                         kpi_source[EQUIPMENT][SET],
                                                         kpi_source[KPI_CONVERSION][FILE])
+            self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
             self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                        kpi_source[CONTRACT][SET])
 
-        Log.info('KPI calculation stage: {}'.format('Committing results'))
-        self.tool_box.commit_results_data()
+        Log.info('KPI calculation stage: {}'.format('Committing results old'))
+        self.tool_box.commit_results_data_old()
+
+        Log.info('KPI calculation stage: {}'.format('Committing results new'))
+        self.tool_box.commit_results_data_new()
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
