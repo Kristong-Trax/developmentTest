@@ -138,7 +138,7 @@ class PENAFLORARDIAGEOARToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                 set_score = self.calculate_relative_position_sets(set_name)
-                self.save_level2_and_level3(set_name, set_name, set_score)
+
             else:
                 continue
 
