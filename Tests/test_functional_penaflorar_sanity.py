@@ -43,18 +43,18 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         connector.disconnect_rds()
 
 
-    @patch('Projects.PENAFLORAR.Utils.ToolBox.PENAFLORARDIAGEOToolBox.get_latest_directory_date_from_cloud',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-02-20')
-    @patch('Projects.PENAFLORAR.Utils.ToolBox.PENAFLORARDIAGEOToolBox.save_latest_templates')
-    @patch('Projects.PENAFLORAR.Utils.ToolBox.PENAFLORARDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=mpa)
-    @patch('Projects.PENAFLORAR.Utils.ToolBox.PENAFLORARDIAGEOToolBox.download_template',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=products)
     @seeder.seed(["penaflorar_seed"], ProjectsSanityData())
     def test_penaflorar_sanity(self, x, y, json, json2):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['cb1f5608-488a-4eb3-bb50-68298b255390']
+        sessions = ['b778b179-3053-48ad-841e-6db656d670b2']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
