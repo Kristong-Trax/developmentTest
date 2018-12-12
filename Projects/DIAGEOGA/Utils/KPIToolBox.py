@@ -8,9 +8,12 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOGA.Utils.Fetcher import DIAGEOGADIAGEOGAQueries
-from Projects.DIAGEOGA.Utils.ToolBox import DIAGEOGADIAGEOToolBox
-
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.GlobalProjects.DIAGEO.Utils.ParseTemplates import parse_template # if needed
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Yasmin'
 
@@ -33,7 +36,7 @@ def log_runtime(description, log_start=False):
     return decorator
 
 
-class DIAGEOGADIAGEOGAToolBox:
+class DIAGEOGAToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -53,7 +56,13 @@ class DIAGEOGADIAGEOGAToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = DIAGEOGADIAGEOToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.match_display_in_scene = self.get_match_display()
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)  # replace the old one
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -67,29 +76,45 @@ class DIAGEOGADIAGEOGAToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOGADIAGEOGAQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
-    def main_calculation(self, kpi_set_fk):
-        """
-        This function calculates the KPI results.
-        """
-        set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
-        if set_name in ('MPA','New Products'):
-            set_score = self.calculate_assortment_sets(set_name)
-        elif set_name == 'Secondary Displays':
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-            if not set_score:
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
-        if isinstance(set_score, type(None)):
-            return
-        return set_score
+    def main_calculation(self, set_names):
+
+        # Global assortment kpis
+
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+
+            # Global Secondary Displays
+            if set_name in ('Secondary Displays', 'Secondary'):
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
+
+                # Saving to old tables
+                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # commiting to new tables
+        self.commonV2.commit_results_data()
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -194,9 +219,18 @@ class DIAGEOGADIAGEOGAToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOGADIAGEOGAQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
+
+    def get_match_display(self):
+        """
+        This function extracts the display matches data and saves it into one global data frame.
+        The data is taken from probedata.match_display_in_scene.
+        """
+        query = DIAGEOQueries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
