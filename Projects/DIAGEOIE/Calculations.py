@@ -20,7 +20,7 @@ class DIAGEOIECalculations(BaseCalculationsScript):
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('diageoie calculations')
-#     Config.init()
+#     Config.init() 
 #     project_name = 'diageoie'
 #     data_provider = KEngineDataProvider(project_name)
 #     session = 'C2D8A9DC-C94D-4C24-B10A-36F3BC61E6FB'
