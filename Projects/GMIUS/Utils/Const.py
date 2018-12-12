@@ -1,5 +1,5 @@
 
-__author__ = 'Elyashiv'
+__author__ = 'Sam'
 
 
 class Const(object):
@@ -24,6 +24,8 @@ class Const(object):
     YOGURT_MAP = 'Yogurt Location Map'
     SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
               TMB_MAP, STOCKING, YOGURT_MAP]
+
+    RESULT = 'Result'
 
     ''' KPIs Columns '''
     KPI_NAME = 'KPI Name'
