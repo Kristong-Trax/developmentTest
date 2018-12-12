@@ -42,6 +42,8 @@ class ToolBox:
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
+        self.entity_dict = {str(key).lower(): vals['pk'] for key, vals in
+                            self.ps_data_provider.get_custom_entities(22).set_index('name').iterrows()}
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.products = self.data_provider[Data.PRODUCTS]
@@ -117,27 +119,32 @@ class ToolBox:
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         print('running sos')
-        levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
-        sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
-        scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
-        scif['count'] = Const.MM_TO_FT
-        for level in levels:
-            level_col = '{}_fk'.format(level).lower()
-            groups = scif.groupby(level_col)
-            for item_pk, df in groups:
-                for sos_type in sos_types:
-                    if sos_type in Const.SOS_COLUMN_DICT:
-                        sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
-                    else:
-                        Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
-                        return
-                    den = scif[sos_sum_col].sum()
-                    kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
-                    num = df[sos_sum_col].sum()
-                    ratio, score = self.ratio_score(num, den)
-                    self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
-                                                   numerator_result=num, denominator_result=den,
-                                                   denominator_id=self.store_id)
+        super_cats = relevant_scif['Super Category'].unique().tolist()
+        for super_cat in super_cats:
+            if not super_cat:
+                continue
+            den_id = self.entity_dict[super_cat.lower()]
+            levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
+            sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
+            scif = self.filter_df(relevant_scif, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+            scif['count'] = Const.MM_TO_FT
+            for level in levels:
+                level_col = '{}_fk'.format(level).lower()
+                groups = scif.groupby(level_col)
+                for item_pk, df in groups:
+                    for sos_type in sos_types:
+                        if sos_type in Const.SOS_COLUMN_DICT:
+                            sos_sum_col = Const.SOS_COLUMN_DICT[sos_type]
+                        else:
+                            Log.warning("SOS Type not found in Const.SOS_COLUMN_DICT in kpi {}".format(kpi_name))
+                            return
+                        den = scif[sos_sum_col].sum()
+                        kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {} {}'.format(level, kpi_name, sos_type))
+                        num = df[sos_sum_col].sum()
+                        ratio, score = self.ratio_score(num, den)
+                        self.common.write_to_db_result(fk=kpi_fk, score=score, result=ratio, numerator_id=item_pk,
+                                                       numerator_result=num, denominator_result=den,
+                                                       denominator_id=den_id)
 
     def calculate_topmiddlebottom(self, kpi_name, kpi_line, relevant_scif, general_filters):
         locations = set()
@@ -228,7 +235,7 @@ class ToolBox:
 
             result_fk = self.result_values_dict[result]
 
-    def adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         for scene in relevant_scif.scene_fk.unique():
             scene_filter = {'scene_fk': scene}
             mpis = self.filter_df(self.mpis, scene_filter)
