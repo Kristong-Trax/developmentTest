@@ -172,7 +172,7 @@ class INBEVMXToolBox:
         numerator_number_of_facings = self.count_of_facings(df, filters)
         if numerator_number_of_facings != 0 and count_result == -1:
             if 'manufacturer_name' in filters.keys():
-                deno_manufacturer = row[Const.TEMPLATE_TARGET_PRECENT].values[0].split()
+                deno_manufacturer = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
                 filters['manufacturer_name'] = [item.strip() for item in deno_manufacturer]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings /
