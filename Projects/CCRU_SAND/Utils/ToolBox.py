@@ -87,7 +87,8 @@ class CCRU_SANDKPIToolBox:
         self.test_store = self.kpi_fetcher.get_test_store(self.store_id)
         self.attr15 = self.kpi_fetcher.get_attr15_store(self.store_id)
         self.kpi_result_values = self.kpi_fetcher.get_kpi_result_values()
-
+        self.kpi_entity_types = self.kpi_fetcher.get_kpi_entity_types()
+        self.kpi_entities = self.get_kpi_entities('top_sku_type')
         self.store_areas = self.kpi_fetcher.get_store_area_df(self.session_uid)
 
         self.execution_contract = CCRU_SANDContract(rds_conn=self.rds_conn)
@@ -2282,55 +2283,60 @@ class CCRU_SANDKPIToolBox:
                             gap = target - score
                             gap = 0 if gap < 0 else gap
                             if gap > 0:
+                                result = format(gap, "+.1f")
                                 self.update_kpi_scores_and_results(
                                     {'KPI ID': counter,
                                      'KPI name Eng': kpi_name,
                                      'KPI name Rus': kpi_name_local},
                                     {'weight': counter,
-                                     'result': gap,
+                                     'result': result,
                                      'level': 4,
                                      'parent': subgroup_counter})
                                 subgroup_gap += gap
 
                     if subgroup_gap > 0:
+                        result = format(subgroup_gap, "+.1f")
                         self.update_kpi_scores_and_results(
                             {'KPI ID': subgroup_counter,
                              'KPI name Eng': subgroup,
                              'KPI name Rus': subgroup_local},
                             {'weight': None,
-                             'result': subgroup_gap,
+                             'result': result,
                              'level': 3,
                              'parent': group_counter})
                         group_gap += subgroup_gap
 
                 if group_gap > 0:
+                    result = format(group_gap, "+.1f")
                     self.update_kpi_scores_and_results(
                         {'KPI ID': group_counter,
                          'KPI name Eng': group,
                          'KPI name Rus': group_local},
                         {'weight': None,
-                         'result': group_gap,
+                         'result': result,
                          'level': 2,
                          'parent': category_counter})
                     category_gap += group_gap
 
             if category_gap > 0:
+                result = format(category_gap, "+.1f")
                 self.update_kpi_scores_and_results(
                     {'KPI ID': category_counter,
                      'KPI name Eng': category,
                      'KPI name Rus': category_local},
                     {'weight': None,
-                     'result': category_gap,
+                     'result': result,
                      'level': 1,
                      'parent': 0})
                 total_gap += category_gap
 
+        result = format(total_gap, "+.1f")
         self.update_kpi_scores_and_results(
             {'KPI ID': 0,
              'KPI name Eng': self.kpi_set_name,
              'KPI name Rus': self.kpi_set_name},
             {'weight': None,
-             'result': total_gap,
+             'result': result,
              'level': 0,
              'parent': None})
 
@@ -2618,7 +2624,7 @@ class CCRU_SANDKPIToolBox:
             identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
 
             kpi_name = self.kpi_set_type + '_SKU'
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk']
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
 
             numerator_id = row['product_fk']
             denominator_id = None
@@ -2628,10 +2634,12 @@ class CCRU_SANDKPIToolBox:
             denominator_result = row['min_facings']
 
             result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
-            kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk']
+            kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+                'kpi_result_type_fk'].values[0]
             if kpi_result_type_fk:
                 result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)]['result_value_fk'].values[0]
+                                                (self.kpi_result_values['result_value'] == result)][
+                    'result_value_fk'].values[0]
 
             score = 1 if row['distributed'] else 0
             weight = None
@@ -2654,24 +2662,35 @@ class CCRU_SANDKPIToolBox:
         top_sku_anchor_products = top_sku_products\
             .groupby(['category_fk', 'anchor_product_fk'])\
             .agg({'product_fk': 'count', 'facings': 'sum', 'in_assortment': 'max', 'distributed': 'max'})
-        for row in top_sku_products.iterrows():
+        for row in top_sku_anchor_products.iterrows():
 
             identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
             identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
 
             kpi_name = self.kpi_set_type + '_BUNDLE'
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk']
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
 
             numerator_id = row['anchor_product_fk']
             denominator_id = None
-            context_id = None
+
+            if self.kpi_entities.empty:
+                context_id = None
+            else:
+                kpi_context_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+                    'kpi_context_type_fk'].values[0]
+                if row['product_fk'] == 1:
+                    context_id = self.kpi_entities[(self.kpi_entities['type'] == kpi_context_type_fk)
+                                                   & (self.kpi_entities['uid_field'] == 'SKU')]['fk'].values[0]
+                else:
+                    context_id = self.kpi_entities[(self.kpi_entities['type'] == kpi_context_type_fk)
+                                                   & (self.kpi_entities['uid_field'] == 'BUNDLE')]['fk'].values[0]
 
             numerator_result = row['facings']
             denominator_result = None if row['product_fk'] == 1 else row['product_fk']
 
             result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
             kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
-                'kpi_result_type_fk']
+                'kpi_result_type_fk'].values[0]
             if kpi_result_type_fk:
                 result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
                                                 (self.kpi_result_values['result_value'] == result)][
@@ -2704,7 +2723,7 @@ class CCRU_SANDKPIToolBox:
             identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=0)
 
             kpi_name = self.kpi_set_type + '_CATEGORY'
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk']
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
 
             numerator_id = row['anchor_product_fk']
             denominator_id = None
@@ -2740,7 +2759,7 @@ class CCRU_SANDKPIToolBox:
             identifier_parent = self.common.get_dictionary(set=CONTRACT, level=1, kpi='OSA')
 
             kpi_name = self.kpi_set_type
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk']
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
 
             numerator_id = self.own_manufacturer_id
             denominator_id = self.store_id
@@ -2895,7 +2914,7 @@ class CCRU_SANDKPIToolBox:
             kpi_name = self.kpi_set_type + '_' + str(kpi['level'])\
                 + (('_' + kpi['format']) if kpi['format'] else '') \
                 + ('_SCENE' if kpi['scene_id'] else '')
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk']
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
 
             numerator_id = self.own_manufacturer_id if parent == -1 \
                 else self.common.get_kpi_fk_by_kpi_type(kpi['eng_name'])
@@ -2904,10 +2923,13 @@ class CCRU_SANDKPIToolBox:
             context_id = self.kpi_set_name
 
             result = kpi['result']
-            kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk']
-            if kpi_result_type_fk:
-                result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)]['result_value_fk'].values[0]
+            if result is str or result is unicode:
+                kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
+                    'kpi_result_type_fk'].values[0]
+                if kpi_result_type_fk:
+                    result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                                    (self.kpi_result_values['result_value'] == result)][
+                        'result_value_fk'].values[0]
 
             score = score if kpi['level'] == 1 else kpi['score']
             weight = kpi['weight']
@@ -2947,3 +2969,16 @@ class CCRU_SANDKPIToolBox:
     @kpi_runtime()
     def commit_results_data_new(self):
         self.common.commit_results_data()
+
+    def get_kpi_entities(self, entities):
+        if entities is str:
+            entities = [entities]
+        entities_df = pd.DataFrame()
+        for entity in entities:
+            entity_type_fk = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['pk'].values[0]
+            entity_table_name = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['table_name'].values[0]
+            entity_uid_field = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['uid_field'].values[0]
+            entities_df = entities_df\
+                .append(self.kpi_fetcher.get_kpi_entity(entity, entity_type_fk, entity_table_name, entity_uid_field),
+                        ignore_index=True).reindex()
+        return entities_df

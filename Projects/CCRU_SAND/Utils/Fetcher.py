@@ -213,3 +213,24 @@ class CCRU_SANDCCHKPIFetcher:
                 """
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
+
+    def get_kpi_entity_types(self):
+        self.rds_conn.connect_rds()
+        query = """
+                select * from static.kpi_entity_type;
+                """
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
+    def get_kpi_entity(self, entity, entity_type_fk, entity_table_name, entity_uid_field):
+        self.rds_conn.connect_rds()
+        query = """
+                select 
+                '{0}' as entity
+                {1} as type,
+                pk as fk,
+                {2} as uid_field
+                * from {3};
+                """.format(entity, entity_type_fk, entity_uid_field, entity_table_name)
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
