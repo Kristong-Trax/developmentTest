@@ -41,14 +41,14 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         connector.disconnect_rds()
 
 
-    @patch('Projects.DIAGEORU.Utils.ToolBox.DIAGEORUDIAGEOToolBox.get_latest_directory_date_from_cloud',
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-05-18')
-    @patch('Projects.DIAGEORU.Utils.ToolBox.DIAGEORUDIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
     @seeder.seed(["diageoru_seed"], ProjectsSanityData())
     def test_diageoru_sanity(self, x, y):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['68680f5f-0499-4fab-ab74-291e4c4890d7']
+        sessions = ['503d5abf-7359-45bf-859c-03c5211fd2db']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
