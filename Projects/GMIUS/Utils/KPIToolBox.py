@@ -26,29 +26,6 @@ __author__ = 'Sam'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'GMI KPI Template v0.2.xlsx')
 
-#
-# class ToolBox:
-#
-#     def __init__(self, data_provider, output, common):
-#         self.common = common
-#         self.output = output
-#         self.data_provider = data_provider
-#         self.block = Block2(self.data_provider)
-#         self.project_name = self.data_provider.project_name
-#         self.session_uid = self.data_provider.session_uid
-#         self.templates = self.data_provider.all_templates
-#         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-#         self.result_values_dict = self.make_result_values_dict()
-#         self.store_assortment = self.ps_data_provider.get_store_assortment()
-#         self.store_sos_policies = self.ps_data_provider.get_store_policies()
-#         self.labels = self.ps_data_provider.get_labels()
-#         self.entity_dict = {str(key).lower(): vals['pk'] for key, vals in
-#                             self.ps_data_provider.get_custom_entities(22).set_index('name').iterrows()}
-#         self.scene_info = self.data_provider[Data.SCENES_INFO]
-#         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-#         self.products = self.data_provider[Data.PRODUCTS]
-#         self.store_info = self.data_provider[Data.STORE_INFO]os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'GMI KPI Template v0.2.xlsx')
-#
 
 class ToolBox:
 
@@ -64,6 +41,13 @@ class ToolBox:
         self.result_values_dict = self.make_result_values_dict()
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
+        self.labels = self.ps_data_provider.get_labels()
+        self.entity_dict = {str(key).lower(): vals['pk'] for key, vals in
+                            self.ps_data_provider.get_custom_entities(22).set_index('name').iterrows()}
+        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.products = self.data_provider[Data.PRODUCTS]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
