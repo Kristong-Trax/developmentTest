@@ -50,7 +50,6 @@ class INBEVMXToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.oos_policies = self.get_policies()
 
-
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
         except:
@@ -58,6 +57,7 @@ class INBEVMXToolBox:
             return
         try:
             self.region_name_filter = self.store_info['region_name'].values[0].strip()
+            self.region_fk = self.store_info['region_fk'].values[0]
         except:
             Log.error("there is no region in the db")
             return
@@ -129,15 +129,14 @@ class INBEVMXToolBox:
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
-        score = (1 - result) * Const.OOS_WEIGHT
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
-                                           denominator_result=len(products_to_check), result=result, score=score,
+                                           denominator_result=len(products_to_check), result=result, score=result,
                                           identifier_result=Const.OOS_KPI)
 
 
@@ -173,7 +172,8 @@ class INBEVMXToolBox:
         numerator_number_of_facings = self.count_of_facings(df, filters)
         if numerator_number_of_facings != 0 and count_result == -1:
             if 'manufacturer_name' in filters.keys():
-                deno_manufacturer = row[Const.TEMPLATE_TARGET_PRECENT].values[0].split()
+                deno_manufacturer = row[Const.TEMPLATE_MANUFACTURER_DENOMINATOR].values[0].strip()
+                deno_manufacturer = deno_manufacturer.split(",")
                 filters['manufacturer_name'] = [item.strip() for item in deno_manufacturer]
                 denominator_number_of_total_facings = self.count_of_facings(df, filters)
                 percentage = 100 * (numerator_number_of_facings /
@@ -190,7 +190,7 @@ class INBEVMXToolBox:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
 
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
                                           score=count_result)
@@ -275,6 +275,8 @@ class INBEVMXToolBox:
                     second_question_id = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
                     second_survey_result = self.survey.get_survey_answer(
                         ('question_fk', second_question_id))
+                    if not second_survey_result:
+                        second_survey_result = 0
                     second_numeric_survey_result = int(second_survey_result)
                     survey_result = 1 if numeric_survey_result >= second_numeric_survey_result else -1
                 else:
@@ -293,7 +295,7 @@ class INBEVMXToolBox:
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
             return
-        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_name_filter, numerator_result=0,
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=0,
                                            denominator_result=0, denominator_id=self.store_id, result=survey_result,
                                           score=final_score)
 
