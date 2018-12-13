@@ -744,8 +744,10 @@ class CCBZA_ToolBox:
             if filters['scene_fk']:
                 filters['scene_id'] = filters.pop('scene_fk')
                 relevant_matches = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
-                bays_by_scene = relevant_matches[['scene_id', 'bay_number']].drop_duplicates().groupby(['scene_id']).count()
-                atomic_result = 100 if (bays_by_scene == target).any().values[0] else 0
+                bays_by_scene = relevant_matches[~(relevant_matches['bay_number'] == -1)][['scene_id', 'bay_number']].drop_duplicates()
+                if not bays_by_scene.empty:
+                    bays_by_scene = bays_by_scene.groupby(['scene_id']).count()
+                    atomic_result = 100 if (bays_by_scene == target).any().values[0] else 0
 
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)

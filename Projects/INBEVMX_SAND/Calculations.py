@@ -23,6 +23,7 @@ class Calculations(BaseCalculationsScript):
 #
 #     # second report
 #     list_sessions = [
+#         '15E6D6FD-FC45-4703-8A99-D33C805FAC41',
 #         'fff20792-6a60-4a13-bb00-879a308c1ea6',
 #         '341a9b53-65ad-43b6-9fe0-2ae56fcbe9bd',
 #         '409c0346-a00a-4c7b-9f3b-63f4ab94307f',

@@ -29,8 +29,7 @@ class DIAGEOARGenerator:
         if self.tool_box.ACTIVATION_STANDARD in set_names:
             set_names.remove(self.tool_box.ACTIVATION_STANDARD)
             calculate_activation_standard = True
-        for kpi_set_name in set_names:
-            self.tool_box.main_calculation(set_name=kpi_set_name)
+        self.tool_box.main_calculation(set_names=set_names)
         if calculate_activation_standard:
             self.tool_box.calculate_activation_standard()
         self.tool_box.commit_results_data()

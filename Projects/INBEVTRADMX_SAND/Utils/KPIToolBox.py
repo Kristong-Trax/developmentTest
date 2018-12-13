@@ -117,19 +117,21 @@ class INBEVTRADMXToolBox:
         # get the session additional_attribute_4 & 13
         additional_attribute_4 = self.store_info.additional_attribute_4.values[0]
         additional_attribute_13 = self.store_info.additional_attribute_13.values[0]
-        set_name = self.choose_correct_set_to_calculate(additional_attribute_4,
-                                                        additional_attribute_13, parsed_template)
-        # wrong value in additional attribute 4 - shouldn't calculate
-        if set_name == '':
-            Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
-            return -1
-        # get only the part of the template that is related to this set
-        set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
-        # start calculating !
-        self.calculate_set_score(set_template_df, set_name)
+        set_names = self.choose_correct_sets_to_calculate(additional_attribute_4,
+                                                          additional_attribute_13, parsed_template)
+
+        for set_name in set_names:
+            # wrong value in additional attribute 4 - shouldn't calculate
+            if set_name == '':
+                Log.warning('Wrong value in additional attribute 4 - shouldnt calculate')
+                return -1
+            # get only the part of the template that is related to this set
+            set_template_df = parsed_template[parsed_template['KPI Level 1 Name'] == set_name]
+            # start calculating !
+            self.calculate_set_score(set_template_df, set_name)
 
     @staticmethod
-    def choose_correct_set_to_calculate(additional_attribute_4, additional_attribute_13, template):
+    def choose_correct_sets_to_calculate(additional_attribute_4, additional_attribute_13, template):
         """
         choose what is the appropriate set to calculate
         :param additional_attribute_4: session additional_attribute_4. if None, will ignore the kpi.
@@ -144,14 +146,15 @@ class INBEVTRADMXToolBox:
 
         if additional_attribute_13:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
-                            (template['Store Additional Attribute 13'].str.contains(additional_attribute_13))]
+                            ((template['Store Additional Attribute 13'].str.contains(additional_attribute_13)) |
+                            (template['Store Additional Attribute 13'] == ''))]
         else:
             sets = template[(template['Store Additional Attribute 4'].str.contains(additional_attribute_4)) &
                             (template['Store Additional Attribute 13'] == '')]
         if sets.empty:
             return ''
         else:
-            return sets['KPI Level 1 Name'].values[0]
+            return sets['KPI Level 1 Name'].unique().tolist()
 
         # if additional_attribute_4 == 'BC':
         #     set_name = sets[0]
@@ -425,7 +428,7 @@ class INBEVTRADMXToolBox:
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
                     return availability_score > 1
             elif row['KPI Level 1 Name'] == 'Set Self Execution' and row['KPI Level 3 Name'] == 'Hay o no hay # frentes':
-                return availability_score > 19
+                return availability_score > 24
             else:
                 return True
 

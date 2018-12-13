@@ -434,8 +434,8 @@ class PEPSICORUToolBox:
     #                                        result=result_scene_level, should_enter=True)
 
     def calculate_assortment(self):
-        # lvl3_result = self.assortment.calculate_lvl3_assortment()
-        lvl3_result = self.get_lvl3_assortment_result_main_shelf()
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        # lvl3_result = self.get_lvl3_assortment_result_main_shelf()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
 
@@ -694,7 +694,7 @@ class PEPSICORUToolBox:
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             for result in lvl2_result.itertuples():
                 denominator_res = result.total
-                if result.target and result.group_target_date <= self.assortment.current_date:
+                if not pd.isnull(result.target) and not pd.isnull(result.group_target_date) and result.group_target_date <= self.visit_date:
                     denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res))
                 # Distribution

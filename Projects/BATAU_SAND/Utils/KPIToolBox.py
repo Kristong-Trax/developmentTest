@@ -28,7 +28,7 @@ KPI_FAMILY='kpi_family_fk'
 TYPE = "type"
 
 #GENERAL
-ROUNDING_DIGITS = 2
+ROUNDING_DIGITS = 4
 MAPPINGS = {'manufacturer_name':'manufacturer_fk',
             'brand_name':'brand_fk',
             'category':'category_fk',
@@ -81,6 +81,7 @@ class BATAUToolBox:
         """
         This function calculates the KPI results.
         """
+        self.scif = self.scif[self.scif['facings'] > 0]
         self.calculate_share_of_range()
         self.calculate_share_of_range_category()
 
@@ -211,7 +212,7 @@ class BATAUToolBox:
                 numerator_entities = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
                 denominator_entities = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
 
-                denominator = int(len((self.scif.query(denominator_filter)['product_fk'])))
+                denominator = int(len((self.scif.query(denominator_filter)['product_fk']).drop_duplicates()))
 
                 numerator_fk = MAPPINGS[str(row[NUMERATOR_FK]).strip()]
                 denominator_fk = MAPPINGS[str(row[DENOMINATOR_FK]).strip()]
