@@ -167,18 +167,18 @@ class DIAGEOPT_SANDToolBox:
 
                 # saving results to old table
                 self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list['old_tables_level1']['score'], results_list['old_tables_level1']['level'])
-
+                res_json = results_list['new_tables_result']
                 # saving results to new tables
-                self.save_results_to_db(results_list['new_tables_result'])
+                self.commonV2.save_json_to_new_tables(res_json)
 
 
             if set_score == 0:
                 pass
             elif set_score is False:
                 continue
-
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            if set_name not in ('Activation Standard'):
+                set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # committing to new tables
         self.commonV2.commit_results_data()
