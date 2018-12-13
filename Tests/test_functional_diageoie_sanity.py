@@ -8,16 +8,13 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
-from mock import patch
 
-from Tests.Data.Templates.penaflorar.MPA import mpa
-from Tests.Data.Templates.penaflorar.NewProducts import products
-from Tests.Data.TestData.test_data_penaflorar_sanity import ProjectsSanityData
-from Projects.PENAFLORAR.Calculations import PENAFLORARDIAGEOARCalculations
+from Tests.Data.TestData.test_data_diageoie_sanity import ProjectsSanityData
+from Projects.DIAGEOIE.Calculations import DIAGEOIECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
-__author__ = 'yoava'
+__author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
@@ -41,22 +38,14 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-
-
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-02-20')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=mpa)
-    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=products)
-    @seeder.seed(["penaflorar_seed"], ProjectsSanityData())
-    def test_penaflorar_sanity(self, x, y, json, json2):
+    
+    @seeder.seed(["diageoie_seed"], ProjectsSanityData())
+    def test_diageoie_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['b778b179-3053-48ad-841e-6db656d670b2']
+        sessions = ['C2D8A9DC-C94D-4C24-B10A-36F3BC61E6FB']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            PENAFLORARDIAGEOARCalculations(data_provider, output).run_project_calculations()
+            DIAGEOIECalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()

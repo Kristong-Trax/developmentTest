@@ -210,11 +210,11 @@ class PNGCN_SANDPNGToolBox:
                     for kpi in kpi_dict.keys():
                         atomic_kpi_fk = sub_category_data[sub_category_data['atomic_kpi_name'] ==
                                                           kpi]['atomic_kpi_fk'].values[0]
-                        if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
-                                                          kpi]['kpi_set_name']):
-                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
-                        else:
-                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+                        # if KPS_WITH_SUB_CATEGORY in str(sub_category_data[sub_category_data['atomic_kpi_name'] ==
+                        #                                   kpi]['kpi_set_name']):
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
+                        # else:
+                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
                 else:
                     category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == category]
                     sets_to_save.add(category_data['kpi_set_fk'].values[0])
@@ -222,12 +222,11 @@ class PNGCN_SANDPNGToolBox:
                         kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
                         atomic_kpi_fk = category_data[category_data['atomic_kpi_name'] == kpi]['atomic_kpi_fk'].values[0]
                         self.write_to_db_result(kpi_fk, kpi_dict[kpi], self.LEVEL2)
-                        if KPS_WITH_SUB_CATEGORY in str(
-                                category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
-                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,
-                                                    (sub_category).encode('utf-8').strip())
-                        else:
-                            self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
+                        # if KPS_WITH_SUB_CATEGORY in str(
+                        #         category_data[category_data['kpi_name'] == kpi]['kpi_set_name']):
+                        self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3,(sub_category).encode('utf-8').strip())
+                        # else:
+                        #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
         for set_fk in sets_to_save:
             self.write_to_db_result(set_fk, 100, self.LEVEL1)
 
