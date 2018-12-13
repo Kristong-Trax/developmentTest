@@ -200,7 +200,7 @@ class KpiAtomicKpisCalculator(object):
 
     @staticmethod
     def _split_filters(all_filters):
-        filters = {'all': {}, 'A': {}, 'B': {}, 'C': {}}
+        filters = {'all': {}, 'A': {}, 'B': {}, 'C': {}, 'D': {}}
         for key in all_filters:
             key_list = key.split(';')
             if len(key_list) == 1:
@@ -861,7 +861,7 @@ class AdjacencyAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if scif_matches == 0:
             return np.nan
 
-        for group in ['B', 'C']:
+        for group in ['B', 'C', 'D']:
             if filters[group]:
                 adjacency = self._check_adjacency(filters, 'A', group, scene_type_filter, allowed_filter,
                                                   allowed_filter_without_other, a_target, b_target, target)
