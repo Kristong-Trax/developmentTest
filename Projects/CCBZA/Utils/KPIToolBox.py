@@ -101,6 +101,7 @@ KO_PRODUCTS = 'KO PRODUCTS'
 GENERAL_FILTERS = 'general_filters'
 KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
 AVAILABLITY_MAJORITY = 'Availability Majority'
+AVAILABILITY_AND_GROUP_OR = 'Availability SKU facing And Group Or'
 
 # scif fields
 EAN_CODE = 'product_ean_code'
@@ -170,16 +171,19 @@ class CCBZA_ToolBox:
                                             AVAILABILITY_SKU_FACING_AND: self.availability_and_or_scene,
                                             AVAILABILITY_SKU_FACING_OR: self.availability_and_or_scene,
                                             AVAILABLITY_IF_THEN: self.availability_against_competitors_scene,
-                                            AVAILABLITY_MAJORITY: self.calculate_availability_competitors_majority}
+                                            AVAILABLITY_MAJORITY: self.calculate_availability_competitors_majority,
+                                            AVAILABILITY_AND_GROUP_OR: self.availability_and_or_scene}
         self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
                                              AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
                                              AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
                                              AVAILABILITY_POS: self.get_availability_results_scene_table,
-                                             AVAILABLITY_MAJORITY: self.get_availability_results_scene_table}
+                                             AVAILABLITY_MAJORITY: self.get_availability_results_scene_table,
+                                             AVAILABILITY_AND_GROUP_OR: self.get_availability_results_scene_table}
         self.availability_router = {AVAILABILITY_SKU_FACING_AND: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_POSM: self.calculate_availability_posm,
-                                    AVAILABILITY_SKU_FACING_OR_MIN: self.calculate_availability_min_facings_unique_list}
+                                    AVAILABILITY_SKU_FACING_OR_MIN: self.calculate_availability_min_facings_unique_list,
+                                    AVAILABILITY_AND_GROUP_OR: self.calculate_availability_sku_and_or}
 
 #------------------scene calculations-----------------------------
 
@@ -260,11 +264,31 @@ class CCBZA_ToolBox:
         if filters[GENERAL_FILTERS]['scene_fk']:
             scene_result = 0
             scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
+
+            # if not scene_scif.empty:
+            #     result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
+            #                                                            filters[KPI_SPECIFIC_FILTERS],
+            #                                                            identifier_result, is_by_scene=True)
+            #     scene_result = 100 if result else 0
+            # self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)  # no scene = > no result
+
             if not scene_scif.empty:
-                result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
+                key, list_of_groups = self.get_filter_arguments_for_groups(filters[KPI_SPECIFIC_FILTERS])
+                if key and list_of_groups:
+                    groups_results = []
+                    for group in list_of_groups:
+                        filters[KPI_SPECIFIC_FILTERS].update({key: group})
+                        result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
+                                                                               filters[KPI_SPECIFIC_FILTERS],
+                                                                               identifier_result,
+                                                                               is_by_scene=True)
+                        groups_results.append(result)
+                    scene_result = 100 if any(groups_results) else 0
+                else:
+                    result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
                                                                        filters[KPI_SPECIFIC_FILTERS],
                                                                        identifier_result, is_by_scene=True)
-                scene_result = 100 if result else 0
+                    scene_result = 100 if result else 0
             self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)  # no scene = > no result
 
     def availability_brand_strips_scene(self, atomic_kpi, identifier_result):
@@ -1187,7 +1211,8 @@ class CCBZA_ToolBox:
         facings_by_sku = self.get_facing_number_by_item(result_df, sku_list, EAN_CODE, PRODUCT_FK)
         if facings_by_sku:
             self.add_sku_availability_kpi_to_db(facings_by_sku, atomic_kpi, target, identifier_parent, is_by_scene)
-            if availability_type == AVAILABILITY_SKU_FACING_AND:
+            # if availability_type == AVAILABILITY_SKU_FACING_AND:
+            if availability_type in [AVAILABILITY_SKU_FACING_AND, AVAILABILITY_AND_GROUP_OR]:
                 result = 100 if all([facing >= target for facing in facings_by_sku.values()]) else 0
             elif availability_type == AVAILABILITY_SKU_FACING_OR:
                 # result = 100 if any([facing >= target for facing in facings_by_sku.values()]) else 0
