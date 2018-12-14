@@ -13,6 +13,7 @@ class ResultUploader():
         self.template_results = self.load_template_results(template_path)
         self.rds_conn = ProjectConnector(project, DbUsers.CalcAdmin)
         self.cur = self.rds_conn.db.cursor()
+        self.result_value_attribs = self.get_table_attributes('static.kpi_result_value')
         self.sql_results = self.result_values_query()
         self.sql_types = self.result_types_query()
         self.ps_type_pk = None
@@ -21,7 +22,11 @@ class ResultUploader():
         self.update_db()
 
     def update_db(self):
+        max_len = self.result_value_attribs.loc[self.result_value_attribs['Field'] == 'value', 'Type'].values[0]\
+                                                                                                      .split('(')[1]\
+                                                                                                      .split(')')[0]
         missing = self.template_results - set(self.sql_results['value'])
+        len_errors = []
         if len(missing) > 1:
             if self.PS_TYPE not in self.sql_types['name'].values:
                 self.insert_into_types()
@@ -29,12 +34,26 @@ class ResultUploader():
                 self.ps_type_pk = self.sql_types.set_index('name')['pk'].to_dict()[self.PS_TYPE]
 
             for result in missing:
+                if len(result) > int(max_len):
+                    len_errors.append('    "{}": Exceeds {} characters'.format(result, max_len))
+                    continue
+
                 self.ps_result_pk += 1
-                try:
-                    self.insert_into_values(result)
-                except:
-                    pass
-            self.rds_conn.db.commit()
+                self.insert_into_values(result)
+
+            try:
+                self.rds_conn.db.commit()
+            except Exception as e:
+                print('Results Failed to Upload due to: '
+                      '    "{}"'.format(e))
+
+            if len_errors:
+                print('Below Results not added')
+                for len_error in len_errors:
+                    print(len_error)
+            else:
+                print('Results sucessfuly loaded')
+
 
     def load_template_results(self, template_path):
         df = pd.read_excel(template_path, Const.RESULT)
@@ -67,6 +86,10 @@ class ResultUploader():
         Values ({}, '{}', {})
         '''.format(self.ps_result_pk, result, self.ps_type_pk)
         self.cur.execute(query)
+
+    def get_table_attributes(self, table):
+        return pd.read_sql_query('Show Columns FROM {};'.format(table), self.rds_conn.db)
+
 
 
 
