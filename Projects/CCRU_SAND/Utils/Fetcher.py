@@ -226,11 +226,11 @@ class CCRU_SANDCCHKPIFetcher:
         self.rds_conn.connect_rds()
         query = """
                 select 
-                '{0}' as entity
+                '{0}' as entity,
                 {1} as type,
                 pk as fk,
                 {2} as uid_field
-                * from {3};
+                from {3};
                 """.format(entity, entity_type_fk, entity_uid_field, entity_table_name)
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df

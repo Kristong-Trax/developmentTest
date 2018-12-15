@@ -134,7 +134,7 @@ class ProjectCalculations:
                 {'weight': 1,
                  'score': score,
                  'level': 0,
-                 'parent': None})
+                 'parent': 'root'})
             self.tool_box.write_to_kpi_results_new(kpi_data.values()[0])
 
             if kpi_set_type == POS:
@@ -155,12 +155,13 @@ class ProjectCalculations:
         self.tool_box.calculate_top_sku(self.json.project_kpi_dict.get('contract'),
                                         kpi_source[TOPSKU][SET])
 
-        Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
         if self.json.project_kpi_dict.get('contract'):
-            self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], CONTRACT)
+            Log.info('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
+            self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
             self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
                                                         kpi_source[EQUIPMENT][SET],
                                                         kpi_source[KPI_CONVERSION][FILE])
+            Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
             self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
             self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                        kpi_source[CONTRACT][SET])
