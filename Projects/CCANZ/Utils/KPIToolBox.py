@@ -166,7 +166,7 @@ class CCANZToolBox:
         if template_without_second is not None:
             for row in template_without_second.iterrows():
                 data_frame = data_frame.loc[(~data_frame[row[1]['Param 1']].isin(row[1]['Value 1'].split(','))) | (
-                    data_frame[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
+                    ~data_frame[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
 
         return data_frame
 
