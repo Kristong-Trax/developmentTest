@@ -231,7 +231,6 @@ class PNGRO_PRODToolBox:
 
         self.calculate_assortment_main_shelf()
         self.calculate_linear_share_of_shelf_per_product_display()
-        # self.calculate_linear_sos_per_product_by_scene_type_secondary_shelves()
         self.calculate_sos_pallets_per_product_by_scene_type_secondary_shelves()
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         if self.main_shelves:
@@ -341,27 +340,6 @@ class PNGRO_PRODToolBox:
                                                      .agg({'width_mm_advance': np.sum})
         scene_bay_display = scene_bay_display.rename(columns={'width_mm_advance': 'display_width_total'})
         return scene_bay_display
-
-    # def calculate_linear_sos_per_product_by_scene_type_secondary_shelves(self):
-    #     filters = {self.LOCATION_TYPE: 'Secondary Shelf'}
-    #     secondary_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
-    #     if not secondary_scif.empty:
-    #         length_all_products = secondary_scif.groupby(['product_fk'], as_index=False).agg({'facings_ign_stack': np.sum})
-    #         length_all_products = length_all_products.rename(columns={'facings_ign_stack':'facings_all_secondary_shelves'})
-    #         kpi_fk = self.get_new_kpi_fk_by_kpi_name('Share of SKU on Secondary Shelf')
-    #         product_by_template = secondary_scif.groupby(['template_name', 'template_fk', 'product_fk'], as_index=False)\
-    #                                                         .agg({'facings_ign_stack': np.sum})
-    #         product_by_template = product_by_template.merge(length_all_products, on='product_fk', how='left')
-    #         # product_by_template['length_all_secondary_shelves'] = product_by_template.groupby('product_fk')['gross_len_ign_stack']\
-    #         #                                                         .apply(lambda x: x.sum())
-    #         product_by_template['share_of_sku_on_sec_shelf'] = product_by_template.apply(self.get_share_of_sku_on_secondary_shelves,
-    #                                                                                      axis=1)
-    #         for i, row in product_by_template.iterrows():
-    #             self.common.write_to_db_result_new_tables(fk=kpi_fk, score=row['share_of_sku_on_sec_shelf'],
-    #                                                       result=row['share_of_sku_on_sec_shelf'],
-    #                                                       numerator_result=row['facings_ign_stack'],
-    #                                                       denominator_result=row['facings_all_secondary_shelves'],
-    #                                                       numerator_id=row['product_fk'], denominator_id=row['template_fk'])
 
     def get_share_of_sku_on_secondary_shelves(self, row):
         if not row['facings_all_secondary_shelves']==0:
