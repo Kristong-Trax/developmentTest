@@ -2701,7 +2701,7 @@ class CCRU_SANDKPIToolBox:
                   'anchor_product_fk': 'first',
                   'product_fk': 'count',
                   'facings': 'sum',
-                  'in_assortment': 'max', 
+                  'in_assortment': 'max',
                   'distributed': 'max'})
         for i, row in top_sku_anchor_products.iterrows():
 
