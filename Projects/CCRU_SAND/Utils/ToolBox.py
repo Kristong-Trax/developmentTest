@@ -2065,6 +2065,8 @@ class CCRU_SANDKPIToolBox:
 
         if update_kpi_scores_and_results:
             self.update_kpi_scores_and_results(param, {'level': 2,
+                                                       'threshold': param.get('KPI Weight') * 100,
+                                                       'result': score,
                                                        'score': score,
                                                        'weight': param.get('KPI Weight'),
                                                        'weighted_score': score * param.get('KPI Weight', 1)})
@@ -2640,17 +2642,15 @@ class CCRU_SANDKPIToolBox:
                         facings = 0
                     if facings >= min_facings:
                         distributed = True
-                        top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
-                                                                    'product_fk': product_fk,
-                                                                    'min_facings': min_facings,
-                                                                    'facings': facings,
-                                                                    'in_assortment': 1,
-                                                                    'distributed': 1 if distributed else 0},
-                                                                   ignore_index=True)
+                    top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
+                                                                'product_fk': product_fk,
+                                                                'min_facings': min_facings,
+                                                                'facings': facings,
+                                                                'in_assortment': 1,
+                                                                'distributed': 1 if distributed else 0},
+                                                               ignore_index=True)
                 query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
-
-        score = None
 
         top_sku_products = top_sku_products.merge(self.products[['product_fk', 'category_fk']], on='product_fk')
         for i, row in top_sku_products.iterrows():
@@ -2677,9 +2677,9 @@ class CCRU_SANDKPIToolBox:
                                                 (self.kpi_result_values['result_value'] == result)][
                     'result_value_fk'].values[0]
 
-            score = 1 if row['distributed'] else 0
+            score = 100 if row['distributed'] else 0
             weight = None
-            target = 1
+            target = 100
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
@@ -2738,9 +2738,9 @@ class CCRU_SANDKPIToolBox:
                                                 (self.kpi_result_values['result_value'] == result)][
                     'result_value_fk'].values[0]
 
-            score = 1 if row['distributed'] else 0
+            score = 100 if row['distributed'] else 0
             weight = None
-            target = 1
+            target = 100
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
@@ -2777,10 +2777,10 @@ class CCRU_SANDKPIToolBox:
             numerator_result = row['distributed']
             denominator_result = row['in_assortment']
 
-            result = round(numerator_result / float(denominator_result), 3)
+            result = round(numerator_result / float(denominator_result) * 100, 1)
             score = result
             weight = None
-            target = 1
+            target = 100
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
@@ -2814,10 +2814,10 @@ class CCRU_SANDKPIToolBox:
         numerator_result = top_sku_total['distributed']
         denominator_result = top_sku_total['in_assortment']
 
-        result = round(numerator_result / float(denominator_result), 3)
+        result = round(numerator_result / float(denominator_result) * 100, 1)
         score = result
-        weight = 1
-        target = 1
+        weight = None
+        target = 100
 
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=numerator_id,
