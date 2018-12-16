@@ -92,7 +92,7 @@ class DisplaySOSCalculation(SOSCalculation):
 
     @staticmethod
     def get_scenes_weights(relevant_scenes):
-        return float(relevant_scenes['additional_attribute_1'].sum())
+        return sum(map(lambda x: float(x), relevant_scenes['additional_attribute_1']))
 
 
 class DistributionCalculation(KpiBaseCalculation):

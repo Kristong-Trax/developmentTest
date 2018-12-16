@@ -102,21 +102,6 @@ class DIAGEOGHSandToolBox:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-            # todo: delete this After the migration is done
-            # if set_name in ('MPA', 'Local MPA', 'New Products',):
-            #     set_score = self.calculate_assortment_sets(set_name)
-            # elif set_name == 'Secondary Displays':
-            #     set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-            #     if not set_score:
-            #         set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            #     self.save_level2_and_level3(set_name, set_name, set_score)
-            # elif set_name == 'Visible to Consumer %':
-            #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            #     self.save_level2_and_level3(set_name, set_name, set_score)
-            # else:
-            #     return
-
             # Global Secondary Displays
             if set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
