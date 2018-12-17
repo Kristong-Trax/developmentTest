@@ -24,7 +24,7 @@ from Projects.GMIUS.ImageHTML.Image import ImageMaker
 
 __author__ = 'Sam'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'GMI KPI Template v0.2.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'Yogurt GMI KPI Template v0.2.xlsx')
 
 
 class ToolBox:
@@ -33,7 +33,7 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
-        self.block = Block2(self.data_provider)
+        self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.templates = self.data_provider.all_templates
@@ -60,10 +60,13 @@ class ToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.template = {}
         for sheet in Const.SHEETS:
-            self.template[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
-        self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
-        self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
-                                                              (~self.template[Const.KPIS][Const.TYPE].isnull())]
+            try:
+                self.template[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
+            except:
+                pass
+        # self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
+        # self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
+        #                                                       (~self.template[Const.KPIS][Const.TYPE].isnull())]
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         self.dependency_reorder()
 
@@ -100,7 +103,9 @@ class ToolBox:
         # function = self.graph
         # if kpi_name != 'What best describes the stocking location of Organic Yogurt?':
         #     return
-        if kpi_name != 'Aggregation':
+        # if kpi_name != 'Aggregation':
+        #     return
+        if kpi_type != 'Blocking':
             return
         # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
         #                     'How is RTS Progresso blocked?',
@@ -127,6 +132,7 @@ class ToolBox:
             levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
             sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
             scif = self.filter_df(relevant_scif, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+            scif = self.filter_df(scif, {'Super Category': super_cat})
             scif['count'] = Const.MM_TO_FT
             for level in levels:
                 level_col = '{}_fk'.format(level).lower()
@@ -300,8 +306,19 @@ class ToolBox:
             msl = self.read_cell_from_line(kpi_line, '{} MSL'.format(level))
             pass
 
-    def calculate_block(self):
-        pass
+    def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            filters = self.get_kpi_line_filters(kpi_line)
+            filters.update(general_filters)
+            mpis = self.filter_df(self.mpis, scene_filter)
+            mpis = self.filter_df(mpis, filters)
+            if mpis.empty:
+                continue
+            result = self.block.network_x_block_together(filters, location=scene_filter,
+                                                         additional={'allowed_products_filters': Const.ALLOWED_FILTERS,
+                                                                     'include_stacking': False})
+
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
@@ -465,6 +482,8 @@ class ToolBox:
             return self.calculate_integrated_adjacency
         elif kpi_type == Const.STOCKING:
             return self.calculate_stocking_location
+        elif kpi_type == Const.BLOCKING:
+            return self.calculate_block
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None

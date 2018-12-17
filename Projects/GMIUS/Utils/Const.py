@@ -22,8 +22,14 @@ class Const(object):
     IADJACENCY = 'Integrated Adjacency'
     STOCKING = 'Stocking Location'
     YOGURT_MAP = 'Yogurt Location Map'
+    ANCHOR = 'Anchor'
+    ANCHOR_LIST = 'Anchor List'
+    SURVEY_QUESTION = 'Survey Question'
+    VARIETY_COUNT = 'Variety Count'
+    RESULT = 'Result'
+
     SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
-              TMB_MAP, STOCKING, YOGURT_MAP]
+              TMB_MAP, STOCKING, YOGURT_MAP, ANCHOR, ANCHOR_LIST, SURVEY_QUESTION, VARIETY_COUNT, RESULT]
 
     RESULT = 'Result'
 
@@ -53,7 +59,7 @@ class Const(object):
     SAME_AISLE = 'Same Aisle, Not Adjacent'
     NO_CONNECTION = 'Not In The Same Aisle'
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
-
+    ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
     SOS_COLUMN_DICT = {
                         'SOS': 'facings_ign_stack',
                         'Linear SOS': 'net_len_ign_stack',
