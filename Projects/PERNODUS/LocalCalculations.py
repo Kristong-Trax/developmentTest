@@ -1,16 +1,103 @@
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.PERNODUS.Calculations import Calculations
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Projects.PERNODUS.Calculations import Calculations
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('pernodus calculations')
-#     Config.init()
-#     project_name = 'pernodus'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = ''
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     Calculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('pernodus calculations')
+    Config.init()
+    project_name = 'pernodus'
+    data_provider = KEngineDataProvider(project_name)
+    sessions = ['45127a08-cb14-4f3f-8b63-8d53e741af1d',
+            'df05d8f0-e6a4-4e2d-926b-bad0730e51f2',
+            'be623a0a-8992-421e-bdd4-b16f1d510386',
+            '25d5cb22-af69-42eb-bd99-3a2e903625b9',
+            '47d0c046-80fd-4f38-b37c-2bc5207eee1c',
+            '8bec431d-e165-45a6-b23f-a2598d7c61af',
+            '659b6010-3702-4bd9-9dc4-1ac98408f097',
+            '1def33c0-ea0e-49ba-a6ea-e03bd52c77a9',
+            '5e973cf5-508b-41d7-89f2-9e978518ecea',
+            'b5b58ce0-2128-436a-ab5f-4d7e0b866df3',
+            '06d911df-f865-4e74-8b6b-0c9bd22a2347',
+            '3f97d76c-3f76-43df-85c3-47d9ea705c8b',
+            '07f7108f-5ead-4d71-8736-38a64a7bddc7',
+            '3141223f-9235-4b7b-9005-c948c06c1763',
+            '5ca9d1f4-1743-4278-8cb8-370a5ab8fc5d',
+            'ea3e0232-8f05-4d45-8e25-8a3f125fac41',
+            '89f33f03-707d-4470-9f0e-974560bc7c68',
+            '8cc6f037-d6ad-4bea-80fc-163a73c324ff',
+            '85d3cb2d-4345-42dc-b023-2dadb2eada2a',
+            'bb5391e3-be53-4cf2-b862-d54b70df95cf',
+            '0e612b7f-ef8a-4234-b5c9-3215929c5be5',
+            '53fb3d16-379f-4948-bc1e-2f21928e5131',
+            'c7a0111a-834e-45d6-b870-4f01db8730f6',
+            'f750df57-fc39-4aa1-8ada-8d18a02712df',
+            'e05efcd6-0e03-4426-8c16-a785e41069b4',
+            '258ed9f1-6a15-46af-9ac5-121d907bc35d',
+            'fc53e1c0-1df6-4f1e-a00a-a575e5024727',
+            '45f8ad51-3175-41a9-86ba-dca42767c42e',
+            '936662fe-ae40-4ad3-b88b-faaff07dc2ed',
+            '62ff54f6-6999-4f53-bfa0-f4a6f3a7d1b9',
+            '36518afe-586b-4ad5-93eb-6cb3b6d26de9',
+            '89975e8d-c452-4f42-a7c2-e50781d4a189',
+            '6d7dc4fc-d22d-441d-869b-df0d8b70a297',
+            'f815bfc3-6539-4dac-959b-70d99ec46817',
+            'ac01ace7-4265-432d-9aaa-67ff9fdeca28',
+            'cd6ca5a8-e185-403d-800a-8d4fea57f564',
+            '0381359a-00c3-4681-bab7-2b4a71aa4714',
+            '91b89ef9-f554-4d59-a95b-0db77baefa17',
+            'b2907b96-8d8e-4fd1-838f-ef3ddf27368f',
+            '9a071420-b62e-4f53-addb-074a54da423d',
+            '8776ded3-bc3b-4bad-bfef-516b7e3117e8',
+            'dd3d51d2-f91e-4dd6-840c-7625fc2486c5',
+            '120502a1-3b7e-42de-8aa5-72dd9a12090f',
+            '0b495328-de6b-4214-ace5-9517e2678e24',
+            'd2ac2577-e8f6-4283-8d4d-3aada4b3fbf5',
+            '74619a29-09a4-4fed-9fe6-0bb0d0a4c1ab',
+            'e4f35a50-84ab-4a69-b100-07f1f96d651f',
+            'd1b00432-53fd-4087-9ef0-aeefd1e0545b',
+            '73c845d7-e38a-47cf-88ac-f9ef50da6378',
+            '8a110ac5-b11e-4950-8622-ca3aef6d81bb',
+            '17352432-b105-41f4-a774-96769879eb94',
+            '346008e6-cfd0-44cb-bf96-6a8d6bf10dfd',
+            'c1845d53-f944-4da9-a216-0c2b9ec86f09',
+            '261ade75-3ec4-4cdf-8c45-0d697fe9dd1b',
+            '740c4950-dba3-4f6e-b17e-073c54da52ec',
+            'd5d2448e-294d-494c-b401-e6c75375967e',
+            '9e4ac882-5b23-4924-acb3-653ceeb4663e',
+            '773291d4-2d81-4806-ae51-650f883c90ce',
+            '5028aab4-f624-4ce4-bb4b-e103c9ee82da',
+            'dbbe562c-2e87-421d-832d-a4c3fd5f86f2',
+            'f02526de-cd38-4805-a760-5e118942d24b',
+            '1fe0ea8b-a355-45e5-82d7-707ebf420dfb',
+            '68f2ff2d-a064-4290-b482-25d8e17c1315',
+            '80af9ba0-80bd-4778-8c79-367601acbe48',
+            '705b682d-33c2-4aaf-ae27-31b01c2968f6',
+            '7caebd54-6b82-4e13-8d25-327b55e808d4',
+            'e0018854-368b-415f-a19c-305620434a6c',
+            'aa8b66b5-b93d-4612-b603-18f18f9e305c',
+            '4947d1f8-1241-4913-8583-befb7204fd0e',
+            'aa0baaba-214b-4bf1-a583-e9710c5f5091',
+            'd0707978-94c4-4843-896f-7360b82267f6',
+            '0248feaa-6aa0-4ded-9363-9c4a4b83247d',
+            'ba6f63bd-5e44-45e7-a1ea-b46b0cb2472d',
+            '0e63a077-7df7-4549-b2e0-87aef1329e8b',
+            '81b37d3c-ed07-450e-bcb5-12ff3f1f4d37',
+            'dd404597-98cf-4382-89cc-d8c272507bd0',
+            '9613f229-0f70-4dfa-93bb-927b0e255e81',
+            '77b7d1fc-c5f3-4690-ba82-a44f6b0c6018',
+            'bc3a4e6f-3988-4cbe-ad0c-266ea7f487d4',
+            'f948f49c-5a9e-45ab-b2aa-5309446d658b',
+            '490702b6-fb2a-4345-9d63-70976493c8ea',
+            '5f3bf8f3-e036-4cd8-94bd-13695acbb61b',
+            '4ac6de40-a96a-425b-8d70-745b78c18b02',
+            '243c25ee-4775-487c-8a4e-a55c073872cc',
+            '4fae1f3f-0224-4b4e-ad9f-19b95214b19b',
+]
+
+    for session in sessions:
+        data_provider.load_session_data(session)
+        output = Output()
+        Calculations(data_provider, output).run_project_calculations()
