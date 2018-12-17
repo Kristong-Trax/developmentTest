@@ -555,7 +555,7 @@ class DIAGEOUSToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
         flag = False
         target = 1
-        comp_facings_df = pd.DataFrame()
+        comparison_result = comp_facings_df = pd.DataFrame()
         comp_product_fk = -1
         if self.does_exist(competition[Const.COMP_EAN_CODE]):
             comp_eans = competition[Const.COMP_EAN_CODE].split(', ')
@@ -571,7 +571,7 @@ class DIAGEOUSToolBox:
                 if type(bench_value) in (unicode, str):
                     bench_value = float(bench_value.replace("%", "")) / 100
                 comp_facings_df['target'] = comp_facings_df['facings'] * bench_value
-                comp_facings_df = comp_facings_df.rename(columns={'facings' : 'facings_comp'})
+                comp_facings_df = comp_facings_df.rename(columns={'facings': 'facings_comp'})
                 flag = True
         elif self.does_exist(competition[Const.BENCH_VALUE]):
             target = competition[Const.BENCH_VALUE]
@@ -579,8 +579,9 @@ class DIAGEOUSToolBox:
             Log.warning("Product {} has no target in shelf facings".format(our_eans))
             target = 0
         our_facings_df = self.calculate_shelf_facings_of_sku_per_scene(our_fks, relevant_scenes)
-        if flag:
-            comparison_df = pd.merge(our_facings_df,comp_facings_df, how="left",on='template_name').fillna(0)
+        if flag and not our_facings_df.empty:
+            comparison_df = pd.merge(our_facings_df, comp_facings_df, how="left", on='template_name').fillna(0)
+            comparison_df = comparison_df.iloc[:1]
             comparison_result = comparison_df[(comparison_df['facings'] >= comparison_df['facings_comp']) &
                                                                                     (comparison_df['facings'] > 0)]
             comparison_len = len(comparison_result)
@@ -590,8 +591,11 @@ class DIAGEOUSToolBox:
             else:
                 comparison = 0
         else:
-            comparison_df = comparison_result = our_facings_df.sort_values(by=['template_name'])
-            comparison = 1 if len(comparison_df[comparison_df['facings'] >= target]) else 0
+            if our_facings_df.empty:
+                comparison = 0
+            else:
+                comparison_df = comparison_result = our_facings_df.sort_values(by=['template_name'])
+                comparison = 1 if len(comparison_df[comparison_df['facings'] >= target]) else 0
 
         product_facings_comp = product_facings_ours = 0
         if flag and not comparison_result.empty:
