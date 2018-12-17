@@ -317,7 +317,8 @@ class ToolBox:
                 continue
             result = self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={'allowed_products_filters': Const.ALLOWED_FILTERS,
-                                                                     'include_stacking': False})
+                                                                     'include_stacking': False,
+                                                                     'check_vertical_horizontal': True})
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
