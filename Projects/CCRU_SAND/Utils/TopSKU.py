@@ -1,17 +1,19 @@
 import argparse
-from datetime import timedelta
 import pandas as pd
+import datetime as dt
+
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
 PROJECT = 'ccru_sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'
+TARGETS_SHEET_NAME = 'targets'
 
 
 class CCRU_SANDTopSKUAssortment:
@@ -125,7 +127,7 @@ class CCRU_SANDTopSKUAssortment:
             Log.warning("Store number '{}' is not defined in DB".format(self.STORE_NUMBER))
             return
         start_date = data.pop(self.START_DATE, None).date()
-        start_date_minus_day = start_date - timedelta(1)
+        start_date_minus_day = start_date - dt.timedelta(1)
         end_date = data.pop(self.END_DATE, None).date()
         for key in data.keys():
             validation = False
@@ -191,7 +193,7 @@ class CCRU_SANDTopSKUAssortment:
             if str(col).count('.'):
                 # Log.warning("Duplicate column {} is encountered in the template and removed from loading"
                 #             "".format(col.split('.')[0]))
-                self.duplicate_columns.append(col.split('.')[0])
+                self.duplicate_columns.append(col)
         data = raw_data.drop(self.duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
         products_from_template = data.columns.tolist()
@@ -241,7 +243,7 @@ class CCRU_SANDTopSKUAssortment:
         This function gets the data from the excel file, validates it and returns a valid DataFrame
         :return: A DataFrame with valid products
         """
-        raw_data = pd.read_excel(file_path)
+        raw_data = pd.read_excel(file_path, sheetname=TARGETS_SHEET_NAME)
         raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
