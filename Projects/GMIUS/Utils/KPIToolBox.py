@@ -58,6 +58,7 @@ class ToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.mpip = self.create_mpip()
         self.template = {}
         for sheet in Const.SHEETS:
             try:
@@ -115,12 +116,10 @@ class ToolBox:
         #                     ]:
         #     return
         for i, kpi_line in self.template[kpi_type].iterrows():
-            function(kpi_name, kpi_line, relevant_scif, general_filters)
-                # result, num, den, score, target = function(kpi_line)
-                # if (result is None and score is None and target is None) or not den:
-                #     continue
-                # self.update_parents(kpi_name, score)
-                # self.write_to_db(kpi_name, kpi_type, score, result=result, threshold=target, num=num, den=den)
+            kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+            if (kwargs['result'] is None and kwargs['score'] is None and kwargs['target'] is None):
+                continue
+            self.write_to_db(kpi_name, **kwargs)
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         print('running sos')
@@ -307,7 +306,10 @@ class ToolBox:
             pass
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score = 0
+        orientation = 'Not Blocked'
         for scene in relevant_scif.scene_fk.unique():
+            print(kpi_name, scene)
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
@@ -319,6 +321,17 @@ class ToolBox:
                                                          additional={'allowed_products_filters': Const.ALLOWED_FILTERS,
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': True})
+            blocks = result[result['is_block'] is True]
+
+            if not blocks.empty:
+                score = 1
+                orientation = blocks.loc[0, 'orientation']
+                break
+
+        result_fk = self.result_values_dict[orientation]
+        kwargs = {'numerator_id': result_fk, 'numerator_result': score, 'score': score, 'result': result_fk,
+                  'target': 1}
+        return kwargs
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -335,7 +348,10 @@ class ToolBox:
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
+        cols = set(df.columns)
         for key, val in filters.items():
+            if key not in cols:
+                return pd.DataFrame()
             if not isinstance(val, list):
                 val = [val]
             if exclude:
@@ -493,8 +509,21 @@ class ToolBox:
         query = "SELECT * FROM static.kpi_result_value;"
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
 
+    def create_mpip(self):
+        self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
+                                                   where='''pk in (select distinct p.pk 
+                                                            from probedata.probe p
+                                                            left join probedata.scene s on p.scene_fk = s.pk
+                                                            where s.session_uid = '{}')
+                                                            '''.format(self.session_uid))
+        self.data_provider.add_resource_from_table('prod_img', 'static_new', 'product_image', ['pk', 'image_direction'])
+        mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
+                                                                  left_on='product_image_fk', right_on='pk')
+        return mpip
 
-    def write_to_db(self, kpi_name, kpi_type, score, result=None, threshold=None, num=None, den=None):
+
+    def write_to_db(self, kpi_name, score=0, result=None, threshold=None, num=None, den=None, num_id=999,
+                    den_id=999):
         """
         writes result in the DB
         :param kpi_name: str
@@ -503,60 +532,10 @@ class ToolBox:
         :param result: str
         :param threshold: int
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.get_kpi_name(kpi_name, kpi_type))
-        parent = self.get_parent(kpi_name)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
-                                           numerator_result=num, denominator_result=den,
-                                           identifier_parent=self.common.get_dictionary(parent_name=parent))
-
-    def get_parent(self, kpi_name):
-        try:
-            parent = self.hierarchy[kpi_name]
-        except Exception as e:
-            parent = None
-            Log.warning("Warning, Parent KPI not found in column '{}' on template page '{}'"
-                        .format(Const.KPI_NAME, Const.KPIS))
-        return parent
-
-    def update_parents(self, kpi, score):
-        parent = self.get_parent(kpi)
-        while parent:
-            self.update_sub_score(parent, score=score)
-            parent = self.get_parent(parent)
-
-    def update_sub_score(self, parent, score=0):
-        self.sub_totals[parent] += 1
-        self.sub_scores[parent] += score
-
-
-    # def kpi_parent_result(self, parent, num, den):
-    #     if parent in Const.PARENT_RATIO:
-    #         if den:
-    #             result = round((float(num) / den)*100, 2)
-    #         else:
-    #             result = 0
-    #     else:
-    #         result = num
-    #     return result
-    #
-    # def write_family_tree(self):
-    #     for sub_parent in self.sub_totals.keys():
-    #         # for sub_parent in set(Const.KPI_FAMILY_KEY.values()):
-    #         kpi_type = sub_parent
-    #         if sub_parent != SUB_PROJECT:
-    #             kpi_type = '{} {}'.format(SUB_PROJECT, sub_parent)
-    #         kpi_fk = self.common_db2.get_kpi_fk_by_kpi_type(kpi_type)
-    #         num = self.sub_scores[sub_parent]
-    #         den = self.sub_totals[sub_parent]
-    #         result, score = self.ratio_score(num, den, 1)
-    #         self.common_db2.write_to_db_result(fk=kpi_fk, numerator_result=num, numerator_id=Const.MANUFACTURER_FK,
-    #                                            denominator_id=self.store_id,
-    #                                            denominator_result=den, result=result, score=num, target=den,
-    #                                            identifier_result=self.common_db2.get_dictionary(
-    #                                                parent_name=sub_parent),
-    #                                            identifier_parent=self.common_db2.get_dictionary(
-    #                                                parent_name=self.get_parent(sub_parent)),
-    #                                            should_enter=True)
+                                       numerator_result=num, denominator_result=den, numerator_id=num_id,
+                                       denominator_id=den_id)
 
 
     def gen_html(self, scene, components, adj_g, mpis):
