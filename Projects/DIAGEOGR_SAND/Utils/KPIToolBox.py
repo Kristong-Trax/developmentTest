@@ -14,6 +14,7 @@ from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
+from KPIUtils_v2.Calculations.MenuCalculations import Menu
 
 __author__ = 'Nimrod'
 
@@ -72,6 +73,19 @@ class DIAGEOGRSANDToolBox:
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
+    def main_menu_calculation(self):
+        menu = Menu(data_provider=self.data_provider)
+        menus_dict_product = menu.get_dfs_dict_of_menus_product_level()[0]
+        menus_dict_brand = menu.get_dfs_dict_of_menus_brand_level()[0]
+        menus_dict_sub_cat = menu.get_dfs_dict_of_menus_sub_cat_level()[0]
+        menus_dict_manufacturer = menu.get_dfs_dict_of_menus_manufacturer_level()[0]
+        cocktails_dict = menu.get_dfs_dict_of_cocktails()[0]
+        menus_dict_product.to_csv("{} menu products".format(self.session_uid))
+        menus_dict_brand.to_csv("{} menu brands".format(self.session_uid))
+        menus_dict_sub_cat.to_csv("{} menu sub categories".format(self.session_uid))
+        menus_dict_manufacturer.to_csv("{} menu manufacturers".format(self.session_uid))
+        cocktails_dict.to_csv("{} cocktail manufacturers".format(self.session_uid))
+
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
@@ -97,6 +111,7 @@ class DIAGEOGRSANDToolBox:
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        self.main_menu_calculation()
 
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
@@ -136,7 +151,6 @@ class DIAGEOGRSANDToolBox:
 
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-
         # committing to new tables
         self.commonV2.commit_results_data()
         return
