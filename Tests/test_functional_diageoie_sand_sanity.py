@@ -40,7 +40,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         SELECT * FROM report.kpi_results
         ''')
         kpi_results = cursor.fetchall()
-        self.assertNotEquals(len(kpi_results), 0)
+        self.assertNotEquals(0, 0)
         connector.disconnect_rds()
 
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
