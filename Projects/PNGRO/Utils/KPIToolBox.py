@@ -246,14 +246,14 @@ class PNGRO_PRODToolBox:
                     elif kpi_type == self.SOS:
                         score, result, threshold = self.calculate_sos_linear_ign_stack(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
-                        score = self.calculate_relative_position(params, **general_filters)
+                        score, result, threshold = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
                         # self.rds_conn.connect_rds() # for debugging
-                        score = self.calculate_availability(params, **general_filters)
+                        score, result, threshold = self.calculate_availability(params, **general_filters)
                     elif kpi_type == self.SHELF_POSITION:
-                        score = self.calculate_shelf_position(params, **general_filters)
+                        score, result, threshold = self.calculate_shelf_position(params, **general_filters)
                     elif kpi_type == self.SURVEY:
-                        score = self.calculate_survey(params)
+                        score, result, threshold = self.calculate_survey(params)
 
                     elif kpi_type == self.SOS_FACING:
                         score, result, threshold = self.calculate_sos_facings(params, **general_filters)
@@ -540,7 +540,7 @@ class PNGRO_PRODToolBox:
         target_answers = params['Param (2) Values'].split(',')
         survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
         score = 1 if survey_answer in target_answers else 0
-        return score
+        return score, score, 1
 
     def calculate_sos_facings(self, params, **general_filters):
         numerator_filters, denominator_filters, target = self.get_sos_filters(params)
@@ -610,7 +610,7 @@ class PNGRO_PRODToolBox:
                                                     block_of_blocks=True, block_products1=block_products1,
                                                     block_products2=block_products2,
                                                     **dict(filters, **general_filters))
-        return score
+        return score, score, 1
 
     def calculate_availability(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -622,8 +622,8 @@ class PNGRO_PRODToolBox:
         for value in map(unicode.strip, params['Param (1) Values'].split(',')):
             filters = {type1: value, type2: value2, type3: value3}
             if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0:
-                return True
-        return False
+                return True, True, True
+        return False, False, True
 
     def calculate_shelf_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -648,9 +648,9 @@ class PNGRO_PRODToolBox:
             'shelf_number'].unique()
         score = len(set(shelf_list) - set(target))
         if score > 0:
-            return False
+            return False, False, True
         else:
-            return True
+            return True, True, True
 
     @staticmethod
     def split_and_strip(string):
