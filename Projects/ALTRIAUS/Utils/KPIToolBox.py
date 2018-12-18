@@ -26,11 +26,12 @@ __author__ = 'nicolaske'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-CATEGORIES = ['Cigarettes', 'Vapor', 'Cigars','Smokeless']
-KPI_LEVEL_2_cat_space = [ 'Category Space - Cigarettes', 'Category Space - Vapor',
-                              'Category Space - Smokeless', 'Category Space - Cigars']
+CATEGORIES = ['Cigarettes', 'Vapor', 'Cigars', 'Smokeless']
+KPI_LEVEL_2_cat_space = ['Category Space - Cigarettes', 'Category Space - Vapor',
+                         'Category Space - Smokeless', 'Category Space - Cigars']
 MM_TO_FEET_CONVERSION = 0.0032808399
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_ALTRIA_V1.xlsx')
+
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -46,8 +47,6 @@ def log_runtime(description, log_start=False):
         return wrapper
 
     return decorator
-
-
 
 
 class ALTRIAUSToolBox:
@@ -85,8 +84,7 @@ class ALTRIAUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-
-
+        self.kpi_new_static_data = self.common.get_new_kpi_static_data()
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -95,7 +93,7 @@ class ALTRIAUSToolBox:
 
         kpi_set_fk = 2
         set_name = \
-        self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+            self.kpi_static_data.loc[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
         template_data = self.all_template_data.loc[self.all_template_data['KPI Level 1 Name'] == set_name]
 
         try:
@@ -116,15 +114,17 @@ class ALTRIAUSToolBox:
                     if row['Param1'] == 'Category' or 'sub_category':
                         category = row['Value1']
 
-                        if kpi_type == 'category space':
-                            self.calculate_category_space(kpi_set_fk, kpi_name,  category)
+                        if kpi_type == 'category_space':
+                            kpi_set_fk = \
+                            self.kpi_new_static_data.loc[self.kpi_new_static_data['type'] == kpi_type]['pk'].values[0]
+                            self.calculate_category_space(kpi_set_fk, kpi_name, category)
 
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
         return
 
-    def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types = None):
+    def calculate_category_space(self, kpi_set_fk, kpi_name, category, scene_types=None):
         template = self.all_template_data.loc[(self.all_template_data['KPI Level 2 Name'] == kpi_name) &
                                               (self.all_template_data['Value1'] == category)]
         kpi_template = template.loc[template['KPI Level 2 Name'] == kpi_name]
@@ -139,12 +139,9 @@ class ALTRIAUSToolBox:
         if kpi_template['Value1'] in CATEGORIES:
             category_att = 'category'
 
-
         if kpi_template['Value1']:
             values_to_check = self.all_products.loc[self.all_products[category_att] == kpi_template['Value1']][
                 category_att].unique().tolist()
-
-
 
         for primary_filter in values_to_check:
             filters[kpi_template['Param1']] = primary_filter
@@ -159,8 +156,13 @@ class ALTRIAUSToolBox:
                     result = self.calculate_category_space_length(new_kpi_name,
                                                                   **filters)
                     filters['category'] = kpi_template['KPI Level 2 Name']
-                    score = result * self.MM_TO_FEET_CONVERSION
-                    self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
+                    # score = result * self.MM_TO_FEET_CONVERSION
+                    score = result
+
+                    numerator_id = \
+                        self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
+
+                    self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
             else:
                 new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
 
@@ -169,7 +171,8 @@ class ALTRIAUSToolBox:
                 filters['Category'] = kpi_template['KPI Level 2 Name']
                 # score = result * self.MM_TO_FEET_CONVERSION
                 score = result
-                self.write_to_db_result(kpi_set_fk, score, self.LEVEL3, kpi_name=new_kpi_name, score=score)
+                numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
+                self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
         """
@@ -188,27 +191,38 @@ class ALTRIAUSToolBox:
                 scene_filters = filters
                 scene_filters['scene_fk'] = scene
                 for bay in scene_matches['bay_number'].unique().tolist():
+                    # shelf_length = 0
                     bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1) &
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
+                    scene_matches['category'] = ''
+
+                    for i, row in scene_matches.iterrows():
+                        product_fk = scene_matches['product_fk'].iloc[i]
+                        scene_matches['category'].iloc[i] = \
+                            self.products['category'][self.products['product_fk'] == product_fk].iloc[0]
+
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
 
                     tested_group_linear_value = tested_group_linear['width_mm_advance'].sum()
 
                     if tested_group_linear_value:
-                        bay_ratio = bay_total_linear / float(tested_group_linear_value)
+                        bay_ratio = tested_group_linear_value / float(bay_total_linear)
                     else:
                         bay_ratio = 0
+
                     if bay_ratio >= threshold:
-                         category = filters['Category']
-                         max_facing = scene_matches.loc[(scene_matches['bay_number'] == bay) &
-                                                       (scene_matches['stacking_layer'] == 1)]['facing_sequence_number'].max()
-                         shelf_length = self.spacing_template_data.query('Category == "' + category+
-                                      '" & Low <= "' + str(max_facing)  + '" & High >= "' + str(max_facing) + '"' )
-                         shelf_length = int(shelf_length['Size'].iloc[-1])
-                         bay_values.append(shelf_length)
-                         space_length += shelf_length
+                        category = filters['category']
+                        max_facing = scene_matches.loc[(scene_matches['bay_number'] == bay) &
+                                                       (scene_matches['stacking_layer'] == 1)][
+                            'facing_sequence_number'].max()
+                        shelf_length = self.spacing_template_data.query('Category == "' + category +
+                                                                        '" & Low <= "' + str(
+                            max_facing) + '" & High >= "' + str(max_facing) + '"')
+                        shelf_length = int(shelf_length['Size'].iloc[-1])
+                        bay_values.append(shelf_length)
+                        space_length += shelf_length
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
             space_length = 0
@@ -292,53 +306,51 @@ class ALTRIAUSToolBox:
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
 
-
     def create_attributes_dict(self, kpi_set_fk, result, level, score=None, threshold=None, kpi_name=None, kpi_fk=None):
-            """
-            This function creates a data frame with all attributes needed for saving in KPI results tables.
+        """
+        This function creates a data frame with all attributes needed for saving in KPI results tables.
 
-            """
-            if level == self.LEVEL1:
-                kpi_set_name = \
-                    self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-                # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                #                             format(result, '.2f'), score_type, fk)],
-                #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                #                                    'score_2', 'kpi_set_fk'])
-                attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                            result, kpi_set_fk,)],
-                                          columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                                   'kpi_set_fk'])
-            elif level == self.LEVEL2:
-                kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_fk]['kpi_name'].values[0].replace("'",
-                                                                                                                        "\\'")
-                attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                            kpi_fk, kpi_name, result)],
-                                          columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-            elif level == self.LEVEL3:
-                kpi_set_name = \
-                    self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-                try:
-                    atomic_kpi_fk = \
-                        self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
-                    kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == atomic_kpi_fk]['kpi_fk'].values[
-                        0]
-                except Exception as e:
-                    atomic_kpi_fk = None
-                    kpi_fk = None
-                kpi_name = kpi_name.replace("'", "\\'")
-                attributes = pd.DataFrame([(kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                            self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
-                                            result, kpi_fk, atomic_kpi_fk, threshold, score)],
-                                          columns=['display_text', 'session_uid', 'kps_name', 'store_fk',
-                                                   'visit_date',
-                                                   'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk',
-                                                   'threshold',
-                                                   'score'])
-            else:
-                attributes = pd.DataFrame()
-            return attributes.to_dict()
-
+        """
+        if level == self.LEVEL1:
+            kpi_set_name = \
+                self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
+            #                             format(result, '.2f'), score_type, fk)],
+            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
+            #                                    'score_2', 'kpi_set_fk'])
+            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        result, kpi_set_fk,)],
+                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
+                                               'kpi_set_fk'])
+        elif level == self.LEVEL2:
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_fk]['kpi_name'].values[0].replace("'",
+                                                                                                                    "\\'")
+            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        kpi_fk, kpi_name, result)],
+                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
+        elif level == self.LEVEL3:
+            kpi_set_name = \
+                self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
+            try:
+                atomic_kpi_fk = \
+                    self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == atomic_kpi_fk]['kpi_fk'].values[
+                    0]
+            except Exception as e:
+                atomic_kpi_fk = None
+                kpi_fk = None
+            kpi_name = kpi_name.replace("'", "\\'")
+            attributes = pd.DataFrame([(kpi_name, self.session_uid, kpi_set_name, self.store_id,
+                                        self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
+                                        result, kpi_fk, atomic_kpi_fk, threshold, score)],
+                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk',
+                                               'visit_date',
+                                               'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk',
+                                               'threshold',
+                                               'score'])
+        else:
+            attributes = pd.DataFrame()
+        return attributes.to_dict()
 
     @log_runtime('Saving to DB')
     def commit_results_data(self):
@@ -389,3 +401,6 @@ class ALTRIAUSToolBox:
         return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
                 "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
+
+    def commit(self):
+        self.common.commit_results_data_to_new_tables()
