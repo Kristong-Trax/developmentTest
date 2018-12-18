@@ -483,8 +483,7 @@ class CCBZA_ToolBox:
     def get_template_path(self):
         new = '' if str(self.data_provider.visit_date) < '2018-11-01' else '_November'
         store_type = self.store_data['store_type'].values[0]
-        # template_name = 'Template_{}{}.xlsx'.format(store_type, new)
-        template_name = 'TestTemplate_{}{}.xlsx'.format(store_type, new) #for debug
+        template_name = 'Template_{}{}.xlsx'.format(store_type, new)
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
 
     def get_template_data(self):
