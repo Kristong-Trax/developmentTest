@@ -1,9 +1,9 @@
 import pandas as pd
 
 from Projects.RINIELSENUS.Utils.Const import SET_CATEGORIES, FILTER_NAMING_DICT, \
-    SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET_2018, SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, \
-    SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018, CAT_TREATS_2018, CAT_MAIN_MEAL_DRY_2018, \
-    CAT_MAIN_MEAL_WET_2018, DOG_MAIN_MEAL_DRY_2018, DOG_TREATS_2018, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
+    SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET, SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, \
+    SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018, CAT_TREATS, CAT_MAIN_MEAL_DRY, \
+    CAT_MAIN_MEAL_WET, DOG_MAIN_MEAL_DRY, DOG_TREATS, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
     SPT_CHANNELS
 
 from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
@@ -24,7 +24,7 @@ class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
         self.project_name = self._data_provider.project_name
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.ReadOnly)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
         self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
         self._template = ParseMarsUsTemplates()
@@ -137,12 +137,12 @@ class MarsUsDogMainMealWet(object):
     @staticmethod
     def _get_set_names():
         return [
-            DOG_MAIN_MEAL_DRY_2018,
-            DOG_MAIN_MEAL_WET_2018,
-            CAT_TREATS_2018,
-            CAT_MAIN_MEAL_DRY_2018,
-            CAT_MAIN_MEAL_WET_2018,
-            DOG_TREATS_2018
+            DOG_MAIN_MEAL_DRY,
+            DOG_MAIN_MEAL_WET,
+            CAT_TREATS,
+            CAT_MAIN_MEAL_DRY,
+            CAT_MAIN_MEAL_WET,
+            DOG_TREATS
         ]
 
     @staticmethod

@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 
@@ -26,6 +25,7 @@ ANCHOR_VALUE = 'Anchor Product Name'
 TESTED_TYPE = 'Tested Type'
 ANCHOR_TYPE = 'Anchor Type'
 
+
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -36,7 +36,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -78,8 +80,6 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
                                    match_display_in_scene=self.match_display_in_scene)  # replace the old one
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
-
-
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
@@ -105,8 +105,7 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
         log_runtime('Updating templates')(self.tools.update_templates)()
 
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
@@ -142,7 +141,8 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
 
             elif set_name in ('Relative Position'):
                 # Global function
-                res_dict = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name])
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(
+                    self.set_templates_data[set_name], location_type='template_display_name')
 
                 if res_dict:
                     # Saving to new tables
@@ -173,11 +173,15 @@ class PENAFLORAR_SANDDIAGEOARToolBox:
                 tested_filters = {params.get(TESTED_TYPE): params.get(TESTED_VALUE)}
                 anchor_filters = {params.get(ANCHOR_TYPE): params.get(ANCHOR_VALUE)}
                 direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
-                                  'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
-                                  'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
-                                  'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
-                general_filters = {'template_name': params.get(self.tools.LOCATION)}
-                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
+                                  'bottom': self._get_direction_for_relative_position(
+                                      params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(
+                                      params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(
+                                      params.get(self.tools.RIGHT_DISTANCE))}
+                general_filters = {'template_display_name': params.get(self.tools.LOCATION)}
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                                **general_filters)
                 score = 1 if result else 0
                 scores.append(score)
 

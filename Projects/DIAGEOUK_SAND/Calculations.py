@@ -18,7 +18,7 @@ class DIAGEOUK_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('diageoau calculations')
+#     LoggerInitializer.init('diageouk calculations')
 #     Config.init()
 #     project_name = 'diageouk-sand'
 #     data_provider = KEngineDataProvider(project_name)
