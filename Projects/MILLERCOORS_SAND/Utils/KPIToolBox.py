@@ -2,7 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
 
@@ -116,28 +116,38 @@ class MILLERCOORSToolBox:
                                                           numerator_id=999, numerator_result=int(passed_scenes > 0),
                                                           result=int(passed_scenes > 0), denominator_id=template_fk,
                                                           denominator_result=1)
-        self.common.save_json_to_new_tables(result_dict)
+        self.common.write_to_db_result(**result_dict)
 
         return
 
     def calculate_block(self, kpi_line, relevant_scif):
-        filters = {
-            kpi_line[Const.PARAM]: kpi_line[Const.VALUE],
-            'template_name': kpi_line[Const.STORE_LOCATION]
-        }
-        result = self.block.calculate_block_together(self, allowed_products_filters=None, include_empty=True,
-                                                   minimum_block_ratio=0.75, result_by_scene=False,
-                                                   block_of_blocks=False,
-                                                   block_products1=None, block_products2=None, vertical=False,
-                                                   biggest_block=False,
-                                                   n_cluster=None, min_facings_in_block=2, **filters)
+        kpi_result = 0
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            location_filter = {'scene_id': scene}
+            mpis = self.filter_df(self.mpis, scene_filter)
+            # allowed = {'product_type': ['Other', 'Empty']}
+            filters = {kpi_line[Const.PARAM]: kpi_line[Const.VALUE]}
+            items = set(self.filter_df(mpis, filters)['scene_match_fk'].values)
+            additional = {'minimum_facing_for_block': 2}
+            # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
+            if not (items):
+                break
+
+            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
+
+            passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
+
+            if passed_blocks:
+                kpi_result = 1
+                break
 
         template_fk = relevant_scif['template_fk'].values[0]
         result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
-                                                          numerator_id=999, numerator_result=result,
-                                                          result=result, denominator_id=template_fk,
+                                                          numerator_id=999, numerator_result=kpi_result,
+                                                          result=kpi_result, denominator_id=template_fk,
                                                           denominator_result=1)
-        self.common.save_json_to_new_tables(result_dict)
+        self.common.write_to_db_result(**result_dict)
 
         return
 
@@ -153,7 +163,7 @@ class MILLERCOORSToolBox:
             # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             # items.update(allowed_items)
             if not (items):
-                return
+                break
 
             all_graph = AdjacencyGraph(mpis, None, self.products,
                                        product_attributes=['rect_x', 'rect_y'],
@@ -173,16 +183,23 @@ class MILLERCOORSToolBox:
                     if kpi_line[Const.LIST_ATTRIBUTE] == 'brand_name':
                         numerator_fk = adj_mpis[adj_mpis['brand_name'] == value].brand_fk.values[0]
                     else:
-                        numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                        if value is not None:
+                            try:
+                                numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                            except IndexError:
+                                Log.warning('Custom entity "{}" does not exist'.format(value))
+                                continue
+                        else:
+                            continue
 
                     result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
                                                                       numerator_id=numerator_fk, numerator_result=1,
                                                                       result=1, denominator_id=scene,
                                                                       denominator_result=1)
-                    self.common.save_json_to_new_tables(result_dict)
+                    self.common.write_to_db_result(**result_dict)
                 return
             else:
-                if kpi_line[Const.TESTED_VALUE] in adj_mpis[Const.TESTED_PARAM].unique().tolist():
+                if kpi_line[Const.TESTED_VALUE] in adj_mpis[kpi_line[Const.TESTED_PARAM]].unique().tolist():
                     kpi_result = 1
                     break
 
@@ -191,7 +208,7 @@ class MILLERCOORSToolBox:
                                                           numerator_id=999, numerator_result=kpi_result,
                                                           result=kpi_result, denominator_id=template_fk,
                                                           denominator_result=1)
-        self.common.save_json_to_new_tables(result_dict)
+        self.common.write_to_db_result(**result_dict)
 
     def calculate_block_adjacency(self, kpi_line, relevant_scif):
         kpi_result = 0
@@ -208,11 +225,12 @@ class MILLERCOORSToolBox:
                 filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE],
                            kpi_line[Const.TESTED_PARAM]: kpi_line[Const.TESTED_VALUE]}
             items = set(self.filter_df(mpis, filters)['scene_match_fk'].values)
+            additional = {'minimum_facing_for_block': 2}
             # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             if not (items):
-                return
+                break
 
-            block_result = self.block.network_x_block_together(filters, location=location_filter)
+            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
 
             passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
 
@@ -237,24 +255,32 @@ class MILLERCOORSToolBox:
                     if kpi_line[Const.LIST_ATTRIBUTE] == 'brand_name':
                         numerator_fk = adj_mpis[adj_mpis['brand_name'] == value].brand_fk.values[0]
                     else:
-                        numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                        if value is not None:
+                            try:
+                                numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                            except IndexError:
+                                Log.warning('Custom entity "{}" does not exist'.format(value))
+                                continue
+                        else:
+                            continue
 
                     result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
                                                                       numerator_id=numerator_fk, numerator_result=1,
                                                                       result=1, denominator_id=scene,
                                                                       denominator_result=1)
-                    self.common.save_json_to_new_tables(result_dict)
+                    self.common.write_to_db_result(**result_dict)
                 return
-
-            if passed_blocks:
+            elif kpi_line[Const.LIST_ATTRIBUTE]:  # return if this is a list_attribute KPI with no passing blocks
+                return
+            if passed_blocks:  # exit loop if this isn't a list_attribute KPI, but has passing blocks
                 kpi_result = 1
                 break
         template_fk = relevant_scif['template_fk'].values[0]
         result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
                                                           numerator_id=999, numerator_result=kpi_result,
-                                                          result=1, denominator_id=template_fk,
+                                                          result=kpi_result, denominator_id=template_fk,
                                                           denominator_result=1)
-        self.common.save_json_to_new_tables(result_dict)
+        self.common.write_to_db_result(**result_dict)
         return
 
 
@@ -270,8 +296,8 @@ class MILLERCOORSToolBox:
             return 0, 0
         number_of_edge_scenes = 0
         for scene in relevant_scenes:
-            edge_facings = pd.DataFrame(columns=self.match_product_in_scene.columns)
-            matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+            edge_facings = pd.DataFrame(columns=self.mpis.columns)
+            matches = self.mpis[self.mpis['scene_fk'] == scene]
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
