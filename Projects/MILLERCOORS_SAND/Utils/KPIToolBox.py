@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -29,7 +28,8 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Miller Coors KPI Template_v1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                             'Miller Coors KPI Template_v1.xlsx')
 
 
 class MILLERCOORSToolBox:
@@ -59,9 +59,9 @@ class MILLERCOORSToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
-                                               .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
-                                               .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
+        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.custom_entity_data = self.get_custom_entity_data()
         self.kpi_static_data = self.common.get_kpi_static_data()
@@ -91,10 +91,13 @@ class MILLERCOORSToolBox:
             scene_types = self.does_exist(main_line, Const.STORE_LOCATION)
             if scene_types:
                 relevant_scif = self.scif[self.scif['template_name'].isin(scene_types)]
+                if relevant_scif.empty:
+                    continue
 
             relevant_template = self.templates[kpi_type]
             relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-            relevant_template = relevant_template.merge(main_template, how='left', left_on=Const.KPI_NAME, right_on=Const.KPI_NAME)
+            relevant_template = relevant_template.merge(main_template, how='left', left_on=Const.KPI_NAME,
+                                                        right_on=Const.KPI_NAME)
             kpi_function = self.get_kpi_function(kpi_type)
             for idx, kpi_line in relevant_template.iterrows():
                 kpi_function(kpi_line, relevant_scif)
@@ -176,7 +179,7 @@ class MILLERCOORSToolBox:
                      for item in items], []))
             adjacent_items = edge_matches - items
             adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items)) &
-                            (~mpis['product_type'].isin(['Empty', 'Irrelevant', 'Other']))]
+                            (~mpis['product_type'].isin(['Empty', 'Irrelevant', 'Other', 'POS']))]
 
             if kpi_line[Const.LIST_ATTRIBUTE]:
                 for value in adj_mpis[kpi_line[Const.LIST_ATTRIBUTE]].unique().tolist():
@@ -185,7 +188,8 @@ class MILLERCOORSToolBox:
                     else:
                         if value is not None:
                             try:
-                                numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                                numerator_fk = \
+                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
                             except IndexError:
                                 Log.warning('Custom entity "{}" does not exist'.format(value))
                                 continue
@@ -203,6 +207,8 @@ class MILLERCOORSToolBox:
                     kpi_result = 1
                     break
 
+        if kpi_line[Const.LIST_ATTRIBUTE]:  # handle cases where there are no relevant products,
+            return                          # so we miss the other check above
         template_fk = relevant_scif['template_fk'].values[0]
         result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
                                                           numerator_id=999, numerator_result=kpi_result,
@@ -235,13 +241,15 @@ class MILLERCOORSToolBox:
             passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
 
             if passed_blocks and kpi_line[Const.LIST_ATTRIBUTE]:
-                match_fk_list = set(match for cluster in passed_blocks for match in cluster.node[0]['group_attributes']['match_fk_list'])
+                match_fk_list = set(match for cluster in passed_blocks for node in cluster.nodes() for match in
+                                    cluster.node[node]['group_attributes']['match_fk_list'])
 
                 all_graph = AdjacencyGraph(mpis, None, self.products,
                                            product_attributes=['rect_x', 'rect_y'],
                                            name=None, adjacency_overlap_ratio=.4)
                 # associate all nodes in the master graph to their associated match_fks
-                match_to_node = {int(node['match_fk']): i for i, node in all_graph.base_adjacency_graph.nodes(data=True)}
+                match_to_node = {int(node['match_fk']): i for i, node in
+                                 all_graph.base_adjacency_graph.nodes(data=True)}
                 # create a dict of all match_fks to their corresponding nodes
                 node_to_match = {val: key for key, val in match_to_node.items()}
                 edge_matches = set(
@@ -249,7 +257,7 @@ class MILLERCOORSToolBox:
                          for match in match_fk_list], []))
                 adjacent_matches = edge_matches - match_fk_list
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_matches)) &
-                                (~mpis['product_type'].isin(['Empty', 'Irrelevant', 'Other']))]
+                                (~mpis['product_type'].isin(['Empty', 'Irrelevant', 'Other', 'POS']))]
 
                 for value in adj_mpis[kpi_line[Const.LIST_ATTRIBUTE]].unique().tolist():
                     if kpi_line[Const.LIST_ATTRIBUTE] == 'brand_name':
@@ -257,7 +265,8 @@ class MILLERCOORSToolBox:
                     else:
                         if value is not None:
                             try:
-                                numerator_fk = self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                                numerator_fk = \
+                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
                             except IndexError:
                                 Log.warning('Custom entity "{}" does not exist'.format(value))
                                 continue
@@ -275,6 +284,8 @@ class MILLERCOORSToolBox:
             if passed_blocks:  # exit loop if this isn't a list_attribute KPI, but has passing blocks
                 kpi_result = 1
                 break
+        if kpi_line[Const.LIST_ATTRIBUTE]:  # handle cases where there are no relevant products,
+            return                          # so we miss the other check above
         template_fk = relevant_scif['template_fk'].values[0]
         result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
                                                           numerator_id=999, numerator_result=kpi_result,
@@ -282,7 +293,6 @@ class MILLERCOORSToolBox:
                                                           denominator_result=1)
         self.common.write_to_db_result(**result_dict)
         return
-
 
     def calculate_products_on_edge(self, min_number_of_facings=1, min_number_of_shelves=1, **filters):
         """
@@ -413,11 +423,11 @@ class MILLERCOORSToolBox:
         return None
 
     def build_dictionary_for_db_insert(self, fk=None, kpi_name=None, numerator_id=0, numerator_result=0, result=0,
-                                          denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
-                                          denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                          weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None,
-                                          target=None,
-                                          identifier_parent=None, identifier_result=None):
+                                       denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
+                                       denominator_result_after_actions=None, numerator_result_after_actions=0,
+                                       weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None,
+                                       target=None,
+                                       identifier_parent=None, identifier_result=None):
         try:
             insert_params = dict()
             if not fk:
