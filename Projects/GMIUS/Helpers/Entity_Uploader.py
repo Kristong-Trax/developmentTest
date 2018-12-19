@@ -132,4 +132,5 @@ class EntityUploader():
 
 
 
+EntityUploader('project_name', '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
 

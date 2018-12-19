@@ -106,7 +106,7 @@ class ToolBox:
         #     return
         # if kpi_name != 'Aggregation':
         #     return
-        if kpi_type != 'Blocking':
+        if kpi_type != 'Base Measure':
             return
         # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
         #                     'How is RTS Progresso blocked?',
@@ -117,7 +117,7 @@ class ToolBox:
         #     return
         for i, kpi_line in self.template[kpi_type].iterrows():
             kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            if (kwargs['result'] is None and kwargs['score'] is None and kwargs['target'] is None):
+            if kwargs['score'] is None:
                 continue
             self.write_to_db(kpi_name, **kwargs)
 
@@ -333,6 +333,19 @@ class ToolBox:
                   'target': 1}
         return kwargs
 
+    def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        scif = self.filter_df(relevant_scif, filters)
+        if scif.empty:
+            return {"score": None}
+        for scene in scif.scene_fk.unique():
+            print(kpi_name, scene)
+            scene_filter = {'scene_fk': scene}
+            scif = self.filter_df(relevant_scif, scene_filter)
+
+
+
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
@@ -501,6 +514,8 @@ class ToolBox:
             return self.calculate_stocking_location
         elif kpi_type == Const.BLOCKING:
             return self.calculate_block
+        elif kpi_type == Const.BASE_MEASURE:
+            return self.calculate_base_measure()
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
