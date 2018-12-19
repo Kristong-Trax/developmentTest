@@ -25,9 +25,15 @@ class ResultUploader():
         max_len = self.result_value_attribs.loc[self.result_value_attribs['Field'] == 'value', 'Type'].values[0]\
                                                                                                       .split('(')[1]\
                                                                                                       .split(')')[0]
-        missing = self.template_results - set(self.sql_results['value'])
+        missing = set(self.template_results) - set(self.sql_results['value'])
+        missing = list(self.template_results)
+        for val in self.sql_results['value']:
+            try:
+                missing.remove(val)
+            except:
+                pass
         len_errors = []
-        if len(missing) > 1:
+        if len(missing) > 0:
             if self.PS_TYPE not in self.sql_types['name'].values:
                 self.insert_into_types()
             else:
@@ -58,8 +64,8 @@ class ResultUploader():
     def load_template_results(self, template_path):
         df = pd.read_excel(template_path, Const.RESULT)
         df = df[df['Entity'] == 'Y']
-        data = set(sum([[item.strip() for item in row['Results Value'].split(row['Delimiter'])]
-                        for i, row in df.iterrows()], []))
+        data = sum([[item.strip() for item in row['Results Value'].split(row['Delimiter'])]
+                        for i, row in df.iterrows()], [])
         return data
 
     def load_sql_results(self):

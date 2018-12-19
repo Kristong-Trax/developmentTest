@@ -60,6 +60,7 @@ class Const(object):
     NO_CONNECTION = 'Not In The Same Aisle'
     SOS_EXCLUDE_FILTERS = {'product_type': ['Irrelevant', 'Empty']}
     ALLOWED_FILTERS = {'product_type': ['Other', 'Empty']}
+    IGN_STACKING = {"stacking_layer": 1}
     SOS_COLUMN_DICT = {
                         'SOS': 'facings_ign_stack',
                         'Linear SOS': 'net_len_ign_stack',

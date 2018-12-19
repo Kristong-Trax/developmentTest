@@ -11,7 +11,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gmius'
     # ru = ResultUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
-    # ru = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
+    ru = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
     sessions = [
                 'ab70f0f1-7ea1-4e76-a21e-45b45809d301',
                 '039907ec-6e6f-4d41-b1a1-595152e21225',

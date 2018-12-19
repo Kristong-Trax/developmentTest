@@ -68,6 +68,7 @@ class ToolBox:
         # self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
         # self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
         #                                                       (~self.template[Const.KPIS][Const.TYPE].isnull())]
+        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         self.dependency_reorder()
 
@@ -106,7 +107,7 @@ class ToolBox:
         #     return
         # if kpi_name != 'Aggregation':
         #     return
-        if kpi_type != 'Base Measure':
+        if kpi_type != 'Blocking':
             return
         # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
         #                     'How is RTS Progresso blocked?',
@@ -336,20 +337,50 @@ class ToolBox:
     def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
-        scif = self.filter_df(relevant_scif, filters)
-        if scif.empty:
+        filters.update(Const.IGN_STACKING)
+        mpis = self.filter_df(self.mpis, filters)
+        master_mpis = self.mpis.copy()
+        mm_sum = 0
+        if mpis.empty:
             return {"score": None}
-        for scene in scif.scene_fk.unique():
+        for scene in mpis.scene_fk.unique():
             print(kpi_name, scene)
-            scene_filter = {'scene_fk': scene}
-            scif = self.filter_df(relevant_scif, scene_filter)
+            smpis = self.filter_df(mpis, {'scene_fk': scene})
+            master_smpis = self.filter_df(master_mpis, {'scene_fk': scene})
+
+            for bay in smpis['bay_number'].unique().tolist():
+                bmpis = self.filter_df(smpis, {'bay_number': bay})
+                master_bmpis = self.filter_df(master_smpis, {'bay_number': bay})
+                num_shelves = len(master_bmpis['shelf_number'].unique().tolist())
+                linear_mm = bmpis['width_mm_advance'].sum()
+                mm_sum += linear_mm / num_shelves
+        ft_sum = mm_sum / Const.MM_TO_FT
+        potential_results = self.get_results_value(kpi_line)
+        cleaned_results = [(i, x.replace('Feet', '').replace('and', 'ft_sum').replace('>', '<').strip())
+                           for i, x in enumerate(potential_results)
+                           if '>' in x and '<=' in x]
+        result = None
+        for i, res in cleaned_results:
+            if eval(res):
+                result = potential_results[i]
+                break
+        if not result:
+            if ft_sum <= int(cleaned_results[0][1].split(' ')[0]):
+                result = cleaned_results[0]
+            else:
+                result = cleaned_results[-1]
+
+        result_fk = self.result_values_dict[result]
+        pass
 
 
+    def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        pass
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
-        relevant_filter = {'Segment': 'BISCUIT DOUGH'}
+        relevant_filter = {'Segment': 'Greek Yogurt'}
         allowed_filter = {'product_type': ['Empty', 'Other']}
         scene_filter = {'scene_fk': 78}
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
@@ -418,6 +449,10 @@ class ToolBox:
 
         return val
 
+    def get_results_value(self, kpi_line):
+        return self.splitter(self.res_dict[kpi_line[Const.RESULT]]['Results Value'],
+                             self.res_dict[kpi_line[Const.RESULT]]['Delimiter'])
+
     def get_kpi_line_filters(self, kpi_orig, name=''):
         kpi_line = kpi_orig.copy()
         if name:
@@ -438,8 +473,8 @@ class ToolBox:
     @staticmethod
     def splitter(text_str, delimiter=','):
         ret = [text_str]
-        if hasattr(ret, 'split'):
-            ret = ret.split(delimiter)
+        if hasattr(text_str, 'split'):
+            ret = text_str.split(delimiter)
         return ret
 
     @staticmethod
@@ -515,7 +550,9 @@ class ToolBox:
         elif kpi_type == Const.BLOCKING:
             return self.calculate_block
         elif kpi_type == Const.BASE_MEASURE:
-            return self.calculate_base_measure()
+            return self.calculate_base_measure
+        elif kpi_type == Const.ORIENT:
+            return self.calculate_product_orientation
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
@@ -525,15 +562,28 @@ class ToolBox:
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
 
     def create_mpip(self):
-        self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
-                                                   where='''pk in (select distinct p.pk 
-                                                            from probedata.probe p
-                                                            left join probedata.scene s on p.scene_fk = s.pk
-                                                            where s.session_uid = '{}')
-                                                            '''.format(self.session_uid))
-        self.data_provider.add_resource_from_table('prod_img', 'static_new', 'product_image', ['pk', 'image_direction'])
-        mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
-                                                                  left_on='product_image_fk', right_on='pk')
+        query = '''
+                Select mpip.*, pi.image_direction
+                from probedata.match_product_in_probe mpip
+                left join static_new.product_image pi on mpip.product_image_fk = pi.pk
+                where mpip.pk in (select distinct p.pk 
+                                  from probedata.probe p
+                                  left join probedata.scene s on p.scene_fk = s.pk
+                                  where s.session_uid = '{}')
+                '''.format(self.session_uid)
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\
+                                .merge(self.products, on='product_fk', suffixes=['', '_p'])
+
+
+        # self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
+        #                                            where='''pk in (select distinct p.pk
+        #                                                     from probedata.probe p
+        #                                                     left join probedata.scene s on p.scene_fk = s.pk
+        #                                                     where s.session_uid = '{}')
+        #                                                     '''.format(self.session_uid))
+        # self.data_provider.add_resource_from_table('prod_img', 'static_new', 'product_image', ['pk', 'image_direction'])
+        # mpip = self.data_provider['mpip'].drop('pk', axis=1).merge(self.data_provider['prod_img'],
+        #                                                           left_on='product_image_fk', right_on='pk')
         return mpip
 
 
