@@ -260,18 +260,10 @@ class CCBZA_ToolBox:
 
     def availability_and_or_scene(self, atomic_kpi, identifier_result):
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+                   KPI_SPECIFIC_FILTERS: self.get_availability_only_calc_params(atomic_kpi)}
         if filters[GENERAL_FILTERS]['scene_fk']:
             scene_result = 0
             scene_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
-
-            # if not scene_scif.empty:
-            #     result = self.retrieve_availability_result_all_any_sku(scene_scif, atomic_kpi,
-            #                                                            filters[KPI_SPECIFIC_FILTERS],
-            #                                                            identifier_result, is_by_scene=True)
-            #     scene_result = 100 if result else 0
-            # self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)  # no scene = > no result
-
             if not scene_scif.empty:
                 key, list_of_groups = self.get_filter_arguments_for_groups(filters[KPI_SPECIFIC_FILTERS])
                 if key and list_of_groups:
@@ -1152,22 +1144,10 @@ class CCBZA_ToolBox:
 
     def calculate_availability_sku_and_or(self, atomic_kpi, identifier_parent):
         max_score = atomic_kpi[SCORE]
-        # filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
-        #            KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
         filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi, product_types=[SKU, OTHER]),
                    KPI_SPECIFIC_FILTERS: self.get_availability_only_calc_params(atomic_kpi)}
         atomic_result = 0
         list_of_scenes = filters[GENERAL_FILTERS]['scene_fk']
-        # if list_of_scenes: # current code
-        #     filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
-        #     if not filtered_scif.empty:
-        #         atomic_result = self.retrieve_availability_result_all_any_sku(filtered_scif, atomic_kpi,
-        #                                                                       filters[KPI_SPECIFIC_FILTERS],
-        #                                                                       identifier_parent,
-        #                                                                       is_by_scene=False)
-        # score = self.calculate_atomic_score(atomic_result, max_score)
-        # return score
-
         if list_of_scenes:
             filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters[GENERAL_FILTERS])]
             if not filtered_scif.empty:
@@ -1252,23 +1232,6 @@ class CCBZA_ToolBox:
                         condition_filters.update(
                             {atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
         return condition_filters
-
-    # def get_price_calc_params(self, atomic_kpi):
-    #     condition_filters = {}
-    #     relevant_columns = filter(lambda x: x.startswith('type') or x.startswith('value'), atomic_kpi.index.values)
-    #     for column in relevant_columns:
-    #         if atomic_kpi[column]:
-    #             if column.startswith('type'):
-    #                 condition_number = str(column.strip('type'))
-    #                 matching_value_col = filter(lambda x: x.startswith('value') and str(x[len(x) - 1]) == condition_number,
-    #                                             relevant_columns)
-    #                 value_col = matching_value_col[0] if len(matching_value_col) > 0 else None
-    #                 if value_col:
-    #                     value_list = map(lambda x: self.get_string_or_number(atomic_kpi[column], x),
-    #                                      self.split_and_strip(atomic_kpi[value_col]))
-    #                     condition_filters.update(
-    #                         {atomic_kpi[column]: value_list[0] if len(value_list) == 1 else value_list})
-    #     return condition_filters
 
     def get_availability_only_calc_params(self, atomic_kpi):
         condition_filters = {}
