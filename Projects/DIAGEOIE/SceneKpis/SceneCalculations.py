@@ -16,9 +16,10 @@ class SceneCalculations(SceneBaseClass):
     def calculate_kpis(self):
         # self.timer.start()
         # self.scene_generator.scene_score()
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'DIAGEOIE',
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                      'Data', 'Brand Score.xlsx')
         diageo_generator = DIAGEOGenerator(self._data_provider, None, self.common)
         diageo_generator.diageo_global_tap_brand_score_function(template_path=template_path, rank_kpi=False,
                                                                 sub_category_rank_kpi=False, save_scene_level=True)
+        self.common.commit_results_data(result_entity='scene')
         # self.timer.stop('KPIGenerator.run_project_calculations')
