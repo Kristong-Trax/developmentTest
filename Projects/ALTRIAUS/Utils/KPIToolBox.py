@@ -29,7 +29,7 @@ KPS_RESULT = 'report.kps_results'
 CATEGORIES = ['Cigarettes', 'Vapor', 'Cigars', 'Smokeless']
 KPI_LEVEL_2_cat_space = ['Category Space - Cigarettes', 'Category Space - Vapor',
                          'Category Space - Smokeless', 'Category Space - Cigars']
-MM_TO_FEET_CONVERSION = 0.0032808399
+
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_ALTRIA_V1.xlsx')
 
 
@@ -68,6 +68,7 @@ class ALTRIAUSToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.template_info = self.data_provider.all_templates
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.thresholds_and_results = {}
         self.result_df = []
@@ -83,8 +84,11 @@ class ALTRIAUSToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
-        self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
+
         self.kpi_new_static_data = self.common.get_new_kpi_static_data()
+        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+                    .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+                      .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -110,6 +114,7 @@ class ALTRIAUSToolBox:
                 if kpi_name in KPI_LEVEL_2_cat_space:
                     # scene_type = [s for s in row['Scene_Type'].encode().split(', ')]
                     kpi_type = row['KPI Type']
+                    scene_type = row['scene_type']
 
                     if row['Param1'] == 'Category' or 'sub_category':
                         category = row['Value1']
@@ -117,7 +122,7 @@ class ALTRIAUSToolBox:
                         if kpi_type == 'category_space':
                             kpi_set_fk = \
                             self.kpi_new_static_data.loc[self.kpi_new_static_data['type'] == kpi_type]['pk'].values[0]
-                            self.calculate_category_space(kpi_set_fk, kpi_name, category)
+                            self.calculate_category_space(kpi_set_fk, kpi_name, category, scene_types=scene_type)
 
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
@@ -132,7 +137,6 @@ class ALTRIAUSToolBox:
             return None
         kpi_template = kpi_template.iloc[0]
         values_to_check = []
-        secondary_values_to_check = []
 
         filters = {'template_name': scene_types, 'category': kpi_template['Value1']}
 
@@ -145,34 +149,15 @@ class ALTRIAUSToolBox:
 
         for primary_filter in values_to_check:
             filters[kpi_template['Param1']] = primary_filter
-            if secondary_values_to_check:
-                for secondary_filter in secondary_values_to_check:
-                    if secondary_filter == None:
-                        continue
 
-                    filters['template_name'] = secondary_filter
-                    new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
+            new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
 
-                    result = self.calculate_category_space_length(new_kpi_name,
-                                                                  **filters)
-                    filters['category'] = kpi_template['KPI Level 2 Name']
-                    # score = result * self.MM_TO_FEET_CONVERSION
-                    score = result
-
-                    numerator_id = \
-                        self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
-
-                    self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
-            else:
-                new_kpi_name = self.kpi_name_builder(kpi_name, **filters)
-
-                result = self.calculate_category_space_length(new_kpi_name,
-                                                              **filters)
-                filters['Category'] = kpi_template['KPI Level 2 Name']
-                # score = result * self.MM_TO_FEET_CONVERSION
-                score = result
-                numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
-                self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
+            result = self.calculate_category_space_length(new_kpi_name,
+                                                          **filters)
+            filters['Category'] = kpi_template['KPI Level 2 Name']
+            score = result
+            numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
+            self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
         """
@@ -187,21 +172,15 @@ class ALTRIAUSToolBox:
             space_length = 0
             bay_values = []
             for scene in filtered_scif['scene_fk'].unique().tolist():
-                scene_matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
+                scene_matches = self.mpis[self.mpis['scene_fk'] == scene]
                 scene_filters = filters
                 scene_filters['scene_fk'] = scene
                 for bay in scene_matches['bay_number'].unique().tolist():
-                    # shelf_length = 0
                     bay_total_linear = scene_matches.loc[(scene_matches['bay_number'] == bay) &
                                                          (scene_matches['stacking_layer'] == 1) &
                                                          (scene_matches['status'] == 1)]['width_mm_advance'].sum()
                     scene_filters['bay_number'] = bay
-                    scene_matches['category'] = ''
 
-                    for i, row in scene_matches.iterrows():
-                        product_fk = scene_matches['product_fk'].iloc[i]
-                        scene_matches['category'].iloc[i] = \
-                            self.products['category'][self.products['product_fk'] == product_fk].iloc[0]
 
                     tested_group_linear = scene_matches[self.get_filter_condition(scene_matches, **scene_filters)]
 
@@ -229,8 +208,7 @@ class ALTRIAUSToolBox:
 
         return space_length
 
-    def get_category(self):
-        pass
+
 
     def get_filter_condition(self, df, **filters):
         """
@@ -287,120 +265,8 @@ class ALTRIAUSToolBox:
             kpi_name = kpi_name.replace("'", "\'")
         return kpi_name
 
-    def write_to_db_result(self, kpi_set_fk, result, level, score=None, threshold=None, kpi_name=None, kpi_fk=None):
-        """
-        This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
-        and appends the insert SQL query into the queries' list, later to be written to the DB.
-        """
-        attributes = self.create_attributes_dict(kpi_set_fk, result=result, level=level, score=score,
-                                                 threshold=threshold,
-                                                 kpi_name=kpi_name, kpi_fk=kpi_fk)
-        if level == self.LEVEL1:
-            table = KPS_RESULT
-        elif level == self.LEVEL2:
-            table = KPK_RESULT
-        elif level == self.LEVEL3:
-            table = KPI_RESULT
-        else:
-            return
-        query = insert(attributes, table)
-        self.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, kpi_set_fk, result, level, score=None, threshold=None, kpi_name=None, kpi_fk=None):
-        """
-        This function creates a data frame with all attributes needed for saving in KPI results tables.
 
-        """
-        if level == self.LEVEL1:
-            kpi_set_name = \
-                self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-            # attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-            #                             format(result, '.2f'), score_type, fk)],
-            #                           columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-            #                                    'score_2', 'kpi_set_fk'])
-            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        result, kpi_set_fk,)],
-                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-                                               'kpi_set_fk'])
-        elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_fk]['kpi_name'].values[0].replace("'",
-                                                                                                                    "\\'")
-            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        kpi_fk, kpi_name, result)],
-                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-        elif level == self.LEVEL3:
-            kpi_set_name = \
-                self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-            try:
-                atomic_kpi_fk = \
-                    self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].values[0]
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == atomic_kpi_fk]['kpi_fk'].values[
-                    0]
-            except Exception as e:
-                atomic_kpi_fk = None
-                kpi_fk = None
-            kpi_name = kpi_name.replace("'", "\\'")
-            attributes = pd.DataFrame([(kpi_name, self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.datetime.utcnow().isoformat(),
-                                        result, kpi_fk, atomic_kpi_fk, threshold, score)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk',
-                                               'visit_date',
-                                               'calculation_time', 'result', 'kpi_fk', 'atomic_kpi_fk',
-                                               'threshold',
-                                               'score'])
-        else:
-            attributes = pd.DataFrame()
-        return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
-        cur = self.rds_conn.db.cursor()
-        delete_queries = self.get_delete_session_results_query(self.session_uid)
-        for query in delete_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
-        self.rds_conn = AwsProjectConnector(self.project_name, DbUsers.CalculationEng)
-        cur = self.rds_conn.db.cursor()
-        # for query in self.kpi_results_queries:
-        #     try:
-        #         cur.execute(query)
-        #     except Exception as e:
-        #         Log.info('Query {} failed due to {}'.format(query, e))
-        #         continue
-        queries = self.merge_insert_queries(self.kpi_results_queries)
-        for query in queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-
-    def merge_insert_queries(self, insert_queries):
-        # other_queries = []
-        query_groups = {}
-        for query in insert_queries:
-            if 'update' in query:
-                self.update_queries.append(query)
-            else:
-                static_data, inserted_data = query.split('VALUES ')
-                if static_data not in query_groups:
-                    query_groups[static_data] = []
-                query_groups[static_data].append(inserted_data)
-        merged_queries = []
-        for group in query_groups:
-            for group_index in xrange(0, len(query_groups[group]), 10 ** 4):
-                merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group]
-                                                                                [group_index:group_index + 10 ** 4])))
-        # merged_queries.extend(other_queries)
-        return merged_queries
-
-    @staticmethod
-    def get_delete_session_results_query(session_uid):
-        return ("delete from report.kps_results where session_uid = '{}';".format(session_uid),
-                "delete from report.kpk_results where session_uid = '{}';".format(session_uid),
-                "delete from report.kpi_results where session_uid = '{}';".format(session_uid))
 
     def commit(self):
         self.common.commit_results_data_to_new_tables()
