@@ -38,7 +38,9 @@ BDB_RETAILERS = ['Ahold Delhaize',
                 'Walmart',
                 'Wegmans',
                 'Kroger',
-                'ShopRite'
+                'Publix',
+                'Stater Bros',
+                'Dollar General'
                 ]
 
 SPT_RETAILERS = ['PetSmart',
