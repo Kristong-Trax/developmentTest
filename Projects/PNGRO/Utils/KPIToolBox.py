@@ -277,8 +277,8 @@ class PNGRO_PRODToolBox:
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
                         if result is not None and threshold is not None:
-                            self.write_to_db_result(score=int(score*100), result=float(result), result_2=float(threshold),
-                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
+                            self.write_to_db_result(score=int(round(score*100, 0)), result=float(result),
+                                                    result_2=float(threshold), level=self.LEVEL3, fk=atomic_kpi_fk)
                         else:
                             self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk)
 
