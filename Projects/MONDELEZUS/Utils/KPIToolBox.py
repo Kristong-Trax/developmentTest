@@ -121,6 +121,9 @@ class MONDELEZUSToolBox:
         kpi_template = kpi_template.iloc[0]
         values_to_check = []
 
+        #Work around for mondelez until scene gets updated
+        if scene_types == 'Chewing Gum Primary Location':
+            scene_types = 'Chewing Gum Primary Location '
         filters = {'template_name': scene_types, 'category': kpi_template['Value1']}
         category_att = ''
         if kpi_template['Value1'] in CATEGORIES:
