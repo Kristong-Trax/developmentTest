@@ -99,7 +99,7 @@ class MONDELEZUSToolBox:
                 kpi_type = row['KPI Type']
 
                 if kpi_type == 'SET_SIZE':
-                    scene_type = row['Scene_Type']
+                    scene_type = row['Scene_Type'].split(',')
                     if row['Param1'] == 'category':
                         category = row['Value1']
 
@@ -124,6 +124,8 @@ class MONDELEZUSToolBox:
         #Work around for mondelez until scene gets updated
         if scene_types == 'Chewing Gum Primary Location':
             scene_types = 'Chewing Gum Primary Location '
+
+
         filters = {'template_name': scene_types, 'category': kpi_template['Value1']}
         category_att = ''
         if kpi_template['Value1'] in CATEGORIES:
