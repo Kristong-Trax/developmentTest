@@ -23,9 +23,7 @@ from Projects.GMIUS.ImageHTML.Image import ImageMaker
 
 
 __author__ = 'Sam'
-
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../Data', 'Yogurt GMI KPI Template v0.2.xlsx')
-
+# if you're looking for template path check kpigenerator.find_template
 
 class ToolBox:
 
@@ -60,27 +58,32 @@ class ToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.mpip = self.create_mpip()
         self.template = {}
-        for sheet in Const.SHEETS:
-            try:
-                self.template[sheet] = pd.read_excel(TEMPLATE_PATH, sheet)
-            except:
-                pass
-        # self.hierarchy = self.template[Const.KPIS].set_index(Const.KPI_NAME)[Const.PARENT].to_dict()
-        # self.template[Const.KPIS] = self.template[Const.KPIS][(self.template[Const.KPIS][Const.TYPE] != Const.PARENT) &
-        #                                                       (~self.template[Const.KPIS][Const.TYPE].isnull())]
-        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
-        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        self.dependency_reorder()
+        self.super_cat = ''
+        self.res_dict = {}
+        self.dependencies = {}
 
     # main functions:
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self, template_path):
         """
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+        self.load_template(template_path)
+        self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
+        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
+        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        self.dependency_reorder()
+
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
+
+    def load_template(self, template_path):
+        for sheet in Const.SHEETS:
+            try:
+                self.template[sheet] = pd.read_excel(template_path, sheet)
+            except:
+                pass
 
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
@@ -98,7 +101,7 @@ class ToolBox:
         if dependent_result and self.dependencies[kpi_name] not in dependent_result:
             return
 
-        function = self.get_kpi_function(kpi_type)
+
         # function = self.integrated_adjacency
         # function = self.calculate_stocking_location
         # function = self.adjacency
@@ -107,20 +110,20 @@ class ToolBox:
         #     return
         # if kpi_name != 'Aggregation':
         #     return
-        if kpi_type != 'Blocking':
-            return
-        # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
-        #                     'How is RTS Progresso blocked?',
-        #                     'How is RTS Private Label blocked?',
-        #                     'When RTS Progresso is vertically blocked, what is adjacent?',
-        #                     'If not blocked, where is RTS Private Label stocked?',
-        #                     ]:
-        #     return
-        for i, kpi_line in self.template[kpi_type].iterrows():
+        if kpi_type == 'Blocking' or kpi_type == 'Base Measure':
+            function = self.get_kpi_function(kpi_type)
+            # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
+            #                     'How is RTS Progresso blocked?',
+            #                     'How is RTS Private Label blocked?',
+            #                     'When RTS Progresso is vertically blocked, what is adjacent?',
+            #                     'If not blocked, where is RTS Private Label stocked?',
+            #                     ]:
+            #     return
+            # kpi_line = self.template[kpi_type][self.template[kpi_type][Const.KPI_NAME] == kpi_name].loc[0]
+            kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            if kwargs['score'] is None:
-                continue
-            self.write_to_db(kpi_name, **kwargs)
+            if kwargs['score'] is not None:
+                self.write_to_db(kpi_name, **kwargs)
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         print('running sos')
@@ -309,11 +312,15 @@ class ToolBox:
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score = 0
         orientation = 'Not Blocked'
-        for scene in relevant_scif.scene_fk.unique():
+        scenes = relevant_scif.scene_fk.unique()
+        if self.read_cell_from_line(kpi_line, 'MSL'):
+            scenes = self.find_MSL(relevant_scif)
+        for scene in scenes:
             print(kpi_name, scene)
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
+            # mpis is only here for debugging purposes
             mpis = self.filter_df(self.mpis, scene_filter)
             mpis = self.filter_df(mpis, filters)
             if mpis.empty:
@@ -322,7 +329,7 @@ class ToolBox:
                                                          additional={'allowed_products_filters': Const.ALLOWED_FILTERS,
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': True})
-            blocks = result[result['is_block'] is True]
+            blocks = result[result['is_block'] == True]
 
             if not blocks.empty:
                 score = 1
@@ -339,7 +346,7 @@ class ToolBox:
         filters.update(general_filters)
         filters.update(Const.IGN_STACKING)
         mpis = self.filter_df(self.mpis, filters)
-        master_mpis = self.mpis.copy()
+        master_mpis = self.filter_df(self.mpis.copy(), Const.IGN_STACKING)
         mm_sum = 0
         if mpis.empty:
             return {"score": None}
@@ -352,8 +359,10 @@ class ToolBox:
                 bmpis = self.filter_df(smpis, {'bay_number': bay})
                 master_bmpis = self.filter_df(master_smpis, {'bay_number': bay})
                 num_shelves = len(master_bmpis['shelf_number'].unique().tolist())
-                linear_mm = bmpis['width_mm_advance'].sum()
-                mm_sum += linear_mm / num_shelves
+                linear_mm = float(bmpis['width_mm_advance'].sum())
+                master_linear_mm = float(master_bmpis['width_mm_advance'].sum())
+                if linear_mm / master_linear_mm >= .5:
+                    mm_sum += linear_mm / num_shelves
         ft_sum = mm_sum / Const.MM_TO_FT
         potential_results = self.get_results_value(kpi_line)
         cleaned_results = [(i, x.replace('Feet', '').replace('and', 'ft_sum').replace('>', '<').strip())
@@ -366,12 +375,14 @@ class ToolBox:
                 break
         if not result:
             if ft_sum <= int(cleaned_results[0][1].split(' ')[0]):
-                result = cleaned_results[0]
+                result = potential_results[0]
             else:
-                result = cleaned_results[-1]
+                result = potential_results[-1]
 
         result_fk = self.result_values_dict[result]
-        pass
+        kwargs = {'numerator_id': result_fk, 'numerator_result': ft_sum, 'score': 0, 'result': result_fk,
+                  'target': None}
+        return kwargs
 
 
     def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -448,6 +459,10 @@ class ToolBox:
                 val = [val]
 
         return val
+
+    def find_MSL(self, scif):
+        scif = scif[scif['Super Category'] == self.super_cat]
+        return [scif.groupby('scene_fk')['facings_ign_stack'].sum().sort_values().index[0]]
 
     def get_results_value(self, kpi_line):
         return self.splitter(self.res_dict[kpi_line[Const.RESULT]]['Results Value'],
@@ -587,8 +602,8 @@ class ToolBox:
         return mpip
 
 
-    def write_to_db(self, kpi_name, score=0, result=None, threshold=None, num=None, den=None, num_id=999,
-                    den_id=999):
+    def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=None,
+                    denominator_result=None, numerator_id=999, denominator_id=999):
         """
         writes result in the DB
         :param kpi_name: str
@@ -598,9 +613,9 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=threshold,
-                                       numerator_result=num, denominator_result=den, numerator_id=num_id,
-                                       denominator_id=den_id)
+        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
+                                       numerator_result=numerator_result, denominator_result=denominator_result,
+                                       numerator_id=numerator_id, denominator_id=denominator_id)
 
 
     def gen_html(self, scene, components, adj_g, mpis):

@@ -1,3 +1,4 @@
+import os
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.GMIUS.Utils.KPIToolBox import ToolBox
@@ -7,6 +8,8 @@ __author__ = 'Sam'
 
 
 class Generator:
+    SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
+    SUPER_CATS = ['Yogurt'] # Overwriting for testing purposes
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -21,5 +24,24 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Distribution is empty for this session')
         else:
-            self.tool_box.main_calculation()
+            for cat in self.SUPER_CATS:
+                template_path = self.find_template(cat)
+                self.tool_box.main_calculation(template_path)
             self.common.commit_results_data()
+
+    def find_template(self, cat):
+        ''' screw maintaining 4 hardcoded template paths... '''
+        path = os.path.join(os.getcwd(), 'Data')
+        files = os.listdir(path)
+        candidates = [f for f in files if f.split(' ')[0] == cat and f.split('.')[-1] == 'xlsx']
+        versioned_candidates = []
+        for x in candidates:
+            version_comps = x.split(' v')[-1].replace('.xlsx', '').split('.')
+            normed_components = []
+            for i, comp in enumerate(version_comps):
+                norm_comp = int(comp) * 10**(len(version_comps[i+1])) if i+1 < len(version_comps) else int(comp)
+                normed_components.append(str(norm_comp))
+            versioned_candidates.append((float(''.join(normed_components)), x))
+        template = sorted(versioned_candidates, key=lambda x: x[0])[-1][1]
+        return os.path.join(path, template)
+
