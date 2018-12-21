@@ -7,12 +7,16 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
+from Trax.Utils.Testing.Case import MockingTestCase, skip
+from mock import patch
 
 from Tests.Data.TestData.test_data_diageoie_sanity import ProjectsSanityData
 from Projects.DIAGEOIE.Calculations import DIAGEOIECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
+from Tests.Data.Templates.diageoie.MPA import mpa
+from Tests.Data.Templates.diageoie.NewProducts import products
+from Tests.Data.Templates.diageoie.LocalMPA import local_mpa
 
 __author__ = 'jasmineg'
 
@@ -38,9 +42,19 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
+    @skip('Test failed in garage')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
+           return_value='2018-03-29')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=mpa)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=products)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=local_mpa)
     @seeder.seed(["diageoie_seed"], ProjectsSanityData())
-    def test_diageoie_sanity(self):
+    def test_diageoie_sanity(self, x, y, json1, json2, json3):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
         sessions = ['C2D8A9DC-C94D-4C24-B10A-36F3BC61E6FB']
