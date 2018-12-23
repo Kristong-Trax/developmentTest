@@ -1,11 +1,9 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conf.Configuration import Config
-import os
-# from KPIUtils.GlobalProjects.HEINZ.KPIGenerator import HEINZGenerator
+
+
 from KPIUtils.DB.Common import Common
-import pandas as pd
+from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
 
 __author__ = 'Eli'
 
@@ -14,9 +12,10 @@ class GFKDECalculations(BaseCalculationsScript):
     """
     https://confluence.trax-cloud.com/pages/resumedraft.action?draftId=174198555&draftShareId=feac8c7a-ec57-4b36-b380-190d3668debc
     """
+    @log_runtime("GSKDE session runtime")
     def run_project_calculations(self):
         self.timer.start()
-        # common = Common(self.data_provider)
+        common = Common(self.data_provider)
         # # heinz = HEINZGenerator(self.data_provider, self.output, common)
         # heinz.heinz_global_distribution_per_category()
         # heinz.heinz_global_share_of_shelf_function()
@@ -27,6 +26,7 @@ class GFKDECalculations(BaseCalculationsScript):
         # common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
+#
 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('heinzcr calculations')
