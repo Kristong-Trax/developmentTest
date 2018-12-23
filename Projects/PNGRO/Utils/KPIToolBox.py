@@ -327,17 +327,18 @@ class PNGRO_PRODToolBox:
             matches_products_all = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
             self.matches_products = matches_products_all[self.tools.get_filter_condition(matches_products_all,
                                                                                          **filters)]
-            scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number']].drop_duplicates()
-            scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
-                                                                                      axis=1)
-            scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
-            # scene_bays_shelves['count'] = 0
-            # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
-            #                                                 as_index=False).agg({'count': np.size})
-            scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
-            # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
-            scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
-            skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
+            if not self.matches_products.empty:
+                scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number']].drop_duplicates()
+                scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
+                                                                                          axis=1)
+                scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
+                # scene_bays_shelves['count'] = 0
+                # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
+                #                                                 as_index=False).agg({'count': np.size})
+                scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
+                # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
+                scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
+                skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
         score = min(skus_at_eye_lvl / target, 1)
         # score = 1 if skus_at_eye_lvl >= target else 0
         return score, skus_at_eye_lvl, target
