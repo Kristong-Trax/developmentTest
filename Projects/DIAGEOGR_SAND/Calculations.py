@@ -22,9 +22,7 @@ if __name__ == '__main__':
     project_name = 'diageogr-sand'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        'C536C951-B2F6-4611-AE73-A3E1CC932413',
-        '768C1784-30A4-4727-A9DF-1C5E2B9FB214',
-        'F7C58AFD-5B47-486A-86C8-319A3AD2F853'
+        'F7A6266E-BEAC-468E-9E8B-4BCCC5ECB175'
     ]
     for session in sessions:
         data_provider.load_session_data(session)
