@@ -13,7 +13,7 @@ score should be 1 if a result was found for things like adjacency, score 0 means
 I'm assuming survey question will simply be handled in the simon, as it doesn't seem to need calculation
 
 anchor list assumes that all potential segments, audiences whatevers have been listed in results
-anchor list results are also a random medley from different columns.... see Const.CLUSTERFK
+anchor list results are also a random medley from different columns.... see Const.REF_COLS
 anchor currently ignores product type other, because if included everything would be continuous
 
 What format variety exists in within the Kid Segment?- I don't see drink in the db in form_factor

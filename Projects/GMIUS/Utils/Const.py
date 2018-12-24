@@ -53,7 +53,6 @@ class Const(object):
     EDGES = 'Edges'
     RESULT_TYPE = 'Result Type'
 
-
     ''' Constants '''
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
