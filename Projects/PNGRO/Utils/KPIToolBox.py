@@ -306,8 +306,8 @@ class PNGRO_PRODToolBox:
                                                numerator_result=row['product_width_total'],
                                                numerator_id=row['product_fk'],
                                                denominator_result=row['display_width_total'],
-                                               denominator_id=row['pk'],
-                                               context_id=row['template_fk'])
+                                               denominator_id=row['template_fk'],
+                                               context_id=row['pk'])
             # scene_product = scene_display_product.groupby(['scene_fk', 'product_fk']).agg({'pallets': np.sum})
             # for i, row in scene_product.iterrows():
             #     self.common.write_to_db_result_new_tables(fk=kpi_fk, score=row['pallets'],
