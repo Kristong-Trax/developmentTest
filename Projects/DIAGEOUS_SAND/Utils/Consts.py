@@ -2,36 +2,22 @@
 __author__ = 'Elyashiv'
 
 
-class DIAGEOUS_SANDConst(object):
+class Const(object):
 
     OFF, ON = "off_premise", "on_premise"
 
     # sheets:
     ON_TRADE_MAIN = "main - on_trade"
-    OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET = "main - off_trade", "Shelf Facings", "Pricing"
-    SHELF_PLACMENTS_SHEET, MINIMUM_SHELF_SHEET = "Shelf Placement", "Minimum Shelf"
-    DISPLAY_TARGET_SHEET, SHELF_GROUPS_SHEET = "Display_Target", "convert shelves groups"
+    OFF_TRADE_MAIN = "main - off_trade"
+    MINIMUM_SHELF_SHEET = "Minimum Shelf"
+    SHELF_GROUPS_SHEET = "convert shelves groups"
     SHEETS = {ON: [ON_TRADE_MAIN],
-              OFF: [OFF_TRADE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET, SHELF_PLACMENTS_SHEET,
-                    DISPLAY_TARGET_SHEET, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}
+              OFF: [OFF_TRADE_MAIN, MINIMUM_SHELF_SHEET, SHELF_GROUPS_SHEET]}
     # KPIs columns:
     KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
-    # Shelf 1 columns:
-    STATE, OUR_EAN_CODE, COMP_EAN_CODE = "State", "Product EAN Code", "Competitor EAN Code"
-    BENCH_ENTITY, BENCH_VALUE = "BENCHMARK Entity", "BENCHMARK Value"
-    # pricing columns:
-    MIN_MSRP_RELATIVE, MAX_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MIN", "SHELF MSRP RELATIVE GUIDENCE: MAX"
-    MIN_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MIN"
-    MAX_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MAX"
-    # shelf 2 columns:
-    MIN_SHELF_LOCATION = "MINIMUM SHELF LOCATION"
-    PRODUCT_EAN_CODE = "Product EAN Code"
-    # display columns:
-    SCENE_TYPE, MIN_FACINGS = "Scene Type", "Minimum # of Facings"
     # minimum shelf columns:
-    SHELF_NAME, SHELVES_FROM_BOTTOM = "Shelf Name", "shelf number from bottom"
-    NUM_SHLEVES_MIN, NUM_SHLEVES_MAX = "num. of shelves min", "num. of shelves max"
+    SHELF_NAME = "Shelf Name"
     # shelf groups columns
     NUMBER_GROUP, SHELF_GROUP = "number group", "shelf groups"
     # sets in off-premise:
@@ -97,3 +83,17 @@ class DIAGEOUS_SANDConst(object):
     NO_DISPLAY_ALLOWED_QUESTION = "Confirm that there are no displays allowed in this outlet"
     NO_MENU_ALLOWED_QUESTION = "Confirm that there are no menus allowed in this outlet"
     SURVEY_ANSWER = "Yes"
+
+    # operation types:
+    DISPLAY_TARGET_OP, SHELF_FACINGS_OP = "display_target", "shelf_facings"
+    SHELF_PLACEMENT_OP, MSRP_OP = "shelf_placement", "MSRP"
+    OPERATION_TYPES = [DISPLAY_TARGET_OP, SHELF_PLACEMENT_OP, MSRP_OP, SHELF_FACINGS_OP]
+    # columns in external targets:
+    EX_PRODUCT_FK, EX_STATE_FK, EX_OPERATION_TYPE,  = "product_fk", "state_fk", "operation_type"
+    EX_SCENE_TYPE, EX_BENCHMARK_VALUE, EX_COMPETITOR_FK = "scene_type", "BENCHMARK Value", "competitor_product_fk"
+    EX_MIN_FACINGS, EX_RELATIVE_MAX, EX_RELATIVE_MIN = "minimum facings", "relative_target_max", "relative_target_min"
+    EX_TARGET_MAX, EX_TARGET_MIN, EX_MINIMUM_SHELF = "target_max", "target_min", "MINIMUM SHELF LOCATION"
+    SHELF_FACINGS_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_BENCHMARK_VALUE]
+    SHELF_PLACEMENT_COLUMNS = [EX_PRODUCT_FK, EX_MINIMUM_SHELF]
+    MSRP_COLUMNS = [EX_PRODUCT_FK, EX_COMPETITOR_FK, EX_RELATIVE_MIN, EX_RELATIVE_MAX, EX_TARGET_MAX, EX_TARGET_MIN]
+    DISPLAY_TARGET_COLUMNS = [EX_SCENE_TYPE, EX_MIN_FACINGS]
