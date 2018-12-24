@@ -832,13 +832,12 @@ class ToolBox:
                 Select mpip.*, pi.image_direction
                 from probedata.match_product_in_probe mpip
                 left join static_new.product_image pi on mpip.product_image_fk = pi.pk
-                where mpip.pk in (select distinct p.pk 
-                                  from probedata.probe p
-                                  left join probedata.scene s on p.scene_fk = s.pk
-                                  where s.session_uid = '{}')
+                left join probedata.probe pr on mpip.probe_fk = pr.pk
+                left join probedata.scene sc on pr.scene_fk = sc.pk
+                where sc.session_uid = '{}'
                 '''.format(self.session_uid)
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\
-                                .merge(self.products, on='product_fk', suffixes=['', '_p'])
+                                .merge(self.products, how='left', on='product_fk', suffixes=['', '_p'])
 
 
         # self.data_provider.add_resource_from_table('mpip', 'probedata', 'match_product_in_probe', '*',
