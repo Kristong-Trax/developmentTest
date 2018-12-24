@@ -14,7 +14,6 @@ from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 from KPIUtils.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-from KPIUtils_v2.Calculations.MenuCalculations import Menu
 
 __author__ = 'Nimrod'
 
@@ -65,26 +64,11 @@ class DIAGEOGRSANDToolBox:
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
-
         self.output = output
         self.common = Common(self.data_provider)
-
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
-
-    def main_menu_calculation(self):
-        menu = Menu(data_provider=self.data_provider)
-        menus_dict_product = menu.get_dfs_dict_of_menus_product_level()[0]
-        menus_dict_brand = menu.get_dfs_dict_of_menus_brand_level()[0]
-        menus_dict_sub_cat = menu.get_dfs_dict_of_menus_sub_cat_level()[0]
-        menus_dict_manufacturer = menu.get_dfs_dict_of_menus_manufacturer_level()[0]
-        cocktails_dict = menu.get_dfs_dict_of_cocktails()[0]
-        menus_dict_product.to_csv("{} menu products".format(self.session_uid))
-        menus_dict_brand.to_csv("{} menu brands".format(self.session_uid))
-        menus_dict_sub_cat.to_csv("{} menu sub categories".format(self.session_uid))
-        menus_dict_manufacturer.to_csv("{} menu manufacturers".format(self.session_uid))
-        cocktails_dict.to_csv("{} cocktail manufacturers".format(self.session_uid))
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -111,8 +95,8 @@ class DIAGEOGRSANDToolBox:
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-        self.main_menu_calculation()
-
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
         for set_name in set_names:
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
