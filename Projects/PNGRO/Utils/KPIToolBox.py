@@ -250,14 +250,14 @@ class PNGRO_PRODToolBox:
                     elif kpi_type == self.SOS:
                         score, result, threshold = self.calculate_sos_linear_ign_stack(params, **general_filters)
                     elif kpi_type == self.RELATIVE_POSITION:
-                        score = self.calculate_relative_position(params, **general_filters)
+                        score, result, threshold = self.calculate_relative_position(params, **general_filters)
                     elif kpi_type == self.AVAILABILITY:
                         # self.rds_conn.connect_rds() # for debugging
-                        score = self.calculate_availability(params, **general_filters)
+                        score, result, threshold = self.calculate_availability(params, **general_filters)
                     elif kpi_type == self.SHELF_POSITION:
-                        score = self.calculate_shelf_position(params, **general_filters)
+                        score, result, threshold = self.calculate_shelf_position(params, **general_filters)
                     elif kpi_type == self.SURVEY:
-                        score = self.calculate_survey(params)
+                        score, result, threshold = self.calculate_survey(params)
 
                     elif kpi_type == self.SOS_FACING:
                         score, result, threshold = self.calculate_sos_facings(params, **general_filters)
@@ -270,21 +270,21 @@ class PNGRO_PRODToolBox:
                         score, result, threshold = self.calculate_product_presence(params, **general_filters)
                     elif kpi_type == self.BLOCKED_TOGETHER_V:
                         general_filters = self.update_scene_filter(params, general_filters, by_location=True)
-                        score = self.block_together_vertical(params, **general_filters)
+                        score, result, threshold = self.block_together_vertical(params, **general_filters)
                     elif kpi_type == self.BLOCKED_TOGETHER_V_BRAND:
                         general_filters = self.update_scene_filter(params, general_filters, by_location=True)
-                        score = self.block_together_vertical_brand(params, **general_filters)
+                        score, result, threshold = self.block_together_vertical_brand(params, **general_filters)
                     elif kpi_type == self.BLOCK_ADJACENCY:
                         general_filters = self.update_scene_filter(params, general_filters, by_location=True)
-                        score = self.calculate_block_adjacency(params, **general_filters)
+                        score, result, threshold = self.calculate_block_adjacency(params, **general_filters)
 
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
                     if atomic_kpi_fk is not None:
-                        if result and threshold:
-                            self.write_to_db_result(score=int(score), result=float(result), result_2=float(threshold),
-                                                    level=self.LEVEL3, fk=atomic_kpi_fk)
+                        if result is not None and threshold is not None:
+                            self.write_to_db_result(score=int(round(score*100, 0)), result=float(result),
+                                                    result_2=float(threshold), level=self.LEVEL3, fk=atomic_kpi_fk)
                         else:
-                            self.write_to_db_result(score=int(score), level=self.LEVEL3, fk=atomic_kpi_fk)
+                            self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk)
 
     def calculate_sos_pallets_per_product_by_scene_type_secondary_shelves(self):
         if not self.scene_display_bay.empty:
@@ -392,18 +392,20 @@ class PNGRO_PRODToolBox:
             matches_products_all = self.match_product_in_scene.merge(self.all_products, on='product_fk', how='left')
             self.matches_products = matches_products_all[self.tools.get_filter_condition(matches_products_all,
                                                                                          **filters)]
-            scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number']].drop_duplicates()
-            scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
-                                                                                      axis=1)
-            scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
-            # scene_bays_shelves['count'] = 0
-            # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
-            #                                                 as_index=False).agg({'count': np.size})
-            scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
-            # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
-            scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
-            skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
+            if not self.matches_products.empty:
+                scene_bays_shelves = self.matches_products[['scene_fk', 'bay_number']].drop_duplicates()
+                scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
+                                                                                          axis=1)
+                scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
+                # scene_bays_shelves['count'] = 0
+                # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
+                #                                                 as_index=False).agg({'count': np.size})
+                scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
+                # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
+                scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
+                skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
         score = min(skus_at_eye_lvl / target, 1)
+        # score = 1 if skus_at_eye_lvl >= target else 0
         return score, skus_at_eye_lvl, target
 
     def add_eye_level_shelf_range(self, scene_bays_shelves):
@@ -546,7 +548,7 @@ class PNGRO_PRODToolBox:
                     item_blocks_passed += 1
             if item_blocks_passed == len(brand_list):
                 score = 1
-        return score
+        return score, score, 1
 
     def get_block_filters(self, params):
         type1 = params['Param Type (1)/ Numerator']
@@ -578,7 +580,7 @@ class PNGRO_PRODToolBox:
                                                                              **filters)
             if is_blocked and n_shelves >= min_shelf_num:
                 score = 1
-        return score
+        return score, score, 1
 
     def block_together(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -615,7 +617,7 @@ class PNGRO_PRODToolBox:
         target_answers = params['Param (2) Values'].split(',')
         survey_answer = self.tools.get_survey_answer(('question_text', survey_name))
         score = 1 if survey_answer in target_answers else 0
-        return score
+        return score, score, 1
 
     def calculate_sos_facings(self, params, **general_filters):
         numerator_filters, denominator_filters, target = self.get_sos_filters(params)
@@ -623,8 +625,9 @@ class PNGRO_PRODToolBox:
                                                                    **general_filters)
         denominator_result = self.calculate_facings_share_of_display(denominator_filters, include_empty=True,
                                                                      **general_filters)
-        ratio = 0 if denominator_result == 0 else numerator_result / float(denominator_result)
-        score = 1 if ratio >= target else 0
+        ratio = 0 if denominator_result == 0 else numerator_result / float(denominator_result) * 100
+        # score = 1 if ratio >= target else 0
+        score = min(ratio / target, 1) if target else 0
         return score, str(ratio), str(target)
 
     def get_sos_filters(self, params):
@@ -636,7 +639,7 @@ class PNGRO_PRODToolBox:
         value3 = params['Param (3) Values']
         target = params['Target Policy']
         try:
-            target = float(target) / 100.0
+            target = float(target)
         except:
             Log.info('The target: {} cannot parse to float'.format(str(target)))
         numerator_filters = {type1: value1, type2: value2, type3: value3}
@@ -649,8 +652,9 @@ class PNGRO_PRODToolBox:
                                                                      **general_filters)
         denominator_res = self.tools.calculate_linear_share_of_display(denominator_filters, include_empty=True,
                                                                        **general_filters)
-        ratio = 0 if denominator_res == 0 else numerator_res / float(denominator_res)
-        score = 1 if ratio >= target else 0
+        ratio = 0 if denominator_res == 0 else numerator_res / float(denominator_res) * 100
+        # score = 1 if ratio >= target else 0
+        score = min(ratio/target, 1) if target else 0
         return score, str(ratio), str(target)
 
     def calculate_relative_position(self, params, **general_filters):
@@ -685,7 +689,7 @@ class PNGRO_PRODToolBox:
                                                     block_of_blocks=True, block_products1=block_products1,
                                                     block_products2=block_products2,
                                                     **dict(filters, **general_filters))
-        return score
+        return score, score, 1
 
     def calculate_availability(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -697,8 +701,8 @@ class PNGRO_PRODToolBox:
         for value in map(unicode.strip, params['Param (1) Values'].split(',')):
             filters = {type1: value, type2: value2, type3: value3}
             if self.tools.calculate_availability(**dict(filters, **general_filters)) > 0:
-                return True
-        return False
+                return True, True, True
+        return False, False, True
 
     def calculate_shelf_position(self, params, **general_filters):
         type1 = params['Param Type (1)/ Numerator']
@@ -723,9 +727,9 @@ class PNGRO_PRODToolBox:
             'shelf_number'].unique()
         score = len(set(shelf_list) - set(target))
         if score > 0:
-            return False
+            return False, False, True
         else:
-            return True
+            return True, True, True
 
     @staticmethod
     def split_and_strip(string):
@@ -951,6 +955,7 @@ class PNGRO_PRODToolBox:
         # number_of_displays = self.display_scene_count[self.tools.get_filter_condition(self.display_scene_count,
         #                                                                               **filters)]['count'].sum()
         score = min(number_of_displays/target, 1)
+        # score = 1 if number_of_displays >= target else 0
         return score, number_of_displays, target
 
     def get_number_of_displays_in_scene(self):
@@ -994,7 +999,7 @@ class PNGRO_PRODToolBox:
         value3_policy = self.split_and_strip(params['Param (3) Values'])
         manufacturer = {'manufacturer_name': params['Manufacturer']}
         score_type = params['KPI Calc. Type']
-        target_kpi = float(params['Target Policy'])/100
+        target_kpi = float(params['Target Policy'])
 
         # filtering out scenes in case we need select scenes that follow certain product policy
         if type3_policy:
@@ -1027,8 +1032,9 @@ class PNGRO_PRODToolBox:
             result = number_of_scenes_pass
             score = 1 if result > 0 else 0
         else:
-            result = min(number_of_scenes_pass/target_scenes, 1) if target_scenes else 0
-            score = 1 if result >= target_kpi else 0
+            result = number_of_scenes_pass/target_scenes * 100 if target_scenes else 0
+            # score = 1 if result >= target_kpi else 0
+            score = min(result/target_kpi, 1) if target_kpi else 0
         return score, result, target_kpi
 
     def get_adjacency_and_product_presence_filters(self, params):
@@ -1076,7 +1082,7 @@ class PNGRO_PRODToolBox:
                                                              allowed_filter_without_other=[], a_target=None,
                                                              b_target=None, target=0.75)
             score = 1 if is_adjacent else 0
-        return score
+        return score, score, 1
 
 # --------------------unused functions------------------------------#
 
