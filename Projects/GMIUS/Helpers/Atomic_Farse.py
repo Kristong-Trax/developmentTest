@@ -8,92 +8,136 @@ from Trax.Data.Projects.Connector import ProjectConnector
 
 
 
-class EntityUploader():
+class AtomicFarse():
     PS_TYPE = 'PS scores'
     KPI = 'static.kpi_level_2'
     ENTITY_TABLE = 'static.kpi_entity_type'
     FAMILY_TABLE = 'static.kpi_family'
     CALC_STAGE_TABLE = 'static.kpi_calculation_stage'
 
+    MIN = 31000
+    MAX = 32000
+
     def __init__(self, project, template_path):
-        self.entity_pairs = self.parse_all(template_path)
+        self.template = pd.read_excel(template_path, sheetname=None)
+        self.indexed_template = {key: df.set_index(Const.KPI_NAME) for key, df in self.template.items()
+                                 if Const.KPI_NAME in df.columns}
         self.rds_conn = ProjectConnector(project, DbUsers.CalcAdmin)
         self.cur = self.rds_conn.db.cursor()
 
         self.kpi2_attribs = self.get_table_attributes(self.KPI)
         self.kpi2_table = self.read_table(self.KPI)
+        self.kpi2_table = self.read_table(self.KPI)
         self.kpi2_set = set(self.kpi2_table['type'])
         self.kpi_pk_set = set(self.kpi2_table['pk'])
+
+        self.family_attribs = self.get_table_attributes(self.FAMILY_TABLE)
 
         self.entity_table = self.read_table(self.ENTITY_TABLE)
         self.family_table = self.read_table(self.FAMILY_TABLE)
         self.calc_stage_table = self.read_table(self.CALC_STAGE_TABLE)
 
         self.entity_set = set(self.entity_table['name'])
-        self.family_set = set(self.entity_table['name'])
-        self.calc_stage_set_pk = set(self.calc_stage_table_table['pk'])
+        self.family_set = {x.upper() for x in self.family_table['name']}
+        self.calc_stage_set_pk = set(self.calc_stage_table['pk'])
+
+        self.family_dict = self.family_table.set_index('name')['pk'].to_dict()
+        self.entity_dict = self.entity_table.set_index('name')['pk'].to_dict()
 
 
-        self.update_db()
+        self.pk_max_family = max(self.family_table['pk'])
 
-    def update_db(self):
-        max_custom_entity_len = self.get_max_len(self.custom_entity_attribs)
-        max_entity_type_len = self.get_max_len(self.entity_type_attribs)
+        self.errors = []
 
-        len_errors = []
-        for entity_type, entity in self.entity_pairs:
-            entity_type = entity_type.lower()
-            if entity_type and entity_type not in self.entity_type_set:
-                if len(entity_type) <= max_entity_type_len:
-                    self.entity_type_pk += 1
-                    self.insert_into_entity_types(entity_type)
-                    self.entity_type_dict[entity_type] = self.entity_type_pk
-                else:
-                    len_errors.append('    Entity Type "{}" and Entity {} not added: {} Exceeds {} characters'\
-                                      .format(entity_type, entity, entity_type, max_entity_type_len))
-                    continue
-            entity_type_fk = self.entity_type_dict[entity_type]
-            if entity and entity not in self.custom_entity_set:
-                if len(entity) <= max_custom_entity_len:
-                    self.custom_entity_pk += 1
-                    self.insert_into_custom_entity(entity, entity_type_fk)
-                else:
-                    len_errors.append('    Entity {} not added: Exceeds {} characters'\
-                                      .format(entity, max_custom_entity_len))
 
-            try:
-                self.rds_conn.db.commit()
-                self.entity_type_set.add(entity_type)
-                self.custom_entity_set.add(entity)
-            except Exception as e:
-                print('{} Entities Failed to Upload due to: '
-                      '    "{}"'.format(entity, e))
+        self.main()
 
-        if len_errors:
+    def main(self):
+        self.update_family()
+
+        max_len = self.get_max_len(self.kpi2_attribs, field_name='type')
+        kpis = {x.strip() for x in self.template[Const.KPIS][Const.KPI_NAME].unique() if x}
+        missing = list (kpis - self.kpi2_set)
+        pk = self.special_pk(self.kpi2_table)
+
+
+        self.generic_update(missing, max_len, self.insert_into_kpi2, 'kpi level 2', tracker_set=self.kpi2_set, pk=pk,
+                            gen_kwargs=1)
+
+        if self.errors:
             print('Below Results not added')
-            for len_error in len_errors:
-                print(len_error)
+            for error in self.errors:
+                print(error)
         else:
             print('Results sucessfuly loaded')
 
-    def parse_all(self, template_path):
-        values = []
-        for sheet, df in pd.read_excel(template_path, sheetname=None).items():
-            for i, line in df.iterrows():
-                params = self.get_kpi_line_params(line)
-                values += [(entity_type, entity) for entity_type, entity in params.items()]
-        return set(sum([[(t, e) for e in es if not pd.isnull(e)] for t, es in values if not pd.isnull(t)], []))
+    def update_family(self):
+        max_len = self.get_max_len(self.family_attribs)
+        families = {x.upper() for x in self.template[Const.KPIS][Const.TYPE].unique()}
+        missing = list(families - self.family_set)
 
-    def get_kpi_line_params(self, kpi_orig):
+        self.generic_update(missing, max_len, self.insert_into_kpi_family, 'KPI Family', tracker_dict=self.family_dict,
+                            tracker_set=self.family_set, pk=self.pk_max_family)
+
+    def special_pk(self, table):
+        range_pks = [i for i in table['pk'] if self.MIN <= i < self.MAX]
+        return max(range_pks)
+
+    def generic_update(self, iterable, max_len, update_function, group, tracker_dict={}, tracker_set= set(), pk=0,
+                       gen_kwargs=0):
+        for item in iterable:
+            if len(item) <= max_len:
+                pk += 1
+                if gen_kwargs:
+                    kwargs = self.get_aux(item)
+                    update_function(item, pk, **kwargs)
+                else:
+                    update_function(item, pk)
+                tracker_dict[item] = pk
+            else:
+                self.errors.append('    {} "{}" not added: Exceeds {} characters'
+                                   .format(group, item, max_len))
+
+            try:
+                self.rds_conn.db.commit()
+                tracker_set.add(item)
+            except Exception as e:
+                print('{} "{}" Failed to Upload due to: '
+                      '    "{}"'.format(group, item, e))
+
+    def get_aux(self, item):
+        main_line = self.indexed_template[Const.KPIS].loc[item]
+        session_lvl = self.read_cell_from_line(main_line, Const.SESSION_LEVEL) if Const.SESSION_LEVEL in main_line.index else 'Y'
+        family = self.read_cell_from_line((main_line, Const.TYPE))
+        kpi_line = self.indexed_template[family].loc[item]
+        num_check = 'numerator' if [x for x in kpi_line.index if 'numerator' in x.lower()] else ''
+        den_check = [x for x in kpi_line.index if 'denominator' in x.lower()]
+
+        num = self.get_kpi_line_filters(kpi_line, name=num_check)[-1][-1]
+        den = self.get_kpi_line_filters(kpi_line, name='denominator')[-1][-1] if den_check else None
+        use_result = self.read_cell_from_line(kpi_line, Const.RESULT) if Const.RESULT in kpi_line.index else None
+
+        is_session = 1 if session_lvl else 0
+        is_scene = 0 if session_lvl else 1
+        family_fk = self.family_dict[family]
+        result_fk = 2 if use_result else 'null'
+        num_fk = self.entity_dict[num]
+        den_fk = self.entity_dict[num] if den else 'null'
+
+        return {'family_fk': family_fk, 'num_fk': num_fk, 'den_fk': den_fk, 'result_fk': result_fk,
+                'session': is_session, 'scene': 'is_scene'}
+
+    def get_kpi_line_params(self, kpi_orig, name=''):
         kpi_line = kpi_orig.copy()
+        if name:
+            name = name.lower() + ' '
         filters = defaultdict(list)
-        attribs = [x.lower() if x.count(' ') < 2 else ' '.join(x.split(' ')[1:]).lower() for x in kpi_line.index]
+        attribs = [x.lower() for x in kpi_line.index]
         kpi_line.index = attribs
         c = 1
         while 1:
-            if 'param {}'.format(c) in attribs and kpi_line['param {}'.format(c)]:
-                filters[kpi_line['param {}'.format(c)]] += self.splitter(
-                    kpi_line['value {}'.format(c)])
+            if '{}param {}'.format(name, c) in attribs and kpi_line['{}param {}'.format(name, c)]:
+                filters[kpi_line['{}param {}'.format(name, c)]] += self.splitter(kpi_line['{}value {}'.format(name, c)])
             else:
                 if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
                     break
@@ -107,26 +151,47 @@ class EntityUploader():
             ret = text_str.split(delimiter)
         return ret
 
-    def get_max_len(self, attribs):
-        return int(attribs.loc[attribs['Field'] == 'name', 'Type'].values[0].split('(')[1].split(')')[0])
+    @staticmethod
+    def read_cell_from_line(line, col):
+        try:
+            val = line[col] if not pd.isnull(line[col]) else []
+        except:
+            val = []
+        if val:
+            if hasattr(val, 'split'):
+                if ', ' in val:
+                    val = val.split(', ')
+                elif ',' in val:
+                    val = val.split(',')
+            if not isinstance(val, list):
+                val = [val]
+
+        return val
+
+    def get_max_len(self, attribs, field_name = 'name'):
+        return int(attribs.loc[attribs['Field'] == field_name, 'Type'].values[0].split('(')[1].split(')')[0])
 
     def read_table(self, table):
         return pd.read_sql_query('''
         SELECT * FROM {};         
         '''.format(table), self.rds_conn.db)
 
-    def insert_into_entity_types(self, entity_type):
+    def insert_into_kpi_family(self, family, pk):
         query = """
-        Insert Into static.kpi_entity_type 
-        Values ({}, '{}', 'static_new.products', 'labels', null, null)
-        """.format(self.entity_type_pk, entity_type)
+        Insert Into static.kpi_family
+        Values ({}, '{}', 3)
+        """.format(pk, family)
         self.cur.execute(query)
 
-    def insert_into_custom_entity(self, entity, fk):
+    def insert_into_kpi2(self, kpi, pk, **kwargs):
         query = '''
-        Insert Into static.custom_entity 
-        Values ({}, '{}', {}, null)
-        '''.format(self.custom_entity_pk, entity, fk)
+        INSERT INTO static.kpi_level_2
+	    (pk, type, client_name, kpi_family_fk, version, numerator_type_fk, denominator_type_fk, kpi_result_type_fk,
+	    valid_from, valid_until, initiated_by, kpi_calculation_stage_fk, session_relevance, scene_relevance)
+        VALUES      
+        ({}, {}, {}, {}, '1.0.0', {}, {}, {}, '1990-01-01', '2150-10-15', 'samk', '3', {}, {}),
+
+        '''.format(pk, kpi, kpi, family_fk, num_fk, den_fk, result_fk, session, scene)
         self.cur.execute(query)
 
     def get_table_attributes(self, table):
@@ -134,5 +199,4 @@ class EntityUploader():
 
 
 
-# EntityUploader('project_name', '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
 

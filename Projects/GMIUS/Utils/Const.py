@@ -29,7 +29,7 @@ class Const(object):
     RESULT = 'Result'
 
     SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
-              TMB_MAP, STOCKING, YOGURT_MAP, ANCHOR, ANCHOR_LIST, SURVEY_QUESTION, VARIETY_COUNT, RESULT]
+              ADJACENCY, TMB_MAP, STOCKING, YOGURT_MAP, ANCHOR, ANCHOR_LIST, SURVEY_QUESTION, VARIETY_COUNT, RESULT]
 
     RESULT = 'Result'
 
@@ -49,6 +49,10 @@ class Const(object):
     AGGREGATION_LEVELS = 'Aggregation Levels'
     SOS_TYPE = 'SOS Type'
 
+    ''' Columns '''
+    EDGES = 'Edges'
+    RESULT_TYPE = 'Result Type'
+
 
     ''' Constants '''
     MM_TO_FT = 304.8
@@ -66,7 +70,10 @@ class Const(object):
                         'Linear SOS': 'net_len_ign_stack',
                         'Average': 'count',
                        }
+    REF_COLS = ['GMI_SEGMENT', 'Segment', 'GMI_SIZE', 'Package General Shape', 'Natural/ Organic', 'GMI_CATEGORY',
+                 'GMI_AUDIENCE']
     TMB_VALUES = ['Top', 'Middle', 'Bottom']
+    END_OF_CAT = 'END OF CATEGORY'
 
 
 

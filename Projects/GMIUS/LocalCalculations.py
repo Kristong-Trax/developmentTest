@@ -1,6 +1,7 @@
 import os
 from Projects.GMIUS.Helpers.Result_Uploader import ResultUploader
 from Projects.GMIUS.Helpers.Entity_Uploader import EntityUploader
+from Projects.GMIUS.Helpers.Atomic_Farse import AtomicFarse
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -11,7 +12,9 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gmius'
     # ru = ResultUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
-    # ru = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
+    # eu = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
+    # af = AtomicFarse(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/Yogurt GMI KPI Template v0.2.xlsx')
+    # asdfas
     sessions = [
                 'ab70f0f1-7ea1-4e76-a21e-45b45809d301',
                 '039907ec-6e6f-4d41-b1a1-595152e21225',
@@ -144,7 +147,7 @@ if __name__ == '__main__':
         '9120d01e-1aa7-45b6-acb0-74cad717bb70',
         '681b0f76-04cb-4660-a5de-64838c4d60da',
         '4b4710a5-6d43-48e5-8d02-0bba02b760d9',
-        'e78880fd-1f5a-48da-a903-2c8bf0cb5292',
+        'e78880fd-1f5a-48da-a903-2c8kpi_linebf0cb5292',
         '16337887-46a5-4a50-9ca0-8f477060f17b',
         '128f9537-cc21-4699-a565-471e9b44ec2a',
         '99f05cc6-9a2f-4cd4-82e5-a5e33a4f9c87',
@@ -515,8 +518,8 @@ if __name__ == '__main__':
         # '2fe10dac-8bda-40ba-91eb-ea86016a6c6b',
         # '10314089-10b2-416c-8db4-6c255f12492e',
         # '3ee63d70-0696-4513-8307-957131460c3d',
-        '50c99053-4504-4d05-af28-34a464706633',
-        # '26175b23-f786-4564-a9a4-e8810ce231d9',
+        # '50c99053-4504-4d05-af28-34a464706633',
+        '26175b23-f786-4564-a9a4-e8810ce231d9',
     ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
