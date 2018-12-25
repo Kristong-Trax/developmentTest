@@ -1,12 +1,13 @@
+import pandas as pd
+import os
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-import os
-
 from KPIUtils_v2.DB.Common import Common
+from Projects.PNGHK_SAND.Data.Const import Const
+
+# from Trax.Utils.Logging.Logger import Log
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -22,7 +23,7 @@ __author__ = 'ilays'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'pnghk_template_v1.1.xlsx')
 
 class PNGHKToolBox:
     LEVEL1 = 1
@@ -46,12 +47,16 @@ class PNGHKToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.kpis_sheet = pd.read_excel(PATH, Const.KPIS).fillna("")
+        self.survey_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
+
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
         # PARSE TEMPLATE
+
 
         self.calculate_linear_kpi()
         self.calculate_facings_kpi()
