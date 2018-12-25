@@ -47,19 +47,22 @@ class PNGHKToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.kpis_sheet = pd.read_excel(PATH, Const.KPIS).fillna("")
-        self.survey_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
+        self.osd_rules_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
 
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        # PARSE TEMPLATE
-
-
+        kpi_ids = self.kpis_sheet[Const.KPI_ID].drop_duplicates().tolist()
+        for id in kpi_ids:
+            kpi_df = self.kpis_sheet[self.kpis_sheet[Const.KPI_ID] == id]
+            self.handle_atomic(kpi_df)
         self.calculate_linear_kpi()
         self.calculate_facings_kpi()
 
+    def handle_atomic(self, kpi_df):
+        kpi_type = kpi_df[Const.KPI_TYPE].values[0]
 
 
     def calculate_linear_kpi(self):

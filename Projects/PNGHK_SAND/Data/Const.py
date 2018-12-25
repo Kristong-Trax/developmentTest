@@ -8,53 +8,47 @@ class Const(object):
     KPIS = 'KPIS'
     OSD_RULES = 'OSD_RULES'
 
-    # count types
-    SCENE = 'scene'
-    UNIQUE_SKU = 'unique sku'
-    FACING = 'facing'
-    SCENE_SOS = 'scene_sos'
-
-    # const
-    KPI_GROUP = 'Tested KPI Group'
-    ENGLISH_KPI_NAME = 'English KPI Name'
-    KPI_DISPLAY_NAME = 'KPI Display Name'
-    GROUP_KPI_NAME = 'Group KPI Name'
-    KPI_TYPE = 'KPI Type'
-    STORE_TYPE_TEMPLATE = 'Store Type'
-    SURVEY_QUESTION_ID = 'Survey Question Id'
-    TARGET_ANSWER = 'Target Answer'
-    COUNT_TYPE = 'Count Type'
-    TARGET = 'Target'
-    TARGET_TYPE = 'Target Type'
-    TARGET_OPERATOR = 'Target Operator'
-    PERCENTAGE = 'percentage'
-    TEMPLATE_GROUP = 'Template Group'
-    TEMPLATE_NAME = 'Template Name'
-    BRAND = 'Brand'
+    # KPIS fields
+    KPI_ID = 'KPI_ID'
+    KPI_TYPE = 'KPI_Type'
+    KPI_NAME = 'KPI_Name'
+    PER_CATEGORY = 'Per_category'
+    SCENE_TYPE = 'Scene_type'
     CATEGORY = 'Category'
-    EXCLUDE_CATEGORY = 'Exclude category'
-    MANUFACTURER = 'Manufacturer'
-    PRODUCT_TYPE = 'Product Type'
-    PRODUCT_SIZE = 'Product Size'
-    PRODUCT_SIZE_OPERATOR = 'Product Size Operator'
-    PRODUCT = 'Product'
-    EXPECTED_RESULT = "Expected Result"
-    NUMERIC = "Numeric"
-    STRING = "STRING"
-    MEASUREMENT_UNIT = "Measurement Unit"
-    WEIGHT = 'Weight'
-    EXCLUDE_MANUFACTURER = 'Exclude manufacturer'
-    MULTIPACK= 'Multipack'
-    CONSIDER_FEW = 'Consider few brands'
+    SCENE_SIZE = 'Scene_size'
+    STACKING = 'Stacking'
+    EXCLUDE_OTHER = 'Other'
+    EXCLUDE_IRRELEVANT = 'Irrelevant'
+    EXCLUDE_EMPTY = 'Empty'
+    EXCLUDE_POSM = 'POSM'
+    EXCLUDE_HANGER = 'Smart_attribute_hanger'
+    EXCLUDE_OSD = 'OSD'
+    EXCLUDE_STOCK = 'Stock'
+    EXCLUDE_SKU = 'SKU'
+    NUMERATOR_ENTITY = 'Numerator_entity'
+    DENOMINATOR_ENTITY = 'Denominator_entity'
+    NMERATOR = 'Numerator'
+    RESULT = 'Result'
 
-    # delete fields
-    DELETE_FIELDS = [ENGLISH_KPI_NAME, COUNT_TYPE, STORE_TYPE_TEMPLATE, PRODUCT, TARGET_OPERATOR, CONSIDER_FEW,
-                     PRODUCT_SIZE_OPERATOR, PRODUCT_SIZE, TARGET, MEASUREMENT_UNIT, EXPECTED_RESULT, MULTIPACK]
+    # OSD_RULES fields
+    RETAILER = 'Retailer'
+    HAS_OSD = 'Has_OSD'
+    HAS_HOTSPOT = 'Has_hotspot'
+    NUMBER_OF_SHELVES = 'Number_of_shelves'
+    POSM_EAN_CODE = 'POSM_EAN_CODE'
+
+    # KPIs types
+    FSOS = 'Facing Share of Shelf'
+    LSOS = 'Linear Share of Shelf'
+    DISPLAY_NUMBER = 'Display Number'
+
+    # Entities types
+    MANUFACTURER = 'Manufacturer'
+    BRAND = 'Brand'
+    SKU = 'SKU'
 
     # include exclude filters
-    EXCLUDE_FILTER = 0
-    INCLUDE_FILTER = 1
-
-    # pk
-    AVAILABILITY_PK = 5
-    PRICING_PK = 6
+    EXCLUDE = 'Excluded'
+    INCLUDE = 'Included'
+    YES = 'Y'
+    NO = 'N'
