@@ -19,6 +19,3 @@ class SosOnBrandedZonesSubCategory_KPI(GfkBaseCalculation):
             'numerator': '',
             'denominator': 'SubCategory',
         }
-
-    def calculate(self):
-        pass

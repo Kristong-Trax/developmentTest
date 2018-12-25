@@ -1,13 +1,13 @@
 from KPIUtils.GlobalProjects.GFK.Base.BaseCalculationScript import GfkBaseCalculation
-from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
+from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 
 
-class SosOnBrandedZonesCategory_KPI(GfkBaseCalculation):
+class SOSUnboxedSKUCategory_KPI(GfkBaseCalculation):
 
     @classproperty
     def kpi_type(self):
-        return "SOS_ON_BRANDED_ZONES_CATEGORY"
+        return "SOS_UNBOXED_SKU_CATEGORY"
 
     def kpi_policy(self):
         return {
@@ -18,6 +18,6 @@ class SosOnBrandedZonesCategory_KPI(GfkBaseCalculation):
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.BRAND_FK,
+            "numerator": Fields.PRODUCT_FK,
             "denominator": Keys.CATEGORY_FK
         }

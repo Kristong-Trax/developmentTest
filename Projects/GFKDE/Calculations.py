@@ -1,7 +1,16 @@
+from Projects.GFKDE.SOSUnboxedBrandCategory import SOSUnboxedBrandCategory_KPI
+from Projects.GFKDE.SOSUnboxedBrandSubCategory import SOSUnboxedBrandSubCategory_KPI
+from Projects.GFKDE.SOSUnboxedManufacturerCategory import SOSUnboxedManufacturerCategory_KPI
+from Projects.GFKDE.SOSUnboxedManufacturerSubCategory import SOSUnboxedManufacturerSubCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndBrandCategory import SosOnGondolaEndBrandCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndBrandSubCategory import SosOnGondolaEndBrandSubCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndManufacturerCategory import SosOnGondolaEndManufacturerCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndManufacturerSubCategory import SosOnGondolaEndManufacturerSubCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndSKUCategory import SosOnGondolaEndSKUCategory_KPI
+from Projects.GFKDE.SOSUnboxedOnGondolaEndSKUSubCategory import SosOnGondolaEndSKUSubCategory_KPI
+from Projects.GFKDE.SOSUnboxedSKUCategory import SOSUnboxedSKUCategory_KPI
+from Projects.GFKDE.SOSUnboxedSKUSubCategory import SOSUnboxedSKUSubCategory_KPI
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-
-
-from KPIUtils.DB.Common import Common
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
@@ -15,27 +24,30 @@ class GFKDECalculations(BaseCalculationsScript):
     @log_runtime("GSKDE session runtime")
     def run_project_calculations(self):
         self.timer.start()
-        common = Common(self.data_provider)
-        # # heinz = HEINZGenerator(self.data_provider, self.output, common)
-        # heinz.heinz_global_distribution_per_category()
-        # heinz.heinz_global_share_of_shelf_function()
-        # os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Config', 'PriceAdherenceTargets091218.xlsx')
-        # heinz.heinz_global_price_adherence(pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-        #                                 'Config', 'PriceAdherenceTargets091218.xlsx'), sheetname="Price Adherence"))
-        # heinz.heinz_global_extra_spaces()
+        SOS = [SOSUnboxedBrandCategory_KPI, SOSUnboxedManufacturerCategory_KPI, SOSUnboxedSKUCategory_KPI]
+        SOS_SUB = [SOSUnboxedBrandSubCategory_KPI, SOSUnboxedManufacturerSubCategory_KPI, SOSUnboxedSKUSubCategory_KPI]
+        GONDOLA_END = [SosOnGondolaEndBrandCategory_KPI, SosOnGondolaEndManufacturerCategory_KPI, SosOnGondolaEndSKUCategory_KPI]
+        GONDOLA_END_SUB = [SosOnGondolaEndBrandSubCategory_KPI, SosOnGondolaEndManufacturerSubCategory_KPI, SosOnGondolaEndSKUSubCategory_KPI]
+
+        KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB
+
+        for kpi in KPIs:
+            kpi(data_provider=data_provider).calculate()
         # common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('heinzcr calculations')
-#     Config.init()
-#     project_name = 'heinzcr'
-#     data_provider = KEngineDataProvider(project_name)
-#     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-#     sessions = ['32d3aaa5-acc7-4fc2-8779-329cc1dbe9ca']
-#     for session in sessions:
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+
+if __name__ == '__main__':
+    LoggerInitializer.init('gfkde calculations')
+    Config.init()
+    project_name = 'gfkde'
+    data_provider = KEngineDataProvider(project_name)
+    sessions = ['fae5cf3a-16ea-40e3-9016-ff4bb2730291']
+    for session in sessions:
+        data_provider.load_session_data(session)
+        GFKDECalculations(data_provider=data_provider, output=None).run_project_calculations()
+

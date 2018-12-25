@@ -3,14 +3,17 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class SosOnBrandedZonesCategory_KPI(GfkBaseCalculation):
+class SosOnGondolaEndManufacturerSubCategory_KPI(GfkBaseCalculation):
 
     @classproperty
     def kpi_type(self):
-        return "SOS_ON_BRANDED_ZONES_CATEGORY"
+        return "SOS_UNBOXED_GONDOLA_MANUFACTURER_SUB_CATEGORY"
 
     def kpi_policy(self):
         return {
+            "location": {
+                "template_name": ["Washing Machines - Gondola End"]
+            },
             "population": {
                 "include": {
                     "category_local_name": ["Washing Machines"],
@@ -18,6 +21,6 @@ class SosOnBrandedZonesCategory_KPI(GfkBaseCalculation):
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.BRAND_FK,
-            "denominator": Keys.CATEGORY_FK
+            "numerator": Keys.MANUFACTURER_FK,
+            "denominator": Keys.SUB_CATEGORY_FK
         }
