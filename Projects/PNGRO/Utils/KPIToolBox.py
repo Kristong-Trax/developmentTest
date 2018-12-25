@@ -300,7 +300,9 @@ class PNGRO_PRODToolBox:
             templates = self.scif[['scene_fk', 'template_fk']].drop_duplicates(keep='last')
             final_df = scene_display_product.merge(templates, on='scene_fk', how='left')
             final_df = final_df[['scene_fk', 'template_fk', 'product_fk', 'display_name', 'pk',
-                                 'product_width_total','display_width_total', 'pallets']]
+                                 'product_width_total', 'display_width_total', 'pallets']]
+            # according to kpi logic denominator_id should be display_pk (pk) and context_id - template_fk but in TD
+            # context_id filed is not retrieved => we switch values in denominator_id and context_id
             for i, row in final_df.iterrows():
                 self.common.write_to_db_result(fk=kpi_fk, score=row['pallets'], result=row['pallets'],
                                                numerator_result=row['product_width_total'],
@@ -340,13 +342,6 @@ class PNGRO_PRODToolBox:
                                                      .agg({'width_mm_advance': np.sum})
         scene_bay_display = scene_bay_display.rename(columns={'width_mm_advance': 'display_width_total'})
         return scene_bay_display
-
-    def get_share_of_sku_on_secondary_shelves(self, row):
-        if not row['facings_all_secondary_shelves']==0:
-            share = row['facings_ign_stack'] / row['facings_all_secondary_shelves']
-        else:
-            share = 0
-        return share
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -397,11 +392,7 @@ class PNGRO_PRODToolBox:
                 scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
                                                                                           axis=1)
                 scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
-                # scene_bays_shelves['count'] = 0
-                # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
-                #                                                 as_index=False).agg({'count': np.size})
                 scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
-                # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
                 scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
                 skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
         score = min(skus_at_eye_lvl / target, 1)

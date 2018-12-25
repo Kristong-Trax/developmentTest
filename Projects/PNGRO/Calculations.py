@@ -18,7 +18,7 @@ class PNGRO_PRODCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngro calculations')
 #     Config.init()
-#     project_name = 'pngro-sand'
+#     project_name = 'pngro'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
 #         '5bdaf070-8916-4459-bcbd-36473e37207b',
