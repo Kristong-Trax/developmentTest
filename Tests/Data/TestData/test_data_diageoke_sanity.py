@@ -8,7 +8,7 @@ __author__ = 'limorc'
 
 class ProjectsSanityData(BaseSeedData):
     project_name = TestProjectsNames().TEST_PROJECT_1
-    diageoke_sand_seed = {DATA_TYPE: BaseSeedData.MYSQL,
-                        FILES_RELATIVE_PATH: ['Data/Seeds/diageoke_sand_seed.sql.gz'],
+    diageoke_seed = {DATA_TYPE: BaseSeedData.MYSQL,
+                        FILES_RELATIVE_PATH: ['Data/Seeds/diageoke_seed.sql.gz'],
                         PROJECT_NAME: project_name
                         } 

@@ -7,18 +7,18 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase, skip
 from mock import patch
 
-from Tests.Data.TestData.test_data_diageoie_sanity import ProjectsSanityData
-from Projects.DIAGEOIE.Calculations import DIAGEOIECalculations
+from Tests.Data.Templates.diageoke.LocalMPA import local_mpa
+from Tests.Data.Templates.diageoke.MPA import mpa
+from Tests.Data.Templates.diageoke.NewProducts import products
+from Tests.Data.Templates.diageoke.POSM import posm
+from Tests.Data.TestData.test_data_diageoke_sanity import ProjectsSanityData
+from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
-from Tests.Data.Templates.diageoie.MPA import mpa
-from Tests.Data.Templates.diageoie.NewProducts import products
-from Tests.Data.Templates.diageoie.LocalMPA import local_mpa
 
-__author__ = 'jasmineg'
+__author__ = 'limorc'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
@@ -44,21 +44,24 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         connector.disconnect_rds()
 
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
-           return_value='2018-03-29')
+           return_value='2018-11-27')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=mpa)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
+           return_value=local_mpa)
+    @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=products)
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
-           return_value=local_mpa)
-    @seeder.seed(["diageoie_seed"], ProjectsSanityData())
-    def test_diageoie_sanity(self, x, y, json1, json2, json3):
+           return_value=posm)
+    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+
+    def test_diageoke_sanity(self, x, y, json, json2, json3,json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['C2D8A9DC-C94D-4C24-B10A-36F3BC61E6FB']
+        sessions = ['08e4dbd4-9270-4352-a68b-ca27e7853de6']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            DIAGEOIECalculations(data_provider, output).run_project_calculations()
+            DIAGEOKECalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
