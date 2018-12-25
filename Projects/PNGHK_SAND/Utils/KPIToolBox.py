@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGHK_SAND.Data.Const import Const
-from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 # from Trax.Utils.Logging.Logger import Log
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -15,7 +15,7 @@ from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 # from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
+from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'ilays'
 
@@ -41,6 +41,7 @@ class PNGHKToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -48,25 +49,82 @@ class PNGHKToolBox:
         self.kpi_results_queries = []
         self.kpis_sheet = pd.read_excel(PATH, Const.KPIS).fillna("")
         self.osd_rules_sheet = pd.read_excel(PATH, Const.OSD_RULES).fillna("")
-
+        self.kpi_excluding = pd.DataFrame()
+        self.df = pd.DataFrame()
+        self.tools = GENERALToolBox(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
+        df = pd.merge(self.match_product_in_scene, self.products, on="product_fk", how="left")
+        self.df = pd.merge(df, self.scif[['scene_fk', 'template_name']], on="scene_fk", how="left")
         kpi_ids = self.kpis_sheet[Const.KPI_ID].drop_duplicates().tolist()
         for id in kpi_ids:
             kpi_df = self.kpis_sheet[self.kpis_sheet[Const.KPI_ID] == id]
             self.handle_atomic(kpi_df)
-        self.calculate_linear_kpi()
-        self.calculate_facings_kpi()
+        # self.common.commit_results_data()
 
     def handle_atomic(self, kpi_df):
-        kpi_type = kpi_df[Const.KPI_TYPE].values[0]
+        kpi_type = kpi_df[Const.KPI_TYPE].values[0].strip()
+        self.kpi_excluding = kpi_df[[Const.EXCLUDE_EMPTY, Const.EXCLUDE_HANGER, Const.EXCLUDE_IRRELEVANT, Const.EXCLUDE_POSM,
+                             Const.EXCLUDE_OTHER, Const.EXCLUDE_SKU, Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]].iloc[0]
+        if kpi_type == Const.FSOS:
+            self.calculate_facings_sos_kpi(kpi_df)
+        elif kpi_type == Const.LSOS:
+            self.calculate_linear_sos_kpi(kpi_df)
+        elif kpi_type == Const.DISPLAY_NUMBER:
+            pass
+
+    def calculate_facings_sos_kpi(self, kpi_df):
+        for i, row in kpi_df.iterrows():
+            df = self.filter_df(row)
+            entity_name = Const.ENTETIES_DICT[row[Const.NUMERATOR_ENTITY]]
+            all_denominators = df[entity_name].drop_duplicates()
+            for entity in all_denominators:
+                filters = {entity_name: entity}
+                numerator = self.tools.get_filter_condition(**filters)
+                denominator = self.tools.get_filter_condition(**{})
+
+    def calculate_linear_sos_kpi(self, kpi_df):
+        for i, row in kpi_df.iterrows():
+            df = self.filter_df(row)
 
 
-    def calculate_linear_kpi(self):
-        pass
 
-    def calculate_facings_kpi(self):
-        pass
+    def filter_df(self, kpi_df):
+
+        df = self.df.copy()
+        # filter scene_types
+        scene_types = kpi_df[Const.SCENE_TYPE].split(',')
+        scene_types = [item.strip() for item in scene_types]
+        df = df[df['template_name'].isin(scene_types)]
+
+        # filter category
+        category = kpi_df[Const.CATEGORY].strip()
+        df = df[df['category'] == category]
+
+        # filter stacking
+        stacking = kpi_df[Const.STACKING].strip()
+        if stacking == Const.NO:
+            df = df[df['stacking_layer'] == 1]
+
+        # filter excludings
+        self.filter_excluding(df)
+
+    def filter_excluding(self, df):
+        if self.kpi_excluding[Const.EXCLUDE_IRRELEVANT == Const.EXCLUDE]:
+            df = df[df['product_type'] != 'Irrelevant']
+        if self.kpi_excluding[Const.EXCLUDE_OTHER == Const.EXCLUDE]:
+            df = df[df['product_type'] != 'Other']
+        if self.kpi_excluding[Const.EXCLUDE_EMPTY == Const.EXCLUDE]:
+            df = df[df['product_type'] != 'Empty']
+        if self.kpi_excluding[Const.EXCLUDE_EMPTY == Const.EXCLUDE]:
+            df = df[df['product_type'] != 'POS']
+
+
+        #???
+        # if self.kpi_excluding[Const.EXCLUDE_SKU == Const.EXCLUDE]:
+        #     df = df[df['product_type'] != 'SKU']
+
+        return df

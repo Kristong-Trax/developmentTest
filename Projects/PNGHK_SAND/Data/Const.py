@@ -16,7 +16,13 @@ class Const(object):
     SCENE_TYPE = 'Scene_type'
     CATEGORY = 'Category'
     SCENE_SIZE = 'Scene_size'
+    NUMERATOR_ENTITY = 'Numerator_entity'
+    DENOMINATOR_ENTITY = 'Denominator_entity'
+    NMERATOR = 'Numerator'
+    RESULT = 'Result'
     STACKING = 'Stacking'
+
+    # Excluded parameters
     EXCLUDE_OTHER = 'Other'
     EXCLUDE_IRRELEVANT = 'Irrelevant'
     EXCLUDE_EMPTY = 'Empty'
@@ -25,10 +31,6 @@ class Const(object):
     EXCLUDE_OSD = 'OSD'
     EXCLUDE_STOCK = 'Stock'
     EXCLUDE_SKU = 'SKU'
-    NUMERATOR_ENTITY = 'Numerator_entity'
-    DENOMINATOR_ENTITY = 'Denominator_entity'
-    NMERATOR = 'Numerator'
-    RESULT = 'Result'
 
     # OSD_RULES fields
     RETAILER = 'Retailer'
@@ -46,6 +48,9 @@ class Const(object):
     MANUFACTURER = 'Manufacturer'
     BRAND = 'Brand'
     SKU = 'SKU'
+    ENTETIES_DICT = {MANUFACTURER: "manufacturer_name",
+                     BRAND: "brand_name",
+                     SKU: 'product_ean_code'}
 
     # include exclude filters
     EXCLUDE = 'Excluded'
