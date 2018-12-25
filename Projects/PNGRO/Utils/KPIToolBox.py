@@ -12,7 +12,8 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
-from KPIUtils_v2.DB.Common import Common
+# from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.PNGRO.Utils.Fetcher import PNGRO_PRODQueries
 from Projects.PNGRO.Utils.GeneralToolBox import PNGRO_PRODGENERALToolBox
 from Projects.PNGRO.Utils.ParseTemplates import parse_template
@@ -123,7 +124,8 @@ class PNGRO_PRODToolBox:
         self.rds_conn.connect_rds()
         self.sbd_kpis_data = self.get_relevant_sbd_kpis()
         self.common = Common(self.data_provider)
-        self.new_kpi_static_data = self.common.get_new_kpi_static_data()
+        # self.new_kpi_static_data = self.common.get_new_kpi_static_data()
+        self.new_kpi_static_data = self.common.get_kpi_static_data()
 
         self.main_shelves = self.are_main_shelves()
         self.assortment = Assortment(self.data_provider, self.output, common=self.common)
@@ -224,10 +226,12 @@ class PNGRO_PRODToolBox:
         This function calculates the KPI results.
         """
         # Assortment(self.data_provider, self.output, common=self.common).main_assortment_calculation()
-        self.calculate_assortment_main_shelf()
         # if not self.match_display.empty:
         #     if self.match_display['exclude_status_fk'][0] in (1, 4):
+
+        self.calculate_assortment_main_shelf()
         self.calculate_linear_share_of_shelf_per_product_display()
+        self.calculate_sos_pallets_per_product_by_scene_type_secondary_shelves()
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         if self.main_shelves:
             self.calculate_sbd()
@@ -282,6 +286,62 @@ class PNGRO_PRODToolBox:
                         else:
                             self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk)
 
+    def calculate_sos_pallets_per_product_by_scene_type_secondary_shelves(self):
+        if not self.scene_display_bay.empty:
+            kpi_fk = self.get_new_kpi_fk_by_kpi_name('Share of SKU on Secondary Shelf')
+            scene_display_bay = self.scene_display_bay
+            scene_bay_display_width = self.get_display_width_df()
+            scene_display_bay = pd.merge(scene_display_bay, scene_bay_display_width, on=['scene_fk', 'bay_number'], how='left')
+            scene_bay_product_width = self.get_product_width_df()
+            scene_bay_display_product = pd.merge(scene_bay_product_width, scene_display_bay, on=['scene_fk', 'bay_number'], how='left')
+            scene_display_product = scene_bay_display_product.groupby(['scene_fk', 'product_fk', 'display_name', 'pk'], as_index=False)\
+                                                                .agg({'product_width_total':np.sum, 'display_width_total':np.sum})
+            scene_display_product['pallets'] = scene_display_product.apply(self.get_number_of_pallets, axis=1)
+            templates = self.scif[['scene_fk', 'template_fk']].drop_duplicates(keep='last')
+            final_df = scene_display_product.merge(templates, on='scene_fk', how='left')
+            final_df = final_df[['scene_fk', 'template_fk', 'product_fk', 'display_name', 'pk',
+                                 'product_width_total', 'display_width_total', 'pallets']]
+            # according to kpi logic denominator_id should be display_pk (pk) and context_id - template_fk but in TD
+            # context_id filed is not retrieved => we switch values in denominator_id and context_id
+            for i, row in final_df.iterrows():
+                self.common.write_to_db_result(fk=kpi_fk, score=row['pallets'], result=row['pallets'],
+                                               numerator_result=row['product_width_total'],
+                                               numerator_id=row['product_fk'],
+                                               denominator_result=row['display_width_total'],
+                                               denominator_id=row['template_fk'],
+                                               context_id=row['pk'])
+            # scene_product = scene_display_product.groupby(['scene_fk', 'product_fk']).agg({'pallets': np.sum})
+            # for i, row in scene_product.iterrows():
+            #     self.common.write_to_db_result_new_tables(fk=kpi_fk, score=row['pallets'],
+            #                                               result=row['pallets'],
+            #                                               numerator_result=row['facings_ign_stack'],
+            #                                               denominator_result=row['facings_all_secondary_shelves'],
+            #                                               numerator_id=row['product_fk'], denominator_id=row['template_fk'])
+
+    def get_number_of_pallets(self, row):
+        display_weight = self.get_display_weight_by_display_name(row['display_name'])
+        display_count = self.display_scene_count[self.display_scene_count['display_name'] == row['display_name']]['count'].sum()
+        pallets = row['product_width_total'] / float(row['display_width_total']) * display_weight * display_count
+        return pallets
+
+    def get_product_width_df(self):
+        matches = self.match_product_in_scene
+        matches_filtered = matches[(matches['stacking_layer'] == 1) & (~(matches['bay_number'] == -1))][['scene_fk',
+                                                                      'bay_number', 'product_fk', 'width_mm_advance']]
+        scene_bay_product = matches_filtered.groupby(['scene_fk', 'bay_number', 'product_fk'], as_index=False)\
+                                                    .agg({'width_mm_advance': np.sum})
+        scene_bay_product = scene_bay_product.rename(columns={'width_mm_advance': 'product_width_total'})
+        return scene_bay_product
+
+    def get_display_width_df(self):
+        matches = self.match_product_in_scene
+        matches_filtered = matches[(matches['stacking_layer'] == 1) & (~(matches['bay_number'] == -1))][['scene_fk',
+                                                                                                       'bay_number',
+                                                                                                       'width_mm_advance']]
+        scene_bay_display = matches_filtered.groupby(['scene_fk', 'bay_number'], as_index=False) \
+                                                     .agg({'width_mm_advance': np.sum})
+        scene_bay_display = scene_bay_display.rename(columns={'width_mm_advance': 'display_width_total'})
+        return scene_bay_display
 
     def check_if_blade_ok(self, params, match_display, category_status_ok):
         if not params['Scene Category'].strip():
@@ -332,11 +392,7 @@ class PNGRO_PRODToolBox:
                 scene_bays_shelves['shelf_number_from_bottom'] = scene_bays_shelves.apply(self.add_max_shelves_number,
                                                                                           axis=1)
                 scene_bays_shelves = scene_bays_shelves.reset_index(drop=True)
-                # scene_bays_shelves['count'] = 0
-                # scene_bays_shelves = scene_bays_shelves.groupby(['scene_fk', 'bay_number', 'shelf_number_from_bottom'],
-                #                                                 as_index=False).agg({'count': np.size})
                 scene_bays_shelves['shelf_range'] = scene_bays_shelves.apply(self.calculate_eye_level_shelves, axis=1)
-                # scene_bays_shelves = self.add_eye_level_shelf_range(scene_bays_shelves)
                 scene_bays_shelves['facings_eye_lvl'] = scene_bays_shelves.apply(self.get_facings_scene_bay_shelf, axis=1)
                 skus_at_eye_lvl = scene_bays_shelves['facings_eye_lvl'].sum()
         score = min(skus_at_eye_lvl / target, 1)
@@ -360,7 +416,6 @@ class PNGRO_PRODToolBox:
                 final_shelves = range(start_shelf, end_shelf + 1)
             scene_bays_shelves.at[i,'shelf_range'] = final_shelves
         return scene_bays_shelves
-
 
     def add_max_shelves_number(self, row):
         total_shelves = self.match_product_in_scene[(self.match_product_in_scene['bay_number'] ==
@@ -396,9 +451,14 @@ class PNGRO_PRODToolBox:
 
             for result in assortment_result_lvl3.itertuples():
                 score = result.in_store * 100
-                self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                # self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                #                                           numerator_result=result.in_store, result=score,
+                #                                           denominator_id=result.assortment_group_fk, denominator_result=1,
+                #                                           score=score)
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
                                                           numerator_result=result.in_store, result=score,
-                                                          denominator_id=result.assortment_group_fk, denominator_result=1,
+                                                          denominator_id=result.assortment_group_fk,
+                                                          denominator_result=1,
                                                           score=score)
             lvl2_result = self.assortment.calculate_lvl2_assortment(assortment_result_lvl3)
             for result in lvl2_result.itertuples():
@@ -411,7 +471,13 @@ class PNGRO_PRODToolBox:
                     score = 100
                 else:
                     score = 0
-                self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+                # self.common.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+                #                                           numerator_result=result.passes, result=res,
+                #                                           denominator_id=result.assortment_super_group_fk,
+                #                                           denominator_result=denominator_res,
+                #                                           score=score)
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl2,
+                                                          numerator_id=result.assortment_group_fk,
                                                           numerator_result=result.passes, result=res,
                                                           denominator_id=result.assortment_super_group_fk,
                                                           denominator_result=denominator_res,
@@ -676,12 +742,18 @@ class PNGRO_PRODToolBox:
                 if product_width and display_width:
                     score = (product_width / float(display_width)) * display_weight * display_count
                     level_fk = self.get_new_kpi_fk_by_kpi_name('display count')
-                    self.common.write_to_db_result_new_tables(fk=level_fk, score=score, result=score,
+                    self.common.write_to_db_result(fk=level_fk, score=score, result=score,
                                                               numerator_result=product_width,
                                                               denominator_result=display_width,
                                                               numerator_id=product,
                                                               denominator_id=display_pd['pk'].values[0],
                                                               target=display_weight * display_count)
+                    # self.common.write_to_db_result_new_tables(fk=level_fk, score=score, result=score,
+                    #                                           numerator_result=product_width,
+                    #                                           denominator_result=display_width,
+                    #                                           numerator_id=product,
+                    #                                           denominator_id=display_pd['pk'].values[0],
+                    #                                           target=display_weight * display_count)
 
     def get_display_weight_by_display_name(self, display_name):
         assert isinstance(display_name, unicode), "name is not a string: %r" % display_name
