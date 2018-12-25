@@ -1,7 +1,7 @@
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import Projects.DIAGEOUS_SAND.Tests.test_data as Data
-from Projects.DIAGEOUS_SAND.Utils.KPIToolBox import DIAGEOUS_SANDToolBox
+from Projects.DIAGEOUS_SAND.Utils.KPIToolBox import ToolBox
 
 
 __author__ = 'yoava'
@@ -16,7 +16,7 @@ class DIAGEOUS_SANDTestDiageous(TestCase):
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
         self.data = Data
-        self.tool_box = DIAGEOUS_SANDToolBox(self.data_provider_mock, self.output)
+        self.tool_box = ToolBox(self.data_provider_mock, self.output)
 
 
 # if __name__ == '__main__':
