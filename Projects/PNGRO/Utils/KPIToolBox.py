@@ -301,6 +301,8 @@ class PNGRO_PRODToolBox:
             final_df = scene_display_product.merge(templates, on='scene_fk', how='left')
             final_df = final_df[['scene_fk', 'template_fk', 'product_fk', 'display_name', 'pk',
                                  'product_width_total', 'display_width_total', 'pallets']]
+            final_df = final_df.groupby(['template_fk', 'product_fk', 'display_name', 'pk'], as_index=False).agg(
+                {'product_width_total': np.sum, 'display_width_total': np.sum, 'pallets': np.sum})
             # according to kpi logic denominator_id should be display_pk (pk) and context_id - template_fk but in TD
             # context_id filed is not retrieved => we switch values in denominator_id and context_id
             for i, row in final_df.iterrows():
