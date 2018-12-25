@@ -43,7 +43,6 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         self.assertNotEquals(0, 0)
         connector.disconnect_rds()
 
-    @skip('Test failed in garage')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.get_latest_directory_date_from_cloud',
            return_value='2018-08-02')
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.save_latest_templates')
