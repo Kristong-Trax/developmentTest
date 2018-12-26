@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Logging.Logger import Log
-from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'Sergey'
 
@@ -14,9 +13,14 @@ class CCRU_SANDRunSql:
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
 
     def run_it(self):
-        statement_1 = \
+        statements = \
 """
-UPDATE `static`.`atomic_kpi` SET `name`='CS@SSD Shelf Share', `description`='CS@SSD Shelf Share', `display_text`='SSD Shelf Share' WHERE `pk`='4704';
+UPDATE `static`.`atomic_kpi` SET `name`='Juice Shelf: Moya Semya - Apple Mix - 0.95L', `description`='Juice Shelf: Moya Semya - Apple Mix - 0.95L', `display_text`='Juice Shelf: Moya Semya - Apple Mix - 0.95L' WHERE `pk`='3362';
+UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple Mix - 0.95L', `description`='Moya Semya - Apple Mix - 0.95L', `display_text`='Moya Semya - Apple Mix - 0.95L' WHERE `pk`='4235';
+UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple Mix - 0.95L', `description`='Moya Semya - Apple Mix - 0.95L', `display_text`='Moya Semya - Apple Mix - 0.95L' WHERE `pk`='4281';
+UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Pineapple-Mango - 0.95L', `description`='Moya Semya - Pineapple-Mango - 0.95L', `display_text`='Moya Semya - Pineapple-Mango - 0.95L' WHERE `pk`='4236';
+UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Pineapple-Mango - 0.95L', `description`='Moya Semya - Pineapple-Mango - 0.95L', `display_text`='Moya Semya - Pineapple-Mango - 0.95L' WHERE `pk`='4282';
+UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple-Strawberry - 0.95L', `description`='Moya Semya - Apple-Strawberry - 0.95L', `display_text`='Moya Semya - Apple-Strawberry - 0.95L' WHERE `pk`='4248';
 """
 # """
 # DELETE FROM `static`.`kpi_set` WHERE `pk`>='64';
@@ -28,9 +32,13 @@ UPDATE `static`.`atomic_kpi` SET `name`='CS@SSD Shelf Share', `description`='CS@
 # UPDATE `static`.`kpi_set` SET `name`='Contract Execution 2018 X' WHERE `pk`='56';
 # """
 
-        cur = self.aws_conn.db.cursor()
-        cur.execute(statement_1)
-        self.aws_conn.db.commit()
+        statements = statements.split(';\n')
+        for statement in statements:
+            if len(statement) > 0:
+                cur = self.aws_conn.db.cursor()
+                print statement
+                cur.execute(statement)
+                self.aws_conn.db.commit()
 
 
 if __name__ == '__main__':

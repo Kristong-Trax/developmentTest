@@ -151,7 +151,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         self.match_display_in_scene = self.get_match_display()
         self.data_provider.probe_groups = self.get_probe_group(self.data_provider.session_uid)
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.template_name = 'TemplateQualitative.xlsx'
+        self.template_name = 'TemplateQualitative_Nov_20181107_v3.xlsx'
         self.TEMPLATE_PATH = os.path.join(os.path.dirname(
             os.path.realpath(__file__)), '..', 'Data', self.template_name)
         self.template_data = parse_template(self.TEMPLATE_PATH, self.HIERARCHY)
@@ -572,7 +572,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         product_eans = self._get_ean_codes_by_product_group_id(**params)
         kpi_filter[self.PRODUCT_EAN_CODE_FIELD] = product_eans
 
-        allowed = {'product_type': ['Other', 'Empty']}
+        allowed = {'product_type': ['Other', 'Empty', 'Irrelevant']}
         # allowed = params['allowed']
         allowed_products = self._get_allowed_products(allowed)
         filtered_products_all = self._get_filtered_products()
@@ -670,9 +670,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
-                            elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
-                                score = 100
-                                result = 1
+                            # elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
+                            #     score = 100
+                            #     result = 1
                         elif direction == 'Horizontal':
                             if set(edges_a['shelfs']).intersection(edges_b['shelfs']):
                                 extra_margin_a = (

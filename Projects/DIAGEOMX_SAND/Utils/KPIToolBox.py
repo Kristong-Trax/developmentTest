@@ -123,12 +123,11 @@ class DIAGEOMX_SANDToolBox:
         self.commonV2.save_json_to_new_tables(res_dict)
 
         # global touch point kpi
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT.xlsx')
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data', 'TOUCH POINT v2.xlsx')
         res_dict = self.diageo_generator.diageo_global_touch_point_function(template_path, sub_brand_name='sub_brand_name')
         self.commonV2.save_json_to_new_tables(res_dict)
 
-        self.common.commit_results_data_to_new_tables()
-        self.common.commit_results_data()  # old tables
+        self.common.commit_results_data()  # commit to old tables
 
         set_score=0
         for set_name in set_names:
@@ -427,16 +426,3 @@ class DIAGEOMX_SANDToolBox:
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
-
-    @log_runtime('Saving to DB')
-    def commit_results_data(self):
-        """
-        This function writes all KPI results to the DB, and commits the changes.
-        """
-        self.rds_conn.disconnect_rds()
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        for query in self.kpi_results_queries:
-            cur.execute(query)
-        self.rds_conn.db.commit()
-

@@ -111,12 +111,8 @@ class DIAGEOBR_SANDToolBox:
         """
         log_runtime('Updating templates')(self.tools.update_templates)()
 
-        # old assortment
-        self.diageo_generator.diageo_global_assortment_function()
-
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:

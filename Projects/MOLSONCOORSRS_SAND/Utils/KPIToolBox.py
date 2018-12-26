@@ -148,6 +148,7 @@ class MOLSONCOORSRS_SANDToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -167,6 +168,7 @@ class MOLSONCOORSRS_SANDToolBox:
                                                    result=score,
                                                    score=score,
                                                    weight=potential_score,
+                                                   target=potential_score,
                                                    identifier_result=identifier_result,
                                                    identifier_parent=identifier_parent,
                                                    should_enter=True
@@ -190,12 +192,12 @@ class MOLSONCOORSRS_SANDToolBox:
             # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
             if kpi['KPI Type'] == 'Distribution':
                 if row.result_distributed:
-                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
-                                                (self.result_values['result_value'] == 'Yes')]['result_value_fk'].tolist()[0]
+                    result = self.result_values[(self.result_values['result_type'] == 'PRESENCE') &
+                                                (self.result_values['result_value'] == 'DISTRIBUTED')]['result_value_fk'].tolist()[0]
                     score = 100
                 else:
-                    result = self.result_values[(self.result_values['result_type'] == 'Distribution') &
-                                                (self.result_values['result_value'] == 'No')]['result_value_fk'].tolist()[0]
+                    result = self.result_values[(self.result_values['result_type'] == 'PRESENCE') &
+                                                (self.result_values['result_value'] == 'OOS')]['result_value_fk'].tolist()[0]
                     score = 0
             else:
                 result = row.result_facings
@@ -233,9 +235,10 @@ class MOLSONCOORSRS_SANDToolBox:
                                                numerator_result=numerator_result,
                                                denominator_id=denominator_id,
                                                denominator_result=denominator_result,
-                                               result=result,
+                                               result=score,
                                                score=score,
                                                weight=potential_score,
+                                               target=potential_score,
                                                identifier_result=identifier_kpi,
                                                identifier_parent=identifier_parent,
                                                should_enter=True
@@ -253,7 +256,10 @@ class MOLSONCOORSRS_SANDToolBox:
         kpi_fk_lvl2 = self.common.get_kpi_fk_by_kpi_type(kpi['KPI name Eng'])
 
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        assortment_result = assortment_result[(assortment_result['kpi_fk_lvl3'] == kpi_fk_lvl3) & (assortment_result['kpi_fk_lvl2'] == kpi_fk_lvl2)]
+        if assortment_result.empty:
+            return assortment_result
+        assortment_result = assortment_result[(assortment_result['kpi_fk_lvl3'] == kpi_fk_lvl3) &
+                                              (assortment_result['kpi_fk_lvl2'] == kpi_fk_lvl2)]
         if assortment_result.empty:
             return assortment_result
 
@@ -331,8 +337,8 @@ class MOLSONCOORSRS_SANDToolBox:
             numerator_sos_filters = {MANUFACTURER_NAME: sos_policy[NUMERATOR][MANUFACTURER], CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
             denominator_sos_filters = {CATEGORY: sos_policy[DENOMINATOR][CATEGORY]}
 
-            numerator_id = self.scif.loc[self.scif[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
-            denominator_id = self.scif.loc[self.scif[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
+            numerator_id = self.all_products.loc[self.all_products[MANUFACTURER_NAME] == sos_policy[NUMERATOR][MANUFACTURER]][MANUFACTURER + '_fk'].values[0]
+            denominator_id = self.all_products.loc[self.all_products[CATEGORY] == sos_policy[DENOMINATOR][CATEGORY]][CATEGORY + '_fk'].values[0]
 
             ignore_stacking = kpi['Ignore Stacking'] if kpi['Ignore Stacking'] else 0
 
