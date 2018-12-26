@@ -40,5 +40,6 @@ class MarsUsGenerator:
 
         try:
             self.millercoors_tool_box.main_calculation()
+            self.millercoors_tool_box.commit_results()
         except:
             Log.error('MillerCoors KPIs not calculated')
