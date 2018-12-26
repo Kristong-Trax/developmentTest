@@ -5,20 +5,20 @@ from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
+# from KPIUtils_v2.Calculations.AdjacencyCalculations import Adjancency
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 from KPIUtils_v2.Calculations.BlockCalculations  import Block
-from KPIUtils_v2.Calculations.EyeLevelCalculations import EYE_LEVEL_DEFINITION
-from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
-from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+# from KPIUtils_v2.Calculations.EyeLevelCalculations import EYE_LEVEL_DEFINITION
+# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
+# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
+# from KPIUtils_v2.Calculations.SOSCalculations import SOS
+# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
+# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from Projects.PERNODUS_SAND.Utils.ParseTemplates import parse_template
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
+# import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
 from Projects.PERNODUS_SAND.Utils.Const import Const
 
 
@@ -80,60 +80,60 @@ class PERNODUSToolBox:
     def main_calculation(self, *args, **kwargs):
 
 
-        # #Base Measurement
-        for i, row in self.BaseMeasure_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    value = row ['value']
-                    location = row['Store Location']
-                    kpi_set_fk= self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                    self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-
-
-
-        # # Anchor
-        for i, row in self.Anchor_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    value = row ['value']
-                    kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-
-                    self.calculate_anchor(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-
-        # #Presence
-        self.calculate_presence()
-
-        # #Blocking
-        for i, row in self.Blocking_template.iterrows():
-            try:
-                    kpi_name = row['KPI']
-                    kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                    self.calculate_blocking(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # #Eye Level
-        for i, row in self.Eye_Level_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_eye_level(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        # # #Base Measurement
+        # for i, row in self.BaseMeasure_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             value = row ['value']
+        #             location = row['Store Location']
+        #             kpi_set_fk= self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #             self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        #
+        #
+        #
+        # # # Anchor
+        # for i, row in self.Anchor_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             value = row ['value']
+        #             kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #
+        #             self.calculate_anchor(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        #
+        # # #Presence
+        # self.calculate_presence()
+        #
+        # # #Blocking
+        # for i, row in self.Blocking_template.iterrows():
+        #     try:
+        #             kpi_name = row['KPI']
+        #             kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #             self.calculate_blocking(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # #Eye Level
+        # for i, row in self.Eye_Level_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_eye_level(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         #Adjacency
         for i, row in self.Adjaceny_template.iterrows():
@@ -247,10 +247,7 @@ class PERNODUSToolBox:
         for scene in relevant_scif.scene_fk.unique():
             scene_filter = {'scene_fk': scene}
             mpis = self.filter_df(self.mpis, scene_filter)
-            allowed = {}
             items = set(self.filter_df(mpis, filter)['scene_match_fk'].values)
-            # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
-            # items.update(allowed_items)
             if not (items):
                 return
 
@@ -268,8 +265,16 @@ class PERNODUSToolBox:
 
 
             if Param == 'sub_category':
-                c = dict(adj_mpis['sub_category'].value_counts().head(10))
-                list_of_adjacent_sub_categories = c.keys()
+                counted_adjacent_dict = dict(adj_mpis['sub_category'].value_counts())
+
+
+                for k, v in counted_adjacent_dict.items():
+                    if v == 'General.':
+                        del counted_adjacent_dict[k]
+
+                sorted(counted_adjacent_dict.values(), reverse=True)[:10]
+
+                list_of_adjacent_sub_categories = counted_adjacent_dict.keys()
 
                 for adjacent_sub_category in list_of_adjacent_sub_categories:
                     if kpi_template['param'] == 'sub_category':
