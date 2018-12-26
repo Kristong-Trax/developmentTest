@@ -78,3 +78,11 @@ class PNGRO_SAND_PRODQueries(object):
         where SC.exclude_status_fk in (1,4)
         and S.session_uid = '{}'
         """.format(session_uid)
+
+    @staticmethod
+    def get_test_query(session_uid):
+        return """
+        select *
+        from probedata.session
+        where session_uid = '{}'
+        """.format(session_uid)
