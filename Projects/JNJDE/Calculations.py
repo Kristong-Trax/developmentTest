@@ -31,6 +31,8 @@ class JNJDECalculations(BaseCalculationsScript):
         # KPI 4 - Share of shelf - Hand & Eye
         # KPI 13 - Share of shelf - Hand & Eye (Sub-Category)
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
+        jnj_generator.eye_hand_level_sos_calculation_de(eye_hand_lvl_template)
+
         # KPI 5 IR - Activation compliance vs plans
         jnj_generator.promo_calc(sales_reps_date='2018-09-30')
         # KPI 9 - MSL
