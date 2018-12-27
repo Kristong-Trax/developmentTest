@@ -17,3 +17,4 @@ anchor list results are also a random medley from different columns.... see Cons
 anchor currently ignores product type other, because if included everything would be continuous
 
 What format variety exists in within the Kid Segment?- I don't see drink in the db in form_factor
+
