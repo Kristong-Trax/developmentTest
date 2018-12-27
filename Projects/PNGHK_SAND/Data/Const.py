@@ -45,15 +45,14 @@ class Const(object):
     DISPLAY_NUMBER = 'Display Number'
 
     # Entities types
-    MANUFACTURER = 'Manufacturer'
-    BRAND = 'Brand'
-    SKU = 'SKU'
-    ENTETIES_DICT = {MANUFACTURER: "manufacturer_name",
-                     BRAND: "brand_name",
-                     SKU: 'product_ean_code'}
+    MANUFACTURER = 'manufacturer_name'
+    BRAND = 'brand_name'
+    SKU = 'product_ean_code'
 
     # include exclude filters
     EXCLUDE = 'Excluded'
     INCLUDE = 'Included'
     YES = 'Y'
     NO = 'N'
+
+    NAME_TO_FK = {"manufacturer_name":"manufacturer_fk","brand_name":"brand_fk","product_ean_code":"product_fk"}

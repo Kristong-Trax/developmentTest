@@ -6,7 +6,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGHK_SAND.Data.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -22,7 +22,7 @@ __author__ = 'ilays'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'pnghk_template_v1.1.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PNGHK_template_20181226.xlsx')
 
 class PNGHKToolBox:
     LEVEL1 = 1
@@ -77,37 +77,45 @@ class PNGHKToolBox:
             pass
 
     def calculate_facings_sos_kpi(self, kpi_df):
+        kpi_name = kpi_df[Const.KPI_NAME].values[0]
+        try:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+            return
+        entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
+        entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         for i, row in kpi_df.iterrows():
             df = self.filter_df(row)
-            entity_name = Const.ENTETIES_DICT[row[Const.NUMERATOR_ENTITY]]
-            all_denominators = df[entity_name].drop_duplicates()
+            all_denominators = df[entity_name].drop_duplicates().values.tolist()
             for entity in all_denominators:
                 filters = {entity_name: entity}
-                numerator = self.tools.get_filter_condition(**filters)
-                denominator = self.tools.get_filter_condition(**{})
+                numerator = self.tools.get_filter_condition(df,**filters).sum()
+                denominator = self.tools.get_filter_condition(df, **{}).sum()
+                result = float(numerator) / float(denominator)
+                numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=self.store_id,
+                                               numerator_result=numerator, denominator_result=denominator,
+                                               result=result, score=result)
 
     def calculate_linear_sos_kpi(self, kpi_df):
         for i, row in kpi_df.iterrows():
             df = self.filter_df(row)
 
-
-
     def filter_df(self, kpi_df):
 
         df = self.df.copy()
         # filter scene_types
+
         scene_types = kpi_df[Const.SCENE_TYPE].split(',')
-        scene_types = [item.strip() for item in scene_types]
-        df = df[df['template_name'].isin(scene_types)]
+        if scene_types != "":
+            scene_types = [item.strip() for item in scene_types]
+            df = df[df['template_name'].isin(scene_types)]
 
         # filter category
         category = kpi_df[Const.CATEGORY].strip()
-        df = df[df['category'] == category]
-
-        # filter stacking
-        stacking = kpi_df[Const.STACKING].strip()
-        if stacking == Const.NO:
-            df = df[df['stacking_layer'] == 1]
+        if category != "":
+            df = df[df['category'] == category]
 
         # filter excludings
         self.filter_excluding(df)
@@ -121,6 +129,9 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'Empty']
         if self.kpi_excluding[Const.EXCLUDE_EMPTY == Const.EXCLUDE]:
             df = df[df['product_type'] != 'POS']
+        if self.kpi_excluding[Const.STACKING == Const.EXCLUDE]:
+            df = df[df['stacking_layer'] == 1]
+
 
 
         #???
