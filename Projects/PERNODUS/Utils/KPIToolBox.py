@@ -268,8 +268,15 @@ class PERNODUSToolBox:
 
 
             if Param == 'sub_category':
-                c = dict(adj_mpis['sub_category'].value_counts().head(10))
-                list_of_adjacent_sub_categories = c.keys()
+                counted_adjacent_dict = dict(adj_mpis['sub_category'].value_counts())
+
+                for k, v in counted_adjacent_dict.items():
+                    if v == 'General.':
+                        del counted_adjacent_dict[k]
+
+                sorted(counted_adjacent_dict.values(), reverse=True)[:10]
+
+                list_of_adjacent_sub_categories = counted_adjacent_dict.keys()
 
                 for adjacent_sub_category in list_of_adjacent_sub_categories:
                     if kpi_template['param'] == 'sub_category':
@@ -280,8 +287,15 @@ class PERNODUSToolBox:
                         self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=numerator_id, denominator_id=denominator_id, result=1, score=1)
 
             if Param in ['brand_name','sub_brand']:
-                b = dict(adj_mpis['brand_name'].value_counts().head(10))
-                list_of_adjacent_brands = b.keys()
+                counted_adjacent_dict = dict(adj_mpis['sub_category'].value_counts())
+
+                for k, v in counted_adjacent_dict.items():
+                    if v == 'General.':
+                        del counted_adjacent_dict[k]
+
+                sorted(counted_adjacent_dict.values(), reverse=True)[:10]
+
+                list_of_adjacent_brands = counted_adjacent_dict.keys()
 
                 for adjacent_brand in list_of_adjacent_brands:
                     if Param == 'sub_brand':
