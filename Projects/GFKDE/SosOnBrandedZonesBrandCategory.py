@@ -1,13 +1,13 @@
-from KPIUtils.GlobalProjects.GFK.Base.BaseCalculationScript import GfkBaseCalculation
+from KPIUtils.GlobalProjects.GFK.Base.BrandedZonesBaseCalculationScript import GfkBrandedZoneBaseCalculation
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class SosOnBrandedZonesCategory_KPI(GfkBaseCalculation):
+class SosOnBrandedZonesBrandCategory_KPI(GfkBrandedZoneBaseCalculation):
 
     @classproperty
     def kpi_type(self):
-        return "SOS_ON_BRANDED_ZONES_CATEGORY"
+        return "SOS_ON_BRANDED_ZONES_BRAND_CATEGORY"
 
     def kpi_policy(self):
         return {

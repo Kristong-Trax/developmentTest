@@ -10,6 +10,7 @@ from Projects.GFKDE.SOSUnboxedOnGondolaEndSKUCategory import SosOnGondolaEndSKUC
 from Projects.GFKDE.SOSUnboxedOnGondolaEndSKUSubCategory import SosOnGondolaEndSKUSubCategory_KPI
 from Projects.GFKDE.SOSUnboxedSKUCategory import SOSUnboxedSKUCategory_KPI
 from Projects.GFKDE.SOSUnboxedSKUSubCategory import SOSUnboxedSKUSubCategory_KPI
+from Projects.GFKDE.SosOnBrandedZonesBrandCategory import SosOnBrandedZonesCategory_KPI
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output
@@ -30,7 +31,7 @@ class GFKDECalculations(BaseCalculationsScript):
         GONDOLA_END_SUB = [SosOnGondolaEndBrandSubCategory_KPI, SosOnGondolaEndManufacturerSubCategory_KPI, SosOnGondolaEndSKUSubCategory_KPI]
 
         KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB
-        for kpi in KPIs:
+        for kpi in [SosOnBrandedZonesCategory_KPI]:#KPIs:
             kpi(data_provider=self.data_provider).calculate()
         # common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
