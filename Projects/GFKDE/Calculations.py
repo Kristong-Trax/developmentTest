@@ -12,7 +12,7 @@ from Projects.GFKDE.SOSUnboxedSKUCategory import SOSUnboxedSKUCategory_KPI
 from Projects.GFKDE.SOSUnboxedSKUSubCategory import SOSUnboxedSKUSubCategory_KPI
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-
+from Trax.Algo.Calculations.Core.DataProvider import ACEDataProvider, Output
 
 __author__ = 'Eli'
 
@@ -30,14 +30,13 @@ class GFKDECalculations(BaseCalculationsScript):
         GONDOLA_END_SUB = [SosOnGondolaEndBrandSubCategory_KPI, SosOnGondolaEndManufacturerSubCategory_KPI, SosOnGondolaEndSKUSubCategory_KPI]
 
         KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB
-
         for kpi in KPIs:
-            kpi(data_provider=data_provider).calculate()
+            kpi(data_provider=self.data_provider).calculate()
         # common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
@@ -46,8 +45,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gfkde'
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['fae5cf3a-16ea-40e3-9016-ff4bb2730291']
+    sessions = ['498668b8-0644-4dd2-9391-2702b7d4cffb'] #'fae5cf3a-16ea-40e3-9016-ff4bb2730291',
     for session in sessions:
         data_provider.load_session_data(session)
         GFKDECalculations(data_provider=data_provider, output=None).run_project_calculations()
-
