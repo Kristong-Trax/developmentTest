@@ -182,19 +182,19 @@ class AddKPIs(object):
 Template_path: optional attribute. Default value: 'kpi_factory/DevloperTools/new_tables_template.xlsx'- 
                it has all columns required for the script.
 Remove_duplicates: optional attribute. True: if you want the script to get rid of repeating kpi types 
-                and insert to DB only one. Default value: False
+                and insert to DB only one of them. Default value: False
 Output: If there are no errors, the kpis are added to the DB. If there are errors, the template file with highlighted erroneous 
 cells is saved to '/tmp'.
 Validations: all validations are in validate_template() function: 
             (1) check if there are kpis with the same names in DB - errors colored red
             (2) check if some of the values that are meant to be binary are not binary in input file - errors colored lime
             (3) check if some kpi lines in input file repeat - errors colored blue
-            If you want to skip some validations, you can comment out invocation of the respective validation function. 
+            If you want to skip some validations, you can comment out invocation of the respective validation function.
 """
 
 if __name__ == '__main__':
     LoggerInitializer.init('test')
     Config.init()
     project_name = 'cbcil-sand'
-    template_path = '/home/natalyak/Desktop/CBCIL/new_tables_template_test.xlsx'
-    AddKPIs(project_name, template_path=template_path, remove_duplicates=False).add_kpis_from_template()
+    # template_path = '/home/natalyak/Desktop/CBCIL/new_tables_template_test.xlsx'
+    AddKPIs(project_name, template_path=None, remove_duplicates=False).add_kpis_from_template()
