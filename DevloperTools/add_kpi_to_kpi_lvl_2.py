@@ -22,6 +22,9 @@ class Consts(object):
     STATIC_KPI_LVL_2 = 'static.kpi_level_2'
     BINARY_FIELDS = ['session_relevance', 'scene_relevance', 'planogram_relevance',
                      'live_session_relevance', 'live_scene_relevance', 'is_percent']
+    SALMON = '#FA8072'
+    LIME = '#00FF00'
+    BLUE = '#87CEFA'
 
 
 class AddKPIs(object):
@@ -77,7 +80,7 @@ class AddKPIs(object):
         similar_types = kpi_types.intersection(existing_types)
         if similar_types:
             err_df = self.template_data[self.template_data[Consts.KPI_TYPE].isin(similar_types)]
-            cells_list = [(i+1, Consts.KPI_TYPE) for i in err_df.index.values]
+            cells_list = [(i+1, Consts.KPI_TYPE, Consts.SALMON) for i in err_df.index.values]
             self.error_cells.update(cells_list)
 
     def check_binary_fields(self):
@@ -86,8 +89,7 @@ class AddKPIs(object):
         for col in binary_fields_df.columns.tolist():
             err_df = binary_fields_df[~binary_fields_df[col].isin(allowed_values)]
             if len(err_df) > 0:
-                print 'some values in columns {} are not binary'.format(Consts.BINARY_FIELDS)
-                cells_list = [(i+1, col) for i in err_df.index.values]
+                cells_list = [(i+1, col, Consts.LIME) for i in err_df.index.values]
                 self.error_cells.update(cells_list)
 
     def check_duplicate_in_template(self):
@@ -100,7 +102,7 @@ class AddKPIs(object):
             print 'duplicate kpis: ', str(duplicate_kpis)
             for kpi in duplicate_kpis:
                 err_df = template_data[template_data[Consts.KPI_TYPE] == kpi]
-                cells_list = [(i+1, Consts.KPI_TYPE) for i in err_df.index.values]
+                cells_list = [(i+1, Consts.KPI_TYPE, Consts.BLUE) for i in err_df.index.values]
                 self.error_cells.update(cells_list)
 
     # def validate_template(self):
@@ -143,10 +145,11 @@ class AddKPIs(object):
 
         workbook = writer.book
         worksheet = writer.sheets['Sheet1']
-        error_format = workbook.add_format({'fg_color': '#EEC93F'})
-        for i, col in list(self.error_cells):
+        # error_format = workbook.add_format({'fg_color': '#EEC93F'})
+        for i, col, color in list(self.error_cells):
             value = self.template_data.loc[i-1, col]
             col_num = self.template_data.columns.get_loc(col)
+            error_format = workbook.add_format({'fg_color': color})
             worksheet.write(i, col_num, value, error_format)
         writer.save()
 
@@ -227,9 +230,9 @@ Remove_duplicates: optional attribute. True: if you want the script to get rid o
 Output: If there are no errors, the kpis are added to the DB. If there are errors, the template file with highlighted erroneous 
 cells is saved to '/tmp'.
 Validations: all validations are in validate_template() function: 
-            (1) check if there are kpis with the same names in DB
-            (2) check if some of the values that are meant to be binary are not binary in input file
-            (3) check if some kpi lines in input file repeat.
+            (1) check if there are kpis with the same names in DB - errors colored red
+            (2) check if some of the values that are meant to be binary are not binary in input file - errors colored lime
+            (3) check if some kpi lines in input file repeat - errors colored blue
             If you want to skip some validations, you can comment out invocation of the respective validation function. 
 """
 
@@ -238,4 +241,4 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'cbcil-sand'
     template_path = '/home/natalyak/Desktop/CBCIL/new_tables_template_test.xlsx'
-    AddKPIs(project_name, template_path=template_path, remove_duplicates=True).add_kpis_from_template()
+    AddKPIs(project_name, template_path=template_path, remove_duplicates=False).add_kpis_from_template()
