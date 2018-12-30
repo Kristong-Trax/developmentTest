@@ -105,40 +105,6 @@ class AddKPIs(object):
                 cells_list = [(i+1, Consts.KPI_TYPE, Consts.BLUE) for i in err_df.index.values]
                 self.error_cells.update(cells_list)
 
-    # def validate_template(self):
-    #     similar_types = self.check_similar_types()
-    #     if similar_types:
-    #         return False
-    #
-    #     binary_ok = self.check_binary_fields()
-    #     if not binary_ok:
-    #         return False
-    #
-    #     if not self.remove_duplicates:
-    #         duplicates = self.check_duplicates_in_template()
-    #         if duplicates:
-    #             return False
-    #     return True
-    #
-    # def check_similar_types(self):
-    #     kpi_types = set(self.template_data[Consts.KPI_TYPE].unique().tolist())
-    #     existing_types = set(self.kpi_static_data[Consts.KPI_TYPE].unique().tolist())
-    #     similar_types = kpi_types.intersection(existing_types)
-    #     if similar_types:
-    #         print 'similar_types: ' + str(similar_types)
-    #         return True
-    #     return False
-    #
-    # def check_duplicates_in_template(self):
-    #     template_data = self.template_data
-    #     template_data['count'] = 1
-    #     count_rows = template_data.groupby(Consts.KPI_TYPE, as_index=False).agg({'count': np.sum})
-    #     count_rows = count_rows[count_rows['count'] != 1]
-    #     if len(count_rows) > 0:
-    #         print 'duplicate kpis: ', str(count_rows[Consts.KPI_TYPE].values.tolist())
-    #         return True
-    #     return False
-
     def highlight_errors_in_template(self):
         writer = pd.ExcelWriter(self.output_path, engine='xlsxwriter')
         self.template_data.to_excel(writer, sheet_name='Sheet1', index=False)
@@ -184,16 +150,6 @@ class AddKPIs(object):
                            'initiated_by': {0: 'Custom'},
                            'context_type_fk': {0: kpi_row['context_type_fk']}}
         return attributes_dict
-
-    # def check_binary_fields(self):
-    #     binary_fields_df = self.template_data[Consts.BINARY_FIELDS]
-    #     allowed_values = [1, 0, '1', '0', '1.0', '0.0', np.nan]
-    #     for col in binary_fields_df.columns.tolist():
-    #         filtered = binary_fields_df[~binary_fields_df[col].isin(allowed_values)]
-    #         if len(filtered) > 0:
-    #             print 'some values in columns {} are not binary'.format(Consts.BINARY_FIELDS)
-    #             return False
-    #     return True
 
     def merge_insert_queries(self):
         query_groups = {}
