@@ -1,5 +1,5 @@
 from KPIUtils.GlobalProjects.GFK.Base.BaseCalculationScript import GfkBaseCalculation
-from Trax.Algo.Calculations.Core.Constants import Keys, Fields
+from Trax.Algo.Calculations.Core.Constants import Keys
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
