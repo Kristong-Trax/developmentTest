@@ -1,3 +1,4 @@
+from KPIUtils.GlobalProjects.GFK.Base.DataExecutionManager import GFKDataManager
 from Projects.GFKDE.SOSUnboxedBrandCategory import SOSUnboxedBrandCategory_KPI
 from Projects.GFKDE.SOSUnboxedBrandSubCategory import SOSUnboxedBrandSubCategory_KPI
 from Projects.GFKDE.SOSUnboxedManufacturerCategory import SOSUnboxedManufacturerCategory_KPI
@@ -42,11 +43,12 @@ class GFKDECalculations(BaseCalculationsScript):
         SHARE_BRANDED = [ShareOfBrandedZonesBrandCategory_KPI, ShareOfBrandedZonesManufacturerCategory_KPI]
         SHARE_BRANDED_SUB = [ShareOfBrandedZonesBrandSubCategory_KPI, ShareOfBrandedZonesManufacturerSubCategory_KPI]
 
-        KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED+ SOS_BRANDED_SUB + SHARE_BRANDED + SHARE_BRANDED_SUB
+        KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED + SOS_BRANDED_SUB + SHARE_BRANDED + SHARE_BRANDED_SUB
 
-        for kpi in SHARE_BRANDED + SOS_BRANDED_SUB:
+        for kpi in KPIs:
             kpi(data_provider=self.data_provider).calculate()
-        # common.commit_results_data_to_new_tables()
+        dm = GFKDataManager(None)
+        dm.commit_resutls()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
@@ -63,3 +65,5 @@ class GFKDECalculations(BaseCalculationsScript):
 #     for session in sessions:
 #         data_provider.load_session_data(session)
 #         GFKDECalculations(data_provider=data_provider, output=None).run_project_calculations()
+
+
