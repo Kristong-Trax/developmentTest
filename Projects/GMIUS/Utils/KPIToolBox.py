@@ -355,7 +355,7 @@ class ToolBox:
             return kwargs
 
 
-
+    # i think this should probably be removed now and replaced with calculate_vertical_block_adjacencies() - hunter
     def adjacency_by_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' variant limited by block '''
         for scene in relevant_scif.scene_fk.unique():
@@ -496,6 +496,86 @@ class ToolBox:
         else:
             result = 'Not in MSL for Yogurt'
 
+    def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        # this could be updated to use base_block() if we don't need to respect unique scene results
+        kpi_result = 0
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            location_filter = {'scene_id': scene}
+            mpis = self.filter_df(self.mpis, scene_filter)
+            # allowed = {'product_type': ['Other', 'Empty']}
+            if kpi_line[Const.TESTED_PARAM] == kpi_line[Const.ANCHOR_PARAM]:
+                filters = {kpi_line[Const.ANCHOR_PARAM]: [kpi_line[Const.ANCHOR_VALUE], kpi_line[Const.TESTED_VALUE]]}
+            elif kpi_line[Const.TESTED_PARAM] == '':
+                filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE]}
+            else:
+                filters = {kpi_line[Const.ANCHOR_PARAM]: kpi_line[Const.ANCHOR_VALUE],
+                           kpi_line[Const.TESTED_PARAM]: kpi_line[Const.TESTED_VALUE]}
+            items = set(self.filter_df(mpis, filters)['scene_match_fk'].values)
+            additional = {'minimum_facing_for_block': 2,
+                          'check_vertical_horizontal': True}
+            # allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
+            if not (items):
+                break
+
+            block_result = self.block.network_x_block_together(filters, location=location_filter, additional=additional)
+
+            passed_blocks = block_result[block_result['is_block'] is True &
+                                         block_result['orientation'] == 'Vertical'].cluster.tolist()
+
+            if passed_blocks and kpi_line[Const.LIST_ATTRIBUTE]:
+                match_fk_list = set(match for cluster in passed_blocks for node in cluster.nodes() for match in
+                                    cluster.node[node]['group_attributes']['match_fk_list'])
+
+                all_graph = AdjacencyGraph(mpis, None, self.products,
+                                           product_attributes=['rect_x', 'rect_y'],
+                                           name=None, adjacency_overlap_ratio=.4)
+                # associate all nodes in the master graph to their associated match_fks
+                match_to_node = {int(node['match_fk']): i for i, node in
+                                 all_graph.base_adjacency_graph.nodes(data=True)}
+                # create a dict of all match_fks to their corresponding nodes
+                node_to_match = {val: key for key, val in match_to_node.items()}
+                edge_matches = set(
+                    sum([[node_to_match[i] for i in all_graph.base_adjacency_graph[match_to_node[match]].keys()]
+                         for match in match_fk_list], []))
+                adjacent_matches = edge_matches - match_fk_list
+                adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_matches)) &
+                                (~mpis['product_type'].isin(['Empty', 'Irrelevant', 'Other', 'POS']))]
+
+                for value in adj_mpis[kpi_line[Const.LIST_ATTRIBUTE]].unique().tolist():
+                    if kpi_line[Const.LIST_ATTRIBUTE] == 'brand_name':
+                        numerator_fk = adj_mpis[adj_mpis['brand_name'] == value].brand_fk.values[0]
+                    else:
+                        if value is not None:
+                            try:
+                                numerator_fk = \
+                                self.custom_entity_data[self.custom_entity_data['name'] == value].pk.values[0]
+                            except IndexError:
+                                Log.warning('Custom entity "{}" does not exist'.format(value))
+                                continue
+                        else:
+                            continue
+
+                    result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
+                                                                      numerator_id=numerator_fk, numerator_result=1,
+                                                                      result=1, denominator_id=scene,
+                                                                      denominator_result=1)
+                    self.common.write_to_db_result(**result_dict)
+                return
+            elif kpi_line[Const.LIST_ATTRIBUTE]:  # return if this is a list_attribute KPI with no passing blocks
+                return
+            if passed_blocks:  # exit loop if this isn't a list_attribute KPI, but has passing blocks
+                kpi_result = 1
+                break
+        if kpi_line[Const.LIST_ATTRIBUTE]:  # handle cases where there are no relevant products,
+            return                          # so we miss the other check above
+        template_fk = relevant_scif['template_fk'].values[0]
+        result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_line[Const.KPI_NAME],
+                                                          numerator_id=999, numerator_result=kpi_result,
+                                                          result=kpi_result, denominator_id=template_fk,
+                                                          denominator_result=1)
+        self.common.write_to_db_result(**result_dict)
+        return
 
     def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
         mpis = self.make_mpis(kpi_line, general_filters)
