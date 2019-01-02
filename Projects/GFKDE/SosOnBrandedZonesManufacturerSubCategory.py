@@ -1,9 +1,9 @@
-from KPIUtils.GlobalProjects.GFK.Base.BrandedZonesBaseCalculationScript import GfkBrandedZoneBaseCalculation
+from KPIUtils.GlobalProjects.GFK.Base.BaseCalculationScript import GfkBaseCalculation
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class SosOnBrandedZonesManufacturerSubCategory_KPI(GfkBrandedZoneBaseCalculation):
+class SosOnBrandedZonesManufacturerSubCategory_KPI(GfkBaseCalculation):
 
     @classproperty
     def kpi_type(self):
@@ -19,5 +19,8 @@ class SosOnBrandedZonesManufacturerSubCategory_KPI(GfkBrandedZoneBaseCalculation
                 "include_operator": "and"
             },
             "numerator": Fields.MANUFACTURER_FK,
-            "denominator": Keys.SUB_CATEGORY_FK
+            "denominator": Keys.SUB_CATEGORY_FK,
+            "kpi_additional_params": {
+                "filter_branded_zones": True
+            }
         }

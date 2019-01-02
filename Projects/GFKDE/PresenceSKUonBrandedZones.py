@@ -1,13 +1,13 @@
-from KPIUtils.GlobalProjects.GFK.Base.BaseCalculationScript import GfkBaseCalculation
+from KPIUtils.GlobalProjects.GFK.Base.PrecenseBaseCalculation import GfkPrecenseBaseCalculationScript
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class SosOnBrandedZonesSkuSubCategory_KPI(GfkBaseCalculation):
+class PresenceSKUonBrandedZones_KPI(GfkPrecenseBaseCalculationScript):
 
     @classproperty
     def kpi_type(self):
-        return "SOS_ON_BRANDED_ZONES_SKU_SUB_CATEGORY"
+        return "PRESENCE_SKU_ON_BRANDED_ZONES"
 
     def kpi_policy(self):
         return {
@@ -19,7 +19,6 @@ class SosOnBrandedZonesSkuSubCategory_KPI(GfkBaseCalculation):
                 "include_operator": "and"
             },
             "numerator": Fields.PRODUCT_FK,
-            "denominator": Keys.SUB_CATEGORY_FK,
             "kpi_additional_params": {
                 "filter_branded_zones": True
             }

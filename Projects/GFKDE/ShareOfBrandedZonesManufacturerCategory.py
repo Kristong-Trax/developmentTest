@@ -20,5 +20,8 @@ class ShareOfBrandedZonesManufacturerCategory_KPI(GfkShareOfBrandedZonesCalculat
                 "include_operator": "and"
             },
             "numerator": Fields.MANUFACTURER_FK,
-            "denominator": Keys.CATEGORY_FK
+            "denominator": Keys.CATEGORY_FK,
+            "kpi_additional_params": {
+                "filter_branded_zones": True
+            }
         }

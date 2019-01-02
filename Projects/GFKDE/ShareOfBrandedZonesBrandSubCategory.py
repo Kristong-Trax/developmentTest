@@ -20,5 +20,8 @@ class ShareOfBrandedZonesBrandSubCategory_KPI(GfkShareOfBrandedZonesCalculationS
                 "include_operator": "and"
             },
             "numerator": Fields.BRAND_FK,
-            "denominator": Keys.SUB_CATEGORY_FK
+            "denominator": Keys.SUB_CATEGORY_FK,
+            "kpi_additional_params": {
+                "filter_branded_zones": True
+            }
         }
