@@ -103,6 +103,11 @@ class ToolBox:
         if dependent_result and self.dependencies[kpi_name] not in dependent_result:
             return
 
+        if kpi_name != 'What is the sequence of Soup segments?':
+            return
+        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
+        function = self.calculate_sequence
+        all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
 
         # function = self.integrated_adjacency
         # function = self.calculate_stocking_location
@@ -275,6 +280,19 @@ class ToolBox:
                                    product_attributes=['rect_x', 'rect_y'],
                                    name=None, adjacency_overlap_ratio=.4)
         return items, mpis, all_graph, filters
+
+    def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        scenes = relevant_scif.scene_fk.unique()
+        use_allowed = 1
+        for scene in scenes:
+            items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
+                                                                  use_allowed=use_allowed, gmi_only=0)
+            if not items:
+                continue
+            g = self.prune_edges(all_graph.base_adjacency_graph.copy(), ['right'], keep_or_cut='keep')
+            all_results = g
+
+        return all_results
 
     def base_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, limit_potential=1, use_allowed=1,
                        col_list=Const.REF_COLS):
