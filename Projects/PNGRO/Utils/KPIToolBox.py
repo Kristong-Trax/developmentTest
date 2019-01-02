@@ -231,7 +231,7 @@ class PNGRO_PRODToolBox:
 
         self.calculate_assortment_main_shelf()
         self.calculate_linear_share_of_shelf_per_product_display()
-        self.calculate_sos_pallets_per_product_by_scene_type_secondary_shelves()
+        # self.calculate_sos_pallets_per_product_by_scene_type_secondary_shelves() #uncomment before deploying to prod
         category_status_ok = self.get_status_session_by_category(self.session_uid)['category_fk'].tolist()
         if self.main_shelves:
             self.calculate_sbd()
@@ -312,13 +312,6 @@ class PNGRO_PRODToolBox:
                                                denominator_result=row['display_width_total'],
                                                denominator_id=row['template_fk'],
                                                context_id=row['pk'])
-            # scene_product = scene_display_product.groupby(['scene_fk', 'product_fk']).agg({'pallets': np.sum})
-            # for i, row in scene_product.iterrows():
-            #     self.common.write_to_db_result_new_tables(fk=kpi_fk, score=row['pallets'],
-            #                                               result=row['pallets'],
-            #                                               numerator_result=row['facings_ign_stack'],
-            #                                               denominator_result=row['facings_all_secondary_shelves'],
-            #                                               numerator_id=row['product_fk'], denominator_id=row['template_fk'])
 
     def get_number_of_pallets(self, row):
         display_weight = self.get_display_weight_by_display_name(row['display_name'])
