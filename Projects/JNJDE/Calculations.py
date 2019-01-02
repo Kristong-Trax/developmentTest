@@ -29,18 +29,17 @@ class JNJDECalculations(BaseCalculationsScript):
         # KPI 3 - OOS
         jnj_generator.calculate_auto_assortment()
         # KPI 4 - Share of shelf - Hand & Eye
+        # KPI 12 - New H&E KPI
         # KPI 13 - Share of shelf - Hand & Eye (Sub-Category)
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         jnj_generator.eye_hand_level_sos_calculation_de(eye_hand_lvl_template)
-
         # KPI 5 IR - Activation compliance vs plans
         jnj_generator.promo_calc(sales_reps_date='2018-09-30')
         # KPI 9 - MSL
         jnj_generator.assortment_calculation()
         # KPI 10 - New Display compliance
         jnj_generator.display_compliance_calculation()
-        # KPI 12 - New H&E KPI
-        jnj_generator.eye_hand_level_calculation_based_assortment()
 
         common.commit_results_data_to_new_tables()
+        common_v2.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
