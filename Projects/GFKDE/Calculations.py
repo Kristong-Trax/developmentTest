@@ -55,13 +55,13 @@ class GFKDECalculations(BaseCalculationsScript):
             self.timer.start()
             dm = GFKDataManager(self.data_provider)
 
-            for kpi in KPIs:
+            for kpi in SHARE_BRANDED:
                 kpi(data_provider=self.data_provider).calculate()
 
             dm.commit_resutls()
             self.timer.stop('KPIGenerator.run_project_calculations')
         finally:
-            GFKDataManager(self.data_provider, reset=True)
+            GFKDataManager.reset()
 
 
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
