@@ -72,9 +72,9 @@ class ToolBox:
         """
         self.load_template(template_path)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
-        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
-        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        self.dependency_reorder()
+        # self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
+        # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        # self.dependency_reorder()
 
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
@@ -99,9 +99,9 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-        if dependent_result and self.dependencies[kpi_name] not in dependent_result:
-            return
+        # dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
+        #     return
 
         if kpi_name != 'What is the sequence of Soup segments?':
             return
@@ -259,7 +259,11 @@ class ToolBox:
 
             result_fk = self.result_values_dict[result]
 
-    def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0):
+    def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0,
+                       additional_attributes=None):
+        product_attributes = ['rect_x', 'rect_y']
+        if additional_attributes is not None:
+            product_attributes = product_attributes + additional_attributes
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         mpis_filter = {'scene_fk': scene}
@@ -277,22 +281,22 @@ class ToolBox:
             allowed_items = set(self.filter_df(mpis, allowed)['scene_match_fk'].values)
             items.update(allowed_items)
         all_graph = AdjacencyGraph(mpis, None, self.products,
-                                   product_attributes=['rect_x', 'rect_y'],
+                                   product_attributes=product_attributes + list(filters.keys()),
                                    name=None, adjacency_overlap_ratio=.4)
         return items, mpis, all_graph, filters
 
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        additional_attributes = ['Segment']
         scenes = relevant_scif.scene_fk.unique()
         use_allowed = 1
         for scene in scenes:
             items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
-                                                                  use_allowed=use_allowed, gmi_only=0)
+                                                                  use_allowed=use_allowed, gmi_only=0,
+                                                                  additional_attributes=additional_attributes)
             if not items:
                 continue
-            g = self.prune_edges(all_graph.base_adjacency_graph.copy(), ['right'], keep_or_cut='keep')
-            all_results = g
 
-        return all_results
+        return
 
     def base_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters, limit_potential=1, use_allowed=1,
                        col_list=Const.REF_COLS):
