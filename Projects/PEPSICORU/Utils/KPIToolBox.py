@@ -434,8 +434,8 @@ class PEPSICORUToolBox:
     #                                        result=result_scene_level, should_enter=True)
 
     def calculate_assortment(self):
-        # lvl3_result = self.assortment.calculate_lvl3_assortment()
-        lvl3_result = self.get_lvl3_assortment_result_main_shelf()
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        # lvl3_result = self.get_lvl3_assortment_result_main_shelf()
         self.category_assortment_calculation(lvl3_result)
         self.store_assortment_calculation(lvl3_result)
 

@@ -125,7 +125,7 @@ class DIAGEOARToolBox:
             elif set_name in ('Relative Position'):
                 # Global function
                 res_dict = self.diageo_generator.diageo_global_relative_position_function(
-                            self.set_templates_data[set_name], location_type='template_name')
+                            self.set_templates_data[set_name], location_type='template_display_name')
 
                 self.commonV2.save_json_to_new_tables(res_dict)
 
@@ -162,7 +162,7 @@ class DIAGEOARToolBox:
                                   'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
                                   'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
-                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                general_filters = {'template_display_name': params.get(self.tools.LOCATION)}
                 result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
                 score = 1 if result else 0
                 scores.append(score)

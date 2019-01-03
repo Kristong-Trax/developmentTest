@@ -150,8 +150,9 @@ class Results(object):
     def _check_atomic_dependency(atomic, pushed_back_list, atomic_results):
         depend_on = atomic['depend_on']
         depend_score = atomic['depend_score']
-        if depend_on in atomic_results.keys():
-            if atomic_results[depend_on]['result'].iloc[0] == depend_score:
+        results_df = pd.concat(atomic_results.values())
+        if depend_on in results_df['atomic'].tolist():
+            if results_df[results_df['atomic'] == depend_on]['result'].values[0] == depend_score:
                 return CalculationDependencyCheck.CALCULATE
             else:
                 return CalculationDependencyCheck.IGNORE

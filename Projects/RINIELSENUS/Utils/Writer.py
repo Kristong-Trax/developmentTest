@@ -105,7 +105,7 @@ class KpiResultsWriter(object):
             &
             (self._kpi_static_data['kpi_name'] == kpi_name)
             &
-            (self._kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name))
+            (self._kpi_static_data['atomic_kpi_name'] == str(atomic_kpi_name)[:100])  # need to truncate to 100 char
         )
         atomic_kpi = self._kpi_static_data.loc[cond, 'atomic_kpi_fk']
         if atomic_kpi.empty:

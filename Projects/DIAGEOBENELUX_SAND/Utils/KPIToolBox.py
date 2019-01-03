@@ -103,33 +103,13 @@ class DIAGEOBENELUX_SANDToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys() and set_name not in ('MPA', 'New Products', 'Local MPA', 'SOS'):
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        # if set_name in ('MPA', 'New Products', 'Local MPA'):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('Relative Position',):
-        #     set_score = self.calculate_relative_position_sets(set_name)
-        # elif set_name in ('Brand Blocking',):
-        #     set_score = self.calculate_block_together_sets(set_name)
-        # elif set_name in ('POSM',):
-        #     set_score = self.calculate_posm_sets(set_name)
-        # elif set_name in ('SOS',):
-        #     set_score = self.calculate_sos_sets(set_name)
-        # elif set_name == 'Visible to Customer':
-        #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-        #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-        #     self.save_level2_and_level3(set_name, set_name, set_score)
-            # elif set_name == 'Survey Questions':
-            #     set_score = self.calculate_survey_sets(set_name)
-
-        # Global Secondary Displays
+            # Global Secondary Displays
             if set_name in ('Secondary Displays', 'Secondary'):
                 res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if res_json:
