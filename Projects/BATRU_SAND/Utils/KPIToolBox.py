@@ -239,19 +239,19 @@ class BATRU_SANDToolBox:
             self.custom_templates[name] = template
         return self.custom_templates[name]
 
-    def get_relevant_template_sheet(self, template_name, sheet_name): #Natalya
+    def get_relevant_template_sheet(self, template_name, sheet_name):
         if template_name in self.all_templates.keys():
             if sheet_name in self.all_templates[template_name].keys():
                 return self.all_templates[template_name][sheet_name]
         else:
             return self.fall_back_to_excel_files(template_name, sheet_name)
 
-    def fall_back_to_excel_files(self, template_name, sheet_name): #Natalya
+    def fall_back_to_excel_files(self, template_name, sheet_name):
         template_path = TEMPLATE_PATH_MAPPER[template_name]
         sheet_content = self.get_custom_template(template_path, sheet_name)
         return sheet_content
 
-    def get_templates_from_db(self): #Natalya
+    def get_templates_from_db(self):
         all_templates = {}
         query = BATRU_SANDQueries.get_templates_data()
         templates_data = pd.read_sql_query(query, self.rds_conn.db)
@@ -764,7 +764,7 @@ class BATRU_SANDToolBox:
 
     def get_sku_monitored(self, state):
         # monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
-        monitored_skus_raw = self.get_relevant_template_sheet(P2_TEMPLATE, 'SKUs') #Natalya
+        monitored_skus_raw = self.get_relevant_template_sheet(P2_TEMPLATE, 'SKUs')
         states = monitored_skus_raw['State'].tolist()
         if state in states:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
@@ -971,16 +971,16 @@ class BATRU_SANDToolBox:
 
         scenes = self.scif['scene_fk'].unique().tolist()
 
-        sections_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections') # Natalya
+        sections_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections')
         # sections_template_data = parse_template(P3_TEMPLATE_PATH, 'Sections')
         sections_template_data['fixture'] = self.encode_column_in_df(sections_template_data, 'fixture')
 
-        sas_zone_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'P3 SAS zone') # Natalya
+        sas_zone_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'P3 SAS zone')
         # sas_zone_template_data = parse_template(P3_TEMPLATE_PATH, 'P3 SAS zone')
         sas_zone_template_data['fixture'] = self.encode_column_in_df(sas_zone_template_data, 'fixture')
 
         sections_products_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'SKU_Lists for sections')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products']) #Natalya
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
 
         # sections_products_template_data = parse_template(P3_TEMPLATE_PATH, 'SKU_Lists for sections')\
         #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
@@ -992,7 +992,7 @@ class BATRU_SANDToolBox:
                 Log.warning('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(product_ean_code))
 
         priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products']) #Natalya
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # priorities_template_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')\
         #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         priorities_template_data['Index (Duplications priority)'] = \
@@ -1005,7 +1005,7 @@ class BATRU_SANDToolBox:
                 Log.warning('Product ean {} is not defined in the DB for Share priority'.format(product_ean_code))
 
         sequence_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sequence list')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products']) #Natalya
+            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # sequence_template_data = parse_template(P3_TEMPLATE_PATH, 'Sequence list')\
         #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # check product ean codes from the template
@@ -1532,7 +1532,7 @@ class BATRU_SANDToolBox:
         match_display['display_name'] = self.encode_column_in_df(match_display, 'display_name')
         scene_match_display = match_display[match_display['scene_fk'] == scene]
         sas_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'SAS Zone Compliance')
-        # sas_template = parse_template(P3_TEMPLATE_PATH, 'SAS Zone Compliance') #Natalya
+        # sas_template = parse_template(P3_TEMPLATE_PATH, 'SAS Zone Compliance')
         sas_template['Equipment'] = self.encode_column_in_df(sas_template, 'Equipment')
         sas_template['display_name'] = self.encode_column_in_df(sas_template, 'display_name')
         if self.state in sas_template['State'].unique().tolist():
@@ -1592,7 +1592,7 @@ class BATRU_SANDToolBox:
     def handle_priority_4(self):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
         # posm_template = self.get_custom_template(P4_PATH, 'Availability')
-        posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability') #Natalya
+        posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
