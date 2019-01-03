@@ -55,7 +55,7 @@ class GFKDECalculations(BaseCalculationsScript):
             self.timer.start()
             dm = GFKDataManager(self.data_provider)
 
-            for kpi in SHARE_BRANDED:
+            for kpi in KPIs:
                 kpi(data_provider=self.data_provider).calculate()
 
             dm.commit_resutls()
