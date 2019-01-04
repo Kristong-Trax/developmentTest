@@ -21,6 +21,8 @@ from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import Adjacency
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Projects.GMIUS.ImageHTML.Image import ImageMaker
 
+from networkx import nx
+
 
 
 __author__ = 'Sam'
@@ -286,15 +288,35 @@ class ToolBox:
         return items, mpis, all_graph, filters
 
     def calculate_sequence(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        additional_attributes = ['Segment']
+        sequence_attribute = ['sub_category']
         scenes = relevant_scif.scene_fk.unique()
         use_allowed = 1
         for scene in scenes:
+            # create a master adjacency graph of all relevant products in the scene
             items, mpis, all_graph, filters = self.base_adj_graph(scene, kpi_line, general_filters,
                                                                   use_allowed=use_allowed, gmi_only=0,
-                                                                  additional_attributes=additional_attributes)
+                                                                  additional_attributes=sequence_attribute)
+            # no relevant items based on filters? go to the next scene
             if not items:
                 continue
+
+            relevant_items = self.filter_df(mpis, filters)
+
+            # get a list of unique values for the sequence attribute
+            sequence_values = relevant_items[sequence_attribute[0]].unique().tolist()
+
+            # create blocks for every unique sequence attribute value
+            blocks = {}
+
+            condensed_graph_sku = all_graph.build_adjacency_graph_from_base_graph_by_level(filters.keys()[0])
+
+            condensed_graph_sku = condensed_graph_sku.to_undirected()
+
+            condensed_graph_sku = list(nx.connected_component_subgraphs(condensed_graph_sku))
+
+            for attribute_value in sequence_values:
+
+
 
         return
 
