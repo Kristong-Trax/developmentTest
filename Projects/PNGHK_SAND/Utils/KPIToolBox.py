@@ -86,21 +86,69 @@ class PNGHKToolBox:
         entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
         entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         for i, row in kpi_df.iterrows():
+            filters = {}
             df = self.filter_df(row)
+            category = row[Const.CATEGORY]
+            if category != "":
+                denominator_id = self.all_products[self.all_products['category']==category]['category_fk'].iloc[0]
+                filters['category'] = category
+            else:
+                denominator_id = self.store_id
             all_denominators = df[entity_name].drop_duplicates().values.tolist()
+            if row[Const.NUMERATOR] != "":
+                all_denominators = [row[Const.NUMERATOR]]
             for entity in all_denominators:
-                filters = {entity_name: entity}
-                numerator = self.tools.get_filter_condition(df,**filters).sum()
-                denominator = self.tools.get_filter_condition(df, **{}).sum()
+                filters[entity_name] = entity
+                numerator = self.tools.get_filter_condition(df, **filters).sum()
+                del filters[entity_name]
+                denominator = self.tools.get_filter_condition(df, **filters).sum()
                 result = float(numerator) / float(denominator)
                 numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
-                self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=self.store_id,
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
                                                numerator_result=numerator, denominator_result=denominator,
                                                result=result, score=result)
 
     def calculate_linear_sos_kpi(self, kpi_df):
+        kpi_name = kpi_df[Const.KPI_NAME].values[0]
+        try:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+            return
+        entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
+        entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         for i, row in kpi_df.iterrows():
+            filters = {}
             df = self.filter_df(row)
+            category = row[Const.CATEGORY]
+            scene_size = row[Const.SCENE_SIZE]
+            if category != "":
+                if category == Const.EACH:
+                    categories = Const.CATEGORIES
+                else:
+                    categories = [category]
+            else:
+                categories = [""]
+            for category in categories:
+                if category != "":
+                    denominator_id = self.all_products[self.all_products['category'] == category]['category_fk'].iloc[0]
+                    filters['category'] = category
+                else:
+                    denominator_id = self.store_id
+                all_denominators = df[entity_name].drop_duplicates().values.tolist()
+                if row[Const.NUMERATOR] != "":
+                    all_denominators = [row[Const.NUMERATOR]]
+                for entity in all_denominators:
+                    filters[entity_name] = entity
+                    numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm'].sum()
+                    del filters[entity_name]
+                    denominator = scene_size if scene_size != "" else \
+                                            df[self.tools.get_filter_condition(df, **filters)]['width_mm'].sum()
+                    result = float(numerator) / float(denominator)
+                    numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
+                                                   numerator_result=numerator, denominator_result=denominator,
+                                                   result=result, score=result)
 
     def filter_df(self, kpi_df):
 

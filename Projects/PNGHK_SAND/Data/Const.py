@@ -18,7 +18,7 @@ class Const(object):
     SCENE_SIZE = 'Scene_size'
     NUMERATOR_ENTITY = 'Numerator_entity'
     DENOMINATOR_ENTITY = 'Denominator_entity'
-    NMERATOR = 'Numerator'
+    NUMERATOR = 'Numerator'
     RESULT = 'Result'
     STACKING = 'Stacking'
 
@@ -31,6 +31,7 @@ class Const(object):
     EXCLUDE_OSD = 'OSD'
     EXCLUDE_STOCK = 'Stock'
     EXCLUDE_SKU = 'SKU'
+    EACH = 'EACH'
 
     # OSD_RULES fields
     RETAILER = 'Retailer'
@@ -56,3 +57,4 @@ class Const(object):
     NO = 'N'
 
     NAME_TO_FK = {"manufacturer_name":"manufacturer_fk","brand_name":"brand_fk","product_ean_code":"product_fk"}
+    CATEGORIES = ['Hair Care','Baby Care','Feminine Care','Toothpaste','Skin Care','Grooming','Laundry']
