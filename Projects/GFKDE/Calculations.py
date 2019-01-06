@@ -60,6 +60,8 @@ class GFKDECalculations(BaseCalculationsScript):
 
             dm.commit_resutls()
             self.timer.stop('KPIGenerator.run_project_calculations')
+        except Exception as e1:
+            print e1.message
         finally:
             GFKDataManager.reset()
 
@@ -73,8 +75,7 @@ class GFKDECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'gfkde'
 #     data_provider = KEngineDataProvider(project_name)
-#     sessions = ['71159cac-79fe-4a81-810d-c2052d505cd5',
-#                 'ad9cfb70-cdef-42e7-bfed-2bc9c4012ce1',
+#     sessions = ['ad9cfb70-cdef-42e7-bfed-2bc9c4012ce1',
 #                 '492a6090-9e75-43f7-9461-4315cf92f9e0',
 #                 '498668b8-0644-4dd2-9391-2702b7d4cffb',
 #                 '56ec7fae-a00d-4b2f-b62f-94d5a0a6a172',
