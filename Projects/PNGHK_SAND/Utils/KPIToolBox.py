@@ -52,6 +52,103 @@ class PNGHKToolBox:
         self.kpi_excluding = pd.DataFrame()
         self.df = pd.DataFrame()
         self.tools = GENERALToolBox(self.data_provider)
+        self.merged_additional_data = self.get_additional_product_data()
+
+    def get_additional_product_data(self):
+        #####
+        # This queries are temporary until given in data provider.
+        #####
+
+        price_query = \
+            """
+            SELECT 
+                    p.scene_fk as scene_fk,
+                    mpip.product_fk as product_fk,
+                    COALESCE(pr.substitution_product_fk, mpip.product_fk) as substitution_product_fk,
+                    mpn.match_product_in_probe_fk as probe_match_fk,
+                    mpn.value as price_value,
+                    mpas.state as number_attribute_state
+            FROM
+                    probedata.match_product_in_probe_number_attribute_value mpn
+                    LEFT JOIN static.number_attribute_brands_scene_types mpna on mpn.number_attribute_fk = mpna.pk
+                    LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpn.attribute_state_fk = mpas.pk
+                    JOIN probedata.match_product_in_probe mpip ON mpn.match_product_in_probe_fk = mpip.pk
+                    JOIN probedata.probe p ON p.pk = mpip.probe_fk
+                    JOIN static_new.product pr ON pr.pk = mpip.product_fk
+            WHERE
+                    p.session_uid = "{0}"
+            """.format(self.session_uid)
+
+        date_query = \
+            """
+            SELECT
+                    p.scene_fk as scene_fk,
+                    mpip.product_fk as product_fk,
+                    COALESCE(pr.substitution_product_fk, mpip.product_fk) as substitution_product_fk,
+                    mpd.match_product_in_probe_fk as probe_match_fk,
+                    mpd.value as date_value,
+                    mpd.original_value,
+                    mpas.state as date_attribute_state
+            FROM
+                    probedata.match_product_in_probe_date_attribute_value mpd
+                    LEFT JOIN static.date_attribute_brands_scene_types mpda ON mpd.date_attribute_fk = mpda.pk
+                    LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpd.attribute_state_fk = mpas.pk
+                    JOIN probedata.match_product_in_probe mpip ON mpd.match_product_in_probe_fk = mpip.pk
+                    JOIN probedata.probe p ON p.pk = mpip.probe_fk
+                    JOIN static_new.product pr ON pr.pk = mpip.product_fk
+            WHERE
+                    p.session_uid = "{0}"
+            """.format(self.session_uid)
+
+        price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
+        date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
+        matches = self.data_provider[Data.MATCHES]
+
+        merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
+                                               on=['probe_match_fk', 'product_fk', 'scene_fk'])
+        merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
+                                            on=['probe_match_fk', 'product_fk', 'scene_fk'])
+
+        merged_pricing_data.dropna(subset=['price_value'], inplace=True)
+        merged_dates_data.dropna(subset=['original_value'], inplace=True)
+
+        if not merged_pricing_data.empty:
+            try:
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                                  as_index=False)[['price_value']].first()
+            except Exception as e:
+                merged_pricing_data['price_value'] = 0
+                merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                                  as_index=False)[['price_value']].first()
+                Log.info('There are missing numeric values: {}'.format(e))
+
+        if not merged_dates_data.empty:
+            merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
+            try:
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                              as_index=False)[['fixed_date']].first()
+            except Exception as e:
+                merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                              as_index=False)[['fixed_date']].first()
+                Log.info('There is a dates integrity issue: {}'.format(e))
+        else:
+            merged_dates_data['fixed_date'] = None
+
+        merged_additional_data = self.scif\
+            .merge(merged_pricing_data, how='left',
+                   left_on=['scene_id', 'item_id'],
+                   right_on=['scene_fk', 'substitution_product_fk'])\
+            .merge(merged_dates_data, how='left',
+                   left_on=['scene_id', 'item_id'],
+                   right_on=['scene_fk', 'substitution_product_fk'])\
+            .merge(self.all_products, how='left',
+                   left_on='item_id',
+                   right_on='product_fk',
+                   suffixes=['', '_all_products'])\
+            .dropna(subset=['fixed_date', 'price_value'],
+                    how='all')
+
+        return merged_additional_data
 
     def main_calculation(self, *args, **kwargs):
         """
