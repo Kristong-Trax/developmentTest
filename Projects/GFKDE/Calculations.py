@@ -60,7 +60,7 @@ class GFKDECalculations(BaseCalculationsScript):
             self.timer.start()
             dm = GFKDataManager(self.data_provider)
 
-            for kpi in DISTRIBUTION:
+            for kpi in KPIs:
                 kpi(data_provider=self.data_provider).calculate()
 
             dm.commit_resutls()
