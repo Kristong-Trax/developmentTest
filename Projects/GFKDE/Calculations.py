@@ -102,5 +102,3 @@ class GFKDECalculations(BaseCalculationsScript):
 #     for session in sessions:
 #         data_provider.load_session_data(session)
 #         GFKDECalculations(data_provider=data_provider, output=None).run_project_calculations()
-
-
