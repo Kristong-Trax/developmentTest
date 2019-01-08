@@ -67,7 +67,7 @@ class Definition(object):
         nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer) & (nbil_data['MARS_SUB-CATEGORY'] == set_name.upper())]
         try:
             if nbil_data_filter['Store Type'].unique()[0]:
-                return nbil_data_filter[nbil_data_filter['Store Type'] == store_type]
+                return nbil_data_filter[nbil_data_filter['Store Type'].str.contains(store_type)]
             else:
                 return nbil_data_filter
         except:

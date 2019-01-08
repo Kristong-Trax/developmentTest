@@ -279,12 +279,15 @@ class PNGRO_PRODToolBox:
                         score, result, threshold = self.calculate_block_adjacency(params, **general_filters)
 
                     atomic_kpi_fk = self.get_kpi_fk_by_kpi_name(params[self.SBD_KPI_NAME])
+                    location = self.get_location_for_db(params)
                     if atomic_kpi_fk is not None:
                         if result is not None and threshold is not None:
                             self.write_to_db_result(score=int(round(score*100, 0)), result=float(result),
-                                                    result_2=float(threshold), level=self.LEVEL3, fk=atomic_kpi_fk)
+                                                    result_2=float(threshold), level=self.LEVEL3, fk=atomic_kpi_fk,
+                                                    logical_operator=location)
                         else:
-                            self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk)
+                            self.write_to_db_result(score=int(score)*100, level=self.LEVEL3, fk=atomic_kpi_fk,
+                                                    logical_operator=location)
 
     def calculate_sos_pallets_per_product_by_scene_type_secondary_shelves(self):
         if not self.scene_display_bay.empty:
@@ -312,13 +315,6 @@ class PNGRO_PRODToolBox:
                                                denominator_result=row['display_width_total'],
                                                denominator_id=row['template_fk'],
                                                context_id=row['pk'])
-            # scene_product = scene_display_product.groupby(['scene_fk', 'product_fk']).agg({'pallets': np.sum})
-            # for i, row in scene_product.iterrows():
-            #     self.common.write_to_db_result_new_tables(fk=kpi_fk, score=row['pallets'],
-            #                                               result=row['pallets'],
-            #                                               numerator_result=row['facings_ign_stack'],
-            #                                               denominator_result=row['facings_all_secondary_shelves'],
-            #                                               numerator_id=row['product_fk'], denominator_id=row['template_fk'])
 
     def get_number_of_pallets(self, row):
         display_weight = self.get_display_weight_by_display_name(row['display_name'])
@@ -356,6 +352,10 @@ class PNGRO_PRODToolBox:
             return True
         else:
             return False
+
+    def get_location_for_db(self, params):
+        location_type = params['Location Type'].split(' ')
+        return location_type[0]
 
     def calculate_eye_level_shelves(self, row):
         res_table = \
@@ -811,14 +811,14 @@ class PNGRO_PRODToolBox:
             Log.info('Kpi name: {}, isnt equal to any kpi name in static table'.format(kpi_name))
             return None
 
-    def write_to_db_result(self, fk, level, score=None, result=None, result_2=None):
+    def write_to_db_result(self, fk, level, score=None, result=None, result_2=None, logical_operator=None):
         """
         This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
         # assert isinstance(fk, int), "fk is not a int: %r" % fk
         # assert isinstance(score, float), "score is not a float: %r" % score
-        attributes = self.create_attributes_dict(fk, score, result, result_2, level)
+        attributes = self.create_attributes_dict(fk, score, result, result_2, level, logical_operator)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -830,7 +830,7 @@ class PNGRO_PRODToolBox:
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
 
-    def create_attributes_dict(self, fk, score=None, result=None, result_2=None, level=None):
+    def create_attributes_dict(self, fk, score=None, result=None, result_2=None, level=None, logical_operator=None):
         """
         This function creates a data frame with all attributes needed for saving in KPI results tables.
 
@@ -853,10 +853,10 @@ class PNGRO_PRODToolBox:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, result, result_2, kpi_fk, fk)],
+                                        score, result, result_2, kpi_fk, fk, logical_operator)],
                                       columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
                                                'calculation_time', 'score', 'result', 'threshold', 'kpi_fk',
-                                               'atomic_kpi_fk'])
+                                               'atomic_kpi_fk', 'kpi_logical_operator'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
