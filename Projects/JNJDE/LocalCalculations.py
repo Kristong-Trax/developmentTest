@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'jnjde'
     data_provider = KEngineDataProvider(project_name)
-    session = '5aef0111-b66e-41be-a96a-523064caa70b'
+    session = '8b058146-8985-45c8-b55d-8c33908fc308'
     data_provider.load_session_data(session)
     output = Output()
     JNJDECalculations(data_provider, output).run_project_calculations()

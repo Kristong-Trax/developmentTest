@@ -7,7 +7,8 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 
 from KPIUtils.GlobalProjects.JNJ.KPIGenerator import JNJGenerator
-from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
+
 
 __author__ = 'nissand'
 
@@ -23,7 +24,7 @@ class JNJESCalculations(BaseCalculationsScript):
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.calculate_auto_assortment()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
-        common.commit_results_data_to_new_tables()
+        common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
