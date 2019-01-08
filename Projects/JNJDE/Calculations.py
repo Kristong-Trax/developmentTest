@@ -20,7 +20,7 @@ class JNJDECalculations(BaseCalculationsScript):
                                                   'JNJDE', 'Data', 'eye_level_jnjuk.xlsx')
         eye_hand_lvl_template = pd.read_excel(eye_hand_lvl_template_path)
         common = Common(self.data_provider)
-        jnj_generator = JNJGenerator(self.data_provider, self.output, common_v2)
+        jnj_generator = JNJGenerator(self.data_provider, self.output, common)
 
         # KPI 2 - Share of Shelf
         jnj_generator.sos_vs_target_calculation()
