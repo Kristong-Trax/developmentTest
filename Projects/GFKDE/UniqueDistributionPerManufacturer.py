@@ -18,5 +18,6 @@ class UniqueDistributionPerManufacturer_KPI(GfkDistributionBaseCalculationScript
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.MANUFACTURER_FK,
+            "numerator": Fields.PRODUCT_FK,
+            "denominator": Fields.MANUFACTURER_FK,
         }
