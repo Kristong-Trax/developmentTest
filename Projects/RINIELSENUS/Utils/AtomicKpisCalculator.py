@@ -177,11 +177,15 @@ class KpiAtomicKpisCalculator(object):
         if 'Customer Brand' in (kargs.keys()):
             sales = sales[(sales['retailer'] == self._data_provider.retailer) &
                           (sales['channel'] == self._data_provider.channel) &
+                          ((sales['store type'].str.contains(self._data_provider.store_type)) |
+                           (sales['store type'] == '')) &
                           (sales['set'] == set_name.upper()) &
                           (sales['Customer Brand'].isin(kargs['Customer Brand']))]
         else:
             sales = sales[(sales['retailer'] == self._data_provider.retailer) &
                           (sales['channel'] == self._data_provider.channel) &
+                          ((sales['store type'].str.contains(self._data_provider.store_type)) |
+                           (sales['store type'] == '')) &
                           (sales['set'] == set_name.upper()) &
                           (sales['Customer Brand'] == '')]
         return sales['soa'].iloc[0] if not sales.empty else None
@@ -718,18 +722,27 @@ class DoubleAnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if len(relevant_scenes) == 0:
             return np.nan
         for scene in relevant_scenes:
-            filters_separate.update({'scene_fk': scene})
             relevant_bay = self.check_bay(scene, threshold, **filter_products_after_exclude)
             if not relevant_bay:
                 continue
-            for situation in ['B-C', 'C-B']:
+            # this specifically checks to make sure each group is on opposite sides of the desired category
+            # for instance, this KPI will not pass if the same filter group is on each side
+            for situation in [['B', 'C'], ['C', 'B']]:
                 pass_side = 0
-                for direction in ['left', 'right']:
-                    filters_separate.update({'bay_number': relevant_bay[direction]})
+
+                left_filter = filters[situation[0]]
+                left_filter.update({'bay_number': relevant_bay['left']})
+                left_filter.update({'scene_fk': scene})
+
+                right_filter = filters[situation[1]]
+                right_filter.update({'bay_number': relevant_bay['right']})
+                right_filter.update({'scene_fk': scene})
+
+                for direction, direction_filter in {'left': left_filter, 'right': right_filter}.items():
                     edge = self._tools.calculate_products_on_edge(position=direction,
                                                                   edge_population=filter_products_after_exclude,
                                                                   min_number_of_shelves=min_shelves,
-                                                                  **filters_separate)
+                                                                  **direction_filter)
                     if edge[0] > 0:
                         pass_side += 1
                 if pass_side == 2:

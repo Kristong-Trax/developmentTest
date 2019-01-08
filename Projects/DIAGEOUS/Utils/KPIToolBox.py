@@ -205,6 +205,8 @@ class DIAGEOUSToolBox:
         kpi_db_names = Const.DB_ON_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
         total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
+        if self.assortment_products.empty:
+            return 0, 0, 0
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
@@ -265,6 +267,8 @@ class DIAGEOUSToolBox:
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
         else:
             Log.error("Assortment '{}' is not defined in the code".format(kpi_name))
+            return 0, 0, 0
+        if self.assortment_products.empty:
             return 0, 0, 0
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])

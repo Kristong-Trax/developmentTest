@@ -41,7 +41,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         SELECT * FROM report.kpi_results
         ''')
         kpi_results = cursor.fetchall()
-        # self.assertNotEquals(len(kpi_results), 0)
+        self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
 
     @skip('Test failed in garage')
@@ -57,10 +57,11 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=posm)
     @seeder.seed(["diageoke_sand_seed"], ProjectsSanityData())
+
     def test_diageoke_sand_sanity(self, x, y, json, json2, json3, json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['61e77849-2916-4f10-bcfb-94caca30b8a2']
+        sessions = ['2a2c088b-9759-4e81-abdc-451362e9dae9']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
