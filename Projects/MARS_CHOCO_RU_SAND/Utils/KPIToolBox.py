@@ -10,8 +10,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 # from serial.tools.list_ports_osx import location_to_string
-from boto.sdb.db.sequence import fib
-from numpy.core.test_rational import numerator
 
 from Projects.MARS_CHOCO_RU_SAND.Utils.ParseTemplates import parse_template
 from Projects.MARS_CHOCO_RU_SAND.Utils.Fetcher import MARS_CHOCO_RU_SANDMARSQueries
