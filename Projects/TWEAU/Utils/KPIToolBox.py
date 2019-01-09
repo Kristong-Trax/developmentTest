@@ -2,7 +2,6 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
-
 import pandas as pd
 import os
 import math
@@ -29,10 +28,19 @@ TYPE = 'type'
 KPI_SHEET  = 'KPI'
 KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
+CATEGORY_SHEET = 'Category'
 
 NUMERATOR_FK = 'numerator_key'
 DENOMINATOR_FK = 'denominator_key'
-FILTER_ENTITIES = [1, 2, 3]
+FILTER_ENTITIES = ['filter_entity_1', 'filter_entity_2', 'filter_entity_3']
+EXCEL_DB_MAP = {
+    "manufacturer_name": "manufacturer_fk",
+    "scene": "scene_id",
+    "sub_category": "sub_category_fk",
+    "store": "store_id",
+}
+ROUNDING_DIGITS = 4
+
 
 class TWEAUToolBox:
     LEVEL1 = 1
@@ -68,39 +76,86 @@ class TWEAUToolBox:
         return score
 
     def calculate_macro_linear(self):
-        df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
+        kpi_sheet = self.get_template_details(KPI_SHEET)
+        category_sheet = self.get_template_details(CATEGORY_SHEET)
 
-        for index, row in df_tp_ps_kpis.iterrows():
+        for index, kpi_sheet_row in kpi_sheet.iterrows():
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
-                                       & (self.kpi_static_data[TYPE] == row[KPI_TYPE])
+                                       & (self.kpi_static_data[TYPE] == kpi_sheet_row[KPI_TYPE])
                                        & (self.kpi_static_data['delete_time'].isnull())]
-
             if kpi.empty:
-                print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
+                print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
-                print("KPI Name:{} found in DB".format(row[KPI_NAME]))
-                # generate the numerator filter string
+                print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
+                # find the numerator length
                 numerator_filters = []
                 numerator_filter_string = ''
-                for each_idx in FILTER_ENTITIES:
-                    numerator_filter = row['filter_entity_' + str(each_idx)]
+                # generate the numerator filter string
+                for each_filter in FILTER_ENTITIES:
+                    numerator_filter = kpi_sheet_row[each_filter]
                     if numerator_filter != numerator_filter:
-                        # it is NaN
+                        # it is NaN ~ it is empty
                         continue
-                    numerator_filter_value = row['filter_entity_' + str(each_idx) + '_value']
-                    numerator_filter_string += numerator_filter + "==" + '"' + numerator_filter_value + '"'
-                    numerator_filters.append(numerator_filter)
-                    numerator_filter_string += ' and '
+                    # grab the filters anyways to group
+                    numerator_filters.append(EXCEL_DB_MAP[numerator_filter])
+                    numerator_filter_value = kpi_sheet_row[each_filter + '_value']
+                    if numerator_filter_value.lower() == "all":
+                        # ignore the filter
+                        continue
+                    numerator_filter_string += '{key}=="{value}" and '.\
+                        format(key=numerator_filter, value=numerator_filter_value)
                 numerator_filter_string = numerator_filter_string.rstrip(' and')
 
-                numerator_data_frame = pd.DataFrame(self.scif.query(numerator_filter_string)).fillna(0).\
-                    groupby(numerator_filters, as_index=False).agg({'gross_len_add_stack': 'sum'})
-                # numerator_len_total = 0
-                # for idx, numerator_row in numerator_data_frame.iterrows():
-                #     numerator_len_total += numerator_row.gross_len_add_stack
+                if numerator_filter_string:
+                    numerator_df = self.scif.query(numerator_filter_string).fillna(0).\
+                        groupby(numerator_filters, as_index=False).agg({'gross_len_ign_stack': 'sum'})
+                else:
+                    # nothing to query; no grouping; get all data
+                    numerator_df = self.scif.groupby(numerator_filters, as_index=False).\
+                        agg({'gross_len_ign_stack': 'sum'})
 
+                # find the denominator length
+                denominator_filter_string = ''
+                # filter data
+                denominator_kpi_df = category_sheet.loc[(category_sheet[KPI_NAME] == kpi_sheet_row[KPI_NAME])]
+                index_of_row = denominator_kpi_df.index.values[0]
 
+                temp_denominator_filters = denominator_kpi_df.columns.tolist()
+                # grab the filters and map it; remove KPI_NAME from filter items
+                temp_denominator_filters.remove(KPI_NAME)
+                denominator_filters = [EXCEL_DB_MAP[x] for x in temp_denominator_filters]
+                # generate the denominator filter string
+                for key, value in denominator_kpi_df.iteritems():
+                    if key == KPI_NAME:
+                        continue
+                    if value[index_of_row].lower() == 'all':
+                        continue
+                    denominator_filter_string += "{key} == '{value}' and ".format(key=key, value=value[0])
+                denominator_filter_string = denominator_filter_string.rstrip(' and')
+
+                if denominator_filter_string:
+                    denominator_series = self.scif.query(denominator_filter_string).fillna(0).\
+                        groupby(denominator_filters, as_index=False).agg({'gross_len_ign_stack': 'sum'})
+                else:
+                    # nothing to query; no grouping; get all data
+                    denominator_series = self.scif.agg({'gross_len_ign_stack': 'sum'})
+                for idx, numerator_row in numerator_df.iterrows():
+                    numerator = numerator_row.gross_len_ign_stack
+                    denominator = denominator_series.gross_len_ign_stack
+                    try:
+                        result = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                    except ZeroDivisionError:
+                        result = 0
+                    self.common.write_to_db_result(fk=int(kpi['pk']),
+                                                   numerator_id=EXCEL_DB_MAP[kpi_sheet_row.numerator_fk],
+                                                   numerator_result=numerator,
+                                                   denominator_id=EXCEL_DB_MAP[kpi_sheet_row.denominator_fk],
+                                                   denominator_result=denominator,
+                                                   result=result,
+                                                   score=result,
+                                                   identifier_result=kpi_sheet_row[KPI_NAME],
+                                                   should_enter=True)
 
     def get_template_details(self, sheet_name):
-        template = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)
+        template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
         return template

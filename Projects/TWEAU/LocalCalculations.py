@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'tweau'
     data_provider = KEngineDataProvider(project_name)
-    session = 'fdfb6b23-907c-4335-b41d-ebaf4b331f35'
+    session = '2b55a846-4689-46d0-b812-ad5586eb566b'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
