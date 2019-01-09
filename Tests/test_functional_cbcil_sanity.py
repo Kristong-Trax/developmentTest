@@ -43,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_cbcil_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['2F57E283-D3A3-4BFB-A5E5-59F1F1C3234A']
+        sessions = ['f7acade6-7e4f-4617-8012-7857bd7ffbc9']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
