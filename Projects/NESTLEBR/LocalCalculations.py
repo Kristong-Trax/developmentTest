@@ -1,8 +1,8 @@
-#
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Projects.NESTLEBR.Calculations import Calculations
+#
 #
 #
 # if __name__ == '__main__':
@@ -10,7 +10,9 @@
 #     Config.init()
 #     project_name = 'nestlebr'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'be9c32e1-97d9-4a00-80e9-2f012b5d60de'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     Calculations(data_provider, output).run_project_calculations()
+#     sessions = ['cd600ac6-cee5-496a-b2d7-c323b83caee9',
+#                 'fc0510d9-4a9b-4869-81cf-d3fc28c640f4']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         Calculations(data_provider, output).run_project_calculations()

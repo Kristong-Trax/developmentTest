@@ -58,13 +58,13 @@ class NESTLEBRToolBox:
         relevant_scif = self.scif[self.scif['included_in_secondary_shelf_report'] == 'Y']
 
         denominator_results = relevant_scif.groupby('category_fk', as_index=False)[
-                ['facings_ign_stack']].sum().rename(columns={'facings_ign_stack': 'denominator_result'})
+                ['facings']].sum().rename(columns={'facings': 'denominator_result'})
 
         numerator_result = relevant_scif.groupby(['category_fk', 'manufacturer_fk'], as_index=False)[
-            ['facings_ign_stack']].sum().rename(columns={'facings_ign_stack': 'numerator_result'})
+            ['facings']].sum().rename(columns={'facings': 'numerator_result'})
 
         results = numerator_result.merge(denominator_results)
-        results['result'] = ((results['numerator_result'] / results['denominator_result']) * 100)
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
         results['result'].fillna(0, inplace=True)
 
         for index, row in results.iterrows():
