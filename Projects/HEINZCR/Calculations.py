@@ -22,20 +22,20 @@ class HEINZCRHEINZCRCalculations(BaseCalculationsScript):
         heinz.heinz_global_share_of_shelf_function()
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Config', 'PriceAdherenceTargets091218.xlsx')
         heinz.heinz_global_price_adherence(pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                        'Config', 'PriceAdherenceTargets091218.xlsx'), sheetname="Price Adherence"))
+                                        'Config', 'Price Adherence Targets 3Ene2019.xlsx'), sheetname="Price Adherence"))
         heinz.heinz_global_extra_spaces()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('heinzcr calculations')
-#     Config.init()
-#     project_name = 'heinzcr'
-#     data_provider = KEngineDataProvider(project_name)
-#     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-#     sessions = ['32d3aaa5-acc7-4fc2-8779-329cc1dbe9ca']
-#     for session in sessions:
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('heinzcr calculations')
+    Config.init()
+    project_name = 'heinzcr'
+    data_provider = KEngineDataProvider(project_name)
+    # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
+    sessions = ['32d3aaa5-acc7-4fc2-8779-329cc1dbe9ca']
+    for session in sessions:
+        data_provider.load_session_data(session)
+        output = Output()
+        HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
