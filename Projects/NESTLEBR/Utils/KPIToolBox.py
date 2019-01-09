@@ -57,19 +57,20 @@ class NESTLEBRToolBox:
     def calculate_secondary_manufacturer_out_of_category(self):
         relevant_scif = self.scif[self.scif['included_in_secondary_shelf_report'] == 'Y']
 
-        denominator_results = relevant_scif.groupby('sub_category_fk', as_index=False)[
+        denominator_results = relevant_scif.groupby('category_fk', as_index=False)[
                 ['facings_ign_stack']].sum().rename(columns={'facings_ign_stack': 'denominator_result'})
 
-        numerator_result = relevant_scif.groupby(['sub_category_fk', 'manufacturer_fk'], as_index=False)[
+        numerator_result = relevant_scif.groupby(['category_fk', 'manufacturer_fk'], as_index=False)[
             ['facings_ign_stack']].sum().rename(columns={'facings_ign_stack': 'numerator_result'})
 
         results = numerator_result.merge(denominator_results)
         results['result'] = ((results['numerator_result'] / results['denominator_result']) * 100)
+        results['result'].fillna(0, inplace=True)
 
         for index, row in results.iterrows():
             result_dict = self.build_dictionary_for_db_insert(
                 kpi_name='SECONDARY_FACINGS_SOS_MANUFACTURER_OUT_OF_CATEGORY_IN_WHOLE_STORE',
-                numerator_id=row['manufacturer_fk'], denominator_id=row['sub_category_fk'],
+                numerator_id=row['manufacturer_fk'], denominator_id=row['category_fk'],
                 numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
                 result=row['result'], score=row['result'], score_after_actions=row['result'])
             self.common.write_to_db_result(**result_dict)
