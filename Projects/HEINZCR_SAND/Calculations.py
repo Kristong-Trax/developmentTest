@@ -21,7 +21,7 @@ class HEINZCRCalculations(BaseCalculationsScript):
         heinz.heinz_global_distribution_per_category()
         heinz.heinz_global_share_of_shelf_function()
         heinz.heinz_global_price_adherence(pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                    'Config', 'PriceAdherenceTargets091218.xlsx'), sheetname="Price Adherence"))
+                                    'Config', 'Price Adherence Targets 3Ene2019.xlsx'), sheetname="Price Adherence"))
         heinz.heinz_global_extra_spaces()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')
