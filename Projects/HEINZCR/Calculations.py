@@ -28,14 +28,14 @@ class HEINZCRHEINZCRCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('heinzcr calculations')
-    Config.init()
-    project_name = 'heinzcr'
-    data_provider = KEngineDataProvider(project_name)
-    # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
-    sessions = ['32d3aaa5-acc7-4fc2-8779-329cc1dbe9ca']
-    for session in sessions:
-        data_provider.load_session_data(session)
-        output = Output()
-        HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('heinzcr calculations')
+#     Config.init()
+#     project_name = 'heinzcr'
+#     data_provider = KEngineDataProvider(project_name)
+#     # session = 'efdd2028-6f09-46ff-ad02-18874a6f45b2'
+#     sessions = ['32d3aaa5-acc7-4fc2-8779-329cc1dbe9ca']
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         HEINZCRHEINZCRCalculations(data_provider, output).run_project_calculations()
