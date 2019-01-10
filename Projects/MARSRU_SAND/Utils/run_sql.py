@@ -26,7 +26,7 @@ class MARSRU_SANDRunSql:
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['marsru-sand']:
+    for project in ['marsru2-sand']:
         print 'start project: ' + str(project)
         sql_to_run = MARSRU_SANDRunSql(project)
         sql_to_run.run_it()
