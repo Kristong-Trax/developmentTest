@@ -32,13 +32,14 @@ CATEGORY_SHEET = 'Category'
 
 NUMERATOR_FK = 'numerator_key'
 DENOMINATOR_FK = 'denominator_key'
-FILTER_ENTITIES = ['filter_entity_1', 'filter_entity_2', 'filter_entity_3']
+NUMERATOR_FILTER_ENTITIES = ['filter_entity_1', 'filter_entity_2', 'filter_entity_3']
 EXCEL_DB_MAP = {
     "manufacturer_name": "manufacturer_fk",
     "scene": "scene_id",
     "sub_category": "sub_category_fk",
     "store": "store_id",
 }
+COL_FOR_MACRO_LINEAR_CALC = 'gross_len_ign_stack'
 ROUNDING_DIGITS = 4
 
 
@@ -72,6 +73,7 @@ class TWEAUToolBox:
         This function calculates the KPI results.
         """
         self.calculate_macro_linear()
+        self.common.commit_results_data()
         score = 0
         return score
 
@@ -91,7 +93,7 @@ class TWEAUToolBox:
                 numerator_filters = []
                 numerator_filter_string = ''
                 # generate the numerator filter string
-                for each_filter in FILTER_ENTITIES:
+                for each_filter in NUMERATOR_FILTER_ENTITIES:
                     numerator_filter = kpi_sheet_row[each_filter]
                     if numerator_filter != numerator_filter:
                         # it is NaN ~ it is empty
@@ -107,13 +109,12 @@ class TWEAUToolBox:
                 numerator_filter_string = numerator_filter_string.rstrip(' and')
 
                 if numerator_filter_string:
-                    numerator_df = self.scif.query(numerator_filter_string).fillna(0).\
-                        groupby(numerator_filters, as_index=False).agg({'gross_len_ign_stack': 'sum'})
+                    numerator_data = self.scif.query(numerator_filter_string).fillna(0).\
+                        groupby(numerator_filters, as_index=False).agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})
                 else:
-                    # nothing to query; no grouping; get all data
-                    numerator_df = self.scif.groupby(numerator_filters, as_index=False).\
-                        agg({'gross_len_ign_stack': 'sum'})
-
+                    # nothing to query; group and get all data
+                    numerator_data = pd.DataFrame(self.scif.groupby(numerator_filters, as_index=False).
+                                                  agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'}))
                 # find the denominator length
                 denominator_filter_string = ''
                 # filter data
@@ -130,31 +131,70 @@ class TWEAUToolBox:
                         continue
                     if value[index_of_row].lower() == 'all':
                         continue
-                    denominator_filter_string += "{key} == '{value}' and ".format(key=key, value=value[0])
+                    denominator_filter_string += '{key} == "{value}" and '.format(key=key, value=value[0])
                 denominator_filter_string = denominator_filter_string.rstrip(' and')
 
                 if denominator_filter_string:
-                    denominator_series = self.scif.query(denominator_filter_string).fillna(0).\
-                        groupby(denominator_filters, as_index=False).agg({'gross_len_ign_stack': 'sum'})
+                    denominator_data = self.scif.query(denominator_filter_string).fillna(0).\
+                        groupby(denominator_filters, as_index=False).agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})
+                    denominator_data_iter = denominator_data.iterrows()
                 else:
                     # nothing to query; no grouping; get all data
-                    denominator_series = self.scif.agg({'gross_len_ign_stack': 'sum'})
-                for idx, numerator_row in numerator_df.iterrows():
-                    numerator = numerator_row.gross_len_ign_stack
-                    denominator = denominator_series.gross_len_ign_stack
-                    try:
-                        result = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
-                    except ZeroDivisionError:
-                        result = 0
-                    self.common.write_to_db_result(fk=int(kpi['pk']),
-                                                   numerator_id=EXCEL_DB_MAP[kpi_sheet_row.numerator_fk],
-                                                   numerator_result=numerator,
-                                                   denominator_id=EXCEL_DB_MAP[kpi_sheet_row.denominator_fk],
-                                                   denominator_result=denominator,
-                                                   result=result,
-                                                   score=result,
-                                                   identifier_result=kpi_sheet_row[KPI_NAME],
-                                                   should_enter=True)
+                    denominator_data = pd.DataFrame(self.scif.agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'}))
+                    denominator_data_iter = denominator_data.iteritems()
+                for d_idx, denominator_row in denominator_data_iter:
+                    denominator = denominator_row.get(COL_FOR_MACRO_LINEAR_CALC)
+                    for idx, numerator_row in numerator_data.iterrows():
+                        numerator = numerator_row.get(COL_FOR_MACRO_LINEAR_CALC)
+                        try:
+                            result = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                        except ZeroDivisionError:
+                            result = 0
+                        numerator_id = int(numerator_row[EXCEL_DB_MAP[kpi_sheet_row.numerator_fk]])
+                        denominator_key_str = EXCEL_DB_MAP[kpi_sheet_row.denominator_fk]
+                        denominator_id = getattr(self, denominator_key_str, None)
+                        # if not denominator_id:
+                        #     denominator_data = self.get_denominator_id_data(denominator_key_str,
+                        #                                                     numerator_row,
+                        #                                                     denominator_row)
+                        #     denominator_id = denominator_data.drop_duplicates()
+                        print "Saving for {kpi_name} with pk={pk}. Numerator={num} & Denominator={den}".format(
+                            idx=idx,
+                            kpi_name=kpi_sheet_row[KPI_NAME],
+                            pk=kpi['pk'],
+                            num=numerator_id,
+                            den=denominator_id,
+                        )
+                        self.common.write_to_db_result(fk=int(kpi['pk']),
+                                                       numerator_id=numerator_id,
+                                                       numerator_result=numerator,
+                                                       denominator_id=denominator_id,
+                                                       denominator_result=denominator,
+                                                       result=result,
+                                                       score=result,
+                                                       identifier_result=kpi_sheet_row[KPI_NAME],
+                                                       should_enter=True,
+                                                       )
+
+    # def get_denominator_id_data(self, denominator_key_str, numerator_row, denominator_row):
+    #     """
+    #
+    #     :param denominator_key_str: str
+    #     :param numerator_row: pd.Dataframe
+    #     :param denominator_row: pd.Dataframe
+    #     :return: pd.Series
+    #             # first check in denominator
+    #             # second check in numerator
+    #             # third check in self.scif
+    #             >> always return pd.Series data so that it can be iterated through to save in DB
+    #     """
+    #
+    #     denominator_data = denominator_row.get(denominator_key_str,
+    #                                            numerator_row.get(denominator_key_str,
+    #                                                              self.scif.get(denominator_key_str)))
+    #     if type(denominator_data) != pd.Series:
+    #         denominator_data = pd.Series(denominator_data)
+    #     return denominator_data
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
