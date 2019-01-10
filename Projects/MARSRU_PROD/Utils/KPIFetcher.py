@@ -3,9 +3,11 @@ import pandas as pd
 
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Projects.MARSRU_PROD.Utils.MARSRUJSON import MARSRU_PRODMARSRUJsonGenerator
+from Trax.Utils.Logging.Logger import Log
+
 
 __author__ = 'urid'
+
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -18,20 +20,35 @@ SKU = 'SKU'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class MARSRU_PRODMARSRUKPIFetcher:
+class MARSRU_PRODKPIFetcher:
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
     LEFT = 'shelf_px_left'
     RIGHT = 'shelf_px_right'
 
-    def __init__(self, project_name, scif, matches, set_name, products, session_uid):
+    def __init__(self, project_name, kpi_templates, scif, matches, set_name, products, session_uid):
         self.rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
+        self.project = project_name
+        self.kpi_templates = kpi_templates
         self.scif = scif
         self.matches = matches
         self.set_name = set_name
         self.kpi_static_data = self.get_static_kpi_data()
+        self.kpi_result_values = self.get_kpi_result_values()
         self.products = products
         self.session_uid = session_uid
+
+    def check_connection(self, rds_conn):
+        try:
+            rds_conn.db.cursor().execute(
+                "select pk from probedata.session where session_uid = '{}';"
+                    .format(self.session_uid))
+        except:
+            rds_conn.disconnect_rds()
+            rds_conn.connect_rds()
+            Log.warning('DB is reconnected')
+            return False
+        return True
 
     def get_object_facings(self, scenes, objects, object_type, formula, form_factor=[], shelves=None,
                            brand_category=None, sub_brands=[], sub_brands_to_exclude=[],
@@ -50,7 +67,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['manufacturer_name'] == MARS) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
+            merged_dfs = initial_result.merge(
+                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         elif object_type == 'BRAND in CAT':
@@ -61,7 +79,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['category'].isin(brand_category)) &
                                            (~self.scif['product_type'].isin([OTHER, EMPTY]))]
-            merged_dfs = initial_result.merge(self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
+            merged_dfs = initial_result.merge(
+                self.matches, on=['product_fk', 'scene_fk'], suffixes=['', '_1'])
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
             final_result = merged_filter.drop_duplicates(subset=['product_fk', 'scene_fk'])
         else:
@@ -85,7 +104,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
         # if size:
         #     final_result = final_result[final_result['size'].isin(size)]
         if shelves:
-            merged_dfs = pd.merge(final_result, self.matches, on=['product_fk'], suffixes=['', '_1'])
+            merged_dfs = pd.merge(final_result, self.matches, on=[
+                                  'product_fk'], suffixes=['', '_1'])
             shelves_list = [int(shelf) for shelf in shelves.split(',')]
             merged_filter = merged_dfs.loc[merged_dfs['shelf_number_x'].isin(shelves_list)]
             final_result = merged_filter
@@ -96,7 +116,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
         if cl_sub_cats:
             final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
         if cl_sub_cats_to_exclude:
-            final_result = final_result[~final_result['Client Sub Category Name'].isin(cl_sub_cats_to_exclude)]
+            final_result = final_result[~final_result['Client Sub Category Name'].isin(
+                cl_sub_cats_to_exclude)]
 
         try:
             if "number of SKUs" in formula:
@@ -271,8 +292,9 @@ class MARSRU_PRODMARSRUKPIFetcher:
             self.scif.loc[
                 (self.scif['scene_id'].isin(scenes)) & (self.scif[object_field].isin(objects)) & (
                     self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) & (self.scif['form_factor'].isin(
-                    form_factor))]
-        merged_dfs = pd.merge(final_result, match_product_details, on=['product_fk'], suffixes=['', '_1'])
+                        form_factor))]
+        merged_dfs = pd.merge(final_result, match_product_details,
+                              on=['product_fk'], suffixes=['', '_1'])
         if not include_stacking:
             merged_filter = merged_dfs.loc[merged_dfs['stacking_layer'] == 1]
         else:
@@ -298,7 +320,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
 
     @staticmethod
     def get_delete_session_custom_scif(session_fk):
-        query = "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(session_fk)
+        query = "delete from pservice.custom_scene_item_facts where session_fk = '{}';".format(
+            session_fk)
         return query
 
     def get_kpi_set_fk(self):
@@ -326,10 +349,25 @@ class MARSRU_PRODMARSRUKPIFetcher:
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
+    def get_kpi_result_values(self):
+        query = \
+            """
+            SELECT
+            rv.pk AS kpi_result_value_fk,
+            rv.value AS kpi_result_value,
+            rv.kpi_result_type_fk,
+            rt.name AS kpi_result_type,
+            rt.kpi_scale_type_fk,
+            st.scale_type AS kpi_scale_type
+            FROM static.kpi_result_value rv
+            JOIN static.kpi_result_type rt ON rt.pk=rv.kpi_result_type_fk
+            JOIN static.kpi_scale_type st ON st.pk=rt.kpi_scale_type_fk;
+            """
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        return df
+
     def get_golden_shelves(self, shelves_num):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('golden_shelves.xlsx', 'golden_shelves')
-        targets = jg.project_kpi_dict['golden_shelves']
+        targets = self.kpi_templates['golden_shelves']
         final_shelves = []
         for row in targets:
             if row.get('num. of shelves min') <= shelves_num <= row.get('num. of shelves max'):
@@ -340,10 +378,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
                 continue
         return final_shelves
 
-    def get_survey_answers_codes(self, survey_question_code, survey_answers_text):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('answers_translation.xlsx', 'survey_answers_translation')
-        targets = jg.project_kpi_dict['survey_answers_translation']
+    def get_survey_answers_translation(self, survey_question_code, survey_answers_text):
+        targets = self.kpi_templates['survey_answers_translation']
         answers_list = []
         for row in targets:
             if row.get('question code') == int(survey_question_code) and row.get('answer text') in survey_answers_text:
@@ -356,10 +392,8 @@ class MARSRU_PRODMARSRUKPIFetcher:
         return final_answers
 
     def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
-        jg = MARSRU_PRODMARSRUJsonGenerator('marsru')
-        jg.create_targets_json('MARS must-range targets.xlsx', 'must_range_skus', kpi_name)
-        targets = jg.project_kpi_dict['must_range_skus']
-        skus_list = []
+        targets = self.kpi_templates['must_range_skus'][kpi_name]
+        values_list = []
 
         if store_type and region:  # Validation check
 
@@ -368,12 +402,14 @@ class MARSRU_PRODMARSRUKPIFetcher:
                 for row in targets:
 
                     if 'Store type' in row:
-                        store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                        store_types = str(row.get('Store type').encode(
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
-                        regions = str(row.get('Region').encode('utf-8')).replace('\n', '').split(',')
+                        regions = str(row.get('Region').encode(
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         regions = []
 
@@ -382,12 +418,14 @@ class MARSRU_PRODMARSRUKPIFetcher:
 
                         if 'KPI name' in row:
 
-                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
-                            kpi_results_to_check = str(row.get('KPI result')).encode('utf-8').replace('\n', '').split(',')
-                            kpi_result = kpi_results[kpi_results['kpi_name'] == kpi_name_to_check]['result']
-                            if not kpi_result.empty:
-                                if kpi_result[0] in kpi_results_to_check:
-                                    skus_list = str(row.get('EAN')).replace('\n', '').split(',')
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
+                            kpi_results_to_check = str(row.get('KPI result')).encode(
+                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
+                                if kpi_results.get(kpi_name_to_check) else None
+                            if kpi_result:
+                                if kpi_result in kpi_results_to_check:
+                                    values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
                                     break
                                 else:
                                     continue
@@ -395,24 +433,61 @@ class MARSRU_PRODMARSRUKPIFetcher:
                                 continue
 
                         else:
-                            skus_list = str(row.get('EAN')).replace('\n', '').split(',')
+                            values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
                             break
                     else:
                         continue
 
             elif 'Shelf # from the bottom' in targets[0]:
+                # for row in targets:
+                #     store_types = str(row.get('Store type').encode('utf-8')).strip().replace('\n', '').split(',')
+                #     if store_type.encode('utf-8') in store_types:
+                #         values_list = row.get('Shelf # from the bottom')
+                #         break
+                #     else:
+                #         continue
                 for row in targets:
-                    store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
-                    if store_type.encode('utf-8') in store_types:
-                        skus_list = row.get('Shelf # from the bottom')
-                        break
+
+                    if 'Store type' in row:
+                        store_types = str(row.get('Store type').encode(
+                            'utf-8')).strip().replace('\n', '').split(',')
+                    else:
+                        store_types = []
+
+                    if 'Region' in row:
+                        regions = str(row.get('Region').encode(
+                            'utf-8')).strip().replace('\n', '').split(',')
+                    else:
+                        regions = []
+
+                    if (not store_types or store_type.encode('utf-8') in store_types) and\
+                            (not regions or region.encode('utf-8') in regions):
+
+                        if 'KPI name' in row:
+
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
+                            kpi_results_to_check = str(row.get('KPI result')).encode(
+                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))
+                            if kpi_result:
+                                if kpi_result in kpi_results_to_check:
+                                    values_list = str(row.get('Shelf # from the bottom')).strip()
+                                    break
+                                else:
+                                    continue
+                            else:
+                                continue
+
+                        else:
+                            values_list = str(row.get('Shelf # from the bottom')).strip()
+                            break
                     else:
                         continue
 
             elif 'Attribute 5' in targets[0]:
                 for row in targets:
-                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8') or \
-                                    store_type.encode('utf-8') != row.get('Store type').encode('utf-8'):
+                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8').strip() or \
+                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8').strip():
                         continue
                     try:
                         shelf_length_from = float(row.get('Shelf length FROM INCLUDING'))
@@ -422,28 +497,30 @@ class MARSRU_PRODMARSRUKPIFetcher:
                         shelf_length_to = float(row.get('Shelf length TO EXCLUDING'))
                     except ValueError:
                         shelf_length_to = 10000
-                    result = str(row.get('Result'))
-                    skus_list.append({'shelf from': shelf_length_from,
-                                      'shelf to': shelf_length_to,
-                                      'result': result})
+                    result = str(row.get('Result')).strip()
+                    length_condition = str(row.get('Length condition')).strip()
+                    values_list.append({'shelf from': shelf_length_from,
+                                        'shelf to': shelf_length_to,
+                                        'result': result,
+                                        'length_condition': length_condition})
 
-        return skus_list
+        return values_list
 
     def get_filtered_matches(self, include_stacking=True):
-        self.rds_conn = PSProjectConnector('marsru-prod', DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
         matches = self.matches
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
-        matches = matches[(matches['status'] == 1) | (matches['status'] == 3)] # include stacking
+        matches = matches[(matches['status'] == 1) | (matches['status'] == 3)]  # include stacking
         if not include_stacking:
             matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_1'])
+        matches = matches.merge(self.get_match_product_in_scene(), how='left',
+                                on='scene_match_fk', suffixes=['', '_1'])
         matches = matches.merge(self.products, how='left', on='product_fk', suffixes=['', '_1'])
         matches = matches.drop_duplicates(subset=[VERTEX_FK_FIELD])
         return matches
 
     def get_match_product_in_scene(self):
-        if not self.rds_conn.is_connected:
-            self.rds_conn.connect_rds()
+        self.check_connection(self.rds_conn)
         query = """
                 select ms.pk as scene_match_fk, ms.shelf_px_total, ms.n_shelf_items, ms.{}, ms.{}, ms.{}, ms.{}
                 from probedata.match_product_in_scene ms
@@ -469,6 +546,7 @@ class MARSRU_PRODMARSRUKPIFetcher:
         return store_att5.values[0][0]
 
     def get_store_assortment(self, attribute, visit_date):
+        self.check_connection(self.rds_conn)
         query = """
                 select product_fk from pservice.custom_osa
                 where store_fk={0} and start_date <= '{1}' and (end_date >= '{1}'  OR end_date is null)
