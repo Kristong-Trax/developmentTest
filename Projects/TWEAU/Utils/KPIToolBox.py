@@ -40,7 +40,13 @@ EXCEL_DB_MAP = {
     "sub_category": "sub_category_fk",
     "store": "store_id",
 }
-COL_FOR_MACRO_LINEAR_CALC = 'gross_len_ign_stack'
+# additional filters
+SCIF_FIELD_BRAND_NAME = 'brand_name'
+FILTERS_PER_BRAND = {'others': 'Other', 'irrelevant': 'Irrelevant'}
+# based on `stacking` column; select COL_FOR_MACRO_LINEAR_CALC
+STACKING_COL = 'stacking'
+STACKING_MAP = {0: 'gross_len_ign_stack', 1: 'gross_len_add_stack'}
+
 ROUNDING_DIGITS = 4
 
 
@@ -93,6 +99,8 @@ class TWEAUToolBox:
                 # find the numerator length
                 numerator_filters = []
                 numerator_filter_string = ''
+                # get the length field
+                length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
                 # generate the numerator filter string
                 for each_filter in NUMERATOR_FILTER_ENTITIES:
                     numerator_filter = kpi_sheet_row[each_filter]
@@ -107,15 +115,20 @@ class TWEAUToolBox:
                         continue
                     numerator_filter_string += '{key}=="{value}" and '.\
                         format(key=numerator_filter, value=numerator_filter_value)
-                numerator_filter_string = numerator_filter_string.rstrip(' and')
+                # add additional filters
+                for key_in_sheet, value_in_db in FILTERS_PER_BRAND.iteritems():
+                    if not int(kpi_sheet_row[key_in_sheet]):
+                        numerator_filter_string += 'brand_name!="{value}" and '. \
+                            format(key=SCIF_FIELD_BRAND_NAME, value=value_in_db)
 
+                numerator_filter_string = numerator_filter_string.rstrip(' and')
                 if numerator_filter_string:
                     numerator_data = self.scif.query(numerator_filter_string).fillna(0).\
-                        groupby(numerator_filters, as_index=False).agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})
+                        groupby(numerator_filters, as_index=False).agg({length_field: 'sum'})
                 else:
                     # nothing to query; group and get all data
                     numerator_data = pd.DataFrame(self.scif.groupby(numerator_filters, as_index=False).
-                                                  agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'}))
+                                                  agg({length_field: 'sum'}))
                 # find the denominator length
                 denominator_filter_string = ''
                 # filter data
@@ -137,26 +150,24 @@ class TWEAUToolBox:
 
                 if denominator_filter_string:
                     denominator_data = self.scif.query(denominator_filter_string).fillna(0).\
-                        groupby(denominator_filters, as_index=False).agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})
+                        groupby(denominator_filters, as_index=False).agg({length_field: 'sum'})
                 else:
                     # nothing to query; no grouping; Transform the DataFrame; get all data
-                    denominator_data = pd.DataFrame(self.scif.agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})).T
+                    denominator_data = pd.DataFrame(self.scif.agg({length_field: 'sum'})).T
                 for d_idx, denominator_row in denominator_data.iterrows():
-                    denominator = denominator_row.get(COL_FOR_MACRO_LINEAR_CALC)
+                    denominator = denominator_row.get(length_field)
                     for idx, numerator_row in numerator_data.iterrows():
-                        numerator = numerator_row.get(COL_FOR_MACRO_LINEAR_CALC)
+                        numerator = numerator_row.get(length_field)
                         try:
                             result = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
                         except ZeroDivisionError:
                             result = 0
                         numerator_id = int(numerator_row[EXCEL_DB_MAP[kpi_sheet_row.numerator_fk]])
                         denominator_key_str = EXCEL_DB_MAP[kpi_sheet_row.denominator_fk]
-                        denominator_id = getattr(self, denominator_key_str, None)
+                        denominator_id = self.get_denominator_id(denominator_key_str,
+                                                                 numerator_row,
+                                                                 denominator_row)
                         if not denominator_id:
-                            denominator_id = self.get_denominator_id(denominator_key_str,
-                                                                     numerator_row,
-                                                                     denominator_row)
-                        else:
                             raise Exception("Denominator ID cannot be found. [TWEAU/Utils/KPIToolBox.py]")
                         print "Saving for {kpi_name} with pk={pk}. Numerator={num} & Denominator={den}".format(
                             idx=idx,
@@ -183,17 +194,19 @@ class TWEAUToolBox:
         :param numerator_row: pd.Dataframe
         :param denominator_row: pd.Dataframe
         :return: int
+                # zero check in self object
                 # first check in denominator
                 # second check in numerator
                 # third check in self.scif
         >> always return one integer denominator_id
         """
-
-        denominator_data = denominator_row.get(denominator_key_str,
-                                               numerator_row.get(denominator_key_str,
-                                                                 self.scif.get(denominator_key_str)))
-        one_and_only_denominator_id = denominator_data.drop_duplicates()[0]
-        return one_and_only_denominator_id
+        denominator_id = getattr(self, denominator_key_str, None)
+        if not denominator_id:
+            denominator_data = denominator_row.get(denominator_key_str,
+                                                   numerator_row.get(denominator_key_str,
+                                                                     self.scif.get(denominator_key_str)))
+            denominator_id = denominator_data.drop_duplicates()[0]
+        return denominator_id
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
