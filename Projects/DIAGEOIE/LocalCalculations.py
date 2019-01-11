@@ -25,11 +25,11 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageoie'
     data_provider = KEngineDataProvider(project_name)
-    session = '2BF85E11-D707-4A91-945A-8C9CB3C2E96C'
-#     data_provider.load_session_data(session)
+    session = '47570E70-4E37-418F-8DD2-0F53A413B4F9'
+    data_provider.load_session_data(session)
 #     output = Output()
 #     Calculations(data_provider, output).run_project_calculations()
-    scenes = [257454]
+    scenes = data_provider.scenes_info.scene_fk.tolist()
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         output = VanillaOutput()

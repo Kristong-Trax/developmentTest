@@ -1,14 +1,14 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.MARSRU2_SAND.Utils.KPIToolBox import MARSRU2_SANDKPIToolBox
-from Projects.MARSRU2_SAND.Utils.JSONGenerator import MARSRU2_SANDJSONGenerator
+from Projects.MARSRU_PROD.Utils.KPIToolBox import MARSRU_PRODKPIToolBox
+from Projects.MARSRU_PROD.Utils.JSONGenerator import MARSRU_PRODJSONGenerator
 
 
 __author__ = 'urid'
 
 
-class MARSRU2_SANDCalculations(BaseCalculationsScript):
+class MARSRU_PRODCalculations(BaseCalculationsScript):
 
     @log_runtime('Total Calculations', log_start=True)
     def run_project_calculations(self):
@@ -35,7 +35,7 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
                                        'survey_answers_translation', 'survey_answers_translation']
             kpi_must_range_targets = ['2019/MARS KPIs.xlsx', 'must_range_skus', [4317, 4254]]
 
-        jg = MARSRU2_SANDJSONGenerator(project_name)
+        jg = MARSRU_PRODJSONGenerator(project_name)
         jg.create_template_json(kpi_template[0], kpi_template[1], kpi_template[2])
         jg.create_template_json(kpi_golden_shelves[0], kpi_golden_shelves[1], kpi_golden_shelves[2])
         jg.create_template_json(
@@ -44,7 +44,7 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
             kpi_must_range_targets[0], kpi_must_range_targets[1], kpi_must_range_targets[2])
         kpi_templates = jg.project_kpi_dict
 
-        tool_box = MARSRU2_SANDKPIToolBox(
+        tool_box = MARSRU_PRODKPIToolBox(
             kpi_templates, self.data_provider, self.output, kpi_set_name)
 
         tool_box.handle_update_custom_scif()
