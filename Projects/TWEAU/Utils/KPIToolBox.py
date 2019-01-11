@@ -1,10 +1,11 @@
+import os
+import math
+
+import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
-import pandas as pd
-import os
-import math
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -15,7 +16,7 @@ import math
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
-__author__ = 'sathiyanarayanan'
+__author__ = 'nidhin'
 
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
@@ -25,7 +26,7 @@ PS_KPI_FAMILY = 19
 TYPE = 'type'
 
 # Template
-KPI_SHEET  = 'KPI'
+KPI_SHEET = 'KPI'
 KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
 CATEGORY_SHEET = 'Category'
@@ -137,12 +138,10 @@ class TWEAUToolBox:
                 if denominator_filter_string:
                     denominator_data = self.scif.query(denominator_filter_string).fillna(0).\
                         groupby(denominator_filters, as_index=False).agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})
-                    denominator_data_iter = denominator_data.iterrows()
                 else:
-                    # nothing to query; no grouping; get all data
-                    denominator_data = pd.DataFrame(self.scif.agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'}))
-                    denominator_data_iter = denominator_data.iteritems()
-                for d_idx, denominator_row in denominator_data_iter:
+                    # nothing to query; no grouping; Transform the DataFrame; get all data
+                    denominator_data = pd.DataFrame(self.scif.agg({COL_FOR_MACRO_LINEAR_CALC: 'sum'})).T
+                for d_idx, denominator_row in denominator_data.iterrows():
                     denominator = denominator_row.get(COL_FOR_MACRO_LINEAR_CALC)
                     for idx, numerator_row in numerator_data.iterrows():
                         numerator = numerator_row.get(COL_FOR_MACRO_LINEAR_CALC)
@@ -153,11 +152,12 @@ class TWEAUToolBox:
                         numerator_id = int(numerator_row[EXCEL_DB_MAP[kpi_sheet_row.numerator_fk]])
                         denominator_key_str = EXCEL_DB_MAP[kpi_sheet_row.denominator_fk]
                         denominator_id = getattr(self, denominator_key_str, None)
-                        # if not denominator_id:
-                        #     denominator_data = self.get_denominator_id_data(denominator_key_str,
-                        #                                                     numerator_row,
-                        #                                                     denominator_row)
-                        #     denominator_id = denominator_data.drop_duplicates()
+                        if not denominator_id:
+                            denominator_id = self.get_denominator_id(denominator_key_str,
+                                                                     numerator_row,
+                                                                     denominator_row)
+                        else:
+                            raise Exception("Denominator ID cannot be found. [TWEAU/Utils/KPIToolBox.py]")
                         print "Saving for {kpi_name} with pk={pk}. Numerator={num} & Denominator={den}".format(
                             idx=idx,
                             kpi_name=kpi_sheet_row[KPI_NAME],
@@ -176,25 +176,24 @@ class TWEAUToolBox:
                                                        should_enter=True,
                                                        )
 
-    # def get_denominator_id_data(self, denominator_key_str, numerator_row, denominator_row):
-    #     """
-    #
-    #     :param denominator_key_str: str
-    #     :param numerator_row: pd.Dataframe
-    #     :param denominator_row: pd.Dataframe
-    #     :return: pd.Series
-    #             # first check in denominator
-    #             # second check in numerator
-    #             # third check in self.scif
-    #             >> always return pd.Series data so that it can be iterated through to save in DB
-    #     """
-    #
-    #     denominator_data = denominator_row.get(denominator_key_str,
-    #                                            numerator_row.get(denominator_key_str,
-    #                                                              self.scif.get(denominator_key_str)))
-    #     if type(denominator_data) != pd.Series:
-    #         denominator_data = pd.Series(denominator_data)
-    #     return denominator_data
+    def get_denominator_id(self, denominator_key_str, numerator_row, denominator_row):
+        """
+
+        :param denominator_key_str: str
+        :param numerator_row: pd.Dataframe
+        :param denominator_row: pd.Dataframe
+        :return: int
+                # first check in denominator
+                # second check in numerator
+                # third check in self.scif
+        >> always return one integer denominator_id
+        """
+
+        denominator_data = denominator_row.get(denominator_key_str,
+                                               numerator_row.get(denominator_key_str,
+                                                                 self.scif.get(denominator_key_str)))
+        one_and_only_denominator_id = denominator_data.drop_duplicates()[0]
+        return one_and_only_denominator_id
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
