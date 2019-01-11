@@ -34,6 +34,7 @@ CATEGORY_SHEET = 'Category'
 NUMERATOR_FK = 'numerator_key'
 DENOMINATOR_FK = 'denominator_key'
 NUMERATOR_FILTER_ENTITIES = ['filter_entity_1', 'filter_entity_2', 'filter_entity_3']
+DENOMINATOR_FILTER_ENTITIES = ['filter_entity_1', 'filter_entity_2']
 EXCEL_DB_MAP = {
     "manufacturer_name": "manufacturer_fk",
     "scene": "scene_id",
@@ -41,8 +42,11 @@ EXCEL_DB_MAP = {
     "store": "store_id",
 }
 # additional filters
-SCIF_FIELD_BRAND_NAME = 'brand_name'
-FILTERS_PER_BRAND = {'others': 'Other', 'irrelevant': 'Irrelevant'}
+# key - key name in self.scif
+# value is list of tuples - (column name in sheet, actual value in DB)
+NUMERATOR_ADDITIONAL_FILTERS_PER_COL = {
+    "brand_name": [('others', 'Other'), ('irrelevant', 'Irrelevant')]
+}
 # based on `stacking` column; select COL_FOR_MACRO_LINEAR_CALC
 STACKING_COL = 'stacking'
 STACKING_MAP = {0: 'gross_len_ign_stack', 1: 'gross_len_add_stack'}
@@ -96,32 +100,13 @@ class TWEAUToolBox:
                 print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
-                # find the numerator length
-                numerator_filters = []
-                numerator_filter_string = ''
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
-                # generate the numerator filter string
-                for each_filter in NUMERATOR_FILTER_ENTITIES:
-                    numerator_filter = kpi_sheet_row[each_filter]
-                    if numerator_filter != numerator_filter:
-                        # it is NaN ~ it is empty
-                        continue
-                    # grab the filters anyways to group
-                    numerator_filters.append(EXCEL_DB_MAP[numerator_filter])
-                    numerator_filter_value = kpi_sheet_row[each_filter + '_value']
-                    if numerator_filter_value.lower() == "all":
-                        # ignore the filter
-                        continue
-                    numerator_filter_string += '{key}=="{value}" and '.\
-                        format(key=numerator_filter, value=numerator_filter_value)
-                # add additional filters
-                for key_in_sheet, value_in_db in FILTERS_PER_BRAND.iteritems():
-                    if not int(kpi_sheet_row[key_in_sheet]):
-                        numerator_filter_string += 'brand_name!="{value}" and '. \
-                            format(key=SCIF_FIELD_BRAND_NAME, value=value_in_db)
-
-                numerator_filter_string = numerator_filter_string.rstrip(' and')
+                # NUMERATOR
+                numerator_filters, numerator_filter_string = get_filter_string_per_row(
+                    kpi_sheet_row,
+                    NUMERATOR_FILTER_ENTITIES,
+                    additional_filters=NUMERATOR_ADDITIONAL_FILTERS_PER_COL)
                 if numerator_filter_string:
                     numerator_data = self.scif.query(numerator_filter_string).fillna(0).\
                         groupby(numerator_filters, as_index=False).agg({length_field: 'sum'})
@@ -129,25 +114,11 @@ class TWEAUToolBox:
                     # nothing to query; group and get all data
                     numerator_data = pd.DataFrame(self.scif.groupby(numerator_filters, as_index=False).
                                                   agg({length_field: 'sum'}))
-                # find the denominator length
-                denominator_filter_string = ''
-                # filter data
-                denominator_kpi_df = category_sheet.loc[(category_sheet[KPI_NAME] == kpi_sheet_row[KPI_NAME])]
-                index_of_row = denominator_kpi_df.index.values[0]
-
-                temp_denominator_filters = denominator_kpi_df.columns.tolist()
-                # grab the filters and map it; remove KPI_NAME from filter items
-                temp_denominator_filters.remove(KPI_NAME)
-                denominator_filters = [EXCEL_DB_MAP[x] for x in temp_denominator_filters]
-                # generate the denominator filter string
-                for key, value in denominator_kpi_df.iteritems():
-                    if key == KPI_NAME:
-                        continue
-                    if value[index_of_row].lower() == 'all':
-                        continue
-                    denominator_filter_string += '{key} == "{value}" and '.format(key=key, value=value[0])
-                denominator_filter_string = denominator_filter_string.rstrip(' and')
-
+                # DENOMINATOR
+                denominator_row = category_sheet.loc[(category_sheet[KPI_NAME] == kpi_sheet_row[KPI_NAME])].iloc[0]
+                denominator_filters, denominator_filter_string = get_filter_string_per_row(
+                    denominator_row,
+                    DENOMINATOR_FILTER_ENTITIES,)
                 if denominator_filter_string:
                     denominator_data = self.scif.query(denominator_filter_string).fillna(0).\
                         groupby(denominator_filters, as_index=False).agg({length_field: 'sum'})
@@ -211,3 +182,58 @@ class TWEAUToolBox:
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
         return template
+
+
+def is_int(value):
+    try:
+        int(value)
+    except ValueError:
+        return False
+    else:
+        return True
+
+
+def is_nan(value):
+    if value != value:
+        return True
+    return False
+
+
+def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters={}):
+    """
+
+    :param kpi_sheet_row: pd.Series
+    :param filter_entities: list of filters as in excel
+    :param additional_filters: dictionary with tuple values
+    :return: tuple >> (filters, filter_string)
+    """
+    filter_string = ''
+    filters = []
+    # generate the numerator filter string
+    for each_filter in filter_entities:
+        filter_key = kpi_sheet_row[each_filter]
+        if is_nan(filter_key):
+            # it is NaN ~ it is empty
+            continue
+        # grab the filters anyways to group
+        filters.append(EXCEL_DB_MAP[filter_key])
+        filter_value = kpi_sheet_row[each_filter + '_value']
+        if filter_value.lower() == "all":
+            # ignore the filter
+            continue
+        filter_string += '{key}=="{value}" and '. \
+            format(key=filter_key, value=filter_value)
+    # add additional filters
+    for col_name, filter_tuples in additional_filters.iteritems():
+        for each_filter in filter_tuples:
+            if is_nan(kpi_sheet_row[each_filter[0]]):
+                # it is NaN ~ it is empty
+                continue
+            if not is_int(kpi_sheet_row[each_filter[0]]):
+                continue
+            if not int(kpi_sheet_row[each_filter[0]]):
+                # detect only the false's
+                filter_string += '{key}!="{value}" and '. \
+                    format(key=col_name, value=each_filter[0])
+    filter_string = filter_string.rstrip(' and')
+    return filters, filter_string
