@@ -2565,18 +2565,21 @@ class CCRU_SANDKPIToolBox:
                     if param.get('Formula').strip() == 'OSA score':
                         # kpi_id = 'OSA'
                         # kpi_name = 'CONTRACT_OSA'
+
                         score = self.top_sku_score
 
-                        self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get('KPI Weight') * 100
-                        self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(score * param.get('KPI Weight'), 2)
+                        if score is not None:
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(score * param.get('KPI Weight'), 2)
 
                     elif param.get('Formula').strip() == 'Equipment Execution score':
                         # kpi_id = 'EQUIPMENT'
                         # kpi_name = 'CONTRACT_EQUIPMENT'
                         score = self.equipment_execution_score
 
-                        self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get('KPI Weight') * 100
-                        self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(score * param.get('KPI Weight'), 2)
+                        if score is not None:
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(score * param.get('KPI Weight'), 2)
 
                     else:
                         # kpi_id = None
