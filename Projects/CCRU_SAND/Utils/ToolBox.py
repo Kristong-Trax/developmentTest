@@ -2697,161 +2697,169 @@ class CCRU_SANDKPIToolBox:
                 query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
-        top_sku_products = top_sku_products\
-            .merge(self.products[['product_fk', 'category_fk']], on='product_fk')\
-            .groupby(['category_fk',
-                      'anchor_product_fk',
-                      'product_fk'])\
-            .agg({'facings': 'sum',
-                  'min_facings': 'max',
-                  'in_assortment': 'max',
-                  'distributed': 'max'})\
-            .reset_index()
-        for i, row in top_sku_products.iterrows():
+        if not top_sku_products.empty:
+            top_sku_products = top_sku_products\
+                .merge(self.products[['product_fk', 'category_fk']], on='product_fk')\
+                .groupby(['category_fk',
+                          'anchor_product_fk',
+                          'product_fk'])\
+                .agg({'facings': 'sum',
+                      'min_facings': 'max',
+                      'in_assortment': 'max',
+                      'distributed': 'max'})\
+                .reset_index()
+            for i, row in top_sku_products.iterrows():
 
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=3, kpi=row['product_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=3, kpi=row['product_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
 
-            kpi_name = self.kpi_set_type + '_SKU'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                kpi_name = self.kpi_set_type + '_SKU'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
-            numerator_id = row['product_fk']
-            denominator_id = None
-            context_id = None
-
-            numerator_result = row['facings']
-            denominator_result = row['min_facings']
-
-            score = 100 if row['distributed'] else 0
-            weight = None
-            target = 100
-            result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
-            kpi_result_type_fk = self.common.kpi_static_data[
-                self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
-            if kpi_result_type_fk:
-                result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)][
-                    'result_value_fk'].values[0]
-
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
-
-        top_sku_anchor_products = top_sku_products\
-            .groupby(['category_fk',
-                      'anchor_product_fk'])\
-            .agg({'product_fk': 'count',
-                  'facings': 'sum',
-                  'min_facings': 'max',
-                  'in_assortment': 'max',
-                  'distributed': 'max'})\
-            .reset_index()
-        for i, row in top_sku_anchor_products.iterrows():
-
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
-
-            kpi_name = self.kpi_set_type + '_BUNDLE'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-
-            numerator_id = row['anchor_product_fk']
-            denominator_id = None
-
-            if self.kpi_entities.empty:
+                numerator_id = row['product_fk']
+                denominator_id = None
                 context_id = None
-            else:
-                context_type_fk = self.common.kpi_static_data[
-                    self.common.kpi_static_data['pk'] == kpi_fk]['context_type_fk'].values[0]
-                if row['product_fk'] == 1:
-                    context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
-                                                   & (self.kpi_entities['uid_field'] == 'SKU')]['fk'].values[0]
+
+                numerator_result = row['facings']
+                denominator_result = row['min_facings']
+
+                score = 100 if row['distributed'] else 0
+                weight = None
+                target = 100
+                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                kpi_result_type_fk = self.common.kpi_static_data[
+                    self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
+                if kpi_result_type_fk:
+                    result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                                    (self.kpi_result_values['result_value'] == result)][
+                        'result_value_fk'].values[0]
+
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
+
+            top_sku_anchor_products = top_sku_products\
+                .groupby(['category_fk',
+                          'anchor_product_fk'])\
+                .agg({'product_fk': 'count',
+                      'facings': 'sum',
+                      'min_facings': 'max',
+                      'in_assortment': 'max',
+                      'distributed': 'max'})\
+                .reset_index()
+            for i, row in top_sku_anchor_products.iterrows():
+
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+
+                kpi_name = self.kpi_set_type + '_BUNDLE'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+
+                numerator_id = row['anchor_product_fk']
+                denominator_id = None
+
+                if self.kpi_entities.empty:
+                    context_id = None
                 else:
-                    context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
-                                                   & (self.kpi_entities['uid_field'] == 'BUNDLE')]['fk'].values[0]
+                    context_type_fk = self.common.kpi_static_data[
+                        self.common.kpi_static_data['pk'] == kpi_fk]['context_type_fk'].values[0]
+                    if row['product_fk'] == 1:
+                        context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
+                                                       & (self.kpi_entities['uid_field'] == 'SKU')]['fk'].values[0]
+                    else:
+                        context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
+                                                       & (self.kpi_entities['uid_field'] == 'BUNDLE')]['fk'].values[0]
 
-            numerator_result = row['facings']
-            denominator_result = None if row['product_fk'] == 1 else row['product_fk']
+                numerator_result = row['facings']
+                denominator_result = None if row['product_fk'] == 1 else row['product_fk']
 
-            score = 100 if row['distributed'] else 0
-            weight = None
-            target = 100
-            result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
-            kpi_result_type_fk = self.common.kpi_static_data[
-                self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
-            if kpi_result_type_fk:
-                result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)][
-                    'result_value_fk'].values[0]
+                score = 100 if row['distributed'] else 0
+                weight = None
+                target = 100
+                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                kpi_result_type_fk = self.common.kpi_static_data[
+                    self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
+                if kpi_result_type_fk:
+                    result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                                    (self.kpi_result_values['result_value'] == result)][
+                        'result_value_fk'].values[0]
 
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
 
-        top_sku_categories = top_sku_anchor_products\
-            .groupby(['category_fk'])\
-            .agg({'in_assortment': 'sum',
-                  'distributed': 'sum'})\
-            .reset_index()
-        for i, row in top_sku_categories.iterrows():
+            top_sku_categories = top_sku_anchor_products\
+                .groupby(['category_fk'])\
+                .agg({'in_assortment': 'sum',
+                      'distributed': 'sum'})\
+                .reset_index()
+            for i, row in top_sku_categories.iterrows():
 
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
 
-            kpi_name = self.kpi_set_type + '_CATEGORY'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                kpi_name = self.kpi_set_type + '_CATEGORY'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
-            numerator_id = row['category_fk']
-            denominator_id = None
-            context_id = None
+                numerator_id = row['category_fk']
+                denominator_id = None
+                context_id = None
 
-            numerator_result = row['distributed']
-            denominator_result = row['in_assortment']
+                numerator_result = row['distributed']
+                denominator_result = row['in_assortment']
 
-            result = round(numerator_result / float(denominator_result) * 100, 2)
-            score = result
-            weight = None
-            target = 100
+                result = round(numerator_result / float(denominator_result) * 100, 2)
+                score = result
+                weight = None
+                target = 100
 
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
 
-        top_sku_total = top_sku_anchor_products\
-            .agg({'in_assortment': 'sum',
-                  'distributed': 'sum'})
+            top_sku_total = top_sku_anchor_products\
+                .agg({'in_assortment': 'sum',
+                      'distributed': 'sum'})
+
+            numerator_result = top_sku_total['distributed']
+            denominator_result = top_sku_total['in_assortment']
+
+        else:
+            numerator_result = 0
+            denominator_result = len(top_skus['product_fks'].keys())
 
         identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
         identifier_parent = None  # self.common.get_dictionary(set=CONTRACT, level=0, kpi='0')
@@ -2863,9 +2871,6 @@ class CCRU_SANDKPIToolBox:
         numerator_id = self.own_manufacturer_id
         denominator_id = self.store_id
         context_id = None
-
-        numerator_result = top_sku_total['distributed']
-        denominator_result = top_sku_total['in_assortment']
 
         result = round(numerator_result / float(denominator_result) * 100, 2)
         score = result
