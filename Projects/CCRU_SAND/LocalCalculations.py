@@ -11,6 +11,11 @@ if __name__ == '__main__':
     project_name = 'ccru-sand'
     data_provider = KEngineDataProvider(project_name)
     session_uids = [
+
+        'F37FDA32-3B08-4C59-A282-4DA4A4DBE5D0',
+        'BA22EE5D-7F9C-4778-8A1A-493F06FEDCBE',
+        'd6bd1af5-b35d-423e-af0d-d89aeb36a0aa',
+
         '1D6B3586-6A76-4963-BF9F-F8B2E2537ADB',
         '1ed1f996-a075-4d29-9f1d-5d611ba587cf',
         '21412B97-9806-46EA-A40C-0A73CE6D4701',
@@ -32,21 +37,21 @@ if __name__ == '__main__':
         'EFF7B756-457A-4569-96E1-6CD7E7D28EF1',
         'FBAEEEC9-9FD7-47B0-8EA0-8F1FCD2EA7D7',
 
-        'ffa6f30d-739c-4b74-b1e0-454a89f98ff0',
-        'FFAD0487-6C6B-4565-A92D-A227CF6EEBAD',
-        'b0b98c07-583a-40b2-94e2-a8f595f28670',
-
-        'FFF338AF-9505-4354-A2B7-835BF78090F3',
-        'FF81168A-C990-40C2-943D-F68FC9AAACA2',
-        'ffff2c80-697c-4e61-996e-893142806c55',
-        'FFF99139-8B36-4272-92CE-E3A9696B819C',
-        'ffd035af-1396-4b79-a7ac-25210dc8f995',
-        'fe7080f5-3969-4005-a890-3afe5ffe6960',
-        'FC8D623A-0DA1-4305-9DBF-9D2CC1301F38',
-        'FE6D7CDF-161E-46BE-91A3-28B300ED35B0',
-        'F66CE76B-4B52-4E4D-870D-0A1B0EFCEB17',
-        'FA6E6AC6-C606-4195-B28C-932B07A289E5',
-        'FEBEF96B-C8F9-47E4-BDD3-5087D4AB7121',
+        # 'ffa6f30d-739c-4b74-b1e0-454a89f98ff0',
+        # 'FFAD0487-6C6B-4565-A92D-A227CF6EEBAD',
+        # 'b0b98c07-583a-40b2-94e2-a8f595f28670',
+        #
+        # 'FFF338AF-9505-4354-A2B7-835BF78090F3',
+        # 'FF81168A-C990-40C2-943D-F68FC9AAACA2',
+        # 'ffff2c80-697c-4e61-996e-893142806c55',
+        # 'FFF99139-8B36-4272-92CE-E3A9696B819C',
+        # 'ffd035af-1396-4b79-a7ac-25210dc8f995',
+        # 'fe7080f5-3969-4005-a890-3afe5ffe6960',
+        # 'FC8D623A-0DA1-4305-9DBF-9D2CC1301F38',
+        # 'FE6D7CDF-161E-46BE-91A3-28B300ED35B0',
+        # 'F66CE76B-4B52-4E4D-870D-0A1B0EFCEB17',
+        # 'FA6E6AC6-C606-4195-B28C-932B07A289E5',
+        # 'FEBEF96B-C8F9-47E4-BDD3-5087D4AB7121',
     ]
     for session in session_uids:
         data_provider.load_session_data(session)
