@@ -37,8 +37,9 @@ class Const(object):
     RETAILER = 'Retailer'
     HAS_OSD = 'Has_OSD'
     HAS_HOTSPOT = 'Has_hotspot'
-    NUMBER_OF_SHELVES = 'Number_of_shelves'
+    OSD_NUMBER_OF_SHELVES = 'OSD_Number_of_shelves'
     POSM_EAN_CODE = 'POSM_EAN_CODE'
+    POSM_EAN_CODE_HOTSPOT = 'POSM_EAN_CODE_HOTSPOT'
 
     # KPIs types
     FSOS = 'Facing Share of Shelf'
