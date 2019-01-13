@@ -68,7 +68,10 @@ class DIAGEOCO_SANDToolBox:
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
         self.global_gen.tool_box.DIAGEO = 'DIAGEO'
-        self.global_gen.diageo_global_assortment_function_v2()
+        assortment_res_dict = self.global_gen.diageo_global_assortment_function_v2()
+        self.common_v2.save_json_to_new_tables(assortment_res_dict)
+        menus_res_dict = self.global_gen.diageo_global_share_of_menu_cocktail_function()
+        self.common_v2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0
