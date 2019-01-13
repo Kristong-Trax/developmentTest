@@ -75,7 +75,32 @@ class KPIS:
             kpis['KPI Set'] = file_name.replace('.xlsx', '')
             kpis_output = kpis_output.append(kpis, ignore_index=True)
 
-        writer = pd.ExcelWriter(os.path.join(path, 'KPIs_List.xlsx'), engine='xlsxwriter')
+        writer = pd.ExcelWriter(os.path.join(path, 'KPIs_List_PoS.xlsx'), engine='xlsxwriter')
+        kpis_output.to_excel(writer, sheet_name='Sheet1', index=False)
+
+        kpis_output = pd.DataFrame()
+        for file_name in files:
+            kpis_input = pd.read_excel(os.path.join(path, file_name))
+            kpis_input = kpis_input.where((pd.notnull(kpis_input)), None)
+            kpis = kpis_input[(kpis_input['KPI Type'] == 'Hidden')][['KPI name Eng', 'KPI name Rus']]
+            kpis['KPI name Rus'] = kpis['KPI name Eng']
+            kpis_output = kpis_output.append(kpis, ignore_index=True)
+
+        kpis_output = kpis_output.drop_duplicates()
+
+        writer = pd.ExcelWriter(os.path.join(path, 'KPIs_List_Hidden.xlsx'), engine='xlsxwriter')
+        kpis_output.to_excel(writer, sheet_name='Sheet1', index=False)
+
+        kpis_output = pd.DataFrame()
+        for file_name in files:
+            kpis_input = pd.read_excel(os.path.join(path, file_name))
+            kpis_input = kpis_input.where((pd.notnull(kpis_input)), None)
+            kpis = kpis_input[(kpis_input['KPI Type'] != 'Hidden')][['KPI name Eng', 'KPI name Rus']]
+            kpis_output = kpis_output.append(kpis, ignore_index=True)
+
+        kpis_output = kpis_output.drop_duplicates()
+
+        writer = pd.ExcelWriter(os.path.join(path, 'KPIs_List_Level_2.xlsx'), engine='xlsxwriter')
         kpis_output.to_excel(writer, sheet_name='Sheet1', index=False)
 
 

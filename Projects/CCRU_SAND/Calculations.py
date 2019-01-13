@@ -135,7 +135,7 @@ class ProjectCalculations:
                  'KPI name Rus': kpi_source[kpi_set_type][SET],
                  'Parent': 'root'},
                 {'threshold': 100,
-                 'weight': 1,
+                 'weight': None,
                  'result': score,
                  'score': score,
                  'weighted_score': score,
@@ -173,7 +173,7 @@ class ProjectCalculations:
                                                        kpi_source[CONTRACT][SET])
 
         Log.info('KPI calculation stage: {}'.format('Committing results old'))
-        # self.tool_box.commit_results_data_old()
+        self.tool_box.commit_results_data_old()
 
         Log.info('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
