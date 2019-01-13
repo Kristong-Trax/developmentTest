@@ -11,7 +11,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 __author__ = 'Nimrod'
 
 
-class MARSRU_SANDConsts(object):
+class MARSRU_PRODConsts(object):
 
     SET_NAME = 'KPI Level 1 Name'
     KPI_NAME = 'KPI Level 2 Name'
@@ -26,12 +26,12 @@ class MARSRU_SANDConsts(object):
     PRESENTATION_ORDER = 'presentation_order'
 
 
-class MARSRU_SANDAddKPIs(MARSRU_SANDConsts):
+class MARSRU_PRODAddKPIs(MARSRU_PRODConsts):
     """
     This module writes all levels of KPIs to the DB, given a template.
 
     - The template file must include a unique row for every Atomic KPI (and ONLY Atomics)
-    - Each row much include Set-Name, KPI-Name and Atomic-Name columns (configured in 'MARSRU_SANDConsts')
+    - Each row much include Set-Name, KPI-Name and Atomic-Name columns (configured in 'MARSRU_PRODConsts')
     - Optionally KPI-Weight, Atomic-Weight and Atomic-DisplayText may be included
     - For every level of KPI (Set, KPI or Atomic) - only the ones that do not already exist by their names to be added to the DB
 
@@ -88,10 +88,10 @@ class MARSRU_SANDAddKPIs(MARSRU_SANDConsts):
         if self.project == 'ccru':
             dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         else:
-            dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'MARSRU_SAND', 'Data')
+            dir_path = os.path.join(os.path.dirname(os.path.realpath('..')), 'MARSRU_PROD', 'Data')
 
         # Get the relevant project template
-        template_channel_name = self.data[MARSRU_SANDConsts.CHANNEL].values[0]
+        template_channel_name = self.data[MARSRU_PRODConsts.CHANNEL].values[0]
         if not template_channel_name:
             Log.error("The isn't a correct set in Channel attribute in the uploaded template.")
             return pd.DataFrame.empty,  pd.DataFrame.empty
@@ -114,7 +114,7 @@ class MARSRU_SANDAddKPIs(MARSRU_SANDConsts):
         # Get the relevant KPI data and project template data
         relevant_kpi_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == current_set]
         filtered_project_data = project_current_data[
-            project_current_data[MARSRU_SANDConsts.SORTING].isin(self.data[MARSRU_SANDConsts.SORTING].unique().tolist())]
+            project_current_data[MARSRU_PRODConsts.SORTING].isin(self.data[MARSRU_PRODConsts.SORTING].unique().tolist())]
         return relevant_kpi_data, filtered_project_data
 
     def update_atomic_kpi_data(self):
@@ -135,14 +135,14 @@ class MARSRU_SANDAddKPIs(MARSRU_SANDConsts):
         # Iterate over the uploaded template and create the queries
         for i in xrange(len(self.data)):
             row = self.data.iloc[i]
-            new_name = row[MARSRU_SANDConsts.KPI_ENG_NAME].replace('\n', '').strip()
-            display = row[MARSRU_SANDConsts.KPI_RUS_NAME].replace('\n', '').strip()
-            presentation_order = row[MARSRU_SANDConsts.SORTING]
-            old_atomic_df = relevant_kpi_data[relevant_kpi_data[MARSRU_SANDConsts.PRESENTATION_ORDER]
+            new_name = row[MARSRU_PRODConsts.KPI_ENG_NAME].replace('\n', '').strip()
+            display = row[MARSRU_PRODConsts.KPI_RUS_NAME].replace('\n', '').strip()
+            presentation_order = row[MARSRU_PRODConsts.SORTING]
+            old_atomic_df = relevant_kpi_data[relevant_kpi_data[MARSRU_PRODConsts.PRESENTATION_ORDER]
                                               == presentation_order]
             if len(old_atomic_df) > 1:
-                old_atomic_name = filtered_project_data[filtered_project_data[MARSRU_SANDConsts.SORTING] == presentation_order][
-                    MARSRU_SANDConsts.KPI_ENG_NAME].values[0]
+                old_atomic_name = filtered_project_data[filtered_project_data[MARSRU_PRODConsts.SORTING] == presentation_order][
+                    MARSRU_PRODConsts.KPI_ENG_NAME].values[0]
                 try:
                     old_atom_fk = old_atomic_df[old_atomic_df['atomic_kpi_name'] == old_atomic_name][
                         'atomic_kpi_fk'].values[0]
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = MARSRU_SANDAddKPIs(
+    kpi = MARSRU_PRODAddKPIs(
         'marsru2-sand', '/home/sergey/dev/kpi_factory/Projects/MARSRU_SAND/Data/2019/KPIs for DB - MARS KPIs.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
