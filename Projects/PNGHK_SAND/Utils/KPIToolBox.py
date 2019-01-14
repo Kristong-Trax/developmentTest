@@ -7,14 +7,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGHK_SAND.Data.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 
 __author__ = 'ilays'
@@ -22,7 +14,7 @@ __author__ = 'ilays'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PNGHK_template_20181226.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PNGHK_template_2019_14_01.xlsx')
 
 class PNGHKToolBox:
     LEVEL1 = 1
@@ -174,18 +166,55 @@ class PNGHKToolBox:
                                                         Const.EXCLUDE_STOCK, Const.EXCLUDE_OSD]].iloc[0]
         # if kpi_type == Const.FSOS:
         #     self.calculate_facings_sos_kpi(kpi_df)
-        if kpi_type == Const.LSOS:
-            self.calculate_linear_sos_kpi(kpi_df)
-        elif kpi_type == Const.DISPLAY_NUMBER:
-            pass
+        # if kpi_type == Const.LSOS:
+        #     self.calculate_linear_sos_kpi(kpi_df)
+        if kpi_type == Const.DISPLAY_NUMBER:
+            self.calculate_display_kpi(kpi_df)
+
+    def calculate_display_kpi(self, kpi_df):
+        total_numerator = 0
+        total_denominator = 0
+        total_save = True
+        kpi_name = kpi_df[Const.KPI_NAME].values[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        # if kpi_fk is None:
+        #     Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+        #     return
+        for i, row in kpi_df.iterrows():
+            per_scene_type = row[Const.PER_SCENE_TYPE]
+            df = self.filter_df(row)
+            if per_scene_type == Const.EACH:
+                total_save = False
+                scene_types = row[Const.SCENE_TYPE].split(',')
+                if scene_types != "":
+                    scene_types = [item.strip() for item in scene_types]
+                for sc in scene_types:
+                    df_scene = df[df['template_name'] == sc]
+                    denominator = len(set(df_scene['scene_fk']))
+                    if denominator == 0:
+                        continue
+                    numerator = len(set(df_scene[df_scene['product_type'] == 'SKU']['scene_fk']))
+                    result = float(numerator) / float(denominator)
+                    numerator_id = 0
+                    denominator_id = self.store_id
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
+                                                   numerator_result=numerator, denominator_result=denominator,
+                                                   result=result, score=result)
+            else:
+                total_numerator += len(set(df[df['product_type'] == 'SKU']['scene_fk']))
+                total_denominator += len(set(df['scene_fk']))
+        if total_save:
+            result = float(total_numerator) / float(total_denominator) if (total_denominator == 0) else 0
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=0, denominator_id=self.store_id,
+                                           numerator_result=total_numerator, denominator_result=total_denominator,
+                                           result=result, score=result)
 
     def calculate_facings_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
-        try:
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
-            return
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        # if kpi_fk is None:
+        #     Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+        #     return
         entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
         entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         for i, row in kpi_df.iterrows():
@@ -213,11 +242,10 @@ class PNGHKToolBox:
 
     def calculate_linear_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
-        try:
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        except IndexError:
-            Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
-            return
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        # if kpi_fk is None:
+        #     Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
+        #     return
         entity_name = kpi_df[Const.NUMERATOR_ENTITY].values[0]
         entity_name_for_fk = Const.NAME_TO_FK[entity_name]
         for i, row in kpi_df.iterrows():
@@ -249,7 +277,8 @@ class PNGHKToolBox:
                                             df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                     result = float(numerator) / float(denominator)
                     try:
-                        numerator_id = self.all_products[self.all_products[entity_name] == 'PG'][entity_name_for_fk].values[0]
+                        numerator_id = self.all_products[self.all_products[entity_name] ==
+                                                         entity][entity_name_for_fk].values[0]
                     except:
                         Log.warning("No entity in this name " + entity)
                         numerator_id = -1
@@ -337,6 +366,7 @@ class PNGHKToolBox:
             df = df[df['stacking_layer'] == 1]
         if self.kpi_excluding[Const.EXCLUDE_OSD] == Const.EXCLUDE:
             df = self.filter_osd(df)
+
 
         #???
         # if self.kpi_excluding[Const.EXCLUDE_SKU == Const.EXCLUDE]:

@@ -12,7 +12,7 @@ class Const(object):
     KPI_ID = 'KPI_ID'
     KPI_TYPE = 'KPI_Type'
     KPI_NAME = 'KPI_Name'
-    PER_CATEGORY = 'Per_category'
+    PER_SCENE_TYPE = 'Per scene_type'
     SCENE_TYPE = 'Scene_type'
     CATEGORY = 'Category'
     SCENE_SIZE = 'Scene_size'
