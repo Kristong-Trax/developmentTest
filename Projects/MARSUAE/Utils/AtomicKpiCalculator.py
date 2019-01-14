@@ -211,7 +211,7 @@ class AvailabilityCalculation(KpiBaseCalculation):
             score = len(filtered_scif['scene_fk'].unique().tolist())
         elif type == 'display_brand':
             display_df = self._data_provider.match_display_in_scene
-            score = len(display_df[display_df['name'] == value])
+            score = len(display_df[display_df['display_brand_name'] == value])
         else:
             score = sum(filtered_scif.facings)
 

@@ -50,10 +50,10 @@ class CCKRToolBox:
         kpi_path = os.path.dirname(os.path.realpath(__file__))
         base_file = os.path.basename(kpi_path)
         kpi_info = pd.read_excel(
-            os.path.join(kpi_path[:- len(base_file)], 'Data', 'CC Korea - Availability KPI_120718.xlsx'),
+            os.path.join(kpi_path[:- len(base_file)], 'Data', 'Template.xlsx'),
             sheetname="KPI")
         file_template = pd.read_excel(
-            os.path.join(kpi_path[:- len(base_file)], 'Data', 'CC Korea - Availability KPI_120718.xlsx'),
+            os.path.join(kpi_path[:- len(base_file)], 'Data', 'Template.xlsx'),
             sheetname="Template")
         self.kpi_template_info = pd.DataFrame(kpi_info)  # contains the kpis + ean codes
         self.kpi_metadata = self.data_provider.kpi  # information about kpis such as (presentation order)
