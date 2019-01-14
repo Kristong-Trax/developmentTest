@@ -111,8 +111,8 @@ class DistributionCalculation(KpiBaseCalculation):
         if kpi_sku and assortment_fk:
             assortment_result = self.get_assortment_result(assortment_fk)
             count_pass_product = self.write_to_db_per_sku_and_count_pass(kpi_sku, assortment_result, self.kpi_fk)
-            result = self.check_result_vs_threshold(params, count_pass_product)
             product_total_in_assortment = len(assortment_result)
+            result = self.check_result_vs_threshold(params, count_pass_product, product_total_in_assortment)
         # else:
         #     log.debug('Assortment name: {} not exists in DB'.format(params['Assortment group'].iloc[0]))
         return self._create_kpi_result(fk=self.kpi_fk, score=result, result=result, weight=points, target=target,
@@ -161,7 +161,8 @@ class DistributionCalculation(KpiBaseCalculation):
         return count_pass_product
 
     @staticmethod
-    def check_result_vs_threshold(params, count_pass_product):
+    def check_result_vs_threshold(params, count_pass_product, product_total_in_assortment):
+        calc_result = count_pass_product / product_total_in_assortment if product_total_in_assortment else 0
         target = params['minimum products'].iloc[0]
         points = float(params['Points'].iloc[0])
         result = 0
@@ -169,9 +170,9 @@ class DistributionCalculation(KpiBaseCalculation):
             if count_pass_product >= float(target):
                 result = points
         else:
-            if result >= float(params['upper threshold'].iloc[0]):
+            if calc_result >= float(params['upper threshold'].iloc[0]):
                 result = points
-            elif result < float(params['lower threshold'].iloc[0]):
+            elif calc_result < float(params['lower threshold'].iloc[0]):
                 result = 0
             else:
                 result *= points
