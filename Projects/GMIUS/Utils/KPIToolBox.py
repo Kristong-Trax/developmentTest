@@ -17,6 +17,8 @@ from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
 from Projects.GMIUS.Utils.BlockCalculations import Block as Block2
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 
+from shapely.strtree import STRtree
+from shapely.geometry import Polygon, mapping
 
 # from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Projects.GMIUS.ImageHTML.Image import ImageMaker
@@ -72,7 +74,7 @@ class ToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
-        self.load_template(template_path)
+        self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         # self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
@@ -81,13 +83,6 @@ class ToolBox:
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
-
-    def load_template(self, template_path):
-        for sheet in Const.SHEETS:
-            try:
-                self.template[sheet] = pd.read_excel(template_path, sheet)
-            except:
-                pass
 
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
@@ -105,12 +100,6 @@ class ToolBox:
         # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
         #     return
 
-        if kpi_name != 'What is the sequence of Soup segments?':
-            return
-        kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
-        function = self.calculate_sequence
-        all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-
         # function = self.integrated_adjacency
         # function = self.calculate_stocking_location
         # function = self.adjacency
@@ -120,7 +109,7 @@ class ToolBox:
         # if kpi_name != 'Aggregation':
         #     return
         # if kpi_type == 'Blocking' or kpi_type == 'Base Measure':
-        if kpi_type == Const.STOCKING: # Const.COUNT_SHELVES:
+        if kpi_type == Const.IADJACENCY: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
@@ -197,6 +186,38 @@ class ToolBox:
         result_fk = self.result_values_dict[ordered_result]
         kwargs = {'score': 1, 'result': result_fk, 'target': 0}
         return kwargs
+
+    def calculate_new_integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        for scene in relevant_scif.scene_fk.unique():
+            scene_filter = {'scene_fk': scene}
+            mpis = self.filter_df(mpis, scene_filter)
+            mpis = self.filter_df(mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
+            allowed = {'product_type': ['Other', 'Empty']}
+
+            a_filter = {'sub_category_local_name': 'COOKIE DOUGH'}
+            b_filter = {'sub_category_local_name': 'SWEET ROLL DOUGH'}
+            a_items = set(self.filter_df(mpis, a_filter)['scene_match_fk'].values)
+            b_items = set(self.filter_df(mpis, b_filter)['scene_match_fk'].values)
+
+
+    def intersect(self):
+        # The dictionary of nodes and adjacent candidate nodes.
+        adjacent_nodes = dict()
+
+        # A dictionary where the key is the index of the padded product and the value is a polygon of that product.
+        polygons_dict = {i: Polygon(product.get_coordinates())
+                         for i, product in self.dict_of_padded_products.items()}
+
+        # A map from the polygon coordinates to the index.
+        polygons_map = {mapping(polygon)['coordinates']: index for index, polygon in polygons_dict.items()}
+
+        # Building the polygon STR tree.
+        polygons_tree = STRtree(polygons_dict.values())
+
+        # For each polygons save the intersecting polygons
+        for index, polygon in polygons_dict.items():
+            adjacent_nodes[index] = [polygons_map[mapping(p)['coordinates']] for p in polygons_tree.query(polygon)]
+
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' I think this should be a scene level kpi, i will need to move it to scene_kpi_toolbox '''
@@ -954,7 +975,7 @@ class ToolBox:
         elif kpi_type == Const.ANCHOR:
             return self.calculate_anchor
         elif kpi_type == Const.IADJACENCY:
-            return self.calculate_integrated_adjacency
+            return self.calculate_new_integrated_adjacency
         elif kpi_type == Const.STOCKING:
             return self.calculate_stocking_location
         elif kpi_type == Const.BLOCKING:

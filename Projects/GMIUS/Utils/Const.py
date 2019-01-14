@@ -19,7 +19,7 @@ class Const(object):
     AGGREGATION = 'Aggregation'
     TMB_MAP = 'Top-Middle-Bottom Map'
     ADJACENCY = 'Adjacency'
-    IADJACENCY = 'Integrated Adjacency'
+    IADJACENCY = 'IAdjacency'
     STOCKING = 'Stocking Location'
     YOGURT_MAP = 'Yogurt Location Map'
     ANCHOR = 'Anchor'

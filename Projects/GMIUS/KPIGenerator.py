@@ -9,8 +9,7 @@ __author__ = 'Sam'
 
 class Generator:
     SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
-    SUPER_CATS = ['Yogurt'] # Overwriting for testing purposes
-    SUPER_CATS = ['Soup'] # same
+    SUPER_CATS = ['Mexican'] # Overwriting for testing purposes
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -36,11 +35,15 @@ class Generator:
         files = os.listdir(path)
         candidates = [f for f in files if f.split(' ')[0] == cat and f.split('.')[-1] == 'xlsx']
         versioned_candidates = []
+        all_vers = []
+        for x in candidates:
+            all_vers += x.split(' v')[-1].replace('.xlsx', '').split('.')
+        max_digits = len(max(all_vers, key=len))
         for x in candidates:
             version_comps = x.split(' v')[-1].replace('.xlsx', '').split('.')
             normed_components = []
             for i, comp in enumerate(version_comps):
-                norm_comp = int(comp) * 10**(len(version_comps[i+1])) if i+1 < len(version_comps) else int(comp)
+                norm_comp = int(comp) * 10**max_digits
                 normed_components.append(str(norm_comp))
             versioned_candidates.append((float(''.join(normed_components)), x))
         template = sorted(versioned_candidates, key=lambda x: x[0])[-1][1]
