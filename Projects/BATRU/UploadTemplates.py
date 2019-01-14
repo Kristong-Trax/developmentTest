@@ -467,8 +467,8 @@ if __name__ == '__main__':
     kpi_names = [
         # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
         # the template in Data/StoreAssortment.csv, activate this line and run it.
-        # BATRUConst.P4_SET_NAME,
-        BATRUConst.SK_SET_NAME,
+        BATRUConst.P4_SET_NAME,
+        # BATRUConst.SK_SET_NAME,
         # BATRUConst.SAS_SET_NAME,
     ]
     for kpi_name in kpi_names:
