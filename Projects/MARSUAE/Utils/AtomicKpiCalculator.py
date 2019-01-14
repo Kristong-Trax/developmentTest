@@ -162,7 +162,7 @@ class DistributionCalculation(KpiBaseCalculation):
 
     @staticmethod
     def check_result_vs_threshold(params, count_pass_product, product_total_in_assortment):
-        calc_result = count_pass_product / product_total_in_assortment if product_total_in_assortment else 0
+        calc_result = count_pass_product / float(product_total_in_assortment) if product_total_in_assortment else 0
         target = params['minimum products'].iloc[0]
         points = float(params['Points'].iloc[0])
         result = 0
