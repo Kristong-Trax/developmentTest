@@ -2,7 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 #from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.DB.CommonV2 import ProjectConnector as PSProjectConnector
+from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 import os
