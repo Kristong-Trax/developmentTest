@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import pandas as pd
 
@@ -224,7 +225,7 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts):
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
             set_name = kpis.iloc[i][self.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = str(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            kpi_name = unicode(kpis.iloc[i][self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
             if self.KPI_WEIGHT in kpis.iloc[i].keys():
                 kpi_weight = float(kpis.iloc[i][self.KPI_WEIGHT])
             else:
@@ -260,14 +261,14 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts):
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
             set_name = atomic[self.SET_NAME].replace("'", "\\'").encode('utf-8')
-            kpi_name = str(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
-            atomic_name = str(atomic[self.ATOMIC_NAME]).replace("'", "\\'").encode('utf-8')
+            kpi_name = unicode(atomic[self.KPI_NAME]).replace("'", "\\'").encode('utf-8')
+            atomic_name = unicode(atomic[self.ATOMIC_NAME]).replace("'", "\\'").encode('utf-8')
             if self.ATOMIC_WEIGHT in atomics.iloc[i].keys():
                 atomic_weight = float(atomics.iloc[i][self.ATOMIC_WEIGHT])
             else:
                 atomic_weight = 'NULL'
             if self.ATOMIC_DISPLAY_TEXT in atomics.iloc[i].keys():
-                atomic_display_text = str(atomics.iloc[i][self.ATOMIC_DISPLAY_TEXT]).replace("'", "\\'").encode('utf-8')
+                atomic_display_text = unicode(atomics.iloc[i][self.ATOMIC_DISPLAY_TEXT]).replace("'", "\\'").encode('utf-8')
             else:
                 atomic_display_text = atomic_name
 
@@ -302,9 +303,9 @@ if __name__ == '__main__':
     # dbusers_mock.return_value = docker_user
     # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - Spirits.xlsx')
     # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
-    # kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/idanr/Desktop/super.xlsx')
+    # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/idanr/Desktop/super.xlsx')
     # kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - Contract Execution.xlsx')
-    kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - CCH Integration.xlsx')
+    kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
