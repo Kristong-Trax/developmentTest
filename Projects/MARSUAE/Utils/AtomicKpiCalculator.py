@@ -35,16 +35,22 @@ class LinearSOSCalculation(SOSCalculation):
         return 'linear SOS'
 
     def calculate(self, params):
-        numerator_filters = {params['numerator type'].iloc[0]:
-                             self.split_and_strip(params['numerator value'].iloc[0])}
-        general_filters = {params['denominator type'].iloc[0]:
-                           self.split_and_strip(params['denominator value'].iloc[0])}
-
-        result, numerator_result, denominator_result = \
-            self._data_provider.sos.calculate_linear_share_of_shelf_with_numerator_denominator(
-                sos_filters=numerator_filters,
-                **general_filters)
+        scene_types = self.get_template_fk(params)
+        if scene_types:
+            numerator_filters = {params['numerator type'].iloc[0]:
+                                 self.split_and_strip(params['numerator value'].iloc[0])}
+            general_filters = {params['denominator type'].iloc[0]:
+                               self.split_and_strip(params['denominator value'].iloc[0]), 'template_fk': scene_types}
+            result, numerator_result, denominator_result = \
+                self._data_provider.sos.calculate_linear_share_of_shelf_with_numerator_denominator(
+                    sos_filters=numerator_filters, **general_filters)
+        else:
+            result = numerator_result = denominator_result = 0
         return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
+
+    def get_template_fk(self, params):
+        scene_types = self.split_and_strip(params['scene type'].iloc[0])
+        return self._scif[self._scif['template_name'].isin(scene_types)]['template_fk'].unique().tolist()
 
     @staticmethod
     def split_and_strip(param):
