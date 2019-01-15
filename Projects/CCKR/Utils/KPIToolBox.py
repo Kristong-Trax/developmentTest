@@ -1,7 +1,8 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+#from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.DB.CommonV2 import ProjectConnector as PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 import os
@@ -89,6 +90,7 @@ class CCKRToolBox:
 
         kpi_fks = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == row[1]['Atomic Kpi Name']]
         if kpi_fks.empty:
+            print(row[1]['Atomic Kpi Name'])
             Log.error("differences between kpi template and kpi static table in DB")
             return
         kps_name = kpi_fks['kpi_set_name'].iloc[0]
