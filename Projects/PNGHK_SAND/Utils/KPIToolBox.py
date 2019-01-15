@@ -303,7 +303,7 @@ class PNGHKToolBox:
         # filter excludings
         return self.filter_excluding(df)
 
-    def filter_osd(self, df):
+    def filter_out_osd(self, df):
         df_list = []
         scene_types = set(df['template_name'])
         for s in scene_types:
@@ -332,7 +332,7 @@ class PNGHKToolBox:
                 for index, p in products_df.iterrows():
                     scene_df = scene_df[~((scene_df['scene_fk'] == p['scene_fk']) &
                                           (scene_df['shelf_number'] == p['shelf_number']))]
-                df_list.append(scene_df)
+                    df_list.append(scene_df)
 
                 # filter df to remove shelves with given ean code (only on the same bay)
             elif row[Const.HAS_HOTSPOT].values[0] == Const.YES:
@@ -344,7 +344,34 @@ class PNGHKToolBox:
                     scene_df = scene_df[~((scene_df['scene_fk'] == p['scene_fk']) &
                                           (scene_df['bay_number'] == p['bay_number']) &
                                           (scene_df['shelf_number'] == p['shelf_number']))]
+                    df_list.append(scene_df)
+        final_df = pd.concat(df_list)
+        return final_df
+
+    def filter_in_osd(self, df):
+        df_list = []
+        scene_types = set(df['template_name'])
+        for s in scene_types:
+            scene_df = df[df['template_name'] == s]
+            row = self.find_row_osd(s)
+            if row.empty:
                 df_list.append(scene_df)
+                continue
+
+            # if no osd rule is applied
+            if (row[Const.HAS_OSD].values[0] == Const.NO) and (row[Const.HAS_HOTSPOT].values[0] == Const.NO):
+                df_list.append(scene_df)
+                continue
+
+            # filter df to have only shelves with given ean code
+            if row[Const.HAS_OSD].values[0] == Const.YES:
+                products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
+                                                                                        'bay_number','shelf_number']]
+                for index, p in products_df.iterrows():
+                    scene_df = scene_df[((scene_df['scene_fk'] == p['scene_fk']) &
+                                          (scene_df['shelf_number'] == p['shelf_number']))]
+                    df_list.append(scene_df)
         final_df = pd.concat(df_list)
         return final_df
 
@@ -365,9 +392,9 @@ class PNGHKToolBox:
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
         if self.kpi_excluding[Const.EXCLUDE_OSD] == Const.EXCLUDE:
-            df = self.filter_osd(df)
-
-
+            df = self.filter_out_osd(df)
+        elif self.kpi_excluding[Const.EXCLUDE_SKU] == Const.EXCLUDE:
+            df = self.filter_in_osd(df)
         #???
         # if self.kpi_excluding[Const.EXCLUDE_SKU == Const.EXCLUDE]:
         #     df = df[df['product_type'] != 'SKU']
