@@ -8,7 +8,7 @@ from KPIUtils.GlobalProjects.GOOGLE.CommonV2 import Common
 
 __author__ = 'Sam_Shivi'
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                     'JP (MD) - Google Fixture Targets 201901_updated_df_v1.xlsx')
+                                     'JP (MD) - Google Fixture Targets V.2.xlsx')
 
 
 class Generator:
