@@ -8,7 +8,7 @@ class Const(object):
     # sheets
     ON_PREMISE_MAIN = 'Total Visit Score (On Premise)'
     OFF_PREMISE_MAIN = 'Total Visit Score (Off Premise)'
-    SHELF_FACING_SHEET = '# of facings, #of Displays'
+    SHELF_FACING_SHEET = '# of facings, # Displays'
     PRICING_SHEET = 'Pricing'
     DISPLAY_TARGET_SHEET = 'Display Share - Targets'
 
@@ -17,6 +17,7 @@ class Const(object):
                     DISPLAY_TARGET_SHEET]}
 
     TOTAL = 'total'
+    EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
     BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
 
@@ -26,13 +27,20 @@ class Const(object):
 
     # pricing columns:
     STATE, OUR_EAN_CODE, COMP_EAN_CODE = "State", "Product EAN Code", "Competitor EAN Code"
-    MSRP = "MSRP"
+    OUR_SUB_BRAND, COMP_SUB_BRAND = "Product Sub English Name (Brand Family)", "Competitor Sub English Name (Brand Family)"
+    BENCH_ENTITY, BENCH_VALUE = "BENCHMARK Entity", "Target"
+    MSRP = "Pricing"
     MIN_MSRP_RELATIVE, MAX_MSRP_RELATIVE = "SHELF MSRP RELATIVE GUIDENCE: MIN", "SHELF MSRP RELATIVE GUIDENCE: MAX"
     MIN_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MIN"
     MAX_MSRP_ABSOLUTE = "SHELF MSRP ABSOLUTE GUIDENCE: MAX"
 
+    # display columns:
+    SCENE_TYPE, MIN_FACINGS = "Scene Type", "Minimum # of Facings"
+
     # sets in off-premise:
-    DISPLAY_SHARE, SHELF_FACINGS = "Display Share", "Shelf Facings"
+    DISPLAY_SHARE, SHELF_FACINGS = "Display Share", "# of Facings (Main Shelf)"
+    SHELF_FACINGS_MAIN_SHELF = "# of Facings (Main Shelf)"
+    SHELF_FACINGS_COLD_BOX = "# of Facings (Cold Box)"
 
     # names in DB:
     DB_TOTAL_KPIS = {
@@ -40,28 +48,29 @@ class Const(object):
         OFF: {TOTAL: 'Total Score - Off Premise'}
     }
     DB_OFF_NAMES = {
-        DISPLAY_BRAND: {
-            TOTAL: 'Display Brand - Total Score', NATIONAL: 'Display Brand - National Score',
-            SEGMENT: 'Display Brand - Segment Score', BRAND: 'Display Brand - Brand Level',
-            SUB_BRAND: 'Display Brand - Brand Variant Level', SKU: 'Display Brand - Brand Variant Size'},
         SHELF_FACINGS: {
             TOTAL: 'Shelf Facings - Total Score',
-            NATIONAL: 'Shelf Facings - National Score', SEGMENT: 'Shelf Facings - Segment Score',
             BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
-        SHELF_PLACEMENT: {
-            TOTAL: 'Shelf Placement - Total Score', BRAND: 'Shelf Placement - Brand',
-            NATIONAL: 'Shelf Placement - National Score', SEGMENT: 'Shelf Placement - Segment Score',
-            SUB_BRAND: 'Shelf Placement - Brand Variant', SKU: 'Shelf Placement - Brand Variant Size'},
+        SHELF_FACINGS_MAIN_SHELF: {
+            TOTAL: '# of Facings (Main Shelf) - Total Score',
+            BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
+            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
+        SHELF_FACINGS_COLD_BOX: {
+            TOTAL: '# of Facings (Cold Box) - Total Score',
+            BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
+            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         MSRP: {TOTAL: 'MSRP - Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
         DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
+
+    MENU = 'Menu'
     DB_ON_NAMES = {
         MENU: {
             TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
             SUB_BRAND: 'Menu Share - Brand Variant Level'}}
-    DB_ASSORTMENTS_NAMES = {OFF: "Assortment off Trade", ON: "Assortment on Trade"}
+    DB_ASSORTMENTS_NAMES = {OFF: "Assortment Off Premise", ON: "Assortment on Trade"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]

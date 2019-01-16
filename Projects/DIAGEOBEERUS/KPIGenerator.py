@@ -3,7 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.DIAGEOBEERUS.Utils.KPIToolBox import DIAGEOBEERUSToolBox
 
-from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
@@ -29,4 +29,4 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
-        self.common.commit_results_data()
+        self.tool_box.commit_results_data()
