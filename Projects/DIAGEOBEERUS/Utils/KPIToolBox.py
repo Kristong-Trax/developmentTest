@@ -153,18 +153,21 @@ class DIAGEOBEERUSToolBox:
         passed_skus = 0
         result_dict_list = self.diageo_generator.diageo_global_assortment_function_v2()
         mpa_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA)
-        mpa_sku_fk = mpa_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA_SKU)
+        mpa_sku_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA_SKU)
         total_identifier = self.common.get_dictionary(name=Const.TOTAL)
+        mpa_identifier = self.common.get_dictionary(name=Const.MPA)
         for result_dict in result_dict_list:
             if result_dict['fk'] == mpa_fk:
-                result_dict.update({'identifier_parent': total_identifier, 'should_enter': True})
+                result_dict.update({'identifier_parent': total_identifier, 'should_enter': True,
+                                    'weight': weight * 100, 'identifier_result': mpa_identifier})
             if result_dict['fk'] == mpa_sku_fk:
                 total_skus = total_skus + 1
                 if result_dict['result'] == 100:
                     passed_skus = passed_skus + 1
+                result_dict.update({'identifier_parent': mpa_identifier, 'should_enter': True})
             self.common.write_to_db_result(**result_dict)
 
-        return float(passed_skus / total_skus) * weight
+        return (passed_skus / float(total_skus)) * weight * 100
 
     # display share:
     def calculate_total_display_share(self, scene_types, weight, target):
