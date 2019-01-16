@@ -20,6 +20,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.DIAGEOBEERUS.Data.Const import Const
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 
 __author__ = 'huntery'
 
@@ -80,6 +81,8 @@ class DIAGEOBEERUSToolBox:
         #     self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
         #                                                         total_off_trade_fk]
         self.relevant_assortment = self.assortment_products
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+
 
     def get_templates(self):
         """
@@ -123,9 +126,16 @@ class DIAGEOBEERUSToolBox:
         target, weight = kpi_line[Const.TARGET], kpi_line[Const.WEIGHT]
         if not self.does_exist(weight):
             weight = 0
-        if kpi_name == Const.SHELF_FACINGS:
+        if kpi_name == Const.SHELF_FACINGS_MAIN_SHELF:
             total_score = self.calculate_total_shelf_facings(
                 scene_types, kpi_name, weight)
+        elif kpi_name == Const.SHELF_FACINGS_COLD_BOX:
+            total_score = self.calculate_total_shelf_facings(
+                scene_types, kpi_name, weight)
+        elif kpi_name == Const.MPA:
+            total_score = self.calculate_assortment(
+                scene_types, kpi_name, weight
+            )
         elif kpi_name == Const.MSRP:
             total_score = self.calculate_total_msrp(scene_types, kpi_name, weight)
         elif kpi_name == Const.DISPLAY_SHARE:
@@ -136,6 +146,25 @@ class DIAGEOBEERUSToolBox:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0
         return total_score
+
+    # mpa
+    def calculate_assortment(self, scene_types, kpi_name, weight):
+        total_skus = 0
+        passed_skus = 0
+        result_dict_list = self.diageo_generator.diageo_global_assortment_function_v2()
+        mpa_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA)
+        mpa_sku_fk = mpa_fk = self.common.get_kpi_fk_by_kpi_name(Const.MPA_SKU)
+        total_identifier = self.common.get_dictionary(name=Const.TOTAL)
+        for result_dict in result_dict_list:
+            if result_dict['fk'] == mpa_fk:
+                result_dict.update({'identifier_parent': total_identifier, 'should_enter': True})
+            if result_dict['fk'] == mpa_sku_fk:
+                total_skus = total_skus + 1
+                if result_dict['result'] == 100:
+                    passed_skus = passed_skus + 1
+            self.common.write_to_db_result(**result_dict)
+
+        return float(passed_skus / total_skus) * weight
 
     # display share:
     def calculate_total_display_share(self, scene_types, weight, target):
@@ -160,9 +189,7 @@ class DIAGEOBEERUSToolBox:
                                                                      Const.DISPLAY_SHARE][Const.MANUFACTURER])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_empties[(self.scif_without_empties['scene_fk'].isin(relevant_scenes)) &
-                                                     (self.scif_without_empties[
-                                                          'location_type'] == 'Secondary Shelf') &
-                                                     (self.scif_without_empties['product_type'] == 'SKU')]
+                                                      (self.scif_without_empties['product_type'] == 'SKU')]
         all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
         for product_fk in relevant_products['product_fk'].unique().tolist():
             product_result = self.calculate_display_share_of_sku(product_fk, relevant_products, manufacturer_kpi_fk)
@@ -381,8 +408,9 @@ class DIAGEOBEERUSToolBox:
         :param index: for hierarchy
         :return: passed, product_fk, standard_type
         """
+        kpi_type = competition['KPI type']
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[kpi_type][Const.TOTAL])
         # our_eans = competition[Const.OUR_EAN_CODE].split(', ')
         our_sub_brands = competition[Const.OUR_SUB_BRAND].split(', ')
         # our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]

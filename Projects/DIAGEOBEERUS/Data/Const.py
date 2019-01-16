@@ -41,6 +41,8 @@ class Const(object):
     DISPLAY_SHARE, SHELF_FACINGS = "Display Share", "# of Facings (Main Shelf)"
     SHELF_FACINGS_MAIN_SHELF = "# of Facings (Main Shelf)"
     SHELF_FACINGS_COLD_BOX = "# of Facings (Cold Box)"
+    MPA = 'MPA'
+    MPA_SKU = 'MPA - SKU'
 
     # names in DB:
     DB_TOTAL_KPIS = {
