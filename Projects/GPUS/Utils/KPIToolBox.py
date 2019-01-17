@@ -226,6 +226,6 @@ class GPUSToolBox:
                         space_length += shelf_length
         except Exception as e:
             Log.info('Linear Feet calculation failed due to {}'.format(e))
-            space_length = 0
+            # space_length = 0
 
         return space_length
