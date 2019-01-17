@@ -50,6 +50,11 @@ class PNGHKToolBox:
 
     # scene_recognition from table select * from probedata.match_display_in_scene
 
+    # smart attributes from:
+    # select * from probedata.match_product_in_probe;
+    # select * from probedata.match_product_in_probe_state_value;
+
+
 
     # def get_additional_product_data(self):
     #     #####
@@ -209,6 +214,7 @@ class PNGHKToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, denominator_id=self.store_id,
                                            numerator_result=total_numerator, denominator_result=total_denominator,
                                            result=result, score=result)
+
 
     def calculate_facings_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
