@@ -16,27 +16,36 @@ class MARSRU_SANDCalculations(BaseCalculationsScript):
 
         project_name = self.data_provider.project_name
 
-        if self.data_provider.visit_date.isoformat() < '2018-10-08':
-            kpi_set_name = ('MARS KPIs 2017', 'MARS KPIs')  # Old KPI Set Name, New KPI Level 0 Definition for API and Report
-            kpi_template =              ['2018/MARS KPIs.xlsx', 'kpi_data', 'KPI']  # [file name, key, sheet name]
-            kpi_golden_shelves =        ['2018/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
-            kpi_answers_translation =   ['2018/MARS KPIs.xlsx', 'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets =    ['2018/MARS KPIs.xlsx', 'must_range_skus', [2217, 2220, 2390, 2391, 2317, 2254]]
+        if self.data_provider.visit_date.isoformat() < '2019-01-01':
+            # Old KPI Set Name, New KPI Level 0 Definition for API and Report
+            kpi_set_name = ('MARS KPIs 2017', 'MARS KPIs')
+            # [file name, key, sheet name]
+            kpi_template = ['2018/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_golden_shelves = ['2018/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
+            kpi_answers_translation = ['2018/MARS KPIs.xlsx',
+                                       'survey_answers_translation', 'survey_answers_translation']
+            kpi_must_range_targets = ['2018/MARS KPIs.xlsx',
+                                      'must_range_skus', [2217, 2220, 2390, 2391, 2317, 2254]]
         else:
             kpi_set_name = 'MARS KPIs'  # Old KPI Set Name == New KPI Level 0 Definition for API and Report
-            kpi_template =              ['2019/MARS KPIs.xlsx', 'kpi_data', 'KPI']  # [file name, key, sheet name]
-            kpi_golden_shelves =        ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
-            kpi_answers_translation =   ['2019/MARS KPIs.xlsx', 'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets =    ['2019/MARS KPIs.xlsx', 'must_range_skus', [4317, 4254]]
+            # [file name, key, sheet name]
+            kpi_template = ['2019/MARS KPIs.xlsx', 'kpi_data', 'KPI']
+            kpi_golden_shelves = ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
+            kpi_answers_translation = ['2019/MARS KPIs.xlsx',
+                                       'survey_answers_translation', 'survey_answers_translation']
+            kpi_must_range_targets = ['2019/MARS KPIs.xlsx', 'must_range_skus', [4317, 4254]]
 
         jg = MARSRU_SANDJSONGenerator(project_name)
         jg.create_template_json(kpi_template[0], kpi_template[1], kpi_template[2])
         jg.create_template_json(kpi_golden_shelves[0], kpi_golden_shelves[1], kpi_golden_shelves[2])
-        jg.create_template_json(kpi_answers_translation[0], kpi_answers_translation[1], kpi_answers_translation[2])
-        jg.create_template_json(kpi_must_range_targets[0], kpi_must_range_targets[1], kpi_must_range_targets[2])
+        jg.create_template_json(
+            kpi_answers_translation[0], kpi_answers_translation[1], kpi_answers_translation[2])
+        jg.create_template_json(
+            kpi_must_range_targets[0], kpi_must_range_targets[1], kpi_must_range_targets[2])
         kpi_templates = jg.project_kpi_dict
 
-        tool_box = MARSRU_SANDKPIToolBox(kpi_templates, self.data_provider, self.output, kpi_set_name)
+        tool_box = MARSRU_SANDKPIToolBox(
+            kpi_templates, self.data_provider, self.output, kpi_set_name)
 
         tool_box.handle_update_custom_scif()
         tool_box.calculate_osa()
@@ -74,4 +83,4 @@ class MARSRU_SANDCalculations(BaseCalculationsScript):
         tool_box.store_to_new_kpi_tables_level0(kpi_level_0_name)
         tool_box.common.commit_results_data()
 
-        self.timer.stop('MARSRU_SANDCalculations.run_project_calculations')
+        self.timer.stop('MARSRU2_SANDProjectCalculations.run_project_calculations')

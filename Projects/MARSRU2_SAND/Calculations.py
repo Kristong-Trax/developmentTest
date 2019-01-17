@@ -16,7 +16,7 @@ class MARSRU2_SANDCalculations(BaseCalculationsScript):
 
         project_name = self.data_provider.project_name
 
-        if self.data_provider.visit_date.isoformat() < '2018-10-08':
+        if self.data_provider.visit_date.isoformat() < '2019-01-01':
             # Old KPI Set Name, New KPI Level 0 Definition for API and Report
             kpi_set_name = ('MARS KPIs 2017', 'MARS KPIs')
             # [file name, key, sheet name]
