@@ -47,7 +47,6 @@ class PNGHKToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         # self.merged_additional_data = self.get_additional_product_data()
 
-
     # scene_recognition from table select * from probedata.match_display_in_scene
 
     # smart attributes from:
@@ -454,6 +453,10 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'POS']
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
+        # if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
+        #     self.exclude hanger()
+        # if self.kpi_excluding[Const.EXCLUDE_STOCK] == Const.EXCLUDE:
+        #     self.exclude stock()
         if self.kpi_excluding[Const.EXCLUDE_OSD] == Const.EXCLUDE:
             df = self.filter_out_osd(df)
         elif self.kpi_excluding[Const.EXCLUDE_SKU] == Const.EXCLUDE:
