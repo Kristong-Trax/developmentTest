@@ -343,11 +343,13 @@ class DIAGEOBEERUSToolBox:
             if comp_line.empty:
                 Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
                 comp_price = our_price + competition[Const.MIN_MSRP_RELATIVE]
+                return None
             else:
                 comp_fk = comp_line['product_fk'].iloc[0]
                 comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
                 if comp_price is None:
                     comp_price = our_price + min_relative
+                    return None
             range_price = (round(comp_price + min_relative, 1),
                            round(comp_price + max_relative, 1))
         elif is_absolute:
@@ -362,7 +364,7 @@ class DIAGEOBEERUSToolBox:
             result = range_price[1] - our_price
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=result,
+            fk=kpi_fk, numerator_id=product_fk, result=result, # should_enter=True,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
@@ -381,11 +383,12 @@ class DIAGEOBEERUSToolBox:
                                           (self.products_with_prices['scene_fk'].isin(scenes))]['price_value']
         if price.empty or product_fk == 0:
             return None
-        result = round(price.iloc[0], 1)
+        # result = round(price.iloc[0], 1)
+        result = price.iloc[0]
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=parent_dict, should_enter=True)
-        return result
+        return round(result, 1)
 
     # shelf facings:
 
