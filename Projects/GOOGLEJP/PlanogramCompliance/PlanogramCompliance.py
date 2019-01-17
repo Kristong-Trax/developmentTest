@@ -19,13 +19,19 @@ TAG_COMPLIANCE = "tag_compliance"
 class PlanogramCompliance(PlanogramComplianceBaseClass):
 
     def get_compliance(self, manual_planogram_data=None, manual_scene_data=None):
-        planogram_matches = manual_planogram_data if manual_planogram_data else self._data_provider.planogram_data
-        scene_matches = manual_scene_data if manual_scene_data else self._data_provider.matches
+        planogram_matches = self._data_provider.planogram_data if manual_planogram_data is\
+                                                                  None else manual_planogram_data
+        scene_matches = self._data_provider.matches if manual_scene_data is None else manual_scene_data
         scene_matches = self.filter_irrelevant_out(scene_matches)
         return self.get_iterated_position(scene_matches, planogram_matches)
 
     @staticmethod
     def filter_irrelevant_out(scene_matches):
+        """
+        This function filters the Irrelevant products out of the DF and move the other products to their real sequence.
+        :param scene_matches: DF
+        :return: scene_matches without Irrelevant
+        """
         irrelevant_fks = scene_matches[scene_matches[Keys.PRODUCT_TYPE] == IRRELEVANT][Keys.MATCH_FK].tolist()
         for match_fk in irrelevant_fks:
             irrelevant_data = scene_matches[scene_matches[Keys.MATCH_FK] == match_fk].iloc[0]
@@ -36,11 +42,14 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
                               (scene_matches[Keys.SHELF_NUMBER_FROM_BOTTOM] == shelf_number) &
                               (scene_matches[Keys.FACING_SEQUENCE_NUMBER] > sequence_number),
                               Keys.FACING_SEQUENCE_NUMBER] -= 1
-        scene_matches = scene_matches[~(scene_matches[Keys.PRODUCT_TYPE] == IRRELEVANT)][Keys.MATCH_FK].tolist()
+        scene_matches = scene_matches[~(scene_matches[Keys.PRODUCT_TYPE] == IRRELEVANT)]
         return scene_matches
 
     @staticmethod
     def _get_df_of_bay(df, bay_number):
+        """
+        Takes DF and bay, and returns the DF of this bay alone (and the bay_number is 1)
+        """
         df_answer = df[df[Keys.BAY_NUMBER] == bay_number]
         df_answer[Keys.BAY_NUMBER] = 1
         return df_answer
@@ -92,6 +101,12 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 
     @staticmethod
     def can_match(pog_bay_data, scene_bay_data):
+        """
+        Checks if these bays can match - their sequences and shelves should be in the same amount (distance of max 1)
+        :param pog_bay_data: DF
+        :param scene_bay_data: DF
+        :return: Bool
+        """
         shelves_distance = abs(
             pog_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() - scene_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max())
         sequences_distance = abs(
@@ -105,7 +120,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     planogram_data = pd.read_csv("/home/elyashiv/Desktop/backup/POGs/pog2.csv")
-#     scene_data = pd.read_csv("/home/elyashiv/Desktop/backup/POGs/scene2.csv")
+#     planogram_data = pd.read_csv("/home/elyashiv/Desktop/backup/POGs/pog5.csv")
+#     scene_data = pd.read_csv("/home/elyashiv/Desktop/backup/POGs/scene5.csv")
 #     pog = PlanogramCompliance(data_provider=None)
-#     compliances = pog.get_compliance(planogram_data=planogram_data, scene_data=scene_data)
+#     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
