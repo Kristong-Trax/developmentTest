@@ -11,48 +11,63 @@ SCENE_INFO_QUERY = """  SELECT
                             stores.store_type,
                             stores.store_number_1,
                             templates.pk AS 'template_fk',
-                            templates.template_group
+                            templates.template_group,
+                            retailers.pk AS 'retailer_fk',
+                            regions.pk AS 'region_fk'
                         FROM
                             (SELECT 
                                 *
                             FROM
                                 probedata.scene
                             WHERE
-                                pk = {}) scenes
+                                pk = 133) scenes
                                 JOIN
                             probedata.session sessions ON scenes.session_uid = sessions.session_uid
                                 JOIN
                             static.stores stores ON stores.pk = sessions.store_fk
                                 JOIN
-                            static.template templates ON scenes.template_fk = templates.pk;"""
+                            static.template templates ON scenes.template_fk = templates.pk
+                                LEFT JOIN
+                            static.retailer retailers ON stores.retailer_fk = retailers.pk
+                                LEFT JOIN
+                            static.regions regions ON stores.region_fk = regions.pk;"""
 PLANOGRAMS_QUERY = "SELECT * FROM pservice.planogram_custom_policy;"
 STORE_TYPE = "store_type"
 STORE_NUMBER_1 = "store_number_1"
 TEMPLATE_FK = "template_fk"
 TEMPLATE_GROUP = "template_group"
 PLANOGRAM_FK = "planogram_fk"
-NECESSARY_COLUMNS = [STORE_TYPE, STORE_NUMBER_1, TEMPLATE_FK, TEMPLATE_GROUP]
+REGION_FK = "region_fk"
+RETAILER_FK = "retailer_fk"
+SUM_POLICY_ATTRIBUTES = "policy_attrs"
+NECESSARY_COLUMNS = [STORE_TYPE, STORE_NUMBER_1, TEMPLATE_FK, TEMPLATE_GROUP, REGION_FK, RETAILER_FK]
 
 
-class PlanogramCompliance(PlanogramFinderBaseClass):
+class PlanogramFinder(PlanogramFinderBaseClass):
 
-    def get_planogram_id(self):
-        self.project_name = self._data_provider._project_name
-        self.scene_id = self._data_provider._scene_id
+    def get_planogram_id(self, project_name=None, scene_id=None):
+        self.project_name = project_name if project_name else self._data_provider._project_name
+        self.scene_id = scene_id if scene_id else self._data_provider._scene_id
         self.rds_conn = self.rds_connection()
-        return self.get_scene_info_and_planograms()
+        self.get_scene_and_planograms_details()
+        return self.get_planogram_id_by_policies()
 
     def get_planogram_id_by_policies(self):
-        if self.planogram_policies.empty:
-            Log.error("There is no Planogram that matches this scene.")
-            return None
         filtered_planograms = self.planogram_policies
         for column in NECESSARY_COLUMNS:
-            filtered_planograms = filtered_planograms[filtered_planograms[column] == self.scene_info[column] |
-                                                      filtered_planograms[column].isnan]
-        return filtered_planograms.iloc[0][PLANOGRAM_FK]
+            filtered_planograms = filtered_planograms[filtered_planograms[column].isin(['', self.scene_info[column]])]
+        transposed_policies = filtered_planograms.T
+        for i in transposed_policies.keys():
+            policy_attrs = transposed_policies[transposed_policies[i] != ''][i].count()
+            filtered_planograms.loc[i, SUM_POLICY_ATTRIBUTES] = policy_attrs
+        filtered_planograms = filtered_planograms.sort_values(by=[SUM_POLICY_ATTRIBUTES], ascending=False)
+        if filtered_planograms.empty:
+            Log.error("There is no Planogram that matches this scene.")
+            return None
+        else:
+            return filtered_planograms.iloc[0][PLANOGRAM_FK]
 
-    def get_scene_info_and_planograms(self):
+    def get_scene_and_planograms_details(self):
         self.rds_conn.connect_rds()
         self.scene_info = pd.read_sql_query(SCENE_INFO_QUERY.format(self.scene_id), self.rds_conn.db).iloc[0]
         self.planograms_info = pd.read_sql_query(PLANOGRAMS_QUERY, self.rds_conn.db)
@@ -65,10 +80,10 @@ class PlanogramCompliance(PlanogramFinderBaseClass):
             lambda x: pd.concat(x.values))
         pogs_df = self.planograms_info.drop(['policy'], axis=1)
         self.planogram_policies = pd.concat([pogs_df.reset_index(drop=True), policies_df.reset_index(drop=True)],
-                                            axis=1)
+                                            axis=1).fillna('')
         for column in NECESSARY_COLUMNS:
-            if not self.planogram_policies.has_key(column):
-                self.planogram_policies[column] = None
+            if column not in self.planogram_policies.keys():
+                self.planogram_policies[column] = ''
 
     def rds_connection(self):
         if not hasattr(self, '_rds_conn'):
@@ -80,3 +95,11 @@ class PlanogramCompliance(PlanogramFinderBaseClass):
             self._rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
             Log.error(e.message)
         return self._rds_conn
+
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# if __name__ == '__main__':
+#     LoggerInitializer.init('POG finder test')
+#     Config.init()
+#     pog = PlanogramFinder(data_provider=None)
+#     compliances = pog.get_planogram_id(project_name="googlekr", scene_id=133)
