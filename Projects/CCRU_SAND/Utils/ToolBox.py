@@ -954,7 +954,7 @@ class CCRU_SANDKPIToolBox:
             products_of_tccc = self.scif[(self.scif['scene_id'] == scene) &
                                          (self.scif['manufacturer_name'] == 'TCCC') &
                                          (self.scif['location_type'] == p.get('Locations to include')) &
-                                         (self.scif['product_type']!='Empty')]['facings'].sum()
+                                         (self.scif['product_type'] != 'Empty')]['facings'].sum()
             all_products = self.scif[(self.scif['scene_id'] == scene) &
                                      (self.scif['location_type'] == p.get('Locations to include')) &
                                      (self.scif['product_type'] != 'Empty')]['facings'].sum()
@@ -1275,6 +1275,28 @@ class CCRU_SANDKPIToolBox:
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
         return set_total_res
+
+    @kpi_runtime()
+    def check_dummies(self, params, level=2):
+        total_score = 0
+        for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
+            if p.get('Formula').strip() != 'DUMMY':
+                continue
+            score = 0
+            total_score += round(score) * p.get('KPI Weight')
+            # writing to DB
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            if p.get('level') == 2:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            else:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+        return total_score
 
     @kpi_runtime()
     def check_sum_atomics(self, params, level=2):
@@ -1624,6 +1646,10 @@ class CCRU_SANDKPIToolBox:
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
+                    elif c.get("Formula").strip() == "Scenes with no tagging":
+                        atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "DUMMY":
+                        atomic_res = 0
                     else:
                         atomic_res = -1
                         # print "Weighted Average", c.get("Formula").strip()
