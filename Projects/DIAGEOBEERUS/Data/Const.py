@@ -56,22 +56,22 @@ class Const(object):
             BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_FACINGS_MAIN_SHELF: {
-            TOTAL: '# of Facings (Main Shelf) - Total Score',
+            TOTAL: '# of Facings (Main Shelf)',
             BRAND: 'Facings (Main Shelf) - Brand', SUB_BRAND: 'Facings (Main Shelf) - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
             VARIANT: 'Facings (Main Shelf) - Brand Variant vs. Benchmark'},
         SHELF_FACINGS_COLD_BOX: {
-            TOTAL: '# of Facings (Cold Box) - Total Score',
+            TOTAL: '# of Facings (Cold Box)',
             BRAND: 'Facings (Cold Box) - Brand', SUB_BRAND: 'Facings (Cold Box) - Brand Variant',
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
             VARIANT: 'Facings (Cold Box) - Brand Variant vs. Benchmark'},
         NUMBER_OF_DISPLAYS: {
-            TOTAL: '# of Displays - Total Score',
+            TOTAL: '# of Displays',
             BRAND: '# of Displays - Brand', SUB_BRAND: '# of Displays - Brand Variant',
             VARIANT: '# of Displays - Brand Variant vs. Benchmark'},
-        MSRP: {TOTAL: 'MSRP - Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
+        MSRP: {TOTAL: 'MSRP', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
-        DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
+        DISPLAY_SHARE: {TOTAL: 'Display Share', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
 
     MENU = 'Menu'

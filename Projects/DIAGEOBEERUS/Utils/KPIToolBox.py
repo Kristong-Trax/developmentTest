@@ -384,7 +384,7 @@ class DIAGEOBEERUSToolBox:
         if price.empty or product_fk == 0:
             return None
         # result = round(price.iloc[0], 1)
-        result = price.iloc[0]
+        result = price.min() # get the lowest applicable price (suppresses the effects of errors in recognition)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=parent_dict, should_enter=True)
