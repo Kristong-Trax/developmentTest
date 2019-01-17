@@ -20,6 +20,7 @@ class SceneCalculations(SceneBaseClass):
                                      'Data', 'Brand Score.xlsx')
         diageo_generator = DIAGEOGenerator(self._data_provider, None, self.common)
         diageo_generator.diageo_global_tap_brand_score_function(template_path=template_path, rank_kpi=False,
-                                                                sub_category_rank_kpi=False, save_scene_level=True)
+                                                                sub_category_rank_kpi=False, save_scene_level=True,
+                                                                calculate_components=True)
         self.common.commit_results_data(result_entity='scene')
         # self.timer.stop('KPIGenerator.run_project_calculations')
