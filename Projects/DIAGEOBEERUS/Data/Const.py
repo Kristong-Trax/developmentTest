@@ -18,7 +18,7 @@ class Const(object):
 
     TOTAL = 'total'
     EXTRA, OOS, DISTRIBUTED, OTHER, NO_PLACEMENT = "EXTRA", "0", "1", "OTHER", "0"
-    BRAND, SUB_BRAND, SKU = "brand", "sub_brand", "sku"
+    BRAND, SUB_BRAND, SKU, VARIANT = "brand", "sub_brand", "sku", "sub_brand_name"
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
 
     # KPIs columns:
@@ -41,6 +41,7 @@ class Const(object):
     DISPLAY_SHARE, SHELF_FACINGS = "Display Share", "# of Facings (Main Shelf)"
     SHELF_FACINGS_MAIN_SHELF = "# of Facings (Main Shelf)"
     SHELF_FACINGS_COLD_BOX = "# of Facings (Cold Box)"
+    NUMBER_OF_DISPLAYS = "# of Displays"
     MPA = 'MPA'
     MPA_SKU = 'MPA - SKU'
 
@@ -56,12 +57,18 @@ class Const(object):
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_FACINGS_MAIN_SHELF: {
             TOTAL: '# of Facings (Main Shelf) - Total Score',
-            BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
-            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
+            BRAND: 'Facings (Main Shelf) - Brand', SUB_BRAND: 'Facings (Main Shelf) - Brand Variant',
+            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
+            VARIANT: 'Facings (Main Shelf) - Brand Variant vs. Benchmark'},
         SHELF_FACINGS_COLD_BOX: {
             TOTAL: '# of Facings (Cold Box) - Total Score',
-            BRAND: 'Shelf Facings - Compliance Brand', SUB_BRAND: 'Shelf Facings - Brand Variant',
-            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
+            BRAND: 'Facings (Cold Box) - Brand', SUB_BRAND: 'Facings (Cold Box) - Brand Variant',
+            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
+            VARIANT: 'Facings (Cold Box) - Brand Variant vs. Benchmark'},
+        NUMBER_OF_DISPLAYS: {
+            TOTAL: '# of Displays - Total Score',
+            BRAND: '# of Displays - Brand', SUB_BRAND: '# of Displays - Brand Variant',
+            VARIANT: '# of Displays - Brand Variant vs. Benchmark'},
         MSRP: {TOTAL: 'MSRP - Total Score', BRAND: 'MSRP - Brand', SUB_BRAND: 'MSRP - Brand Variant',
                COMPETITION: 'MSRP - Brand Variant Size', SKU: 'MSRP - BVS + Brand Benchmark'},
         DISPLAY_SHARE: {TOTAL: 'Display Share - Total Score', MANUFACTURER: 'Display Share - Manufacturer',
