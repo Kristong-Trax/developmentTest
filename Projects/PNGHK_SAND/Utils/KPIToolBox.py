@@ -210,11 +210,6 @@ class PNGHKToolBox:
                                            numerator_result=total_numerator, denominator_result=total_denominator,
                                            result=result, score=result)
 
-    def get_id_entity(self, id, entity=""):
-        if id == 5:
-            return self.store_id
-
-
     def calculate_facings_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
