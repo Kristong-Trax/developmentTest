@@ -281,13 +281,13 @@ class PERNODUSToolBox:
                         numerator_id = self.kpi_sub_brand_data['pk'][self.kpi_sub_brand_data['name'] == Value1[0]].iloc[
                             0]
                         denominator_id = \
-                        self.all_products['brand_fk'][self.all_products['sub_brand'] == Value1[0]].iloc[0]
+                        self.all_products['brand_fk'][self.all_products['sub_brand'] == adjacent_brand].iloc[0]
 
                     if Param == 'brand_name':
                         numerator_id = self.all_products['brand_fk'][self.all_products['brand_name'] == Value1[0]].iloc[
                             0]
                         denominator_id = \
-                        self.all_products['brand_fk'][self.all_products['brand_name'] == Value1[0]].iloc[0]
+                        self.all_products['brand_fk'][self.all_products['brand_name'] == adjacent_brand].iloc[0]
 
                     self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=numerator_id,
 
