@@ -144,8 +144,12 @@ class DIAGEOBEERUSToolBox:
             total_score = self.calculate_total_msrp(scene_types, kpi_name, weight)
         elif kpi_name == Const.DISPLAY_SHARE:
             total_score = self.calculate_total_display_share(scene_types, weight, target)
-        # elif kpi_name == Const.MENU:
-        #     total_score, segment_score, national_score = self.calculate_menu(scene_types, weight, target)
+        elif kpi_name == Const.MENU:  # on premise
+            total_score = self.calculate_menu(scene_types, weight, target)
+        elif kpi_name == Const.TAP_HANDLE:  # on premise
+            total_score = 0
+        elif kpi_name == Const.BEER_GLASSES:  # on premise
+            total_score = 0
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0
@@ -309,7 +313,7 @@ class DIAGEOBEERUSToolBox:
             all_competes = all_competes.append(compete_result_dict, ignore_index=True)
         kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         result = self.insert_all_levels_to_db(
-            all_competes, kpi_db_names, weight, write_numeric=True)
+            all_competes, kpi_db_names, weight, write_numeric=False)  # result should be %, not count
         return result
 
     def calculate_msrp_of_competition(self, competition, relevant_scenes, index):
@@ -364,7 +368,7 @@ class DIAGEOBEERUSToolBox:
             result = range_price[1] - our_price
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
-            fk=kpi_fk, numerator_id=product_fk, result=result, # should_enter=True,
+            fk=kpi_fk, numerator_id=product_fk, result=result,  # should_enter=True,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
                           Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
@@ -384,7 +388,7 @@ class DIAGEOBEERUSToolBox:
         if price.empty or product_fk == 0:
             return None
         # result = round(price.iloc[0], 1)
-        result = price.min() # get the lowest applicable price (suppresses the effects of errors in recognition)
+        result = price.min()  # get the lowest applicable price (suppresses the effects of errors in recognition)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=parent_dict, should_enter=True)
@@ -681,6 +685,68 @@ class DIAGEOBEERUSToolBox:
             self.calculated_sub_brands_list.append(sub_brand)
         return number_of_displays
 
+    # menu
+    def calculate_menu(self, scene_types, weight, target):
+        """
+        calculates the share of all brands and manufacturers in the menu, and
+        checks if Diageo result is bigger than target
+        :param scene_types: str
+        :param weight: float
+        :param target: float
+        :return:
+        """
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
+        # if self.no_menu_allowed:
+        #     Log.info("There is no menu, Menu got 100")
+        #     score = 1
+        #     self.common.write_to_db_result(
+        #         fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
+        #         result=score, should_enter=True, weight=weight * 100, score=score,
+        #         identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
+        #     return score * weight, 0, 0
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
+        relevant_scenes = self.get_relevant_scenes(scene_types)
+        relevant_scif = self.scif_without_empties[(self.scif_without_empties['scene_id'].isin(relevant_scenes)) &
+                                                 (self.scif_without_empties['product_type'] == 'POS')]
+        all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
+        den_res = relevant_scif['facings'].sum()
+        diageo_facings = 0
+        for products in relevant_scif[['sub_brand', 'brand_fk']].drop_duplicates().itertuples():
+            sub_brand = products.sub_brand
+            brand_fk = products.brand_fk
+            if not sub_brand or not brand_fk:
+                continue
+            num_res = relevant_scif[(relevant_scif['sub_brand'] == sub_brand) &
+                                    (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
+            result = self.get_score(num_res, den_res)
+            sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if sub_brand_fk == 0:
+                continue
+            self.common.write_to_db_result(
+                fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
+                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+        for manufacturer_fk in all_manufacturers:
+            num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
+            manufacturer_target = None
+            if manufacturer_fk == self.manufacturer_fk:
+                diageo_facings = num_res
+                manufacturer_target = target
+            result = self.get_score(num_res, den_res)
+            if manufacturer_fk == 0:
+                continue
+            self.common.write_to_db_result(
+                fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
+                denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                target=manufacturer_target)
+        result = self.get_score(diageo_facings, den_res)
+        score = 1 if result >= target else 0
+        self.common.write_to_db_result(
+            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
+            denominator_result=den_res, result=score, score=result, weight=weight * 100,
+            identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
+            identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
+        return score * weight
 
     # helpers
 
@@ -739,7 +805,7 @@ class DIAGEOBEERUSToolBox:
             result = self.get_score(num_res, den_res)
         self.common.write_to_db_result(
             fk=brand_kpi_fk, numerator_id=brand, numerator_result=num_res,
-            denominator_result=den_res, result=result, should_enter=True,
+            denominator_result=den_res, result=result * 100, should_enter=True,
             identifier_parent=total_identifier, identifier_result=brand_dict)
 
     def insert_sub_brands_to_db(self, sub_brand_results, kpi_db_names, brand, sub_brand, brand_identifier,
@@ -768,7 +834,7 @@ class DIAGEOBEERUSToolBox:
             result = self.get_score(num_res, den_res)
         self.common.write_to_db_result(
             fk=sub_brand_kpi_fk, numerator_id=sub_brand, numerator_result=num_res,
-            denominator_result=den_res, result=result, should_enter=True,
+            denominator_result=den_res, result=result * 100, should_enter=True,
             identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
 
     def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None,

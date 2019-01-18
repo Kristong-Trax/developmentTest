@@ -11,8 +11,9 @@ class Const(object):
     SHELF_FACING_SHEET = '# of facings, # Displays'
     PRICING_SHEET = 'Pricing'
     DISPLAY_TARGET_SHEET = 'Display Share - Targets'
+    TAP_HANDLE_BEER_GLASSES_SHEET = 'Tap Handles and Beer Glasses'
 
-    SHEETS = {ON: [ON_PREMISE_MAIN],
+    SHEETS = {ON: [ON_PREMISE_MAIN, TAP_HANDLE_BEER_GLASSES_SHEET],
               OFF: [OFF_PREMISE_MAIN, SHELF_FACING_SHEET, PRICING_SHEET,
                     DISPLAY_TARGET_SHEET]}
 
@@ -74,11 +75,13 @@ class Const(object):
         DISPLAY_SHARE: {TOTAL: 'Display Share', MANUFACTURER: 'Display Share - Manufacturer',
                         SKU: 'Display Share - Brand Variant Size'}}
 
-    MENU = 'Menu'
+    MENU = 'Menu Presence'
+    TAP_HANDLE = 'Tap Handle Availability'
+    BEER_GLASSES = 'Beer Glass Availability'
     DB_ON_NAMES = {
         MENU: {
-            TOTAL: 'Menu Share - Total Score', MANUFACTURER: 'Menu Share - Manufacturer Level',
-            SUB_BRAND: 'Menu Share - Brand Variant Level'}}
+            TOTAL: 'Menu Presence', MANUFACTURER: 'Menu Presence - Manufacturer',
+            SUB_BRAND: 'Menu Presence - Brand Variant'}}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment Off Premise", ON: "Assortment on Trade"}
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
