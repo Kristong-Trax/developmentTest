@@ -102,7 +102,7 @@ GENERAL_FILTERS = 'general_filters'
 KPI_SPECIFIC_FILTERS = 'kpi_specific_filters'
 AVAILABLITY_MAJORITY = 'Availability Majority'
 AVAILABILITY_AND_GROUP_OR = 'Availability SKU facing And Group Or'
-AVAILABILITY_VS_COMPETITORS = 'Availability vs Competitors'
+# AVAILABILITY_VS_COMPETITORS = 'Availability vs Competitors'
 
 # scif fields
 EAN_CODE = 'product_ean_code'
@@ -173,15 +173,15 @@ class CCBZA_ToolBox:
                                             AVAILABILITY_SKU_FACING_OR: self.availability_and_or_scene,
                                             AVAILABLITY_IF_THEN: self.availability_against_competitors_scene,
                                             AVAILABLITY_MAJORITY: self.calculate_availability_competitors_majority,
-                                            AVAILABILITY_AND_GROUP_OR: self.availability_and_or_scene,
-                                            AVAILABILITY_VS_COMPETITORS: self.calculate_availability_ko_products_max}
+                                            AVAILABILITY_AND_GROUP_OR: self.availability_and_or_scene}
+                                            # AVAILABILITY_VS_COMPETITORS: self.calculate_availability_ko_products_max}
         self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
                                              AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
                                              AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
                                              AVAILABILITY_POS: self.get_availability_results_scene_table,
                                              AVAILABLITY_MAJORITY: self.get_availability_results_scene_table,
-                                             AVAILABILITY_AND_GROUP_OR: self.get_availability_results_scene_table,
-                                             AVAILABILITY_VS_COMPETITORS: self.get_availability_results_scene_table}
+                                             AVAILABILITY_AND_GROUP_OR: self.get_availability_results_scene_table}
+                                             # AVAILABILITY_VS_COMPETITORS: self.get_availability_results_scene_table}
         self.availability_router = {AVAILABILITY_SKU_FACING_AND: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_POSM: self.calculate_availability_posm,
@@ -351,18 +351,18 @@ class CCBZA_ToolBox:
                 scene_result = 100 if (ko_facings_total > competitor_facings and ko_facings_total > target) else False
             self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
-    def calculate_availability_ko_products_max(self, atomic_kpi, identifier_result):
-        target = float(atomic_kpi[TARGET])/100
-        filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
-                   KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
-        scene_result = 0
-        if filters[GENERAL_FILTERS]['scene_fk']:
-            ko_facings = self.scif[self.tools.get_filter_condition(self.scif, **filters[KPI_SPECIFIC_FILTERS])]['facings'].sum()
-            denom_filters = {atomic_kpi[TYPE1]: self.split_and_strip(atomic_kpi[VALUE1])}
-            denom_facings = self.scif[self.tools.get_filter_condition(self.scif, **denom_filters)]['facings'].sum()
-            if denom_facings:
-                scene_result = 100 if ko_facings/denom_facings > target else 0
-            self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
+    # def calculate_availability_ko_products_max(self, atomic_kpi, identifier_result):
+    #     target = float(atomic_kpi[TARGET])/100
+    #     filters = {GENERAL_FILTERS: self.get_general_calculation_parameters(atomic_kpi),
+    #                KPI_SPECIFIC_FILTERS: self.get_availability_and_price_calculation_parameters(atomic_kpi)}
+    #     scene_result = 0
+    #     if filters[GENERAL_FILTERS]['scene_fk']:
+    #         ko_facings = self.scif[self.tools.get_filter_condition(self.scif, **filters[KPI_SPECIFIC_FILTERS])]['facings'].sum()
+    #         denom_filters = {atomic_kpi[TYPE1]: self.split_and_strip(atomic_kpi[VALUE1])}
+    #         denom_facings = self.scif[self.tools.get_filter_condition(self.scif, **denom_filters)]['facings'].sum()
+    #         if denom_facings:
+    #             scene_result = 100 if ko_facings/denom_facings > target else 0
+    #         self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
 #----------------------session calculations--------------------------
 
