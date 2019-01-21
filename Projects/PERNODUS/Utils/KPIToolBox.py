@@ -147,10 +147,10 @@ class PERNODUSToolBox:
                                                              additional={'minimum_facing_for_block': 2})
 
         score = 0
-        if result.empty:
-            pass
-        else:
+        if(result.is_block == True):
             score = 1
+        else:
+            pass
 
         if kpi_template['param'] == "brand_name":
             brand_fk = self.all_products['brand_fk'][self.all_products["brand_name"] == kpi_template['value']].iloc[0]
@@ -208,7 +208,7 @@ class PERNODUSToolBox:
                     self.templates['template_fk'][self.templates['template_name'] == param_values[0]].iloc[0]
                     self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=template_fk,
                                                    denominator_id=self.store_id,
-                                                   result=1, score=1)
+                                                   result=score, score=score)
         return
 
     def adjacency(self, kpi_set_fk, kpi_name):
@@ -248,7 +248,7 @@ class PERNODUSToolBox:
                 counted_adjacent_dict = dict(adj_mpis['sub_category'].value_counts())
 
                 for k, v in counted_adjacent_dict.items():
-                    if v in ['General.', "REPORTED UNCLASSIFIABLE UPC\\'S"]:
+                    if v in ['General.', 'REPORTED UNCLASSIFIABLE UPC\'S']:
                         del counted_adjacent_dict[k]
 
                 sorted(counted_adjacent_dict.values(), reverse=True)[:10]
@@ -269,7 +269,7 @@ class PERNODUSToolBox:
                 counted_adjacent_dict = dict(adj_mpis['brand_name'].value_counts())
 
                 for k, v in counted_adjacent_dict.items():
-                    if v in ['General.', "REPORTED UNCLASSIFIABLE UPC\\'S"]:
+                    if v in ['General.', 'REPORTED UNCLASSIFIABLE UPC\'S']:
                         del counted_adjacent_dict[k]
 
                 sorted(counted_adjacent_dict.values(), reverse=True)[:10]
@@ -281,7 +281,7 @@ class PERNODUSToolBox:
                         numerator_id = self.kpi_sub_brand_data['pk'][self.kpi_sub_brand_data['name'] == Value1[0]].iloc[
                             0]
                         denominator_id = \
-                        self.all_products['brand_fk'][self.all_products['sub_brand'] == adjacent_brand].iloc[0]
+                        self.all_products['brand_fk'][self.all_products['brand_name'] == adjacent_brand].iloc[0]
 
                     if Param == 'brand_name':
                         numerator_id = self.all_products['brand_fk'][self.all_products['brand_name'] == Value1[0]].iloc[
