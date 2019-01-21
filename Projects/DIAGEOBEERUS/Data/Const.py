@@ -45,6 +45,8 @@ class Const(object):
     NUMBER_OF_DISPLAYS = "# of Displays"
     MPA = 'MPA'
     MPA_SKU = 'MPA - SKU'
+    ON_SHELF = 'On Shelf'
+    NOT_ON_SHELF = 'Not on Shelf'
 
     # names in DB:
     DB_TOTAL_KPIS = {
@@ -88,3 +90,6 @@ class Const(object):
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]
     COLUMNS_FOR_PRODUCT = [PRODUCT_FK, PASSED, BRAND, SUB_BRAND]
     COLUMNS_FOR_PRODUCT_ASSORTMENT = [PRODUCT_FK, STANDARD_TYPE, PASSED, BRAND, SUB_BRAND]
+
+    NO_MENU_ALLOWED_QUESTION = "Check this box if no menu was available in this outlet."
+    SURVEY_ANSWER = "No Menu"
