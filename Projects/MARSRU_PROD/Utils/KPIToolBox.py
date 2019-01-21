@@ -1957,7 +1957,8 @@ class MARSRU_PRODKPIToolBox:
                 except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
-                    result_value = None if result is None else ('FALSE' if result == 'FALSE' else 'TRUE')
+                    result_value = None if result is None else \
+                        ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
             else:
                 result_value = result
 
