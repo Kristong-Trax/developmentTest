@@ -36,13 +36,15 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     data_provider = KEngineDataProvider(project_name)
 #     # session = 'AD29338A-C2D9-4486-BD94-7B1E32224A11'
 #     # session = 'E6BBF9D5-114E-4176-A35E-B84ABD0C11B5'
-#     session = '9bc7f6ff-9a26-427d-b0d9-5f4d1b08e779'
+#     session = '24b18836-8fdb-4b85-8119-3e076ed6e520'
 # #     data_provider.load_session_data(session)
 # #     output = Output()
 # #     CCBZA_SANDCalculations(data_provider, output).run_project_calculations()
 # #     scenes = [2]
 # #     scenes = [4, 5, 8, 9, 12]
-#     scenes = [42179, 42181, 42183]
+# #     scenes = [42179, 42181, 42183]
+#     data_provider.load_session_data(session)
+#     scenes = data_provider.scenes_info.scene_fk.tolist()
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()
