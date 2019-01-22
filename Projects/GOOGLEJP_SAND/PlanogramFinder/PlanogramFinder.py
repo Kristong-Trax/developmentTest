@@ -43,7 +43,7 @@ SUM_POLICY_ATTRIBUTES = "policy_attrs"
 NECESSARY_COLUMNS = [STORE_TYPE, STORE_NUMBER_1, TEMPLATE_FK, TEMPLATE_GROUP, REGION_FK, RETAILER_FK]
 
 
-class PlanogramFinder(PlanogramFinderBaseClass):
+class GOOGLEJP_SANDPlanogramFinder(PlanogramFinderBaseClass):
 
     def get_planogram_id(self, project_name=None, scene_id=None):
         self.project_name = project_name if project_name else self._data_provider._project_name
@@ -101,5 +101,5 @@ class PlanogramFinder(PlanogramFinderBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG finder test')
 #     Config.init()
-#     pog = PlanogramFinder(data_provider=None)
+#     pog = GOOGLEJP_SANDPlanogramFinder(data_provider=None)
 #     compliances = pog.get_planogram_id(project_name="googlekr", scene_id=133)
