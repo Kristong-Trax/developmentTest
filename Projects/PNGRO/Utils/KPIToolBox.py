@@ -624,19 +624,33 @@ class PNGRO_PRODToolBox:
         return score, str(ratio), str(target)
 
     def get_sos_filters(self, params):
-        type1 = params['Param Type (1)/ Numerator']
-        value1 = map(unicode.strip, params['Param (1) Values'].split(','))
-        type2 = params['Param Type (2)/ Denominator']
-        value2 = map(unicode.strip, params['Param (2) Values'].split(','))
-        type3 = params['Param (3)']
-        value3 = params['Param (3) Values']
+        type1_n = params['Param Type (1)/ Numerator']
+        value1_n = map(unicode.strip, params['Param (1) Values'].split(','))
+        type1_1_n = params['Param Type (1-1)']
+        value1_1_n = map(unicode.strip, params['Param (1-1) Values'].split(','))
+
+        type2_d = params['Param Type (2)/ Denominator']
+        value2_d = map(unicode.strip, params['Param (2) Values'].split(','))
+        type2_1_d = params['Param Type (2-1)']
+        value2_1_d = map(unicode.strip, params['Param (2-1) Values'].split(','))
+
         target = params['Target Policy']
+
         try:
             target = float(target)
         except:
             Log.info('The target: {} cannot parse to float'.format(str(target)))
-        numerator_filters = {type1: value1, type2: value2, type3: value3}
-        denominator_filters = {type2: value2}
+
+        numerator_filters = {type1_n: value1_n, type2_d: value2_d}
+        denominator_filters = {type2_d: value2_d}
+
+        if type1_1_n:
+            numerator_filters.update({type1_1_n: value1_1_n})
+
+        if type2_1_d:
+            numerator_filters.update({type2_1_d: value2_1_d})
+            denominator_filters.update({type2_1_d: value2_1_d})
+
         return numerator_filters, denominator_filters, target
 
     def calculate_sos_linear_ign_stack(self, params, **general_filters):
