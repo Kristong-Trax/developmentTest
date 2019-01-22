@@ -635,7 +635,6 @@ class PNGRO_PRODToolBox:
         value2_1_d = map(unicode.strip, params['Param (2-1) Values'].split(','))
 
         target = params['Target Policy']
-
         try:
             target = float(target)
         except:
