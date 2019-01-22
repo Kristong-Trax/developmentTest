@@ -111,6 +111,7 @@ class ProjectCalculations:
             score += self.tool_box.check_atomic_passed(kpi_data)
             score += self.tool_box.check_atomic_passed_on_the_same_scene(kpi_data)
             score += self.tool_box.check_sum_atomics(kpi_data)
+            score += self.tool_box.check_dummies(kpi_data)
             score += self.tool_box.check_weighted_average(kpi_data)
             score += self.tool_box.check_kpi_scores(kpi_data)
 
