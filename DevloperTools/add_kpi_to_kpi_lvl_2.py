@@ -186,6 +186,8 @@ Template_path: optional attribute. Default value: 'kpi_factory/DevloperTools/new
                it has all columns required for the script.
 Remove_duplicates: optional attribute. True: if you want the script to get rid of repeating kpi types 
                 and insert to DB only one of them. Default value: False
+Add_pks: optional attribute.True if you want your kpis to have certain pks (e.g.to differenciate the numbering from OOTB).
+        Default value: False
 Output: If there are no errors, the kpis are added to the DB. If there are errors, the template file with highlighted erroneous 
 cells is saved to '/tmp'.
 Validations: all validations are in validate_template() function: 
