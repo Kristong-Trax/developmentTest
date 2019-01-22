@@ -722,37 +722,52 @@ class DoubleAnchorAtomicKpiCalculation(KpiAtomicKpisCalculator):
         if len(relevant_scenes) == 0:
             return np.nan
         for scene in relevant_scenes:
-            relevant_bay = self.check_bay(scene, threshold, **filter_products_after_exclude)
-            if not relevant_bay:
-                continue
-            # this specifically checks to make sure each group is on opposite sides of the desired category
-            # for instance, this KPI will not pass if the same filter group is on each side
-            for situation in [['B', 'C'], ['C', 'B']]:
-                pass_side = 0
+            filters_separate.update({'scene_fk': scene})
+            matches = self._tools.match_product_in_scene
+            relevant_probe_group = matches[matches['scene_fk'] == scene]
+            for probe_group in relevant_probe_group['probe_group_id'].unique().tolist():
+                relevant_bay = self.check_bay(relevant_probe_group, probe_group, threshold,
+                                              **filter_products_after_exclude)
+                # relevant_bay = self.check_bay(scene, threshold, **filter_products_after_exclude)
+                if not relevant_bay:
+                    continue
+                # this specifically checks to make sure each group is on opposite sides of the desired category
+                # for instance, this KPI will not pass if the same filter group is on each side
+                for situation in [['B', 'C'], ['C', 'B']]:
+                    pass_side = 0
 
-                left_filter = filters[situation[0]]
-                left_filter.update({'bay_number': relevant_bay['left']})
-                left_filter.update({'scene_fk': scene})
+                    left_filter = filters[situation[0]]
+                    left_filter.update({'bay_number': relevant_bay['left']})
+                    left_filter.update({'scene_fk': scene})
 
-                right_filter = filters[situation[1]]
-                right_filter.update({'bay_number': relevant_bay['right']})
-                right_filter.update({'scene_fk': scene})
+                    right_filter = filters[situation[1]]
+                    right_filter.update({'bay_number': relevant_bay['right']})
+                    right_filter.update({'scene_fk': scene})
 
-                for direction, direction_filter in {'left': left_filter, 'right': right_filter}.items():
-                    edge = self._tools.calculate_products_on_edge(position=direction,
-                                                                  edge_population=filter_products_after_exclude,
-                                                                  min_number_of_shelves=min_shelves,
-                                                                  **direction_filter)
-                    if edge[0] > 0:
-                        pass_side += 1
-                if pass_side == 2:
-                    return 100
+                    for direction, direction_filter in {'left': left_filter, 'right': right_filter}.items():
+                        edge = self._tools.calculate_products_on_edge(position=direction,
+                                                                      edge_population=filter_products_after_exclude,
+                                                                      min_number_of_shelves=min_shelves,
+                                                                      **direction_filter)
+                        if edge[0] > 0:
+                            pass_side += 1
+                    if pass_side == 2:
+                        return 100
         return 0
 
-    def check_bay(self, scene, threshold, **filters):
+    def check_bay_no_probe(self, scene, threshold, **filters):
         matches = self._tools.match_product_in_scene
         relevant_bays = matches[
             (matches['product_fk'].isin(filters['product_fk'])) & (matches['scene_fk'] == scene)]
+        relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
+        relevant_bays = relevant_bays[relevant_bays['freq'] >= threshold]['bay_number'].unique().tolist()
+        if relevant_bays:
+            relevant_bays.sort()
+            return {'left': relevant_bays[0], 'right': relevant_bays[-1]}
+        return {}
+
+    def check_bay(self, matches, probe_group, threshold, **filters):
+        relevant_bays = matches[(matches['product_fk'].isin(filters['product_fk'])) & (matches['probe_group_id'] == probe_group)]
         relevant_bays['freq'] = relevant_bays.groupby('bay_number')['bay_number'].transform('count')
         relevant_bays = relevant_bays[relevant_bays['freq'] >= threshold]['bay_number'].unique().tolist()
         if relevant_bays:
