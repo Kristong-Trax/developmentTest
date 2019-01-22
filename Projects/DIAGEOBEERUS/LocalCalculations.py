@@ -20,12 +20,12 @@ sessions = [
     'FCE90A66-4CD9-4D30-9C26-A6524075F1A5'
 ]
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageobeerus calculations')
-    Config.init()
-    project_name = 'diageobeerus'
-    data_provider = KEngineDataProvider(project_name)
-    for session in sessions:
-        data_provider.load_session_data(session)
-        output = Output()
-        Calculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageobeerus calculations')
+#     Config.init()
+#     project_name = 'diageobeerus'
+#     data_provider = KEngineDataProvider(project_name)
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         Calculations(data_provider, output).run_project_calculations()
