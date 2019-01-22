@@ -52,7 +52,7 @@ class DIAGEOCO_SANDToolBox:
         self.set_templates_data = {}
         self.match_display_in_scene = self.get_match_display()
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def main_calculation(self):
         """
@@ -68,7 +68,10 @@ class DIAGEOCO_SANDToolBox:
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
         self.global_gen.tool_box.DIAGEO = 'DIAGEO'
-        self.global_gen.diageo_global_assortment_function_v2()
+        assortment_res_dict = self.global_gen.diageo_global_assortment_function_v2()
+        self.common_v2.save_json_to_new_tables(assortment_res_dict)
+        menus_res_dict = self.global_gen.diageo_global_share_of_menu_cocktail_function()
+        self.common_v2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0
