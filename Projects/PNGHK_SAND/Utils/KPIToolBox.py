@@ -342,6 +342,10 @@ class PNGHKToolBox:
 
         for numerator_id, denominator_id, context_id in results_dict.keys():
             result, numerator, denominator = results_dict[numerator_id, denominator_id, context_id]
+            if kpi_fk in (2022,2023,2024):
+                temp = context_id
+                context_id = denominator_id
+                denominator_id = temp
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
                                             context_id=context_id, numerator_result=numerator,
                                            denominator_result=denominator, result=result, score=result)
