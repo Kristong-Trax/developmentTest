@@ -384,7 +384,7 @@ class PNGHKToolBox:
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
             if shelfs_to_include != "":
                 shelfs_to_include = int(shelfs_to_include)
-                scene_df = scene_df[scene_df['shelf_number'] <= shelfs_to_include]
+                scene_df = scene_df[scene_df['shelf_number_from_bottom'] <= shelfs_to_include]
 
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
