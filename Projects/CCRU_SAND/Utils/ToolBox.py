@@ -3066,7 +3066,11 @@ class CCRU_SANDKPIToolBox:
                     identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
-                self.write_kpi_tree(kpi_set_type, kpis, identifier_parent=identifier_parent)
+                try:
+                    self.write_kpi_tree(kpi_set_type, kpis, identifier_parent=identifier_parent)
+                except Exception as e:
+                    print 'write_to_kpi_results_new Exception Error: {}'.format(e)
+
         return
 
     def write_kpi_tree(self, kpi_set_type, kpis, parent='root', identifier_parent=None):
