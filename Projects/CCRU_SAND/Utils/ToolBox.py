@@ -2497,11 +2497,11 @@ class CCRU_SANDKPIToolBox:
             for param in params:
                 if param.get('level') == 2 and param.get('KPI Set Type') == 'Equipment':
 
-                    kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
+                    kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng').strip()
                     kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
-                    children = param.get('Children').replace('\n','').replace(' ', '').split(',')
+                    children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
 
                     sum_of_scores = 0
                     sum_of_weights = 0
@@ -2512,8 +2512,8 @@ class CCRU_SANDKPIToolBox:
                             atomic_kpi_name = param_child.get('Channel') + '@' + param_child.get('KPI name Eng')
                             atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk'].values[0]
                             atomic_kpi_name = param_child.get('KPI name Eng')
-                            target, weight = target_data.get(kpi_conversion.get(atomic_kpi_name))
-                            target = target if target else None
+                            target = target_data.get(kpi_conversion.get(atomic_kpi_name))
+                            target, weight = target if target else (None, None)
                             weight = 1
                             if target:
                                 if (type(target) is str or type(target) is unicode) and ',' in target:
