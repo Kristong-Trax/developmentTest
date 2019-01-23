@@ -250,6 +250,8 @@ class PNGHKToolBox:
                 filters[entity_name] = entity
                 numerator = self.tools.get_filter_condition(df, **filters).sum()
                 del filters[entity_name]
+                if numerator == 0:
+                    continue
                 result = float(numerator) / float(denominator)
                 numerator_id = df[df[entity_name] == entity][entity_name_for_fk].values[0]
                 self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
@@ -258,7 +260,7 @@ class PNGHKToolBox:
 
     def calculate_linear_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
-        kpi_fk, numerator_id, denominator_id = self.common.get_kpi_fk_by_kpi_name(kpi_name, get_numerator=True)
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, get_numerator=False)
         if kpi_fk is None:
             Log.warning("There is no matching Kpi fk for kpi name: " + kpi_name)
             return
@@ -297,7 +299,7 @@ class PNGHKToolBox:
                 category = row[Const.CATEGORY]
                 if category != "":
                     if category == Const.EACH:
-                        categories = Const.CATEGORIES
+                        categories = set(self.df['category'])
                     else:
                         categories = [category]
                 else:
@@ -316,10 +318,14 @@ class PNGHKToolBox:
                         all_numerators = [row[Const.NUMERATOR]]
                     denominator = scene_size if scene_size != "" else \
                         df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                    if denominator == 0:
+                        continue
                     for entity in all_numerators:
                         filters[entity_name] = entity
                         numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                         del filters[entity_name]
+                        if numerator == 0:
+                            continue
                         result = float(numerator) / float(denominator) if denominator != 0 else 0
                         try:
                             numerator_id = self.all_products[self.all_products[entity_name] ==
@@ -378,7 +384,7 @@ class PNGHKToolBox:
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
             if shelfs_to_include != "":
                 shelfs_to_include = int(shelfs_to_include)
-                scene_df = scene_df[scene_df['shelf_number'] <= shelfs_to_include]
+                scene_df = scene_df[scene_df['shelf_number_from_bottom'] <= shelfs_to_include]
 
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
