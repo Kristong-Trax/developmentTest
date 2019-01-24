@@ -173,12 +173,14 @@ class CCBZA_ToolBox:
                                             AVAILABLITY_IF_THEN: self.availability_against_competitors_scene,
                                             AVAILABLITY_MAJORITY: self.calculate_availability_competitors_majority,
                                             AVAILABILITY_AND_GROUP_OR: self.availability_and_or_scene}
+
         self.availability_by_scene_router = {AVAILABILITY_SKU_FACING_OR: self.get_availability_results_scene_table,
                                              AVAILABILITY_SKU_FACING_AND: self.get_availability_results_scene_table,
                                              AVAILABLITY_IF_THEN: self.get_availability_results_scene_table,
                                              AVAILABILITY_POS: self.get_availability_results_scene_table,
                                              AVAILABLITY_MAJORITY: self.get_availability_results_scene_table,
                                              AVAILABILITY_AND_GROUP_OR: self.get_availability_results_scene_table}
+
         self.availability_router = {AVAILABILITY_SKU_FACING_AND: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_SKU_FACING_OR: self.calculate_availability_sku_and_or,
                                     AVAILABILITY_POSM: self.calculate_availability_posm,
@@ -202,11 +204,37 @@ class CCBZA_ToolBox:
                         self.calculate_availability_scene(atomic_kpis_data)
                     elif kpi_type == 'Price':
                         self.calculate_price_scene(atomic_kpis_data)
+                    elif kpi_type == 'SOS':
+                        self.calculate_sos_scene(atomic_kpis_data)
                     else:
                         Log.warning("KPI of type '{}' is not supported by scene calculations".format(kpi_type))
                         continue
         if not self.common.kpi_results.empty:
             self.common.commit_results_data(result_entity='scene')
+
+    def calculate_sos_scene(self, atomic_kpis_data):
+        for i in xrange(len(atomic_kpis_data)):
+            atomic_kpi = atomic_kpis_data.iloc[i]
+            is_by_scene = self.is_by_scene(atomic_kpi)
+            if is_by_scene:
+                general_filters = self.get_general_calculation_parameters(atomic_kpi)
+                scene_result = 0
+                if general_filters['scene_fk']:
+                    filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **general_filters)]
+                    identifier_result = self.get_identifier_result_scene(atomic_kpi)
+                    if not filtered_scif.empty:
+                        sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
+                        # number_of_conditions = len(sos_filters.items())
+                        conditions_results = []
+                        for condition, filters in sos_filters.items():
+                            target = float(filters.pop('target')) / 100
+                            ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif,
+                                                                                         sos_filters[condition])
+                            condition_score = 100 if ratio >= target else 0
+                            conditions_results.append(condition_score)
+                        if conditions_results:
+                            scene_result = 100 if all(conditions_results) else 0
+                    self.add_scene_atomic_result_to_db(scene_result, atomic_kpi, identifier_result)
 
     def calculate_price_scene(self, atomic_kpis_data):
         for i in xrange(len(atomic_kpis_data)):
@@ -319,7 +347,6 @@ class CCBZA_ToolBox:
         identifier_result['session_fk'] = self.session_info['pk'].values[0]
         identifier_result['store_fk'] = self.session_info['store_fk'].values[0]
         return identifier_result
-
 
     def calculate_availability_competitors_majority(self, atomic_kpi, identifier_result):
         target = float(atomic_kpi[TARGET])
@@ -473,9 +500,14 @@ class CCBZA_ToolBox:
         return scif[scif[MANUFACTURER_NAME] == KO_PRODUCTS]
 
     def get_template_path(self):
-        new = '' if str(self.data_provider.visit_date) < '2018-11-01' else '_November'
+        # new = '' if str(self.data_provider.visit_date) < '2018-11-01' else '_November'
+        suffix = ''
+        if (str(self.data_provider.visit_date) >= '2018-11-01') and (str(self.data_provider.visit_date) <= '2018-12-31'):
+            suffix = '_November'
+        elif str(self.data_provider.visit_date) > '2018-12-31':
+            suffix = '_January'
         store_type = self.store_data['store_type'].values[0]
-        template_name = 'Template_{}{}.xlsx'.format(store_type, new)
+        template_name = 'Template_{}{}.xlsx'.format(store_type, suffix)
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', template_name)
 
     def get_template_data(self):
@@ -689,8 +721,8 @@ class CCBZA_ToolBox:
 
                         identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
                         self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
-                    else:
-                        is_by_scene = False
+                    # else:
+                    #     is_by_scene = False
                 else:
                     filters['scene_id'] = list_of_scenes
                     filtered_df = self.merged_matches_scif[self.tools.get_filter_condition(self.merged_matches_scif, **filters)]
@@ -922,40 +954,55 @@ class CCBZA_ToolBox:
             number_of_conditions = 0
             identifier_result = self.get_identfier_result_atomic(atomic_kpi)
             conditions_details = []
+            is_by_scene = self.is_by_scene(atomic_kpi)
             if general_filters['scene_fk']:
-                scif = self.scif.copy()
-                filtered_scif = scif[self.tools.get_filter_condition(scif, **general_filters)]
-                if not filtered_scif.empty:
-                    sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
-                    number_of_conditions = len(sos_filters.items())
-                    conditions_results = []
-                    for condition, filters in sos_filters.items():
-                        target = float(filters.pop('target')) / 100
-                        ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
-                        condition_score = 100 if ratio >= target else 0
-                        conditions_results.append(condition_score)
-                        conditions_details.append({'ratio': ratio, 'num_res': num_res, 'denom_res': denom_res,
-                                                   'target': target})
+                if is_by_scene:
+                    session_results = self.get_atomic_results_all_scenes(atomic_kpi, general_filters['scene_fk'])
+                    if session_results:
+                        atomic_result = 100 if all(session_results) else 0
 
+                        identifier_result.update({'session_fk': self.session_info['pk'].values[0]})
+                        self.add_scene_hierarchy_on_session_level(atomic_kpi, identifier_result)
+                else:
+                    scif = self.scif.copy()
+                    filtered_scif = scif[self.tools.get_filter_condition(scif, **general_filters)]
+                    if not filtered_scif.empty:
+                        sos_filters = self.get_sos_calculation_parameters(atomic_kpi)
+                        number_of_conditions = len(sos_filters.items())
+                        conditions_results = []
+                        for condition, filters in sos_filters.items():
+                            target = float(filters.pop('target')) / 100
+                            ratio, num_res, denom_res = self.calculate_sos_for_condition(filtered_scif, sos_filters[condition])
+                            condition_score = 100 if ratio >= target else 0
+                            conditions_results.append(condition_score)
+                            conditions_details.append({'ratio': ratio, 'num_res': num_res, 'denom_res': denom_res,
+                                                       'target': target})
 
-                        custom_score = self.get_pass_fail(condition_score)
-                        atomic_name ='{}_{}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
-                        kpi_fk_cond = self.common.get_kpi_fk_by_kpi_type(atomic_name)
+                            custom_score = self.get_pass_fail(condition_score)
+                            atomic_name ='{}_{}'.format(atomic_kpi[ATOMIC_KPI_NAME], condition)
+                            kpi_fk_cond = self.common.get_kpi_fk_by_kpi_type(atomic_name)
 
-                        self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=self.ko_id, numerator_result=num_res,
-                                                       denominator_id=self.store_id, denominator_result=denom_res,
-                                                       result=ratio, score=custom_score,
-                                                       identifier_parent=identifier_result,
-                                                       target=target, should_enter=True)
+                            self.common.write_to_db_result(fk=kpi_fk_cond, numerator_id=self.ko_id, numerator_result=num_res,
+                                                           denominator_id=self.store_id, denominator_result=denom_res,
+                                                           result=ratio, score=custom_score,
+                                                           identifier_parent=identifier_result,
+                                                           target=target, should_enter=True)
 
-                    if conditions_results:
-                        atomic_result = 100 if all(conditions_results) else 0
+                        if conditions_results:
+                            atomic_result = 100 if all(conditions_results) else 0
 
             atomic_score = self.calculate_atomic_score(atomic_result, max_score)
             self.add_kpi_result_to_kpi_results_container(atomic_kpi, atomic_score)
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
             # write atomic result to db aggregated conditions- need mobile mock-up grocery
+            if is_by_scene:
+                target_score = max_score if max_score else None
+                self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, denominator_id=self.store_id,
+                                               score=atomic_score, identifier_parent=identifier_parent,
+                                               identifier_result=identifier_result, should_enter=True,
+                                               target=target_score)
             if number_of_conditions > 0:
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
+                # kpi_fk = self.common.get_kpi_fk_by_kpi_type(atomic_kpi[ATOMIC_KPI_NAME])
                 if max_score:
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.ko_id, denominator_id=self.store_id,
                                                    score=atomic_score, identifier_parent=identifier_parent,
