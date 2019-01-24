@@ -14,6 +14,7 @@ class UniqueDistributionPerManufacturer_KPI(GfkDistributionBaseCalculationScript
             "population": {
                 "include": {
                     "category_local_name": ["Washing Machines"],
+                    "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
                 "include_operator": "and"
