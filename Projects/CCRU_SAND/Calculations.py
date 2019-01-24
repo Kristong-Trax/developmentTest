@@ -146,32 +146,38 @@ class ProjectCalculations:
             #     Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
             #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
-        Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
-        self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
-        self.json.create_kpi_data_json('gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
-        self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
-        self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
-                                         kpi_source[GAPS][SET])
+        if kpi_source[GAPS][SET]:
+            Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
+            self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
+            self.json.create_kpi_data_json('gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
+            self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
+            self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
+                                             kpi_source[GAPS][SET])
 
-        Log.info('Importing Contract Execution template')
-        self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
+        if kpi_source[CONTRACT][FILE]:
+            Log.info('Importing Contract Execution template')
+            self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
 
-        Log.info('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
-        include_to_contract = True if self.json.project_kpi_dict.get('contract') else False
-        self.tool_box.set_kpi_set(kpi_source[TOPSKU][SET], TOPSKU)
-        self.tool_box.calculate_top_sku(include_to_contract,
-                                        kpi_source[TOPSKU][SET])
+        if kpi_source[TOPSKU][SET]:
+            Log.info('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
+            include_to_contract = True if self.json.project_kpi_dict.get('contract') else False
+            self.tool_box.set_kpi_set(kpi_source[TOPSKU][SET], TOPSKU)
+            self.tool_box.calculate_top_sku(include_to_contract,
+                                            kpi_source[TOPSKU][SET])
 
         if self.json.project_kpi_dict.get('contract'):
-            Log.info('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
-            self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
-            self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
-                                                        kpi_source[EQUIPMENT][SET],
-                                                        kpi_source[KPI_CONVERSION][FILE])
-            Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
-            self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
-            self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
-                                                       kpi_source[CONTRACT][SET])
+            if kpi_source[EQUIPMENT][SET]:
+                Log.info('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
+                self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
+                self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
+                                                            kpi_source[EQUIPMENT][SET],
+                                                            kpi_source[KPI_CONVERSION][FILE])
+
+            if kpi_source[CONTRACT][SET]:
+                Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
+                self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
+                self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
+                                                           kpi_source[CONTRACT][SET])
 
         Log.info('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()
@@ -188,4 +194,3 @@ class ProjectCalculations:
             self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         return self._rds_conn
-

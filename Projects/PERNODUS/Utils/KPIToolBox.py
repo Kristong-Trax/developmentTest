@@ -57,6 +57,8 @@ class PERNODUSToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_sub_brand_data = pd.read_sql_query(self.get_sub_brand_data(), self.rds_conn.db)
+        self.kpi_sub_category_data = pd.read_sql_query(self.get_sub_category_data(), self.rds_conn.db)
+
         self.kpi_results_queries = []
         self.Presence_template = parse_template(TEMPLATE_PATH, "Presence")
         self.BaseMeasure_template = parse_template(TEMPLATE_PATH, "Base Measurement")
@@ -147,7 +149,7 @@ class PERNODUSToolBox:
                                                              additional={'minimum_facing_for_block': 2})
 
         score = 0
-        if(result.is_block == True):
+        if(result.is_block.any() == True):
             score = 1
         else:
             pass
@@ -424,11 +426,22 @@ class PERNODUSToolBox:
                     if len(edge_facings) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
 
+            category_list = []
+            for product_fk in edge_facings['product_fk']:
+                try:
+                    sub_category_name = self.products['sub_category'][self.products['product_fk'] == product_fk].iloc[0]
+                    category_list.append(sub_category_name)
+                except:
+                    category_list.append('')
+
+            category_df = pd.DataFrame({'sub_category':category_list})
+            edge_facings = pd.concat([edge_facings,category_df], axis=1)
             edge_facings = self.get_filter_condition(edge_facings, **filters)
-            if edge_facings == None:
+
+            if edge_facings.any() == False:
                 edge_facings = 0
-            elif edge_facings >= 1:
-                return 1
+            elif edge_facings.any() == True:
+                return  1
 
         return edge_facings
 
@@ -588,3 +601,10 @@ class PERNODUSToolBox:
                    select *
                    from static.sub_brand
                """
+
+    @staticmethod
+    def get_sub_category_data():
+        return """
+                       select *
+                       from static_new.sub_category
+                   """

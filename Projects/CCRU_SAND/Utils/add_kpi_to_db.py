@@ -253,6 +253,10 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts):
             else:
                 Log.info("KPI '{}' already exists for KPI Set '{}'. Ignored".format(kpi_name, set_name))
 
+            if i % 10 == 0:
+                self.aws_conn.db.commit()
+                cur = self.aws_conn.db.cursor()
+
         self.aws_conn.db.commit()
 
     def add_atomics_to_static(self):
@@ -290,6 +294,11 @@ class CCRU_SANDAddKPIs(CCRU_SANDConsts):
                 self.kpi_counter['atomic'] += 1
             else:
                 Log.info("Atomic '{}' already exists for KPI '{}' Set '{}'. Ignored".format(atomic_name, kpi_name, set_name))
+
+            if i % 10 == 0:
+                self.aws_conn.db.commit()
+                cur = self.aws_conn.db.cursor()
+
         self.aws_conn.db.commit()
 
 
@@ -305,7 +314,7 @@ if __name__ == '__main__':
     # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/idanr/Desktop/super.xlsx')
     # kpi = CCRU_SANDAddKPIs('ccru_sand', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - Contract Execution.xlsx')
-    kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
+    kpi = CCRU_SANDAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
