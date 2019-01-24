@@ -1,7 +1,8 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+#from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Common import Common
 import os
@@ -50,10 +51,10 @@ class CCKRToolBox:
         kpi_path = os.path.dirname(os.path.realpath(__file__))
         base_file = os.path.basename(kpi_path)
         kpi_info = pd.read_excel(
-            os.path.join(kpi_path[:- len(base_file)], 'Data', 'CC Korea - Availability KPI_120718.xlsx'),
+            os.path.join(kpi_path[:- len(base_file)], 'Data', 'Template.xlsx'),
             sheetname="KPI")
         file_template = pd.read_excel(
-            os.path.join(kpi_path[:- len(base_file)], 'Data', 'CC Korea - Availability KPI_120718.xlsx'),
+            os.path.join(kpi_path[:- len(base_file)], 'Data', 'Template.xlsx'),
             sheetname="Template")
         self.kpi_template_info = pd.DataFrame(kpi_info)  # contains the kpis + ean codes
         self.kpi_metadata = self.data_provider.kpi  # information about kpis such as (presentation order)
@@ -89,6 +90,7 @@ class CCKRToolBox:
 
         kpi_fks = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == row[1]['Atomic Kpi Name']]
         if kpi_fks.empty:
+            print(row[1]['Atomic Kpi Name'])
             Log.error("differences between kpi template and kpi static table in DB")
             return
         kps_name = kpi_fks['kpi_set_name'].iloc[0]
