@@ -103,13 +103,12 @@ class MSCToolBox:
         return passed_counter >= target
 
     # availability calculations
-    def calculate_availability(self, kpi_line, relevant_scif):  # V
+    def calculate_availability(self, kpi_line, relevant_scif):
         """
         checks if all the lines in the availability sheet passes the KPI (there is at least one product
         in this relevant scif that has the attributes).
         :param relevant_scif: filtered scif
-        :param isnt_dp: if "store attribute" in the main sheet has DP, and the store is not DP, we shouldn't calculate
-        DP lines
+        :param minimum_facings: minimum facings required to pass
         :param kpi_line: line from the availability sheet
         :return: boolean
         """
@@ -117,28 +116,47 @@ class MSCToolBox:
         minimum_facings = kpi_line[Const.MINIMUM_FACINGS]
         return filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
 
-    def filter_scif_availability(self, kpi_line, relevant_scif):  # V
+    def calculate_double_availability(self, kpi_line, relevant_scif):
+        group_1_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=1)
+        group_1_minimum_facings = kpi_line[Const.GROUP1_MINIMUM_FACINGS]
+        if not group_1_scif['facings'].sum() >= group_1_minimum_facings:
+            return False
+
+        group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
+        group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
+        return group_2_scif['facings'].sum() >= group_2_minimum_facings
+
+    def filter_scif_availability(self, kpi_line, relevant_scif, group=None):
         """
         calls filter_scif_specific for every column in the template of availability
         :param kpi_line:
         :param relevant_scif:
+        :param group: used to indicate group for double availability
         :return:
         """
-        names_of_columns = {
-            Const.MANUFACTURER: "manufacturer_name",
-            Const.BRAND: "brand_name",
-            Const.TRADEMARK: "att2",
-            Const.SIZE: "size",
-            Const.NUM_SUB_PACKAGES: "number_of_sub_packages",
-            Const.PREMIUM_SSD: "Premium SSD",
-            Const.INNOVATION_BRAND: "Innovation Brand",
-        }
+        if group == 1:
+            names_of_columns = {
+                Const.GROUP1_BRAND: "brand_name",
+                Const.MANUFACTURER: "manufacturer_name"
+            }
+        elif group == 2:
+            names_of_columns = {
+                Const.GROUP2_BRAND: "brand_name",
+                Const.MANUFACTURER: "manufacturer_name"
+            }
+        else:
+            names_of_columns = {
+                Const.MANUFACTURER: "manufacturer_name",
+                Const.BRAND: "brand_name"
+                # Const.TRADEMARK: "att2",
+                # Const.SIZE: "size"
+            }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(
                 relevant_scif, kpi_line, name, names_of_columns[name])
         return relevant_scif
 
-    def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):  # V
+    def filter_scif_specific(self, relevant_scif, kpi_line, name_in_template, name_in_scif):
         """
         takes scif and filters it from the template
         :param relevant_scif: the current filtered scif
@@ -185,5 +203,5 @@ class MSCToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                return cell.split(",")
         return None

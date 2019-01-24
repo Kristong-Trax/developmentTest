@@ -4,7 +4,7 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.0.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.1.xlsx')
 
     # sheets
     KPIS = 'KPIs'
@@ -27,10 +27,8 @@ class Const(object):
     EXCLUDE = 'EXCLUDE'
 
     # Double Availability columns
-    GROUP1_PARAM = 'Group 1 Param'
-    GROUP1_VALUE = 'Group 1 Value'
-    GROUP2_PARAM = 'Group 2 Param'
-    GROUP2_VALUE = 'Group 2 Value'
+    GROUP1_BRAND = 'Brand Group 1'
+    GROUP2_BRAND = 'Brand Group 2'
     GROUP1_MINIMUM_FACINGS = 'Group 1 Minimum Facing'
     GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facings'
 
@@ -39,4 +37,6 @@ class Const(object):
     NUMBER_OF_SUB_PACKAGES = 'number_of_sub_packages'
     MINIMUM_BRANDS = 'Minimum Brands'
     ATT4 = 'att4'
+
+    NUMERIC_VALUES_TYPES = ['size']
 
