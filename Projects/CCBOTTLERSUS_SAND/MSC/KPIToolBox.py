@@ -102,6 +102,30 @@ class MSCToolBox:
                 return None
         return passed_counter >= target
 
+    # facings calculations
+    def calculate_facings(self, kpi_line, relevant_scif):
+        numerator_param = kpi_line[Const.NUMERATOR_TYPE]
+        numerator_values = self.does_exist(kpi_line, Const.NUMERATOR_VALUE)
+
+        denominator_param = self.does_exist(kpi_line, Const.DENOMINATOR_TYPE)
+        if denominator_param:
+            denominator_values = self.does_exist(kpi_line, Const.DENOMINATOR_VALUE)
+            denominator_scif = relevant_scif[relevant_scif[denominator_param].isin(denominator_values)]
+        else:
+            denominator_scif = relevant_scif
+
+        excluded_param = self.does_exist(kpi_line, Const.EXCLUDED_TYPE)
+        if excluded_param:
+            excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
+            denominator_scif = denominator_scif[~denominator_scif[excluded_param].isin(excluded_values)]
+
+        numerator_scif = denominator_scif[denominator_scif[numerator_param].isin(numerator_values)]
+
+        numerator_result = numerator_scif['facings'].sum()
+        denominator_result = denominator_scif['facings'].sum()
+
+        return
+
     # availability calculations
     def calculate_availability(self, kpi_line, relevant_scif):
         """
@@ -134,6 +158,11 @@ class MSCToolBox:
         :param group: used to indicate group for double availability
         :return:
         """
+        excluded_param = self.does_exist(kpi_line, Const.EXCLUDED_TYPE)
+        if excluded_param:
+            excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
+            relevant_scif = relevant_scif[~relevant_scif[excluded_param].isin(excluded_values)]
+
         if group == 1:
             names_of_columns = {
                 Const.GROUP1_BRAND: "brand_name",
@@ -147,9 +176,11 @@ class MSCToolBox:
         else:
             names_of_columns = {
                 Const.MANUFACTURER: "manufacturer_name",
-                Const.BRAND: "brand_name"
-                # Const.TRADEMARK: "att2",
-                # Const.SIZE: "size"
+                Const.BRAND: "brand_name",
+                Const.ATT1: "additional_attribute_1",
+                Const.ATT3: "additional_attribute_3",
+                Const.SIZE: "size",
+                Const.SUB_PACKAGES: "subpackages_num"
             }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(
@@ -183,8 +214,8 @@ class MSCToolBox:
             return self.calculate_availability
         elif kpi_type == Const.DOUBLE_AVAILABILITY:
             return self.calculate_double_availability
-        elif kpi_type == Const.PRESENCE:
-            return self.calculate_presence
+        elif kpi_type == Const.FACINGS:
+            return self.calculate_facings
         else:
             Log.warning(
                 "The value '{}' in column sheet in the template is not recognized".format(kpi_type))

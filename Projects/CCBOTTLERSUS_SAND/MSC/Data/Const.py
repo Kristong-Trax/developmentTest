@@ -10,9 +10,9 @@ class Const(object):
     KPIS = 'KPIs'
     AVAILABILITY = 'Availability'
     DOUBLE_AVAILABILITY = 'Double Availability'
-    PRESENCE = 'Presence'
+    FACINGS = 'Facings'
 
-    SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, PRESENCE]
+    SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, FACINGS]
 
     # KPIs columns
     KPI_NAME = 'KPI Name'
@@ -23,8 +23,13 @@ class Const(object):
     # Availability columns
     MANUFACTURER = 'manufacturer'
     BRAND = 'brand'
+    ATT1 = 'att1'
+    ATT3 = 'att3'
     MINIMUM_FACINGS = 'Minimum facings'
-    EXCLUDE = 'EXCLUDE'
+    SIZE = 'size'
+    SUB_PACKAGES = 'number_of_sub_packages'
+    EXCLUDED_TYPE = 'excluded_type'
+    EXCLUDED_VALUE = 'excluded_value'
 
     # Double Availability columns
     GROUP1_BRAND = 'Brand Group 1'
@@ -32,11 +37,13 @@ class Const(object):
     GROUP1_MINIMUM_FACINGS = 'Group 1 Minimum Facing'
     GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facings'
 
-    # Presence columns
-    SIZE = 'size'
-    NUMBER_OF_SUB_PACKAGES = 'number_of_sub_packages'
-    MINIMUM_BRANDS = 'Minimum Brands'
-    ATT4 = 'att4'
+    # Facings columns
+    NUMERATOR_TYPE = 'numerator_types'
+    NUMERATOR_VALUE = 'numerator_value'
+    DENOMINATOR_TYPE = 'denominator_type'
+    DENOMINATOR_VALUE = 'denominator_value'
+
+
 
     NUMERIC_VALUES_TYPES = ['size']
 
