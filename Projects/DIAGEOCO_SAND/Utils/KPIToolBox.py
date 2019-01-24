@@ -52,7 +52,7 @@ class DIAGEOCO_SANDToolBox:
         self.set_templates_data = {}
         self.match_display_in_scene = self.get_match_display()
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def main_calculation(self):
         """
