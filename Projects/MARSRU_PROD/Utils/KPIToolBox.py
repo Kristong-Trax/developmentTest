@@ -1487,7 +1487,7 @@ class MARSRU_PRODKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             result = None
             if values_list:
-                if p.get('#Mars KPI NAME') in (2317, 4317):
+                if p.get('#Mars KPI NAME') == 2317:
 
                     top_eans = p.get('Values').split('\n')
                     top_products_in_store = self.scif[self.scif['product_ean_code'].isin(
@@ -1507,6 +1507,30 @@ class MARSRU_PRODKPIToolBox:
                         (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
 
                     if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
+                        result = 'FALSE'
+                    else:
+                        result = 'TRUE'
+
+                if p.get('#Mars KPI NAME') == 4317:
+
+                    top_eans = p.get('Values').split('\n')
+                    top_products_in_store = self.scif[self.scif['product_ean_code'].isin(
+                        top_eans)]['product_fk'].unique().tolist()
+
+                    min_shelf, max_shelf = values_list.split('-')
+                    min_shelf, max_shelf = int(min_shelf), int(max_shelf)
+                    top_products_on_golden_shelf = self.match_product_in_scene[
+                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+                    # top_products_outside_golden_shelf = self.match_product_in_scene[
+                    #     (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                    #     (self.match_product_in_scene['shelf_number_from_bottom'] < min_shelf) &
+                    #     (self.match_product_in_scene['shelf_number_from_bottom'] > max_shelf) &
+                    #     (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+
+                    if len(top_products_on_golden_shelf) < len(top_products_in_store):  # or len(top_products_outside_golden_shelf) > 0:
                         result = 'FALSE'
                     else:
                         result = 'TRUE'
