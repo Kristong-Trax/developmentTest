@@ -20,16 +20,20 @@ SUM = "SUM"
 class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
 
     def get_compliance(self, manual_planogram_data=None, manual_scene_data=None):
-        self.planogram_matches = self._data_provider.planogram_data if manual_planogram_data is\
-                                                                  None else manual_planogram_data
-        self.scene_matches = self._data_provider.matches if manual_scene_data is None else manual_scene_data
-        self._filter_irrelevant_out()
-        self.scene_bays = self.scene_matches[Keys.BAY_NUMBER].unique().tolist()
-        self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
-        if len(self.scene_bays) == 1 and self.scene_bays == self.pog_bays:
-            tag_compliance, score = self._local_get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
-            return tag_compliance
-        return self._get_iterated_position_trial()
+        try:
+            self.planogram_matches = self._data_provider.planogram_data if manual_planogram_data is\
+                                                                      None else manual_planogram_data
+            self.scene_matches = self._data_provider.matches if manual_scene_data is None else manual_scene_data
+            self._filter_irrelevant_out()
+            self.scene_bays = self.scene_matches[Keys.BAY_NUMBER].unique().tolist()
+            self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
+            if len(self.scene_bays) == 1 and self.scene_bays == self.pog_bays:
+                tag_compliance, score = self._local_get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
+                return tag_compliance
+            return self._get_iterated_position_trial()
+        except Exception as e:
+            Log.error(e.message)
+            return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
 
     def _filter_irrelevant_out(self):
         """
@@ -130,8 +134,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
             line = self.all_combinations_matches.loc[scene_bay]
             if line[SUM] == 0 or True not in line.drop(SUM).values:
                 continue
-            scores = self.all_combinations_scores.loc[scene_bay].sort_values(ascending=False)
-            pog_bay = scores.index[0]
+            pog_bay = line.drop(SUM).sort_values(ascending=False).index[0]
             final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
                                                                ignore_index=True)
             self._delete_bay_from_dfs(scene_bay, pog_bay)
@@ -254,7 +257,7 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 if __name__ == '__main__':
     LoggerInitializer.init('POG compliance test')
     Config.init()
-    path = "/home/elyashiv/Desktop/backup/POGs/6/"
+    path = "/home/elyashiv/Desktop/backup/POGs/8/"
     planogram_data = pd.read_csv(path + "pog.csv")
     scene_data = pd.read_csv(path + "scene.csv")
     pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)

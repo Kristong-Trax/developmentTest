@@ -43,14 +43,18 @@ SUM_POLICY_ATTRIBUTES = "policy_attrs"
 NECESSARY_COLUMNS = [STORE_TYPE, STORE_NUMBER_1, TEMPLATE_FK, TEMPLATE_GROUP, REGION_FK, RETAILER_FK]
 
 
-class GOOGLEJP_SANDPlanogramFinder(PlanogramFinderBaseClass):
+class PlanogramFinder(PlanogramFinderBaseClass):
 
     def get_planogram_id(self, project_name=None, scene_id=None):
-        self.project_name = project_name if project_name else self._data_provider._project_name
-        self.scene_id = scene_id if scene_id else self._data_provider._scene_id
-        self.rds_conn = self.rds_connection()
-        self.get_scene_and_planograms_details()
-        return self.get_planogram_id_by_policies()
+        try:
+            self.project_name = project_name if project_name else self._data_provider._project_name
+            self.scene_id = scene_id if scene_id else self._data_provider._scene_id
+            self.rds_conn = self.rds_connection()
+            self.get_scene_and_planograms_details()
+            return self.get_planogram_id_by_policies()
+        except Exception as e:
+            Log.error(e.message)
+            return None
 
     def get_planogram_id_by_policies(self):
         filtered_planograms = self.planogram_policies
