@@ -378,8 +378,6 @@ class PNGHKToolBox:
             df = df[df['stacking_layer'] == 1]
         # if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
         #     self.exclude hanger()
-        # if self.kpi_excluding[Const.EXCLUDE_STOCK] == Const.EXCLUDE:
-        #     self.exclude stock()
         if self.kpi_excluding[Const.EXCLUDE_OSD] == Const.EXCLUDE:
             df = self.filter_out_osd(df)
         elif self.kpi_excluding[Const.EXCLUDE_SKU] == Const.EXCLUDE:
