@@ -384,6 +384,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
 
                 if not scenes:
                     return 0
@@ -444,7 +445,7 @@ class CCRU_SANDKPIToolBox:
         if params.get('Formula').strip() == 'each SKU hits facings target':
             if params.get('Target'):
                 number_of_fails = sum([x < int(params.get('Target')) for x in result])
-                result = 100 - round(number_of_fails / float(len(result)))
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 2)
             else:
                 result = 0
 
@@ -474,6 +475,7 @@ class CCRU_SANDKPIToolBox:
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     return 0
             else:
@@ -1055,6 +1057,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     if p.get('level') == 2:
                         scenes = []
@@ -1062,9 +1065,9 @@ class CCRU_SANDKPIToolBox:
                         return 0
             else:
                 scenes = self.get_relevant_scenes(p)
-            if p.get('Formula').strip() != 'number of SKU per Door RANGE':
+            if p.get('Formula').strip() == 'number of SKU per Door RANGE':
                 score = self.calculate_number_of_skus_per_door_range(p, scenes)
-            elif p.get('Formula').strip() != 'number of SKU per Door RANGE TOTAL':
+            elif p.get('Formula').strip() == 'number of SKU per Door RANGE TOTAL':
                 score = self.calculate_number_of_skus_per_door_range_total(p, scenes)
 
             if p.get('level') == 3:
@@ -1126,7 +1129,7 @@ class CCRU_SANDKPIToolBox:
             else:
                 doors_count += 1
         if doors_count:
-            result = eans_count / float(doors_count)
+            result = round(eans_count / float(doors_count), 2)
         else:
             result = 0
         if p.get('target_min') <= result <= p.get('target_max'):
@@ -1681,6 +1684,7 @@ class CCRU_SANDKPIToolBox:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
@@ -2141,7 +2145,7 @@ class CCRU_SANDKPIToolBox:
         self.update_kpi_scores_and_results(param, {'level': level,
                                                    'threshold': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
                                                    'weight': param.get('KPI Weight'),
-                                                   'result': score,
+                                                   # 'result': score,
                                                    'score': round(score),
                                                    'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
@@ -2223,7 +2227,7 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -3138,14 +3142,15 @@ class CCRU_SANDKPIToolBox:
             context_id = self.common.get_kpi_fk_by_kpi_type(kpi['kpi_name']) if parent == 'root' \
                 else (scene_id if scene_id else None)
 
-            if kpi['additional_level'] is not None:
-                additional_level = kpi
-                additional_level['parent'] = additional_level['kpi_id']
-                additional_level['level'] += 1
-                additional_level['additional_level'] = None
-                kpis = kpis.append(additional_level)
             if kpi['kpi_id'] != parent:
-                score, weight = self.write_kpi_tree(kpi_set_type, kpis, parent=kpi['kpi_id'], identifier_parent=identifier_result)
+                if kpi['additional_level'] is not None:
+                    additional_level = kpi.copy()
+                    additional_level['parent'] = additional_level['kpi_id']
+                    additional_level['level'] = additional_level['additional_level']
+                    additional_level['additional_level'] = None
+                    kpis = kpis.append(additional_level)
+                score, weight = self.write_kpi_tree(kpi_set_type, kpis, parent=kpi['kpi_id'],
+                                                    identifier_parent=identifier_result)
             else:
                 score = weight = 0
 
@@ -3158,14 +3163,16 @@ class CCRU_SANDKPIToolBox:
                 weight = kpi['weight']
                 target = kpi['threshold']
 
-            result = kpi['result']
             if kpi['format'] == 'STR':
+                result = kpi['result']
                 kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
                     'kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
                     result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
+            else:
+                result = kpi['result'] if kpi['level'] == 3 else kpi['score']
 
             group_score += score if score else 0
             group_weight += weight if weight else 0
