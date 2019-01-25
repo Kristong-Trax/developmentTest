@@ -92,7 +92,8 @@ class NESTLEUSToolBox:
                 ratio, numerator_length, denominator_length = self.linear_calc.calculate_linear_share_of_shelf_with_numerator_denominator(sos_filter, **general_filter)
 
                 numerator_length = int(round(numerator_length * 0.0393700787))
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                if numerator_length > 0:
+                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
                                                denominator_id=product_fk,
                                                result=numerator_length, score=numerator_length)
 
