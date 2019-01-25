@@ -75,8 +75,8 @@ class NESTLEUSToolBox:
 
                 facing_count = self.availability.calculate_availability(**sos_filter)
 
-                # print('count:' + str(facing_count))
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+                if facing_count > 0:
+                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
                                            numerator_result=facing_count,
                                            denominator_id=product_fk,
                                            result=facing_count, score=facing_count)
