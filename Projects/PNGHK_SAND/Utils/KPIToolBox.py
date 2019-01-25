@@ -320,12 +320,23 @@ class PNGHKToolBox:
             if row.empty:
                 continue
 
-            # filter df to only shelf_to_include or higher shelves
-            if row[Const.STORAGE_EXCLUSION_PRICE_TAG == 'N']:
-                shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
+            # filter df include OSD when needed
+            shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
+            shelfs_to_include = int(shelfs_to_include)
+            if row[Const.STORAGE_EXCLUSION_PRICE_TAG] == 'N':
                 if shelfs_to_include != "":
-                    shelfs_to_include = int(shelfs_to_include)
                     df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
+            # else:
+            #     scenes = set(scene_df['scene_fk'])
+            #     for scene in scenes:
+            #         df = scene_df[scene_df['scene_fk'] == scene]
+            #         if not self.scene_recognition_check_of_storage(scene):
+            #             if shelfs_to_include != "":
+            #                 df_list.append(df[df['shelf_number_from_bottom'] > shelfs_to_include])
+            #         else:
+            #             if shelfs_to_include != "":
+            #                 df_list.append((df[df['shelf_number_from_bottom'] > shelfs_to_include]) &
+            #                                (df[df['shelf_number'] != 1]))
 
             # if no osd rule is applied
             if (row[Const.HAS_OSD].values[0] == Const.NO):
@@ -335,13 +346,13 @@ class PNGHKToolBox:
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                        'bay_number','shelf_number']]
+                                                                                               'bay_number','shelf_number']]
 
                 const_scene_df = scene_df.copy()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
                         scene_df = const_scene_df[((const_scene_df['scene_fk'] == p['scene_fk']) &
-                                              (const_scene_df['shelf_number'] == p['shelf_number']))]
+                                                   (const_scene_df['shelf_number'] == p['shelf_number']))]
                         df_list.append(scene_df)
         if len(df_list) != 0:
             final_df = pd.concat(df_list)
