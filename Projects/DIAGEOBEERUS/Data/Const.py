@@ -23,7 +23,7 @@ class Const(object):
     COMPETITION, MANUFACTURER = "competition", "manufacturer"
 
     # KPIs columns:
-    KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT = "KPI Name", "KPI Group", "Score", "Target", "Weight"
+    KPI_NAME, KPI_GROUP, SCORE, TARGET, WEIGHT, TYPE = "KPI Name", "KPI Group", "Score", "Target", "Weight", "KPI type"
     TEMPLATE_GROUP = "Template Group/ Scene Type"
 
     # pricing columns:
@@ -83,8 +83,18 @@ class Const(object):
     DB_ON_NAMES = {
         MENU: {
             TOTAL: 'Menu Presence', MANUFACTURER: 'Menu Presence - Manufacturer',
-            SUB_BRAND: 'Menu Presence - Brand Variant'}}
+            SUB_BRAND: 'Menu Presence - Brand Variant'},
+        TAP_HANDLE: {
+            TOTAL: 'Tap Handle Availability', BRAND: 'Tap Handle Availability - Brand'
+        },
+        BEER_GLASSES: {
+            TOTAL: 'Guinness Glasses', BRAND: 'Guinness Glasses - Brand'
+        }}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment Off Premise", ON: "Assortment on Trade"}
+
+    # tap handle and beer glass columns
+    ATT1 = 'additional_attribute_1'
+    DISPLAY_BRAND = 'display_brand'
 
     PRODUCT_FK, STANDARD_TYPE, PASSED, FACINGS = "product_fk", "standard_type", "passed", "facings"
     COLUMNS_FOR_DISPLAY = [MANUFACTURER, PRODUCT_FK, PASSED]

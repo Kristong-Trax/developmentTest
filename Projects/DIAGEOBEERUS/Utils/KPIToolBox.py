@@ -19,6 +19,7 @@ from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.DB.Queries import Queries
 from Projects.DIAGEOBEERUS.Data.Const import Const
 from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
 
@@ -49,10 +50,12 @@ class DIAGEOBEERUSToolBox:
                                                   (self.all_products['is_active'] == 1)]
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'Diageo Plc']['manufacturer_fk'].iloc[0]
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_display_in_scene = self.get_match_display()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
-        self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scene_info = self.get_scene_info()
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         if self.store_info['store_type'].str.lower().values[0] == Const.ON:
@@ -62,7 +65,6 @@ class DIAGEOBEERUSToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif_without_empties = self.scif[~(self.scif['product_type'] == "Empty") &
                                               (self.scif['substitution_product_fk'].isnull())]
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.ps_data = PsDataProvider(self.data_provider, self.output)
@@ -141,9 +143,9 @@ class DIAGEOBEERUSToolBox:
         elif kpi_name == Const.MENU:  # on premise
             total_score = self.calculate_menu(scene_types, weight, target)
         elif kpi_name == Const.TAP_HANDLE:  # on premise
-            total_score = 0
+            total_score = self.calculate_tap_handles_and_beer_glasses(scene_types, kpi_name, weight)
         elif kpi_name == Const.BEER_GLASSES:  # on premise
-            total_score = 0
+            total_score = self.calculate_tap_handles_and_beer_glasses(scene_types, kpi_name, weight)
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
             return 0
@@ -649,6 +651,43 @@ class DIAGEOBEERUSToolBox:
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight
 
+    # tap handles and beer glasses
+    def calculate_tap_handles_and_beer_glasses(self, scene_types, kpi_name, weight):
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.BRAND])
+
+        store_format = self.store_info[Const.ATT1].iloc[0]
+        template = self.templates[Const.TAP_HANDLE_BEER_GLASSES_SHEET]
+        relevant_template = template[(template[Const.TYPE] == kpi_name) &
+                                     (template[Const.ATT1] == store_format)]
+
+        relevant_scenes = self.scene_info[self.scene_info['name'] == scene_types]['scene_fk'].tolist()
+
+        mdis = self.match_display_in_scene[self.match_display_in_scene['scene_fk'].isin(relevant_scenes)]
+        brands_present = mdis['name'].unique().tolist()
+        total_score = 0
+        for row in relevant_template[[Const.DISPLAY_BRAND, Const.WEIGHT]].drop_duplicates().itertuples():
+            brand_fk = self.get_brand_fk(row.display_brand)
+            result = 0
+            score = 0
+            if row.display_brand in brands_present:
+                result = 1
+                score = result * row.weight
+                total_score += score
+
+            self.common.write_to_db_result(
+                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result, score=score,
+                denominator_result=1, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                weight=row.weight, should_enter=True)
+
+        self.common.write_to_db_result(
+            fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=total_score,
+            denominator_result=len(relevant_template[Const.DISPLAY_BRAND].unique().tolist()), result=total_score,
+            score=total_score * weight, weight=weight,
+            identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+            identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
+        return total_score * weight
+
     # helpers
     def insert_all_levels_to_db(self, all_results, kpi_db_names, weight,
                                 should_enter=True, write_numeric=False, sub_brand_numeric=False):
@@ -838,6 +877,23 @@ class DIAGEOBEERUSToolBox:
         :return: manufacturer_fk
         """
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
+
+    def get_brand_fk(self, brand_name):
+        return self.all_products[self.all_products['brand_name'] == brand_name]['brand_fk'].iloc[0]
+
+    def get_match_display(self):
+        """
+        This function extracts the display matches data and saves it into one global data frame.
+        The data is taken from probedata.match_display_in_scene.
+        """
+        query = Queries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
+
+    def get_scene_info(self):
+        base = self.data_provider[Data.SCENES_INFO]
+        template_table = pd.read_sql_query('select pk, name from static.template', self.rds_conn.db)
+        return pd.merge(base, template_table, how='left', left_on='template_fk', right_on='pk')
 
     @staticmethod
     def does_exist(cell):
