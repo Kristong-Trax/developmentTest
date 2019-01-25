@@ -95,6 +95,10 @@ class DIAGEOBEERUSToolBox:
                               Const.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
                 self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
                                                       converters=converters, keep_default_na=False)
+            # elif sheet == Const.TAP_HANDLE_BEER_GLASSES_SHEET:
+            #     converters = {Const.DISPLAY_BRAND: lambda x: x.replace('\u2019', "'")}
+            #     self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False,
+            #                                           encoding='utf-8')
             else:
                 self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
 
@@ -639,17 +643,17 @@ class DIAGEOBEERUSToolBox:
             if manufacturer_fk == 0:
                 continue
             self.common.write_to_db_result(
-                fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
+                fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result * 100,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
                 target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=score, score=result, weight=weight * 100,
+            denominator_result=den_res, result=score * 100, score=result, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
-        return score * weight
+        return score * weight * 100
 
     # tap handles and beer glasses
     def calculate_tap_handles_and_beer_glasses(self, scene_types, kpi_name, weight):
@@ -659,7 +663,7 @@ class DIAGEOBEERUSToolBox:
         store_format = self.store_info[Const.ATT1].iloc[0]
         template = self.templates[Const.TAP_HANDLE_BEER_GLASSES_SHEET]
         relevant_template = template[(template[Const.TYPE] == kpi_name) &
-                                     (template[Const.ATT1] == store_format)]
+                                     (template[Const.ATT1].str.contains(store_format))]
 
         relevant_scenes = self.scene_info[self.scene_info['name'] == scene_types]['scene_fk'].tolist()
 
@@ -672,21 +676,21 @@ class DIAGEOBEERUSToolBox:
             score = 0
             if row.display_brand in brands_present:
                 result = 1
-                score = result * row.weight
+                score = result * row.Weight
                 total_score += score
 
             self.common.write_to_db_result(
-                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result, score=score,
+                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result * 100, score=score * 100,
                 denominator_result=1, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
-                weight=row.weight, should_enter=True)
+                weight=row.Weight * 100, should_enter=True)
 
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=total_score,
-            denominator_result=len(relevant_template[Const.DISPLAY_BRAND].unique().tolist()), result=total_score,
-            score=total_score * weight, weight=weight,
+            denominator_result=len(relevant_template[Const.DISPLAY_BRAND].unique().tolist()), result=total_score * 100,
+            score=total_score * weight * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk),
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
-        return total_score * weight
+        return total_score * weight * 100
 
     # helpers
     def insert_all_levels_to_db(self, all_results, kpi_db_names, weight,
@@ -879,7 +883,7 @@ class DIAGEOBEERUSToolBox:
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
 
     def get_brand_fk(self, brand_name):
-        return self.all_products[self.all_products['brand_name'] == brand_name]['brand_fk'].iloc[0]
+        return self.all_products[self.all_products['brand_name'] == str(brand_name)]['brand_fk'].iloc[0]
 
     def get_match_display(self):
         """
