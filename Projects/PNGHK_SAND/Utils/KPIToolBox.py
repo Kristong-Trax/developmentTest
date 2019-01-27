@@ -11,10 +11,7 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 
 __author__ = 'ilays'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PNGHK_template_2019_14_01.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'PNGHK_template_2019_24_01.xlsx')
 
 class PNGHKToolBox:
     LEVEL1 = 1
@@ -52,104 +49,6 @@ class PNGHKToolBox:
     # smart attributes from:
     # select * from probedata.match_product_in_probe;
     # select * from probedata.match_product_in_probe_state_value;
-
-
-
-    # def get_additional_product_data(self):
-    #     #####
-    #     # This queries are temporary until given in data provider.
-    #     #####
-    #
-    #     price_query = \
-    #         """
-    #         SELECT
-    #                 p.scene_fk as scene_fk,
-    #                 mpip.product_fk as product_fk,
-    #                 COALESCE(pr.substitution_product_fk, mpip.product_fk) as substitution_product_fk,
-    #                 mpn.match_product_in_probe_fk as probe_match_fk,
-    #                 mpn.value as price_value,
-    #                 mpas.state as number_attribute_state
-    #         FROM
-    #                 probedata.match_product_in_probe_number_attribute_value mpn
-    #                 LEFT JOIN static.number_attribute_brands_scene_types mpna on mpn.number_attribute_fk = mpna.pk
-    #                 LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpn.attribute_state_fk = mpas.pk
-    #                 JOIN probedata.match_product_in_probe mpip ON mpn.match_product_in_probe_fk = mpip.pk
-    #                 JOIN probedata.probe p ON p.pk = mpip.probe_fk
-    #                 JOIN static_new.product pr ON pr.pk = mpip.product_fk
-    #         WHERE
-    #                 p.session_uid = "{0}"
-    #         """.format(self.session_uid)
-    #
-    #     date_query = \
-    #         """
-    #         SELECT
-    #                 p.scene_fk as scene_fk,
-    #                 mpip.product_fk as product_fk,
-    #                 COALESCE(pr.substitution_product_fk, mpip.product_fk) as substitution_product_fk,
-    #                 mpd.match_product_in_probe_fk as probe_match_fk,
-    #                 mpd.value as date_value,
-    #                 mpd.original_value,
-    #                 mpas.state as date_attribute_state
-    #         FROM
-    #                 probedata.match_product_in_probe_date_attribute_value mpd
-    #                 LEFT JOIN static.date_attribute_brands_scene_types mpda ON mpd.date_attribute_fk = mpda.pk
-    #                 LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpd.attribute_state_fk = mpas.pk
-    #                 JOIN probedata.match_product_in_probe mpip ON mpd.match_product_in_probe_fk = mpip.pk
-    #                 JOIN probedata.probe p ON p.pk = mpip.probe_fk
-    #                 JOIN static_new.product pr ON pr.pk = mpip.product_fk
-    #         WHERE
-    #                 p.session_uid = "{0}"
-    #         """.format(self.session_uid)
-    #
-    #     price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
-    #     date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
-    #     matches = self.data_provider[Data.MATCHES]
-    #
-    #     merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
-    #                                            on=['probe_match_fk', 'product_fk', 'scene_fk'])
-    #     merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
-    #                                         on=['probe_match_fk', 'product_fk', 'scene_fk'])
-    #
-    #     merged_pricing_data.dropna(subset=['price_value'], inplace=True)
-    #     merged_dates_data.dropna(subset=['original_value'], inplace=True)
-    #
-    #     if not merged_pricing_data.empty:
-    #         try:
-    #             merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
-    #                                                               as_index=False)[['price_value']].first()
-    #         except Exception as e:
-    #             merged_pricing_data['price_value'] = 0
-    #             merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
-    #                                                               as_index=False)[['price_value']].first()
-    #             Log.info('There are missing numeric values: {}'.format(e))
-    #
-    #     if not merged_dates_data.empty:
-    #         merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
-    #         try:
-    #             merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
-    #                                                           as_index=False)[['fixed_date']].first()
-    #         except Exception as e:
-    #             merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
-    #                                                           as_index=False)[['fixed_date']].first()
-    #             Log.info('There is a dates integrity issue: {}'.format(e))
-    #     else:
-    #         merged_dates_data['fixed_date'] = None
-    #
-    #     merged_additional_data = self.scif\
-    #         .merge(merged_pricing_data, how='left',
-    #                left_on=['scene_id', 'item_id'],
-    #                right_on=['scene_fk', 'substitution_product_fk'])\
-    #         .merge(merged_dates_data, how='left',
-    #                left_on=['scene_id', 'item_id'],
-    #                right_on=['scene_fk', 'substitution_product_fk'])\
-    #         .merge(self.all_products, how='left',
-    #                left_on='item_id',
-    #                right_on='product_fk',
-    #                suffixes=['', '_all_products'])\
-    #         .dropna(subset=['fixed_date', 'price_value'],
-    #                 how='all')
-    #
-    #     return merged_additional_data
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -200,9 +99,9 @@ class PNGHKToolBox:
                         continue
                     numerator = len(set(df_scene[df_scene['product_type'] == 'SKU']['scene_fk']))
                     result = float(numerator) / float(denominator)
-                    numerator_id = df_scene['template_fk'].values[0]
-                    denominator_id = self.store_id
-                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
+                    context_id = df_scene['template_fk'].values[0]
+                    self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, denominator_id=self.store_id,
+                                                   context_id=context_id,
                                                    numerator_result=numerator, denominator_result=denominator,
                                                    result=result, score=result)
             else:
@@ -420,6 +319,13 @@ class PNGHKToolBox:
             row = self.find_row_osd(s)
             if row.empty:
                 continue
+
+            # filter df to only shelf_to_include or higher shelves
+            if row[Const.STORAGE_EXCLUSION_PRICE_TAG == 'N']:
+                shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
+                if shelfs_to_include != "":
+                    shelfs_to_include = int(shelfs_to_include)
+                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
 
             # if no osd rule is applied
             if (row[Const.HAS_OSD].values[0] == Const.NO):
