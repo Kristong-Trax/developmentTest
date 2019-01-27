@@ -20,6 +20,13 @@ SUM = "SUM"
 class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
 
     def get_compliance(self, manual_planogram_data=None, manual_scene_data=None):
+        """
+        This function filters the irrelevant products out, creates a matrix that matches the bays of the POG and the
+        scene and scores them, find the best way to match the bays and returns the match tags.
+        :param manual_planogram_data: match_product_in_planogram (just for testing)
+        :param manual_scene_data: match_product_in_scene (just for testing)
+        :return: DF of match_product_in_scene_fk with the tags
+        """
         try:
             self.planogram_matches = self._data_provider.planogram_data if manual_planogram_data is\
                                                                       None else manual_planogram_data
@@ -32,7 +39,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 return tag_compliance
             return self._get_iterated_position_trial()
         except Exception as e:
-            Log.error(e.message)
+            Log.error("Calculated compliance has failed: " + e.message)
             return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
 
     def _filter_irrelevant_out(self):
@@ -65,6 +72,12 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         return tag_compliance
 
     def _get_matches_df(self, column):
+        """
+        Checks if the distance between the shelves/sequences of every couple (of scene_bay and pog_bay) is 0 or 1,
+        for the next calculations.
+        :param column: shelf_number or sequence_number
+        :return: a matrix with Booleans
+        """
         all_combinations_match = pd.DataFrame(index=self.pog_bays, columns=self.scene_bays)
         for bay_number in self.scene_bays:
             max_amount = self.scene_matches[self.scene_matches[Keys.BAY_NUMBER] == bay_number][column].max()
@@ -78,6 +91,10 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         return all_combinations_match
 
     def _get_compliances_and_scores_df(self):
+        """
+        Creates two DFs that contains the scores and tags of every match couple.
+        :return: matrix (DF) of the scores of every possible match, and matrix with the compliances (tags)
+        """
         self.all_combinations_compliances = pd.DataFrame(index=self.scene_bays, columns=self.pog_bays)
         self.all_combinations_scores = pd.DataFrame(index=self.scene_bays, columns=self.pog_bays, data=0.0)
         for pog_bay in self.pog_bays:
@@ -88,6 +105,12 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         return self.all_combinations_scores, self.all_combinations_compliances
 
     def _get_compliance_and_score_by_bays(self, scene_bay, pog_bay):
+        """
+        Calculates the score and compliance of the given scene bay and pog bay.
+        :param scene_bay: int
+        :param pog_bay: int
+        :return: compliance DF and score of this match bays
+        """
         scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
         pog_bay_data = self._get_df_of_bay(self.planogram_matches, pog_bay)
         return self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
@@ -102,6 +125,10 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         return df_answer
 
     def _get_final_compliance(self):
+        """
+        Sorts the matches DF by the count of matches (for every scene bay) and then calculates the compliances.
+        :return: compliance DF
+        """
         self.left_scene_bays, self.left_pog_bays = self.scene_bays[:], self.pog_bays[:]
         self.all_combinations_matches[SUM] = 0
         for scene_bay in self.scene_bays:
@@ -115,43 +142,76 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         return final_compliance_tag
 
     def _get_final_compliance_scored_couples_part(self, final_compliance_tag):
-        for scene_bay in self.all_combinations_matches.index:
-            line = self.all_combinations_matches.loc[scene_bay]
-            if line[SUM] == 0 or True not in line.drop(SUM).values:
-                continue
-            scores = self.all_combinations_scores.loc[scene_bay].sort_values(ascending=False)
-            score = scores.iloc[0]
-            if score == 0:
-                continue
-            pog_bay = scores.index[0]
-            final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
-                                                               ignore_index=True)
-            self._delete_bay_from_dfs(scene_bay, pog_bay)
-        return final_compliance_tag
+        """
+        Iterates the matched couples (starting in the scene bay with the minimum matches to POG bays) that have scores,
+        chooses for every scene bay its pog bay and adds them compliance to the list.
+        :param final_compliance_tag: DF.
+        :return: updated final_compliance_tag.
+        """
+        try:
+            for scene_bay in self.all_combinations_matches.index:
+                line = self.all_combinations_matches.loc[scene_bay]
+                if line[SUM] == 0 or True not in line.drop(SUM).values:
+                    continue
+                scores = self.all_combinations_scores.loc[scene_bay].sort_values(ascending=False)
+                score = scores.iloc[0]
+                if score == 0:
+                    continue
+                pog_bay = scores.index[0]
+                final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
+                                                                   ignore_index=True)
+                self._delete_bay_from_dfs(scene_bay, pog_bay)
+            return final_compliance_tag
+        except Exception as e:
+            Log.error("First step in the compliance calculation has failed: " + e.message)
+            return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
 
     def _get_final_compliance_unscored_couples_part(self, final_compliance_tag):
-        for scene_bay in self.all_combinations_matches.index:
-            line = self.all_combinations_matches.loc[scene_bay]
-            if line[SUM] == 0 or True not in line.drop(SUM).values:
-                continue
-            pog_bay = line.drop(SUM).sort_values(ascending=False).index[0]
-            final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
-                                                               ignore_index=True)
-            self._delete_bay_from_dfs(scene_bay, pog_bay)
-
-        return final_compliance_tag
+        """
+        Iterates the matched couples (starting in the scene bay with the minimum matches to POG bays) that don't have
+        scores, chooses for every scene bay its pog bay and adds them compliance to the list.
+        :param final_compliance_tag: DF.
+        :return: updated final_compliance_tag.
+        """
+        try:
+            for scene_bay in self.all_combinations_matches.index:
+                line = self.all_combinations_matches.loc[scene_bay]
+                if line[SUM] == 0 or True not in line.drop(SUM).values:
+                    continue
+                pog_bay = line.drop(SUM).sort_values(ascending=False).index[0]
+                final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
+                                                                   ignore_index=True)
+                self._delete_bay_from_dfs(scene_bay, pog_bay)
+            return final_compliance_tag
+        except Exception as e:
+            Log.error("Second step in the compliance calculation has failed: " + e.message)
+            return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
 
     def _get_final_compliance_unmatched_couples_part(self, final_compliance_tag):
-        for scene_bay in self.left_scene_bays[:]:
-            if len(self.left_pog_bays) == 0:
-                break
-            pog_bay = self.left_pog_bays[0]
-            tag_compliance, temp_score = self._get_compliance_and_score_by_bays(scene_bay, pog_bay)
-            final_compliance_tag = final_compliance_tag.append(tag_compliance, ignore_index=True)
-            self._delete_bay_from_dfs(scene_bay, pog_bay)
-        return final_compliance_tag
+        """
+        Iterates the un-matched couples, chooses for every scene bay its pog bay and adds them compliance to the list.
+        :param final_compliance_tag: DF.
+        :return: updated final_compliance_tag.
+        """
+        try:
+            for scene_bay in self.left_scene_bays[:]:
+                if len(self.left_pog_bays) == 0:
+                    break
+                pog_bay = self.left_pog_bays[0]
+                tag_compliance, temp_score = self._get_compliance_and_score_by_bays(scene_bay, pog_bay)
+                final_compliance_tag = final_compliance_tag.append(tag_compliance, ignore_index=True)
+                self._delete_bay_from_dfs(scene_bay, pog_bay)
+            return final_compliance_tag
+        except Exception as e:
+            Log.error("Third step in the compliance calculation has failed: " + e.message)
+            return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
 
     def _delete_bay_from_dfs(self, scene_bay, pog_bay):
+        """
+        deletes these bays from the scene bays lists and pog bays lists
+        :param scene_bay:
+        :param pog_bay:
+        """
         self.left_pog_bays.remove(pog_bay)
         self.left_scene_bays.remove(scene_bay)
         self.all_combinations_scores = self.all_combinations_scores.drop(scene_bay)
@@ -252,14 +312,14 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
     #         return False
     #     return True
 
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-if __name__ == '__main__':
-    LoggerInitializer.init('POG compliance test')
-    Config.init()
-    path = "/home/elyashiv/Desktop/backup/POGs/8/"
-    planogram_data = pd.read_csv(path + "pog.csv")
-    scene_data = pd.read_csv(path + "scene.csv")
-    pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)
-    compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
-    print compliances
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# if __name__ == '__main__':
+#     LoggerInitializer.init('POG compliance test')
+#     Config.init()
+#     path = "/home/elyashiv/Desktop/backup/POGs/8/"
+#     planogram_data = pd.read_csv(path + "pog.csv")
+#     scene_data = pd.read_csv(path + "scene.csv")
+#     pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)
+#     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
+#     print compliances

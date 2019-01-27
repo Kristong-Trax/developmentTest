@@ -53,7 +53,7 @@ class PlanogramFinder(PlanogramFinderBaseClass):
             self.get_scene_and_planograms_details()
             return self.get_planogram_id_by_policies()
         except Exception as e:
-            Log.error(e.message)
+            Log.error("Could not find the planogram id: " + e.message)
             return None
 
     def get_planogram_id_by_policies(self):
