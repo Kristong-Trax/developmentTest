@@ -43,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_gfkde_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['20d2c696-bd96-40cb-a6e0-dc731fcca34a']
+        sessions = ['9117364e-2b00-4c1d-b4ab-f1ff1a2a5bde']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
