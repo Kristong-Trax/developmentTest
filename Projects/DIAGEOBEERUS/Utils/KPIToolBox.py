@@ -58,6 +58,7 @@ class DIAGEOBEERUSToolBox:
         self.scene_info = self.get_scene_info()
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.display_info = self.get_display_info()
         if self.store_info['store_type'].str.lower().values[0] == Const.ON:
             self.on_off = Const.ON
         elif self.store_info['store_type'].str.lower().values[0] == Const.OFF:
@@ -612,27 +613,23 @@ class DIAGEOBEERUSToolBox:
                 identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
             return score * weight
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.BRAND])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_empties[(self.scif_without_empties['scene_id'].isin(relevant_scenes)) &
                                                   (self.scif_without_empties['product_type'] == 'POS')]
         all_manufacturers = relevant_scif['manufacturer_fk'].unique().tolist()
         den_res = relevant_scif['facings'].sum()
         diageo_facings = 0
-        for products in relevant_scif[['sub_brand', 'brand_fk']].drop_duplicates().itertuples():
-            sub_brand = products.sub_brand
+        for products in relevant_scif[['manufacturer_fk', 'brand_fk']].drop_duplicates().itertuples():
             brand_fk = products.brand_fk
-            if not sub_brand or not brand_fk:
+            if not brand_fk:
                 continue
-            num_res = relevant_scif[(relevant_scif['sub_brand'] == sub_brand) &
-                                    (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
+            num_res = relevant_scif[relevant_scif['brand_fk'] == brand_fk]['facings'].sum()
             result = self.get_score(num_res, den_res)
-            sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
-            if sub_brand_fk == 0:
-                continue
             self.common.write_to_db_result(
-                fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
-                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
+                denominator_id=products.manufacturer_fk, denominator_result=den_res,
+                result=result * 100, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
@@ -659,6 +656,7 @@ class DIAGEOBEERUSToolBox:
     def calculate_tap_handles_and_beer_glasses(self, scene_types, kpi_name, weight):
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.BRAND])
+        display_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.DISPLAY])
 
         store_format = self.store_info[Const.ATT1].iloc[0]
         template = self.templates[Const.TAP_HANDLE_BEER_GLASSES_SHEET]
@@ -679,11 +677,21 @@ class DIAGEOBEERUSToolBox:
                 score = result * row.Weight
                 total_score += score
 
+                for matching_display in mdis[mdis['name'] == row.display_brand].itertuples():
+                    display_fk = self.get_display_fk(matching_display.display_name)
+                    # write displays present by brand
+                    self.common.write_to_db_result(
+                        fk=display_kpi_fk, numerator_id=display_fk, numerator_result=result, result=result * 100,
+                        score=score * 100, denominator_result=1,
+                        identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
+                        weight=row.Weight * 100, should_enter=True)
+            # write brand result
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result * 100, score=score * 100,
                 denominator_result=1, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
                 weight=row.Weight * 100, should_enter=True)
-
+        # write total result
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=total_score,
             denominator_result=len(relevant_template[Const.DISPLAY_BRAND].unique().tolist()), result=total_score * 100,
@@ -893,6 +901,14 @@ class DIAGEOBEERUSToolBox:
         query = Queries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
+
+    def get_display_info(self):
+        query = 'select * from static.display'
+        display_info = pd.read_sql_query(query, self.rds_conn.db)
+        return display_info
+
+    def get_display_fk(self, display_name):
+        return self.display_info[self.display_info['display_name'] == display_name]['pk'].iloc[0]
 
     def get_scene_info(self):
         base = self.data_provider[Data.SCENES_INFO]

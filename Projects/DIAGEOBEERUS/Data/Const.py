@@ -80,15 +80,18 @@ class Const(object):
     MENU = 'Menu Presence'
     TAP_HANDLE = 'Tap Handle Availability'
     BEER_GLASSES = 'Beer Glass Availability'
+    DISPLAY = 'display'
     DB_ON_NAMES = {
         MENU: {
             TOTAL: 'Menu Presence', MANUFACTURER: 'Menu Presence - Manufacturer',
-            SUB_BRAND: 'Menu Presence - Brand Variant'},
+            BRAND: 'Menu Presence - Brand'},
         TAP_HANDLE: {
-            TOTAL: 'Tap Handle Availability', BRAND: 'Tap Handle Availability - Brand'
+            TOTAL: 'Tap Handle Availability', BRAND: 'Tap Handle Availability - Brand',
+            DISPLAY: 'Tap Handle Availability - Handle'
         },
         BEER_GLASSES: {
-            TOTAL: 'Guinness Glasses', BRAND: 'Guinness Glasses - Brand'
+            TOTAL: 'Guinness Glasses', BRAND: 'Guinness Glasses - Brand',
+            DISPLAY: 'Guinness Glasses - Glass'
         }}
     DB_ASSORTMENTS_NAMES = {OFF: "Assortment Off Premise", ON: "Assortment on Trade"}
 
