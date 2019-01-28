@@ -2314,9 +2314,16 @@ class CCRUKPIToolBox:
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
-        else:
+        if str(self.visit_date) < '2019-01-26':  # todo: change the date to the relevant one before deployment
             query = """
                     select ss.pk , ss.additional_attribute_12
+                    from static.stores ss
+                    join probedata.session ps on ps.store_fk=ss.pk
+                    where ss.delete_date is null and ps.session_uid = '{}';
+                    """.format(self.session_uid)
+        else:
+            query = """
+                    select ss.pk , ss.additional_attribute_11
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
