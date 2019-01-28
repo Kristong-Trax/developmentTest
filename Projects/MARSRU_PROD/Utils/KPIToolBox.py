@@ -459,10 +459,16 @@ class MARSRU_PRODKPIToolBox:
 
             if p.get('Type') == 'SCENES':
                 values_list = p.get('Values').split(', ')
+                manufacturer_list = p.get('Manufacturer').split(', ') if p.get('Manufacturer') else None
                 for scene in scenes:
                     try:
-                        scene_type = self.scif.loc[self.scif['scene_id']
-                                                   == scene]['template_name'].values[0]
+                        if manufacturer_list:
+                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                       (self.scif['manufacturer_name'].isin(manufacturer_list))][
+                                'template_name'].values[0]
+                        else:
+                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene)][
+                                'template_name'].values[0]
                         if scene_type in values_list:
                             res = 1
                         else:
