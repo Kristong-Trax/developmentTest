@@ -9,7 +9,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'marsru-prod'
     session_uids = [
-        'd74745ec-7a9a-481f-8df7-60a23408e7fe',
+        'ff428367-447a-44f8-8c18-bed0d1586749',
     ]
     data_provider = KEngineDataProvider(project_name)
     output = Output()
