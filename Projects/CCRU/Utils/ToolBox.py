@@ -1704,6 +1704,8 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "SOS":
+                        atomic_res = self.check_facings_sos(c, level=3)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
                     if atomic_res == -1:
