@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 
 from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalculation, \
     VerticalBlockAtomicKpiCalculation, AnchorAtomicKpiCalculation, ShelfLevelAtomicKpiCalculation, \
@@ -28,6 +29,7 @@ class Results(object):
         self._data_provider = data_provider
         self._writer = writer
         self._preferred_range = preferred_range
+        self.dependency_tracker = defaultdict(int)
 
     def calculate(self, hierarchy):
         atomic_results = self._get_atomic_results(hierarchy)
@@ -50,6 +52,8 @@ class Results(object):
             # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
             #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
             #     continue
+            if atomic['atomic'] != 'Is Nutro Wet Dog food blocked?':
+                continue
             print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
@@ -160,8 +164,7 @@ class Results(object):
 
         return pd.DataFrame(group_results, columns=['group', 'score'])
 
-    @staticmethod
-    def _check_atomic_dependency(atomic, pushed_back_list, atomic_results):
+    def _check_atomic_dependency(self, atomic, pushed_back_list, atomic_results):
         depends = zip(atomic['depend_on'], atomic['depend_score'])
         bar = sum([1 for i in atomic['depend_score'] if i is not None and i != ''])
         if atomic_results:
@@ -169,13 +172,16 @@ class Results(object):
             score = 0
             for depend_on, depend_score in depends:
                 if depend_on in results_df['atomic'].tolist():
-                    if results_df[results_df['atomic'] == depend_on]['result'].values[0] == depend_score:
+                    if str(results_df[results_df['atomic'] == depend_on]['result'].values[0]) == str(depend_score):
                         score += 1
             if score == bar:
                 return CalculationDependencyCheck.CALCULATE
-            elif atomic['atomic'] in pushed_back_list or score < bar:
-                return CalculationDependencyCheck.IGNORE
             else:
-                return CalculationDependencyCheck.PUSH_BACK
+                if atomic['atomic'] in pushed_back_list or score < bar:
+                    self.dependency_tracker[atomic['atomic']] += 1
+                if self.dependency_tracker[atomic['atomic']] > 5:
+                    return CalculationDependencyCheck.IGNORE
+                else:
+                    return CalculationDependencyCheck.PUSH_BACK
         else:
             return CalculationDependencyCheck.PUSH_BACK
