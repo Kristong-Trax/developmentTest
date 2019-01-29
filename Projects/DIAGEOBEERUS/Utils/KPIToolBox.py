@@ -670,6 +670,8 @@ class DIAGEOBEERUSToolBox:
         total_score = 0
         for row in relevant_template[[Const.DISPLAY_BRAND, Const.WEIGHT]].drop_duplicates().itertuples():
             brand_fk = self.get_brand_fk(row.display_brand)
+            if not brand_fk:
+                continue
             result = 0
             score = 0
             if row.display_brand in brands_present:
@@ -891,7 +893,11 @@ class DIAGEOBEERUSToolBox:
         return self.all_products[self.all_products['product_fk'] == product_fk]['manufacturer_fk'].iloc[0]
 
     def get_brand_fk(self, brand_name):
-        return self.all_products[self.all_products['brand_name'] == str(brand_name)]['brand_fk'].iloc[0]
+        try:
+            return self.all_products[self.all_products['brand_name'] == str(brand_name)]['brand_fk'].iloc[0]
+        except IndexError:
+            Log.error('No brand_fk exists for {}'.format(brand_name))
+            return None
 
     def get_match_display(self):
         """
