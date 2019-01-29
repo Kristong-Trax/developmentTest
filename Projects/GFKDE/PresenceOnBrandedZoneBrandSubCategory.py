@@ -3,17 +3,14 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class PresenceSKUonGondolaEnd_KPI(GfkPrecenseBaseCalculationScript):
+class PresenceonBrandedZonesBrandSubCategory_KPI(GfkPrecenseBaseCalculationScript):
 
     @classproperty
     def kpi_type(self):
-        return "PRESENCE_SKU_ON_GONDOLA_END"
+        return "PRESENCE_ON_BRANDED_ZONES_BRAND_SUB_CATEGORY"
 
     def kpi_policy(self):
         return {
-            "location": {
-                "template_name": ["Washing Machines - Gondola End"]
-            },
             "population": {
                 "include": {
                     "category_local_name": ["Washing Machines"],
@@ -22,5 +19,9 @@ class PresenceSKUonGondolaEnd_KPI(GfkPrecenseBaseCalculationScript):
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.PRODUCT_FK,
+            "numerator": Fields.BRAND_FK,
+            "denominator": Keys.SUB_CATEGORY_FK,
+            "kpi_additional_params": {
+                "filter_branded_zones": True
+            }
         }
