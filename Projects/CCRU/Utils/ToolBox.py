@@ -751,8 +751,23 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_facings_sos(self, params):
-        relevant_scenes = self.get_relevant_scenes(params)
+    def calculate_facings_sos(self, params, all_params=None):
+        if params.get('depends on'):
+            depends_on_kpi_name = params.get('depends on')
+            for c in all_params.values()[0]:
+                if c.get('KPI name Eng') == depends_on_kpi_name:
+                    if c.get('KPI name Eng') == depends_on_kpi_name:
+                        if c.get('Formula').strip() == 'number of doors with more than Target facings':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
+
+            if not scenes:
+                return 0
+        else:
+            scenes = self.get_relevant_scenes(params)
+
+        relevant_scenes = scenes
+
         if params.get('Manufacturer'):
             manufacturers = params.get('Manufacturer').strip().split(', ')
         else:
@@ -784,14 +799,19 @@ class CCRUKPIToolBox:
                 subset_filter = ((self.scif[Fd.M_NAME].isin(manufacturers)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'SUB_BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Category')) &
+                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['sub_brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Category')) &
+                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
+                              (~self.scif['product_type'].isin(['Empty'])))
+                subset_filter = ((self.scif['brand_name'].isin(values_list)) &
+                                 (~self.scif['product_type'].isin(['Empty'])))
+            elif params.get('Type') == 'BRAND':
+                pop_filter = ((self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
@@ -1678,8 +1698,8 @@ class CCRUKPIToolBox:
                     and p.get("Children")):
                 continue
             scenes = []
-            if params.get('depends on'):
-                depends_on_kpi_name = params.get('depends on')
+            if p.get('depends on'):
+                depends_on_kpi_name = p.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
@@ -1704,18 +1724,21 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "SOS":
+                        atomic_res = self.calculate_facings_sos(c, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
                     if atomic_res == -1:
-                        continue
-                    if atomic_score == -1:
-                        atomic_score = self.calculate_score(atomic_res, c)
-                    if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
-                        kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
-                        kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                        atomic_score = 0
                     else:
-                        kpi_total += atomic_score
-                        kpi_total_weight += 1
+                        if atomic_score == -1:
+                            atomic_score = self.calculate_score(atomic_res, c)
+                        if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
+                            kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                            kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                        else:
+                            kpi_total += atomic_score
+                            kpi_total_weight += 1
                     # write to DB
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
