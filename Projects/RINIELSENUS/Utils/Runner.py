@@ -14,7 +14,11 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     ShelvedTogetherAtomicKpiCalculation, NegativeAdjacencyCalculation, LinearFairShareNumeratorAtomicKpiCalculation, \
     LinearFairShareDenominatorAtomicKpiCalculation, LinearPreferredRangeShareNumeratorAtomicKpiCalculation, \
     LinearPreferredRangeShareDenominatorAtomicKpiCalculation, ShareOfAssortmentPrNumeratorAtomicKpiCalculation, \
-    SequenceSptCalculation
+    SequenceSptCalculation, LinearFairShareNumeratorSPTAtomicKpiCalculation, \
+    LinearFairShareDenominatorSPTAtomicKpiCalculation, LinearPreferredRangeShareSPTAtomicKpiCalculation, \
+    LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation, \
+    LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation, ShareOfAssortmentPrSPTAtomicKpiCalculation, \
+    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation
 from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
 
 
@@ -43,11 +47,11 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
-            if not ('Does the Dog Treats category lead the Dog Food aisle?' in atomic['atomic'] or\
-                    'How many feet is the Dog Treats Regular category?' in atomic['atomic']):
-                continue
+            # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
+            #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
+            #     continue
             print(atomic['atomic'])
-            if atomic['depend_on']:
+            if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
                 if dependency_status == CalculationDependencyCheck.IGNORE:
                     continue
@@ -116,7 +120,15 @@ class Results(object):
             VerticalSequenceAvgShelfCalculation.kpi_type: VerticalSequenceAvgShelfCalculation,
             ShareOfAssortmentAtomicKpiCalculationNotPR.kpi_type: ShareOfAssortmentAtomicKpiCalculationNotPR,
             ShareOfAssortmentPrNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrNumeratorAtomicKpiCalculation,
-            ShelvedTogetherAtomicKpiCalculation.kpi_type: ShelvedTogetherAtomicKpiCalculation
+            ShelvedTogetherAtomicKpiCalculation.kpi_type: ShelvedTogetherAtomicKpiCalculation,
+            LinearFairShareNumeratorSPTAtomicKpiCalculation.kpi_type: LinearFairShareNumeratorSPTAtomicKpiCalculation,
+            LinearFairShareDenominatorSPTAtomicKpiCalculation.kpi_type: LinearFairShareDenominatorSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation,
+            ShareOfAssortmentPrSPTAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTAtomicKpiCalculation,
+            ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation,
+
         }
 
     def _get_set_result(self, kpi_results):
@@ -150,15 +162,20 @@ class Results(object):
 
     @staticmethod
     def _check_atomic_dependency(atomic, pushed_back_list, atomic_results):
-        depend_on = atomic['depend_on']
-        depend_score = atomic['depend_score']
-        results_df = pd.concat(atomic_results.values())
-        if depend_on in results_df['atomic'].tolist():
-            if results_df[results_df['atomic'] == depend_on]['result'].values[0] == depend_score:
+        depends = zip(atomic['depend_on'], atomic['depend_score'])
+        bar = sum([1 for i in atomic['depend_score'] if i is not None and i != ''])
+        if atomic_results:
+            results_df = pd.concat(atomic_results.values())
+            score = 0
+            for depend_on, depend_score in depends:
+                if depend_on in results_df['atomic'].tolist():
+                    if results_df[results_df['atomic'] == depend_on]['result'].values[0] == depend_score:
+                        score += 1
+            if score == bar:
                 return CalculationDependencyCheck.CALCULATE
-            else:
+            elif atomic['atomic'] in pushed_back_list or score < bar:
                 return CalculationDependencyCheck.IGNORE
-        elif depend_on in pushed_back_list:
-            return CalculationDependencyCheck.IGNORE
+            else:
+                return CalculationDependencyCheck.PUSH_BACK
         else:
             return CalculationDependencyCheck.PUSH_BACK

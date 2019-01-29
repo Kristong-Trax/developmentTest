@@ -96,7 +96,7 @@ class KpiAtomicKpisCalculator(object):
     def _get_preferred_range_SPT_filter(self, filters):
         if filters.get('shelf from top'):
             return {'shelf_number': (range(int(float(filters.get('shelf from top')[0])) + 1)[1:])}
-        elif filters.get('ignore from top') and filters.get('ignore from bottom'):
+        elif filters.get('ignored from top') and filters.get('ignored from bottom'):
             return {
                 'shelf_number':
                     (range(int(float(filters.get('ignore from top')[0])) + 1)[1:], MarsUsGENERALToolBox.EXCLUDE_FILTER),
@@ -815,7 +815,8 @@ class ShelfLevelAtomicKpiCalculation(KpiAtomicKpisCalculator):
 class ShelfLevelSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
-        filters.update(self._get_preferred_range_SPT_filter(filters))
+        # filters.update(self._get_preferred_range_SPT_filter(filters))
+        filters.update(self._get_preferred_range_filter())
 
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
@@ -1062,6 +1063,43 @@ class LinearFairShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'Share of Shelf Linear / Share of Sales SPT'
 
+class LinearFairShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_spt_sales_ratio(atomic_kpi_data['set'], **filters)
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        if atomic_kpi_data['atomic'] == 'MARS Space goal':
+            sales = 20
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+        denominator_filters = self.get_denominator_filters(filters)
+        return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Share of Shelf Linear / Share of Sales - numerator SPT'
+
+class LinearFairShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_spt_sales_ratio(atomic_kpi_data['set'], **filters)
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        if atomic_kpi_data['atomic'] == 'MARS Space goal':
+            sales = 20
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+        denominator_filters = self.get_denominator_filters(filters)
+        return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Share of Shelf Linear / Share of Sales - denominator SPT'
 
 class LinearPreferredRangeShareAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
@@ -1128,6 +1166,77 @@ class LinearPreferredRangeShareDenominatorAtomicKpiCalculation(KpiAtomicKpisCalc
     def kpi_type(self):
         return 'Linear Share of shelf in Preferred Range / Share of Sales - denominator'
 
+class LinearPreferredRangeShareSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_spt_sales_ratio(atomic_kpi_data['set'])
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        numerator_filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        numerator_filters.update(scene_type_filter)
+        # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        numerator_filters.update(self._get_preferred_range_filter())
+        denominator_filters = self.get_denominator_filters(numerator_filters)
+        # denominator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        denominator_filters.update(self._get_preferred_range_filter())
+        sos = self._tools.calculate_linear_share_of_shelf(sos_filters=numerator_filters, **denominator_filters)
+        if sos == None:
+            return np.nan
+        elif sos == 0:
+            return 0
+        result = round(((sos * 100) / sales) * 100, 2)
+        return result
+
+    @classproperty
+    def kpi_type(self):
+        return 'Linear Share of shelf in Preferred Range / Share of Sales SPT'
+
+class LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_spt_sales_ratio(atomic_kpi_data['set'])
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        numerator_filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        numerator_filters.update(scene_type_filter)
+        # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        numerator_filters.update(self._get_preferred_range_filter())
+        denominator_filters = self.get_denominator_filters(numerator_filters)
+        # denominator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        denominator_filters.update(self._get_preferred_range_filter())
+        return self._tools.calculate_linear_share_of_shelf_numerator(sos_filters=numerator_filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Linear Share of shelf in Preferred Range / Share of Sales - numerator SPT'
+
+class LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        sales = self.get_spt_sales_ratio(atomic_kpi_data['set'])
+        if not sales:
+            self.log_missing_sales_message(atomic_kpi_data, sales)
+            return np.nan
+
+        numerator_filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        numerator_filters.update(scene_type_filter)
+        # numerator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        numerator_filters.update(self._get_preferred_range_filter())
+        denominator_filters = self.get_denominator_filters(numerator_filters)
+        # denominator_filters.update(self._get_preferred_range_SPT_filter(filters))
+        denominator_filters.update(self._get_preferred_range_filter())
+        return self._tools.calculate_linear_share_of_shelf_denominator(sos_filters=numerator_filters, **denominator_filters)
+
+    @classproperty
+    def kpi_type(self):
+        return 'Linear Share of shelf in Preferred Range / Share of Sales - denominator SPT'
 
 class ShareOfAssortmentPrAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
@@ -1214,7 +1323,6 @@ class ShareOfAssortmentPrNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'NBIL SOA - numerator'
 
-
 class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         result = np.nan
@@ -1247,6 +1355,93 @@ class ShareOfAssortmentAtomicKpiCalculationNotPR(KpiAtomicKpisCalculator):
     def kpi_type(self):
         return 'NBIL SOA NOT PR'
 
+
+
+
+class ShareOfAssortmentPrSPTAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        result = np.nan
+        nbil_products = atomic_kpi_data['nbil_products']
+        if not nbil_products.empty:
+            products = self._data_provider.all_products[['product_ean_code']].copy()
+            products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            if not relevant_ean_codes.empty:
+                relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
+                relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
+
+                scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
+                                                             value=atomic_kpi_data['scene_types'])
+                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                shelves_filter = self._get_preferred_range_SPT_filter(atomic_kpi_data['filters'])
+                filters = {}
+                filters.update(scene_type_filter)
+                filters.update(ean_code_filter)
+                filters.update(shelves_filter)
+                num_of_assorted_products = self._tools.calculate_assortment(**filters)
+                nbil_product_numbers = len(nbil_products[nbil_products['either'] == ''])
+                nbil_either_product_numbers = len(nbil_products[nbil_products['either'] != '']['either'].unique())
+
+                if not relevant_ean_codes_either.empty:
+                    for either_number in relevant_ean_codes_either['either'].unique().tolist():
+                        relevant_eans = relevant_ean_codes_either[
+                            relevant_ean_codes_either['either'] == either_number]
+                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        filters.update(ean_code_filter)
+                        result = self._tools.calculate_assortment(**filters)
+                        if result:
+                            num_of_assorted_products += 1
+
+                # scif = self._data_provider.scene_item_facts.copy()
+                num_of_expected_product = nbil_product_numbers + nbil_either_product_numbers
+                # num_of_expected_product = len(scif[scif['product_ean_code'].isin(relevant_ean_codes)])
+                if num_of_expected_product == 0:
+                    return np.nan
+                result = round((float(num_of_assorted_products) / float(num_of_expected_product)) * 100, 2)
+
+        return result
+
+    @classproperty
+    def kpi_type(self):
+        return 'NBIL SOA SPT'
+
+class ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        result = np.nan
+        nbil_products = atomic_kpi_data['nbil_products']
+        if not nbil_products.empty:
+            products = self._data_provider.all_products[['product_ean_code']].copy()
+            products.loc[:, 'upc'] = products['product_ean_code'].str.zfill(12)
+            relevant_ean_codes = products.merge(nbil_products, on='upc')[['either', 'product_ean_code']]
+            if not relevant_ean_codes.empty:
+                relevant_ean_codes_either = relevant_ean_codes[relevant_ean_codes['either'] != '']
+                relevant_ean_codes = relevant_ean_codes[relevant_ean_codes['either'] == '']
+
+                scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME,
+                                                             value=atomic_kpi_data['scene_types'])
+                ean_code_filter = {'product_ean_code': relevant_ean_codes['product_ean_code'].tolist()}
+                shelves_filter = self._get_preferred_range_SPT_filter(atomic_kpi_data['filters'])
+                filters = {}
+                filters.update(scene_type_filter)
+                filters.update(ean_code_filter)
+                filters.update(shelves_filter)
+                num_of_assorted_products = self._tools.calculate_assortment(**filters)
+
+                if not relevant_ean_codes_either.empty:
+                    for either_number in relevant_ean_codes_either['either'].unique().tolist():
+                        relevant_eans = relevant_ean_codes_either[relevant_ean_codes_either['either'] == either_number]
+                        ean_code_filter = {'product_ean_code': relevant_eans['product_ean_code'].tolist()}
+                        filters.update(ean_code_filter)
+                        result = self._tools.calculate_assortment(**filters)
+                        if result:
+                            num_of_assorted_products += 1
+
+                result = num_of_assorted_products
+        return result
+
+    @classproperty
+    def kpi_type(self):
+        return 'NBIL SOA - numerator SPT'
 
 class DistributionCalculation(KpiAtomicKpisCalculator):
     def calculate_atomic_kpi(self, atomic_kpi_data):
