@@ -28,6 +28,29 @@ EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
+ALLOWED_POS_SETS = (
+    'PoS 2019 - FT - CAP',
+    'PoS 2019 - FT NS - CAP',
+    'PoS 2019 - FT NS - REG',
+    'PoS 2019 - FT - REG',
+    'PoS 2019 - IC Canteen - EDU',
+    'PoS 2019 - IC Canteen - OTH',
+    'PoS 2019 - IC HoReCa BarTavernClub - CAP',
+    'PoS 2019 - IC HoReCa BarTavernClub - REG',
+    'PoS 2019 - IC HoReCa RestCafeTea - CAP',
+    'PoS 2019 - IC HoReCa RestCafeTea - REG',
+    'PoS 2019 - IC Petroleum - CAP',
+    'PoS 2019 - IC Petroleum - REG',
+    'PoS 2019 - IC QSR',
+    'PoS 2019 - MT Conv Big - CAP',
+    'PoS 2019 - MT Conv Big - REG',
+    'PoS 2019 - MT Conv Small - CAP',
+    'PoS 2019 - MT Conv Small - REG',
+    'PoS 2019 - MT Hypermarket - CAP',
+    'PoS 2019 - MT Hypermarket - REG',
+    'PoS 2019 - MT Supermarket - CAP',
+    'PoS 2019 - MT Supermarket - REG',
+)
 
 
 class CCRUCalculations(BaseCalculationsScript):
@@ -67,6 +90,12 @@ class CCRUProjectCalculations:
             Log.info('Promo session, no Custom KPI calculation implied')
             return
 
+        if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            Log.error('Session cannot be calculated.'
+                      'POS KPI Set name in store attribute is invalid - {0}. '
+                      'Store ID {1}.'
+                      .format(self.pos_kpi_set_name, self.store_id))
+
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
@@ -77,15 +106,16 @@ class CCRUProjectCalculations:
             pass
 
         elif self.test_store == "Y":
-            Log.warning('POS KPI Set name in store attribute is invalid: {0}. '
-                        'Session Store ID {1} cannot be calculated. '
-                        'Store ID {1} is a test store'
+            Log.warning('Session cannot be calculated: '
+                        'Store is a test store. '
+                        'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
         else:
-            Log.error('POS KPI Set name in store attribute is invalid: {0}. '
-                      'Session Store ID {1} cannot be calculated. '
+            Log.error('Session cannot be calculated.'
+                      'POS KPI Set name in store attribute is invalid - {0}. '
+                      'Store ID {1}.'
                       .format(self.pos_kpi_set_name, self.store_id))
             return
 
