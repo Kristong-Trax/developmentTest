@@ -91,7 +91,7 @@ class CCRUProjectCalculations:
             return
 
         if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
-            Log.error('Session cannot be calculated.'
+            Log.error('Error. Session cannot be calculated.'
                       'POS KPI Set name in store attribute is invalid - {0}. '
                       'Store ID {1}.'
                       .format(self.pos_kpi_set_name, self.store_id))
@@ -106,14 +106,14 @@ class CCRUProjectCalculations:
             pass
 
         elif self.test_store == "Y":
-            Log.warning('Session cannot be calculated: '
+            Log.warning('Error. Session cannot be calculated: '
                         'Store is a test store. '
                         'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
         else:
-            Log.error('Session cannot be calculated.'
+            Log.error('Error. Session cannot be calculated.'
                       'POS KPI Set name in store attribute is invalid - {0}. '
                       'Store ID {1}.'
                       .format(self.pos_kpi_set_name, self.store_id))
