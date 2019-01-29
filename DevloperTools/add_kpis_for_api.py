@@ -130,5 +130,5 @@ if __name__ == '__main__':
     project_name = 'ccbza'
     # template_path = 'home/../filename.xlsx'
     # kpi_list = []
-    kpis_to_exclude = [999999]+range(2000, 2018)
-    AddKPIsToAPI(project_name, all_existing_kpis=True, kpis_to_exclude=kpis_to_exclude).configure_kpis_for_api()
+    # kpis_to_exclude = [999999]+range(2000, 2018)
+    AddKPIsToAPI(project_name, all_existing_kpis=True).configure_kpis_for_api()
