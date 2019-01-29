@@ -127,7 +127,9 @@ class TWEAUToolBox:
         """
         This function calculates the KPI results.
         """
+        # 1. calculate the macro linear sheet
         # self.calculate_macro_linear()
+        # 2. calculate the zone based sheet
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
@@ -135,6 +137,8 @@ class TWEAUToolBox:
             each_kpi_type = each_kpi[0]
             kpi_sheet_rows = each_kpi[1]
             final_unique_products = defaultdict(set)
+            zone_data = {}
+            output = None
             per_scene_type = per_manufacturer = False
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
                                        & (self.kpi_static_data[TYPE] == each_kpi_type)
@@ -144,48 +148,48 @@ class TWEAUToolBox:
             else:
                 print("KPI Name:{} found in DB".format(each_kpi_type))
                 if 'sku_all' in each_kpi_type.lower():
-                    # self.get_zone_based_items()
-                    pass
+
+                    self.get_zone_based_items()
                 else:
                     denominator_row = zone_category_sheet.loc[(
                             zone_category_sheet[KPI_NAME] == each_kpi_type)].iloc[0]
                     if 'per_scene_type' in each_kpi_type.lower():
                         per_scene_type = True
-                        scene_aggregated_data = {}
                     elif each_kpi_type.lower().endswith("_own_manufacturer"):
                         per_manufacturer = True
                     else:
                         raise Exception("Unhandled row in template.")
+                    valid_zone_data = {}
                     for idx, each_kpi_sheet_row in kpi_sheet_rows.iterrows():
-                        # print each_kpi_sheet_row.kpi_name, " per_manufacturer ", per_manufacturer, " per_scene_type ", per_scene_type
-                        result = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T, denominator_row,
-                                                              per_scene_type=per_scene_type,
-                                                              per_manufacturer=per_manufacturer)
-                        if result:
-                            final_unique_products[result['denominator_result']].update(result['unique_products'])
+                        # print each_kpi_sheet_row.kpi_name, " per_manufacturer ",
+                        # per_manufacturer, " per_scene_type ", per_scene_type
+                        zone_data = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T, denominator_row,
+                                                                 per_scene_type=per_scene_type,
+                                                                 per_manufacturer=per_manufacturer)
+                        if zone_data:
+                            final_unique_products[zone_data['denominator_result']].update(zone_data['unique_products'])
+                            valid_zone_data = zone_data
 
                     print "Write to DB...", final_unique_products
                     for key, value in final_unique_products.iteritems():
                         try:
-                            result = float(len(value))/result["unique_manufacturer_products"]
+                            output = float(len(value))/valid_zone_data["unique_manufacturer_products_count"]
+                            self.common.write_to_db_result(
+                                fk=valid_zone_data["fk"],
+                                numerator_id=valid_zone_data["numerator_id"],
+                                numerator_result=valid_zone_data["numerator_result"],
+                                denominator_id=valid_zone_data["denominator_id"],
+                                denominator_result=key,
+                                result=output,
+                                score=output,
+                                identifier_result=valid_zone_data["kpi_name"],
+                                context_id=valid_zone_data["zone_number"],
+                            )
                         except ZeroDivisionError:
                             continue
                         except Exception as e:
                             raise e
-                        # self.common.write_to_db_result(
-                        #     fk=result["fk"],
-                        #     numerator_id=result["numerator_id"],
-                        #     numerator_result=result["numerator_result"],
-                        #     denominator_id=key,
-                        #     denominator_result=result["denominator_result"],
-                        #     # denominator_result_after_actions=data["denominator_result_after_actions"], # scene id
-                        #     result=result,
-                        #     score=result,
-                        #     identifier_result=result["identifier_result"],
-                        #     context_type_fk=result["zone_number"],
-                        # )
-
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
         score = 0
         return score
 
@@ -416,8 +420,8 @@ class TWEAUToolBox:
         denominator_filters, denominator_filter_string = get_filter_string_per_row(
             denominator_row,
             DENOMINATOR_FILTER_ENTITIES, )
-        unique_manufacturer_products = len(self.scif.query(denominator_filter_string)
-                                           .product_fk.unique())
+        unique_manufacturer_products_count = len(self.scif.query(denominator_filter_string)
+                                                 .product_fk.unique())
         # NUMERATOR
         # filter based on store type [d]
         # filter based on template_type [d]
@@ -525,7 +529,7 @@ class TWEAUToolBox:
                             'unique_products': unique_products,
                             'kpi_name': kpi_sheet_row[KPI_NAME],
                             'zone_number': zone_number,
-                            'unique_manufacturer_products': unique_manufacturer_products,
+                            'unique_manufacturer_products_count': unique_manufacturer_products_count,
                         }
                 # for manufacturer
                 if bool(unique_products) and per_manufacturer:
@@ -539,7 +543,7 @@ class TWEAUToolBox:
                         'unique_products': unique_products,
                         'kpi_name': kpi_sheet_row[KPI_NAME],
                         'zone_number': zone_number,
-                        'unique_manufacturer_products': unique_manufacturer_products,
+                        'unique_manufacturer_products_count': unique_manufacturer_products_count,
                     }
         return {}
 
@@ -571,7 +575,7 @@ class TWEAUToolBox:
 
 def is_int(value):
     try:
-        int(value.strip())
+        int(value)
     except ValueError:
         return False
     else:
