@@ -3,11 +3,11 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields
 from Trax.Utils.DesignPatterns.Decorators import classproperty
 
 
-class PresenceSKUonBrandedZones_KPI(GfkPrecenseBaseCalculationScript):
+class PresenceonBrandedZonesSKUSubCategory_KPI(GfkPrecenseBaseCalculationScript):
 
     @classproperty
     def kpi_type(self):
-        return "PRESENCE_SKU_ON_BRANDED_ZONES"
+        return "PRESENCE_ON_BRANDED_ZONES_SKU_SUB_CATEGORY"
 
     def kpi_policy(self):
         return {
@@ -20,6 +20,7 @@ class PresenceSKUonBrandedZones_KPI(GfkPrecenseBaseCalculationScript):
                 "include_operator": "and"
             },
             "numerator": Fields.PRODUCT_FK,
+            "denominator": Keys.SUB_CATEGORY_FK,
             "kpi_additional_params": {
                 "filter_branded_zones": True
             }
