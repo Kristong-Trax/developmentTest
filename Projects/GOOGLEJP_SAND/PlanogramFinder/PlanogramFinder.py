@@ -20,7 +20,7 @@ SCENE_INFO_QUERY = """  SELECT
                             FROM
                                 probedata.scene
                             WHERE
-                                pk = 133) scenes
+                                pk = {}) scenes
                                 JOIN
                             probedata.session sessions ON scenes.session_uid = sessions.session_uid
                                 JOIN
@@ -105,5 +105,6 @@ class PlanogramFinder(PlanogramFinderBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG finder test')
 #     Config.init()
-#     pog = GOOGLEJP_SANDPlanogramFinder(data_provider=None)
-#     compliances = pog.get_planogram_id(project_name="googlekr", scene_id=133)
+#     pog = PlanogramFinder(data_provider=None)
+#     for scene_id in [228, 1220, 1217, 1701, 1710]:
+#         print "{} = {}".format(scene_id, pog.get_planogram_id(project_name="googlejp", scene_id=scene_id))
