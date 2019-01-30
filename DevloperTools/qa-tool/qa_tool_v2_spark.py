@@ -144,7 +144,7 @@ class qa:
                                                table=self.results_query,
                                                properties={"user": self.connector.dbuser.username,
                                                            "password": self.connector.dbuser.cred,
-                                                           "partitionColumn": "tmp_kpi_level_2_results.sessions_pk",
+                                                           "partitionColumn": "sessions_pk",
                                                            "lowerBound": "{}".format(lower_bound),
                                                            "upperBound": "{}".format(upper_bound),
                                                            "numPartitions": "{}".format(number_of_partition),
@@ -451,6 +451,6 @@ class qa:
 if __name__ == "__main__":
     Config.init(app_name='ttt', default_env_and_cloud = ('prod','AWS'),
                 config_file='~/theGarage/Trax/Apps/Services/KEngine/k-engine-prod.config')
-    qa_tool = qa('ccbottlersus', start_date='2018-09-01', end_date='2018-09-15')
+    qa_tool = qa('jnjit', start_date='2018-12-01', end_date='2018-12-15')
     qa_tool.run_all_tests()
     webbrowser.open(os.path.join(os.getcwd(),SUMMERY_FILE))
