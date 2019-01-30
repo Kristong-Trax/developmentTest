@@ -251,8 +251,8 @@ if __name__ == '__main__':
     # sessions = ['0007c2c6-af03-454b-aff3-23f9c4018f27']
 
     sessions = [
-        # 'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
-        'b3970bc2-de98-4dc5-9289-75cf9255e8d0',
+        'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
+        # 'b3970bc2-de98-4dc5-9289-75cf9255e8d0',
         # '63a38dae-84da-4214-95b3-6cdd33c27869'
     ]
 

@@ -52,8 +52,10 @@ class Results(object):
             # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
             #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
             #     continue
-            if atomic['atomic'] != 'Is Nutro Wet Dog food blocked?':
-                continue
+            # if atomic['atomic'] not in ['Is Nutro Wet Dog food blocked?',
+            #                         'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
+            #                         'Nutro Dry Dog and Wet Dog are BOTH BLOCKED']:
+            #     continue
             print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
