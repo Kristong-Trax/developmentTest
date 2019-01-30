@@ -649,7 +649,7 @@ class DIAGEOBEERUSToolBox:
         score = 1 if result >= target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=score * 100, score=result, weight=weight * 100,
+            denominator_result=den_res, result=score * 100, score=result * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight * 100
@@ -671,8 +671,8 @@ class DIAGEOBEERUSToolBox:
         brands_present = mdis['name'].unique().tolist()
         total_score = 0
         for row in relevant_template[[Const.DISPLAY_BRAND, Const.WEIGHT]].drop_duplicates().itertuples():
-            brand_fk = self.get_display_brand_fk(row.display_brand)
-            if not brand_fk:
+            display_brand_fk = self.get_display_brand_fk(row.display_brand)
+            if not display_brand_fk:
                 continue
             result = 0
             score = 0
@@ -687,13 +687,14 @@ class DIAGEOBEERUSToolBox:
                     self.common.write_to_db_result(
                         fk=display_kpi_fk, numerator_id=display_fk, numerator_result=result, result=result * 100,
                         score=score * 100, denominator_result=1,
-                        identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
+                        identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                         weight=row.Weight * 100, should_enter=True)
             # write brand result
             self.common.write_to_db_result(
-                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result * 100, score=score * 100,
-                denominator_result=1, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
-                identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
+                fk=brand_kpi_fk, numerator_id=display_brand_fk, numerator_result=result, result=result * 100,
+                score=score * 100, denominator_result=1,
+                identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                 weight=row.Weight * 100, should_enter=True)
         # write total result
         self.common.write_to_db_result(
