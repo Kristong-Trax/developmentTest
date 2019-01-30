@@ -10,7 +10,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_ccru_sanity import ProjectsSanityData
-from Projects.CCRU.RedScoreCalculation import CCRUCalculations
+from Projects.CCRU.Calculations import CCRUCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Utils.Testing.Case import skip
 
