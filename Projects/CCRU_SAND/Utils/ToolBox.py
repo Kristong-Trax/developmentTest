@@ -384,6 +384,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
 
                 if not scenes:
                     return 0
@@ -427,21 +428,28 @@ class CCRU_SANDKPIToolBox:
         if not product_manufacturers:
             product_manufacturers = ['TCCC']
 
-        object_facings = self.get_object_facings(scenes=scenes,
-                                                 objects=values_list,
-                                                 object_type=params.get('Type'),
-                                                 formula=params.get('Formula').strip(),
-                                                 shelves=params.get("shelf_number", None),
-                                                 size=sizes,
-                                                 form_factor=form_factors,
-                                                 products_to_exclude=products_to_exclude,
-                                                 form_factors_to_exclude=form_factors_to_exclude,
-                                                 product_categories=product_categories,
-                                                 product_sub_categories=product_sub_categories,
-                                                 product_brands=product_brands,
-                                                 product_manufacturers=product_manufacturers)
+        result = self.get_object_facings(scenes=scenes,
+                                         objects=values_list,
+                                         object_type=params.get('Type'),
+                                         formula=params.get('Formula').strip(),
+                                         shelves=params.get("shelf_number", None),
+                                         size=sizes,
+                                         form_factor=form_factors,
+                                         products_to_exclude=products_to_exclude,
+                                         form_factors_to_exclude=form_factors_to_exclude,
+                                         product_categories=product_categories,
+                                         product_sub_categories=product_sub_categories,
+                                         product_brands=product_brands,
+                                         product_manufacturers=product_manufacturers)
 
-        return object_facings
+        if params.get('Formula').strip() == 'each SKU hits facings target':
+            if params.get('Target'):
+                number_of_fails = sum([x < int(params.get('Target')) for x in result])
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 2)
+            else:
+                result = 0
+
+        return result
 
     def calculate_number_facings_near_food(self, params, all_params):
         total_res = 0
@@ -467,6 +475,7 @@ class CCRU_SANDKPIToolBox:
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     return 0
             else:
@@ -1032,7 +1041,7 @@ class CCRU_SANDKPIToolBox:
         for p in params.values()[0]:
             if p.get('level') != level:
                 continue
-            if p.get('Formula').strip() != 'number of SKU per Door RANGE':
+            if p.get('Formula').strip() not in ('number of SKU per Door RANGE', 'number of SKU per Door RANGE TOTAL'):
                 continue
             scenes = None
             if p.get('depends on'):
@@ -1048,6 +1057,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     if p.get('level') == 2:
                         scenes = []
@@ -1055,13 +1065,18 @@ class CCRU_SANDKPIToolBox:
                         return 0
             else:
                 scenes = self.get_relevant_scenes(p)
-            score = self.calculate_number_of_skus_per_door_range(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+            if p.get('Formula').strip() == 'number of SKU per Door RANGE':
+                score = self.calculate_number_of_skus_per_door_range(p, scenes)
+            elif p.get('Formula').strip() == 'number of SKU per Door RANGE TOTAL':
+                score = self.calculate_number_of_skus_per_door_range_total(p, scenes)
+
             if p.get('level') == 3:
                 return score
+
             # saving to DB
             if p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
                 if p.get('KPI Weight') is None:
                     set_total_res += round(score)
                 else:
@@ -1098,6 +1113,32 @@ class CCRU_SANDKPIToolBox:
         if sum_of_all_doors:
             return (sum_of_passed_doors / sum_of_all_doors) * 100
         return 0
+
+    def calculate_number_of_skus_per_door_range_total(self, p, scenes):
+        doors_count = 0
+        eans_count = 0
+        for scene in scenes:
+            eans_count += len(self.scif[(self.scif['scene_id'] == scene) &
+                                        (self.scif['manufacturer_name'] == 'TCCC') &
+                                        (self.scif['location_type'] == p.get('Locations to include')) &
+                                        (self.scif['facings'] > 0) & (self.scif['product_type'] != 'Empty')][
+                                  'product_ean_code'].unique())
+            scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+            if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
+                doors_count += float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+            else:
+                doors_count += 1
+        if doors_count:
+            result = round(eans_count / float(doors_count), 2)
+        else:
+            result = 0
+        if p.get('target_min') <= result <= p.get('target_max'):
+            score = 100
+        else:
+            score = 0
+        self.update_kpi_scores_and_results(p, {'result': result})
+
+        return score
 
     @kpi_runtime()
     def check_number_of_skus_in_single_scene_type(self, params):
@@ -1643,14 +1684,20 @@ class CCRU_SANDKPIToolBox:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             kpi_total_weight = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
+                    atomic_res = -1
+                    atomic_score = -1
                     if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
                         atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                    elif c.get("Formula").strip() == "each SKU hits facings target":
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                        atomic_score = 100 if atomic_res == 100 else 0
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
@@ -1659,12 +1706,10 @@ class CCRU_SANDKPIToolBox:
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
-                    else:
-                        atomic_res = -1
-                        # print "Weighted Average", c.get("Formula").strip()
                     if atomic_res == -1:
                         continue
-                    atomic_score = self.calculate_score(atomic_res, c)
+                    if atomic_score == -1:
+                        atomic_score = self.calculate_score(atomic_res, c)
                     if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
                         kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
                         kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
@@ -2100,7 +2145,7 @@ class CCRU_SANDKPIToolBox:
         self.update_kpi_scores_and_results(param, {'level': level,
                                                    'threshold': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
                                                    'weight': param.get('KPI Weight'),
-                                                   'result': score,
+                                                   # 'result': score,
                                                    'score': round(score),
                                                    'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
@@ -2182,7 +2227,7 @@ class CCRU_SANDKPIToolBox:
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
                                                    'score': round(score),
-                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -3038,6 +3083,8 @@ class CCRU_SANDKPIToolBox:
         try:
             if "number of SKUs" in formula:
                 object_facings = len(final_result['product_ean_code'].unique())
+            elif "each SKU hits facings target" in formula:
+                object_facings = final_result.groupby(['scene_fk', 'product_ean_code']).agg({'facings': 'sum'})['facings'].values.tolist()
             else:
                 if 'facings' in final_result.columns:
                     object_facings = final_result['facings'].sum()
@@ -3095,14 +3142,15 @@ class CCRU_SANDKPIToolBox:
             context_id = self.common.get_kpi_fk_by_kpi_type(kpi['kpi_name']) if parent == 'root' \
                 else (scene_id if scene_id else None)
 
-            if kpi['additional_level'] is not None:
-                additional_level = kpi
-                additional_level['parent'] = additional_level['kpi_id']
-                additional_level['level'] += 1
-                additional_level['additional_level'] = None
-                kpis = kpis.append(additional_level)
             if kpi['kpi_id'] != parent:
-                score, weight = self.write_kpi_tree(kpi_set_type, kpis, parent=kpi['kpi_id'], identifier_parent=identifier_result)
+                if kpi['additional_level'] is not None:
+                    additional_level = kpi.copy()
+                    additional_level['parent'] = additional_level['kpi_id']
+                    additional_level['level'] = additional_level['additional_level']
+                    additional_level['additional_level'] = None
+                    kpis = kpis.append(additional_level)
+                score, weight = self.write_kpi_tree(kpi_set_type, kpis, parent=kpi['kpi_id'],
+                                                    identifier_parent=identifier_result)
             else:
                 score = weight = 0
 
@@ -3115,14 +3163,16 @@ class CCRU_SANDKPIToolBox:
                 weight = kpi['weight']
                 target = kpi['threshold']
 
-            result = kpi['result']
             if kpi['format'] == 'STR':
+                result = kpi['result']
                 kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
                     'kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
                     result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
+            else:
+                result = kpi['result'] if kpi['level'] == 3 else kpi['score']
 
             group_score += score if score else 0
             group_weight += weight if weight else 0

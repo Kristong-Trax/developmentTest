@@ -37,6 +37,8 @@ class JNJDECalculations(BaseCalculationsScript):
         jnj_generator.assortment_calculation()
         # KPI 10 - New Display compliance
         jnj_generator.display_compliance_calculation()
-
+        # Competitor KPI's
+        jnj_generator.sos_brand_out_of_sub_category()
+        jnj_generator.competitor_eye_hand_level_sos(eye_hand_lvl_template)
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
