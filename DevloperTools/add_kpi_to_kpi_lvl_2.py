@@ -28,7 +28,7 @@ class Consts(object):
 
 
 class AddKPIs(object):
-    def __init__(self, project_name, template_path=None, remove_duplicates=False):
+    def __init__(self, project_name, template_path=None, remove_duplicates=False, add_kpi_pks=False):
         self.project_name = project_name
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.get_kpi_static_data()
@@ -39,6 +39,7 @@ class AddKPIs(object):
         self.insert_queries = []
         self.output_path = self.get_output_file_path()
         self.error_cells = set()
+        self.add_kpi_pks = add_kpi_pks
 
     @staticmethod
     def get_template_path(template_path):
@@ -149,6 +150,8 @@ class AddKPIs(object):
                            'valid_until': {0: '2050-01-01'},
                            'initiated_by': {0: 'Custom'},
                            'context_type_fk': {0: kpi_row['context_type_fk']}}
+        if self.add_kpi_pks:
+            attributes_dict.update({'pk': {0: kpi_row['pk']}})
         return attributes_dict
 
     def merge_insert_queries(self):
@@ -183,6 +186,8 @@ Template_path: optional attribute. Default value: 'kpi_factory/DevloperTools/new
                it has all columns required for the script.
 Remove_duplicates: optional attribute. True: if you want the script to get rid of repeating kpi types 
                 and insert to DB only one of them. Default value: False
+Add_pks: optional attribute.True if you want your kpis to have certain pks (e.g.to differenciate the numbering from OOTB).
+        Default value: False
 Output: If there are no errors, the kpis are added to the DB. If there are errors, the template file with highlighted erroneous 
 cells is saved to '/tmp'.
 Validations: all validations are in validate_template() function: 
@@ -195,6 +200,6 @@ Validations: all validations are in validate_template() function:
 if __name__ == '__main__':
     LoggerInitializer.init('test')
     Config.init()
-    project_name = 'cbcil-sand'
-    # template_path = '/home/natalyak/Desktop/CBCIL/new_tables_template_test.xlsx'
-    AddKPIs(project_name, template_path=None, remove_duplicates=False).add_kpis_from_template()
+    project_name = 'ccbza'
+    template_path = '/home/natalyak/Desktop/CCBZA/new_tables_template_to_upload.xlsx'
+    AddKPIs(project_name, template_path=template_path).add_kpis_from_template()

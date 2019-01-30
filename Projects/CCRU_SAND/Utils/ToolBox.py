@@ -39,6 +39,7 @@ KPI_CONVERSION = 'KPI_CONVERSION'
 
 SKIP_OLD_KPIS_FROM_WRITING = [TARGET, MARKETING]
 SKIP_NEW_KPIS_FROM_WRITING = [TARGET, MARKETING]
+NEW_KPIS_TO_WRITE_TO_DB = [POS, INTEGRATION, GAPS, SPIRITS, TOPSKU, EQUIPMENT, CONTRACT]
 
 BINARY = 'BINARY'
 PROPORTIONAL = 'PROPORTIONAL'
@@ -125,11 +126,12 @@ class CCRU_SANDKPIToolBox:
                      'eng_name': param.get('KPI name Eng'),
                      'rus_name': param.get('KPI name Rus'),
                      'score_func': param.get('score_func'),
-                     'weight': param.get('KPI Weight'),
                      'threshold': None,
+                     'weight': param.get('KPI Weight'),
                      'result': None,
                      'format': None,
                      'score': None,
+                     'weighted_score': None,
                      'scene_id': None,
                      'scene_uid': None,
                      'level': int(param.get('level')) if param.get('level') else 1,
@@ -276,19 +278,15 @@ class CCRU_SANDKPIToolBox:
         return relevant_scenes
 
     @kpi_runtime()
-    def check_availability(self, params):
-        """
-        This function is used to calculate availability given a set pf parameters
-
-        """
+    def check_availability(self, params, level=2):
         set_total_res = 0
         availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT', 'MAN in CAT', 'SUB_BRAND', 'SUB_CATEGORY']
         formula_types = ['number of SKUs', 'number of facings']
         atomic_result_total = 0
         for p in params.values()[0]:
-            if p.get('Type') not in availability_types or p.get('Formula').strip() not in formula_types:
+            if p.get('level') != level:
                 continue
-            if p.get('level') != 2:
+            if p.get('Type') not in availability_types or p.get('Formula').strip() not in formula_types:
                 continue
             is_atomic = False
             kpi_total_res = 0
@@ -358,7 +356,7 @@ class CCRU_SANDKPIToolBox:
                 score = self.calculate_score(kpi_total_res, p)
 
             if not is_atomic:  # saving also to level3 in case this KPI has only one level
-                attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+                attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
             # Saving to old tables
@@ -373,9 +371,9 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = str(params.get('Values')).split(', ')
+        values_list = unicode(params.get('Values')).strip().split(', ')
         if not scenes:
-            if 'depends on' in params.keys():
+            if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
                 for c in all_params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
@@ -386,6 +384,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
 
                 if not scenes:
                     return 0
@@ -429,25 +428,32 @@ class CCRU_SANDKPIToolBox:
         if not product_manufacturers:
             product_manufacturers = ['TCCC']
 
-        object_facings = self.get_object_facings(scenes=scenes,
-                                                 objects=values_list,
-                                                 object_type=params.get('Type'),
-                                                 formula=params.get('Formula').strip(),
-                                                 shelves=params.get("shelf_number", None),
-                                                 size=sizes,
-                                                 form_factor=form_factors,
-                                                 products_to_exclude=products_to_exclude,
-                                                 form_factors_to_exclude=form_factors_to_exclude,
-                                                 product_categories=product_categories,
-                                                 product_sub_categories=product_sub_categories,
-                                                 product_brands=product_brands,
-                                                 product_manufacturers=product_manufacturers)
+        result = self.get_object_facings(scenes=scenes,
+                                         objects=values_list,
+                                         object_type=params.get('Type'),
+                                         formula=params.get('Formula').strip(),
+                                         shelves=params.get("shelf_number", None),
+                                         size=sizes,
+                                         form_factor=form_factors,
+                                         products_to_exclude=products_to_exclude,
+                                         form_factors_to_exclude=form_factors_to_exclude,
+                                         product_categories=product_categories,
+                                         product_sub_categories=product_sub_categories,
+                                         product_brands=product_brands,
+                                         product_manufacturers=product_manufacturers)
 
-        return object_facings
+        if params.get('Formula').strip() == 'each SKU hits facings target':
+            if params.get('Target'):
+                number_of_fails = sum([x < int(params.get('Target')) for x in result])
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 2)
+            else:
+                result = 0
+
+        return result
 
     def calculate_number_facings_near_food(self, params, all_params):
         total_res = 0
-        if 'depends on' in params.keys():
+        if params.get('depends on'):
             depends_on_kpi_name = params.get('depends on')
             for c in all_params.values()[0]:
                 if c.get('KPI name Eng') == depends_on_kpi_name:
@@ -464,11 +470,12 @@ class CCRU_SANDKPIToolBox:
 
     def calculate_number_of_scenes_with_target(self, params, scenes=None):
         if not scenes:
-            if 'depends on' in params.keys():
+            if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     return 0
             else:
@@ -481,18 +488,15 @@ class CCRU_SANDKPIToolBox:
         return kpi_total_res
 
     @kpi_runtime()
-    def check_number_of_scenes(self, params):
-        """
-        This function is used to calculate number of scenes
-
-        """
+    def check_number_of_scenes(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula').strip() != 'number of scenes' or p.get('level') == 3:
+            if p.get('level') != level:
                 continue
-
+            if p.get('Formula').strip() != 'number of scenes':
+                continue
             kpi_total_res = 0
-            if 'depends on' in p.keys():
+            if p.get('depends on'):
                 depends_scenes = []
                 depends_on_kpi_name = p.get('depends on')
                 for c in params.values()[0]:
@@ -567,15 +571,15 @@ class CCRU_SANDKPIToolBox:
                     kpi_total_res += res
 
             score = self.calculate_score(kpi_total_res, p)
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
-            else:
+            if p.get('KPI Weight') is None:
                 set_total_res += round(score)
+            else:
+                set_total_res += round(score) * p.get('KPI Weight')
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
             if not p.get('Children'):
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, additional_level=True)
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if p.get('level') == 2:
@@ -588,9 +592,11 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_number_of_doors(self, params):
+    def check_number_of_doors(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Type') not in ('DOORS', 'SUB_LOCATION_TYPE', 'LOCATION_TYPE') or p.get('Formula').strip() != 'number of doors':
                 continue
             kpi_total_res = self.calculate_number_of_doors(p)
@@ -599,7 +605,7 @@ class CCRU_SANDKPIToolBox:
             # saving to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -694,7 +700,7 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             elif p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -704,13 +710,11 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_facings_sos(self, params):
-        """
-        This function is used to calculate facing share of shelf
-
-        """
+    def check_facings_sos(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
                             p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
@@ -732,7 +736,7 @@ class CCRU_SANDKPIToolBox:
                 score = 0
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -808,7 +812,7 @@ class CCRU_SANDKPIToolBox:
 
         """
         self.update_kpi_scores_and_results(params, {'result': kpi_total_res})
-        if 'Target' not in params.keys():
+        if not params.get('Target'):
             return kpi_total_res
 
         if params.get('Target') == 'range of targets':
@@ -858,17 +862,15 @@ class CCRU_SANDKPIToolBox:
         return score
 
     @kpi_runtime()
-    def check_share_of_cch(self, params):
-        """
-        This function calculates number of SKUs per single scene type
-
-        """
+    def check_share_of_cch(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() != 'Share of CCH doors which have 98% TCCC facings' and p.get('Formula').strip() != 'number of pure Coolers':
                 continue
             scenes = None
-            if 'depends on' in p.keys():
+            if p.get('depends on'):
                 depends_on_kpi_name = p.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
@@ -897,15 +899,19 @@ class CCRU_SANDKPIToolBox:
                 score = self.calculate_share_of_cch(p, scenes)
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
-            else:
+            if p.get('KPI Weight') is None:
                 set_total_res += round(score)
+            else:
+                set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, additional_level=True)
-            self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if level == 2:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            else:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                 self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
@@ -942,18 +948,23 @@ class CCRU_SANDKPIToolBox:
             score = self.calculate_number_of_scenes_given_facings(p, scenes)
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
-            else:
+            if p.get('KPI Weight') is None:
                 set_total_res += round(score)
+            else:
+                set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
-            attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, additional_level=True)
-            self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-            attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-            self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            if p.get('level') == 2:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            else:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
         return set_total_res
 
-    def calculate_share_of_cch(self, p, scenes, sos = True):
+    def calculate_share_of_cch(self, p, scenes, sos=True):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
         sum_of_all_doors = 0
@@ -961,7 +972,7 @@ class CCRU_SANDKPIToolBox:
             products_of_tccc = self.scif[(self.scif['scene_id'] == scene) &
                                          (self.scif['manufacturer_name'] == 'TCCC') &
                                          (self.scif['location_type'] == p.get('Locations to include')) &
-                                         (self.scif['product_type']!='Empty')]['facings'].sum()
+                                         (self.scif['product_type'] != 'Empty')]['facings'].sum()
             all_products = self.scif[(self.scif['scene_id'] == scene) &
                                      (self.scif['location_type'] == p.get('Locations to include')) &
                                      (self.scif['product_type'] != 'Empty')]['facings'].sum()
@@ -1025,17 +1036,15 @@ class CCRU_SANDKPIToolBox:
         return sum_of_passed_scenes
 
     @kpi_runtime()
-    def check_number_of_skus_per_door_range(self, params):
-        """
-        This function calculates number of SKUs per single scene type
-
-        """
+    def check_number_of_skus_per_door_range(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
-            if p.get('Formula').strip() != 'number of SKU per Door RANGE':
+            if p.get('level') != level:
+                continue
+            if p.get('Formula').strip() not in ('number of SKU per Door RANGE', 'number of SKU per Door RANGE TOTAL'):
                 continue
             scenes = None
-            if 'depends on' in p.keys():
+            if p.get('depends on'):
                 depends_on_kpi_name = p.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
@@ -1048,6 +1057,7 @@ class CCRU_SANDKPIToolBox:
                                                                                       proportion_param=0.9)
                         else:
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
                 if not scenes:
                     if p.get('level') == 2:
                         scenes = []
@@ -1055,18 +1065,23 @@ class CCRU_SANDKPIToolBox:
                         return 0
             else:
                 scenes = self.get_relevant_scenes(p)
-            score = self.calculate_number_of_skus_per_door_range(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+            if p.get('Formula').strip() == 'number of SKU per Door RANGE':
+                score = self.calculate_number_of_skus_per_door_range(p, scenes)
+            elif p.get('Formula').strip() == 'number of SKU per Door RANGE TOTAL':
+                score = self.calculate_number_of_skus_per_door_range_total(p, scenes)
+
             if p.get('level') == 3:
                 return score
+
             # saving to DB
             if p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                if 'KPI Weight' in p.keys():
-                    set_total_res += round(score) * p.get('KPI Weight')
-                else:
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                if p.get('KPI Weight') is None:
                     set_total_res += round(score)
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, additional_level=True)
+                else:
+                    set_total_res += round(score) * p.get('KPI Weight')
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1098,6 +1113,32 @@ class CCRU_SANDKPIToolBox:
         if sum_of_all_doors:
             return (sum_of_passed_doors / sum_of_all_doors) * 100
         return 0
+
+    def calculate_number_of_skus_per_door_range_total(self, p, scenes):
+        doors_count = 0
+        eans_count = 0
+        for scene in scenes:
+            eans_count += len(self.scif[(self.scif['scene_id'] == scene) &
+                                        (self.scif['manufacturer_name'] == 'TCCC') &
+                                        (self.scif['location_type'] == p.get('Locations to include')) &
+                                        (self.scif['facings'] > 0) & (self.scif['product_type'] != 'Empty')][
+                                  'product_ean_code'].unique())
+            scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+            if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
+                doors_count += float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+            else:
+                doors_count += 1
+        if doors_count:
+            result = round(eans_count / float(doors_count), 2)
+        else:
+            result = 0
+        if p.get('target_min') <= result <= p.get('target_max'):
+            score = 100
+        else:
+            score = 0
+        self.update_kpi_scores_and_results(p, {'result': result})
+
+        return score
 
     @kpi_runtime()
     def check_number_of_skus_in_single_scene_type(self, params):
@@ -1160,7 +1201,7 @@ class CCRU_SANDKPIToolBox:
             score = 0
         # Saving to old tables
         if p.get('level') == 2:  # saving also to level3 in case this KPI has only one level
-            attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+            attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
             self.write_to_kpi_results_old(attributes_for_table3, 'level3')
             attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_table2, 'level2')
@@ -1263,9 +1304,11 @@ class CCRU_SANDKPIToolBox:
         return float(facings) / 40
 
     @kpi_runtime()
-    def check_customer_cooler_doors(self, params):
+    def check_customer_cooler_doors(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() != "facings TCCC/40":
                 continue
             kpi_total_res = self.calculate_tccc_40(p)
@@ -1274,7 +1317,7 @@ class CCRU_SANDKPIToolBox:
             # writing to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, additional_level=True)
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1284,18 +1327,37 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_sum_atomics(self, params):
-        """
+    def check_dummies(self, params, level=2):
+        total_score = 0
+        for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
+            if p.get('Formula').strip() != 'DUMMY':
+                continue
+            score = 0
+            total_score += round(score) * p.get('KPI Weight')
+            # writing to DB
+            kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            if p.get('level') == 2:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+            else:
+                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
+                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+        return total_score
 
-        :param params:
-        :return:
-        """
+    @kpi_runtime()
+    def check_sum_atomics(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             atomic_result_total = 0
             for c in params.values()[0]:
@@ -1346,10 +1408,10 @@ class CCRU_SANDKPIToolBox:
                     score = 100
             else:
                 score = 0
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
+            if p.get('KPI Weight') is None:
+                set_total_res += round(score)
             else:
-                set_total_res += score
+                set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1360,21 +1422,23 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_atomic_passed(self, params):
+    def check_atomic_passed(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() != "number of atomic KPI Passed" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
                     atomic_score = -1
                     if c.get("Formula").strip() == "number of facings" or c.get("Formula").strip() == "number of SKUs":
-                        atomic_res = self.calculate_availability(c, all_params =params)
+                        atomic_res = self.calculate_availability(c, all_params=params)
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent = p)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res = self.calculate_lead_sku(c)
                         if not atomic_res:
@@ -1396,7 +1460,7 @@ class CCRU_SANDKPIToolBox:
                         scenes_list = self.check_number_of_doors_of_filled_coolers(c, func='get scenes')
                         atomic_res = len(scenes_list)
                     elif c.get("Formula").strip() == "number of SKU per Door RANGE":
-                        atomic_score = self.check_number_of_skus_per_door_range(params)
+                        atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
                     else:
@@ -1413,10 +1477,10 @@ class CCRU_SANDKPIToolBox:
                     if atomic_score > 0:
                         kpi_total += 1
             score = self.calculate_score(kpi_total, p)
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
+            if p.get('KPI Weight') is None:
+                set_total_res += round(score)
             else:
-                set_total_res += score
+                set_total_res += round(score) * p.get('KPI Weight')
 
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
@@ -1428,16 +1492,18 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_atomic_passed_on_the_same_scene(self, params):
+    def check_atomic_passed_on_the_same_scene(self, params, level=2):
         set_total_res = 0
         self.passed_scenes_per_kpi = {}
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() != "number of atomic KPI Passed on the same scene" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
-            if 'depends on' in p.keys():
+            if p.get('depends on'):
                 depends_on_kpi_name = p.get('depends on')
                 if depends_on_kpi_name in self.passed_scenes_per_kpi.keys():
                     relevant_scenes = self.passed_scenes_per_kpi[depends_on_kpi_name]
@@ -1458,7 +1524,7 @@ class CCRU_SANDKPIToolBox:
                     if c.get("Formula").strip() == "number of facings":
                         atomic_res = self.calculate_availability(c, [scene])
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, [scene], parent = p, same_scene = True)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res = self.calculate_lead_sku(c, [scene])
                         if not atomic_res:
@@ -1527,16 +1593,15 @@ class CCRU_SANDKPIToolBox:
                     kpi_total += atomic_score / 100
                 else:
                     if c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        sub_atomic_children = map(int, str(c.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+                        sub_atomic_children = map(int, str(c.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
                         for sub_atomic in sub_atomic_children:
                             sub_atomic_info = info_by_kpi_id.get(sub_atomic)
-                            atomic_res = 0
-                            atomic_score = 0
-                            self.calculate_score(atomic_res, sub_atomic_info)
+                            sub_atomic_res = 0
+                            sub_atomic_score = self.calculate_score(sub_atomic_res, sub_atomic_info)
                             kpi_name = sub_atomic_info.get('KPI name Eng')
-                            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
-                            attributes_for_level3 = self.create_attributes_for_level3_df(sub_atomic_info, atomic_score, kpi_fk, atomic_kpi_fk)
-                            self.write_to_kpi_results_old(attributes_for_level3, 'level4')
+                            sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
+                            attributes_for_level4 = self.create_attributes_for_level3_df(sub_atomic_info, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
+                            self.write_to_kpi_results_old(attributes_for_level4, 'level4')
                     atomic_res = 0
                     atomic_score = 0
                     self.calculate_score(atomic_res, c)
@@ -1546,10 +1611,10 @@ class CCRU_SANDKPIToolBox:
                 attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             score = self.calculate_score(kpi_total, p)
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(score) * p.get('KPI Weight')
+            if p.get('KPI Weight') is None:
+                set_total_res += round(score)
             else:
-                set_total_res += score
+                set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1559,9 +1624,9 @@ class CCRU_SANDKPIToolBox:
 
         return set_total_res
 
-    def calculate_sub_atomic_passed(self, params, all_params, scenes=[], parent=None, same_scene=None):
+    def calculate_sub_atomic_passed(self, params, all_params, scenes=None, parent=None, same_scene=None):
         if not scenes:
-            if 'depends on' in params.keys():
+            if params.get('depends on'):
                 if params['depends on'] == 'scene type':
                     scenes = self.get_relevant_scenes(params)
                     if not scenes:
@@ -1575,7 +1640,7 @@ class CCRU_SANDKPIToolBox:
                             break
                     if doors < 2:
                         return -1
-        children = map(int, str(params.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+        children = map(int, str(params.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
         total_res = 0
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
@@ -1599,45 +1664,55 @@ class CCRU_SANDKPIToolBox:
                         continue
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
                 sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
-                attributes_for_level4 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk)
+                attributes_for_level4 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
 
     @kpi_runtime()
-    def check_weighted_average(self, params):
+    def check_weighted_average(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if not (p.get('Formula').strip() in ("Weighted Average", "average of atomic KPI Score", "Weighted Sum")
                     and p.get("Children")):
                 continue
             scenes = []
-            if 'depends on' in params.keys():
+            if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             kpi_total_weight = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
-                    if c.get("Formula").strip() == "number of facings":
-                        atomic_res = self.calculate_availability(c, scenes=scenes)
+                    atomic_res = -1
+                    atomic_score = -1
+                    if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                    elif c.get("Formula").strip() == "each SKU hits facings target":
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                        atomic_score = 100 if atomic_res == 100 else 0
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
                         atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
-                    else:
-                        atomic_res = -1
-                        # print "Weighted Average", c.get("Formula").strip()
+                    elif c.get("Formula").strip() == "Scenes with no tagging":
+                        atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "DUMMY":
+                        atomic_res = 0
                     if atomic_res == -1:
                         continue
-                    atomic_score = self.calculate_score(atomic_res, c)
+                    if atomic_score == -1:
+                        atomic_score = self.calculate_score(atomic_res, c)
                     if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
-                        kpi_total += atomic_score * c.get('KPI Weight')
-                        kpi_total_weight += c.get('KPI Weight')
+                        kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                        kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
                     else:
                         kpi_total += atomic_score
                         kpi_total_weight += 1
@@ -1651,10 +1726,11 @@ class CCRU_SANDKPIToolBox:
             else:
                 kpi_total = 0
             kpi_score = self.calculate_score(kpi_total, p)
-            if 'KPI Weight' in p.keys():
-                set_total_res += round(kpi_score) * p.get('KPI Weight')
+            if p.get('KPI Weight') is None:
+                set_total_res += round(kpi_score * kpi_total_weight)
+                p['KPI Weight'] = kpi_total_weight
             else:
-                set_total_res += round(kpi_score) * kpi_total_weight
+                set_total_res += round(kpi_score * p.get('KPI Weight'))
             # saving to DB
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
@@ -1662,7 +1738,7 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     @kpi_runtime()
-    def check_number_of_scenes_no_tagging(self, params, level=None):
+    def check_number_of_scenes_no_tagging(self, params, level=2):
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
@@ -1676,9 +1752,11 @@ class CCRU_SANDKPIToolBox:
             number_relevant_scenes = 0
             scenes = []
             for p in params.values()[0]:
+                if p.get('level') != level:
+                    continue
                 if p.get('Formula').strip() != "Scenes with no tagging":
                     continue
-                if 'depends on' in p.keys():
+                if p.get('depends on'):
                     depends_on_kpi_name = p.get('depends on')
                     for c in params.values()[0]:
                         if c.get('KPI name Eng') == depends_on_kpi_name:
@@ -1708,19 +1786,22 @@ class CCRU_SANDKPIToolBox:
                         number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
 
                 score = self.calculate_score(number_relevant_scenes, p)
-                if 'KPI Weight' in p.keys():
-                    set_total_res += round(score) * p.get('KPI Weight')
-                else:
+                if p.get('KPI Weight') is None:
                     set_total_res += round(score)
+                else:
+                    set_total_res += round(score) * p.get('KPI Weight')
 
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
 
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, additional_level=True)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                if level == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                # else:
+                #     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                #     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, None, score)
@@ -1982,13 +2063,13 @@ class CCRU_SANDKPIToolBox:
                 self.update_kpi_scores_and_results(
                     {'KPI ID': kf.get('id'),
                      'KPI name Eng': kf.get('name'),
-                     'KPI name Rus': kf.get('name')},
+                     'KPI name Rus': kf.get('name'),
+                     'Parent': 0},
                     {'scene_uid': kf.get('scene_uid'),
                      'scene_id': kf.get('scene_id'),
                      'result': result_formatted,
                      'format': result_format,
-                     'level': 1,
-                     'parent': '0'})
+                     'level': 1})
 
                 # table3 = table3.append(attributes_for_table3)  # for debugging
 
@@ -2023,10 +2104,9 @@ class CCRU_SANDKPIToolBox:
         self.update_kpi_scores_and_results(
             {'KPI ID': 0,
              'KPI name Eng': kpi_set_name,
-             'KPI name Rus': kpi_set_name},
-            {'level': 0,
-             'parent': 'root'})
-        self.write_to_kpi_results_new()
+             'KPI name Rus': kpi_set_name,
+             'Parent': 'root'},
+            {'level': 0})
 
         return
 
@@ -2043,19 +2123,18 @@ class CCRU_SANDKPIToolBox:
             merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
         return merged_queries
 
-    def create_attributes_for_level2_df(self, param, score, kpi_fk,
-                                        update_kpi_scores_and_results=True):
+    def create_attributes_for_level2_df(self, param, score, kpi_fk, level=2):
         """
         This function creates a data frame with all attributes needed for saving in level 2 tables
 
         """
-        score = round(score)
+        # score = round(score)
         attributes_for_table2 = pd.DataFrame([(self.session_uid,
                                                self.store_id,
                                                self.visit_date.isoformat(),
                                                kpi_fk,
                                                param.get('KPI name Eng').replace("'", "\\'"),
-                                               score)],
+                                               round(score))],
                                              columns=['session_uid',
                                                       'store_fk',
                                                       'visit_date',
@@ -2063,19 +2142,16 @@ class CCRU_SANDKPIToolBox:
                                                       'kpk_name',
                                                       'score'])
 
-        if update_kpi_scores_and_results:
-            self.update_kpi_scores_and_results(param, {'level': 2,
-                                                       'threshold': param.get('KPI Weight') * 100,
-                                                       'result': score,
-                                                       'score': score,
-                                                       'weight': param.get('KPI Weight'),
-                                                       'weighted_score': score * param.get('KPI Weight', 1)})
+        self.update_kpi_scores_and_results(param, {'level': level,
+                                                   'threshold': 100 * (param.get('KPI Weight') if param.get('KPI Weight') else 1),
+                                                   'weight': param.get('KPI Weight'),
+                                                   # 'result': score,
+                                                   'score': round(score),
+                                                   'weighted_score': score * (param.get('KPI Weight') if param.get('KPI Weight') else 1)})
 
         return attributes_for_table2
 
-    def create_attributes_for_level3_df(self, param, score, kpi_fk, atomic_kpi_fk=None,
-                                        update_kpi_scores_and_results=True,
-                                        additional_level=None):
+    def create_attributes_for_level3_df(self, param, score, kpi_fk, atomic_kpi_fk=None, level=3, additional_level=None):
         """
         This function creates a data frame with all attributes needed for saving in level 3 tables
 
@@ -2084,7 +2160,7 @@ class CCRU_SANDKPIToolBox:
             score, result, threshold = score
         else:
             result = threshold = None
-        score = round(score)
+        # score = round(score)
         self.update_kpi_scores_and_results(param, {})
         result = self.kpi_scores_and_results[self.kpi_set_type][str(param.get("KPI ID"))].get('result')\
             if result is None else result
@@ -2102,7 +2178,7 @@ class CCRU_SANDKPIToolBox:
                                                    self.store_id,
                                                    self.visit_date.isoformat(),
                                                    dt.datetime.utcnow().isoformat(),
-                                                   score,
+                                                   round(score),
                                                    kpi_fk,
                                                    atomic_kpi_fk,
                                                    threshold,
@@ -2127,7 +2203,7 @@ class CCRU_SANDKPIToolBox:
                                                    self.store_id,
                                                    self.visit_date.isoformat(),
                                                    dt.datetime.utcnow().isoformat(),
-                                                   score,
+                                                   round(score),
                                                    kpi_fk,
                                                    atomic_kpi_fk,
                                                    threshold,
@@ -2146,14 +2222,13 @@ class CCRU_SANDKPIToolBox:
                                                           'result',
                                                           'name'])
 
-        if update_kpi_scores_and_results:
-            self.update_kpi_scores_and_results(param, {'level': 2 if additional_level else 3,
-                                                       'threshold': threshold,
-                                                       'result': result,
-                                                       'score': score,
-                                                       'weight': param.get('KPI Weight'),
-                                                       'weighted_score': score * param.get('KPI Weight', 1),
-                                                       'additional_level': additional_level})
+        self.update_kpi_scores_and_results(param, {'level': level if additional_level is None else additional_level,
+                                                   'threshold': threshold,
+                                                   'weight': param.get('KPI Weight'),
+                                                   'result': result,
+                                                   'score': round(score),
+                                                   'weighted_score': round(score * (param.get('KPI Weight') if param.get('KPI Weight') else 1), 2),
+                                                   'additional_level': additional_level})
 
         return attributes_for_table3
 
@@ -2164,7 +2239,7 @@ class CCRU_SANDKPIToolBox:
             if p.get('Formula').strip() != "number of doors given sos" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             first_atomic_score = second_atomic_res = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
@@ -2200,7 +2275,7 @@ class CCRU_SANDKPIToolBox:
             if p.get('Formula').strip() != "number of doors given number of SKUs" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             first_atomic_scores = []
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic number of SKUs":
@@ -2234,14 +2309,14 @@ class CCRU_SANDKPIToolBox:
     def get_pos_kpi_set_name(self):
         if str(self.visit_date) < '2017-11-25':  # todo: change the date to the relevant one before deployment
             query = """
-                    select ss.pk , ss.additional_attribute_12
+                    select ss.pk , ss.additional_attribute_11
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
         else:
             query = """
-                    select ss.pk , ss.additional_attribute_11
+                    select ss.pk , ss.additional_attribute_12
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
@@ -2260,119 +2335,25 @@ class CCRU_SANDKPIToolBox:
         for param in params:
             kpi_name = param.get('KPI Name Eng')
             kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
-            kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
-            category = param.get('Gap Category Eng')
-            category_local = param.get('Gap Category Rus')
-            score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
-            target = self.kpi_scores_and_results[POS][kpi_id].get('weight')*100
-            rank = param.get('Top Gaps Rank')
-            if score is not None:
-                gap = target - score
-                gap = 0 if gap < 0 else gap
-                self.gaps_dict[category, kpi_name] = {'gap': round(gap, 2),
-                                                      'rank': rank,
-                                                      'kpi': kpi_name_local,
-                                                      'group_local_name': category_local}
+            if kpi_id is None:
+                Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi_name))
+            else:
+                kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
+                category = param.get('Gap Category Eng')
+                category_local = param.get('Gap Category Rus')
+                target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100 \
+                    if self.kpi_scores_and_results[POS][kpi_id].get('weight') else 0
+                score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
+                    if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
+                rank = param.get('Top Gaps Rank')
+                if score is not None:
+                    gap = target - score
+                    gap = 0 if gap < 0 else gap
+                    self.gaps_dict[category, kpi_name] = {'gap': round(gap, 2),
+                                                          'rank': rank,
+                                                          'kpi': kpi_name_local,
+                                                          'group_local_name': category_local}
         self.write_gaps_old()
-        return
-
-    @kpi_runtime()
-    def calculate_gaps_new(self, params):
-        gaps = pd.DataFrame(params)
-        total_gap = 0
-        category_counter = 0
-        for category in gaps['Gap Category Eng'].unique().tolist():
-            category_counter += 1
-            category_local = category
-            category_gap = 0
-            group_counter = 0
-            for group in gaps[gaps['Gap Category Eng'] == category]['Gap Group Eng'].unique().tolist():
-                group_counter += 1
-                group_local = group
-                group_gap = 0
-                subgroup_counter = 0
-                for subgroup in gaps[gaps['Gap Group Eng'] == group]['Gap Subgroup Eng'].unique().tolist():
-                    subgroup_counter += 1
-                    subgroup_local = subgroup
-                    subgroup_gap = 0
-                    counter = 0
-                    for i, kpi in gaps[gaps['Gap Subgroup Eng'] == subgroup]\
-                            .sort_values(by=['Top Gaps Rank'], ascending=True)\
-                            .reindex()\
-                            .iterrows():
-
-                        kpi_name = kpi.get('KPI Name Eng')
-                        kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
-                        kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
-                        category_local = kpi['Gap Category Rus']
-                        group_local = kpi['Gap Group Rus']
-                        subgroup_local = kpi['Gap Subgroup Rus']
-                        score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
-                        target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100
-
-                        if score is not None:
-                            counter += 1
-                            gap = target - score
-                            gap = 0 if gap < 0 else gap
-                            if gap > 0:
-                                result = format(gap, "+.1f")
-                                self.update_kpi_scores_and_results(
-                                    {'KPI ID': counter,
-                                     'KPI name Eng': kpi_name,
-                                     'KPI name Rus': kpi_name_local},
-                                    {'weight': counter,
-                                     'result': result,
-                                     'level': 4,
-                                     'parent': subgroup_counter})
-                                subgroup_gap += gap
-
-                    if subgroup_gap > 0:
-                        result = format(subgroup_gap, "+.1f")
-                        self.update_kpi_scores_and_results(
-                            {'KPI ID': subgroup_counter,
-                             'KPI name Eng': subgroup,
-                             'KPI name Rus': subgroup_local},
-                            {'weight': None,
-                             'result': result,
-                             'level': 3,
-                             'parent': group_counter})
-                        group_gap += subgroup_gap
-
-                if group_gap > 0:
-                    result = format(group_gap, "+.1f")
-                    self.update_kpi_scores_and_results(
-                        {'KPI ID': group_counter,
-                         'KPI name Eng': group,
-                         'KPI name Rus': group_local},
-                        {'weight': None,
-                         'result': result,
-                         'level': 2,
-                         'parent': category_counter})
-                    category_gap += group_gap
-
-            if category_gap > 0:
-                result = format(category_gap, "+.1f")
-                self.update_kpi_scores_and_results(
-                    {'KPI ID': category_counter,
-                     'KPI name Eng': category,
-                     'KPI name Rus': category_local},
-                    {'weight': None,
-                     'result': result,
-                     'level': 1,
-                     'parent': 0})
-                total_gap += category_gap
-
-        result = format(total_gap, "+.1f")
-        self.update_kpi_scores_and_results(
-            {'KPI ID': 0,
-             'KPI name Eng': self.kpi_set_name,
-             'KPI name Rus': self.kpi_set_name},
-            {'weight': None,
-             'result': result,
-             'level': 0,
-             'parent': 'root'})
-
-        self.write_to_kpi_results_new()
         return
 
     def write_gaps_old(self):
@@ -2399,6 +2380,138 @@ class CCRU_SANDKPIToolBox:
                                                    'impact'])
                 query = insert(attributes.to_dict(), CUSTOM_GAPS_TABLE)
                 self.gaps_queries.append(query)
+
+    @kpi_runtime()
+    def calculate_gaps_new(self, params, kpi_set_name):
+        gaps = pd.DataFrame(params).sort_values(by=['Top Gaps Rank'], ascending=True)
+        gaps['Gap'] = 0
+        gap_groups_limit = self.gap_groups_limit
+        for i, kpi in gaps.iterrows():
+            if gap_groups_limit.get(kpi.get('Gap Category Eng')) > 0:
+                kpi_id = self.kpi_name_to_id[POS].get(kpi.get('KPI Name Eng'))
+                if kpi_id is None:
+                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi.get('KPI Name Eng')))
+                else:
+                    score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
+                        if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
+                    target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100 \
+                        if self.kpi_scores_and_results[POS][kpi_id].get('weight') else 0
+                    gap = (target if target else 0) - (score if score else 0)
+                    if gap > 0:
+                        gaps.loc[i, 'Gap'] = gap
+                        gaps.loc[i, 'KPI Name Rus'] = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
+                        gap_groups_limit[kpi.get('Gap Category Eng')] -= 1
+        gaps = gaps[gaps['Gap'] > 0]
+
+        counter = 0
+        total_gap = 0
+        for category in gaps['Gap Category Eng'].unique().tolist():
+            counter += 1
+            category_counter = counter
+            category_local = category
+            category_gap = 0
+            for group in gaps[gaps['Gap Category Eng'] == category]['Gap Group Eng'].unique().tolist():
+                counter += 1
+                group_counter = counter
+                group_local = group
+                group_gap = 0
+                for subgroup in gaps[gaps['Gap Group Eng'] == group]['Gap Subgroup Eng'].unique().tolist():
+                    counter += 1
+                    subgroup_counter = counter
+                    subgroup_local = subgroup
+                    subgroup_gap = 0
+                    for i, kpi in gaps[gaps['Gap Subgroup Eng'] == subgroup]\
+                            .sort_values(by=['Top Gaps Rank'], ascending=True)\
+                            .reindex()\
+                            .iterrows():
+
+                        kpi_name = kpi.get('KPI Name Eng')
+                        kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
+                        kpi_name_local = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
+                        category_local = kpi['Gap Category Rus']
+                        group_local = kpi['Gap Group Rus']
+                        subgroup_local = kpi['Gap Subgroup Rus']
+                        score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score')
+                        target = self.kpi_scores_and_results[POS][kpi_id].get('weight') * 100
+
+                        if score is not None:
+                            gap = target - score
+                            gap = 0 if gap < 0 else gap
+                            if gap > 0:
+                                counter += 1
+                                result = "+ " + format(gap, ".1f")
+                                result = "0" if result == "+ 0.0" else result
+                                result = "+ 100" if result == "+ 100.0" else result
+                                self.update_kpi_scores_and_results(
+                                    {'KPI ID': counter,
+                                     'KPI name Eng': kpi_name,
+                                     'KPI name Rus': kpi_name_local,
+                                     'Parent': subgroup_counter},
+                                    {'threshold': 0,
+                                     'result': result,
+                                     'format': 'STR',
+                                     'level': 4})
+                                subgroup_gap += gap
+
+                    if subgroup_gap > 0:
+                        result = "+ " + format(subgroup_gap, ".1f")
+                        result = "0" if result == "+ 0.0" else result
+                        result = "+ 100" if result == "+ 100.0" else result
+                        self.update_kpi_scores_and_results(
+                            {'KPI ID': subgroup_counter,
+                             'KPI name Eng': subgroup,
+                             'KPI name Rus': subgroup_local,
+                             'Parent': group_counter},
+                            {'threshold': 0,
+                             'result': result,
+                             'format': 'STR',
+                             'level': 3})
+                        group_gap += subgroup_gap
+
+                if group_gap > 0:
+                    result = "+ " + format(group_gap, ".1f")
+                    result = "0" if result == "+ 0.0" else result
+                    result = "+ 100" if result == "+ 100.0" else result
+                    self.update_kpi_scores_and_results(
+                        {'KPI ID': group_counter,
+                         'KPI name Eng': group,
+                         'KPI name Rus': group_local,
+                         'Parent': category_counter},
+                        {'threshold': 0,
+                         'result': result,
+                         'format': 'STR',
+                         'level': 2})
+                    category_gap += group_gap
+
+            if category_gap > 0:
+                result = "+ " + format(category_gap, ".1f")
+                result = "0" if result == "+ 0.0" else result
+                result = "+ 100" if result == "+ 100.0" else result
+                self.update_kpi_scores_and_results(
+                    {'KPI ID': category_counter,
+                     'KPI name Eng': category,
+                     'KPI name Rus': category_local,
+                     'Parent': 0},
+                    {'threshold': 0,
+                     'result': result,
+                     'format': 'STR',
+                     'level': 1})
+                total_gap += category_gap
+
+        result = "+ " + format(total_gap, ".1f")
+        result = "0" if result == "+ 0.0" else result
+        result = "+ 100" if result == "+ 100.0" else result
+        self.update_kpi_scores_and_results(
+            {'KPI ID': 0,
+             'KPI name Eng': kpi_set_name,
+             'KPI name Rus': kpi_set_name,
+             'Parent': 'root'},
+            {'threshold': 0,
+             'result': result,
+             'format': 'STR',
+             'level': 0})
+
+        return
 
     @kpi_runtime()
     def calculate_equipment_execution(self, params, kpi_set_name, kpi_conversion_file):
@@ -2429,11 +2542,11 @@ class CCRU_SANDKPIToolBox:
             for param in params:
                 if param.get('level') == 2 and param.get('KPI Set Type') == 'Equipment':
 
-                    kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng')
+                    kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng').strip()
                     kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
-                    children = param.get('Children').replace('\n','').replace(' ', '').split(',')
+                    children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
 
                     sum_of_scores = 0
                     sum_of_weights = 0
@@ -2444,8 +2557,8 @@ class CCRU_SANDKPIToolBox:
                             atomic_kpi_name = param_child.get('Channel') + '@' + param_child.get('KPI name Eng')
                             atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk'].values[0]
                             atomic_kpi_name = param_child.get('KPI name Eng')
-                            target, weight = target_data.get(kpi_conversion.get(atomic_kpi_name))
-                            target = target if target else None
+                            target = target_data.get(kpi_conversion.get(atomic_kpi_name))
+                            target, weight = target if target else (None, None)
                             weight = 1
                             if target:
                                 if (type(target) is str or type(target) is unicode) and ',' in target:
@@ -2469,7 +2582,7 @@ class CCRU_SANDKPIToolBox:
                                     score = 100 if result >= target else 0
 
                                 attributes_for_level3 = self.create_attributes_for_level3_df(
-                                    {'KPI name Eng': atomic_kpi_name}, (score, result, target), kpi_fk, atomic_kpi_fk)
+                                    param_child, (score, result, target), kpi_fk, atomic_kpi_fk)
                                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                                 sum_of_scores += score * weight
@@ -2479,7 +2592,7 @@ class CCRU_SANDKPIToolBox:
                     if count_of_targets:
                         score = int(round(sum_of_scores / float(sum_of_weights)))
                         attributes_for_level2 = self.create_attributes_for_level2_df(
-                            {'KPI name Eng': kpi_name}, score, kpi_fk)
+                            param, score, kpi_fk)
                         self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
                         total_score += score * kpi_weight
@@ -2505,13 +2618,19 @@ class CCRU_SANDKPIToolBox:
                 self.update_kpi_scores_and_results(
                     {'KPI ID': 0,
                      'KPI name Eng': kpi_set_name,
-                     'KPI name Rus': kpi_set_name},
-                    {'level': 0,
-                     'parent': 'root'})
+                     'KPI name Rus': kpi_set_name,
+                     'Parent': 'root'},
+                    {'threshold': 100,
+                     'weight': 1,
+                     'result': score,
+                     'score': score,
+                     'weighted_score': score,
+                     'level': 0})
 
                 self.equipment_execution_score = score
 
             else:
+
                 self.equipment_execution_score = None
 
         return
@@ -2524,28 +2643,36 @@ class CCRU_SANDKPIToolBox:
             total_weight = 0
             count_of_kpis = 0
 
-            self.kpi_scores_and_results[CONTRACT] = self.kpi_scores_and_results[EQUIPMENT]
             for param in params:
                 if param.get('KPI Set Type') == 'Contract' and param.get('Formula'):
                     if param.get('Formula').strip() == 'OSA score':
-                        kpi_id = 'OSA'
-                        kpi_name = 'CONTRACT_OSA'
+                        # kpi_id = 'OSA'
+                        # kpi_name = 'CONTRACT_OSA'
+
                         score = self.top_sku_score
 
+                        if score is not None:
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(score * param.get('KPI Weight'), 2)
+
                     elif param.get('Formula').strip() == 'Equipment Execution score':
-                        kpi_id = 'EQUIPMENT'
-                        kpi_name = 'CONTRACT_EQUIPMENT'
+                        # kpi_id = 'EQUIPMENT'
+                        # kpi_name = 'CONTRACT_EQUIPMENT'
                         score = self.equipment_execution_score
 
+                        if score is not None:
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(score * param.get('KPI Weight'), 2)
+
                     else:
-                        kpi_id = None
-                        kpi_name = None
+                        # kpi_id = None
+                        # kpi_name = None
                         score = None
 
                     if score is not None:
                         target = 100
                         result = score
-                        score_to_db = int(round(score*100))
+                        score_to_db = round(score)
 
                         kpi_name_channel = param.get('Channel') + '@' + param.get('KPI name Eng')
                         kpi_fk = self.kpi_fetcher.kpi_static_data[
@@ -2556,27 +2683,29 @@ class CCRU_SANDKPIToolBox:
                         kpi_weight = param.get('KPI Weight')
 
                         attributes_for_level3 = self.create_attributes_for_level3_df(
-                            {'KPI name Eng': param.get('KPI name Eng')}, (score_to_db, result, target), kpi_fk, atomic_kpi_fk,
-                            update_kpi_scores_and_results=False)
+                            {'KPI ID': None, 'KPI name Eng': param.get('KPI name Eng')},
+                            (score_to_db, result, target), kpi_fk, atomic_kpi_fk)
                         self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                         attributes_for_level2 = self.create_attributes_for_level2_df(
-                            {'KPI name Eng': param.get('KPI name Eng')}, score_to_db, kpi_fk,
-                            update_kpi_scores_and_results=False)
+                            {'KPI ID': None, 'KPI name Eng': param.get('KPI name Eng')},
+                            score_to_db, kpi_fk)
                         self.write_to_kpi_results_old(attributes_for_level2, 'level2')
 
-                        self.update_kpi_scores_and_results(
-                            {'KPI ID': kpi_id,
-                             'KPI name Eng': kpi_name},
-                            {'kpi_id': kpi_id,
-                             'kpi_name': kpi_name,
-                             'eng_name': param.get('KPI name Eng'),
-                             'rus_name': param.get('KPI name Eng'),
-                             'result': result,
-                             'threshold': kpi_weight,
-                             'score': round(result * kpi_weight, 3),
-                             'level': 1,
-                             'parent': '0'})
+                        # self.update_kpi_scores_and_results(
+                        #     {'KPI ID': kpi_id,
+                        #      'KPI name Eng': kpi_name},
+                        #     {'kpi_id': kpi_id,
+                        #      'kpi_name': kpi_name,
+                        #      'eng_name': param.get('KPI name Eng'),
+                        #      'rus_name': param.get('KPI name Eng'),
+                        #      'threshold': kpi_weight * 100,
+                        #      'weight': kpi_weight,
+                        #      'result': result,
+                        #      'score': score,
+                        #      'weighted_score': round(score * kpi_weight * 100, 2),
+                        #      'level': 1,
+                        #      'parent': '0'})
 
                         total_score += score * kpi_weight
                         total_weight += kpi_weight
@@ -2600,14 +2729,16 @@ class CCRU_SANDKPIToolBox:
                 self.write_to_kpi_results_old(attributes_for_table1, 'level1')
 
                 self.update_kpi_scores_and_results(
-                    {'KPI ID': 0,
+                    {'KPI ID': CONTRACT,
                      'KPI name Eng': kpi_set_name,
-                     'KPI name Rus': kpi_set_name},
-                    {'weight': 1,
+                     'KPI name Rus': kpi_set_name,
+                     'Parent': 'root'},
+                    {'threshold': 100,
+                     'weight': 1,
+                     'result': score,
                      'score': score,
-                     'level': 0,
-                     'parent': 'root'})
-                self.write_to_kpi_results_new()
+                     'weighted_score': score,
+                     'level': 0})
 
     @staticmethod
     def get_kpi_conversion(kpi_conversion_file):
@@ -2619,7 +2750,7 @@ class CCRU_SANDKPIToolBox:
         return conversion
 
     @kpi_runtime()
-    def calculate_top_sku(self, params, kpi_set_name):
+    def calculate_top_sku(self, include_to_contract, kpi_set_name):
 
         top_skus = self.top_sku.get_top_skus_for_store(self.store_id, self.visit_date)
         if not top_skus['product_fks']:
@@ -2644,166 +2775,182 @@ class CCRU_SANDKPIToolBox:
                         distributed = True
                     top_sku_products = top_sku_products.append({'anchor_product_fk': anchor_product_fk,
                                                                 'product_fk': product_fk,
-                                                                'min_facings': min_facings,
                                                                 'facings': facings,
+                                                                'min_facings': min_facings,
                                                                 'in_assortment': 1,
                                                                 'distributed': 1 if distributed else 0},
                                                                ignore_index=True)
                 query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
-        top_sku_products = top_sku_products.merge(self.products[['product_fk', 'category_fk']], on='product_fk')
-        for i, row in top_sku_products.iterrows():
+        if not top_sku_products.empty:
+            top_sku_products = top_sku_products\
+                .merge(self.products[['product_fk', 'category_fk']], on='product_fk')\
+                .groupby(['category_fk',
+                          'anchor_product_fk',
+                          'product_fk'])\
+                .agg({'facings': 'sum',
+                      'min_facings': 'max',
+                      'in_assortment': 'max',
+                      'distributed': 'max'})\
+                .reset_index()
+            for i, row in top_sku_products.iterrows():
 
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=3, kpi=row['product_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=3, kpi=row['product_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
 
-            kpi_name = self.kpi_set_type + '_SKU'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                kpi_name = self.kpi_set_type + '_SKU'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
-            numerator_id = row['product_fk']
-            denominator_id = None
-            context_id = None
-
-            numerator_result = row['facings']
-            denominator_result = row['min_facings']
-
-            result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
-            kpi_result_type_fk = self.common.kpi_static_data[
-                self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
-            if kpi_result_type_fk:
-                result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)][
-                    'result_value_fk'].values[0]
-
-            score = 100 if row['distributed'] else 0
-            weight = None
-            target = 100
-
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
-
-        top_sku_anchor_products = top_sku_products\
-            .groupby(['category_fk', 'anchor_product_fk'])\
-            .agg({'category_fk': 'first',
-                  'anchor_product_fk': 'first',
-                  'product_fk': 'count',
-                  'facings': 'sum',
-                  'in_assortment': 'max',
-                  'distributed': 'max'})
-        for i, row in top_sku_anchor_products.iterrows():
-
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
-
-            kpi_name = self.kpi_set_type + '_BUNDLE'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-
-            numerator_id = row['anchor_product_fk']
-            denominator_id = None
-
-            if self.kpi_entities.empty:
+                numerator_id = row['product_fk']
+                denominator_id = None
                 context_id = None
-            else:
-                context_type_fk = self.common.kpi_static_data[
-                    self.common.kpi_static_data['pk'] == kpi_fk]['context_type_fk'].values[0]
-                if row['product_fk'] == 1:
-                    context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
-                                                   & (self.kpi_entities['uid_field'] == 'SKU')]['fk'].values[0]
+
+                numerator_result = row['facings']
+                denominator_result = row['min_facings']
+
+                score = 100 if row['distributed'] else 0
+                weight = None
+                target = 100
+                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                kpi_result_type_fk = self.common.kpi_static_data[
+                    self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
+                if kpi_result_type_fk:
+                    result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                                    (self.kpi_result_values['result_value'] == result)][
+                        'result_value_fk'].values[0]
+
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
+
+            top_sku_anchor_products = top_sku_products\
+                .groupby(['category_fk',
+                          'anchor_product_fk'])\
+                .agg({'product_fk': 'count',
+                      'facings': 'sum',
+                      'min_facings': 'max',
+                      'in_assortment': 'max',
+                      'distributed': 'max'})\
+                .reset_index()
+            for i, row in top_sku_anchor_products.iterrows():
+
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+
+                kpi_name = self.kpi_set_type + '_BUNDLE'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+
+                numerator_id = row['anchor_product_fk']
+                denominator_id = None
+
+                if self.kpi_entities.empty:
+                    context_id = None
                 else:
-                    context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
-                                                   & (self.kpi_entities['uid_field'] == 'BUNDLE')]['fk'].values[0]
+                    context_type_fk = self.common.kpi_static_data[
+                        self.common.kpi_static_data['pk'] == kpi_fk]['context_type_fk'].values[0]
+                    if row['product_fk'] == 1:
+                        context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
+                                                       & (self.kpi_entities['uid_field'] == 'SKU')]['fk'].values[0]
+                    else:
+                        context_id = self.kpi_entities[(self.kpi_entities['type'] == context_type_fk)
+                                                       & (self.kpi_entities['uid_field'] == 'BUNDLE')]['fk'].values[0]
 
-            numerator_result = row['facings']
-            denominator_result = None if row['product_fk'] == 1 else row['product_fk']
+                numerator_result = row['facings']
+                denominator_result = None if row['product_fk'] == 1 else row['product_fk']
 
-            result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
-            kpi_result_type_fk = self.common.kpi_static_data[
-                self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
-            if kpi_result_type_fk:
-                result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
-                                                (self.kpi_result_values['result_value'] == result)][
-                    'result_value_fk'].values[0]
+                score = 100 if row['distributed'] else 0
+                weight = None
+                target = 100
+                result = 'DISTRIBUTED' if row['distributed'] else 'OOS'
+                kpi_result_type_fk = self.common.kpi_static_data[
+                    self.common.kpi_static_data['pk'] == kpi_fk]['kpi_result_type_fk'].values[0]
+                if kpi_result_type_fk:
+                    result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
+                                                    (self.kpi_result_values['result_value'] == result)][
+                        'result_value_fk'].values[0]
 
-            score = 100 if row['distributed'] else 0
-            weight = None
-            target = 100
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
 
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
+            top_sku_categories = top_sku_anchor_products\
+                .groupby(['category_fk'])\
+                .agg({'in_assortment': 'sum',
+                      'distributed': 'sum'})\
+                .reset_index()
+            for i, row in top_sku_categories.iterrows():
 
-        top_sku_categories = top_sku_anchor_products\
-            .groupby(['category_fk'])\
-            .agg({'category_fk': 'first',
-                  'in_assortment': 'sum',
-                  'distributed': 'sum'})
-        for i, row in top_sku_categories.iterrows():
+                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
 
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=0)
+                kpi_name = self.kpi_set_type + '_CATEGORY'
+                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
-            kpi_name = self.kpi_set_type + '_CATEGORY'
-            kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                numerator_id = row['category_fk']
+                denominator_id = None
+                context_id = None
 
-            numerator_id = row['category_fk']
-            denominator_id = None
-            context_id = None
+                numerator_result = row['distributed']
+                denominator_result = row['in_assortment']
 
-            numerator_result = row['distributed']
-            denominator_result = row['in_assortment']
+                result = round(numerator_result / float(denominator_result) * 100, 2)
+                score = result
+                weight = None
+                target = 100
 
-            result = round(numerator_result / float(denominator_result) * 100, 1)
-            score = result
-            weight = None
-            target = 100
+                self.common.write_to_db_result(fk=kpi_fk,
+                                               numerator_id=numerator_id,
+                                               numerator_result=numerator_result,
+                                               denominator_id=denominator_id,
+                                               denominator_result=denominator_result,
+                                               context_id=context_id,
+                                               result=result,
+                                               score=score,
+                                               weight=weight,
+                                               target=target,
+                                               identifier_result=identifier_result,
+                                               identifier_parent=identifier_parent,
+                                               should_enter=True)
 
-            self.common.write_to_db_result(fk=kpi_fk,
-                                           numerator_id=numerator_id,
-                                           numerator_result=numerator_result,
-                                           denominator_id=denominator_id,
-                                           denominator_result=denominator_result,
-                                           context_id=context_id,
-                                           result=result,
-                                           score=score,
-                                           weight=weight,
-                                           target=target,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=True)
+            top_sku_total = top_sku_anchor_products\
+                .agg({'in_assortment': 'sum',
+                      'distributed': 'sum'})
 
-        top_sku_total = top_sku_anchor_products\
-            .agg({'in_assortment': 'sum',
-                  'distributed': 'sum'})
+            numerator_result = top_sku_total['distributed']
+            denominator_result = top_sku_total['in_assortment']
 
-        identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=0)
-        identifier_parent = self.common.get_dictionary(set=CONTRACT, level=1, kpi='OSA')
+        else:
+            numerator_result = 0
+            denominator_result = len(top_skus['product_fks'].keys())
 
-        kpi_name = self.kpi_set_type
+        identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
+        identifier_parent = None  # self.common.get_dictionary(set=CONTRACT, level=0, kpi='0')
+
+        kpi_name = self.kpi_set_type + '_0'
         kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
@@ -2811,36 +2958,48 @@ class CCRU_SANDKPIToolBox:
         denominator_id = self.store_id
         context_id = None
 
-        numerator_result = top_sku_total['distributed']
-        denominator_result = top_sku_total['in_assortment']
-
-        result = round(numerator_result / float(denominator_result) * 100, 1)
+        result = round(numerator_result / float(denominator_result) * 100, 2)
         score = result
         weight = None
         target = 100
 
-        self.common.write_to_db_result(fk=kpi_fk,
-                                       numerator_id=numerator_id,
-                                       numerator_result=numerator_result,
-                                       denominator_id=denominator_id,
-                                       denominator_result=denominator_result,
-                                       context_id=context_id,
-                                       result=result,
-                                       score=score,
-                                       weight=weight,
-                                       target=target,
-                                       identifier_result=identifier_result,
-                                       identifier_parent=identifier_parent,
-                                       should_enter=True)
+        if not include_to_contract:
+            self.common.write_to_db_result(fk=kpi_fk,
+                                           numerator_id=numerator_id,
+                                           numerator_result=numerator_result,
+                                           denominator_id=denominator_id,
+                                           denominator_result=denominator_result,
+                                           context_id=context_id,
+                                           result=result,
+                                           score=score,
+                                           weight=weight,
+                                           target=target,
+                                           identifier_result=identifier_result,
+                                           identifier_parent=identifier_parent,
+                                           should_enter=True)
+        else:
+            self.update_kpi_scores_and_results(
+                {'KPI ID': TOPSKU,
+                 'KPI name Eng': kpi_set_name,
+                 'KPI name Rus': kpi_set_name,
+                 'Parent': 'root'},
+                {'threshold': 100,
+                 'weight': 1,
+                 'result': score,
+                 'score': score,
+                 'weighted_score': score,
+                 'level': 0})
 
         self.top_sku_score = score
 
         return
 
     @kpi_runtime()
-    def check_kpi_scores(self, params):
+    def check_kpi_scores(self, params, level=2):
         set_total_res = 0
         for p in params.values()[0]:
+            if p.get('level') != level:
+                continue
             if p.get('Formula').strip() in ('Check KPI score in POS', 'Number of KPIs passed in POS'):
 
                 kpi_result = 0
@@ -2862,10 +3021,14 @@ class CCRU_SANDKPIToolBox:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
                 # saving to DB
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk, additional_level=True)
-                self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
-                self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                if level == 2:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk, level=2, additional_level=3)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+                    attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level2, 'level2')
+                else:
+                    attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk)
+                    self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                 set_total_res += round(kpi_score) * p.get('KPI Weight')
 
@@ -2920,6 +3083,8 @@ class CCRU_SANDKPIToolBox:
         try:
             if "number of SKUs" in formula:
                 object_facings = len(final_result['product_ean_code'].unique())
+            elif "each SKU hits facings target" in formula:
+                object_facings = final_result.groupby(['scene_fk', 'product_ean_code']).agg({'facings': 'sum'})['facings'].values.tolist()
             else:
                 if 'facings' in final_result.columns:
                     object_facings = final_result['facings'].sum()
@@ -2929,34 +3094,38 @@ class CCRU_SANDKPIToolBox:
             object_facings = 0
         return object_facings
 
-    def write_to_kpi_results_new(self, kpi_data=None):
-        if self.kpi_set_type not in SKIP_NEW_KPIS_FROM_WRITING:
-            if kpi_data:
-                for kpi in kpi_data:
-                    if kpi.get('Formula') != 'Group':
-                        continue
-                    else:
-                        self.update_kpi_scores_and_results(kpi, {'level': 1})
-            kpis = pd.DataFrame(self.kpi_scores_and_results[self.kpi_set_type].values())
-            kpis = kpis.where((pd.notnull(kpis)), None)
-            self.write_kpi_tree(kpis)
+    def create_kpi_groups(self, kpi_data):
+        if kpi_data:
+            for kpi in kpi_data:
+                if kpi.get('Formula') != 'Group':
+                    continue
+                else:
+                    self.update_kpi_scores_and_results(kpi, {'level': 1})
         return
 
-    def write_kpi_tree(self, kpis, parent='root', parent_level=-1):
+    def write_to_kpi_results_new(self):
+        for kpi_set_type in NEW_KPIS_TO_WRITE_TO_DB:
+            kpis = self.kpi_scores_and_results.get(kpi_set_type)
+            if kpis:
+                kpis = pd.DataFrame(kpis.values())
+                kpis = kpis.where((pd.notnull(kpis)), None)
+                if kpi_set_type in [EQUIPMENT, TOPSKU]:
+                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
+                else:
+                    identifier_parent = None
+                try:
+                    self.write_kpi_tree(kpi_set_type, kpis, identifier_parent=identifier_parent)
+                except Exception as e:
+                    print 'write_to_kpi_results_new Exception Error: {}'.format(e)
+
+        return
+
+    def write_kpi_tree(self, kpi_set_type, kpis, parent='root', identifier_parent=None):
         group_score = 0
+        group_weight = 0
         for i, kpi in kpis[kpis['parent'] == parent].iterrows():
 
-            if kpi['additional_level']:
-                additional_level = kpi
-                additional_level['parent'] = additional_level['kpi_id']
-                additional_level['level'] += 1
-                additional_level['additional_level'] = False
-                kpis = kpis.append(additional_level)
-            if kpi['kpi_id'] != parent:
-                score = self.write_kpi_tree(kpis, parent=kpi['kpi_id'], parent_level=kpi['level'])
-                group_score += 0 if score is None else score
-
-            kpi_name = (self.kpi_set_type + '_' + str(int(kpi['level']))
+            kpi_name = (kpi_set_type + '_' + str(int(kpi['level']))
                         + (('_' + kpi['format']) if kpi['format'] else '')
                         + ('_SCENE' if kpi['scene_id'] else ''))
             kpi_name = kpi_name.strip().replace("  ", " ").replace(",", ".").upper()
@@ -2964,45 +3133,67 @@ class CCRU_SANDKPIToolBox:
 
             scene_id = int(kpi['scene_id']) if kpi['scene_id'] else None
 
-            identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=kpi['level'], kpi=kpi['kpi_id'])
-            identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=parent_level, kpi=parent)
+            identifier_result = self.common.get_dictionary(set=kpi_set_type, level=kpi['level'], kpi=kpi['kpi_id'])
 
             numerator_id = self.own_manufacturer_id if parent == 'root' \
                 else self.common.get_kpi_fk_by_kpi_type(kpi['kpi_name'])
             denominator_id = self. store_id if parent == 'root' \
                 else self.common.get_kpi_fk_by_kpi_type(kpis[kpis['kpi_id'] == kpi['parent']]['kpi_name'].values[0])
-            context_id = self.common.get_kpi_fk_by_kpi_type(self.kpi_set_name.upper()) if parent == 'root' \
+            context_id = self.common.get_kpi_fk_by_kpi_type(kpi['kpi_name']) if parent == 'root' \
                 else (scene_id if scene_id else None)
 
-            result = kpi['result']
+            if kpi['kpi_id'] != parent:
+                if kpi['additional_level'] is not None:
+                    additional_level = kpi.copy()
+                    additional_level['parent'] = additional_level['kpi_id']
+                    additional_level['level'] = additional_level['additional_level']
+                    additional_level['additional_level'] = None
+                    kpis = kpis.append(additional_level)
+                score, weight = self.write_kpi_tree(kpi_set_type, kpis, parent=kpi['kpi_id'],
+                                                    identifier_parent=identifier_result)
+            else:
+                score = weight = 0
+
+            if kpi_set_type in [POS]:
+                score = score if kpi['weighted_score'] is None else kpi['weighted_score']
+                weight = weight if kpi['weight'] is None else kpi['weight']
+                target = weight*100 if kpi['threshold'] is None and weight else kpi['threshold']
+            else:
+                score = score if kpi['score'] is None else kpi['score']
+                weight = kpi['weight']
+                target = kpi['threshold']
+
             if kpi['format'] == 'STR':
+                result = kpi['result']
                 kpi_result_type_fk = self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk][
                     'kpi_result_type_fk'].values[0]
                 if kpi_result_type_fk:
                     result = self.kpi_result_values[(self.kpi_result_values['result_type_fk'] == kpi_result_type_fk) &
                                                     (self.kpi_result_values['result_value'] == result)][
                         'result_value_fk'].values[0]
+            else:
+                result = kpi['result'] if kpi['level'] == 3 else kpi['score']
 
-            score = score if kpi['level'] == 1 else kpi['score']
-            weight = kpi['weight']
-            target = kpi['threshold']
+            group_score += score if score else 0
+            group_weight += weight if weight else 0
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=numerator_id,
                                            denominator_id=denominator_id,
                                            context_id=context_id,
+                                           target=target,
+                                           weight=weight,
                                            result=result,
                                            score=score,
-                                           weight=weight,
-                                           target=target,
                                            identifier_result=identifier_result,
                                            identifier_parent=identifier_parent,
                                            should_enter=True)
 
-        return group_score
+        return group_score, group_weight
 
     @kpi_runtime()
     def commit_results_data_new(self):
+        self.write_to_kpi_results_new()
         self.common.commit_results_data()
 
     def get_kpi_entities(self, entities):

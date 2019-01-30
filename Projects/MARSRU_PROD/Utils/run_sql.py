@@ -7,7 +7,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 __author__ = 'Sergey'
 
 
-class RunSql:
+class MARSRU_PRODRunSql:
     def __init__(self, project):
         self.project = project
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
@@ -26,7 +26,7 @@ class RunSql:
 if __name__ == '__main__':
     Log.init('test')
     Config.init()
-    for project in ['marsru-prod']:
+    for project in ['marsru2-sand']:
         print 'start project: ' + str(project)
-        sql_to_run = RunSql(project)
+        sql_to_run = MARSRU_PRODRunSql(project)
         sql_to_run.run_it()

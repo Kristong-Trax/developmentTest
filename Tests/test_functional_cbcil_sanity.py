@@ -6,7 +6,7 @@ import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-from Trax.Utils.Testing.Case import MockingTestCase
+# from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_cbcil_sanity import ProjectsSanityData
 from Projects.CBCIL.Calculations import CBCILCalculations
@@ -43,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_cbcil_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['2F57E283-D3A3-4BFB-A5E5-59F1F1C3234A']
+        sessions = ['f7acade6-7e4f-4617-8012-7857bd7ffbc9']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
