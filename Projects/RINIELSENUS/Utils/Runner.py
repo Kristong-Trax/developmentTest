@@ -19,7 +19,7 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     LinearFairShareDenominatorSPTAtomicKpiCalculation, LinearPreferredRangeShareSPTAtomicKpiCalculation, \
     LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation, \
     LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation, ShareOfAssortmentPrSPTAtomicKpiCalculation, \
-    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation
+    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation, ShelfLengthNumeratorCalculationBase
 from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
 
 
@@ -52,10 +52,15 @@ class Results(object):
             # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
             #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
             #     continue
-            # if atomic['atomic'] not in ['Is Nutro Wet Dog food blocked?',
-            #                         'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
-            #                         'Nutro Dry Dog and Wet Dog are BOTH BLOCKED']:
-            #     continue
+            if atomic['atomic'] not in [
+                                    # 'Is the Nutro Cat Main Meal section >4ft?',
+                                    # 'Is the Nutro Cat Main Meal section <=4ft?',
+                                    # 'Is Sheba brand blocked adjacent to Fancy Feast? >4FT',
+                                    # 'Is Sheba blocked adjacent to Fancy Feast? <=4FT',
+                                    'Are TEMPTATIONS Cat Treats Regular blocked?'
+                                    ]:
+                continue
+            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
@@ -134,6 +139,7 @@ class Results(object):
             LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation,
             ShareOfAssortmentPrSPTAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTAtomicKpiCalculation,
             ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation,
+            ShelfLengthNumeratorCalculationBase.kpi_type: ShelfLengthNumeratorCalculationBase,
 
         }
 

@@ -108,7 +108,7 @@ FILTER_NAMING_DICT = {
     'SINGLE/MULTI COUNT': SINGLE_MULTIPLE,
     'Breed size': BREED_SIZE,
     'Facings Minimum': FACINGS,
-    'Package Size': PACKAGE_SIZE
+    'Package Size': PACKAGE_SIZE,
 }
 
 BLOCK_THRESHOLD = 0.5

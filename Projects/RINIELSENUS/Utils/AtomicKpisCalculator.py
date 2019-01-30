@@ -322,11 +322,17 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
 
 class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
+        col = atomic_kpi_data['filters'].pop('Two Blocks')[0] if 'Two Blocks' in atomic_kpi_data['filters'] else ''
+        if not col:
+            col = 'Customer Brand'
+        if col in FILTER_NAMING_DICT:
+            col = FILTER_NAMING_DICT[col]
         result = 100
-        for filter in atomic_kpi_data['filters']['Customer Brand']:
-            atomic_kpi_data['filters']['Customer Brand'] = [filter]
+        for filter in atomic_kpi_data['filters'][col]:
+            atomic_kpi_data['filters'][col] = [filter]
             score = self.calculate_block(atomic_kpi_data)
-            if not score: result = 0
+            if not score:
+                result = 0
         return result
 
     def check_block(self, block, bay):
@@ -1866,6 +1872,39 @@ class ShelfLengthCalculationBase(KpiAtomicKpisCalculator):
     @abc.abstractproperty
     def kpi_type(self):
         return 'Shelf length'
+
+class ShelfLengthNumeratorCalculationBase(KpiAtomicKpisCalculator):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
+        filters.update(scene_type_filter)
+
+        scif_matches = self.get_scif_matches_by_filters(**filters)
+        if scif_matches == 0:
+            return np.nan
+
+        target = atomic_kpi_data['target']
+        matches = self._tools.match_product_in_scene
+        max_shelf_per_bay = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
+            {'shelf_number_from_bottom': 'max'})
+        matches = matches[self._tools.get_filter_condition(matches, **filters)]
+        matches.loc[:, 'width'] = matches['width_mm_advance'].fillna(matches['width_mm'])
+        bay_width = matches.groupby(['bay_number', 'scene_id'], as_index=False).agg(
+            {'shelf_number_from_bottom': 'max', 'width': 'sum'})
+        bay_width = bay_width.rename(index=str, columns={'shelf_number_from_bottom': 'shelf_number_from_bottom_filtered'})
+        bay_width_merged = pd.merge(max_shelf_per_bay, bay_width, on=['bay_number', 'scene_id'])
+        bay_width_merged['avg_length'] = bay_width_merged['width'] / bay_width_merged['shelf_number_from_bottom'] / MM_TO_FT_RATIO
+        length = bay_width_merged['avg_length'].sum()
+        # result = self.get_result(length, target)
+        return length
+
+    @abc.abstractmethod
+    def get_result(self, length, target):
+        return 100 if length > target else 0
+
+    @classproperty
+    def kpi_type(self):
+        return 'Shelf length numerator'
 
 
 class ShelfLengthGreaterThenCalculation(ShelfLengthCalculationBase):
