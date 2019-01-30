@@ -337,7 +337,7 @@ class PENAFLORARDIAGEOARToolBox:
             cur.execute(query)
         for query in insert_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        rds_conn.db.commit()
 
     @staticmethod
     def merge_insert_queries(insert_queries):
