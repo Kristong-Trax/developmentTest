@@ -630,7 +630,7 @@ class DIAGEOBEERUSToolBox:
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
                 denominator_id=products.manufacturer_fk, denominator_result=den_res,
-                result=result * 100, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
