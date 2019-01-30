@@ -377,13 +377,15 @@ class CCRUKPIToolBox:
                 depends_on_kpi_name = params.get('depends on')
                 for c in all_params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
-                        if c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
+                        if c.get('Formula').strip() == 'number of doors with more than Target facings':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
                         else:
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = []
                         break
 
                 if not scenes:
@@ -474,7 +476,15 @@ class CCRUKPIToolBox:
                 depends_on_kpi_name = params.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
-                        scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        if c.get('Formula').strip() == 'number of doors with more than Target facings':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                      func='get scenes',
+                                                                                      proportion_param=0.9)
+                        else:
+                            scenes = []
                         break
                 if not scenes:
                     return 0
@@ -751,8 +761,31 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_facings_sos(self, params):
-        relevant_scenes = self.get_relevant_scenes(params)
+    def calculate_facings_sos(self, params, scenes=None, all_params=None):
+        if not scenes:
+            if params.get('depends on') and all_params:
+                depends_on_kpi_name = params.get('depends on')
+                for c in all_params.values()[0]:
+                    if c.get('KPI name Eng') == depends_on_kpi_name:
+                        if c.get('KPI name Eng') == depends_on_kpi_name:
+                            if c.get('Formula').strip() == 'number of doors with more than Target facings':
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                                scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                          func='get scenes',
+                                                                                          proportion_param=0.9)
+                            else:
+                                scenes = []
+                            break
+
+                if not scenes:
+                    return 0
+            else:
+                scenes = self.get_relevant_scenes(params)
+
+        relevant_scenes = scenes
+
         if params.get('Manufacturer'):
             manufacturers = params.get('Manufacturer').strip().split(', ')
         else:
@@ -784,14 +817,19 @@ class CCRUKPIToolBox:
                 subset_filter = ((self.scif[Fd.M_NAME].isin(manufacturers)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'SUB_BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Category')) &
+                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['sub_brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
             elif params.get('Type') == 'BRAND_IN_CAT':
-                pop_filter = ((self.scif[Fd.CAT] == params.get('Category')) &
+                pop_filter = ((self.scif[Fd.CAT] == params.get('Product Category')) &
                               (self.scif['scene_id'].isin(relevant_scenes)) &
+                              (~self.scif['product_type'].isin(['Empty'])))
+                subset_filter = ((self.scif['brand_name'].isin(values_list)) &
+                                 (~self.scif['product_type'].isin(['Empty'])))
+            elif params.get('Type') == 'BRAND':
+                pop_filter = ((self.scif['scene_id'].isin(relevant_scenes)) &
                               (~self.scif['product_type'].isin(['Empty'])))
                 subset_filter = ((self.scif['brand_name'].isin(values_list)) &
                                  (~self.scif['product_type'].isin(['Empty'])))
@@ -804,7 +842,7 @@ class CCRUKPIToolBox:
             ratio = 0
         if ratio is None:
             ratio = 0
-        return ratio
+        return round(ratio, 4)
 
     def calculate_score(self, kpi_total_res, params):
         """
@@ -1647,6 +1685,8 @@ class CCRUKPIToolBox:
                 sub_atomic_score = -1
                 if c.get("Formula").strip() == "number of facings":
                     sub_atomic_res = self.calculate_availability(c, scenes)
+                elif c.get("Formula").strip() == "number of facings near food":
+                    sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
                     sub_atomic_res = self.calculate_lead_sku(c, scenes)
                     if not sub_atomic_res:
@@ -1678,12 +1718,17 @@ class CCRUKPIToolBox:
                     and p.get("Children")):
                 continue
             scenes = []
-            if params.get('depends on'):
-                depends_on_kpi_name = params.get('depends on')
+            if p.get('depends on'):
+                depends_on_kpi_name = p.get('depends on')
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
                             scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                        elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                      func='get scenes',
+                                                                                      proportion_param=0.9)
                         break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
@@ -1704,18 +1749,21 @@ class CCRUKPIToolBox:
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
                         atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "SOS":
+                        atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0
                     if atomic_res == -1:
-                        continue
-                    if atomic_score == -1:
-                        atomic_score = self.calculate_score(atomic_res, c)
-                    if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
-                        kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
-                        kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                        atomic_score = 0
                     else:
-                        kpi_total += atomic_score
-                        kpi_total_weight += 1
+                        if atomic_score == -1:
+                            atomic_score = self.calculate_score(atomic_res, c)
+                        if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
+                            kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                            kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                        else:
+                            kpi_total += atomic_score
+                            kpi_total_weight += 1
                     # write to DB
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
@@ -2314,9 +2362,9 @@ class CCRUKPIToolBox:
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
                     """.format(self.session_uid)
-        if str(self.visit_date) < '2019-01-26':  # todo: change the date to the relevant one before deployment
+        elif str(self.visit_date) < '2019-01-26':  # todo: change the date to the relevant one before deployment
             query = """
-                    select ss.pk , ss.additional_attribute_12
+                    select ss.pk , ss.additional_attribute_11
                     from static.stores ss
                     join probedata.session ps on ps.store_fk=ss.pk
                     where ss.delete_date is null and ps.session_uid = '{}';
@@ -3066,7 +3114,7 @@ class CCRUKPIToolBox:
         if shelves is None:
             df = self.scif[self.scif['facings'] > 0]
         else:
-            shelves_list = [int(shelf) for shelf in shelves.split(',')]
+            shelves_list = [int(shelf) for shelf in str(shelves).split(',')]
             df = self.matches[self.matches['shelf_number'].isin(shelves_list)]
 
         final_result = df[(df['scene_fk'].isin(scenes)) &

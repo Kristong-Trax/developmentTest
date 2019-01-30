@@ -23,7 +23,7 @@ class SANOFIAE_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofiae-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '8C9908A9-942D-425F-A943-C9550CB124B5'
+#     session = '31eb50cd-e799-4798-a27f-dc5ea557ccc7'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIAE_SANDCalculations(data_provider, output).run_project_calculations()
