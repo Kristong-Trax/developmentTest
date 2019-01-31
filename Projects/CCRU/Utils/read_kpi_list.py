@@ -71,6 +71,15 @@ class CCRUKPIS:
                 kpis.loc[i, 'KPI Weight'] = kpi_weight
 
             kpis = kpis[kpis['level'] == 2].merge(kpis, how='left', left_on='KPI ID', right_on='Parent', suffixes=['_2', '_3'])
+            kpis = kpis.merge(kpis_input[['KPI ID', 'KPI name Eng', 'KPI name Rus', 'Parent']],
+                              how='left',
+                              left_on='Parent_2', right_on='KPI ID', suffixes=['_2', '_12'])
+            kpis = kpis.merge(kpis_input[['KPI ID', 'KPI name Eng', 'KPI name Rus', 'Parent']],
+                              how='left',
+                              left_on='Parent', right_on='KPI ID', suffixes=['_12', '_11'])
+            kpis = kpis.merge(kpis_input[['KPI ID', 'KPI name Eng', 'KPI name Rus', 'Parent']],
+                              how='left',
+                              left_on='Parent_11', right_on='KPI ID', suffixes=['_11', '_10'])
 
             kpis['KPI Set'] = file_name.replace('.xlsx', '')
             kpis_output = kpis_output.append(kpis, ignore_index=True)

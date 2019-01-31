@@ -1684,7 +1684,9 @@ class CCRUKPIToolBox:
             if c.get("KPI ID") in children:
                 sub_atomic_score = -1
                 if c.get("Formula").strip() == "number of facings":
-                    sub_atomic_res = self.calculate_availability(c, scenes)
+                    sub_atomic_res = self.calculate_availability(c, scenes, all_params=all_params)
+                elif c.get("Formula").strip() == "number of facings near food":
+                    sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
                     sub_atomic_res = self.calculate_lead_sku(c, scenes)
                     if not sub_atomic_res:
@@ -1736,22 +1738,21 @@ class CCRUKPIToolBox:
                 if c.get("KPI ID") in children:
                     atomic_res = -1
                     atomic_score = -1
-                    if scenes:
-                        if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
-                            atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
-                        elif c.get("Formula").strip() == "each SKU hits facings target":
-                            atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
-                            atomic_score = 100 if atomic_res == 100 else 0
-                        elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                            atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
-                        elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
-                            atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
-                        elif c.get("Formula").strip() == "Scenes with no tagging":
-                            atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
-                        elif c.get("Formula").strip() == "SOS":
-                            atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
-                        elif c.get("Formula").strip() == "DUMMY":
-                            atomic_res = 0
+                    if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                    elif c.get("Formula").strip() == "each SKU hits facings target":
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                        atomic_score = 100 if atomic_res == 100 else 0
+                    elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
+                    elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
+                        atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
+                    elif c.get("Formula").strip() == "Scenes with no tagging":
+                        atomic_res = self.check_number_of_scenes_no_tagging(c, level=3)
+                    elif c.get("Formula").strip() == "SOS":
+                        atomic_res = self.calculate_facings_sos(c, scenes=scenes, all_params=params)
+                    elif c.get("Formula").strip() == "DUMMY":
+                        atomic_res = 0
                     if atomic_res == -1:
                         atomic_score = 0
                     else:
@@ -2624,7 +2625,8 @@ class CCRUKPIToolBox:
                                 if int(target) == target:
                                     target = int(target)
                                 try:
-                                    result = round(float(self.kpi_scores_and_results[TARGET][str(param_child.get('KPI ID'))].get('result')), 2)
+                                    result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
+                                                         .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
