@@ -65,6 +65,7 @@ ZONE_ADDITIONAL_FILTERS_PER_COL = {
 KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
 SCENE_FK = 'scene_fk'
+STORE_FK = 'store_fk'
 SCENE_TYPE_FK = "template_fk"
 MANUFACTURER_FK = "manufacturer_fk"
 NUMERATOR_FK = 'numerator_key'
@@ -79,6 +80,7 @@ EXCEL_DB_MAP = {
     "store": "store_id",
     "product_fk": "product_fk",
     'zone': 'context_type_fk',
+    'bay_number':'bay_number',
 }
 # additional filters
 # key - key name in self.scif
@@ -128,18 +130,21 @@ class TWEAUToolBox:
         This function calculates the KPI results.
         """
         # 1. calculate the macro linear sheet
-        # self.calculate_macro_linear()
+        self.calculate_macro_linear()
         # 2. calculate the zone based sheet
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
+        empty_product_ids = [x[1].product_fk for x in
+                             self.all_products[
+                                 self.all_products.product_name.str.contains(
+                                     'empty', case=False)
+                             ].iterrows()]
         for each_kpi in name_grouped_zone_kpi_sheet:
             each_kpi_type = each_kpi[0]
             kpi_sheet_rows = each_kpi[1]
-            final_unique_products = defaultdict(set)
-            zone_data = {}
-            output = None
-            per_scene_type = per_manufacturer = False
+            denominator_row = pd.Series()
+            write_sku = False
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
                                        & (self.kpi_static_data[TYPE] == each_kpi_type)
                                        & (self.kpi_static_data['delete_time'].isnull())]
@@ -148,47 +153,82 @@ class TWEAUToolBox:
             else:
                 print("KPI Name:{} found in DB".format(each_kpi_type))
                 if 'sku_all' in each_kpi_type.lower():
-
-                    self.get_zone_based_items()
-                else:
+                    write_sku = True
+                if 'sku_all' not in each_kpi_type.lower():
+                    # there is no denominator for sku all
                     denominator_row = zone_category_sheet.loc[(
                             zone_category_sheet[KPI_NAME] == each_kpi_type)].iloc[0]
-                    if 'per_scene_type' in each_kpi_type.lower():
-                        per_scene_type = True
-                    elif each_kpi_type.lower().endswith("_own_manufacturer"):
-                        per_manufacturer = True
-                    else:
-                        raise Exception("Unhandled row in template.")
-                    valid_zone_data = {}
-                    for idx, each_kpi_sheet_row in kpi_sheet_rows.iterrows():
-                        # print each_kpi_sheet_row.kpi_name, " per_manufacturer ",
-                        # per_manufacturer, " per_scene_type ", per_scene_type
-                        zone_data = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T, denominator_row,
-                                                                 per_scene_type=per_scene_type,
-                                                                 per_manufacturer=per_manufacturer)
-                        if zone_data:
-                            final_unique_products[zone_data['denominator_result']].update(zone_data['unique_products'])
-                            valid_zone_data = zone_data
-
-                    print "Write to DB...", final_unique_products
-                    for key, value in final_unique_products.iteritems():
-                        try:
-                            output = float(len(value))/valid_zone_data["unique_manufacturer_products_count"]
-                            self.common.write_to_db_result(
-                                fk=valid_zone_data["fk"],
-                                numerator_id=valid_zone_data["numerator_id"],
-                                numerator_result=valid_zone_data["numerator_result"],
-                                denominator_id=valid_zone_data["denominator_id"],
-                                denominator_result=key,
-                                result=output,
-                                score=output,
-                                identifier_result=valid_zone_data["kpi_name"],
-                                context_id=valid_zone_data["zone_number"],
-                            )
-                        except ZeroDivisionError:
-                            continue
-                        except Exception as e:
-                            raise e
+                list_of_zone_data = []
+                for idx, each_kpi_sheet_row in kpi_sheet_rows.iterrows():
+                    zone_data = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T,
+                                                             denominator_row=denominator_row)
+                    list_of_zone_data.append(zone_data)
+                if write_sku:
+                    _output_to_write = []
+                    for each in list_of_zone_data:
+                        for x in each:
+                            if not x.get("unique_products", False):
+                                _output_to_write.append(x)
+                    _df_output_to_write = pd.DataFrame(_output_to_write)
+                    _df_output_to_write.dropna(subset=['bay_number'], inplace=True)
+                    _grouped_output_to_write = _df_output_to_write.groupby(['scene_id', 'bay_number'], as_index=False)
+                    for tuple_each_data_to_write in _grouped_output_to_write:
+                        # remove empty products when getting all SKU's
+                        each_data_to_write = tuple_each_data_to_write[1]
+                        products_to_write = each_data_to_write.products.values[0]
+                        for each_product_id in products_to_write:
+                            if int(each_product_id) not in empty_product_ids:
+                                self.common.write_to_db_result(
+                                    fk=int(each_data_to_write.fk),
+                                    numerator_id=int(each_product_id),
+                                    numerator_result=int(each_data_to_write.bay_number),
+                                    denominator_id=int(each_data_to_write.denominator_id),
+                                    denominator_result=int(each_data_to_write.scene_id),
+                                    result=int(each_data_to_write.zone_number),
+                                    score=1,
+                                    identifier_result=each_data_to_write.kpi_name.values[0],
+                                    context_id=int(each_data_to_write.zone_number),
+                                )
+                else:
+                    # its the calculation
+                    all_uniques = set()
+                    output = 0
+                    unique_manufacturer_products_count = 0
+                    numerator_id = None
+                    kpi_pk = None
+                    denominator_id = None
+                    kpi_name = None
+                    zone_number = None
+                    for each in list_of_zone_data:
+                        if not kpi_pk:
+                            kpi_pk = each[0].get('kpi_pk')
+                        if not unique_manufacturer_products_count:
+                            unique_manufacturer_products_count = each[0].get('unique_manufacturer_products_count')
+                        if not numerator_id or not denominator_id:
+                            numerator_id = each[0].get('numerator_id')
+                            denominator_id = each[0].get('denominator_id')
+                        if not kpi_name:
+                            kpi_name = each[0].get('kpi_name')
+                        if not zone_number:
+                            zone_number = each[0].get('zone_number')
+                        all_uniques.update(each[-1]["unique_products"])
+                    all_uniques_count = len(all_uniques)
+                    if unique_manufacturer_products_count:
+                        output = float(all_uniques_count)/unique_manufacturer_products_count
+                    if not output:
+                        # skip writing to DB if there is no output
+                        continue
+                    self.common.write_to_db_result(
+                        fk=kpi_pk,
+                        numerator_id=numerator_id,
+                        numerator_result=all_uniques_count,
+                        denominator_id=denominator_id,
+                        denominator_result=unique_manufacturer_products_count,
+                        result=output,
+                        score=output,
+                        identifier_result=kpi_name,
+                        context_id=zone_number,
+                    )
         self.common.commit_results_data()
         score = 0
         return score
@@ -274,140 +314,36 @@ class TWEAUToolBox:
         return shelf_limit_per_scene
 
     def get_shelf_limit_for_scene(self, scene_id):
-        shelf_limit_per_scene = {}
+        shelf_limit_per_scene = defaultdict(list)
         scene_data = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene_id]
-        if not scene_data.empty:
-            shelf_limit_per_scene[scene_id] = {
-                'max_shelf': scene_data[SHELF_NUMBER].max(),
-                'min_shelf': scene_data[SHELF_NUMBER].min()
-            }
+        _bay_grouped_scene_data = scene_data.groupby('bay_number', as_index=False)
+        for each_bay in _bay_grouped_scene_data:
+            bay_number = each_bay[0]
+            scene_data = each_bay[1]
+            if not scene_data.empty:
+                shelf_limit_per_scene[scene_id].append(
+                    (
+                        bay_number, {
+                            'max_shelf': scene_data[SHELF_NUMBER].max(),
+                            'min_shelf': scene_data[SHELF_NUMBER].min()
+                        }
+                    )
+                )
         return shelf_limit_per_scene
 
-    def has_permitted_shelves(self, scene_id, permitted_shelves):
+    def get_valid_bay_numbers(self, scene_id, permitted_shelves):
         scene_max_min_map = self.get_shelf_limit_for_scene(scene_id)
-        for each_valid_shelf_number in permitted_shelves:
-            if scene_max_min_map[scene_id]['min_shelf'] <= each_valid_shelf_number \
-                    <= scene_max_min_map[scene_id]['max_shelf']:
-                return True
-        return False
+        bay_numbers = []
+        for scene_id, bay_shelf_map in scene_max_min_map.iteritems():
+            for each_map in bay_shelf_map:
+                _bay_number = each_map[0]
+                scene_max_min_map = each_map[1]
+                for each_permitted_shelf in permitted_shelves:
+                    if scene_max_min_map['max_shelf'] == each_permitted_shelf:
+                        bay_numbers.append(_bay_number)
+        return bay_numbers
 
-    def get_zone_based_items(self):
-        kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
-        # category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
-        for index, kpi_sheet_row in kpi_sheet.iterrows():
-            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
-                                       & (self.kpi_static_data[TYPE] == kpi_sheet_row[KPI_TYPE])
-                                       & (self.kpi_static_data['delete_time'].isnull())]
-            if kpi.empty:
-                print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
-            else:
-                print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
-                # generate scene max shelf max bay map
-                zone_number = kpi_sheet_row[ZONE_NAME]
-                shelf_limit_per_scene = self.get_shelf_limit_per_scene()
-                shelves_policy_from_top = [int(x.strip()) for x in str(kpi_sheet_row[SHELF_POLICY_FROM_TOP]).split(',')
-                                           if x.strip()]
-                permitted_shelves = [int(x.strip()) for x in str(kpi_sheet_row[NUMBER_OF_SHELVES]).split(',') if
-                                     x.strip()]
-                permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
-                # filter based on store type [d]
-                # filter based on template_type [d]
-                # find the shelf, and filter based on zone
-                # filter based on exclude policy
-                if self.store_info.store_type.values[0] in permitted_store_types:
-                    filters, filter_string = get_filter_string_per_row(
-                        kpi_sheet_row,
-                        ZONE_NUMERATOR_FILTER_ENTITIES,
-                    )
-                    # get the scene_id's worth getting data from
-                    print "Filtering {}...".format(filter_string)
-                    filtered_scene_items = self.scif.query(filter_string).scene_id.unique()
-                    # template_name = self.scif.query(filter_string).template_name.unique()
-                    concerned_scene_ids = set()
-                    if filtered_scene_items.size == 0:
-                        print("No viable scene ids' fir KPI Name:{}.".format(kpi_sheet_row[KPI_NAME]))
-                        continue
-                    # ZONE Level Logic
-                    for each_valid_shelf_number in permitted_shelves:
-                        _scenes = [x[0] for x in filter(
-                            lambda t: t[1]['min_shelf'] <= each_valid_shelf_number <= t[1]['max_shelf'],
-                            shelf_limit_per_scene.iteritems()
-                        )]
-                        for each_item in _scenes:
-                            if each_item in filtered_scene_items:
-                                concerned_scene_ids.add(each_item)
-
-                    for each_scene in concerned_scene_ids:
-                        matched_products_for_scene = self.match_product_in_scene.query(
-                            'scene_fk=={each_scene} and shelf_number in {shelves}'.format(
-                                each_scene=each_scene,
-                                shelves=shelves_policy_from_top,
-                            )).groupby(['bay_number', 'shelf_number'], as_index=False)
-                        # scene_uid = self.scene_info.loc[
-                        #     self.scene_info['scene_fk'] == each_scene].scene_uid.values[0]
-                        items_to_check_str = None
-                        if not is_nan(kpi_sheet_row.exclude_include_policy):
-                            exclude_items = False
-                            include_only = False
-                            match_exclude = exclude_re.search(kpi_sheet_row.exclude_include_policy)
-                            if not match_exclude:
-                                match_only = only_re.search(kpi_sheet_row.exclude_include_policy)
-                                items_to_check_str = match_only.groups()[-1]
-                                include_only = True
-                            else:
-                                items_to_check_str = match_exclude.groups()[-1]
-                                exclude_items = True
-
-                        for tuple_data in matched_products_for_scene:
-                            # get excluding shelves
-                            each_shelf_per_bay = tuple_data[1]
-                            bay_number = each_shelf_per_bay.bay_number.unique().tolist()[0]
-                            shelf_number = each_shelf_per_bay.shelf_number.unique()[0]
-                            if items_to_check_str:
-                                # exclude/include logic
-                                last_shelf_number = str(each_shelf_per_bay.n_shelf_items.unique()[0])
-                                shelf_filter = items_to_check_str.replace('N', last_shelf_number)
-                                shelf_filter_string = 'in [{}]'.format(shelf_filter)
-                                if exclude_items:
-                                    # exclude rows in `items_to_check_tuple`
-                                    required_shelf_items = each_shelf_per_bay.drop(
-                                        each_shelf_per_bay.query('facing_sequence_number {filter_string}'
-                                                                 .format(filter_string=shelf_filter_string)
-                                                                 ).index.tolist())
-                                if include_only:
-                                    required_shelf_items = each_shelf_per_bay.query(
-                                        'facing_sequence_number {filter_string}'.format(
-                                            filter_string=shelf_filter_string
-                                        ))
-                                product_ids = required_shelf_items.product_fk.unique().tolist()
-                                # match_product_in_scene_id =required_shelf_items.iloc[0].scene_match_fk
-                            else:
-                                product_ids = each_shelf_per_bay.product_fk.unique().tolist()
-                                # match_product_in_scene_id =required_shelf_items.iloc[0].scene_match_fk
-                            for each_product_id in product_ids:
-                                print "On {scene}, Product with ID {p_id} found in zone {zone} on shelf " \
-                                      "{s_n} and bay number {b_n}".format(
-                                            p_id=each_product_id,
-                                            zone=zone_number,
-                                            b_n=bay_number,
-                                            s_n=shelf_number,
-                                            scene=each_scene,
-                                      )
-                                self.common.write_to_db_result(fk=int(kpi['pk']),
-                                                               numerator_id=EXCEL_ENTITY_MAP["product_fk"],  # prod entity id
-                                                               numerator_result=each_product_id,  # prod id
-                                                               numerator_result_after_actions=bay_number,  # bay num
-                                                               denominator_id=EXCEL_ENTITY_MAP["store"],  # store entity id = 6
-                                                               denominator_result=self.store_id,  # current store id
-                                                               denominator_result_after_actions=each_scene,  # scene id
-                                                               result=1,
-                                                               score=shelf_number,
-                                                               identifier_result=kpi_sheet_row[KPI_NAME],
-                                                               context_id=zone_number,
-                                                               )
-
-    def calculate_based_on_zone(self, kpi, kpi_sheet_row, denominator_row,
-                                per_scene_type=False, per_manufacturer=False):
+    def calculate_based_on_zone(self, kpi, kpi_sheet_row, denominator_row):
         # generate scene max shelf max bay map
         zone_number = kpi_sheet_row[ZONE_NAME]
         # shelf_limit_per_scene = self.get_shelf_limit_per_scene()
@@ -416,12 +352,14 @@ class TWEAUToolBox:
         permitted_shelves = [int(x.strip()) for x in str(kpi_sheet_row[NUMBER_OF_SHELVES]).split(',') if
                              x.strip()]
         permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
+        unique_manufacturer_products_count = 0
         # DENOMINATOR
-        denominator_filters, denominator_filter_string = get_filter_string_per_row(
-            denominator_row,
-            DENOMINATOR_FILTER_ENTITIES, )
-        unique_manufacturer_products_count = len(self.scif.query(denominator_filter_string)
-                                                 .product_fk.unique())
+        if not denominator_row.empty:
+            denominator_filters, denominator_filter_string = get_filter_string_per_row(
+                denominator_row,
+                DENOMINATOR_FILTER_ENTITIES, )
+            unique_manufacturer_products_count = len(self.scif.query(denominator_filter_string)
+                                                     .product_fk.unique())
         # NUMERATOR
         # filter based on store type [d]
         # filter based on template_type [d]
@@ -442,12 +380,17 @@ class TWEAUToolBox:
 
             product_scene_join_data = pd.merge(match_product_df, scene_template_df, how='left',
                                                left_on=['scene_fk'], right_on=['scene_fk'])
-            filtered_grouped_scene_items = product_scene_join_data.query(filter_string) \
-                .groupby(filters, as_index=False)
+            if filters:
+                filtered_grouped_scene_items = product_scene_join_data.query(filter_string) \
+                    .groupby(filters, as_index=False)
+            else:
+                # dummy structure without filters
+                filtered_grouped_scene_items = [('', product_scene_join_data.query(filter_string))]
             # get the scene_id's worth getting data from
+            scene_data_map = []
+            unique_products = set() # if the scene type not even valid
             for each_group_by_manf_templ in filtered_grouped_scene_items:
                 # append scene to group by
-                # manufacturer_fk, template_fk = each_group_by_manf_templ[0]
                 current_scene_types = each_group_by_manf_templ[1].template_name.unique()
                 scene_type = current_scene_types
                 if len(current_scene_types) == 1:
@@ -459,11 +402,13 @@ class TWEAUToolBox:
                     include_only = False
                     scene_id = each_scene_id_group[0]
                     scene_data_per_scene = each_scene_id_group[1]
-                    if not self.has_permitted_shelves(scene_id, permitted_shelves):
+                    valid_bay_numbers = self.get_valid_bay_numbers(scene_id, permitted_shelves)
+                    if not valid_bay_numbers:
                         continue
                     matched_products_for_scene = scene_data_per_scene.query(
-                        'shelf_number in {shelves}'.format(
+                        'shelf_number in {shelves} and bay_number in {bays}'.format(
                             shelves=shelves_policy_from_top,
+                            bays=valid_bay_numbers
                         )).groupby(['bay_number'], as_index=False)
                     # scene_uid = self.scene_info.loc[
                     #     self.scene_info['scene_fk'] == each_scene].scene_uid.values[0]
@@ -499,53 +444,39 @@ class TWEAUToolBox:
                             # exclude/include logic
                             last_shelf_number = str(each_shelf_per_bay.n_shelf_items.unique()[0])
                             shelf_filter = items_to_check_str.replace('N', last_shelf_number)
-                            shelf_filter_string = 'in [{}]'.format(shelf_filter)
+                            shelf_filter_string = '[{}]'.format(shelf_filter)
                             if exclude_items:
                                 # exclude rows in `items_to_check_tuple`
                                 required_shelf_items = each_shelf_per_bay.drop(
-                                    each_shelf_per_bay.query('facing_sequence_number {filter_string}'
+                                    each_shelf_per_bay.query('facing_sequence_number in {filter_string}'
                                                              .format(filter_string=shelf_filter_string)
                                                              ).index.tolist())
                             else:
                                 # it is include_only:
                                 required_shelf_items = each_shelf_per_bay.query(
-                                    'facing_sequence_number {filter_string}'.format(
+                                    'facing_sequence_number in {filter_string}'.format(
                                         filter_string=shelf_filter_string
                                     ))
                             product_ids = required_shelf_items.product_fk.unique().tolist()
                         else:
                             product_ids = each_shelf_per_bay.product_fk.unique().tolist()
                         unique_products.update(product_ids)
-                    # per scene
-                    if bool(unique_products) and per_scene_type:
-                        return {
-                            'fk': int(kpi['pk']),
-                            'numerator_id': numerator_entity_id,  # manufacturer entity id
-                            'numerator_result': numerator_id,  # current manufacturer id
-                            'denominator_id': denominator_entity_id,  # template entity id = 6
-                            'denominator_result': denominator_id,  # current template id
-                            'bay_number': bay_number,
-                            # 'scene_id': scene_id,  # scene id
-                            'unique_products': unique_products,
-                            'kpi_name': kpi_sheet_row[KPI_NAME],
-                            'zone_number': zone_number,
-                            'unique_manufacturer_products_count': unique_manufacturer_products_count,
-                        }
-                # for manufacturer
-                if bool(unique_products) and per_manufacturer:
-                    return {
-                        'fk': int(kpi['pk']),
-                        'numerator_id': numerator_entity_id,  # manufacturer entity id
-                        'numerator_result': numerator_id,  # current manufacturer id
-                        'bay_number': bay_number,
-                        'denominator_id': denominator_entity_id,  # template entity id = 5
-                        'denominator_result': denominator_id,  # current store id
-                        'unique_products': unique_products,
-                        'kpi_name': kpi_sheet_row[KPI_NAME],
-                        'zone_number': zone_number,
-                        'unique_manufacturer_products_count': unique_manufacturer_products_count,
-                    }
-        return {}
+                        scene_data_map.append(
+                            {
+                                'fk': int(kpi['pk']),
+                                'numerator_id': numerator_id,
+                                'denominator_id': denominator_id,
+                                'bay_number': bay_number,
+                                'scene_id': scene_id,
+                                'products': product_ids,
+                                'kpi_name': kpi_sheet_row[KPI_NAME],
+                                'zone_number': zone_number,
+                                'unique_manufacturer_products_count': unique_manufacturer_products_count,
+                            }
+                        )
+            scene_data_map.append({"unique_products": unique_products})
+            return scene_data_map
+        return []
 
     def get_denominator_id(self, denominator_key_str, numerator_row, denominator_row):
         """
