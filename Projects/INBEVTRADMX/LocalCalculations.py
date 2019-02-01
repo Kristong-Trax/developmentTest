@@ -35,6 +35,13 @@ if __name__ == '__main__':
         # 'cbe15644-9da0-4fe3-8362-fb61237f0376',
         '0d35ac5f-b7ba-4a6f-9acb-6c54be96bb12'
     ]
+    sessions = [
+        '6dba0c0f-3fdc-4128-9033-da0fa1c65fa6',
+        'a00c62ac-68ce-4d7c-b616-c5ee2707667c',
+        '618eb27d-d3f4-4a0b-b5b9-af61d43876aa',
+        '0a90f3fb-9cad-43a9-b409-227b2e298232'
+    ]
+
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
