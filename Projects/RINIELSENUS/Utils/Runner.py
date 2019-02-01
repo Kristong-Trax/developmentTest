@@ -50,21 +50,9 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
-            # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
-            #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
-            #     continue
             # if atomic['atomic'] not in [
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
-            #                         # 'Is Sheba brand blocked adjacent to Fancy Feast? >4FT',
-            #                         # 'Is Sheba blocked adjacent to Fancy Feast? <=4FT',
-            #                         # 'Are TEMPTATIONS Cat Treats Regular blocked?',
-            #                         # 'Is the Nutro Cat Main Meal section >4ft?',
-            #                         # 'Is the Nutro Cat Main Meal section <=4ft?'
-            #                         'Nutro Dry Dog and Wet Dog are BOTH BLOCKED',
-            #                         'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
-            #                         # 'Is the Crunchy Dog Treats segment blocked vertically?',
-            #                         # 'Is the Crunchy Dog Treats segment blocked?'
             #                         ]:
             #     continue
             print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
