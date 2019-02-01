@@ -33,14 +33,14 @@ class CCRU_SANDJsonGenerator:
             final_json_hidden = []
             for fj in final_json:
                 if fj.get("KPI Type") != "Hidden":
-                    if fj.get("Children") is not None:
-                        fj.update({"Children List": map(int, str(fj.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))})
+                    if fj.get("Children"):
+                        fj.update({"Children List": map(int, str(fj.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))})
                     else:
                         fj.update({"Children List": []})
                     final_json_main.append(fj)
                 else:
-                    if fj.get("Children") is not None:
-                        fj.update({"Children List": map(int, str(fj.get("Children")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))})
+                    if fj.get("Children"):
+                        fj.update({"Children List": map(int, str(fj.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))})
                     else:
                         fj.update({"Children List": []})
                     final_json_hidden.append(fj)
