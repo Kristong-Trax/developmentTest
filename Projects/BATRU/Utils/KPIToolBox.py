@@ -730,7 +730,7 @@ class BATRUToolBox:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper() == 'ALL']
-            monitored_skus = pd.DataFrame(columns=['product_ean_code_lead'])
+        monitored_skus = pd.DataFrame(columns=['product_ean_code_lead'])
         for sku in monitored_skus_raw['ean_code'].unique().tolist():
             try:
                 product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
