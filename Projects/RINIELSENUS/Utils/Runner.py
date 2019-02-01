@@ -19,7 +19,8 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     LinearFairShareDenominatorSPTAtomicKpiCalculation, LinearPreferredRangeShareSPTAtomicKpiCalculation, \
     LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation, \
     LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation, ShareOfAssortmentPrSPTAtomicKpiCalculation, \
-    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation, ShelfLengthNumeratorCalculationBase
+    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation, ShelfLengthNumeratorCalculationBase, \
+    VerticalPreCalcBlockAtomicKpiCalculation
 from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
 
 
@@ -52,14 +53,20 @@ class Results(object):
             # if not ('Are Greenies and Temptations shelved on opposite ends of category?' in atomic['atomic'] or\
             #         'ARE GREENIES AND TEMPTATIONS ADJACENT?' in atomic['atomic']):
             #     continue
-            if atomic['atomic'] not in [
-                                    # 'Is the Nutro Cat Main Meal section >4ft?',
-                                    # 'Is the Nutro Cat Main Meal section <=4ft?',
-                                    # 'Is Sheba brand blocked adjacent to Fancy Feast? >4FT',
-                                    # 'Is Sheba blocked adjacent to Fancy Feast? <=4FT',
-                                    'Are TEMPTATIONS Cat Treats Regular blocked?'
-                                    ]:
-                continue
+            # if atomic['atomic'] not in [
+            #                         # 'Is the Nutro Cat Main Meal section >4ft?',
+            #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
+            #                         # 'Is Sheba brand blocked adjacent to Fancy Feast? >4FT',
+            #                         # 'Is Sheba blocked adjacent to Fancy Feast? <=4FT',
+            #                         # 'Are TEMPTATIONS Cat Treats Regular blocked?',
+            #                         # 'Is the Nutro Cat Main Meal section >4ft?',
+            #                         # 'Is the Nutro Cat Main Meal section <=4ft?'
+            #                         # 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED',
+            #                         # 'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
+            #                         'Is the Crunchy Dog Treats segment blocked vertically?',
+            #                         'Is the Crunchy Dog Treats segment blocked?'
+            #                         ]:
+            #     continue
             print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
@@ -70,15 +77,26 @@ class Results(object):
                     atomics.append(atomic)
                     pushed_back_list.append(atomic)
                     continue
-
+            if atomic_results:
+                r_df = pd.concat(atomic_results.values())
+                atomic['results'] = r_df[r_df['atomic'].isin(atomic['depend_on'])]
             calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._tools, self._data_provider,
                                                                                 self._preferred_range)
-            result = {'result': calculation.calculate_atomic_kpi(atomic),
+            # This setup allows some kpis to return an object, so we don't have to
+            # keep calculating the same things over and over....
+            kpi_res = calculation.calculate_atomic_kpi(atomic)
+            errata = None
+            if isinstance(kpi_res, tuple):
+                errata = [i for i in kpi_res[1:]]
+                kpi_res = kpi_res[0]
+
+            result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
                       'atomic': atomic['atomic'],
                       'weight': atomic['weight'],
-                      'target': atomic.setdefault('target', 0)}
+                      'target': atomic.setdefault('target', 0),
+                      'errata': errata}
             concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
             atomic_results[atomic['kpi']] = concat_results
 
@@ -140,6 +158,7 @@ class Results(object):
             ShareOfAssortmentPrSPTAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTAtomicKpiCalculation,
             ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation,
             ShelfLengthNumeratorCalculationBase.kpi_type: ShelfLengthNumeratorCalculationBase,
+            VerticalPreCalcBlockAtomicKpiCalculation.kpi_type: VerticalPreCalcBlockAtomicKpiCalculation,
 
         }
 

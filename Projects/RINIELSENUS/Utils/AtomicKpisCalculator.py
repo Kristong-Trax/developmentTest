@@ -202,6 +202,12 @@ class KpiAtomicKpisCalculator(object):
             sales = sales[sales['Sub Brand'].isin(kargs['Sub Brand'])]
         return sales['soa'].iloc[0] if not sales.empty else None
 
+    def get_biggest_scene(self, filters):
+        matches = self._tools.match_product_in_scene.copy()
+        biggest_scene = matches[self._tools.get_filter_condition(matches, **filters)]
+        biggest_scene = biggest_scene.groupby(['scene_fk']).size().reset_index(name='counts').sort_values(['counts'], ascending=False)
+        return biggest_scene['scene_fk'].values[0]
+
     @staticmethod
     def _split_filters(all_filters):
         filters = {'all': {}, 'A': {}, 'B': {}, 'C': {}, 'D': {}}
@@ -362,10 +368,7 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
         if scif_matches == 0:
             return np.nan
 
-        matches = self._tools.match_product_in_scene.copy()
-        biggest_scene = matches[self._tools.get_filter_condition(matches, **filters)]
-        biggest_scene = biggest_scene.groupby(['scene_fk']).size().reset_index(name='counts').sort_values(['counts'], ascending=False)
-        biggest_scene = biggest_scene['scene_fk'].values[0]
+        biggest_scene = self.get_biggest_scene(filters)
         biggest_scene = self._create_filter_dict(key='scene_fk', value=biggest_scene)
         filters.update(biggest_scene)
 
@@ -397,7 +400,7 @@ class BiggestSceneBlockAtomicKpiCalculation(BlockBaseCalculation):
 
         if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
                 and blocked_scenes > 0:
-            return 100
+            return 100, block
         else:
             return 0
 
@@ -585,6 +588,31 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
     def kpi_type(self):
         return 'Vertical Block One Scene'
 
+class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
+    def calculate_atomic_kpi(self, atomic_kpi_data):
+        filters = atomic_kpi_data['filters']
+        if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
+            Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
+                      .format(atomic_kpi_data['atomic']))
+
+        results = atomic_kpi_data['results']
+        blocks = sum(results['errata'].values, [])
+        score = 0
+        final = 0
+        for block in blocks:
+            if not isinstance(block, dict) or not block['block']:
+                continue
+
+            biggest_scene = self.get_biggest_scene(filters)
+            if self.check_vertical_block(block, biggest_scene['scene_avg_num_of_shelves']):
+                score += 1
+        if score == len(blocks):
+            final = 100
+        return final
+
+    @classproperty
+    def kpi_type(self):
+        return 'PreCalc Vertical Block'
 
 class VerticalBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
