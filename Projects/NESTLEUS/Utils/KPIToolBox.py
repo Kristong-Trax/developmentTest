@@ -55,9 +55,10 @@ class NESTLEUSToolBox:
         This function calculates the KPI results.
         """
         kpi_set_fk = kwargs['kpi_set_fk']
-        self.Calculate_facings_count(kpi_set_fk = kpi_set_fk)
-        self.Calculate_Linear_feet(kpi_set_fk = kpi_set_fk)
-        self.common.commit_results_data()
+        # self.Calculate_facings_count(kpi_set_fk = kpi_set_fk)
+        # self.Calculate_Linear_feet(kpi_set_fk = kpi_set_fk)
+        # self.common.commit_results_data()
+        pass
 
 
 
