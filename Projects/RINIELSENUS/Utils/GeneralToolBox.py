@@ -738,6 +738,7 @@ class MarsUsGENERALToolBox:
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
+            print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
             # scene_graph = self.position_graphs.get(scene).copy()
             scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
 
@@ -750,9 +751,12 @@ class MarsUsGENERALToolBox:
             else:
                 new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
-                # print('\n\n')
-                # for i in scene_graph.vs[cluster]:
-                #     print(i['Segment'], i['product_name'])
+                print('\n\n')
+                sorted_clust = sorted(scene_graph.vs[cluster], key=lambda x: [x['bay_number'], x['shelf_number'],
+                                                                              x['shelf_px_left']])
+                for i in sorted_clust:
+                    print('bay:', i['bay_number'], 'shelf', i['shelf_number'], i['Sub-section'], i['Customer Brand'],
+                          i['Sub Brand'], i['Segment'], i['product_name'])
                 if block_of_blocks:
                     relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
                     if len(new_relevant_vertices1) > 0:

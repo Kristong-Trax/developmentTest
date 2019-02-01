@@ -74,6 +74,6 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    deploy_instance = ProjectDeploy(project=['googlekr'])
+    deploy_instance = ProjectDeploy(project=['rinielsenus'])
     deploy_instance.deploy()
     pass

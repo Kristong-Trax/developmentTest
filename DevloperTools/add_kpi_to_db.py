@@ -186,7 +186,7 @@ if __name__ == '__main__':
     # dbusers_patcher = patch('{0}.DbUser'.format(dbusers_class_path))
     # dbusers_mock = dbusers_patcher.start()
     # dbusers_mock.return_value = docker_user
-    kpi = AddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
+    kpi = AddKPIs('rinielsenus', '/home/samk/Documents/documentation/add_kpi/new_kpi.xlsx')
     kpi.add_kpis_from_template()
     # kpi.add_weights()
 
