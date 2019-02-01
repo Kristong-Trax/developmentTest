@@ -61,10 +61,10 @@ class Results(object):
             #                         # 'Are TEMPTATIONS Cat Treats Regular blocked?',
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?'
-            #                         # 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED',
-            #                         # 'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
-            #                         'Is the Crunchy Dog Treats segment blocked vertically?',
-            #                         'Is the Crunchy Dog Treats segment blocked?'
+            #                         'Nutro Dry Dog and Wet Dog are BOTH BLOCKED',
+            #                         'Is Nutro Ancestral Dog food Feeding Philosophy Segment blocked?',
+            #                         # 'Is the Crunchy Dog Treats segment blocked vertically?',
+            #                         # 'Is the Crunchy Dog Treats segment blocked?'
             #                         ]:
             #     continue
             print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -85,7 +85,7 @@ class Results(object):
             # This setup allows some kpis to return an object, so we don't have to
             # keep calculating the same things over and over....
             kpi_res = calculation.calculate_atomic_kpi(atomic)
-            errata = None
+            errata = [None]
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
@@ -199,7 +199,7 @@ class Results(object):
             score = 0
             for depend_on, depend_score in depends:
                 if depend_on in results_df['atomic'].tolist():
-                    if str(results_df[results_df['atomic'] == depend_on]['result'].values[0]) == str(depend_score):
+                    if self.equivalence(results_df[results_df['atomic']==depend_on]['result'].values[0], depend_score):
                         score += 1
             if score == bar:
                 return CalculationDependencyCheck.CALCULATE
@@ -212,3 +212,22 @@ class Results(object):
                     return CalculationDependencyCheck.PUSH_BACK
         else:
             return CalculationDependencyCheck.PUSH_BACK
+
+    @staticmethod
+    def equivalence(actual, expected):
+        score = 0
+        if actual != '' and actual is not None:
+            t = type(actual)
+            try:
+                expected = t(expected)
+            except:
+                pass
+            if actual == expected:
+                score = 1
+        else:
+            if expected == '' or expected is None:
+                score = 1
+        return score
+
+
+

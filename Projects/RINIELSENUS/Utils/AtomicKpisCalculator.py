@@ -4,7 +4,7 @@ from Trax.Utils.Logging.Logger import Log
 import numpy as np
 import pandas as pd
 from Projects.RINIELSENUS.Utils.Const import TEMPLATE_NAME, DENOMINATOR_FILTER_FIELDS, BLOCK_THRESHOLD, \
-    FILTER_NAMING_DICT, MM_TO_FT_RATIO, FACINGS, USE_PROBES
+    FILTER_NAMING_DICT, MM_TO_FT_RATIO, FACINGS, USE_PROBES, VERTICAL_BLOCK_THRESHOLD
 from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 from Trax.Utils.DesignPatterns.Decorators import classproperty
@@ -579,7 +579,7 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
         return block['block']
 
     def check_vertical_block(self, block, scene_avg_shelf):
-        if float(block['shelves']) / float(scene_avg_shelf) > 0.5:
+        if float(block['shelves']) / float(scene_avg_shelf) > VERTICAL_BLOCK_THRESHOLD:
             return True
         else:
             return False
@@ -591,20 +591,29 @@ class VerticalBlockOneSceneAtomicKpiCalculation(BlockBaseCalculation):
 class VerticalPreCalcBlockAtomicKpiCalculation(BlockBaseCalculation):
     def calculate_atomic_kpi(self, atomic_kpi_data):
         filters = atomic_kpi_data['filters']
+        biggest_scene = self.get_biggest_scene(filters)
+        scene_avg_num_of_shelves = self._get_relevant_scenes_avg_shelf(filters).set_index('scene_fk')\
+                                        ['scene_avg_num_of_shelves'].to_dict()[biggest_scene]
         if 'results' not in atomic_kpi_data or atomic_kpi_data['results'].empty:
             Log.error('kpi: "{}" not calculated. PreCalc Vertical Block requires Biggest Scene Block dependency'
                       .format(atomic_kpi_data['atomic']))
+            return 0
 
         results = atomic_kpi_data['results']
         blocks = sum(results['errata'].values, [])
+
+        if len(blocks) > 1:
+            Log.error('kpi: "{}" currently only configured for 1 dependency'
+                      .format(atomic_kpi_data['atomic']))
+            return 0
+
         score = 0
         final = 0
         for block in blocks:
             if not isinstance(block, dict) or not block['block']:
                 continue
 
-            biggest_scene = self.get_biggest_scene(filters)
-            if self.check_vertical_block(block, biggest_scene['scene_avg_num_of_shelves']):
+            if float(block['shelves']) / scene_avg_num_of_shelves > VERTICAL_BLOCK_THRESHOLD:
                 score += 1
         if score == len(blocks):
             final = 100
