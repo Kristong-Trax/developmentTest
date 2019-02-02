@@ -55,8 +55,8 @@ class Results(object):
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
             #                         ]:
             #     continue
-            print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            print(atomic['atomic'])
+            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            # print(atomic['atomic'])
             if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
                 if dependency_status == CalculationDependencyCheck.IGNORE:
