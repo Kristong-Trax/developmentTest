@@ -10,7 +10,7 @@ if __name__ == '__main__':
     project_name = 'twegau'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-                'CD88A798-0F99-4E7C-B077-5F0238AD9754',
+                # 'CD88A798-0F99-4E7C-B077-5F0238AD9754',
                 "CC724EC9-AFAD-492B-8309-34CDAFF59291",
                 "CB790711-CC7B-40DE-87E4-83039A27A6C3",
                 "5366EF45-19C8-4681-A125-AE79FAA175F0",

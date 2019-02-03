@@ -135,11 +135,11 @@ class TWEAUToolBox:
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
-        empty_product_ids = [x[1].product_fk for x in
-                             self.all_products[
-                                 self.all_products.product_name.str.contains(
-                                     'empty', case=False)
-                             ].iterrows()]
+        empty_product_ids = self.all_products.query(
+            'product_name.str.contains("empty", case=False) or'
+            ' product_name.str.contains("irrelevant", case=False)',
+            engine='python')['product_fk'].values
+
         for each_kpi in name_grouped_zone_kpi_sheet:
             each_kpi_type = each_kpi[0]
             kpi_sheet_rows = each_kpi[1]
@@ -163,7 +163,9 @@ class TWEAUToolBox:
                     zone_data = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T,
                                                              denominator_row=denominator_row)
                     list_of_zone_data.append(zone_data)
+                print "Final >>> ", list_of_zone_data
                 if write_sku:
+                    # write for products
                     _output_to_write = []
                     for each in list_of_zone_data:
                         for x in each:
@@ -172,68 +174,61 @@ class TWEAUToolBox:
                     _df_output_to_write = pd.DataFrame(_output_to_write)
                     _df_output_to_write.dropna(subset=['bay_number'], inplace=True)
                     _grouped_output_to_write = _df_output_to_write.groupby(['scene_id', 'bay_number'], as_index=False)
-                    for tuple_each_data_to_write in _grouped_output_to_write:
+                    for scene_bay_tuple, each_data_to_write in _grouped_output_to_write:
                         # remove empty products when getting all SKU's
-                        each_data_to_write = tuple_each_data_to_write[1]
-                        products_to_write = each_data_to_write.products.values[0]
+                        products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
+                                                 for prod_id in prod_list_per_bay])
+                        data_to_write = each_data_to_write.iloc[0]
                         for each_product_id in products_to_write:
                             if int(each_product_id) not in empty_product_ids:
                                 self.common.write_to_db_result(
-                                    fk=int(each_data_to_write.fk),
+                                    fk=int(data_to_write.fk),
                                     numerator_id=int(each_product_id),
-                                    numerator_result=int(each_data_to_write.bay_number),
-                                    denominator_id=int(each_data_to_write.denominator_id),
-                                    denominator_result=int(each_data_to_write.scene_id),
-                                    result=int(each_data_to_write.zone_number),
+                                    numerator_result=int(data_to_write.bay_number),
+                                    denominator_id=int(data_to_write.denominator_id),
+                                    denominator_result=int(data_to_write.scene_id),
+                                    result=int(data_to_write.zone_number),
                                     score=1,
-                                    identifier_result=each_data_to_write.kpi_name.values[0],
-                                    context_id=int(each_data_to_write.zone_number),
+                                    identifier_result=str(data_to_write.kpi_name),
+                                    context_id=int(data_to_write.zone_number),
                                 )
                 else:
                     # its the calculation
-                    all_uniques = set()
-                    output = 0
-                    unique_manufacturer_products_count = 0
-                    numerator_id = None
-                    kpi_pk = None
-                    denominator_id = None
-                    kpi_name = None
-                    zone_number = None
+                    _output_to_write = []
                     for each in list_of_zone_data:
-                        if not kpi_pk:
-                            kpi_pk = each[0].get('kpi_pk')
-                        if not unique_manufacturer_products_count:
-                            unique_manufacturer_products_count = each[0].get('unique_manufacturer_products_count')
-                        if not numerator_id or not denominator_id:
-                            numerator_id = each[0].get('numerator_id')
-                            denominator_id = each[0].get('denominator_id')
-                        if not kpi_name:
-                            kpi_name = each[0].get('kpi_name')
-                        if not zone_number:
-                            zone_number = each[0].get('zone_number')
-                        all_uniques.update(each[-1]["unique_products"])
-                    all_uniques_count = len(all_uniques)
-                    if unique_manufacturer_products_count:
-                        output = float(all_uniques_count)/unique_manufacturer_products_count
-                    if not output:
-                        # skip writing to DB if there is no output
+                        if len(each) > 1:
+                            _output_to_write.extend([x for x in each if 'unique_products' not in x])
+                    _df_output_to_write = pd.DataFrame(_output_to_write)
+                    # remove rows with empty products
+                    _df_output_to_write = _df_output_to_write[_df_output_to_write.astype(str)['products'] != "[]"]
+                    _grouped_output_to_write = _df_output_to_write.groupby('denominator_id', as_index=False)
+                    unique_manufacturer_products_count = _df_output_to_write.unique_manufacturer_products_count[0]
+                    if not unique_manufacturer_products_count:
                         continue
-                    self.common.write_to_db_result(
-                        fk=kpi_pk,
-                        numerator_id=numerator_id,
-                        numerator_result=all_uniques_count,
-                        denominator_id=denominator_id,
-                        denominator_result=unique_manufacturer_products_count,
-                        result=output,
-                        score=output,
-                        identifier_result=kpi_name,
-                        context_id=zone_number,
-                    )
+                    for denominator_id, each_data_to_write in _grouped_output_to_write:
+                        # remove empty products when getting all SKU's
+                        # get all unique product ids from different dataframe rows in a set
+                        products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
+                                                 for prod_id in prod_list_per_bay])
+                        # sanitize the products
+                        products_to_write = [x for x in products_to_write if x not in empty_product_ids]
+                        result = float(len(products_to_write)) / unique_manufacturer_products_count
+                        data_to_write = each_data_to_write.iloc[0]  # for dot selection from first row
+                        self.common.write_to_db_result(
+                            fk=int(data_to_write.fk),
+                            numerator_id=int(data_to_write.numerator_id),
+                            denominator_id=int(data_to_write.denominator_id),
+                            result=int(result),
+                            score=1,
+                            identifier_result=str(data_to_write.kpi_name),
+                            context_id=int(data_to_write.zone_number),
+                        )
         self.common.commit_results_data()
         score = 0
         return score
 
     def calculate_macro_linear(self):
+        # TODO - add template type filter/group
         kpi_sheet = self.get_template_details(LINEAR_KPI_SHEET)
         category_sheet = self.get_template_details(LINEAR_CATEGORY_SHEET)
 
@@ -395,7 +390,7 @@ class TWEAUToolBox:
                 scene_type = current_scene_types
                 if len(current_scene_types) == 1:
                     scene_type = each_group_by_manf_templ[1].template_name.unique()[0]
-                unique_products = set()
+                # unique_products = set()
                 scene_type_grouped_by_scene = each_group_by_manf_templ[1].groupby(SCENE_FK)
                 for each_scene_id_group in scene_type_grouped_by_scene:
                     exclude_items = False
@@ -409,7 +404,7 @@ class TWEAUToolBox:
                         'shelf_number in {shelves} and bay_number in {bays}'.format(
                             shelves=shelves_policy_from_top,
                             bays=valid_bay_numbers
-                        )).groupby(['bay_number'], as_index=False)
+                        )).groupby(['bay_number', 'shelf_number'], as_index=False)
                     # scene_uid = self.scene_info.loc[
                     #     self.scene_info['scene_fk'] == each_scene].scene_uid.values[0]
                     items_to_check_str = None
@@ -425,7 +420,7 @@ class TWEAUToolBox:
 
                     for tuple_data in matched_products_for_scene:
                         # get excluding shelves
-                        bay_number = tuple_data[0]
+                        bay_number = tuple_data[0][0]
                         each_shelf_per_bay = tuple_data[1]
                         numerator_entity_id = EXCEL_ENTITY_MAP[kpi_sheet_row.numerator_fk]
                         numerator_id = getattr(each_shelf_per_bay,
