@@ -195,11 +195,18 @@ class TWEAUToolBox:
                 else:
                     # its the calculation
                     _output_to_write = []
+                    _break_out_free = False
                     for each in list_of_zone_data:
                         if len(each) > 1:
                             _output_to_write.extend([x for x in each if 'unique_products' not in x])
+                        else:
+                            # No relevant product as per excel row config parameters
+                            _break_out_free = True
+                            break
+                    if _break_out_free:
+                        continue
                     _df_output_to_write = pd.DataFrame(_output_to_write)
-                    # remove rows with empty products
+                    # remove rows with empty `products`
                     _df_output_to_write = _df_output_to_write[_df_output_to_write.astype(str)['products'] != "[]"]
                     _grouped_output_to_write = _df_output_to_write.groupby('denominator_id', as_index=False)
                     unique_manufacturer_products_count = _df_output_to_write.unique_manufacturer_products_count[0]
