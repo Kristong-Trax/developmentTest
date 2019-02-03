@@ -79,6 +79,18 @@ class PERNODUSToolBox:
 
     def main_calculation(self, *args, **kwargs):
 
+        # Base Measurement
+        for i, row in self.BaseMeasure_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                value = row['value']
+                location = row['Store Location']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
 
         # # Anchor
         for i, row in self.Anchor_template.iterrows():

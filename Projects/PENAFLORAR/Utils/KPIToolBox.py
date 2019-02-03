@@ -330,13 +330,14 @@ class PENAFLORARDIAGEOARToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
-        cur = self.rds_conn.db.cursor()
+        rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        cur = rds_conn.db.cursor()
         delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:
             cur.execute(query)
-        self.rds_conn.db.commit()
+        rds_conn.db.commit()
 
     @staticmethod
     def merge_insert_queries(insert_queries):
