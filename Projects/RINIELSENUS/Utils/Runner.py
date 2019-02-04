@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 
 from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalculation, \
     VerticalBlockAtomicKpiCalculation, AnchorAtomicKpiCalculation, ShelfLevelAtomicKpiCalculation, \
@@ -14,7 +15,12 @@ from Projects.RINIELSENUS.Utils.AtomicKpisCalculator import BlockAtomicKpiCalcul
     ShelvedTogetherAtomicKpiCalculation, NegativeAdjacencyCalculation, LinearFairShareNumeratorAtomicKpiCalculation, \
     LinearFairShareDenominatorAtomicKpiCalculation, LinearPreferredRangeShareNumeratorAtomicKpiCalculation, \
     LinearPreferredRangeShareDenominatorAtomicKpiCalculation, ShareOfAssortmentPrNumeratorAtomicKpiCalculation, \
-    SequenceSptCalculation
+    SequenceSptCalculation, LinearFairShareNumeratorSPTAtomicKpiCalculation, \
+    LinearFairShareDenominatorSPTAtomicKpiCalculation, LinearPreferredRangeShareSPTAtomicKpiCalculation, \
+    LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation, \
+    LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation, ShareOfAssortmentPrSPTAtomicKpiCalculation, \
+    ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation, ShelfLengthNumeratorCalculationBase, \
+    VerticalPreCalcBlockAtomicKpiCalculation
 from Projects.RINIELSENUS.Utils.Const import CalculationDependencyCheck
 
 
@@ -24,6 +30,7 @@ class Results(object):
         self._data_provider = data_provider
         self._writer = writer
         self._preferred_range = preferred_range
+        self.dependency_tracker = defaultdict(int)
 
     def calculate(self, hierarchy):
         atomic_results = self._get_atomic_results(hierarchy)
@@ -43,9 +50,14 @@ class Results(object):
         atomic_results = {}
         pushed_back_list = []
         for atomic in atomics:
-            # if atomic['atomic'] != "Is the Natural Grain-Free Dry Dog Food segment blocked?":
+            # if atomic['atomic'] not in [
+            #                         # 'Is the Nutro Cat Main Meal section >4ft?',
+            #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
+            #                         ]:
             #     continue
-            if atomic['depend_on']:
+            # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            # print(atomic['atomic'])
+            if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
                 if dependency_status == CalculationDependencyCheck.IGNORE:
                     continue
@@ -53,15 +65,26 @@ class Results(object):
                     atomics.append(atomic)
                     pushed_back_list.append(atomic)
                     continue
-
+            if atomic_results:
+                r_df = pd.concat(atomic_results.values())
+                atomic['results'] = r_df[r_df['atomic'].isin(atomic['depend_on'])]
             calculation = self._kpi_type_calculator_mapping[atomic['kpi_type']](self._tools, self._data_provider,
                                                                                 self._preferred_range)
-            result = {'result': calculation.calculate_atomic_kpi(atomic),
+            # This setup allows some kpis to return an object, so we don't have to
+            # keep calculating the same things over and over....
+            kpi_res = calculation.calculate_atomic_kpi(atomic)
+            errata = [None]
+            if isinstance(kpi_res, tuple):
+                errata = [i for i in kpi_res[1:]]
+                kpi_res = kpi_res[0]
+
+            result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
                       'atomic': atomic['atomic'],
                       'weight': atomic['weight'],
-                      'target': atomic.setdefault('target', 0)}
+                      'target': atomic.setdefault('target', 0),
+                      'errata': errata}
             concat_results = atomic_results.setdefault(atomic['kpi'], pd.DataFrame()).append(pd.DataFrame([result]))
             atomic_results[atomic['kpi']] = concat_results
 
@@ -114,7 +137,17 @@ class Results(object):
             VerticalSequenceAvgShelfCalculation.kpi_type: VerticalSequenceAvgShelfCalculation,
             ShareOfAssortmentAtomicKpiCalculationNotPR.kpi_type: ShareOfAssortmentAtomicKpiCalculationNotPR,
             ShareOfAssortmentPrNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrNumeratorAtomicKpiCalculation,
-            ShelvedTogetherAtomicKpiCalculation.kpi_type: ShelvedTogetherAtomicKpiCalculation
+            ShelvedTogetherAtomicKpiCalculation.kpi_type: ShelvedTogetherAtomicKpiCalculation,
+            LinearFairShareNumeratorSPTAtomicKpiCalculation.kpi_type: LinearFairShareNumeratorSPTAtomicKpiCalculation,
+            LinearFairShareDenominatorSPTAtomicKpiCalculation.kpi_type: LinearFairShareDenominatorSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareNumeratorSPTAtomicKpiCalculation,
+            LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation.kpi_type: LinearPreferredRangeShareDenominatorSPTAtomicKpiCalculation,
+            ShareOfAssortmentPrSPTAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTAtomicKpiCalculation,
+            ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation.kpi_type: ShareOfAssortmentPrSPTNumeratorAtomicKpiCalculation,
+            ShelfLengthNumeratorCalculationBase.kpi_type: ShelfLengthNumeratorCalculationBase,
+            VerticalPreCalcBlockAtomicKpiCalculation.kpi_type: VerticalPreCalcBlockAtomicKpiCalculation,
+
         }
 
     def _get_set_result(self, kpi_results):
@@ -146,17 +179,43 @@ class Results(object):
 
         return pd.DataFrame(group_results, columns=['group', 'score'])
 
-    @staticmethod
-    def _check_atomic_dependency(atomic, pushed_back_list, atomic_results):
-        depend_on = atomic['depend_on']
-        depend_score = atomic['depend_score']
-        results_df = pd.concat(atomic_results.values())
-        if depend_on in results_df['atomic'].tolist():
-            if results_df[results_df['atomic'] == depend_on]['result'].values[0] == depend_score:
+    def _check_atomic_dependency(self, atomic, pushed_back_list, atomic_results):
+        depends = zip(atomic['depend_on'], atomic['depend_score'])
+        bar = sum([1 for i in atomic['depend_score'] if i is not None and i != ''])
+        if atomic_results:
+            results_df = pd.concat(atomic_results.values())
+            score = 0
+            for depend_on, depend_score in depends:
+                if depend_on in results_df['atomic'].tolist():
+                    if self.equivalence(results_df[results_df['atomic']==depend_on]['result'].values[0], depend_score):
+                        score += 1
+            if score == bar:
                 return CalculationDependencyCheck.CALCULATE
             else:
-                return CalculationDependencyCheck.IGNORE
-        elif depend_on in pushed_back_list:
-            return CalculationDependencyCheck.IGNORE
+                if atomic['atomic'] in pushed_back_list or score < bar:
+                    self.dependency_tracker[atomic['atomic']] += 1
+                if self.dependency_tracker[atomic['atomic']] > 5:
+                    return CalculationDependencyCheck.IGNORE
+                else:
+                    return CalculationDependencyCheck.PUSH_BACK
         else:
             return CalculationDependencyCheck.PUSH_BACK
+
+    @staticmethod
+    def equivalence(actual, expected):
+        score = 0
+        if actual != '' and actual is not None:
+            t = type(actual)
+            try:
+                expected = t(expected)
+            except:
+                pass
+            if actual == expected:
+                score = 1
+        else:
+            if expected == '' or expected is None:
+                score = 1
+        return score
+
+
+
