@@ -42,7 +42,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_bivn_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['FD88F113-B814-4AE2-8B7A-8CF041C0F562']
+        sessions = ['CB67E613-1453-49F4-99BF-FA48377D240B']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
