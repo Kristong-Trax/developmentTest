@@ -738,7 +738,7 @@ class MarsUsGENERALToolBox:
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
-            print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
+            # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
             # scene_graph = self.position_graphs.get(scene).copy()
             scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
 
