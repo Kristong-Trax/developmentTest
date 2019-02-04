@@ -588,7 +588,7 @@ class CCRUKPIToolBox:
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
             if not p.get('Children'):
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
@@ -935,8 +935,8 @@ class CCRUKPIToolBox:
                 #     score=1
             else:
                 score = self.calculate_share_of_cch(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
                 set_total_res += round(score)
             else:
@@ -984,8 +984,8 @@ class CCRUKPIToolBox:
                 continue
             scenes = self.get_relevant_scenes(p)
             score = self.calculate_number_of_scenes_given_facings(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
                 set_total_res += round(score)
             else:
@@ -1114,7 +1114,7 @@ class CCRUKPIToolBox:
             # saving to DB
             if p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
                 if p.get('KPI Weight') is None:
                     set_total_res += round(score)
                 else:
@@ -1422,7 +1422,7 @@ class CCRUKPIToolBox:
                     kpi_total += atomic_res
                     # write to DB
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
@@ -1509,7 +1509,7 @@ class CCRUKPIToolBox:
                     if atomic_score == -1:
                         atomic_score = self.calculate_score(atomic_res, c)
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
@@ -1637,7 +1637,7 @@ class CCRUKPIToolBox:
                             sub_atomic_res = 0
                             sub_atomic_score = self.calculate_score(sub_atomic_res, sub_atomic_info)
                             kpi_name = sub_atomic_info.get('KPI name Eng')
-                            sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
+                            sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
                             attributes_for_level4 = self.create_attributes_for_level3_df(sub_atomic_info, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                             self.write_to_kpi_results_old(attributes_for_level4, 'level4')
                     atomic_res = 0
@@ -1645,7 +1645,7 @@ class CCRUKPIToolBox:
                     self.calculate_score(atomic_res, c)
 
                 kpi_name = c.get('KPI name Eng')
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
                 attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             score = self.calculate_score(kpi_total, p)
@@ -1703,7 +1703,7 @@ class CCRUKPIToolBox:
                     if parent.get('Formula').strip() == 'number of atomic KPI Passed on the same scene':
                         continue
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
-                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                 attributes_for_level4 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
@@ -1765,7 +1765,7 @@ class CCRUKPIToolBox:
                             kpi_total += atomic_score
                             kpi_total_weight += 1
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             if kpi_total_weight:
@@ -1840,7 +1840,7 @@ class CCRUKPIToolBox:
                     set_total_res += round(score) * p.get('KPI Weight')
 
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
 
                 if level == 2:
                     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
