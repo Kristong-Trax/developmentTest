@@ -17,18 +17,20 @@ class MOLSONCOORSHRCalculations(BaseCalculationsScript):
         self.timer.stop('KPIMOLSONCOORSHRGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('molsoncoorshr calculations')
-    Config.init()
-    project_name = 'molsoncoorshr'
-    data_provider = KEngineDataProvider(project_name)
-    sessions = [
-                'f0ad8421-3be7-4c29-88ce-58a832ce18bd',
-    ]
-    for session in sessions:
-        data_provider.load_session_data(session)
-        output = Output()
-        MOLSONCOORSHRCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('molsoncoorshr calculations')
+#     Config.init()
+#     project_name = 'molsoncoorshr-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     sessions = [
+#                 'F3586DC2-D078-4011-8847-8300FC5EEBE2',
+#                 '8A5A43AF-2DB6-4032-B7C1-E60FE51F6502',
+#                 'A96ADB9E-F879-4397-B178-CFE45B9FE2A4',
+#     ]
+#     for session in sessions:
+#         data_provider.load_session_data(session)
+#         output = Output()
+#         MOLSONCOORSHRCalculations(data_provider, output).run_project_calculations()
 
 
 
