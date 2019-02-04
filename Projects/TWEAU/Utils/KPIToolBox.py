@@ -58,8 +58,13 @@ NUMBER_OF_SHELVES = 'number_of_shelves'
 SHELF_NUMBER = 'shelf_number'
 FACING_SEQUENCE_NUMBER = 'facing_sequence_number'
 ZONE_NAME = 'zone'
+PROD_ID_KEY_SCIF = "item_id"
+# additional filters
+# this is to filter but not group
+# key - key name in self.scif
+# value is list of tuples - (column name in sheet, actual value in DB)
 ZONE_ADDITIONAL_FILTERS_PER_COL = {
-    "template_name": [('template_name', 'template_name')]
+    "template_name": [('template_name', 'template_name')],
 }
 # Column name map
 KPI_TYPE = 'kpi_type'
@@ -80,13 +85,15 @@ EXCEL_DB_MAP = {
     "store": "store_id",
     "product_fk": "product_fk",
     'zone': 'context_type_fk',
-    'bay_number':'bay_number',
+    'bay_number': 'bay_number',
 }
 # additional filters
+# this is to filter but not group
 # key - key name in self.scif
 # value is list of tuples - (column name in sheet, actual value in DB)
-NUMERATOR_ADDITIONAL_FILTERS_PER_COL = {
-    "brand_name": [('brand_others', 'Other'), ('brand_irrelevant', 'Irrelevant')]
+LINEAR_NUMERATOR_ADDITIONAL_FILTERS_PER_COL = {
+    "brand_name": [('brand_others', 'Other'), ('brand_irrelevant', 'Irrelevant')],
+    "template_name": [('template_name', 'template_name')],
 }
 # based on `stacking` column; select COL_FOR_MACRO_LINEAR_CALC
 STACKING_COL = 'stacking'
@@ -124,6 +131,10 @@ class TWEAUToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.empty_product_ids = self.all_products.query(
+            'product_name.str.contains("empty", case=False) or'
+            ' product_name.str.contains("irrelevant", case=False)',
+            engine='python')['product_fk'].values
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -135,11 +146,6 @@ class TWEAUToolBox:
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
-        empty_product_ids = self.all_products.query(
-            'product_name.str.contains("empty", case=False) or'
-            ' product_name.str.contains("irrelevant", case=False)',
-            engine='python')['product_fk'].values
-
         for each_kpi in name_grouped_zone_kpi_sheet:
             each_kpi_type = each_kpi[0]
             kpi_sheet_rows = each_kpi[1]
@@ -184,7 +190,7 @@ class TWEAUToolBox:
                                                  for prod_id in prod_list_per_bay])
                         data_to_write = each_data_to_write.iloc[0]
                         for each_product_id in products_to_write:
-                            if int(each_product_id) not in empty_product_ids:
+                            if int(each_product_id) not in self.empty_product_ids:
                                 self.common.write_to_db_result(
                                     fk=int(data_to_write.fk),
                                     numerator_id=int(each_product_id),
@@ -221,7 +227,7 @@ class TWEAUToolBox:
                         products_to_write = set([prod_id for prod_list_per_bay in each_data_to_write["products"]
                                                  for prod_id in prod_list_per_bay])
                         # sanitize the products
-                        products_to_write = [x for x in products_to_write if x not in empty_product_ids]
+                        products_to_write = [x for x in products_to_write if x not in self.empty_product_ids]
                         result = float(len(products_to_write)) / unique_manufacturer_products_count
                         data_to_write = each_data_to_write.iloc[0]  # for dot selection from first row
                         self.common.write_to_db_result(
@@ -238,10 +244,8 @@ class TWEAUToolBox:
         return score
 
     def calculate_macro_linear(self):
-        # TODO - add template type filter/group
         kpi_sheet = self.get_template_details(LINEAR_KPI_SHEET)
         category_sheet = self.get_template_details(LINEAR_CATEGORY_SHEET)
-
         for index, kpi_sheet_row in kpi_sheet.iterrows():
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
                                        & (self.kpi_static_data[TYPE] == kpi_sheet_row[KPI_TYPE])
@@ -250,13 +254,21 @@ class TWEAUToolBox:
                 print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
+                permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
+                if self.store_info.store_type.values[0] not in permitted_store_types:
+                    continue
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
                 # NUMERATOR
                 numerator_filters, numerator_filter_string = get_filter_string_per_row(
                     kpi_sheet_row,
                     NUMERATOR_FILTER_ENTITIES,
-                    additional_filters=NUMERATOR_ADDITIONAL_FILTERS_PER_COL)
+                    additional_filters=LINEAR_NUMERATOR_ADDITIONAL_FILTERS_PER_COL)
+                # remove empty/irrelevant products
+                numerator_filter_string += " and {prod_id_key_scif} not in {empty_prod_ids}".format(
+                    prod_id_key_scif=PROD_ID_KEY_SCIF,
+                    empty_prod_ids=self.empty_product_ids.tolist()
+                )
                 if numerator_filter_string:
                     numerator_data = self.scif.query(numerator_filter_string).fillna(0). \
                         groupby(numerator_filters, as_index=False).agg({length_field: 'sum'})
@@ -550,14 +562,14 @@ def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters
             elif not is_int(kpi_sheet_row[each_filter[0]]):
                 # its a string -- check == with values from sheet
                 filter_data = str([x.strip() for x in kpi_sheet_row[each_filter[0]].split(',') if x.strip()])
-                filter_string += "{key} in {data_list} and ".format(
+                filter_string += "{key} in {data_list} ".format(
                     key=col_name,
                     data_list=filter_data
                 )
             elif not int(kpi_sheet_row[each_filter[0]]):
                 # it is integer -- detect only the false's
                 temp_add_filter_string += '{key}!="{value}" or '. \
-                    format(key=col_name, value=each_filter[0].strip())
+                    format(key=col_name, value=each_filter[1].strip())
             temp_add_filter_string = temp_add_filter_string.rstrip('or ')
         filter_string += temp_add_filter_string + " and "
     filter_string = filter_string.rstrip('and ')
