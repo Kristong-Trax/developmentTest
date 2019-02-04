@@ -168,9 +168,13 @@ class TWEAUToolBox:
                     # write for products
                     _output_to_write = []
                     for each in list_of_zone_data:
-                        for x in each:
-                            if not x.get("unique_products", False):
-                                _output_to_write.append(x)
+                        if len(each) > 1:
+                            _output_to_write.extend([x for x in each if 'unique_products' not in x])
+                        else:
+                            # No relevant product as per excel row config parameters
+                            continue
+                    if not _output_to_write:
+                        continue
                     _df_output_to_write = pd.DataFrame(_output_to_write)
                     _df_output_to_write.dropna(subset=['bay_number'], inplace=True)
                     _grouped_output_to_write = _df_output_to_write.groupby(['scene_id', 'bay_number'], as_index=False)
@@ -195,23 +199,22 @@ class TWEAUToolBox:
                 else:
                     # its the calculation
                     _output_to_write = []
-                    _break_out_free = False
                     for each in list_of_zone_data:
                         if len(each) > 1:
                             _output_to_write.extend([x for x in each if 'unique_products' not in x])
                         else:
-                            # No relevant product as per excel row config parameters
-                            _break_out_free = True
-                            break
-                    if _break_out_free:
+                            continue
+                    if not _output_to_write:
                         continue
                     _df_output_to_write = pd.DataFrame(_output_to_write)
                     # remove rows with empty `products`
                     _df_output_to_write = _df_output_to_write[_df_output_to_write.astype(str)['products'] != "[]"]
                     _grouped_output_to_write = _df_output_to_write.groupby('denominator_id', as_index=False)
-                    unique_manufacturer_products_count = _df_output_to_write.unique_manufacturer_products_count[0]
-                    if not unique_manufacturer_products_count:
+                    unique_manufacturer_products_count_data = _df_output_to_write.get(
+                        "unique_manufacturer_products_count").values
+                    if not len(unique_manufacturer_products_count_data):
                         continue
+                    unique_manufacturer_products_count = unique_manufacturer_products_count_data[0]
                     for denominator_id, each_data_to_write in _grouped_output_to_write:
                         # remove empty products when getting all SKU's
                         # get all unique product ids from different dataframe rows in a set
@@ -304,26 +307,15 @@ class TWEAUToolBox:
                                                        identifier_result=kpi_sheet_row[KPI_NAME],
                                                        )
 
-    def get_shelf_limit_per_scene(self):
-        shelf_limit_per_scene = {}
-        unique_scene_ids = self.scif.scene_id.unique()
-        for each_scene_id in unique_scene_ids:
-            scene_data = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == each_scene_id]
-            shelf_limit_per_scene[each_scene_id] = {
-                'max_shelf': scene_data[SHELF_NUMBER].max(),
-                'min_shelf': scene_data[SHELF_NUMBER].min()
-            }
-        return shelf_limit_per_scene
-
     def get_shelf_limit_for_scene(self, scene_id):
-        shelf_limit_per_scene = defaultdict(list)
+        shelf_limit_per_scene_map = defaultdict(list)
         scene_data = self.match_product_in_scene.loc[self.match_product_in_scene['scene_fk'] == scene_id]
         _bay_grouped_scene_data = scene_data.groupby('bay_number', as_index=False)
         for each_bay in _bay_grouped_scene_data:
             bay_number = each_bay[0]
             scene_data = each_bay[1]
             if not scene_data.empty:
-                shelf_limit_per_scene[scene_id].append(
+                shelf_limit_per_scene_map[scene_id].append(
                     (
                         bay_number, {
                             'max_shelf': scene_data[SHELF_NUMBER].max(),
@@ -331,7 +323,7 @@ class TWEAUToolBox:
                         }
                     )
                 )
-        return shelf_limit_per_scene
+        return shelf_limit_per_scene_map
 
     def get_valid_bay_numbers(self, scene_id, permitted_shelves):
         scene_max_min_map = self.get_shelf_limit_for_scene(scene_id)
@@ -348,7 +340,6 @@ class TWEAUToolBox:
     def calculate_based_on_zone(self, kpi, kpi_sheet_row, denominator_row):
         # generate scene max shelf max bay map
         zone_number = kpi_sheet_row[ZONE_NAME]
-        # shelf_limit_per_scene = self.get_shelf_limit_per_scene()
         shelves_policy_from_top = [int(x.strip()) for x in str(kpi_sheet_row[SHELF_POLICY_FROM_TOP]).split(',')
                                    if x.strip()]
         permitted_shelves = [int(x.strip()) for x in str(kpi_sheet_row[NUMBER_OF_SHELVES]).split(',') if
@@ -523,7 +514,7 @@ def is_nan(value):
 
 def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters={}):
     """
-
+    Function to generate the filter string with list of filters.
     :param kpi_sheet_row: pd.Series
     :param filter_entities: list of filters as in excel
     :param additional_filters: dictionary with tuple values
