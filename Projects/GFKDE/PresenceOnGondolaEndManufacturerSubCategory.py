@@ -16,7 +16,7 @@ class PresenceonGondolaEndManufacturerSubCategory_KPI(GfkPrecenseBaseCalculation
             },
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},

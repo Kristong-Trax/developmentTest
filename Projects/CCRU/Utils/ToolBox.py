@@ -1684,7 +1684,7 @@ class CCRUKPIToolBox:
             if c.get("KPI ID") in children:
                 sub_atomic_score = -1
                 if c.get("Formula").strip() == "number of facings":
-                    sub_atomic_res = self.calculate_availability(c, scenes)
+                    sub_atomic_res = self.calculate_availability(c, scenes, all_params=all_params)
                 elif c.get("Formula").strip() == "number of facings near food":
                     sub_atomic_res = self.calculate_number_facings_near_food(c, params)
                 elif c.get("Formula").strip() == "Lead SKU":
@@ -2625,7 +2625,8 @@ class CCRUKPIToolBox:
                                 if int(target) == target:
                                     target = int(target)
                                 try:
-                                    result = round(float(self.kpi_scores_and_results[TARGET][str(param_child.get('KPI ID'))].get('result')), 2)
+                                    result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
+                                                         .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0

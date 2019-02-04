@@ -625,29 +625,31 @@ class DIAGEOBEERUSToolBox:
             if not brand_fk:
                 continue
             num_res = relevant_scif[relevant_scif['brand_fk'] == brand_fk]['facings'].sum()
-            result = self.get_score(num_res, den_res)
+            # result = self.get_score(num_res, den_res) # for % share of menu
+            result = num_res  # for number of appearances
             self.common.write_to_db_result(
                 fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=num_res,
                 denominator_id=products.manufacturer_fk, denominator_result=den_res,
-                result=result * 100, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
+                result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
         for manufacturer_fk in all_manufacturers:
             num_res = relevant_scif[relevant_scif['manufacturer_fk'] == manufacturer_fk]['facings'].sum()
             manufacturer_target = None
             if manufacturer_fk == self.manufacturer_fk:
                 diageo_facings = num_res
                 manufacturer_target = target
-            result = self.get_score(num_res, den_res)
+            # result = self.get_score(num_res, den_res)  # for % share of menu
+            result = num_res  # for number of appearances
             if manufacturer_fk == 0:
                 continue
             self.common.write_to_db_result(
-                fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result * 100,
+                fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
                 target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
         score = 1 if result >= target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
-            denominator_result=den_res, result=score * 100, score=result, weight=weight * 100,
+            denominator_result=den_res, result=score * 100, score=result * 100, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
             identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight * 100
@@ -669,8 +671,8 @@ class DIAGEOBEERUSToolBox:
         brands_present = mdis['name'].unique().tolist()
         total_score = 0
         for row in relevant_template[[Const.DISPLAY_BRAND, Const.WEIGHT]].drop_duplicates().itertuples():
-            brand_fk = self.get_brand_fk(row.display_brand)
-            if not brand_fk:
+            display_brand_fk = self.get_display_brand_fk(row.display_brand)
+            if not display_brand_fk:
                 continue
             result = 0
             score = 0
@@ -685,13 +687,14 @@ class DIAGEOBEERUSToolBox:
                     self.common.write_to_db_result(
                         fk=display_kpi_fk, numerator_id=display_fk, numerator_result=result, result=result * 100,
                         score=score * 100, denominator_result=1,
-                        identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
+                        identifier_parent=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                         weight=row.Weight * 100, should_enter=True)
             # write brand result
             self.common.write_to_db_result(
-                fk=brand_kpi_fk, numerator_id=brand_fk, numerator_result=result, result=result * 100, score=score * 100,
-                denominator_result=1, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
-                identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand_fk),
+                fk=brand_kpi_fk, numerator_id=display_brand_fk, numerator_result=result, result=result * 100,
+                score=score * 100, denominator_result=1,
+                identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
+                identifier_result=self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=display_brand_fk),
                 weight=row.Weight * 100, should_enter=True)
         # write total result
         self.common.write_to_db_result(
@@ -909,12 +912,16 @@ class DIAGEOBEERUSToolBox:
         return match_display
 
     def get_display_info(self):
-        query = 'select * from static.display'
+        query = """select d.pk, d.display_type_fk, d.display_brand_fk, d.display_name, b.name as display_brand 
+                    from static.display d left join static.display_brand b on d.display_brand_fk = b.pk;"""
         display_info = pd.read_sql_query(query, self.rds_conn.db)
         return display_info
 
     def get_display_fk(self, display_name):
         return self.display_info[self.display_info['display_name'] == display_name]['pk'].iloc[0]
+
+    def get_display_brand_fk(self, display_brand_name):
+        return self.display_info[self.display_info['display_brand'] == display_brand_name]['display_brand_fk'].iloc[0]
 
     def get_scene_info(self):
         base = self.data_provider[Data.SCENES_INFO]

@@ -14,7 +14,7 @@ class ShareOfBrandedZonesBrandSubCategory_KPI(GfkShareOfBrandedZonesCalculationS
         return {
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
