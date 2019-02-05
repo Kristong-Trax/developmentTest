@@ -16,12 +16,12 @@ class PresenceonGondolaEndBrandSubCategory_KPI(GfkPrecenseBaseCalculationScript)
             },
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
                 "include_operator": "and"
             },
             "numerator": Fields.BRAND_FK,
-            "denominator": Keys.SUB_CATEGORY_FK
+            "denominator": Keys.CATEGORY_FK
         }
