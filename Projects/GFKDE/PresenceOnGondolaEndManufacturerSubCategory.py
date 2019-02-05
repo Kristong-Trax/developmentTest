@@ -23,5 +23,5 @@ class PresenceonGondolaEndManufacturerSubCategory_KPI(GfkPrecenseBaseCalculation
                 "include_operator": "and"
             },
             "numerator": Fields.MANUFACTURER_FK,
-            "denominator": Keys.SUB_CATEGORY_FK
+            "denominator": Keys.CATEGORY_FK
         }
