@@ -1764,10 +1764,17 @@ class CCRUKPIToolBox:
                         else:
                             kpi_total += atomic_score
                             kpi_total_weight += 1
+
                     # write to DB
                     atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    if c.get("Formula").strip() == "each SKU hits facings target":
+                        attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
+                                                                                     kpi_fk, atomic_kpi_fk)
+                    else:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score,
+                                                                                     kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
             if kpi_total_weight:
                 if p.get('Formula').strip() != "Weighted Sum":
                     kpi_total /= kpi_total_weight
