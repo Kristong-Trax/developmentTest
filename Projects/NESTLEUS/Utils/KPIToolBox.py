@@ -98,7 +98,6 @@ class NESTLEUSToolBox:
                                            denominator_id=product_fk,
                                            result=facing_count, score=facing_count)
 
-                    sos_filter = {'product_fk': product_fk}
                     general_filter = {'category_fk': [32, 5]}
 
                     numerator_length = self.calculate_linear_share_of_shelf_with_numerator_denominator(
