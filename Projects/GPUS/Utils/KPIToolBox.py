@@ -34,7 +34,8 @@ class GPUSToolBox:
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.mpis = self.data_provider[Data.MATCHES]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.mpis = self.make_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -153,3 +154,9 @@ class GPUSToolBox:
     def get_gp_name(self):
         name = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, 'manufacturer_name'].iloc[0]
         return name
+
+    def make_mpis(self):
+        mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        return mpis
