@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Projects.GPUS.Calculations import Calculations
-from Projects.CCBOTTLERSUS_SAND.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.GPUS.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         scenes = scif['scene_id'].unique().tolist()
 
         # for scene in scenes:
-        #     print('scene')
+        #     print('scene', scene)
         #     data_provider = KEngineDataProvider(project_name)
         #     data_provider.load_scene_data(session, scene)
         #     output = VanillaOutput()

@@ -6,6 +6,7 @@ from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import Adjacency
 
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
+from collections import defaultdict
 import os
 
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -24,7 +25,7 @@ from Projects.GPUS.Utils.Const import Const
 __author__ = 'sam, nicolaske'
 
 
-class GPUSToolBox:
+class SceneGPUSToolBox:
 
     def __init__(self, data_provider, common, output):
         self.output = output
@@ -34,6 +35,7 @@ class GPUSToolBox:
         self.session_uid = self.data_provider.session_uid
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scene = self.scene_info.loc[0, 'scene_fk']
         self.templates = self.data_provider[Data.TEMPLATES]
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
@@ -62,15 +64,7 @@ class GPUSToolBox:
         if self.manufacturer_fk in set(self.scif['manufacturer_fk'].unique()):
             self.update_instance_vars()
             if not self.filter_df(self.scif, self.brand_filter).empty:
-                ''' This is a bad set-up, will fix tomorrow. Just need to make some data right now '''
-                self.calculate_manufacturer_facings_sos('Manufacturer out of Category Facings SOS')
-                self.calculate_brand_facings_sos('Brand out of Category Facings SOS')
-                self.calculate_manufacturer_linear_sos('Manufacturer out of Category Linear SOS')
-                self.calculate_brand_linear_sos('Brand out of Category Linear SOS')
-
-            if not self.filter_df(self.scif, self.cat_filter).empty:
-                self.calculate_share_of_empty('Share of Empty out of Category')
-
+                self.calculate_adjacency('Adjacency', ['brand_name', 'category'])
             for result in self.kpi_results:
                 self.write_to_db(**result)
         return
@@ -83,54 +77,66 @@ class GPUSToolBox:
         self.cat_filter = {'category': list(self.gp_categories.keys())}
         self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
 
-    def calculate_manufacturer_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.man_fk_filter, dens=self.cat_filter,
-                           num_fks=self.gp_manufacturer, den_fks=self.gp_categories,
-                           sum_col=Const.FACINGS)
+    def base_adj_graph(self, scene, additional_attributes=None):
+        mpis_filter = {'scene_fk': scene}
+        mpis_filter.update(self.cat_filter)
+        mpis = self.filter_df(self.mpis, mpis_filter)
+        all_graph = AdjacencyGraph(mpis, None, self.products, name=None, adjacency_overlap_ratio=.4)
+        return mpis, all_graph, mpis_filter
+
+    def base_adjacency(self):
+        allowed_edges = ['left', 'right']
+        all_results = defaultdict(dict)
+        scene = self.scene
+        mpis, all_graph, filters = self.base_adj_graph(scene)
+        items = set(self.filter_df(self.mpis, self.brand_filter)['scene_match_fk'])
+        brands = set(self.filter_df(self.mpis, self.brand_filter)['brand_name'])
+        for brand in brands:
+            for edge_dir in allowed_edges:
+                g = self.prune_edges(all_graph.base_adjacency_graph.copy(), [edge_dir])
+
+                match_to_node = {int(node['match_fk']): i for i, node in g.nodes(data=True)}
+                node_to_match = {val: key for key, val in match_to_node.items()}
+                edge_matches = set(sum([[node_to_match[i] for i in g[match_to_node[item]].keys()]
+                                        for item in items], []))
+                adjacent_items = edge_matches - items
+                adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
+                                # &
+                                # (~mpis['product_type'].isin(Const.EXCLUDE_FILTERS))]
+                all_results[brand][edge_dir] = adj_mpis
+        return all_results
+
+    def calculate_adjacency(self, base_kpi_name, levels):
+        data = self.base_adjacency()
+        for brand, adj_mpises in data.items():
+            for edge_dir, adj_mpis in adj_mpises.items():
+                for level in levels:
+                    base_level = level.split('_')[0]
+                    level_fk_col = '{}_fk'.format(base_level)
+                    fk_dict = adj_mpis[[level, level_fk_col]].set_index(level)[level_fk_col].to_dict()
+                    kpi = '{} {} {}'.format(edge_dir.capitalize(), base_level.capitalize(), base_kpi_name)
+                    adj_items = adj_mpis[level].unique()
+                    for item in adj_items:
+                        kpi_res = {'kpi_name': kpi,
+                                   'numerator_id': self.gp_brands[brand],
+                                   'denominator_id': fk_dict[item],
+                                   'score': 1,
+                                   'result': 1}
+                        self.kpi_results.append(kpi_res)
 
 
-    def calculate_brand_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.brand_filter, dens=self.cat_filter,
-                           num_fks=self.gp_brands, den_fks=self.gp_categories,
-                           sum_col=Const.FACINGS)
 
-    def calculate_manufacturer_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.man_fk_filter, dens=self.cat_filter,
-                           num_fks=self.gp_manufacturer, den_fks=self.gp_categories,
-                           sum_col=Const.LINEAR_FACINGS)
-
-
-    def calculate_brand_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.brand_filter, dens=self.cat_filter,
-                           num_fks=self.gp_brands, den_fks=self.gp_categories,
-                           sum_col=Const.LINEAR_FACINGS)
-
-    def calculate_share_of_empty(self, kpi):
-        self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens=self.cat_filter,
-                           num_fks=Const.EMPTY_FKS, den_fks=self.gp_categories,
-                           sum_col=Const.FACINGS)
-
-    def calculate_sos(self, kpi, nums, dens, num_fks, den_fks, sum_col):
-        den_groups = self.grouper(dens, self.scif)
-        for den_name, den_df in den_groups:
-            num_groups = self.grouper(nums, df=den_df)
-            for num_name, num_df in num_groups:
-                if num_df.empty:
-                    continue
-                num = num_df[sum_col].sum()
-                den = den_df[sum_col].sum()
-                res = (float(num) / den) * 100 if num else 0
-                kpi_res = {'kpi_name': kpi,
-                           'numerator_id': num_fks[num_name],
-                           'numerator_result': num,
-                           'denominator_id': den_fks[den_name],
-                           'denominator_result': den,
-                           'score': 1,
-                           'result': res}
-                self.kpi_results.append(kpi_res)
-
-    def grouper(self, filter, df):
-        return self.filter_df(df, filter).groupby(filter.keys()[0])
+    def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
+        for node in g.nodes():
+            for edge_id, edge in g[node].items():
+                for edge_dir in edge.values():
+                    if keep_or_cut == 'keep':
+                        if edge_dir not in allowed_edges:
+                            del g[node][edge_id]
+                    else:
+                        if edge_dir in allowed_edges:
+                            del g[node][edge_id]
+        return g
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
@@ -162,7 +168,6 @@ class GPUSToolBox:
             name = name.iloc[0]
         return {name: self.manufacturer_fk}
 
-
     def make_mpis(self):
         mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
@@ -180,7 +185,7 @@ class GPUSToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
+        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, by_scene=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
 
