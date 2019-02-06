@@ -115,9 +115,9 @@ class CCRUProjectCalculations:
 
         else:
             Log.warning('Error. Session cannot be calculated. '
-                       'POS KPI Set name in store attribute is invalid - {0}. '
-                       'Store ID {1}.'
-                       .format(self.pos_kpi_set_name, self.store_id))
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
             return
 
         kpi_sets_types_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
