@@ -11,7 +11,9 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data'
 CMA_COMPLIANCE = 'CMA Compliance SW'
 MANUFACTURER_FK = 1  # for CCNA
 
+
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
+
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -175,7 +177,6 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
                                                           identifier_result=self.scene)
 
         return result_dict
-
 
     def calculate_facings_ntba(self, kpi_line, scif, general_filters):
         kpi_name = kpi_line[Const.KPI_NAME]

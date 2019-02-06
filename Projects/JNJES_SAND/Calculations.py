@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 
 from KPIUtils.GlobalProjects.JNJ.KPIGenerator import JNJGenerator
-from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 
 __author__ = 'nissand'
 
@@ -17,7 +17,7 @@ class JNJESCalculations(BaseCalculationsScript):
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common)
         jnj_generator.calculate_auto_assortment()
-        common.commit_results_data_to_new_tables()
+        common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 

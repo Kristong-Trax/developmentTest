@@ -27,6 +27,29 @@ PS_KPI_FAMILY = 19
 KPI_FAMILY='kpi_family_fk'
 TYPE = "type"
 
+SUB_CATEGORY= 'sub_category'
+CATEGORY = 'category'
+
+# BATAU - pk in table static_new.manufacturer
+MANUFACTURER_FK = 10
+
+# Category - pks in table static_new.category
+RYO_FK = 4
+TMC_FK = 3
+
+# SubCategory - pks in table static_new.sub_category
+LOW_FK = 5
+VFM_FK = 6
+PRE_FK = 7
+ASP_PRE_FK = 8
+LOW = 'Low'
+VFM = 'VFM'
+PRE ='Premium'
+ASP_PRE  = 'AspirationalPremium'
+
+TMC = 'Tailor Made Cigarettes'
+RYO = 'Roll Your Own Cigarettes'
+
 #GENERAL
 ROUNDING_DIGITS = 4
 MAPPINGS = {'manufacturer_name':'manufacturer_fk',
@@ -38,6 +61,7 @@ MAPPINGS = {'manufacturer_name':'manufacturer_fk',
 
 # Template
 KPI_SHEET  = 'KPI'
+CATEGORY_SHEET = 'Category'
 KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
 KPI_PARENT = 'kpi_parent_name'
@@ -82,26 +106,29 @@ class BATAUToolBox:
         This function calculates the KPI results.
         """
         self.scif = self.scif[self.scif['facings'] > 0]
-        self.calculate_share_of_range()
-        self.calculate_share_of_range_category()
+
+        self.calculate_share_of_range_SOR_Type_1()
+        self.calculate_share_of_range_SOR_Type_2()
+        self.calculate_share_of_range_SOR_Type_3()
+        self.calculate_share_of_range_SOR_Category()
+        self.calculate_share_of_range_SOR_Sub_Category()
 
         self.common.commit_results_data()
         score = 0
         return score
 
-    def calculate_share_of_range(self):
+    def calculate_share_of_range_SOR_Type_1(self):
 
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR']
-
-        print(df_tp_ps_kpis.shape)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_1']
 
         kpi_output =  "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
         kpi_output += "denominator_result:{}, result:{}"
 
         for index, row in df_tp_ps_kpis.iterrows():
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
-                                 & (self.kpi_static_data[TYPE] == row[KPI_NAME])]
+                                 & (self.kpi_static_data[TYPE] == row[KPI_NAME]) & (self.kpi_static_data['delete_time'].isnull())]
+
             if kpi.empty:
                 print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
             else:
@@ -133,6 +160,30 @@ class BATAUToolBox:
 
                     if df_denominator.empty:
                         denominator_id = self.store_id
+
+                        print("Denominator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, denominator_filter))
+
+                        if len(kpi_parent_name.strip()) == 0:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=10,
+                                                           numerator_result=0,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=0,
+                                                           result=0,
+                                                           score=0,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=False)
+                        else:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=10,
+                                                           numerator_result=0,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=0,
+                                                           result=0,
+                                                           score=0,
+                                                           identifier_parent=kpi_parent_name,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=True)
                     else:
                         for denominator_index, denominator_row in df_denominator.iterrows():
                             denominator_id = int(denominator_row[denominator_fk])
@@ -141,7 +192,28 @@ class BATAUToolBox:
                             df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
                             if df_numerator.empty:
-                                print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                                print("Numerator: No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                                if len(kpi_parent_name.strip()) == 0:
+                                    self.common.write_to_db_result(fk=kpi_fk,
+                                                                   numerator_id=10,
+                                                                   numerator_result=0,
+                                                                   denominator_id=denominator_id,
+                                                                   denominator_result=0,
+                                                                   result=0,
+                                                                   score=0,
+                                                                   identifier_result=kpi_name,
+                                                                   should_enter=False)
+                                else:
+                                    self.common.write_to_db_result(fk=kpi_fk,
+                                                                   numerator_id=10,
+                                                                   numerator_result=0,
+                                                                   denominator_id=denominator_id,
+                                                                   denominator_result=0,
+                                                                   result=0,
+                                                                   score=0,
+                                                                   identifier_parent=kpi_parent_name,
+                                                                   identifier_result=kpi_name,
+                                                                   should_enter=True)
                             else:
                                 for numerator_index, numerator_row in df_numerator.iterrows():
                                     numerator_id = int(numerator_row[numerator_fk])
@@ -165,16 +237,6 @@ class BATAUToolBox:
                                                                        identifier_result=kpi_name,
                                                                        should_enter=False)
                                     else:
-                                        print("fk:{}".format(kpi_fk))
-                                        print("numerator_id:{}".format(numerator_id))
-                                        print("numerator_result:{}".format(numerator))
-                                        print("denominator_id:{}".format(denominator_id))
-                                        print("denominator_result:{}".format(denominator))
-                                        print("result:{}".format(result))
-                                        print("score:{}".format(score))
-                                        print("identifier_parent:{}".format(kpi_parent_name))
-                                        print("identifier_result:{}".format(kpi_name))
-                                        print("\n")
                                         self.common.write_to_db_result(fk=kpi_fk,
                                                                        numerator_id=numerator_id,
                                                                        numerator_result=numerator,
@@ -185,23 +247,34 @@ class BATAUToolBox:
                                                                        identifier_parent=kpi_parent_name,
                                                                        identifier_result=kpi_name,
                                                                        should_enter=True)
+                                        print("fk:{}".format(kpi_fk))
+                                        print("numerator_id:{}".format(numerator_id))
+                                        print("numerator_result:{}".format(numerator))
+                                        print("denominator_id:{}".format(denominator_id))
+                                        print("denominator_result:{}".format(denominator))
+                                        print("result:{}".format(result))
+                                        print("score:{}".format(score))
+                                        print("identifier_parent:{}".format(kpi_parent_name))
+                                        print("identifier_result:{}".format(kpi_name))
+                                        print("\n")
 
-    def calculate_share_of_range_category(self):
-
+    def calculate_share_of_range_SOR_Type_2(self):
         df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
-        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR-Category']
-
-        print(df_tp_ps_kpis.shape)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_2']
 
         kpi_output =  "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
         kpi_output += "denominator_result:{}, result:{}"
 
         for index, row in df_tp_ps_kpis.iterrows():
+            # kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+            #                      & (self.kpi_static_data[TYPE] == row[KPI_NAME])]
             kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
-                                 & (self.kpi_static_data[TYPE] == row[KPI_NAME])]
+                                       & (self.kpi_static_data[TYPE] == row[KPI_NAME]) & (
+                                       self.kpi_static_data['delete_time'].isnull())]
             if kpi.empty:
                 print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
             else:
+                print("KPI Name:{}".format(row[KPI_NAME]))
                 kpi_fk = int(kpi['pk'])
                 kpi_parent_name = str(row[KPI_PARENT])
                 kpi_name = str(row[KPI_NAME])
@@ -231,14 +304,36 @@ class BATAUToolBox:
                 df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
                 df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
 
-                df_result = df_numerator.merge(df_denominator, how='inner', on='category_fk')
+                df_result = df_numerator.merge(df_denominator, how='inner', on=denominator_fk)
 
                 if df_result.empty:
                     print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                    if len(kpi_parent_name.strip()) == 0:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=0,
+                                                       numerator_result=0,
+                                                       denominator_id=0,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=False)
+                    else:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=0,
+                                                       numerator_result=0,
+                                                       denominator_id=0,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_parent=kpi_parent_name,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=True)
                 else:
                     for numerator_index, numerator_row in df_result.iterrows():
                         numerator_id =   int(numerator_row[numerator_fk])
                         denominator_id = int(numerator_row[denominator_fk])
+
                         numerator = int(numerator_row['count_x'])
                         denominator = int(numerator_row['count_y'])
 
@@ -260,16 +355,6 @@ class BATAUToolBox:
                                                            identifier_result=kpi_name,
                                                            should_enter=False)
                         else:
-                            print("fk:{}".format(kpi_fk))
-                            print("numerator_id:{}".format(numerator_id))
-                            print("numerator_result:{}".format(numerator))
-                            print("denominator_id:{}".format(denominator_id))
-                            print("denominator_result:{}".format(denominator))
-                            print("result:{}".format(result))
-                            print("score:{}".format(score))
-                            print("identifier_parent:{}".format(kpi_parent_name))
-                            print("identifier_result:{}".format(kpi_name))
-                            print("\n")
                             self.common.write_to_db_result(fk=kpi_fk,
                                                            numerator_id=numerator_id,
                                                            numerator_result=numerator,
@@ -280,6 +365,396 @@ class BATAUToolBox:
                                                            identifier_parent=kpi_parent_name,
                                                            identifier_result=kpi_name,
                                                            should_enter=True)
+                        print("fk:{}".format(kpi_fk))
+                        print("numerator_id:{}".format(numerator_id))
+                        print("numerator_result:{}".format(numerator))
+                        print("denominator_id:{}".format(denominator_id))
+                        print("denominator_result:{}".format(denominator))
+                        print("result:{}".format(result))
+                        print("score:{}".format(score))
+                        print("identifier_parent:{}".format(kpi_parent_name))
+                        print("identifier_result:{}".format(kpi_name))
+                        print("\n")
+
+    def calculate_share_of_range_SOR_Type_3(self):
+
+        df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Type_3']
+
+        print(df_tp_ps_kpis.shape)
+
+        kpi_output =  "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
+        kpi_output += "denominator_result:{}, result:{}"
+
+        for index, row in df_tp_ps_kpis.iterrows():
+            # kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+            #                      & (self.kpi_static_data[TYPE] == row[KPI_NAME])]
+
+            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+                                       & (self.kpi_static_data[TYPE] == row[KPI_NAME]) & (
+                                       self.kpi_static_data['delete_time'].isnull())]
+            if kpi.empty:
+                print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
+                continue
+
+            kpi_fk = int(kpi['pk'])
+            kpi_parent_name = str(row[KPI_PARENT])
+            kpi_name = str(row[KPI_NAME])
+
+            numerator_filter = str(row[NUMERATOR_FILTER])
+            denominator_filter = str(row[DENOMINATOR_FILTER])
+
+            numerator_entities = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+            denominator_entities = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+
+            denominator = int(len((self.scif.query(denominator_filter)['product_fk']).drop_duplicates()))
+
+            numerator_fk = MAPPINGS[str(row[NUMERATOR_FK]).strip()]
+            denominator_fk = MAPPINGS[str(row[DENOMINATOR_FK]).strip()]
+
+            list_numerator_columns = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+            list_numerator_columns.append('product_fk')
+
+            list_denominator_columns = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+            list_denominator_columns.append('product_fk')
+
+            df_denominator=pd.DataFrame(self.scif.query(denominator_filter)[list_denominator_columns]).drop_duplicates()
+            df_denominator=pd.DataFrame(df_denominator.groupby(denominator_entities).size().reset_index(name='count'))
+
+            if df_denominator.empty:
+                denominator_id = self.store_id
+                if len(kpi_parent_name.strip()) == 0:
+                    self.common.write_to_db_result(fk=kpi_fk,
+                                                   numerator_id=0,
+                                                   numerator_result=0,
+                                                   denominator_id=0,
+                                                   denominator_result=0,
+                                                   result=0,
+                                                   score=0,
+                                                   identifier_result=kpi_name,
+                                                   should_enter=False)
+                else:
+                    self.common.write_to_db_result(fk=kpi_fk,
+                                                   numerator_id=0,
+                                                   numerator_result=0,
+                                                   denominator_id=0,
+                                                   denominator_result=0,
+                                                   result=0,
+                                                   score=0,
+                                                   identifier_parent=kpi_parent_name,
+                                                   identifier_result=kpi_name,
+                                                   should_enter=True)
+            else:
+                df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
+                df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
+
+                if df_numerator.empty:
+                    if len(kpi_parent_name.strip()) == 0:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=0,
+                                                       numerator_result=0,
+                                                       denominator_id=0,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=False)
+                    else:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=0,
+                                                       numerator_result=0,
+                                                       denominator_id=0,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_parent=kpi_parent_name,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=True)
+                else:
+                    for numerator_index, numerator_row in df_numerator.iterrows():
+                        numerator_id = int(numerator_row[numerator_fk])
+                        denominator_id = int(numerator_row[denominator_fk])
+                        numerator = int(numerator_row['count'])
+
+                        try:
+                            score = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                        except:
+                            score = 0.0
+
+                        result = score
+
+                        if len(kpi_parent_name.strip()) ==0:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=False)
+                        else:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_parent=kpi_parent_name,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=True)
+                            print("fk:{}".format(kpi_fk))
+                            print("numerator_id:{}".format(numerator_id))
+                            print("numerator_result:{}".format(numerator))
+                            print("denominator_id:{}".format(denominator_id))
+                            print("denominator_result:{}".format(denominator))
+                            print("result:{}".format(result))
+                            print("score:{}".format(score))
+                            print("identifier_parent:{}".format(kpi_parent_name))
+                            print("identifier_result:{}".format(kpi_name))
+                            print("\n")
+
+    def calculate_share_of_range_SOR_Category(self):
+
+        df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE] == 'SOR_Category']
+
+        kpi_output = "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
+        kpi_output += "denominator_result:{}, result:{}"
+
+        for index, row in df_tp_ps_kpis.iterrows():
+            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+                                       & (self.kpi_static_data[TYPE] == row[KPI_NAME]) & (
+                                       self.kpi_static_data['delete_time'].isnull())]
+
+            if kpi.empty:
+                print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
+            else:
+                print("KPI Name:{}".format(row[KPI_NAME]))
+                kpi_fk = int(kpi['pk'])
+                kpi_parent_name = str(row[KPI_PARENT])
+                kpi_name = str(row[KPI_NAME])
+
+                numerator_filter = str(row[NUMERATOR_FILTER])
+                denominator_filter = str(row[DENOMINATOR_FILTER])
+
+                numerator_entities = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+                denominator_entities = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+
+                denominator = int(len((self.scif.query(denominator_filter)['product_fk']).drop_duplicates()))
+
+                numerator_fk = MAPPINGS[str(row[NUMERATOR_FK]).strip()]
+                denominator_fk = MAPPINGS[str(row[DENOMINATOR_FK]).strip()]
+
+                list_numerator_columns = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+                list_numerator_columns.append('product_fk')
+
+                list_denominator_columns = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+                list_denominator_columns.append('product_fk')
+
+                df_denominator = pd.DataFrame(
+                    self.scif.query(denominator_filter)[list_denominator_columns]).drop_duplicates()
+                df_denominator = pd.DataFrame(
+                    df_denominator.groupby(denominator_entities).size().reset_index(name='count'))
+
+                df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
+                df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
+
+                df_result = df_numerator.merge(df_denominator, how='inner', on=denominator_fk)
+
+                if df_result.empty:
+                    print("No records for kpi_fk:{} & filter:{}".format(kpi_fk, numerator_filter))
+                    df_temp = pd.DataFrame([[MANUFACTURER_FK,RYO_FK, 0, 0],[MANUFACTURER_FK, TMC_FK, 0, 0]],
+                                                    columns=['manufacturer_fk', 'category_fk', 'count_x', 'count_y'])
+                    df_result = df_result.append(df_temp)
+
+                if len(df_result)<2:
+
+                    df_temp = df_result.loc[df_result['category_fk'] == TMC_FK]
+                    if df_temp.empty:
+                        df_temp = pd.DataFrame([[MANUFACTURER_FK, TMC_FK, 0, 0]],
+                                     columns=['manufacturer_fk', 'category_fk', 'count_x', 'count_y'])
+                        df_result = df_result.append(df_temp)
+
+                    df_temp = df_result.loc[df_result['category_fk'] == RYO_FK]
+                    if df_temp.empty:
+                        df_temp = pd.DataFrame([[MANUFACTURER_FK, RYO_FK, 0, 0]],
+                                     columns=['manufacturer_fk', 'category_fk', 'count_x', 'count_y'])
+                        df_result = df_result.append(df_temp)
+
+                for numerator_index, numerator_row in df_result.iterrows():
+                    numerator_id = int(numerator_row[numerator_fk])
+                    denominator_id = int(numerator_row[denominator_fk])
+
+                    numerator = int(numerator_row['count_x'])
+                    denominator = int(numerator_row['count_y'])
+
+                    try:
+                        score = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                    except:
+                        score = 0.0
+
+                    result = score
+
+                    if len(kpi_parent_name.strip()) == 0:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=numerator_id,
+                                                       numerator_result=numerator,
+                                                       denominator_id=denominator_id,
+                                                       denominator_result=denominator,
+                                                       result=result,
+                                                       score=score,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=False)
+                    else:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=numerator_id,
+                                                       numerator_result=numerator,
+                                                       denominator_id=denominator_id,
+                                                       denominator_result=denominator,
+                                                       result=result,
+                                                       score=score,
+                                                       identifier_parent=kpi_parent_name,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=True)
+                    print("fk:{}".format(kpi_fk))
+                    print("numerator_id:{}".format(numerator_id))
+                    print("numerator_result:{}".format(numerator))
+                    print("denominator_id:{}".format(denominator_id))
+                    print("denominator_result:{}".format(denominator))
+                    print("result:{}".format(result))
+                    print("score:{}".format(score))
+                    print("identifier_parent:{}".format(kpi_parent_name))
+                    print("identifier_result:{}".format(kpi_name))
+                    print("\n")
+
+    def calculate_share_of_range_SOR_Sub_Category(self):
+        df_tp_ps_kpis = self.get_template_details(KPI_SHEET)
+        df_tp_ps_kpis = df_tp_ps_kpis[df_tp_ps_kpis[KPI_TYPE]=='SOR_Sub_Category']
+
+        kpi_output =  "kpi_parent_name:{}, kpi_name:{}, numerator_result:{},"
+        kpi_output += "denominator_result:{}, result:{}"
+
+        for index, row in df_tp_ps_kpis.iterrows():
+            kpi = self.kpi_static_data[(self.kpi_static_data[KPI_FAMILY] == PS_KPI_FAMILY)
+                                       & (self.kpi_static_data[TYPE] == row[KPI_NAME]) & (
+                                       self.kpi_static_data['delete_time'].isnull())]
+            if kpi.empty:
+                print("KPI Name:{} not found in DB".format(row[KPI_NAME]))
+            else:
+                print("KPI Name:{}".format(row[KPI_NAME]))
+                kpi_fk = int(kpi['pk'])
+                kpi_parent_name = str(row[KPI_PARENT])
+                kpi_name = str(row[KPI_NAME])
+
+                numerator_filter = str(row[NUMERATOR_FILTER])
+                denominator_filter = str(row[DENOMINATOR_FILTER])
+
+                numerator_entities = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+                denominator_entities = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+
+                denominator = int(len((self.scif.query(denominator_filter)['product_fk']).drop_duplicates()))
+
+                numerator_fk = MAPPINGS[str(row[NUMERATOR_FK]).strip()]
+                denominator_fk = MAPPINGS[str(row[DENOMINATOR_FK]).strip()]
+
+                list_numerator_columns = [MAPPINGS[x.strip()] for x in str(row[NUMERATOR_ENTITIES]).split(',')]
+                list_numerator_columns.append('product_fk')
+
+                list_denominator_columns = [MAPPINGS[x.strip()] for x in str(row[DENOMINATOR_ENTITIES]).split(',')]
+                list_denominator_columns.append('product_fk')
+
+                df_denominator = pd.DataFrame(
+                    self.scif.query(denominator_filter)[list_denominator_columns]).drop_duplicates()
+                df_denominator = pd.DataFrame(
+                    df_denominator.groupby(denominator_entities).size().reset_index(name='count'))
+
+                df_numerator = pd.DataFrame(self.scif.query(numerator_filter)[list_numerator_columns]).drop_duplicates()
+                df_numerator = pd.DataFrame(df_numerator.groupby(numerator_entities).size().reset_index(name='count'))
+
+                df_result = df_numerator.merge(df_denominator, how='inner', on=denominator_fk)
+
+                if df_result.empty:
+
+                    dict_filter = dict((n.strip(), v.strip()) for n, v in (a.split('==') for a in numerator_filter.replace("'","").split(" and ")))
+
+                    if dict_filter[CATEGORY]==TMC:
+                        denominator_id = TMC_FK
+                    elif dict_filter[CATEGORY]==RYO:
+                        denominator_id = RYO_FK
+                    else:
+                        denominator_id = 0
+
+                    numerator_id = MANUFACTURER_FK
+
+                    if len(kpi_parent_name.strip()) == 0:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=numerator_id,
+                                                       numerator_result=0,
+                                                       denominator_id=denominator_id,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=False)
+                    else:
+                        self.common.write_to_db_result(fk=kpi_fk,
+                                                       numerator_id=numerator_id,
+                                                       numerator_result=0,
+                                                       denominator_id=denominator_id,
+                                                       denominator_result=0,
+                                                       result=0,
+                                                       score=0,
+                                                       identifier_parent=kpi_parent_name,
+                                                       identifier_result=kpi_name,
+                                                       should_enter=True)
+                else:
+                    for numerator_index, numerator_row in df_result.iterrows():
+                        numerator_id =   int(numerator_row[numerator_fk])
+                        denominator_id = int(numerator_row[denominator_fk])
+
+                        numerator = int(numerator_row['count_x'])
+                        denominator = int(numerator_row['count_y'])
+
+                        try:
+                            score = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                        except:
+                            score = 0.0
+
+                        result = score
+
+                        if len(kpi_parent_name.strip())==0:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=False)
+                        else:
+                            self.common.write_to_db_result(fk=kpi_fk,
+                                                           numerator_id=numerator_id,
+                                                           numerator_result=numerator,
+                                                           denominator_id=denominator_id,
+                                                           denominator_result=denominator,
+                                                           result=result,
+                                                           score=score,
+                                                           identifier_parent=kpi_parent_name,
+                                                           identifier_result=kpi_name,
+                                                           should_enter=True)
+                        print("fk:{}".format(kpi_fk))
+                        print("numerator_id:{}".format(numerator_id))
+                        print("numerator_result:{}".format(numerator))
+                        print("denominator_id:{}".format(denominator_id))
+                        print("denominator_result:{}".format(denominator))
+                        print("result:{}".format(result))
+                        print("score:{}".format(score))
+                        print("identifier_parent:{}".format(kpi_parent_name))
+                        print("identifier_result:{}".format(kpi_name))
+                        print("\n")
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheet_name=sheet_name)

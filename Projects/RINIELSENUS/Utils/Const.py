@@ -12,6 +12,12 @@ CAT_TREATS = 'CAT TREATS'
 CAT_TREATS_2018 = 'CAT TREATS 2018'
 CAT_MAIN_MEAL_DRY = 'CAT MAIN MEAL DRY'
 CAT_MAIN_MEAL_DRY_2018 = 'CAT MAIN MEAL DRY 2018'
+DOG_MAIN_MEAL_WET = 'DOG MAIN MEAL WET'
+
+SPT_DOG_TREATS = 'SPT DOG TREATS'
+SPT_CAT_TREATS = 'SPT CAT TREATS'
+SPT_CAT_MAIN_MEAL = 'SPT CAT MAIN MEAL'
+SPT_DOG_MAIN_MEAL = 'SPT DOG MAIN MEAL'
 
 SPT_DOG_TREATS_Q1_2018 = 'SPT DOG TREATS Q1 2018'
 SPT_CAT_TREATS_Q1_2018 = 'SPT CAT TREATS Q1 2018'
@@ -25,7 +31,7 @@ PRODUCT_TYPE = 'Product Type'
 BRAND = 'Brand Name'
 SUB_CATEGORY = 'Sub category'
 RELEVANT_SCENE_TYPES = 'Scene Types to Include'
-DOG_MAIN_MEAL_WET = 'Dog Main Meal Wet'
+# DOG_MAIN_MEAL_WET = 'Dog Main Meal Wet'
 DOG_MAIN_MEAL_WET_2018 = 'DOG MAIN MEAL WET 2018'
 
 BDB_RETAILERS = ['Ahold Delhaize',
@@ -37,7 +43,9 @@ BDB_RETAILERS = ['Ahold Delhaize',
                 'Walmart',
                 'Wegmans',
                 'Kroger',
-                'ShopRite'
+                'Publix',
+                'Stater Bros',
+                'Dollar General'
                 ]
 
 SPT_RETAILERS = ['PetSmart',
@@ -79,6 +87,7 @@ SECTION = 'Section'
 SEGMENT_SPT = 'Segment_SPT'
 FACINGS = 'facings_ign_stack'
 USE_PROBES = 'Separate Stitching Group'
+PACKAGE_SIZE = 'Package Size'
 
 TEMPLATE_NAME = 'template_name'
 
@@ -99,9 +108,11 @@ FILTER_NAMING_DICT = {
     'SINGLE/MULTI COUNT': SINGLE_MULTIPLE,
     'Breed size': BREED_SIZE,
     'Facings Minimum': FACINGS,
+    'Package Size': PACKAGE_SIZE,
 }
 
 BLOCK_THRESHOLD = 0.5
+VERTICAL_BLOCK_THRESHOLD = .5
 
 SET_CATEGORIES = {
     DOG_MAIN_MEAL_WET: 13,
@@ -137,6 +148,12 @@ SET_PRE_CALC_CHECKS = {
     DOG_MAIN_MEAL_DRY_2018: {SUB_SECTION: 'DOG MAIN MEAL DRY', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
     DOG_TREATS_2018: {SECTION: 'DOG TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
     CAT_TREATS_2018: {SECTION: 'CAT TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
+
+    SPT_DOG_TREATS: {SECTION: 'DOG TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
+    SPT_CAT_TREATS: {SECTION: 'CAT TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
+    SPT_CAT_MAIN_MEAL: {SECTION: 'CAT MAIN MEAL', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
+    SPT_DOG_MAIN_MEAL: {SECTION: 'DOG MAIN MEAL', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
+
     SPT_DOG_TREATS_Q1_2018: {SECTION: 'DOG TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
     SPT_CAT_TREATS_Q1_2018: {SECTION: 'CAT TREATS', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},
     SPT_CAT_MAIN_MEAL_Q1_2018: {SECTION: 'CAT MAIN MEAL', TEMPLATE_NAME: 'Pet Food & Edible Treats Section'},

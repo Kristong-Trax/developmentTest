@@ -1,6 +1,6 @@
 
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
@@ -70,10 +70,9 @@ class DIAGEOKE_SANDToolBox:
 
         self.output = output
         self.common = Common(self.data_provider)
-
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output,
-                                   match_display_in_scene=self.match_display_in_scene)  # replace the old one
+                                   match_display_in_scene=self.match_display_in_scene)
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_kpi_static_data(self):
@@ -99,15 +98,11 @@ class DIAGEOKE_SANDToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in \
-                    self.set_templates_data.keys() and set_name not in ('MPA', 'New Products', 'Local MPA', 'SOS'):
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             # Global Visible to Customer / Visible to Consumer
             if set_name in ('Visible to Customer', 'Visible to Consumer %'):
@@ -121,7 +116,7 @@ class DIAGEOKE_SANDToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
             if set_score == 0:

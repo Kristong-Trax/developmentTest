@@ -70,7 +70,7 @@ class DIAGEOGRToolBox:
 
         self.commonV2 = CommonV2(self.data_provider)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def get_kpi_static_data(self):
         """
@@ -95,10 +95,10 @@ class DIAGEOGRToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
-
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
+        self.commonV2.save_json_to_new_tables(menus_res_dict)
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():

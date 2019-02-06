@@ -180,4 +180,4 @@ class Const(object):
                 }
     PARENT_NOT_RATIO = []
 
-
+    MANUFACTURER_FK = 1

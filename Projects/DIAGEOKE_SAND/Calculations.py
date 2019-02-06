@@ -21,7 +21,7 @@ class DIAGEOKE_SANDCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageoke-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '7c301f16-6384-4d4f-83a6-fa1a6b46c26d'
+#     session = '89d0d522-0c90-4a09-bc85-2be43c4c8d4e'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOKE_SANDCalculations(data_provider, output).run_project_calculations()
