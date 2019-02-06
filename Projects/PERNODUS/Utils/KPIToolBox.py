@@ -20,6 +20,7 @@ from Projects.PERNODUS.Utils.ParseTemplates import parse_template
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
 from Projects.PERNODUS.Utils.Const import Const
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'nicolaske'
 
@@ -57,6 +58,8 @@ class PERNODUSToolBox:
         self.rds_conn = ProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_sub_brand_data = pd.read_sql_query(self.get_sub_brand_data(), self.rds_conn.db)
+        self.kpi_sub_category_data = pd.read_sql_query(self.get_sub_category_data(), self.rds_conn.db)
+
         self.kpi_results_queries = []
         self.Presence_template = parse_template(TEMPLATE_PATH, "Presence")
         self.BaseMeasure_template = parse_template(TEMPLATE_PATH, "Base Measurement")
@@ -69,12 +72,25 @@ class PERNODUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.availability = Availability(self.data_provider)
         self.blocking_calc = Block(self.data_provider)
+        self.linear_calc = SOS(self.data_provider)
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
 
     def main_calculation(self, *args, **kwargs):
 
+        # Base Measurement
+        for i, row in self.BaseMeasure_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                value = row['value']
+                location = row['Store Location']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
 
         # # Anchor
         for i, row in self.Anchor_template.iterrows():
@@ -124,6 +140,9 @@ class PERNODUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
+        self.Calculate_linear_sos()
+
+
         self.common.commit_results_data()
 
         return
@@ -147,7 +166,7 @@ class PERNODUSToolBox:
                                                              additional={'minimum_facing_for_block': 2})
 
         score = 0
-        if(result.is_block == True):
+        if(result.is_block.any() == True):
             score = 1
         else:
             pass
@@ -168,6 +187,24 @@ class PERNODUSToolBox:
             self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=self.store_id, numerator_result=375,
                                            denominator_id=self.store_id,
                                            result=score, score=score)
+
+
+
+    def Calculate_linear_sos(self):
+        kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == 'LINEAR_COUNT'].iloc[0]
+        product_fks = self.all_products['product_fk'][(self.all_products['category_fk'] == 2)]
+        for product_fk in product_fks:
+            sos_filter = {'product_fk':product_fk}
+            general_filter = {'category_fk': [2]}
+
+            ratio, numerator_length, denominator_length = self.linear_calc.calculate_linear_share_of_shelf_with_numerator_denominator(sos_filter, **general_filter)
+
+            numerator_length = int(round(numerator_length * 0.0393700787))
+            if numerator_length > 0:
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                                           denominator_id=product_fk,
+                                           result=numerator_length, score=numerator_length)
+
 
     def calculate_presence(self):
         """
@@ -424,11 +461,22 @@ class PERNODUSToolBox:
                     if len(edge_facings) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
 
+            category_list = []
+            for product_fk in edge_facings['product_fk']:
+                try:
+                    sub_category_name = self.products['sub_category'][self.products['product_fk'] == product_fk].iloc[0]
+                    category_list.append(sub_category_name)
+                except:
+                    category_list.append('')
+
+            category_df = pd.DataFrame({'sub_category':category_list})
+            edge_facings = pd.concat([edge_facings,category_df], axis=1)
             edge_facings = self.get_filter_condition(edge_facings, **filters)
-            if edge_facings == None:
+
+            if edge_facings.any() == False:
                 edge_facings = 0
-            elif edge_facings >= 1:
-                return 1
+            elif edge_facings.any() == True:
+                return  1
 
         return edge_facings
 
@@ -588,3 +636,10 @@ class PERNODUSToolBox:
                    select *
                    from static.sub_brand
                """
+
+    @staticmethod
+    def get_sub_category_data():
+        return """
+                       select *
+                       from static_new.sub_category
+                   """
