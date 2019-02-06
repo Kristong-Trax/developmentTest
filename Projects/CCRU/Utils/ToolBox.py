@@ -202,7 +202,8 @@ class CCRUKPIToolBox:
             include_list.extend(filtered_scenes)
         else:
             if params.get('Scenes to include'):
-                scenes_to_include = params.get('Scenes to include').split(', ')
+                scenes_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
                         include_list_candidate.extend(scenes_data[scene])
@@ -212,7 +213,8 @@ class CCRUKPIToolBox:
 
             if params.get('Locations to include'):
                 include_list_candidate = []
-                locations_to_include = params.get('Locations to include').split(', ')
+                locations_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Locations to include')).split(', ')]
                 for location in locations_to_include:
                     if location in location_data.keys():
                         include_list_candidate.extend(location_data[location])
@@ -226,9 +228,11 @@ class CCRUKPIToolBox:
             if params.get('Sub locations to include'):
                 include_list_candidate = []
                 if type(params.get('Sub locations to include')) == float:
-                    sub_locations_to_include = str(int(params.get('Sub locations to include'))).split(', ')
+                    sub_locations_to_include = \
+                        [unicode(x).strip() for x in unicode(int(params.get('Sub locations to include'))).split(', ')]
                 else:
-                    sub_locations_to_include = str(params.get('Sub locations to include')).split(', ')
+                    sub_locations_to_include = \
+                        [unicode(x).strip() for x in unicode(params.get('Sub locations to include')).split(', ')]
                 for sub_location in sub_locations_to_include:
                     if sub_location in sub_location_data.keys():
                         include_list_candidate.extend(sub_location_data[sub_location])
@@ -241,7 +245,8 @@ class CCRUKPIToolBox:
 
             if params.get('Zone to include'):
                 include_list_candidate = []
-                store_areas_to_include = str(params.get('Zone to include')).split(', ')
+                store_areas_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Zone to include')).split(', ')]
                 for store_area in store_areas_to_include:
                     if store_area in store_area_data.keys():
                         include_list_candidate.extend(store_area_data[store_area])
@@ -254,19 +259,22 @@ class CCRUKPIToolBox:
 
         exclude_list = []
         if params.get('Scenes to exclude'):
-            scenes_to_exclude = params.get('Scenes to exclude').split(', ')
+            scenes_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Scenes to exclude')).split(', ')]
             for scene in scenes_to_exclude:
                 if scene in scenes_data.keys():
                     exclude_list.extend(scenes_data[scene])
 
         if params.get('Locations to exclude'):
-            locations_to_exclude = params.get('Locations to exclude').split(', ')
+            locations_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Locations to exclude')).split(', ')]
             for location in locations_to_exclude:
                 if location in location_data.keys():
                     exclude_list.extend(location_data[location])
 
         if params.get('Sub locations to exclude'):
-            sub_locations_to_exclude = str(params.get('Sub locations to exclude')).split(', ')
+            sub_locations_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Sub locations to exclude')).split(', ')]
             for sub_location in sub_locations_to_exclude:
                 if sub_location in sub_location_data.keys():
                     exclude_list.extend(sub_location_data[sub_location])
@@ -371,7 +379,7 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = unicode(params.get('Values')).strip().split(', ')
+        values_list = [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -394,29 +402,33 @@ class CCRUKPIToolBox:
                 scenes = self.get_relevant_scenes(params)
 
         if params.get("Form Factor"):
-            form_factors = [str(form_factor) for form_factor in params.get("Form Factor").split(", ")]
+            form_factors = \
+                [str(x).strip() for x in str(params.get("Form Factor")).split(", ")]
         else:
             form_factors = []
         if params.get("Size"):
-            sizes = [float(size) for size in str(params.get('Size')).split(", ")]
-            sizes = [int(size) if int(size) == size else size for size in sizes]
+            sizes = [float(x) for x in str(params.get('Size')).split(", ")]
+            sizes = [int(x) if int(x) == x else x for x in sizes]
         else:
             sizes = []
         if params.get("Products to exclude"):
-            products_to_exclude = [int(float(product)) for product in \
-                                   str(params.get("Products to exclude")).split(", ")]
+            products_to_exclude = \
+                [int(float(x)) for x in str(params.get("Products to exclude")).split(", ")]
         else:
             products_to_exclude = []
         if params.get("Form factors to exclude"):
-            form_factors_to_exclude = str(params.get("Form factors to exclude")).split(", ")
+            form_factors_to_exclude = \
+                [str(x).strip() for x in str(params.get("Form factors to exclude")).split(", ")]
         else:
             form_factors_to_exclude = []
         if params.get("Product Category"):
-            product_categories = str(params.get("Product Category")).split(", ")
+            product_categories = \
+                [str(x).strip() for x in str(params.get("Product Category")).split(", ")]
         else:
             product_categories = []
         if params.get("Sub category"):
-            product_sub_categories = str(params.get("Sub category")).split(", ")
+            product_sub_categories = \
+                [str(x).strip() for x in str(params.get("Sub category")).split(", ")]
         else:
             product_sub_categories = []
         if params.get("Brand"):
@@ -424,7 +436,8 @@ class CCRUKPIToolBox:
         else:
             product_brands = []
         if params.get("Manufacturer"):
-            product_manufacturers = str(params.get("Manufacturer")).split(", ")
+            product_manufacturers = \
+                [str(x).strip() for x in str(params.get("Manufacturer")).split(", ")]
         else:
             product_manufacturers = []
         if not product_manufacturers:
