@@ -48,12 +48,12 @@ class SceneGPUSToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
-        self.gp_manufacturer = None
-        self.gp_categories = None
-        self.gp_brands = None
-        self.man_fk_filter = None
-        self.cat_filter = None
-        self.brand_filter = None
+        self.gp_manufacturer = self.get_gp_manufacturer()
+        self.gp_categories = self.get_gp_categories()
+        self.gp_brands = self.get_gp_brands()
+        self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
+        self.cat_filter = {'category': list(self.gp_categories.keys())}
+        self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
         self.kpi_results = []
 
 
@@ -61,38 +61,26 @@ class SceneGPUSToolBox:
         """
         This function calculates the KPI results.
         """
-        if self.manufacturer_fk in set(self.scif['manufacturer_fk'].unique()):
-            self.update_instance_vars()
-            if not self.filter_df(self.scif, self.brand_filter).empty:
-                self.calculate_adjacency('Adjacency', ['brand_name', 'category'])
-            for result in self.kpi_results:
-                self.write_to_db(**result)
+        if not self.filter_df(self.scif, self.brand_filter).empty:
+            self.calculate_adjacency('Adjacency', ['brand_name', 'category'])
+        for result in self.kpi_results:
+            self.write_to_db(**result)
         return
 
-    def update_instance_vars(self):
-        self.gp_manufacturer = self.get_gp_manufacturer()
-        self.gp_categories = self.get_gp_categories()
-        self.gp_brands = self.get_gp_brands()
-        self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
-        self.cat_filter = {'category': list(self.gp_categories.keys())}
-        self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
-
-    def base_adj_graph(self, scene, additional_attributes=None):
-        mpis_filter = {'scene_fk': scene}
+    def base_adj_graph(self, additional_attributes=None):
+        mpis_filter = {'scene_fk': self.scene}
         mpis_filter.update(self.cat_filter)
         mpis = self.filter_df(self.mpis, mpis_filter)
         all_graph = AdjacencyGraph(mpis, None, self.products, name=None, adjacency_overlap_ratio=.4)
         return mpis, all_graph, mpis_filter
 
     def base_adjacency(self):
-        allowed_edges = ['left', 'right']
-        all_results = defaultdict(dict)
-        scene = self.scene
-        mpis, all_graph, filters = self.base_adj_graph(scene)
-        items = set(self.filter_df(self.mpis, self.brand_filter)['scene_match_fk'])
+        data = defaultdict(dict)
+        mpis, all_graph, filters = self.base_adj_graph()
         brands = set(self.filter_df(self.mpis, self.brand_filter)['brand_name'])
         for brand in brands:
-            for edge_dir in allowed_edges:
+            for edge_dir in Const.ALLOWED_EDGES:
+                items = set(self.filter_df(self.mpis, {'brand_name': brand})['scene_match_fk'])
                 g = self.prune_edges(all_graph.base_adjacency_graph.copy(), [edge_dir])
 
                 match_to_node = {int(node['match_fk']): i for i, node in g.nodes(data=True)}
@@ -103,8 +91,8 @@ class SceneGPUSToolBox:
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
                                 # &
                                 # (~mpis['product_type'].isin(Const.EXCLUDE_FILTERS))]
-                all_results[brand][edge_dir] = adj_mpis
-        return all_results
+                data[brand][edge_dir] = adj_mpis
+        return data
 
     def calculate_adjacency(self, base_kpi_name, levels):
         data = self.base_adjacency()
@@ -114,7 +102,8 @@ class SceneGPUSToolBox:
                     base_level = level.split('_')[0]
                     level_fk_col = '{}_fk'.format(base_level)
                     fk_dict = adj_mpis[[level, level_fk_col]].set_index(level)[level_fk_col].to_dict()
-                    kpi = '{} {} {}'.format(edge_dir.capitalize(), base_level.capitalize(), base_kpi_name)
+                    real_edge = Const.ALLOWED_EDGES - set(edge_dir)
+                    kpi = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(), base_kpi_name)
                     adj_items = adj_mpis[level].unique()
                     for item in adj_items:
                         kpi_res = {'kpi_name': kpi,
@@ -123,8 +112,6 @@ class SceneGPUSToolBox:
                                    'score': 1,
                                    'result': 1}
                         self.kpi_results.append(kpi_res)
-
-
 
     def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
         for node in g.nodes():
@@ -153,25 +140,25 @@ class SceneGPUSToolBox:
         return df
 
     def get_gp_categories(self):
-        cats = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, ['category', 'category_fk']]\
+        cats = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['category', 'category_fk']]\
                               .drop_duplicates().set_index('category')['category_fk'].to_dict()
         return cats
 
     def get_gp_brands(self):
-        brands = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, ['brand_name', 'brand_fk']]\
+        brands = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['brand_name', 'brand_fk']]\
                               .drop_duplicates().set_index('brand_name')['brand_fk'].to_dict()
         return brands
 
     def get_gp_manufacturer(self):
-        name = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, 'manufacturer_name']
-        if not (isinstance(name, unicode) or isinstance(name, str)):
-            name = name.iloc[0]
+        name = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk].reset_index()
+        name = '' if name.empty else name.loc[0, 'manufacturer_name']
         return {name: self.manufacturer_fk}
 
     def make_mpis(self):
         mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        mpis = mpis[mpis['stacking_layer'] == 1]
         return mpis
 
     def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=None,

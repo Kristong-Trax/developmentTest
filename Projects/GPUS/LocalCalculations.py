@@ -40,6 +40,7 @@ if __name__ == '__main__':
 
         # for scene in scenes:
         #     print('scene', scene)
+        #     # scene = 16902
         #     data_provider = KEngineDataProvider(project_name)
         #     data_provider.load_scene_data(session, scene)
         #     output = VanillaOutput()

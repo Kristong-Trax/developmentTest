@@ -32,6 +32,7 @@ class GPUSToolBox:
         self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.session_id = self.data_provider.session_id
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.templates = self.data_provider[Data.TEMPLATES]
@@ -46,12 +47,17 @@ class GPUSToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
-        self.gp_manufacturer = None
-        self.gp_categories = None
-        self.gp_brands = None
-        self.man_fk_filter = None
-        self.cat_filter = None
-        self.brand_filter = None
+        self.gp_manufacturer = self.get_gp_manufacturer()
+        self.gp_categories = self.get_gp_categories()
+        self.gp_brands = self.get_gp_brands()
+        self.all_man = self.scif[['manufacturer_name', 'manufacturer_fk']].set_index('manufacturer_name')\
+                                                                          ['manufacturer_fk'].to_dict()
+        self.all_brands = self.scif[['brand_name', 'brand_fk']].set_index('brand_name')['brand_fk'].to_dict()
+        self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
+        self.cat_filter = {'category': list(self.gp_categories.keys())}
+        self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
+        self.all_brands_filter = {'brand_name': list(self.all_brands.keys())}
+        self.all_man_filter = {'manufacturer_name': list(self.all_man.keys())}
         self.kpi_results = []
 
 
@@ -59,55 +65,49 @@ class GPUSToolBox:
         """
         This function calculates the KPI results.
         """
-        if self.manufacturer_fk in set(self.scif['manufacturer_fk'].unique()):
-            self.update_instance_vars()
-            if not self.filter_df(self.scif, self.brand_filter).empty:
-                ''' This is a bad set-up, will fix tomorrow. Just need to make some data right now '''
-                self.calculate_manufacturer_facings_sos('Manufacturer out of Category Facings SOS')
-                self.calculate_brand_facings_sos('Brand out of Category Facings SOS')
-                self.calculate_manufacturer_linear_sos('Manufacturer out of Category Linear SOS')
-                self.calculate_brand_linear_sos('Brand out of Category Linear SOS')
+        if not self.filter_df(self.scif, self.brand_filter).empty:
+            ''' This is a bad set-up, will fix tomorrow. Just need to make some data right now
+                it's still not tomorrow... '''
+            self.calculate_manufacturer_facings_sos('Manufacturer out of Category Facings SOS')
+            self.calculate_brand_facings_sos('Brand out of Category Facings SOS')
+            self.calculate_manufacturer_linear_sos('Manufacturer out of Category Linear SOS')
+            self.calculate_brand_linear_sos('Brand out of Category Linear SOS')
 
-            if not self.filter_df(self.scif, self.cat_filter).empty:
-                self.calculate_share_of_empty('Share of Empty out of Category')
+        if not self.filter_df(self.scif, self.cat_filter).empty:
+            self.calculate_share_of_empty('Share of Empty out of Category')
 
-            for result in self.kpi_results:
-                self.write_to_db(**result)
+        for result in self.kpi_results:
+            self.write_to_db(**result)
         return
 
-    def update_instance_vars(self):
-        self.gp_manufacturer = self.get_gp_manufacturer()
-        self.gp_categories = self.get_gp_categories()
-        self.gp_brands = self.get_gp_brands()
-        self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
-        self.cat_filter = {'category': list(self.gp_categories.keys())}
-        self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
-
     def calculate_manufacturer_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.man_fk_filter, dens=self.cat_filter,
-                           num_fks=self.gp_manufacturer, den_fks=self.gp_categories,
+        self.calculate_sos(kpi, nums=self.all_man_filter, dens=self.cat_filter,
+                           num_fks=self.all_man, den_fks=self.gp_categories,
                            sum_col=Const.FACINGS)
 
 
     def calculate_brand_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.brand_filter, dens=self.cat_filter,
-                           num_fks=self.gp_brands, den_fks=self.gp_categories,
+        self.calculate_sos(kpi, nums=self.all_brands_filter, dens=self.cat_filter,
+                           num_fks=self.all_brands, den_fks=self.gp_categories,
                            sum_col=Const.FACINGS)
 
     def calculate_manufacturer_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.man_fk_filter, dens=self.cat_filter,
-                           num_fks=self.gp_manufacturer, den_fks=self.gp_categories,
+        self.calculate_sos(kpi, nums=self.all_man_filter, dens=self.cat_filter,
+                           num_fks=self.all_man, den_fks=self.gp_categories,
                            sum_col=Const.LINEAR_FACINGS)
 
 
     def calculate_brand_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.brand_filter, dens=self.cat_filter,
-                           num_fks=self.gp_brands, den_fks=self.gp_categories,
+        self.calculate_sos(kpi, nums=self.all_brands_filter, dens=self.cat_filter,
+                           num_fks=self.all_brands, den_fks=self.gp_categories,
                            sum_col=Const.LINEAR_FACINGS)
 
     def calculate_share_of_empty(self, kpi):
-        self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens=self.cat_filter,
-                           num_fks=Const.EMPTY_FKS, den_fks=self.gp_categories,
+        # self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens=self.cat_filter,
+        #                    num_fks=Const.EMPTY_FKS, den_fks=self.gp_categories,
+        #                    sum_col=Const.FACINGS)
+        self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens={'session_id': self.session_id},
+                           num_fks=Const.EMPTY_FKS, den_fks={self.session_id: 0},
                            sum_col=Const.FACINGS)
 
     def calculate_sos(self, kpi, nums, dens, num_fks, den_fks, sum_col):
@@ -147,21 +147,19 @@ class GPUSToolBox:
         return df
 
     def get_gp_categories(self):
-        cats = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, ['category', 'category_fk']]\
+        cats = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['category', 'category_fk']]\
                               .drop_duplicates().set_index('category')['category_fk'].to_dict()
         return cats
 
     def get_gp_brands(self):
-        brands = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, ['brand_name', 'brand_fk']]\
+        brands = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['brand_name', 'brand_fk']]\
                               .drop_duplicates().set_index('brand_name')['brand_fk'].to_dict()
         return brands
 
     def get_gp_manufacturer(self):
-        name = self.products.set_index('manufacturer_fk').loc[self.manufacturer_fk, 'manufacturer_name']
-        if not (isinstance(name, unicode) or isinstance(name, str)):
-            name = name.iloc[0]
+        name = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk].reset_index()
+        name = '' if name.empty else name.loc[0, 'manufacturer_name']
         return {name: self.manufacturer_fk}
-
 
     def make_mpis(self):
         mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
