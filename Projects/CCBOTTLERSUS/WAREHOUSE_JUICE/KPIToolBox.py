@@ -67,7 +67,8 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             for bay in bays_in_scene:
                 bay_mpis = scene_mpis[scene_mpis['bay_number'] == bay]
                 total_space = bay_mpis['width_mm'].sum()
-                tested_group_space = bay_mpis[bay_mpis['category'].isin(Const.RELEVANT_CATEGORIES[scene_type])]
+                tested_group_space = \
+                    bay_mpis[bay_mpis['category'].isin(Const.RELEVANT_CATEGORIES[scene_type])]['width_mm'].sum()
                 if tested_group_space / total_space > threshold:
                     shelf_length = self.get_normalized_shelf_length(bay_mpis)
                     set_size += shelf_length
