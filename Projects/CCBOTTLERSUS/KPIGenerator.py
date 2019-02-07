@@ -99,5 +99,6 @@ class CCBOTTLERSUSGenerator:
         try:
             tool_box = CCBOTTLERSUSWAREHOUSEJUICEToolBox(self.data_provider, self.output)
             tool_box.main_calculation()
+            tool_box.commit_results_without_delete()
         except Exception as e:
             Log.error('failed to calculate Warehouse Juice due to :{}'.format(e.message))

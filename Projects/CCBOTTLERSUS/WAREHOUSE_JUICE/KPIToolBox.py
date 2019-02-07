@@ -1,4 +1,5 @@
 
+import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.WAREHOUSE_JUICE.Const import Const
@@ -8,7 +9,6 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 __author__ = 'Hunter'
 
 REGION = 'Warehouse Juice'
-
 
 class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
     EXCLUDE_FILTER = 0
@@ -28,8 +28,11 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.retailer = self.store_info['retailer_name'].iloc[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.templates = {}
+        for sheet in Const.RETAILERS:
+            self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.common_db = Common(self.data_provider)
         self.common_db2 = CommonV2(self.data_provider)
         self.common_scene = CommonV2(self.data_provider)
@@ -40,15 +43,17 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         self.total_score = 0
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
-        self.completed_scene_types = []
+        self.completed_scene_types = {}
+        self.set_size = {}
 
     # main functions:
     def main_calculation(self, *args, **kwargs):
         if self.region != Const.WAREHOUSE_JUICE:
             return
-        else:
-            relevant_scif = self.scif
-            self.calculate_set_size(relevant_scif)
+        relevant_scif = self.scif
+        self.calculate_set_size(relevant_scif)
+        if self.retailer in Const.RETAILERS:
+            self.calculate_assortment()
 
     # set size functions
     def calculate_set_size(self, relevant_scif):
@@ -58,7 +63,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         for scene in relevant_scenes:
             set_size = 0
             scene_type = relevant_scif[relevant_scif['scene_id'] == scene]['template_name'].iloc[0]
-            if scene_type in self.completed_scene_types:
+            if scene_type in self.completed_scene_types.iterkeys():
                 continue
 
             scene_mpis = self.mpis[self.mpis['scene_fk'] == scene]
@@ -67,14 +72,18 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             for bay in bays_in_scene:
                 bay_mpis = scene_mpis[scene_mpis['bay_number'] == bay]
                 total_space = bay_mpis['width_mm'].sum()
-                tested_group_space = \
-                    bay_mpis[bay_mpis['category'].isin(Const.RELEVANT_CATEGORIES[scene_type])]['width_mm'].sum()
+                tested_group_skus = self.get_product_fks_from_category(Const.RELEVANT_CATEGORIES[scene_type])
+                tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
                 if tested_group_space / total_space > threshold:
-                    shelf_length = self.get_normalized_shelf_length(bay_mpis)
-                    set_size += shelf_length
+                    # shelf_length = self.get_normalized_shelf_length(bay_mpis)
+                    set_size += 4
 
-            kpi_fk = self.get_kpi_fk_from_kpi_name(Const.KPI_NAME)
+            self.completed_scene_types.update({scene_type: scene})
+            self.set_size.update({scene_type: set_size})
+
+            kpi_fk = self.get_kpi_fk_from_kpi_name(Const.SET_SIZE_KPI_NAME)
             template_fk = self.get_template_fk(scene_type)
+
             self.common_db.write_to_db_result_new_tables(kpi_fk, template_fk, set_size, set_size,
                                                          denominator_id=self.store_id, denominator_result=1,
                                                          score=set_size)
@@ -87,19 +96,44 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             relevant_scenes = []
         return relevant_scenes
 
-    def get_normalized_shelf_length(self, bay_mpis):
-        shelves = bay_mpis['shelf'].unique().tolist()
-        max_shelf_length = 0
-        for shelf in shelves:
-            shelf_length = bay_mpis[bay_mpis['shelf_number'] == shelf]['width_mm'].sum()
-            if shelf_length > max_shelf_length:
-                max_shelf_length = shelf_length
+    # def get_normalized_shelf_length(self, bay_mpis):
+    #     shelves = bay_mpis['shelf_number'].unique().tolist()
+    #     max_shelf_length = 0
+    #     for shelf in shelves:
+    #         shelf_length = bay_mpis[bay_mpis['shelf_number'] == shelf]['width_mm_net'].sum()
+    #         max_shelf_length += shelf_length
+    #
+    #     # convert shelf length from mm to ft
+    #     max_shelf_length = (max_shelf_length / len(shelves)) * 0.00328084
+    #
+    #     # convert shelf length to base 4
+    #     return int(round(max_shelf_length / 4) * 4)
 
-        # convert shelf length from mm to ft
-        max_shelf_length * 0.00328084
-
-        # convert shelf length to base 4
-        return int(round(max_shelf_length / 4) * 4)
+    # assortment functions
+    def calculate_assortment(self):
+        if self.set_size is None:
+            return
+        kpi_fk = self.get_kpi_fk_from_kpi_name(Const.ASSORTMENT_KPI_NAME)
+        for scene_type, set_size in self.set_size.iteritems():
+            if scene_type != Const.DRINK_JUICE_TEA:
+                continue
+            scene_id = self.completed_scene_types[scene_type]
+            template_fk = self.get_template_fk(scene_type)
+            relevant_template = self.templates[self.retailer]
+            products_in_assortment = relevant_template[relevant_template[Const.SET_SIZE] <= set_size][Const.UPC].tolist()
+            products_in_scene = self.scif[(self.scif['scene_id'] == scene_id) &
+                                          (self.scif['facings'] > 0)][Const.NIELSEN_UPC].tolist()
+            for upc in products_in_assortment:
+                try:
+                    product_data = self.all_products[self.all_products[Const.NIELSEN_UPC] == upc].iloc[0]
+                    product_fk = product_data['product_fk'].iloc[0]
+                except IndexError:
+                    Log.warning('UPC {} for {} does not exist in the database'.format(upc, self.retailer))
+                    continue
+                result = 1 if upc in products_in_scene else 0
+                self.common_db.write_to_db_result_new_tables(kpi_fk, product_fk, result, result,
+                                                             denominator_id=template_fk, denominator_result=1,
+                                                             score=result)
 
     # helpers
     def get_kpi_fk_from_kpi_name(self, kpi_name):
@@ -115,6 +149,9 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         except IndexError:
             Log.error('Template FK for {} does not exist in the database!'.format(template_name))
             return None
+
+    def get_product_fks_from_category(self, category_list):
+        return self.scif[self.scif['category'].isin(category_list)]['product_fk'].unique().tolist()
 
     def commit_results_without_delete(self):
         self.common_db.commit_results_data_without_delete()
