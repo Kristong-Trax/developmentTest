@@ -10,6 +10,7 @@ from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import CCBOTTLERSUSREDToolBox
 from Projects.CCBOTTLERSUS.DISPLAYS.KPIToolBox import CCBOTTLERSUSDISPLAYSToolBox
 from Projects.CCBOTTLERSUS.Utils.KPIToolBox import CCBOTTLERSUSBCIKPIToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.Const import Const
+from Projects.CCBOTTLERSUS.WAREHOUSE_JUICE.KPIToolBox import CCBOTTLERSUSWAREHOUSEJUICEToolBox
 
 __author__ = 'Elyashiv'
 
@@ -26,12 +27,13 @@ class CCBOTTLERSUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()
-        # self.calculate_bci()
-        self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
-        self.calculate_cma_compliance_sw()
+        # Common(self.data_provider).commit_results_data()
+        # self.calculate_red_score()
+        # # self.calculate_bci()
+        # self.calculate_manufacturer_displays()
+        # self.calculate_cma_compliance()
+        # self.calculate_cma_compliance_sw()
+        self.calculate_warehouse_juice()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
@@ -90,3 +92,12 @@ class CCBOTTLERSUSGenerator:
             tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
+
+    @log_runtime('Warehouse Juice CCBOTTLERSUSCalculations')
+    def calculate_warehouse_juice(self):
+        Log.info('starting calculate_warehouse_juice')
+        try:
+            tool_box = CCBOTTLERSUSWAREHOUSEJUICEToolBox(self.data_provider, self.output)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate Warehouse Juice due to :{}'.format(e.message))

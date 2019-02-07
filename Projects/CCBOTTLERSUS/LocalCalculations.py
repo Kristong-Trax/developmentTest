@@ -6,10 +6,10 @@ from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
 
 
 
-#if __name__ == '__main__':
-#    LoggerInitializer.init('ccbottlersus calculations')
-#    Config.init()
-#    project_name = 'ccbottlersus'
+if __name__ == '__main__':
+   LoggerInitializer.init('ccbottlersus calculations')
+   Config.init()
+   project_name = 'ccbottlersus'
 
     #  CMA Compliance Test Set
 #    sessions = [
@@ -282,10 +282,15 @@ from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
     #     ]
     # sessions = ['4c060e04-bde4-40ba-a820-26d93734f327']
 
-#    for session in sessions:
-#        print('***********************************************************************************')
-#        print('_______________________ {} ____________________'.format(session))
-#        data_provider = KEngineDataProvider(project_name)
-#        data_provider.load_session_data(session)
-#        output = Output()
-#        CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
+   # warehouse juice
+   sessions = [
+        'fa66bec2-00d0-423f-8e91-280f50ce0661'
+   ]
+
+   for session in sessions:
+       print('***********************************************************************************')
+       print('_______________________ {} ____________________'.format(session))
+       data_provider = KEngineDataProvider(project_name)
+       data_provider.load_session_data(session)
+       output = Output()
+       CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
