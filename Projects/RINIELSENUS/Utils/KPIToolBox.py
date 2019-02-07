@@ -1,10 +1,10 @@
 import pandas as pd
 
 from Projects.RINIELSENUS.Utils.Const import SET_CATEGORIES, FILTER_NAMING_DICT, \
-    SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET_2018, SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, \
-    SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018, CAT_TREATS_2018, CAT_MAIN_MEAL_DRY_2018, \
-    CAT_MAIN_MEAL_WET_2018, DOG_MAIN_MEAL_DRY_2018, DOG_TREATS_2018, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
-    SPT_CHANNELS
+    SET_PRE_CALC_CHECKS, DOG_MAIN_MEAL_WET, SPT_DOG_TREATS, SPT_CAT_TREATS, \
+    SPT_CAT_MAIN_MEAL, SPT_DOG_MAIN_MEAL, CAT_TREATS, CAT_MAIN_MEAL_DRY, \
+    CAT_MAIN_MEAL_WET, DOG_MAIN_MEAL_DRY, DOG_TREATS, BDB_RETAILERS, BDB_CHANNELS, SPT_RETAILERS, \
+    SPT_CHANNELS  # SPT_DOG_TREATS_Q1_2018, SPT_CAT_TREATS_Q1_2018, SPT_CAT_MAIN_MEAL_Q1_2018, SPT_DOG_MAIN_MEAL_Q1_2018
 
 from Projects.RINIELSENUS.Utils.Fetcher import MarsUsQueries
 from Projects.RINIELSENUS.Utils.GeneralToolBox import MarsUsGENERALToolBox
@@ -24,7 +24,7 @@ class MarsUsDogMainMealWet(object):
     def __init__(self, data_provider, output):
         self._data_provider = data_provider
         self.project_name = self._data_provider.project_name
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.ReadOnly)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self._output = output
         self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
         self._template = ParseMarsUsTemplates()
@@ -85,11 +85,11 @@ class MarsUsDogMainMealWet(object):
                                                                                    self._get_store_channel))
             self._writer.commit_results_data()
             return
-
-        if self._is_pet_food_category_excluded():
-            Log.warning('pet food category does not exists or it was excluded by decision unit')
-            self._writer.commit_results_data()
-            return
+        
+        # if self._is_pet_food_category_excluded():
+        #     Log.warning('pet food category does not exists or it was excluded by decision unit')
+        #     self._writer.commit_results_data()
+        #     return
 
         # template SPT
         if self.is_relevant_retailer_channel_spt():
@@ -99,7 +99,7 @@ class MarsUsDogMainMealWet(object):
                     Log.info('Skipping set: {}'.format(set_name))
                     continue
                 Log.info('Starting set: {}'.format(set_name))
-                if not self.retailer_channel_has_sales_data(set_name):
+                if not self.retailer_channel_has_spt_sales_data(set_name):
                     Log.warning('no sales data for retailer: {},'
                                 ' channel: {}, set: {}'.format(self._get_retailer_name,
                                                                self._get_store_channel,
@@ -137,21 +137,27 @@ class MarsUsDogMainMealWet(object):
     @staticmethod
     def _get_set_names():
         return [
-            DOG_MAIN_MEAL_DRY_2018,
-            DOG_MAIN_MEAL_WET_2018,
-            CAT_TREATS_2018,
-            CAT_MAIN_MEAL_DRY_2018,
-            CAT_MAIN_MEAL_WET_2018,
-            DOG_TREATS_2018
+            DOG_MAIN_MEAL_DRY,
+            DOG_MAIN_MEAL_WET,
+            CAT_TREATS,
+            CAT_MAIN_MEAL_DRY,
+            CAT_MAIN_MEAL_WET,
+            DOG_TREATS
         ]
 
     @staticmethod
     def _get_set_spt_names():
+        # return [
+        #     SPT_DOG_TREATS_Q1_2018,
+        #     SPT_CAT_TREATS_Q1_2018,
+        #     SPT_CAT_MAIN_MEAL_Q1_2018,
+        #     SPT_DOG_MAIN_MEAL_Q1_2018
+        # ]
         return [
-            SPT_DOG_TREATS_Q1_2018,
-            SPT_CAT_TREATS_Q1_2018,
-            SPT_CAT_MAIN_MEAL_Q1_2018,
-            SPT_DOG_MAIN_MEAL_Q1_2018
+            SPT_DOG_TREATS,
+            SPT_CAT_TREATS,
+            SPT_CAT_MAIN_MEAL,
+            SPT_DOG_MAIN_MEAL
         ]
 
     def _is_pet_food_category_excluded(self):

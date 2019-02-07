@@ -9,8 +9,11 @@ __author__ = 'Sam'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', Const.TEMPLATE_PATH)
 CMA_COMPLIANCE = 'CMA Compliance SW'
+MANUFACTURER_FK = 1  # for CCNA
+
 
 class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
+
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
@@ -107,13 +110,11 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
 
         for i, kpi_line in relevant_template.iterrows():
             if not relevant_scif.empty:
-                num, den, result, score, target = function(kpi_line, relevant_scif, general_filters)
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
+                result_dict = function(kpi_line, relevant_scif, general_filters)
+
                 # score = Const.PASS if score == 1 else Const.FAIL
                 # score = self.tools.result_values[score]
-                self.common.write_to_db_result(fk=kpi_fk, numerator_result=num, denominator_result=den,
-                                               result=result, score=score, target=target,
-                                               by_scene=True, should_enter=True)
+                self.common.write_to_db_result(**result_dict)
 
     def calculate_coke_cooler_purity(self, kpi_line, scif, general_filters):
         """
@@ -121,6 +122,7 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         KPIs in the same name in the match sheet, scene after scene.
         :param main_line: series from the template of the main_sheet.
         """
+        kpi_name = kpi_line[Const.KPI_NAME]
 
         # num_filters = self.get_kpi_line_filters(kpi_line)
         num_filters = {'Southwest Deliver': 'Y'}
@@ -131,10 +133,54 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         den_scif = scif[self.get_filter_condition(scif, **general_filters)]
 
         ratio, num, den = self.tools.sos_with_num_and_dem(kpi_line, num_scif, den_scif, self.facings_field)
-        return num, den, ratio, 0, None
 
+        competitor_facings = den - num
+
+        # get all brands in the scene
+        brand_list = den_scif['brand_name'].unique().tolist()
+
+        for brand in brand_list:
+            brand_filters = {'brand_name': brand}
+            brand_scif = scif[self.get_filter_condition(scif, **brand_filters)]
+            try:
+                brand_fk = brand_scif['brand_fk'].values[0]
+                southwest_deliver = brand_scif['Southwest Deliver'].values[0] == 'Y'
+            except IndexError:
+                Log.error(
+                    'Foreign key for brand name "{}" not found or bottler delivery status indeterminable'.format(brand))
+                continue
+
+            brand_ratio, brand_num, brand_den = self.tools.sos_with_num_and_dem(kpi_line, brand_scif, den_scif,
+                                                                                self.facings_field)
+
+            competitor_brand_facings = 0
+
+            if not southwest_deliver:
+                competitor_brand_facings = brand_num
+                brand_num = 0
+
+            brand_result_dict = self.build_dictionary_for_db_insert(kpi_name=Const.COKE_COOLER_PURITY_BRAND,
+                                                                    numerator_result=brand_num,
+                                                                    denominator_result=brand_den,
+                                                                    result=brand_ratio, score=competitor_brand_facings,
+                                                                    numerator_id=brand_fk, denominator_id=self.scene,
+                                                                    by_scene=True, should_enter=True,
+                                                                    identifier_parent=self.scene)
+
+            self.common.write_to_db_result(**brand_result_dict)
+
+        result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_name, numerator_result=num,
+                                                          denominator_result=den,
+                                                          result=ratio, score=competitor_facings, numerator_id=self.scene,
+                                                          denominator_id=MANUFACTURER_FK,
+                                                          by_scene=True, should_enter=True,
+                                                          identifier_result=self.scene)
+
+        return result_dict
 
     def calculate_facings_ntba(self, kpi_line, scif, general_filters):
+        kpi_name = kpi_line[Const.KPI_NAME]
+
         targets = self.tools.get_kpi_line_targets(kpi_line)
         facings_filters = self.tools.get_kpi_line_filters(kpi_line)
         score = 0
@@ -153,11 +199,17 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         if facings >= target:  # Please note, 0 > None evaluates true, so 0 facings is a pass when no target is set
             score = 1
 
+        result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_name, numerator_result=facings,
+                                                          result=facings, score=score, target=target,
+                                                          by_scene=True, should_enter=True)
+
         # return score, passed, len(scenes)
-        return facings, None, facings, score, target
+        return result_dict
 
     def calculate_ratio(self, kpi_line, scif, general_filters):
-        sos_filters = self.get_kpi_line_filters(kpi_line)
+        kpi_name = kpi_line[Const.KPI_NAME]
+
+        sos_filters = self.tools.get_kpi_line_filters(kpi_line)
         general_filters['product_type'] = (['Empty', 'Irrelevant'], 0)
         num_scif = scif[self.get_filter_condition(scif, **sos_filters)]
         den_scif = scif[self.get_filter_condition(scif, **general_filters)]
@@ -171,7 +223,12 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
         if ratio >= target:
             score = 1
 
-        return num, den, ratio, score, target
+        result_dict = self.build_dictionary_for_db_insert(kpi_name=kpi_name, numerator_result=num,
+                                                          denominator_result=den,
+                                                          result=ratio, score=score, target=target,
+                                                          by_scene=True, should_enter=True)
+
+        return result_dict
 
     @staticmethod
     def extrapolate_target(targets, c):
@@ -265,3 +322,43 @@ class CCBOTTLERSUS_SANDSceneCokeCoolerToolbox:
                 Log.warning('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
+
+    def build_dictionary_for_db_insert(self, fk=None, kpi_name=None, numerator_id=0, numerator_result=0, result=0,
+                                       denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
+                                       denominator_result_after_actions=None, numerator_result_after_actions=0,
+                                       weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None,
+                                       target=None, identifier_parent=None, identifier_result=None, should_enter=None,
+                                       by_scene=None):
+        try:
+            insert_params = dict()
+            if not fk:
+                if not kpi_name:
+                    return
+                else:
+                    insert_params['fk'] = self.common.get_kpi_fk_by_kpi_type('{} {}'.format(CMA_COMPLIANCE, kpi_name))
+            else:
+                insert_params['fk'] = fk
+            insert_params['numerator_id'] = numerator_id
+            insert_params['numerator_result'] = numerator_result
+            insert_params['denominator_id'] = denominator_id
+            insert_params['denominator_result'] = denominator_result
+            insert_params['result'] = result
+            insert_params['score'] = score
+            if target:
+                insert_params['target'] = target
+            if denominator_result_after_actions:
+                insert_params['denominator_result_after_actions'] = denominator_result_after_actions
+            if context_id:
+                insert_params['context_id'] = context_id
+            if identifier_parent:
+                insert_params['identifier_parent'] = identifier_parent
+            if should_enter:
+                insert_params['should_enter'] = should_enter
+            if identifier_result:
+                insert_params['identifier_result'] = identifier_result
+            if by_scene:
+                insert_params['by_scene'] = by_scene  # needed specifically for the modified Common.py this project uses
+            return insert_params
+        except IndexError:
+            Log.error('error in build_dictionary_for_db_insert')
+            return None

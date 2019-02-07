@@ -168,7 +168,7 @@ class CCAAUToolBox:
         if template_without_second is not None:
             for row in template_without_second.iterrows():
                 data_frame = data_frame.loc[(~data_frame[row[1]['Param 1']].isin(row[1]['Value 1'].split(','))) | (
-                    data_frame[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
+                    ~data_frame[row[1]['Param 2']].isin(row[1]['Value 2'].split(',')))]
 
         return data_frame
 
@@ -180,5 +180,5 @@ class CCAAUToolBox:
         """
         filtered_scif = data_frame[self.toolbox.get_filter_condition(data_frame, **filters)]
         sum_of_facings = filtered_scif['facings'].sum()
-        space_length = filtered_scif['gross_len_add_stack'].sum()
+        space_length = filtered_scif['gross_len_split_stack'].sum()
         return sum_of_facings, space_length

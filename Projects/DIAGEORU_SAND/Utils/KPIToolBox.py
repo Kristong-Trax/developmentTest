@@ -95,17 +95,13 @@ class DIAGEORUToolBox:
         self.tools.update_templates()
 
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
             set_score = 0
             if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
-        # if set_name in ('MPA', 'Local MPA', 'New Products',):  #todo: delete after the migration is done
-        #     set_score = self.calculate_assortment_sets(set_name)
 
             if set_name in ('Secondary Displays', 'Secondary'):
                 # Global function
@@ -118,22 +114,6 @@ class DIAGEORUToolBox:
                 # Saving to old tables
                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
                 self.save_level2_and_level3(set_name, set_name, set_score)
-
-            elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
-                # Global function
-                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-
-                if res_dict:
-                    # Saving to new tables
-                    parent_res = res_dict[-1]
-                    self.commonV2.save_json_to_new_tables(res_dict)
-
-                    # Saving to old tables
-                    result = parent_res['result']
-                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            else:
-                return
 
             if set_score == 0:
                 pass

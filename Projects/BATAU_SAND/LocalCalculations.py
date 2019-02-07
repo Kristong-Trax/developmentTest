@@ -13,7 +13,8 @@ if __name__ == '__main__':
     #session = '84751c4f-cb52-4863-b528-5531c7d9b4f0'
     #session = 'f90ad7a0-23c5-46d8-9abb-f9ba04806ff9'
     #session = '0DB58E6A-E7AB-48B7-A99B-536882F40E61'
-    session = '8D338894-6618-4516-9DC9-36745F5553CF'
+    #session = '8D338894-6618-4516-9DC9-36745F5553CF'
+    session = 'EDB6AE16-1E86-4400-B228-0D72F19F9724'
     #session = 'a59be007-5c89-4f52-8389-086afa802dc8'
     data_provider.load_session_data(session)
     output = Output()

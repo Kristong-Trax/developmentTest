@@ -68,7 +68,6 @@ class DIAGEOAU_SANDToolBox:
         self.output = output
         self.common = Common(self.data_provider)
         self.commonV2 = CommonV2(self.data_provider)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
         self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
@@ -110,7 +109,7 @@ class DIAGEOAU_SANDToolBox:
         log_runtime('Updating templates')(self.tools.update_templates)()
 
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output, self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
@@ -169,7 +168,7 @@ class DIAGEOAU_SANDToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
                     # old visible function

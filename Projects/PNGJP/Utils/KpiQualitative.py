@@ -130,7 +130,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
     GROUP_GOLDEN_ZONE_THRESHOLD = 'Threshold'
     PRODUCT_GROUP_ID = 'Product Group Id'
     ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
-    KPI_FORMAT = 'Category: {category} - KPI Question: {question}'
+    KPI_FORMAT = 'Category: {category} - Brand: {brand} - Product group id: {group} - KPI Question: {question}'
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -151,7 +151,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         self.match_display_in_scene = self.get_match_display()
         self.data_provider.probe_groups = self.get_probe_group(self.data_provider.session_uid)
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.template_name = 'TemplateQualitative.xlsx'
+        self.template_name = 'TemplateQualitative_Nov_20181107_v3.xlsx'
         self.TEMPLATE_PATH = os.path.join(os.path.dirname(
             os.path.realpath(__file__)), '..', 'Data', self.template_name)
         self.template_data = parse_template(self.TEMPLATE_PATH, self.HIERARCHY)
@@ -284,24 +284,29 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                     kpi_filters = dict(scenes_filters, **entity_filters)
 
                     if kpi_type == self.GOLDEN_ZONE:
-                        score, result, threshold = self.calculate_golden_zone(kpi, kpi_filters)
+                        kpi_params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
+                        score, result, threshold= self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.BLOCK:
-                        score, result, threshold = self.calculate_block(kpi, kpi_filters)
+                        kpi_params = self.block_data[self.block_data['fixed KPI name'] == kpi]
+                        score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ANCHOR:
-                        score, result, threshold = self.calculate_anchor(kpi, kpi_filters)
+                        kpi_params = self.anchor_data[self.anchor_data['fixed KPI name'] == kpi]
+                        score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
 
                     elif kpi_type == self.ADJACENCY:
-                        score, result, threshold = self.calculate_adjacency(kpi, kpi_filters)
+                        kpi_params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]
+                        score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
                     else:
                         Log.warning("KPI type '{}' is not supported".format(kpi_type))
                         continue
 
+                    extra_data = self.get_extra_data_from_params(kpi_params)
                     self.kpi_scores.update({kpi: score})
                     self.write_result(score, result, threshold, kpi,
-                                      category, set_name, template_data)
+                                      category, set_name, template_data, extra_data=extra_data)
                 except:
                     Log.warning("no score/result for '{}'".format(kpi_type))
 
@@ -482,9 +487,24 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                                                                                 [group_index:group_index + 10 ** 4])))
         return merged_queries
 
+    def get_extra_data_from_params(self, params):
+        extra_df = {}
+        if 'Brand' in params.columns and params['Brand'].values[0] != "":
+            extra_df['brand'] = params['Brand'].values[0]
+        else:
+            extra_df['brand'] = 'XX'
+
+        if 'Product Group Id' in params.columns and params['Product Group Id'].values[0] != "":
+            extra_df['group'] = params['Product Group Id'].values[0]
+        elif 'Product Group Id;A' in params.columns and 'Product Group Id;B' in params.columns:
+            extra_df['group'] = "A-" + params['Product Group Id;A'].values[0] + ";B-" + \
+                                                                    params['Product Group Id;B'].values[0]
+        else:
+            extra_df['group'] = 'XX'
+        return extra_df
+
     @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
-    def calculate_golden_zone(self, kpi, kpi_filters):
-        params = self.golden_zone_data[self.golden_zone_data['fixed KPI name'] == kpi]
+    def calculate_golden_zone(self, kpi, kpi_filters, params):
         kpi_filter = kpi_filters.copy()
         assortment_entity = self.PRODUCT_EAN_CODE_FIELD
         if params[self.BRANDS].values[0]:
@@ -499,9 +519,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
             kpi_filter[assortment_entity] = product_eans
             total_group_skus = int(self.tools.calculate_availability(**kpi_filter))
 
-        result = int(
-            self.tools.calculate_linear_facings_on_golden_zone(self.golden_zone_data_criteria,
-                                                               **kpi_filter))
+        result = int(self.tools.calculate_linear_facings_on_golden_zone(self.golden_zone_data_criteria, **kpi_filter))
         score = 0
         threshold = float(params[self.GROUP_GOLDEN_ZONE_THRESHOLD].values[0])
         if total_group_skus:
@@ -511,10 +529,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return score, result, threshold
 
     @kpi_runtime(kpi_desc='calculate_block', project_name='pngjp')
-    def calculate_block(self, kpi, kpi_filters):
+    def calculate_block(self, kpi, kpi_filters, params):
         allowed_products_filters = {}
         threshold = 0
-        params = self.block_data[self.block_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         block_threshold = params['Threshold'].values[0]
         if params[self.PRODUCT_GROUP_ID].values[0] is not None:
@@ -544,9 +561,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return score, result, threshold
 
     @kpi_runtime(kpi_desc='calculate_anchor', project_name='pngjp')
-    def calculate_anchor(self, kpi, kpi_filters):
+    def calculate_anchor(self, kpi, kpi_filters, params):
         score = result = threshold = 0
-        params = self.anchor_data[self.anchor_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         minimum_products = int(params['Minimum Products'].values[0])
         params.pop('Minimum Products')
@@ -556,7 +572,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         product_eans = self._get_ean_codes_by_product_group_id(**params)
         kpi_filter[self.PRODUCT_EAN_CODE_FIELD] = product_eans
 
-        allowed = {'product_type': ['Other', 'Empty']}
+        allowed = {'product_type': ['Other', 'Empty', 'Irrelevant']}
         # allowed = params['allowed']
         allowed_products = self._get_allowed_products(allowed)
         filtered_products_all = self._get_filtered_products()
@@ -597,10 +613,8 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         return score, result, threshold
 
     @kpi_runtime(kpi_desc='calculate_adjacency', project_name='pngjp')
-    def calculate_adjacency(self, kpi, kpi_filters):
-
+    def calculate_adjacency(self, kpi, kpi_filters, params):
         score = result = threshold = 0
-        params = self.adjacency_data[self.adjacency_data['fixed KPI name'] == kpi]
         kpi_filter = kpi_filters.copy()
         target = params['Threshold']
         target = float(target.values[0])
@@ -656,9 +670,9 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                             elif max(edges_a['shelfs']) <= min(edges_b['shelfs']):
                                 score = 100
                                 result = 1
-                            elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
-                                score = 100
-                                result = 1
+                            # elif max(edges_b['shelfs']) <= min(edges_a['shelfs']):
+                            #     score = 100
+                            #     result = 1
                         elif direction == 'Horizontal':
                             if set(edges_a['shelfs']).intersection(edges_b['shelfs']):
                                 extra_margin_a = (
@@ -693,10 +707,24 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
                 break
         return score, result, threshold
 
-    def write_result(self, score, result, threshold, kpi, category, set_name, template_data):
+    def write_result(self, score, result, threshold, kpi, category, set_name, template_data, extra_data=None):
         kpi_name = template_data.loc[template_data['fixed KPI name'] == kpi]['KPI name'].values[0]
-        kpi_name = self.KPI_FORMAT.format(category=category.encode(
-            'utf-8'), question=kpi_name.encode('utf-8'))
+        if extra_data is not None:
+            brand = extra_data['brand']
+            group = extra_data['group']
+            kpi_name = self.KPI_FORMAT.format(
+                category=category.encode('utf-8'),
+                brand=brand.encode('utf-8'),
+                group=str(group),
+                question=kpi_name.encode('utf-8'))
+        else:
+            kpi_name = self.KPI_FORMAT.format(
+                category=category.encode('utf-8'),
+                brand='XX',
+                group='XX',
+                question=kpi_name.encode('utf-8'))
+        while '  ' in kpi_name:
+            kpi_name = kpi_name.replace('  ', ' ')
         atomic_kpi_fk = \
             self.kpi_static_data[
                 self.kpi_static_data['fixed atomic_kpi_name'].str.encode('utf-8') == kpi.encode('utf-8')][

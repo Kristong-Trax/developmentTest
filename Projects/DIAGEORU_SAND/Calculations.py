@@ -6,7 +6,6 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 from Projects.DIAGEORU_SAND.KPIGenerator import DIAGEORUGenerator
 
-
 __author__ = 'Nimrod'
 
 
