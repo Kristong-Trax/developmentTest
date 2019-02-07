@@ -25,9 +25,11 @@ if __name__ == '__main__':
     project_name = 'gpus'
 
     sessions = [
-                'ff3f79ef-6d5e-4ea8-9a87-87ea60cbf629',
-                'd78f0285-b4e2-4a75-831f-f7b4a81b6eef',
-                ]
+                # 'ff3f79ef-6d5e-4ea8-9a87-87ea60cbf629',
+                # 'd78f0285-b4e2-4a75-831f-f7b4a81b6eef',
+'040aac07-013b-4d6b-a408-a6348faf317d'
+
+    ]
 
     for session in sessions:
         print('*************************************************************************')
@@ -38,16 +40,16 @@ if __name__ == '__main__':
         scif = data_provider['scene_item_facts']
         scenes = scif['scene_id'].unique().tolist()
 
-        # for scene in scenes:
-        #     print('scene', scene)
-        #     # scene = 16902
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in scenes:
+            print('scene', scene)
+            scene = 4041
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
 
-        output = Output()
-        Calculations(data_provider, output).run_project_calculations()
+        # output = Output()
+        # Calculations(data_provider, output).run_project_calculations()
 

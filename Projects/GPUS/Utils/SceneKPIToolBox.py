@@ -61,7 +61,7 @@ class SceneGPUSToolBox:
         """
         This function calculates the KPI results.
         """
-        if not self.filter_df(self.scif, self.brand_filter).empty:
+        if not self.filter_df(self.mpis, self.brand_filter).empty:
             self.calculate_adjacency('Adjacency', ['brand_name', 'category'])
         for result in self.kpi_results:
             self.write_to_db(**result)
