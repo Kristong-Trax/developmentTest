@@ -646,7 +646,7 @@ class DIAGEOBEERUSToolBox:
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
                 target=manufacturer_target)
         result = self.get_score(diageo_facings, den_res)
-        score = 1 if result >= target else 0
+        score = 1 if result > target else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
             denominator_result=den_res, result=score * 100, score=result * 100, weight=weight * 100,

@@ -61,10 +61,12 @@ class Definition(object):
     @staticmethod
     def _get_nbil_channel_data(nbil_data, channel, set_name):
         return nbil_data[(nbil_data['CHANNEL'] == channel) & (nbil_data['MARS_SUB-CATEGORY'] == set_name.upper())]
+        # return nbil_data[(nbil_data['CHANNEL'] == channel)]
 
     @staticmethod
     def _get_nbil_retailer_data(nbil_data, retailer, set_name, store_type=None):
         nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer) & (nbil_data['MARS_SUB-CATEGORY'] == set_name.upper())]
+        # nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer)]
         try:
             if nbil_data_filter['Store Type'].unique()[0]:
                 return nbil_data_filter[nbil_data_filter['Store Type'].str.contains(store_type)]
@@ -97,8 +99,8 @@ class Definition(object):
             'kpi_type': kpi[KPI_TYPE],
             'weight': kpi[WEIGHT] / 100,
             'scene_types': str(kpi[RELEVANT_SCENE_TYPES]).split(SEPARATOR),
-            'depend_on': kpi[DEPEND_ON],
-            'depend_score': kpi[DEPEND_SCORE],
+            'depend_on': str(kpi[DEPEND_ON]).split(SEPARATOR),
+            'depend_score': str(kpi[DEPEND_SCORE]).split(SEPARATOR),
             # 'kpi_category': kpi['Target'],
         }
 
@@ -168,7 +170,8 @@ class NbilLoader(object):
     def _get_general_info_from_template(self, row):
         return {
             'set': self._set_name,
-            'kpi': row['MARS_SUB-CATEGORY'],
+            # 'kpi': row['MARS_SUB-CATEGORY'],
+            'kpi': row['SubSection'],
             'atomic': row['UPC'],
             'kpi_type': self._kpi_type,
             'weight': None,

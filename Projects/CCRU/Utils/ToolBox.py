@@ -202,7 +202,8 @@ class CCRUKPIToolBox:
             include_list.extend(filtered_scenes)
         else:
             if params.get('Scenes to include'):
-                scenes_to_include = params.get('Scenes to include').split(', ')
+                scenes_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
                         include_list_candidate.extend(scenes_data[scene])
@@ -212,7 +213,8 @@ class CCRUKPIToolBox:
 
             if params.get('Locations to include'):
                 include_list_candidate = []
-                locations_to_include = params.get('Locations to include').split(', ')
+                locations_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Locations to include')).split(', ')]
                 for location in locations_to_include:
                     if location in location_data.keys():
                         include_list_candidate.extend(location_data[location])
@@ -226,9 +228,11 @@ class CCRUKPIToolBox:
             if params.get('Sub locations to include'):
                 include_list_candidate = []
                 if type(params.get('Sub locations to include')) == float:
-                    sub_locations_to_include = str(int(params.get('Sub locations to include'))).split(', ')
+                    sub_locations_to_include = \
+                        [unicode(x).strip() for x in unicode(int(params.get('Sub locations to include'))).split(', ')]
                 else:
-                    sub_locations_to_include = str(params.get('Sub locations to include')).split(', ')
+                    sub_locations_to_include = \
+                        [unicode(x).strip() for x in unicode(params.get('Sub locations to include')).split(', ')]
                 for sub_location in sub_locations_to_include:
                     if sub_location in sub_location_data.keys():
                         include_list_candidate.extend(sub_location_data[sub_location])
@@ -241,7 +245,8 @@ class CCRUKPIToolBox:
 
             if params.get('Zone to include'):
                 include_list_candidate = []
-                store_areas_to_include = str(params.get('Zone to include')).split(', ')
+                store_areas_to_include = \
+                    [unicode(x).strip() for x in unicode(params.get('Zone to include')).split(', ')]
                 for store_area in store_areas_to_include:
                     if store_area in store_area_data.keys():
                         include_list_candidate.extend(store_area_data[store_area])
@@ -254,19 +259,22 @@ class CCRUKPIToolBox:
 
         exclude_list = []
         if params.get('Scenes to exclude'):
-            scenes_to_exclude = params.get('Scenes to exclude').split(', ')
+            scenes_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Scenes to exclude')).split(', ')]
             for scene in scenes_to_exclude:
                 if scene in scenes_data.keys():
                     exclude_list.extend(scenes_data[scene])
 
         if params.get('Locations to exclude'):
-            locations_to_exclude = params.get('Locations to exclude').split(', ')
+            locations_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Locations to exclude')).split(', ')]
             for location in locations_to_exclude:
                 if location in location_data.keys():
                     exclude_list.extend(location_data[location])
 
         if params.get('Sub locations to exclude'):
-            sub_locations_to_exclude = str(params.get('Sub locations to exclude')).split(', ')
+            sub_locations_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get('Sub locations to exclude')).split(', ')]
             for sub_location in sub_locations_to_exclude:
                 if sub_location in sub_location_data.keys():
                     exclude_list.extend(sub_location_data[sub_location])
@@ -371,7 +379,7 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = unicode(params.get('Values')).strip().split(', ')
+        values_list = [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
@@ -394,37 +402,43 @@ class CCRUKPIToolBox:
                 scenes = self.get_relevant_scenes(params)
 
         if params.get("Form Factor"):
-            form_factors = [str(form_factor) for form_factor in params.get("Form Factor").split(", ")]
+            form_factors = \
+                [unicode(x).strip() for x in unicode(params.get("Form Factor")).split(", ")]
         else:
             form_factors = []
         if params.get("Size"):
-            sizes = [float(size) for size in str(params.get('Size')).split(", ")]
-            sizes = [int(size) if int(size) == size else size for size in sizes]
+            sizes = [float(x) for x in str(params.get('Size')).split(", ")]
+            sizes = [int(x) if int(x) == x else x for x in sizes]
         else:
             sizes = []
         if params.get("Products to exclude"):
-            products_to_exclude = [int(float(product)) for product in \
-                                   str(params.get("Products to exclude")).split(", ")]
+            products_to_exclude = \
+                [unicode(float(x)) for x in unicode(params.get("Products to exclude")).split(", ")]
         else:
             products_to_exclude = []
         if params.get("Form factors to exclude"):
-            form_factors_to_exclude = str(params.get("Form factors to exclude")).split(", ")
+            form_factors_to_exclude = \
+                [unicode(x).strip() for x in unicode(params.get("Form factors to exclude")).split(", ")]
         else:
             form_factors_to_exclude = []
         if params.get("Product Category"):
-            product_categories = str(params.get("Product Category")).split(", ")
+            product_categories = \
+                [unicode(x).strip() for x in unicode(params.get("Product Category")).split(", ")]
         else:
             product_categories = []
         if params.get("Sub category"):
-            product_sub_categories = str(params.get("Sub category")).split(", ")
+            product_sub_categories = \
+                [unicode(x).strip() for x in unicode(params.get("Sub category")).split(", ")]
         else:
             product_sub_categories = []
         if params.get("Brand"):
-            product_brands = str(params.get("Brand")).split(", ")
+            product_brands = \
+                [unicode(x).strip() for x in unicode(params.get("Brand")).split(", ")]
         else:
             product_brands = []
         if params.get("Manufacturer"):
-            product_manufacturers = str(params.get("Manufacturer")).split(", ")
+            product_manufacturers = \
+                [unicode(x).strip() for x in unicode(params.get("Manufacturer")).split(", ")]
         else:
             product_manufacturers = []
         if not product_manufacturers:
@@ -533,7 +547,7 @@ class CCRUKPIToolBox:
                 kpi_total_res = len(scenes)
 
             elif p.get('Type') == 'SCENES':
-                values_list = [str(s) for s in p.get('Values').split(', ')]
+                values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
                 for scene in scenes:
                     try:
                         scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
@@ -545,7 +559,7 @@ class CCRUKPIToolBox:
                     except IndexError as e:
                         continue
             elif p.get('Type') == 'LOCATION_TYPE':
-                values_list = [str(s) for s in p.get('Values').split(', ')]
+                values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
                 for scene in scenes:
                     try:
                         location_type = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[0]
@@ -588,7 +602,7 @@ class CCRUKPIToolBox:
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
             if not p.get('Children'):
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
@@ -689,8 +703,8 @@ class CCRUKPIToolBox:
             survey_data = self.survey_response.loc[self.survey_response['question_text'] == p.get('Values')]
             if not survey_data['selected_option_text'].empty:
                 result = survey_data['selected_option_text'].values[0]
-                targets = [d.get(target) if target in d.keys() else target
-                           for target in unicode(p.get('Target')).split(", ")]
+                targets = [d.get(x) if x in d.keys() else x
+                           for x in unicode(p.get('Target')).split(", ")]
                 if result in targets:
                     score = 100
                 else:
@@ -732,7 +746,7 @@ class CCRUKPIToolBox:
                 continue
             if p.get('depends on'):
                 scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
-                values_list = [str(s) for s in p.get('depends on').split(', ')]
+                values_list = [unicode(x).strip() for x in p.get('depends on').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 if number_relevant_scenes < 1:
                     ratio = 0
@@ -787,7 +801,8 @@ class CCRUKPIToolBox:
         relevant_scenes = scenes
 
         if params.get('Manufacturer'):
-            manufacturers = params.get('Manufacturer').strip().split(', ')
+            manufacturers = \
+                [unicode(x).strip() for x in unicode(params.get('Manufacturer')).strip().split(', ')]
         else:
             manufacturers = self.kpi_fetcher.TCCC
         if params.get('Formula').strip() == 'sos with empty':
@@ -802,7 +817,7 @@ class CCRUKPIToolBox:
                 return 0
         else:
             try:
-                values_list = params.get('Values').split(', ')
+                values_list = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
             except Exception as e:
                 values_list = [params.get('Values')]
             if params.get('Type') == 'MAN':
@@ -935,8 +950,8 @@ class CCRUKPIToolBox:
                 #     score=1
             else:
                 score = self.calculate_share_of_cch(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
                 set_total_res += round(score)
             else:
@@ -984,8 +999,8 @@ class CCRUKPIToolBox:
                 continue
             scenes = self.get_relevant_scenes(p)
             score = self.calculate_number_of_scenes_given_facings(p, scenes)
-            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
+            atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
             if p.get('KPI Weight') is None:
                 set_total_res += round(score)
             else:
@@ -1114,7 +1129,7 @@ class CCRUKPIToolBox:
             # saving to DB
             if p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
                 if p.get('KPI Weight') is None:
                     set_total_res += round(score)
                 else:
@@ -1210,7 +1225,7 @@ class CCRUKPIToolBox:
             if p.get('Children') is not None:
                 children_scores = []
                 for child in params.values()[0]:
-                    if child.get('KPI ID') in [int(kpi) for kpi in p.get('Children').split(', ')]:
+                    if child.get('KPI ID') in [int(x) for x in p.get('Children').split(', ')]:
                         res = self.calculate_number_of_skus_in_single_scene_type(params, child, kpi_fk)
                         children_scores.append(res)
                 score = max(children_scores)
@@ -1253,7 +1268,7 @@ class CCRUKPIToolBox:
         if not scenes:
             scenes = self.get_relevant_scenes(params)
         if params.get('Product Category'):
-            category = [str(params.get('Product Category'))]
+            category = [unicode(x).strip() for x in unicode(params.get('Product Category')).split(', ')]
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other'])) &
                 (self.scif['category'].isin(category))]
@@ -1261,10 +1276,7 @@ class CCRUKPIToolBox:
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
         all_products_by_ean_code = relevant_products_and_facings.groupby(['product_ean_code'])['facings'].sum()
-        if ', ' not in str(params.get('Values')):
-            tested_sku = [str(params.get('Values'))]
-        else:
-            tested_sku = [str(s) for s in params.get('Values').split(', ')]
+        tested_sku = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
         tested_facings = \
             relevant_products_and_facings[relevant_products_and_facings['product_ean_code'].isin(tested_sku)][
                 'facings'].sum()
@@ -1286,7 +1298,7 @@ class CCRUKPIToolBox:
         scenes = self.get_relevant_scenes(p)
         if p.get('Type') == 'SCENES':
             if p.get('Values'):
-                values_list = [str(s) for s in p.get('Values').split(', ')]
+                values_list = [unicode(x).strip() for x in unicode(p.get('Values')).split(', ')]
                 for scene in scenes:
                     try:
                         scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
@@ -1300,7 +1312,7 @@ class CCRUKPIToolBox:
             else:
                 return len(scenes)
         elif p.get('Type') == 'LOCATION_TYPE':
-            values_list = [str(s) for s in p.get('Values').split(', ')]
+            values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
             for scene in scenes:
                 try:
                     location_type = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[0]
@@ -1422,7 +1434,7 @@ class CCRUKPIToolBox:
                     kpi_total += atomic_res
                     # write to DB
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
@@ -1509,7 +1521,7 @@ class CCRUKPIToolBox:
                     if atomic_score == -1:
                         atomic_score = self.calculate_score(atomic_res, c)
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                     attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
@@ -1637,7 +1649,7 @@ class CCRUKPIToolBox:
                             sub_atomic_res = 0
                             sub_atomic_score = self.calculate_score(sub_atomic_res, sub_atomic_info)
                             kpi_name = sub_atomic_info.get('KPI name Eng')
-                            sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
+                            sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
                             attributes_for_level4 = self.create_attributes_for_level3_df(sub_atomic_info, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                             self.write_to_kpi_results_old(attributes_for_level4, 'level4')
                     atomic_res = 0
@@ -1645,7 +1657,7 @@ class CCRUKPIToolBox:
                     self.calculate_score(atomic_res, c)
 
                 kpi_name = c.get('KPI name Eng')
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name)
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
                 attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             score = self.calculate_score(kpi_total, p)
@@ -1703,7 +1715,7 @@ class CCRUKPIToolBox:
                     if parent.get('Formula').strip() == 'number of atomic KPI Passed on the same scene':
                         continue
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
-                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
+                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
                 attributes_for_level4 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
@@ -1764,10 +1776,17 @@ class CCRUKPIToolBox:
                         else:
                             kpi_total += atomic_score
                             kpi_total_weight += 1
+
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'))
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
+                    if c.get("Formula").strip() == "each SKU hits facings target":
+                        attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
+                                                                                     kpi_fk, atomic_kpi_fk)
+                    else:
+                        attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score,
+                                                                                     kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
             if kpi_total_weight:
                 if p.get('Formula').strip() != "Weighted Sum":
                     kpi_total /= kpi_total_weight
@@ -1790,7 +1809,7 @@ class CCRUKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [str(s) for s in params.get('Scenes to include').split(', ')]
+                values_list = [unicode(x).strip() for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
             else:
@@ -1817,11 +1836,11 @@ class CCRUKPIToolBox:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [str(s) for s in p.get('Scenes to include').split(', ')]
+                            scenes_values_list = [unicode(x).strip() for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
                         if p.get('Locations to include'):
-                            location_values_list = [str(s) for s in p.get('Locations to include').split(', ')]
+                            location_values_list = [unicode(x).strip() for x in p.get('Locations to include').split(', ')]
                             if flag:
                                 if sum(final_scenes):
                                     final_scenes = scenes_info[final_scenes]['location_type'].isin(location_values_list)
@@ -1830,7 +1849,7 @@ class CCRUKPIToolBox:
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [str(s) for s in p.get('Scenes to include').split(', ')]
+                        values_list = [unicode(x).strip() for x in p.get('Scenes to include').split(', ')]
                         number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
 
                 score = self.calculate_score(number_relevant_scenes, p)
@@ -1840,7 +1859,7 @@ class CCRUKPIToolBox:
                     set_total_res += round(score) * p.get('KPI Weight')
 
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'))
+                atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
 
                 if level == 2:
                     attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
@@ -3065,7 +3084,7 @@ class CCRUKPIToolBox:
                     kpi_result = self.kpi_scores_and_results[POS][kpi_id].get('score') if kpi_id else None
 
                 elif p.get('Formula').strip() == 'Number of KPIs passed in POS':
-                    kpi_names = p.get('Values').split(', ')
+                    kpi_names = [unicode(x).strip() for x in unicode(p.get('Values')).split(', ')]
                     kpi_result = 0
                     for kpi_name in kpi_names:
                         kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
