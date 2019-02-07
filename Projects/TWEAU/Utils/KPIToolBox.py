@@ -58,7 +58,7 @@ NUMBER_OF_SHELVES = 'number_of_shelves'
 SHELF_NUMBER = 'shelf_number'
 FACING_SEQUENCE_NUMBER = 'facing_sequence_number'
 ZONE_NAME = 'zone'
-PROD_ID_KEY_SCIF = "item_id"
+PROD_ID_COL_SCIF = "item_id"
 # additional filters
 # this is to filter but not group
 # key - key name in self.scif
@@ -191,6 +191,9 @@ class TWEAUToolBox:
                         data_to_write = each_data_to_write.iloc[0]
                         for each_product_id in products_to_write:
                             if int(each_product_id) not in self.empty_product_ids:
+                                in_assort_sc = int(self.scif.query("item_id=={prod_id}"
+                                                                   .format(prod_id=each_product_id))
+                                                   .in_assort_sc.values[0])
                                 self.common.write_to_db_result(
                                     fk=int(data_to_write.fk),
                                     numerator_id=int(each_product_id),
@@ -198,7 +201,7 @@ class TWEAUToolBox:
                                     denominator_id=int(data_to_write.denominator_id),
                                     denominator_result=int(data_to_write.scene_id),
                                     result=int(data_to_write.zone_number),
-                                    score=1,
+                                    score=in_assort_sc,
                                     identifier_result=str(data_to_write.kpi_name),
                                     context_id=int(data_to_write.zone_number),
                                 )
@@ -265,8 +268,8 @@ class TWEAUToolBox:
                     NUMERATOR_FILTER_ENTITIES,
                     additional_filters=LINEAR_NUMERATOR_ADDITIONAL_FILTERS_PER_COL)
                 # remove empty/irrelevant products
-                numerator_filter_string += " and {prod_id_key_scif} not in {empty_prod_ids}".format(
-                    prod_id_key_scif=PROD_ID_KEY_SCIF,
+                numerator_filter_string += " and {prod_id_col_scif} not in {empty_prod_ids}".format(
+                    prod_id_col_scif=PROD_ID_COL_SCIF,
                     empty_prod_ids=self.empty_product_ids.tolist()
                 )
                 if numerator_filter_string:
@@ -292,7 +295,7 @@ class TWEAUToolBox:
                     for idx, numerator_row in numerator_data.iterrows():
                         numerator = numerator_row.get(length_field)
                         try:
-                            result = round(float(numerator) / float(denominator), ROUNDING_DIGITS)
+                            result = float(numerator) / float(denominator)
                         except ZeroDivisionError:
                             result = 0
                         numerator_id = int(numerator_row[EXCEL_DB_MAP[kpi_sheet_row.numerator_fk]])
@@ -302,13 +305,6 @@ class TWEAUToolBox:
                                                                  denominator_row)
                         if not denominator_id:
                             raise Exception("Denominator ID cannot be found. [TWEAU/Utils/KPIToolBox.py]")
-                        print "Saving for {kpi_name} with pk={pk}. Numerator={num} & Denominator={den}".format(
-                            idx=idx,
-                            kpi_name=kpi_sheet_row[KPI_NAME],
-                            pk=kpi['pk'],
-                            num=numerator_id,
-                            den=denominator_id,
-                        )
                         self.common.write_to_db_result(fk=int(kpi['pk']),
                                                        numerator_id=numerator_id,
                                                        numerator_result=numerator,
@@ -376,7 +372,7 @@ class TWEAUToolBox:
                 ZONE_NUMERATOR_FILTER_ENTITIES,
                 additional_filters=ZONE_ADDITIONAL_FILTERS_PER_COL,
             )
-            # combined match product in scene and scif
+            # combined tables
             match_product_df = pd.merge(self.match_product_in_scene, self.products, how='left',
                                         left_on=['product_fk'], right_on=['product_fk'])
 
@@ -501,7 +497,10 @@ class TWEAUToolBox:
             denominator_data = denominator_row.get(denominator_key_str,
                                                    numerator_row.get(denominator_key_str,
                                                                      self.scif.get(denominator_key_str)))
-            denominator_id = denominator_data.drop_duplicates()[0]
+            if type(denominator_data) == pd.Series:
+                denominator_id = denominator_data.drop_duplicates()[0]
+            else:
+                denominator_id = denominator_data
         return denominator_id
 
     def get_template_details(self, sheet_name):
@@ -571,6 +570,7 @@ def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters
                 temp_add_filter_string += '{key}!="{value}" or '. \
                     format(key=col_name, value=each_filter[1].strip())
             temp_add_filter_string = temp_add_filter_string.rstrip('or ')
-        filter_string += temp_add_filter_string + " and "
+        if not filter_string.endswith(" and "):
+            filter_string += temp_add_filter_string + " and "
     filter_string = filter_string.rstrip('and ')
     return filters, filter_string
