@@ -53,6 +53,7 @@ class Results(object):
             # if atomic['atomic'] not in [
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
+            #     'Is Nutro Ingredient Transparency Dog food Feeding Philosophy Segment blocked?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -77,7 +78,7 @@ class Results(object):
             if isinstance(kpi_res, tuple):
                 errata = [i for i in kpi_res[1:]]
                 kpi_res = kpi_res[0]
-
+            # print('||||| Result for {} is: {}'.format(atomic['atomic'], kpi_res))
             result = {'result': kpi_res,
                       'set': atomic['set'],
                       'kpi': atomic['kpi'],
@@ -182,24 +183,22 @@ class Results(object):
     def _check_atomic_dependency(self, atomic, pushed_back_list, atomic_results):
         depends = zip(atomic['depend_on'], atomic['depend_score'])
         bar = sum([1 for i in atomic['depend_score'] if i is not None and i != ''])
+        ret = CalculationDependencyCheck.PUSH_BACK
+        score = 0
         if atomic_results:
             results_df = pd.concat(atomic_results.values())
-            score = 0
             for depend_on, depend_score in depends:
                 if depend_on in results_df['atomic'].tolist():
                     if self.equivalence(results_df[results_df['atomic']==depend_on]['result'].values[0], depend_score):
                         score += 1
             if score == bar:
-                return CalculationDependencyCheck.CALCULATE
-            else:
-                if atomic['atomic'] in pushed_back_list or score < bar:
-                    self.dependency_tracker[atomic['atomic']] += 1
-                if self.dependency_tracker[atomic['atomic']] > 5:
-                    return CalculationDependencyCheck.IGNORE
-                else:
-                    return CalculationDependencyCheck.PUSH_BACK
-        else:
-            return CalculationDependencyCheck.PUSH_BACK
+                ret = CalculationDependencyCheck.CALCULATE
+        if atomic['atomic'] in pushed_back_list or score < bar:
+            self.dependency_tracker[atomic['atomic']] += 1
+        if self.dependency_tracker[atomic['atomic']] > 5:
+            ret = CalculationDependencyCheck.IGNORE
+        return ret
+
 
     @staticmethod
     def equivalence(actual, expected):
