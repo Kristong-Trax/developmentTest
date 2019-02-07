@@ -344,6 +344,10 @@ class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
             score = self.calculate_block(atomic_kpi_data)
             if not score:
                 result = 0
+                break
+            if np.isnan(score):
+                result = np.nan
+                break
         return result
 
     def check_block(self, block, bay):
