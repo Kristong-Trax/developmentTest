@@ -24,4 +24,4 @@ class SceneGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
-        self.common.commit_results_data()
+        self.common.commit_results_data(result_entity='scene')

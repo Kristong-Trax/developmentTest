@@ -102,7 +102,7 @@ class SceneGPUSToolBox:
                     base_level = level.split('_')[0]
                     level_fk_col = '{}_fk'.format(base_level)
                     fk_dict = adj_mpis[[level, level_fk_col]].set_index(level)[level_fk_col].to_dict()
-                    real_edge = Const.ALLOWED_EDGES - set(edge_dir)
+                    real_edge = Const.ALLOWED_EDGES - {edge_dir}
                     kpi = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(), base_kpi_name)
                     adj_items = adj_mpis[level].unique()
                     for item in adj_items:
