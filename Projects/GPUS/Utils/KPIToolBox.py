@@ -2,6 +2,8 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 
 # from Trax.Utils.Logging.Logger import Log
@@ -60,6 +62,8 @@ class GPUSToolBox:
         self.all_man_filter = {'manufacturer_name': list(self.all_man.keys())}
         self.kpi_results = []
 
+        self.assortment = Assortment(self.data_provider, self.output)
+
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -73,8 +77,11 @@ class GPUSToolBox:
             self.calculate_manufacturer_linear_sos('Manufacturer out of Category Linear SOS')
             self.calculate_brand_linear_sos('Brand out of Category Linear SOS')
 
+            self.calculate_assortment('Distribution')
+
         if not self.filter_df(self.scif, self.cat_filter).empty:
             self.calculate_share_of_empty('Share of Empty out of Category')
+            pass
 
         for result in self.kpi_results:
             self.write_to_db(**result)
@@ -119,7 +126,7 @@ class GPUSToolBox:
                     continue
                 num = num_df[sum_col].sum()
                 den = den_df[sum_col].sum()
-                res = (float(num) / den) * 100 if num else 0
+                res = self.safe_divide(num, den)
                 kpi_res = {'kpi_name': kpi,
                            'numerator_id': num_fks[num_name],
                            'numerator_result': num,
@@ -131,6 +138,38 @@ class GPUSToolBox:
 
     def grouper(self, filter, df):
         return self.filter_df(df, filter).groupby(filter.keys()[0])
+
+    def calculate_assortment(self, kpi):
+        lvl3_result = self.assortment.calculate_lvl3_assortment()
+        if not lvl3_result.empty:
+            lvl3_result['target'] = 1
+            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+            lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
+            lvl1_result['total'] = lvl2_result['total'].sum()
+            lvl1_result['passes'] = lvl2_result['passes'].sum()
+
+            self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_fk',
+                                          'target', None, 'assortment_group_fk')
+            self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
+                                          'total', 'assortment_group_fk', 'assortment_super_group_fk')
+            self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'assortment_super_group_fk', 'passes',
+                                          'assortment_super_group_fk', 'total', 'assortment_super_group_fk', None)
+
+    def parse_assortment_results(self, df, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id, parent):
+        for i, row in df.iterrows():
+            kpi_res = {'kpi_fk': row[kpi_col],
+                       'numerator_id': row[num_id_col],
+                       'numerator_result': row[num_col],
+                       'denominator_id': row[den_id_col],
+                       'denominator_result': row[den_col],
+                       'score': 1,
+                       'result': self.safe_divide(row[num_col], row[den_col]),
+                       'ident_result': row[self_id] if self_id else None,
+                       'ident_parent': row[parent] if parent else None}
+            self.kpi_results.append(kpi_res)
+
+    def safe_divide(self, num, den):
+        return (float(num) / den) * 100 if num else 0
 
     @staticmethod
     def filter_df(df, filters, exclude=0):
@@ -167,8 +206,8 @@ class GPUSToolBox:
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
         return mpis
 
-    def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=None,
-                    denominator_result=None, numerator_id=999, denominator_id=999):
+    def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None, denominator_result=None,
+                    numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None, kpi_fk = None):
         """
         writes result in the DB
         :param kpi_name: str
@@ -177,8 +216,10 @@ class GPUSToolBox:
         :param result: str
         :param threshold: int
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if not kpi_fk:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id)
+                                       numerator_id=numerator_id, denominator_id=denominator_id,
+                                       identifier_result=ident_result, identifier_parent=ident_parent)
 
