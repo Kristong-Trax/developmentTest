@@ -122,18 +122,18 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             relevant_template = self.templates[self.retailer]
             products_in_assortment = relevant_template[relevant_template[Const.SET_SIZE] <= set_size][Const.UPC].tolist()
             products_in_scene = self.scif[(self.scif['scene_id'] == scene_id) &
-                                          (self.scif['facings'] > 0)][Const.NIELSEN_UPC].tolist()
+                                          (self.scif['facings'] > 0)]['product_fk'].tolist()
             for upc in products_in_assortment:
                 try:
-                    product_data = self.all_products[self.all_products[Const.NIELSEN_UPC] == upc].iloc[0]
-                    product_fk = product_data['product_fk'].iloc[0]
+                    product_data = self.all_products[self.all_products[Const.NIELSEN_UPC].str.contains(unicode(upc), na=False)].iloc[0]
+                    product_fk = product_data['product_fk']
                 except IndexError:
                     Log.warning('UPC {} for {} does not exist in the database'.format(upc, self.retailer))
                     continue
-                result = 1 if upc in products_in_scene else 0
+                result = 2 if product_fk in products_in_scene else 1
                 self.common_db.write_to_db_result_new_tables(kpi_fk, product_fk, result, result,
                                                              denominator_id=template_fk, denominator_result=1,
-                                                             score=result)
+                                                             score=scene_id)
 
     # helpers
     def get_kpi_fk_from_kpi_name(self, kpi_name):
@@ -154,4 +154,4 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         return self.scif[self.scif['category'].isin(category_list)]['product_fk'].unique().tolist()
 
     def commit_results_without_delete(self):
-        self.common_db.commit_results_data_without_delete()
+        self.common_db.commit_results_data_without_delete_version2()

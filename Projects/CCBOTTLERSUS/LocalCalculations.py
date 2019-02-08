@@ -284,7 +284,7 @@ if __name__ == '__main__':
 
    # warehouse juice
    sessions = [
-        'fa66bec2-00d0-423f-8e91-280f50ce0661'
+        'bf142ea0-c210-49db-94bb-94cdfb9d7361'
    ]
 
    for session in sessions:
