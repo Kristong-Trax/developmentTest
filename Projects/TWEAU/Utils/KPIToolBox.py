@@ -266,18 +266,18 @@ class TWEAUToolBox:
                     kpi_sheet_row,
                     NUMERATOR_FILTER_ENTITIES,
                     additional_filters=LINEAR_NUMERATOR_ADDITIONAL_FILTERS_PER_COL)
-                # remove empty/irrelevant products
-                numerator_filter_string += " and {prod_id_col_scif} not in {empty_prod_ids}".format(
+                # Adding compulsory filtering values
+                if numerator_filter_string:
+                    numerator_filter_string += " and "
+                # 1. remove empty/irrelevant products
+                numerator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
                     prod_id_col_scif=PROD_ID_COL_SCIF,
                     empty_prod_ids=self.empty_product_ids.tolist()
                 )
-                if numerator_filter_string:
-                    numerator_data = self.scif.query(numerator_filter_string).fillna(0). \
-                        groupby(numerator_filters, as_index=False).agg({length_field: 'sum'})
-                else:
-                    # nothing to query; group and get all data
-                    numerator_data = pd.DataFrame(self.scif.groupby(numerator_filters, as_index=False).
-                                                  agg({length_field: 'sum'}))
+                # 2. remove zero facings
+                numerator_filter_string += " and facings > 0"
+                numerator_data = self.scif.query(numerator_filter_string).fillna(0). \
+                    groupby(numerator_filters, as_index=False).agg({length_field: 'sum'})
                 # DENOMINATOR
                 denominator_row = category_sheet.loc[(category_sheet[KPI_NAME] == kpi_sheet_row[KPI_NAME])].iloc[0]
                 denominator_filters, denominator_filter_string = get_filter_string_per_row(
@@ -534,7 +534,7 @@ def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters
     Function to generate the filter string with list of filters.
     :param kpi_sheet_row: pd.Series
     :param filter_entities: list of filters as in excel
-    :param additional_filters: dictionary with tuple values
+    :param additional_filters: None or dictionary with tuple values
     :return: tuple >> (filters, filter_string)
     """
     filter_string = ''
