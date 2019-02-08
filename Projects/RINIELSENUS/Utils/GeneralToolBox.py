@@ -6,6 +6,8 @@ import pandas as pd
 from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
+from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
+
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -708,25 +710,20 @@ class MarsUsGENERALToolBox:
         products_count = sum(matches['counts'])
         return avg_shelf / products_count
 
+    def make_net_x_block(self, scene, filters, allowed_products_filters):
+        scene_filter = {'scene_fk': scene}
+        result = self.block.network_x_block_together(filters, location=scene_filter,
+                                                     additional={'allowed_products_filters': allowed_products_filters,
+                                                                 'include_stacking': False,
+                                                                 'check_vertical_horizontal': True})
+        blocks = result[result['is_block'] == True]
+        return blocks, result
+
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
                                  n_cluster=None, **filters):
-        """
-        :param biggest_block:
-        :param block_products1:
-        :param block_products2:
-        :param block_of_blocks:
-        :param vertical: if needed to check vertical block by average shelf
-        :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
-        :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
-        :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
-                                    in order for KPI to pass (if ratio=1, then only one block is allowed).
-        :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
-                                False - The result is True if at least one scene has a block, False - otherwise.
-        :param filters: These are the parameters which the blocks are checked for.
-        :return: see 'result_by_scene' above.
-        """
+
         probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
@@ -739,11 +736,23 @@ class MarsUsGENERALToolBox:
         cluster_ratios = []
         for scene in relevant_scenes:
             # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
-            # scene_graph = self.position_graphs.get(scene).copy()
-            scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
 
-            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
-                                                          include_empty=include_empty, **filters)
+            block, all_blocks = self.make_net_x_block(scene, filters, allowed_products_filters)
+
+            if not block.empty:
+                if biggest_block:
+                    continue
+                if result_by_scene:
+                    number_of_blocked_scenes += 1
+                    break  # This seems wrong....
+                else:
+                    all_vertices = {v.index for v in scene_graph.vs}
+                    non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+                    scene_graph.delete_vertices(non_cluster_vertices)
+                    if vertical:
+                        return {'block': True, 'shelves': len(
+                            set(scene_graph.vs['shelf_number']))}
+                    return cluster_ratio, scene_graph
 
             if block_of_blocks:
                 new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
@@ -770,27 +779,7 @@ class MarsUsGENERALToolBox:
                         cluster_ratio2 = 0
                     if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
                         return True
-                else:
-                    relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
-                    if len(new_relevant_vertices) > 0:
-                        cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
-                    else:
-                        cluster_ratio = 0
-                    cluster_ratios.append(cluster_ratio)
-                    if biggest_block:
-                        continue
-                    if cluster_ratio >= minimum_block_ratio:
-                        if result_by_scene:
-                            number_of_blocked_scenes += 1
-                            break
-                        else:
-                            all_vertices = {v.index for v in scene_graph.vs}
-                            non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
-                            scene_graph.delete_vertices(non_cluster_vertices)
-                            if vertical:
-                                return {'block': True, 'shelves': len(
-                                    set(scene_graph.vs['shelf_number']))}
-                            return cluster_ratio, scene_graph
+
             if n_cluster is not None:
                 copy_of_cluster_ratios = cluster_ratios[:]
                 largest_cluster = max(copy_of_cluster_ratios)  # 39
@@ -816,6 +805,115 @@ class MarsUsGENERALToolBox:
                 return number_of_blocked_scenes, len(relevant_scenes)
             else:
                 return False
+
+    # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+    #                              minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
+    #                              block_products1=None, block_products2=None, vertical=False, biggest_block=False,
+    #                              n_cluster=None, **filters):
+    #     """
+    #     :param biggest_block:
+    #     :param block_products1:
+    #     :param block_products2:
+    #     :param block_of_blocks:
+    #     :param vertical: if needed to check vertical block by average shelf
+    #     :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
+    #     :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
+    #     :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
+    #                                 in order for KPI to pass (if ratio=1, then only one block is allowed).
+    #     :param result_by_scene: True - The result is a tuple of (number of passed scenes, total relevant scenes);
+    #                             False - The result is True if at least one scene has a block, False - otherwise.
+    #     :param filters: These are the parameters which the blocks are checked for.
+    #     :return: see 'result_by_scene' above.
+    #     """
+    #     probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
+    #     filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+    #     if len(relevant_scenes) == 0:
+    #         if result_by_scene:
+    #             return 0, 0
+    #         else:
+    #             Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+    #             return False
+    #     number_of_blocked_scenes = 0
+    #     cluster_ratios = []
+    #     for scene in relevant_scenes:
+    #         # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
+    #         # scene_graph = self.position_graphs.get(scene).copy()
+    #         scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
+    #
+    #         clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
+    #                                                       include_empty=include_empty, **filters)
+    #
+    #         if block_of_blocks:
+    #             new_relevant_vertices1 = self.filter_vertices_from_graph(scene_graph, **block_products1)
+    #             new_relevant_vertices2 = self.filter_vertices_from_graph(scene_graph, **block_products2)
+    #         else:
+    #             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
+    #         for cluster in clusters:
+    #             # print('\n\n')
+    #             # sorted_clust = sorted(scene_graph.vs[cluster], key=lambda x: [x['bay_number'], x['shelf_number'],
+    #             #                                                               x['shelf_px_left']])
+    #             # for i in sorted_clust:
+    #             #     print('bay:', i['bay_number'], 'shelf', i['shelf_number'], i['Sub-section'], i['Customer Brand'],
+    #             #           i['Sub Brand'], i['Segment'], i['product_name'])
+    #             if block_of_blocks:
+    #                 relevant_vertices_in_cluster1 = set(cluster).intersection(new_relevant_vertices1)
+    #                 if len(new_relevant_vertices1) > 0:
+    #                     cluster_ratio1 = len(relevant_vertices_in_cluster1) / float(len(new_relevant_vertices1))
+    #                 else:
+    #                     cluster_ratio1 = 0
+    #                 relevant_vertices_in_cluster2 = set(cluster).intersection(new_relevant_vertices2)
+    #                 if len(new_relevant_vertices2) > 0:
+    #                     cluster_ratio2 = len(relevant_vertices_in_cluster2) / float(len(new_relevant_vertices2))
+    #                 else:
+    #                     cluster_ratio2 = 0
+    #                 if cluster_ratio1 >= minimum_block_ratio and cluster_ratio2 >= minimum_block_ratio:
+    #                     return True
+    #             else:
+    #                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
+    #                 if len(new_relevant_vertices) > 0:
+    #                     cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+    #                 else:
+    #                     cluster_ratio = 0
+    #                 cluster_ratios.append(cluster_ratio)
+    #                 if biggest_block:
+    #                     continue
+    #                 if cluster_ratio >= minimum_block_ratio:
+    #                     if result_by_scene:
+    #                         number_of_blocked_scenes += 1
+    #                         break
+    #                     else:
+    #                         all_vertices = {v.index for v in scene_graph.vs}
+    #                         non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+    #                         scene_graph.delete_vertices(non_cluster_vertices)
+    #                         if vertical:
+    #                             return {'block': True, 'shelves': len(
+    #                                 set(scene_graph.vs['shelf_number']))}
+    #                         return cluster_ratio, scene_graph
+    #         if n_cluster is not None:
+    #             copy_of_cluster_ratios = cluster_ratios[:]
+    #             largest_cluster = max(copy_of_cluster_ratios)  # 39
+    #             copy_of_cluster_ratios.remove(largest_cluster)
+    #             if len(copy_of_cluster_ratios) > 0:
+    #                 second_largest_integer = max(copy_of_cluster_ratios)
+    #             else:
+    #                 second_largest_integer = 0
+    #             cluster_ratio = largest_cluster + second_largest_integer
+    #             if cluster_ratio >= minimum_block_ratio:
+    #                 if vertical:
+    #                     return {'block': True}
+    #
+    #         if biggest_block:
+    #             max_ratio = max(cluster_ratios)
+    #             biggest_cluster = clusters[cluster_ratios.index(max_ratio)]
+    #             relevant_vertices_in_cluster = set(biggest_cluster).intersection(new_relevant_vertices)
+    #             all_vertices = {v.index for v in scene_graph.vs}
+    #             non_cluster_vertices = all_vertices.difference(list(relevant_vertices_in_cluster))
+    #             scene_graph.delete_vertices(non_cluster_vertices)
+    #             return {'block': True, 'shelf_numbers': set(scene_graph.vs['shelf_number'])}
+    #         if result_by_scene:
+    #             return number_of_blocked_scenes, len(relevant_scenes)
+    #         else:
+    #             return False
 
     def calculate_existence_of_blocks(self, conditions, include_empty=EXCLUDE_EMPTY, min_number_of_blocks=1, **filters):
         """
