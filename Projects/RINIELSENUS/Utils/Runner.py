@@ -53,12 +53,13 @@ class Results(object):
             # if atomic['atomic'] not in [
             #                         # 'Is the Nutro Cat Main Meal section >4ft?',
             #                         # 'Is the Nutro Cat Main Meal section <=4ft?',
-            #     'Is Nutro Ingredient Transparency Dog food Feeding Philosophy Segment blocked?'
+            #     'Is Nutro Wet Dog food blocked?'
             #                         ]:
             #     continue
             # print('~~~~~~~~~~~~~~~~~~~~****************~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             # print(atomic['atomic'])
-            if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
+            # if sum([1 for i in atomic['depend_on'] if i is not None and i != '']):
+            if atomic['kpi_type'] == 'PreCalc Vertical Block':
                 dependency_status = self._check_atomic_dependency(atomic, pushed_back_list, atomic_results)
                 if dependency_status == CalculationDependencyCheck.IGNORE:
                     continue
