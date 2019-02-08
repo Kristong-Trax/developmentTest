@@ -1,13 +1,12 @@
 import os
 import re
-import math
 from collections import defaultdict
 
 import pandas as pd
+from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.CommonV2 import Common, PSProjectConnector
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -303,6 +302,11 @@ class TWEAUToolBox:
                         denominator_id = self.get_denominator_id(denominator_key_str,
                                                                  numerator_row,
                                                                  denominator_row)
+                        kpi_parent_name = None
+                        should_enter = False
+                        if not is_nan(kpi_sheet_row.kpi_parent_name):
+                            kpi_parent_name = kpi_sheet_row.kpi_parent_name
+                            should_enter = True
                         if not denominator_id:
                             raise Exception("Denominator ID cannot be found. [TWEAU/Utils/KPIToolBox.py]")
                         self.common.write_to_db_result(fk=int(kpi['pk']),
@@ -313,6 +317,8 @@ class TWEAUToolBox:
                                                        result=result,
                                                        score=result,
                                                        identifier_result=kpi_sheet_row[KPI_NAME],
+                                                       identifier_parent=kpi_parent_name,
+                                                       should_enter=should_enter,
                                                        )
 
     def get_shelf_limit_for_scene(self, scene_id):
@@ -523,7 +529,7 @@ def is_nan(value):
     return False
 
 
-def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters={}):
+def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters=None):
     """
     Function to generate the filter string with list of filters.
     :param kpi_sheet_row: pd.Series
@@ -533,6 +539,8 @@ def get_filter_string_per_row(kpi_sheet_row, filter_entities, additional_filters
     """
     filter_string = ''
     filters = []
+    if not additional_filters:
+        additional_filters = {}
     # generate the numerator filter string
     for each_filter in filter_entities:
         filter_key = kpi_sheet_row[each_filter]
