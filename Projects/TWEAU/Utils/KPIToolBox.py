@@ -142,6 +142,13 @@ class TWEAUToolBox:
         # 1. calculate the macro linear sheet
         self.calculate_macro_linear()
         # 2. calculate the zone based sheet
+        self.calculate_zone_based()
+
+        self.common.commit_results_data()
+        score = 0
+        return score
+
+    def calculate_zone_based(self):
         zone_kpi_sheet = self.get_template_details(ZONE_KPI_SHEET)
         zone_category_sheet = self.get_template_details(ZONE_CATEGORY_SHEET)
         name_grouped_zone_kpi_sheet = zone_kpi_sheet.groupby(KPI_TYPE)
@@ -165,8 +172,8 @@ class TWEAUToolBox:
                             zone_category_sheet[KPI_NAME] == each_kpi_type)].iloc[0]
                 list_of_zone_data = []
                 for idx, each_kpi_sheet_row in kpi_sheet_rows.iterrows():
-                    zone_data = self.calculate_based_on_zone(kpi, each_kpi_sheet_row.T,
-                                                             denominator_row=denominator_row)
+                    zone_data = self._get_zone_based_data(kpi, each_kpi_sheet_row.T,
+                                                          denominator_row=denominator_row)
                     list_of_zone_data.append(zone_data)
                 print "Final >>> ", list_of_zone_data
                 if write_sku:
@@ -241,9 +248,6 @@ class TWEAUToolBox:
                             identifier_result=str(data_to_write.kpi_name),
                             context_id=int(data_to_write.zone_number),
                         )
-        self.common.commit_results_data()
-        score = 0
-        return score
 
     def calculate_macro_linear(self):
         kpi_sheet = self.get_template_details(LINEAR_KPI_SHEET)
@@ -351,7 +355,7 @@ class TWEAUToolBox:
                         bay_numbers.append(_bay_number)
         return bay_numbers
 
-    def calculate_based_on_zone(self, kpi, kpi_sheet_row, denominator_row):
+    def _get_zone_based_data(self, kpi, kpi_sheet_row, denominator_row):
         # generate scene max shelf max bay map
         zone_number = kpi_sheet_row[ZONE_NAME]
         shelves_policy_from_top = [int(x.strip()) for x in str(kpi_sheet_row[SHELF_POLICY_FROM_TOP]).split(',')
