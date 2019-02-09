@@ -69,8 +69,10 @@ class SceneGPUSToolBox:
 
     def base_adj_graph(self, additional_attributes=None):
         mpis_filter = {'scene_fk': self.scene}
-        mpis_filter.update(self.cat_filter)
+        # mpis_filter.update(self.cat_filter)
         mpis = self.filter_df(self.mpis, mpis_filter)
+        mpis = mpis[(mpis['product_type'] != 'Irrelevant') & (mpis['category'] != 'General') &
+                    (mpis['brand_name'] != 'General')]
         all_graph = AdjacencyGraph(mpis, None, self.products, name=None, adjacency_overlap_ratio=.4)
         return mpis, all_graph, mpis_filter
 
