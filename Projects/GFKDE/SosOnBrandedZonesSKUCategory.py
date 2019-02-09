@@ -11,6 +11,10 @@ class SosOnBrandedZonesSkuCategory_KPI(GfkBaseCalculation):
 
     def kpi_policy(self):
         return {
+            "location": {
+                "template_name": ["Washing Machines - Gondola End - Price tag",
+                                  "Washing Machines - Secondary Shelf - Tag image"]
+            },
             "population": {
                 "include": {
                     "category": ["Washing Machines"],
