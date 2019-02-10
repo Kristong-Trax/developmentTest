@@ -31,13 +31,13 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     ]
 #
 #     sessions = [
-#         '0006173f-2110-4eb2-8010-70182ef0c510'
+#         # '0006173f-2110-4eb2-8010-70182ef0c510',
 #
 #         # '0269d74a-c448-457b-aa67-ca7b1562bf51'
-#     # '08465b37-6157-49f2-9ffd-852c8a00553b',
-#     # '0ce7d05d-62e3-4f25-9e07-b02eeb5dab6f',
-#     # '13ab9667-c5f3-49d6-be85-7b0613864bf0',
-#     # '243afe24-14c7-425d-adac-2315c32e1cf2',
+#     '08465b37-6157-49f2-9ffd-852c8a00553b',
+#     '0ce7d05d-62e3-4f25-9e07-b02eeb5dab6f',
+#     '13ab9667-c5f3-49d6-be85-7b0613864bf0',
+#     '243afe24-14c7-425d-adac-2315c32e1cf2',
 #     # '276c31f5-95b7-4fd1-8f1d-62cf08f5b473',
 #     # '3a5d3658-80c3-4975-8181-1c5d17736179',
 #     # '450d2626-02e6-4407-897e-fe36f94b30bb',
@@ -64,8 +64,6 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     ]
 #
 #     for session in sessions:
-#         print('*************************************************************************')
-#         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)
 #
@@ -73,8 +71,6 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #         scenes = scif['scene_id'].unique().tolist()
 #
 #         for scene in scenes:
-#             print('scene', scene)
-#             # scene = 16902
 #             data_provider = KEngineDataProvider(project_name)
 #             data_provider.load_scene_data(session, scene)
 #             output = VanillaOutput()

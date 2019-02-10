@@ -70,10 +70,9 @@ class SceneGPUSToolBox:
 
     def base_adj_graph(self, additional_attributes=None):
         mpis_filter = {'scene_fk': self.scene}
-        # mpis_filter.update(self.cat_filter)
         mpis = self.filter_df(self.mpis, mpis_filter)
-        mpis = mpis[(mpis['product_type'] != 'Irrelevant') & (mpis['category'] != 'General') &
-                    (mpis['brand_name'] != 'General')]
+        mpis = mpis[(mpis['product_type'] != Const.IRRELEVANT) & (mpis['category'] != Const.GENERAL) &
+                    (mpis['brand_name'] != Const.GENERAL)]
         all_graph = AdjacencyGraph(mpis, None, self.products, name=None, adjacency_overlap_ratio=.4)
         return mpis, all_graph, mpis_filter
 
@@ -105,10 +104,11 @@ class SceneGPUSToolBox:
                     real_edge = Const.ALLOWED_EDGES - {edge_dir}
                     adj_mpis['kpi'] = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(),
                                                         base_kpi_name)
-                    self.parse_res(adj_mpis, edge_dir, 'kpi', 'num_fk', '{}_fk'.format(level),
-                                   self_id=Const.HIERARCHY[level]['ident'], parent=Const.HIERARCHY[level]['parent'])
+                    self.adj_mpis_to_result(adj_mpis, edge_dir, 'kpi', 'num_fk', '{}_fk'.format(level),
+                                            self_id=Const.HIERARCHY[level]['ident'],
+                                            parent=Const.HIERARCHY[level]['parent'])
 
-    def parse_res(self, df, dir, kpi_col, num_id_col, den_id_col, self_id=None, parent=None):
+    def adj_mpis_to_result(self, df, dir, kpi_col, num_id_col, den_id_col, self_id=None, parent=None):
         for i, row in df.iterrows():
             res_ident = '{}_{}'.format(dir, row[self_id]) if self_id else None
             res_parent = '{}_{}'.format(dir, row[parent]) if parent else None
@@ -124,11 +124,11 @@ class SceneGPUSToolBox:
                            'ident_parent': res_parent}
                 self.kpi_results.append(kpi_res)
 
-    def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
+    def prune_edges(self, g, allowed_edges, keep_or_cut=Const.KEEP):
         for node in g.nodes():
             for edge in g.edges(node, data=True):
                 edge_dir = edge[2]['direction']
-                if keep_or_cut == 'keep':
+                if keep_or_cut == Const.KEEP:
                     if edge_dir not in allowed_edges:
                         g.remove_edge(node, edge[1])
                 else:

@@ -10,3 +10,6 @@ class Const(object):
     EMPTY_FILTER = {'product_type': 'Empty'}
     EMPTY_FKS = {'Empty': 0}
     HIERARCHY = {'brand': {'parent': 'category', 'ident': None}, 'category': {'parent': None, 'ident': 'category'}}
+    IRRELEVANT = 'Irellevant'
+    GENERAL = 'General'
+    KEEP = 'keep'
