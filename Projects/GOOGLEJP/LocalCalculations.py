@@ -23,7 +23,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlejp calculations')
     Config.init()
     project_name = 'googlejp'
-    sessions = ['fda99eb2-dd1e-4c0e-854c-690bed055dca']
+    sessions = ['d156741c-6647-4009-b018-fc8d5e8b274b']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

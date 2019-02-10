@@ -20,6 +20,7 @@ from Projects.PERNODUS.Utils.ParseTemplates import parse_template
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
 from Projects.PERNODUS.Utils.Const import Const
+from KPIUtils_v2.Calculations.SOSCalculations import SOS
 
 __author__ = 'nicolaske'
 
@@ -71,12 +72,25 @@ class PERNODUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.availability = Availability(self.data_provider)
         self.blocking_calc = Block(self.data_provider)
+        self.linear_calc = SOS(self.data_provider)
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
 
     def main_calculation(self, *args, **kwargs):
 
+        # Base Measurement
+        for i, row in self.BaseMeasure_template.iterrows():
+            try:
+                kpi_name = row['KPI']
+                value = row['value']
+                location = row['Store Location']
+                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+
+            except Exception as e:
+                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+                continue
 
         # # Anchor
         for i, row in self.Anchor_template.iterrows():
@@ -126,6 +140,9 @@ class PERNODUSToolBox:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
+        self.Calculate_linear_sos()
+
+
         self.common.commit_results_data()
 
         return
@@ -170,6 +187,24 @@ class PERNODUSToolBox:
             self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=self.store_id, numerator_result=375,
                                            denominator_id=self.store_id,
                                            result=score, score=score)
+
+
+
+    def Calculate_linear_sos(self):
+        kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == 'LINEAR_COUNT'].iloc[0]
+        product_fks = self.all_products['product_fk'][(self.all_products['category_fk'] == 2)]
+        for product_fk in product_fks:
+            sos_filter = {'product_fk':product_fk}
+            general_filter = {'category_fk': [2]}
+
+            ratio, numerator_length, denominator_length = self.linear_calc.calculate_linear_share_of_shelf_with_numerator_denominator(sos_filter, **general_filter)
+
+            numerator_length = int(round(numerator_length * 0.0393700787))
+            if numerator_length > 0:
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                                           denominator_id=product_fk,
+                                           result=numerator_length, score=numerator_length)
+
 
     def calculate_presence(self):
         """
