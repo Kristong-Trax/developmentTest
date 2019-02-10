@@ -55,6 +55,7 @@ class SceneGPUSToolBox:
         self.cat_filter = {'category': list(self.gp_categories.keys())}
         self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
         self.kpi_results = []
+        self.dedupe = set()
 
 
     def main_calculation(self, *args, **kwargs):
@@ -62,7 +63,7 @@ class SceneGPUSToolBox:
         This function calculates the KPI results.
         """
         if not self.filter_df(self.mpis, self.brand_filter).empty:
-            self.calculate_adjacency('Adjacency', ['brand_name', 'category'])
+            self.calculate_adjacency('Adjacency', list(Const.HIERARCHY.keys()))
         for result in self.kpi_results:
             self.write_to_db(**result)
         return
@@ -91,8 +92,7 @@ class SceneGPUSToolBox:
                                         for item in items], []))
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
-                                # &
-                                # (~mpis['product_type'].isin(Const.EXCLUDE_FILTERS))]
+                adj_mpis['num_fk'] = self.gp_brands[brand]
                 data[brand][edge_dir] = adj_mpis
         return data
 
@@ -102,29 +102,38 @@ class SceneGPUSToolBox:
             for edge_dir, adj_mpis in adj_mpises.items():
                 for level in levels:
                     base_level = level.split('_')[0]
-                    level_fk_col = '{}_fk'.format(base_level)
-                    fk_dict = adj_mpis[[level, level_fk_col]].set_index(level)[level_fk_col].to_dict()
                     real_edge = Const.ALLOWED_EDGES - {edge_dir}
-                    kpi = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(), base_kpi_name)
-                    adj_items = adj_mpis[level].unique()
-                    for item in adj_items:
-                        kpi_res = {'kpi_name': kpi,
-                                   'numerator_id': self.gp_brands[brand],
-                                   'denominator_id': fk_dict[item],
-                                   'score': 1,
-                                   'result': 1}
-                        self.kpi_results.append(kpi_res)
+                    adj_mpis['kpi'] = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(),
+                                                        base_kpi_name)
+                    self.parse_res(adj_mpis, edge_dir, 'kpi', 'num_fk', '{}_fk'.format(level),
+                                   self_id=Const.HIERARCHY[level]['ident'], parent=Const.HIERARCHY[level]['parent'])
+
+    def parse_res(self, df, dir, kpi_col, num_id_col, den_id_col, self_id=None, parent=None):
+        for i, row in df.iterrows():
+            res_ident = '{}_{}'.format(dir, row[self_id]) if self_id else None
+            res_parent = '{}_{}'.format(dir, row[parent]) if parent else None
+            dupe_tuple = (row[kpi_col], row[num_id_col], row[den_id_col], res_ident, res_parent)
+            if dupe_tuple not in self.dedupe:
+                self.dedupe.add(dupe_tuple)
+                kpi_res = {'kpi_name': row[kpi_col],
+                           'numerator_id': row[num_id_col],
+                           'denominator_id': row[den_id_col],
+                           'score': 1,
+                           'result': 1,
+                           'ident_result': res_ident,
+                           'ident_parent': res_parent}
+                self.kpi_results.append(kpi_res)
 
     def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
         for node in g.nodes():
-            for edge_id, edge in g[node].items():
-                for edge_dir in edge.values():
-                    if keep_or_cut == 'keep':
-                        if edge_dir not in allowed_edges:
-                            del g[node][edge_id]
-                    else:
-                        if edge_dir in allowed_edges:
-                            del g[node][edge_id]
+            for edge in g.edges(node, data=True):
+                edge_dir = edge[2]['direction']
+                if keep_or_cut == 'keep':
+                    if edge_dir not in allowed_edges:
+                        g.remove_edge(node, edge[1])
+                else:
+                    if edge_dir in allowed_edges:
+                        g.remove_edge(node, edge[1])
         return g
 
     @staticmethod
@@ -163,8 +172,9 @@ class SceneGPUSToolBox:
         mpis = mpis[mpis['stacking_layer'] == 1]
         return mpis
 
-    def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=None,
-                    denominator_result=None, numerator_id=999, denominator_id=999):
+    def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None,
+                    denominator_result=None,
+                    numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None, kpi_fk=None):
         """
         writes result in the DB
         :param kpi_name: str
@@ -173,8 +183,11 @@ class SceneGPUSToolBox:
         :param result: str
         :param threshold: int
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, by_scene=True, target=target,
+        if not kpi_fk:
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id)
+                                       numerator_id=numerator_id, denominator_id=denominator_id,
+                                       identifier_result=ident_result, identifier_parent=ident_parent, by_scene=True)
+
 
