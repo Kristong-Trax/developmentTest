@@ -70,7 +70,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
                 total_space = bay_mpis['width_mm'].sum()
                 tested_group_skus = self.get_product_fks_from_total_category(Const.RELEVANT_CATEGORIES[scene_type])
                 tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
-                if tested_group_space / total_space > threshold:
+                if tested_group_space / float(total_space) > threshold:
                     # shelf_length = self.get_normalized_shelf_length(bay_mpis)
                     set_size += 4
 
