@@ -11,5 +11,3 @@ class SceneCalculations(SceneBaseClass):
 
     def calculate_kpis(self):
         self.scene_generator.main_function()
-        # pass
-#
