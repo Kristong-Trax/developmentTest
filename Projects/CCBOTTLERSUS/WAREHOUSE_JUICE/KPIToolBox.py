@@ -3,8 +3,6 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.WAREHOUSE_JUICE.Const import Const
-from KPIUtils_v2.DB.Common import Common as Common
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Hunter'
 
@@ -15,7 +13,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common_v2):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -33,10 +31,8 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
         self.templates = {}
         for sheet in Const.RETAILERS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
-        self.common_db = Common(self.data_provider)
-        self.common_db2 = CommonV2(self.data_provider)
-        self.common_scene = CommonV2(self.data_provider)
-        self.new_kpi_static_data = self.common_db.get_new_kpi_static_data()
+        self.common_v2 = common_v2
+        self.new_kpi_static_data = self.common_v2.get_kpi_static_data()
         self.region = self.store_info['region_name'].iloc[0].replace(u'\xa0', u' ')  # fix non-breaking spaces
         self.store_type = self.store_info['store_type'].iloc[0]
         self.program = self.store_info['additional_attribute_3'].iloc[0]
@@ -72,7 +68,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             for bay in bays_in_scene:
                 bay_mpis = scene_mpis[scene_mpis['bay_number'] == bay]
                 total_space = bay_mpis['width_mm'].sum()
-                tested_group_skus = self.get_product_fks_from_category(Const.RELEVANT_CATEGORIES[scene_type])
+                tested_group_skus = self.get_product_fks_from_total_category(Const.RELEVANT_CATEGORIES[scene_type])
                 tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
                 if tested_group_space / total_space > threshold:
                     # shelf_length = self.get_normalized_shelf_length(bay_mpis)
@@ -84,9 +80,12 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             kpi_fk = self.get_kpi_fk_from_kpi_name(Const.SET_SIZE_KPI_NAME)
             template_fk = self.get_template_fk(scene_type)
 
-            self.common_db.write_to_db_result_new_tables(kpi_fk, template_fk, set_size, set_size,
-                                                         denominator_id=self.store_id, denominator_result=1,
-                                                         score=set_size)
+            # self.common_db.write_to_db_result_new_tables(kpi_fk, template_fk, set_size, set_size,
+            #                                              denominator_id=self.store_id, denominator_result=1,
+            #                                              score=set_size)
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=template_fk, numerator_result=set_size,
+                                              denominator_id=self.store_id, denominator_result=1,
+                                              score=set_size)
 
     def get_relevant_scenes(self, relevant_scif):
         try:
@@ -131,9 +130,12 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
                     Log.warning('UPC {} for {} does not exist in the database'.format(upc, self.retailer))
                     continue
                 result = 2 if product_fk in products_in_scene else 1
-                self.common_db.write_to_db_result_new_tables(kpi_fk, product_fk, result, result,
-                                                             denominator_id=template_fk, denominator_result=1,
-                                                             score=scene_id)
+                # self.common_db.write_to_db_result_new_tables(kpi_fk, product_fk, result, result,
+                #                                              denominator_id=template_fk, denominator_result=1,
+                #                                              score=scene_id)
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, numerator_result=result,
+                                                  denominator_id=template_fk, denominator_result=1,
+                                                  score=scene_id)
 
     # helpers
     def get_kpi_fk_from_kpi_name(self, kpi_name):
@@ -150,8 +152,11 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             Log.error('Template FK for {} does not exist in the database!'.format(template_name))
             return None
 
-    def get_product_fks_from_category(self, category_list):
-        return self.scif[self.scif['category'].isin(category_list)]['product_fk'].unique().tolist()
+    def get_product_fks_from_total_category(self, category_list):
+        return self.scif[self.scif[Const.TOTAL_CATEGORY].isin(category_list)]['product_fk'].unique().tolist()
 
-    def commit_results_without_delete(self):
-        self.common_db.commit_results_data_without_delete_version2()
+    # def commit_results_without_delete(self):
+    #     self.common_db.commit_results_data_without_delete_version2()
+
+    def commit_results(self):
+        self.common_v2.commit_results_data()

@@ -282,15 +282,16 @@ if __name__ == '__main__':
     #     ]
     # sessions = ['4c060e04-bde4-40ba-a820-26d93734f327']
 
-   # warehouse juice
-   sessions = [
-        'bf142ea0-c210-49db-94bb-94cdfb9d7361'
-   ]
-
-   for session in sessions:
-       print('***********************************************************************************')
-       print('_______________________ {} ____________________'.format(session))
-       data_provider = KEngineDataProvider(project_name)
-       data_provider.load_session_data(session)
-       output = Output()
-       CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
+   # # warehouse juice
+   # sessions = [
+   #     'bf142ea0-c210-49db-94bb-94cdfb9d7361',
+   #     '8e9011cb-4915-42a5-8e8b-94c28727f978'
+   # ]
+   #
+   # for session in sessions:
+   #     print('***********************************************************************************')
+   #     print('_______________________ {} ____________________'.format(session))
+   #     data_provider = KEngineDataProvider(project_name)
+   #     data_provider.load_session_data(session)
+   #     output = Output()
+   #     CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()

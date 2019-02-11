@@ -7,6 +7,7 @@ class Const(object):
     SET_SIZE_KPI_NAME = 'Warehouse Juice - Set Size'
     ASSORTMENT_KPI_NAME = 'Warehouse Juice - On Shelf Availability'
     NIELSEN_UPC = 'Nielsen_UPC'
+    TOTAL_CATEGORY = 'Total Category'
 
     # template stuff
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Warehouse Juice Must Have SKUs.xlsx')
@@ -23,8 +24,9 @@ class Const(object):
 
     # relevant_categories
     RELEVANT_CATEGORIES = {
-        DRINK_JUICE_TEA: ['Juice', 'Tea', 'Coffee'],
-        MILK: ['Dairy'],
-        NATURAL_HEALTH: ['Juice']
+        DRINK_JUICE_TEA: ['TTL JUICE/DRINK', 'TTL TEA', 'TTL PLANT', 'TTL WATER/JUICE',
+                          'TTL N-RTD FT FLAVORED BEVERAGE'],
+        MILK: ['TTL DRINKABLE DAIRY'],
+        NATURAL_HEALTH: ['TTL COMPLETE NUTRITIONAL', 'TTL NATURAL HEALTH BEVERAGE', 'TTL KOMBUCHA']
     }
 

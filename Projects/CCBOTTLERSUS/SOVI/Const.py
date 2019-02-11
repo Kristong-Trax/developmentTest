@@ -1,8 +1,9 @@
-import os
-__author__ = 'Elyashiv'
+
+__author__ = 'Hunter'
 
 
 class Const(object):
+    UNITED = 'UNITED'
     MANUFACTURER_FK = 1  # for CCNA
     SSD_FK = 1
     STILL_FK = 2
