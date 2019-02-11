@@ -45,7 +45,7 @@ class GPUSToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif = self.scif[~(self.scif['product_type'] == 'Irrelevant')]
+        self.scif = self.scif[~(self.scif['product_type'] == Const.IRRELEVANT)]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
@@ -117,7 +117,7 @@ class GPUSToolBox:
                            num_fks=Const.EMPTY_FKS, den_fks={self.session_id: 0},
                            sum_col=Const.FACINGS)
 
-    def calculate_sos(self, kpi, nums, dens, num_fks, den_fks, sum_col):
+    def calculate_sos2(self, kpi, nums, dens, num_fks, den_fks, sum_col):
         den_groups = self.grouper(dens, self.scif)
         for den_name, den_df in den_groups:
             num_groups = self.grouper(nums, df=den_df)
@@ -133,11 +133,37 @@ class GPUSToolBox:
                            'denominator_id': den_fks[den_name],
                            'denominator_result': den,
                            'score': 1,
-                           'result': res}
+                           'result': res,
+                           'ident_result': res_ident,
+                           'ident_parent': res_parent
+                           }
                 self.kpi_results.append(kpi_res)
+
+    def calculate_sos(self, kpi, nums, dens, num_fks, den_fks, sum_col):
+        # d_df = self.grouper(dens, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
+        # n_df = self.grouper(nums, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
+        # den_cols = list(dens.keys())
+        # num_cols = list(nums.keys())
+        # d_df = d_df[sum_col].rename(columns={sum_col: 'den_{}'.format(sum_col)})
+        # df = n_df.merge(d_df, left_on='category', right_on='index')
+
+        df = self.grouper(nums, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
+        df = df.rename(columns={sum_col: 'num_{}'.format(sum_col)})
+        df['den_{}'.format(sum_col)] = self.grouper(nums, self.scif)[sum_col].transform('sum')
+
+
 
     def grouper(self, filter, df):
         return self.filter_df(df, filter).groupby(filter.keys()[0])
+
+    def agg_cols_for_groupby(self, df, calc_cols):
+        if not isinstance(calc_cols, list):
+            calc_cols = [calc_cols]
+        reg_cols = set(df.columns) - set(calc_cols)
+        agg_cols_dict = {col: 'first' for col in reg_cols}
+        calc_cols_dict = {col: 'sum' for col in calc_cols}
+        agg_cols_dict.update(calc_cols_dict)
+        return agg_cols_dict
 
     def calculate_assortment(self, kpi):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
