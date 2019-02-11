@@ -84,8 +84,8 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             #                                              denominator_id=self.store_id, denominator_result=1,
             #                                              score=set_size)
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=template_fk, numerator_result=set_size,
-                                              denominator_id=self.store_id, denominator_result=1,
-                                              score=set_size)
+                                              denominator_id=self.store_id, denominator_result=1, result=set_size,
+                                              score=scene)
 
     def get_relevant_scenes(self, relevant_scif):
         try:
@@ -134,7 +134,7 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
                 #                                              denominator_id=template_fk, denominator_result=1,
                 #                                              score=scene_id)
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, numerator_result=result,
-                                                  denominator_id=template_fk, denominator_result=1,
+                                                  denominator_id=template_fk, denominator_result=1, result=result,
                                                   score=scene_id)
 
     # helpers
