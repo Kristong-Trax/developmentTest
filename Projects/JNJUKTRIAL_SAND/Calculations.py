@@ -11,7 +11,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'nissand'
 
 
-class JNJUKCalculations(BaseCalculationsScript):
+class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
 
     @log_runtime(description="Total Calculation")
     def run_project_calculations(self):
