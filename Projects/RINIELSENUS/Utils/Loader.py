@@ -61,12 +61,12 @@ class Definition(object):
     @staticmethod
     def _get_nbil_channel_data(nbil_data, channel, set_name):
         return nbil_data[(nbil_data['CHANNEL'] == channel) & (nbil_data['MARS_SUB-CATEGORY'] == set_name.upper())]
-        return nbil_data[(nbil_data['CHANNEL'] == channel)]
+        # return nbil_data[(nbil_data['CHANNEL'] == channel)]
 
     @staticmethod
     def _get_nbil_retailer_data(nbil_data, retailer, set_name, store_type=None):
         nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer) & (nbil_data['MARS_SUB-CATEGORY'] == set_name.upper())]
-        nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer)]
+        # nbil_data_filter = nbil_data[(nbil_data['RETAILER'] == retailer)]
         try:
             if nbil_data_filter['Store Type'].unique()[0]:
                 return nbil_data_filter[nbil_data_filter['Store Type'].str.contains(store_type)]

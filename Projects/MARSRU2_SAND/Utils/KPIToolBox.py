@@ -11,6 +11,8 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
 from Projects.MARSRU2_SAND.Utils.KPIFetcher import MARSRU2_SANDKPIFetcher
@@ -117,6 +119,9 @@ class MARSRU2_SANDKPIToolBox:
         self.common = Common(self.data_provider)
         self.osa_kpi_dict = {}
         self.kpi_count = 0
+
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
+        self.block = Block(self.data_provider, rds_conn=self.rds_conn)
 
     def check_connection(self, rds_conn):
         try:
@@ -276,27 +281,25 @@ class MARSRU2_SANDKPIToolBox:
         if not self.store_num_1:
             return
         Log.info("Updating PS Custom SCIF... ")
-        assortment_products = self.get_assortment_for_store_id()
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        assortment_products = assortment_products[PRODUCT_FK].tolist()
+        # assortment_products = self.get_assortment_for_store_id()
         if assortment_products:
-            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].tolist()
-            for product in assortment_products:
-                if product in products_in_session:
-                    # This means the product in assortment and is not oos. (1,0)
-                    scenes = self.get_scenes_for_product(product)
-                    for scene in scenes:
+            for scene in self.scif[SCENE_FK].unique().tolist():
+                products_in_scene = self.scif[(self.scif[SCENE_FK] == scene) &
+                                              (self.scif['facings'] > 0)][PRODUCT_FK].unique().tolist()
+                for product in assortment_products:
+                    if product in products_in_scene:
+                        # This means the product in assortment and is not oos (1,0)
                         self.get_custom_query(scene, product, 1, 0)
-                else:
-                    # The product is in assortment list but is oos (1,1)
-                    scenes = self.scif[SCENE_FK].unique().tolist()
-                    for scene in scenes:
+                    else:
+                        # The product is in assortment list but is oos (1,1)
                         self.get_custom_query(scene, product, 1, 1)
 
-        products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
-        for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
-            # The product is not in assortment list and not oos. (0,0)
-            scenes = self.get_scenes_for_product(product)
-            for scene in scenes:
-                self.get_custom_query(scene, product, 0, 0)
+                for product in products_in_scene:
+                    if product not in assortment_products:
+                        # The product is not in assortment list and not oos (0,0)
+                        self.get_custom_query(scene, product, 0, 0)
 
         Log.info("Done updating PS Custom SCIF... ")
         self.commit_custom_scif()
@@ -456,10 +459,16 @@ class MARSRU2_SANDKPIToolBox:
 
             if p.get('Type') == 'SCENES':
                 values_list = p.get('Values').split(', ')
+                manufacturer_list = p.get('Manufacturer').split(', ') if p.get('Manufacturer') else None
                 for scene in scenes:
                     try:
-                        scene_type = self.scif.loc[self.scif['scene_id']
-                                                   == scene]['template_name'].values[0]
+                        if manufacturer_list:
+                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene) &
+                                                       (self.scif['manufacturer_name'].isin(manufacturer_list))][
+                                'template_name'].values[0]
+                        else:
+                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene)][
+                                'template_name'].values[0]
                         if scene_type in values_list:
                             res = 1
                         else:
@@ -1484,7 +1493,7 @@ class MARSRU2_SANDKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             result = None
             if values_list:
-                if p.get('#Mars KPI NAME') in (2317, 4317):
+                if p.get('#Mars KPI NAME') == 2317:
 
                     top_eans = p.get('Values').split('\n')
                     top_products_in_store = self.scif[self.scif['product_ean_code'].isin(
@@ -1504,6 +1513,26 @@ class MARSRU2_SANDKPIToolBox:
                         (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
 
                     if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
+                        result = 'FALSE'
+                    else:
+                        result = 'TRUE'
+
+                if p.get('#Mars KPI NAME') == 4317:
+
+                    top_eans = p.get('Values').split('\n')
+                    top_products_in_store = self.scif[
+                        (self.scif['scene_fk'].isin(scenes)) &
+                        (self.scif['product_ean_code'].isin(top_eans))]['product_fk'].unique().tolist()
+
+                    min_shelf, max_shelf = values_list.split('-')
+                    min_shelf, max_shelf = int(min_shelf), int(max_shelf)
+                    top_products_on_golden_shelf = self.match_product_in_scene[
+                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                        (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+
+                    if len(top_products_on_golden_shelf) < len(top_products_in_store):
                         result = 'FALSE'
                     else:
                         result = 'TRUE'
@@ -1654,21 +1683,32 @@ class MARSRU2_SANDKPIToolBox:
         for p in params:
             if p.get('Formula') != 'placed_near':
                 continue
+            location_type = p.get('Location type')
 
-            targets, neighbors = p.get('Values').split('\n')
-            target_filter = self.get_filter_condition(
-                self.scif, **(self.parse_filter_from_template(targets)))
-            neighbors_filters = self.get_filter_condition(
-                self.scif, **(self.parse_filter_from_template(neighbors)))
-            filtered_target_scif = self.scif[target_filter]
-            filtered_neighbors_scif = self.scif[neighbors_filters]
+            targets, allowed = p.get('Values').split('\n')
 
-            products_target = filtered_target_scif['product_fk'].tolist()
-            products_neighbors = filtered_neighbors_scif['product_fk'].tolist()
-            score_block_together = 0
-            if products_target:
-                score_block_together = self.calculate_block_together(
-                    allowed_products_filters={'product_fk': products_neighbors}, **({'product_fk': products_target}))
+            targets_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(targets)))
+            allowed_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(allowed)))
+
+            filtered_targets_scif = self.scif[targets_filter]
+            filtered_allowed_scif = self.scif[allowed_filter]
+
+            products_targets = filtered_targets_scif['product_fk'].tolist()
+            products_allowed = filtered_allowed_scif['product_fk'].tolist()
+
+            allowed_products_filters = {'product_fk': products_allowed}
+            filters = {'product_fk': products_targets}
+            if location_type:
+                filters['location_type'] = location_type
+
+            score_block_together = None
+            if products_targets:
+                # score_block_together = self.calculate_block_together(allowed_products_filters=allowed_products_filters,
+                #                                                        minimum_block_ratio=1, include_empty=True,
+                #                                                        **filters)
+                score_block_together = self.block.calculate_block_together(allowed_products_filters=allowed_products_filters,
+                                                                           minimum_block_ratio=1, include_empty=True,
+                                                                           **filters)
 
             if score_block_together:
                 result = 'TRUE'
@@ -1957,7 +1997,8 @@ class MARSRU2_SANDKPIToolBox:
                 except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
-                    result_value = None if result is None else ('FALSE' if result == 'FALSE' else 'TRUE')
+                    result_value = None if result is None else \
+                        ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
             else:
                 result_value = result
 
@@ -2216,7 +2257,9 @@ class MARSRU2_SANDKPIToolBox:
         This function calculates OSA kpi and writes to new KPI tables.
         :return:
         """
-        assortment_products = self.get_assortment_for_store_id()
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        assortment_products = assortment_products['product_fk'].tolist()
+        # assortment_products = self.get_assortment_for_store_id()
         if not assortment_products:
             return
 

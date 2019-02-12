@@ -20,5 +20,5 @@ class UniqueDistributionPerProduct_KPI(GfkDistributionBaseCalculationScript):
                 "include_operator": "and"
             },
             "numerator": Fields.PRODUCT_FK,
-            "denominator": Keys.STORE_ID,
+            "denominator": Keys.CATEGORY_FK,
         }
