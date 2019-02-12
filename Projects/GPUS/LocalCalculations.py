@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     sessions = [
                 # 'ff3f79ef-6d5e-4ea8-9a87-87ea60cbf629',
-                'd78f0285-b4e2-4a75-831f-f7b4a81b6eef',
+                # 'd78f0285-b4e2-4a75-831f-f7b4a81b6eef',
                 # '040aac07-013b-4d6b-a408-a6348faf317d'
     ]
 
@@ -65,16 +65,17 @@ if __name__ == '__main__':
 
     sessions = [
 
-        '4d86ef43-d9f9-448b-84d4-f7fc52c3ec80',
-        # '19732daf-3494-4c0c-8b1d-1476a78ee7cc',
-        # '05aae106-4fe2-4fd3-9b69-d6374c8810d9',
-        # 'd1ed3cc3-dec6-4a95-afc5-f2858aeb1cc5',
-        # '3901060b-5651-4ca2-b783-50df00fff54e',
-        # '0a0dd274-f666-46b0-ad68-9805b76814c7',
-        # '89f7db8b-accf-4177-b116-a2e90b95f3ec',
-        # '1f652202-4eef-4d78-bfba-ef5c2f8913c7',
-        # '0fcdba86-052e-4509-b40e-084a9467991f',
-        # '2afdcc15-4ed1-4dcb-8708-4873f42834a3',
+        # session_uid
+        '5c4499dc-6f4c-40ef-bf3d-b02c07901e23',
+        '0ef472a4-ffd8-47f3-8f6f-f8dd45c5c828',
+        '3a5d3658-80c3-4975-8181-1c5d17736179',
+        'f1ab67aa-c862-4985-8538-8f535ca722a5',
+        '2b19564d-5f69-4716-a6da-b22c92a9fe68',
+        'd6b86d95-25b2-4dbd-a684-1fe0ce9b4c3a',
+        '7c8dcf9b-a8f7-48a7-aedd-ff7fe736d237',
+        '08465b37-6157-49f2-9ffd-852c8a00553b',
+        '541e9f98-5f0b-4294-9c43-e3d7865d5199',
+        'e88ec29b-19bd-417c-af66-75d333b789a6',
 
     ]
 

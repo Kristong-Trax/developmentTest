@@ -1,26 +1,9 @@
-
+import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-
-from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
-
-# from Trax.Utils.Logging.Logger import Log
-import pandas as pd
-import os
-
-from KPIUtils_v2.DB.CommonV2 import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-
+from Trax.Utils.Logging.Logger import Log
 from Projects.GPUS.Utils.Const import Const
 
 __author__ = 'sam, nicolaske'
@@ -45,8 +28,10 @@ class GPUSToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif['store_fk'] = self.store_id
         self.scif = self.scif[~(self.scif['product_type'] == Const.IRRELEVANT)]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.kpis = self.load_kpis()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.gp_manufacturer = self.get_gp_manufacturer()
@@ -70,100 +55,84 @@ class GPUSToolBox:
         This function calculates the KPI results.
         """
         if not self.filter_df(self.scif, self.brand_filter).empty:
-            ''' This is a bad set-up, will fix tomorrow. Just need to make some data right now
-                it's still not tomorrow... '''
-            self.calculate_manufacturer_facings_sos('Manufacturer out of Category Facings SOS')
-            self.calculate_brand_facings_sos('Brand out of Category Facings SOS')
-            self.calculate_manufacturer_linear_sos('Manufacturer out of Category Linear SOS')
-            self.calculate_brand_linear_sos('Brand out of Category Linear SOS')
-
+            self.calculate_facings_sos()
+            self.calculate_linear_sos()
+            'still need to fix this one...'
             self.calculate_assortment('Distribution')
 
         if not self.filter_df(self.scif, self.cat_filter).empty:
-            self.calculate_share_of_empty('Share of Empty out of Category')
-            pass
+            self.calculate_share_of_empty()
 
         for result in self.kpi_results:
             self.write_to_db(**result)
         return
 
-    def calculate_manufacturer_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.all_man_filter, dens=self.cat_filter,
-                           num_fks=self.all_man, den_fks=self.gp_categories,
-                           sum_col=Const.FACINGS)
+    def calculate_facings_sos(self):
+        self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}])
 
+    def calculate_linear_sos(self):
+        self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}])
 
-    def calculate_brand_facings_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.all_brands_filter, dens=self.cat_filter,
-                           num_fks=self.all_brands, den_fks=self.gp_categories,
-                           sum_col=Const.FACINGS)
+    def calculate_share_of_empty(self):
+        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'product_fk': 0}])
 
-    def calculate_manufacturer_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.all_man_filter, dens=self.cat_filter,
-                           num_fks=self.all_man, den_fks=self.gp_categories,
-                           sum_col=Const.LINEAR_FACINGS)
+    def safety_func(self, group, func, args):
+        try:
+            func(*args)
+            Log.info('{} KPIs Calculated'.format(group))
+        except Exception as e:
+            Log.error('ERROR {} KPIs Failed to Calculate'.format(group))
+            Log.error(e)
+            asdgfasd
 
+    def calculate_sos(self, kpi_family, kpi_filter):
+        relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == kpi_family]
+        sum_col = Const.SUM_COLS[kpi_family]
+        relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
+        relevant_kpis['den_types'] = self.name_to_col_name(relevant_kpis[Const.DENOMINATOR])
 
-    def calculate_brand_linear_sos(self, kpi):
-        self.calculate_sos(kpi, nums=self.all_brands_filter, dens=self.cat_filter,
-                           num_fks=self.all_brands, den_fks=self.gp_categories,
-                           sum_col=Const.LINEAR_FACINGS)
+        for i, kpi in relevant_kpis.iterrows():
+            parent = relevant_kpis[relevant_kpis['type'] == Const.SOS_HIERARCHY[kpi['type']]] #  Note, parent is df, kpi is a series
+            df = self.scif.copy()
+            df = self.transform_new_col(df, kpi['num_types'], sum_col, 'numerator_result')
+            df = self.transform_new_col(df, kpi['den_types'], sum_col, 'denominator_result')
+            df['result'] = df['numerator_result'].astype(float) / df['denominator_result']
+            df = self.update_and_rename_df(df, kpi, parent)
+            self.update_results(df, kpi_filter)
+            if parent.empty:
+                df['denominator_id'] = self.store_id
+                df.drop('ident_result', axis=1, inplace=True)
+                df.rename(columns={'ident_parent': 'ident_result'}, inplace=True)
+                df['kpi_name'] = Const.SOS_HIERARCHY[kpi['type']]
+                self.update_results(df, {'numerator_id': self.manufacturer_fk})
 
-    def calculate_share_of_empty(self, kpi):
-        # self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens=self.cat_filter,
-        #                    num_fks=Const.EMPTY_FKS, den_fks=self.gp_categories,
-        #                    sum_col=Const.FACINGS)
-        self.calculate_sos(kpi, nums=Const.EMPTY_FILTER, dens={'session_id': self.session_id},
-                           num_fks=Const.EMPTY_FKS, den_fks={self.session_id: 0},
-                           sum_col=Const.FACINGS)
+    def update_results(self, df, filter):
+        df = self.filter_df(df, filter)
+        results = [val for key, val in df.to_dict('index').items()]
+        self.kpi_results += results
 
-    def calculate_sos2(self, kpi, nums, dens, num_fks, den_fks, sum_col):
-        den_groups = self.grouper(dens, self.scif)
-        for den_name, den_df in den_groups:
-            num_groups = self.grouper(nums, df=den_df)
-            for num_name, num_df in num_groups:
-                if num_df.empty:
-                    continue
-                num = num_df[sum_col].sum()
-                den = den_df[sum_col].sum()
-                res = self.safe_divide(num, den)
-                kpi_res = {'kpi_name': kpi,
-                           'numerator_id': num_fks[num_name],
-                           'numerator_result': num,
-                           'denominator_id': den_fks[den_name],
-                           'denominator_result': den,
-                           'score': 1,
-                           'result': res,
-                           'ident_result': res_ident,
-                           'ident_parent': res_parent
-                           }
-                self.kpi_results.append(kpi_res)
+    def update_and_rename_df(self, df, kpi, parent):
+        df['ident_result'] = ['{}_{}'.format(x, kpi['type']) for x in df[kpi['num_types']]]
+        df['ident_parent'] = ['{}_{}_{}'.format(x, 'Parent', kpi['type']) for x in df[kpi['num_types']]]
+        parent_col = ['ident_parent']
+        if not parent.empty:
+            df['ident_parent'] = ['{}_{}'.format(x, parent['type'].iloc[0]) for x in df[parent['num_types'].iloc[0]]]  #parent is a df, hence the iloc
+        df = df[['numerator_result', 'denominator_result', 'result', kpi['den_types'], kpi['num_types'],
+                 'ident_result'] + parent_col]
+        df.drop_duplicates(inplace=True)
+        df.rename(columns={kpi['num_types']: 'numerator_id', kpi['den_types']: 'denominator_id'}, inplace=True)
+        df['kpi_name'] = kpi['type']
+        return df
 
-    def calculate_sos(self, kpi, nums, dens, num_fks, den_fks, sum_col):
-        # d_df = self.grouper(dens, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
-        # n_df = self.grouper(nums, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
-        # den_cols = list(dens.keys())
-        # num_cols = list(nums.keys())
-        # d_df = d_df[sum_col].rename(columns={sum_col: 'den_{}'.format(sum_col)})
-        # df = n_df.merge(d_df, left_on='category', right_on='index')
+    def name_to_col_name(self, col):
+        return ['{}_fk'.format(num) for num in col]
 
-        df = self.grouper(nums, self.scif).agg(self.agg_cols_for_groupby(self.scif, sum_col))[list(self.scif.columns)]
-        df = df.rename(columns={sum_col: 'num_{}'.format(sum_col)})
-        df['den_{}'.format(sum_col)] = self.grouper(nums, self.scif)[sum_col].transform('sum')
-
-
+    def transform_new_col(self, df, group_col, sum_col, name):
+        df[name] = df.groupby(group_col)[sum_col].transform('sum')
+        return df
 
     def grouper(self, filter, df):
         return self.filter_df(df, filter).groupby(filter.keys()[0])
-
-    def agg_cols_for_groupby(self, df, calc_cols):
-        if not isinstance(calc_cols, list):
-            calc_cols = [calc_cols]
-        reg_cols = set(df.columns) - set(calc_cols)
-        agg_cols_dict = {col: 'first' for col in reg_cols}
-        calc_cols_dict = {col: 'sum' for col in calc_cols}
-        agg_cols_dict.update(calc_cols_dict)
-        return agg_cols_dict
 
     def calculate_assortment(self, kpi):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
@@ -173,13 +142,16 @@ class GPUSToolBox:
             lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
             lvl1_result['total'] = lvl2_result['total'].sum()
             lvl1_result['passes'] = lvl2_result['passes'].sum()
+            lvl1_result['num_id'] = self.manufacturer_fk
+            lvl1_result['den_id'] = self.store_id
 
             self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_fk',
                                           'target', None, 'assortment_group_fk')
             self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
                                           'total', 'assortment_group_fk', 'assortment_super_group_fk')
-            self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'assortment_super_group_fk', 'passes',
-                                          'assortment_super_group_fk', 'total', 'assortment_super_group_fk', None)
+            self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'num_id', 'passes',
+                                          'den_id', 'total', 'assortment_super_group_fk', None)
+        Log.info('Assortment KPIs Calculated')
 
     def parse_assortment_results(self, df, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id, parent):
         for i, row in df.iterrows():
@@ -231,6 +203,9 @@ class GPUSToolBox:
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
         return mpis
+
+    def load_kpis(self):
+        return pd.read_sql_query(Const.KPI_QUERY, self.rds_conn.db)
 
     def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None, denominator_result=None,
                     numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None, kpi_fk = None):
