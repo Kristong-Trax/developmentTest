@@ -66,6 +66,8 @@ if __name__ == '__main__':
     sessions = [
 
         # session_uid
+        '08465b37-6157-49f2-9ffd-852c8a00553b',
+
         '5c4499dc-6f4c-40ef-bf3d-b02c07901e23',
         '0ef472a4-ffd8-47f3-8f6f-f8dd45c5c828',
         '3a5d3658-80c3-4975-8181-1c5d17736179',
@@ -73,7 +75,6 @@ if __name__ == '__main__':
         '2b19564d-5f69-4716-a6da-b22c92a9fe68',
         'd6b86d95-25b2-4dbd-a684-1fe0ce9b4c3a',
         '7c8dcf9b-a8f7-48a7-aedd-ff7fe736d237',
-        '08465b37-6157-49f2-9ffd-852c8a00553b',
         '541e9f98-5f0b-4294-9c43-e3d7865d5199',
         'e88ec29b-19bd-417c-af66-75d333b789a6',
 

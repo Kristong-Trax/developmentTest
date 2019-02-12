@@ -20,6 +20,7 @@ class GPUSToolBox:
         self.session_id = self.data_provider.session_id
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.scene_results = self.data_provider[Data.SCENE_KPI_RESULTS]
         self.templates = self.data_provider[Data.TEMPLATES]
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
@@ -33,6 +34,7 @@ class GPUSToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpis = self.load_kpis()
         self.kpi_static_data = self.common.get_kpi_static_data()
+        self.dist_oos = self.dist_kpi_to_oos_kpi()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.gp_manufacturer = self.get_gp_manufacturer()
         self.gp_categories = self.get_gp_categories()
@@ -57,8 +59,8 @@ class GPUSToolBox:
         if not self.filter_df(self.scif, self.brand_filter).empty:
             self.calculate_facings_sos()
             self.calculate_linear_sos()
-            'still need to fix this one...'
-            self.calculate_assortment('Distribution')
+            # self.calculate_adjacency()
+            self.calculate_assortment()
 
         if not self.filter_df(self.scif, self.cat_filter).empty:
             self.calculate_share_of_empty()
@@ -76,6 +78,9 @@ class GPUSToolBox:
     def calculate_share_of_empty(self):
         self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}])
 
+    def calculate_adjacency(self):
+        self.safety_func('Adjacency', self.update_adjacency, [])
+
     def safety_func(self, group, func, args):
         try:
             func(*args)
@@ -83,6 +88,10 @@ class GPUSToolBox:
         except Exception as e:
             Log.error('ERROR {} KPIs Failed to Calculate'.format(group))
             Log.error(e)
+
+    # def update_adjacency(self):
+    #     print('asdf')
+    #     pass
 
     def calculate_sos(self, kpi_family, kpi_filter):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == kpi_family]
@@ -111,11 +120,14 @@ class GPUSToolBox:
         self.kpi_results += results
 
     def update_and_rename_df(self, df, kpi, parent):
-        df['ident_result'] = ['{}_{}'.format(x, kpi['type']) for x in df[kpi['num_types']]]
-        df['ident_parent'] = ['{}_{}_{}'.format(x, 'Parent', kpi['type']) for x in df[kpi['num_types']]]
+        df['ident_result'] = ['{}_{}_{}'.format(row[kpi['num_types']], row[kpi['den_types']], kpi['type'])
+                              for i, row in df.iterrows()]
+        df['ident_parent'] = ['{}_{}_{}_{}'.format(row[kpi['num_types']], row[kpi['den_types']], 'Parent', kpi['type'])
+                              for i, row in df.iterrows()]
         parent_col = ['ident_parent']
         if not parent.empty:
-            df['ident_parent'] = ['{}_{}'.format(x, parent['type'].iloc[0]) for x in df[parent['num_types'].iloc[0]]]  #parent is a df, hence the iloc
+            df['ident_parent'] = ['{}_{}_{}'.format(row[parent['num_types'].iloc[0]], row[parent['den_types'].iloc[0]],
+                                                    parent['type'].iloc[0]) for i, row in df.iterrows()]  #parent is a df, hence the iloc
         df = df[['numerator_result', 'denominator_result', 'result', kpi['den_types'], kpi['num_types'],
                  'ident_result'] + parent_col]
         df.drop_duplicates(inplace=True)
@@ -133,10 +145,11 @@ class GPUSToolBox:
     def grouper(self, filter, df):
         return self.filter_df(df, filter).groupby(filter.keys()[0])
 
-    def calculate_assortment(self, kpi):
+    def calculate_assortment(self):
         lvl3_result = self.assortment.calculate_lvl3_assortment()
         if not lvl3_result.empty:
             lvl3_result['target'] = 1
+
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
             lvl1_result['total'] = lvl2_result['total'].sum()
@@ -164,6 +177,16 @@ class GPUSToolBox:
                        'ident_result': row[self_id] if self_id else None,
                        'ident_parent': row[parent] if parent else None}
             self.kpi_results.append(kpi_res)
+            oos_res = dict(kpi_res)
+            oos_res.update({
+                            'kpi_fk': self.dist_oos[row[kpi_col]],
+                            'numerator_result': row[den_col] - row[num_col],
+                            'denominator_result':0,
+                            'result': self.safe_divide((row[den_col] - row[num_col]), row[den_col]),
+                            'ident_result': 'oos_{}'.format(row[self_id]) if self_id else None,
+                            'ident_parent': 'oos_{}'.format(row[parent]) if parent else None,
+                            })
+            self.kpi_results.append(oos_res)
 
     def safe_divide(self, num, den):
         return (float(num) / den) * 100 if num else 0
@@ -202,6 +225,15 @@ class GPUSToolBox:
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
         return mpis
+
+    def dist_kpi_to_oos_kpi(self):
+        dist = self.kpis[(self.kpis[Const.KPI_FAMILY] == Const.ASSORTMENT)&(self.kpis['kpi_calculation_stage_fk'] == 3)]
+        oos = self.kpis[(self.kpis[Const.KPI_FAMILY] == Const.OOS) & (self.kpis['kpi_calculation_stage_fk'] == 3)]
+        return {
+                dist[dist['type'].str.contains('SKU')].pk.iloc[0]: oos[oos['type'].str.contains('SKU')].pk.iloc[0],
+                dist[dist['type'].str.contains('Tota')].pk.iloc[0]: oos[oos['type'].str.contains('Tota')].pk.iloc[0],
+                dist[~dist['type'].str.contains(' ')].pk.iloc[0]: oos[~oos['type'].str.contains(' ')].pk.iloc[0],
+                }
 
     def load_kpis(self):
         return pd.read_sql_query(Const.KPI_QUERY, self.rds_conn.db)

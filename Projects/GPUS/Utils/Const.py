@@ -18,6 +18,8 @@ class Const(object):
     LINEAR_SOS_KPI = 'PS_LINEAR_SOS'
     FACING_SOS_KPI = 'PS_FACINGS_SOS'
     PS_PARENT = 'PS_PARENT'
+    ASSORTMENT = 'ASSORTMENT'
+    OOS = 'OOS'
     SHARE_OF_EMPTY_KPI = 'PS_SHARE_OF_EMPTY'
     NUMERATOR = 'Numerator'
     DENOMINATOR = 'Denominator'
