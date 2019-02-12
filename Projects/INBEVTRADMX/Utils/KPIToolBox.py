@@ -380,10 +380,6 @@ class INBEVTRADMXToolBox:
         """
         # create filtered dictionary
         filters_dict = self.create_availability_filtered_dictionary(relevant_columns, row)
-        # check if this atomic requires 'contains filters'
-        if row['KPI Level 3 Name'] == 'Posters HE/Innovacion/BET':
-            # turn 'equals' values to 'contains'
-            filters_dict['product_name'] = (filters_dict['product_name'], 2)
         # call the generic method from KPIUtils_v2
         availability_score = self.availability.calculate_availability(**filters_dict)
         # check if this score should pass or fail
