@@ -161,25 +161,19 @@ class SOLARBRToolBox:
 
     def calculate_sos(self, kpi_line, general_filters):
         kpi_name = kpi_line[Const.KPI_NAME]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
 
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
+        # get denominator filters
+        for den_column in [col for col in kpi_line.columns if Const.DEN_TYPE in col]:  # get relevant den columns
+            if kpi_line[den_column]:  # check to make sure this kpi has this denominator param
+                general_filters[kpi_line[den_column]] = \
+                    kpi_line[den_column.replace(Const.DEN_TYPE, Const.DEN_VALUE)].split(',')  # get associated values
 
-        general_filters[den_type] = den_value
-
-        sos_filters = {num_type: num_value}
-
-        if kpi_line[Const.NUM_TYPES_2]:
-            num_type_2 = kpi_line[Const.NUM_TYPES_2]
-            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
-            sos_filters[num_type_2] = num_value_2
-
-        if kpi_line[Const.NUM_TYPES_3]:
-            num_type_3 = kpi_line[Const.NUM_TYPES_3]
-            num_value_3 = kpi_line[Const.NUM_VALUES_3].split(',')
-            sos_filters[num_type_3] = num_value_3
+        sos_filters = {}
+        # get numerator filters
+        for num_column in [col for col in kpi_line.columns if Const.NUM_TYPE in col]:  # get relevant numerator columns
+            if kpi_line[num_column]: # check to make sure this kpi has this numerator param
+                sos_filters[kpi_line[num_column]] = \
+                    kpi_line[num_column.replace(Const.NUM_TYPE, Const.NUM_VALUE)].split(',')  # get associated values
 
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         # sos_value *= 100
@@ -188,7 +182,7 @@ class SOLARBRToolBox:
         score = self.get_score_from_range(kpi_name, sos_value)
 
         manufacturer_products = self.all_products[
-            self.all_products['manufacturer_name'] == num_value[0]].iloc[0]
+            self.all_products['manufacturer_name'] == sos_filters['manufacturer_name']].iloc[0]
 
         manufacturer_fk = manufacturer_products["manufacturer_fk"]
 
@@ -197,19 +191,19 @@ class SOLARBRToolBox:
 
         numerator_res, denominator_res = self.get_numerator_and_denominator(sos_filters, **general_filters)
 
-        if numerator_res == None:
+        if numerator_res is None:
             numerator_res = 0
 
         denominator_fk = None
         if general_filters.keys()[0] == 'category':
             category_fk = self.all_products["category_fk"][
-                self.all_products[den_type] == den_value[0]].iloc[0]
+                self.all_products['category'] == general_filters['category'][0]].iloc[0]
             denominator_fk = category_fk
 
         elif general_filters.keys()[0] == 'sub_category':
             try:
                 sub_category_fk = self.all_products["sub_category_fk"][
-                    self.all_products[den_type] == den_value[0]].iloc[0]
+                    self.all_products['sub_category'] == general_filters['sub_category'][0]].iloc[0]
                 denominator_fk = sub_category_fk
             except:
                 sub_brand_fk = 999
@@ -220,7 +214,7 @@ class SOLARBRToolBox:
 
             try:
                 sub_brand_fk = self.all_products["sub_category_fk"][
-                    self.all_products[den_type] == den_value[0]].iloc[0]
+                    self.all_products['sub_brand'] == general_filters['sub_brand'][0]].iloc[0]
             except:
 
                 sub_brand_fk = 999
