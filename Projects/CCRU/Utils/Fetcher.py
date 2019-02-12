@@ -76,13 +76,20 @@ class CCRUCCHKPIFetcher:
         else:
             return None
 
-    def get_atomic_kpi_fk(self, atomic_kpi_name):
+    def get_atomic_kpi_fk(self, atomic_kpi_name, kpi_fk=None):
         try:
             atomic_kpi_name = atomic_kpi_name.decode('utf-8')
         except UnicodeEncodeError:
             pass
-        atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] ==
-                                             atomic_kpi_name.replace("\\'", "'")]['atomic_kpi_fk']
+
+        if kpi_fk:
+            atomic_kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_fk'] == kpi_fk) &
+                                                 (self.kpi_static_data['atomic_kpi_name'] ==
+                                                  atomic_kpi_name.replace("\\'", "'"))]['atomic_kpi_fk']
+        else:
+            atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] ==
+                                                 atomic_kpi_name.replace("\\'", "'")]['atomic_kpi_fk']
+
         if not atomic_kpi_fk.empty:
             return atomic_kpi_fk.values[0]
         else:

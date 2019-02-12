@@ -13,14 +13,14 @@ class PresenceonBrandedZonesSKUSubCategory_KPI(GfkPrecenseBaseCalculationScript)
         return {
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
                 "include_operator": "and"
             },
             "numerator": Fields.PRODUCT_FK,
-            "denominator": Keys.SUB_CATEGORY_FK,
+            "denominator": Keys.CATEGORY_FK,
             "kpi_additional_params": {
                 "filter_branded_zones": True
             }

@@ -10,6 +10,10 @@ from Projects.CCBOTTLERSUS.REDSCORE.KPIToolBox import CCBOTTLERSUSREDToolBox
 from Projects.CCBOTTLERSUS.DISPLAYS.KPIToolBox import CCBOTTLERSUSDISPLAYSToolBox
 from Projects.CCBOTTLERSUS.Utils.KPIToolBox import CCBOTTLERSUSBCIKPIToolBox
 from Projects.CCBOTTLERSUS.REDSCORE.Const import Const
+from Projects.CCBOTTLERSUS.WAREHOUSE_JUICE.KPIToolBox import CCBOTTLERSUSWAREHOUSEJUICEToolBox
+from Projects.CCBOTTLERSUS.SOVI.KPIToolBox import SOVIToolBox
+
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Elyashiv'
 
@@ -19,6 +23,7 @@ class CCBOTTLERSUSGenerator:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
+        self.common_v2 = CommonV2(self.data_provider)
 
     @log_runtime('Total CCBOTTLERSUSCalculations', log_start=True)
     def main_function(self):
@@ -32,6 +37,9 @@ class CCBOTTLERSUSGenerator:
         self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
         self.calculate_cma_compliance_sw()
+        self.calculate_warehouse_juice()
+        self.calculate_sovi()
+        self.common_v2.commit_results_data()  # saves results to new tables
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
     def calculate_manufacturer_displays(self):
@@ -85,8 +93,28 @@ class CCBOTTLERSUSGenerator:
     def calculate_cma_compliance_sw(self):
         Log.info('starting calculate_cma_compliance')
         try:
-            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output)
-            tool_box.main_calculation()
-            tool_box.commit_results()
+            tool_box = CCBOTTLERSUSCMASOUTHWESTToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()  # saves to new tables
+            # tool_box.commit_results()  # this currently deletes any previous results in report.kpi_level_2_results
         except Exception as e:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
+
+    @log_runtime('Warehouse Juice CCBOTTLERSUSCalculations')
+    def calculate_warehouse_juice(self):
+        Log.info('starting calculate_warehouse_juice')
+        try:
+            tool_box = CCBOTTLERSUSWAREHOUSEJUICEToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()  # saves to new tables
+            # tool_box.commit_results_without_delete()
+            # tool_box.commit_results()
+        except Exception as e:
+            Log.error('failed to calculate Warehouse Juice due to :{}'.format(e.message))
+
+    @log_runtime('SOVI CCBOTTLERSUSCalculations')
+    def calculate_sovi(self):
+        Log.info('starting calculate_sovi')
+        try:
+            tool_box = SOVIToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate SOVI due to :{}'.format(e.message))

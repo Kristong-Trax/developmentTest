@@ -188,8 +188,7 @@ class MOLSONCOORSRSToolBox:
             numerator_id = row.product_fk
             numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
             denominator_id = self.store_id
-            denominator_result = row.target
-            # denominator_result_after_actions = 0 if row.target < row.facings else row.target - row.facings
+            denominator_result = row.in_distribution if kpi['KPI Type'] == 'Distribution' else row.target
             if kpi['KPI Type'] == 'Distribution':
                 if row.result_distributed:
                     result = self.result_values[(self.result_values['result_type'] == 'PRESENCE') &
@@ -209,7 +208,6 @@ class MOLSONCOORSRSToolBox:
                                            numerator_result=numerator_result,
                                            denominator_id=denominator_id,
                                            denominator_result=denominator_result,
-                                           # denominator_result_after_actions=denominator_result_after_actions,
                                            result=result,
                                            score=score,
                                            identifier_result=identifier_details,
@@ -224,7 +222,7 @@ class MOLSONCOORSRSToolBox:
                 numerator_id = self.own_manufacturer_id
                 numerator_result = row.distributed if kpi['KPI Type'] == 'Distribution' else row.facings
                 denominator_id = self.store_id
-                denominator_result = row.target
+                denominator_result = row.in_distribution if kpi['KPI Type'] == 'Distribution' else row.target
                 result = row.result_distributed if kpi['KPI Type'] == 'Distribution' else row.result_facings
                 score += self.score_function(result*100, kpi)
                 potential_score += round(float(kpi['Weight'])*100, 0)
@@ -279,6 +277,7 @@ class MOLSONCOORSRSToolBox:
         lvl3_result = assortment_result.merge(products_in_session, how='left', left_on='product_fk', right_on='product_fk')
         lvl3_result['facings'] = lvl3_result['facings'].fillna(0)
         lvl3_result['distributed'] = lvl3_result.apply(lambda x: 1 if x['facings'] else 0, axis=1)
+        lvl3_result['in_distribution'] = 1
 
         lvl3_result['result_facings'] = lvl3_result.apply(lambda x: self.assortment_vs_target_result(x, 'facings'), axis=1)
         lvl3_result['result_distributed'] = lvl3_result.apply(lambda x: self.assortment_vs_target_result(x, 'distributed'), axis=1)
@@ -287,7 +286,12 @@ class MOLSONCOORSRSToolBox:
 
     def calculate_assortment_vs_target_lvl2(self, lvl3_result):
         lvl2_result = lvl3_result.groupby(['kpi_fk_lvl2', self.assortment.ASSORTMENT_FK, self.assortment.ASSORTMENT_GROUP_FK])\
-            .agg({'facings': 'sum', 'distributed': 'sum', 'target': 'sum', 'result_facings': 'sum', 'result_distributed': 'sum'}).reset_index()
+            .agg({'facings': 'sum',
+                  'distributed': 'sum',
+                  'target': 'sum',
+                  'in_distribution': 'sum',
+                  'result_facings': 'sum',
+                  'result_distributed': 'sum'}).reset_index()
         return lvl2_result
 
     @staticmethod

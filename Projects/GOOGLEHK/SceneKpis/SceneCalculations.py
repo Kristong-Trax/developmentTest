@@ -1,4 +1,4 @@
-from Projects.GOOGLEHK.SceneKPIGenerator import SceneGenerator
+from KPIUtils.GlobalProjects.GOOGLE.SceneKPIGenerator import SceneGenerator
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
 
 __author__ = 'Eli_Shivi_Sam'
