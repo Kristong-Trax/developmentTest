@@ -74,7 +74,7 @@ class GPUSToolBox:
         self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}])
 
     def calculate_share_of_empty(self):
-        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'product_fk': 0}])
+        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}])
 
     def safety_func(self, group, func, args):
         try:
@@ -93,7 +93,7 @@ class GPUSToolBox:
         for i, kpi in relevant_kpis.iterrows():
             parent = relevant_kpis[relevant_kpis['type'] == Const.SOS_HIERARCHY[kpi['type']]] #  Note, parent is df, kpi is a series
             df = self.scif.copy()
-            df = self.transform_new_col(df, kpi['num_types'], sum_col, 'numerator_result')
+            df = self.transform_new_col(df, [kpi['num_types'], kpi['den_types']], sum_col, 'numerator_result')
             df = self.transform_new_col(df, kpi['den_types'], sum_col, 'denominator_result')
             df['result'] = df['numerator_result'].astype(float) / df['denominator_result']
             df = self.update_and_rename_df(df, kpi, parent)

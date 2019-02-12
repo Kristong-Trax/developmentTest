@@ -22,8 +22,8 @@ class Const(object):
     NUMERATOR = 'Numerator'
     DENOMINATOR = 'Denominator'
     SUM_COLS = {
-                LINEAR_SOS_KPI: FACINGS,
-                FACING_SOS_KPI: LINEAR_FACINGS,
+                LINEAR_SOS_KPI: LINEAR_FACINGS,
+                FACING_SOS_KPI: FACINGS,
                 SHARE_OF_EMPTY_KPI: FACINGS_IGN_STACKING
                 }
 
