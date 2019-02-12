@@ -29,5 +29,5 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         else:
-            self.tool_box.main_calculation()
+            score = self.tool_box.main_calculation()
 

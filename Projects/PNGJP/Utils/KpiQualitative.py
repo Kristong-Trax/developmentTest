@@ -151,7 +151,7 @@ class PNGJPKpiQualitative_ToolBox(PNGJPConsts):
         self.match_display_in_scene = self.get_match_display()
         self.data_provider.probe_groups = self.get_probe_group(self.data_provider.session_uid)
         self.tools = PNGJPGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.template_name = 'TemplateQualitative_Nov_20181107_v3.xlsx'
+        self.template_name = 'TemplateQualitative.xlsx'
         self.TEMPLATE_PATH = os.path.join(os.path.dirname(
             os.path.realpath(__file__)), '..', 'Data', self.template_name)
         self.template_data = parse_template(self.TEMPLATE_PATH, self.HIERARCHY)
