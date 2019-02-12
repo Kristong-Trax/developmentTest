@@ -88,7 +88,7 @@ class DIAGEOUSToolBox:
                 self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
                                                                     total_off_trade_fk]
             else:
-                return  # everything broke, so no point in running
+                self.relevant_assortment = self.assortment_products  # we need this to prevent undefined errors
 
     # initialize:
 
@@ -115,6 +115,9 @@ class DIAGEOUSToolBox:
         """
         This function calculates the KPI results.
         """
+        if self.relevant_assortment.empty and self.on_off == Const.OFF:
+            return
+
         total_store_score, segment_store_score, national_store_score = 0, 0, 0
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
         segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.SEGMENT])
