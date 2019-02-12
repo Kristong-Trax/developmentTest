@@ -84,8 +84,11 @@ class DIAGEOUSToolBox:
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
         if self.on_off == Const.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.OFF])
-            self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
-                                                                total_off_trade_fk]
+            if not self.assortment_products.empty:
+                self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
+                                                                    total_off_trade_fk]
+            else:
+                return  # everything broke, so no point in running
 
     # initialize:
 
