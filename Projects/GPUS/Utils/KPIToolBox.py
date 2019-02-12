@@ -83,7 +83,6 @@ class GPUSToolBox:
         except Exception as e:
             Log.error('ERROR {} KPIs Failed to Calculate'.format(group))
             Log.error(e)
-            asdgfasd
 
     def calculate_sos(self, kpi_family, kpi_filter):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == kpi_family]
