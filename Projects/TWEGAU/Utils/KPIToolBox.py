@@ -144,7 +144,7 @@ class TWEAUToolBox:
         # 2. calculate the zone based sheet
         self.calculate_zone_based()
 
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
         score = 0
         return score
 
