@@ -2,8 +2,9 @@
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.GPUS.Utils.KPIToolBox import GPUSToolBox
+from Projects.GPUS.Utils.CommonV3 import Common
 
-from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.DB.CommonV2 import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
