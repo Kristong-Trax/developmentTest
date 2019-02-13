@@ -18,18 +18,20 @@ class Calculations(BaseCalculationsScript):
 
 
 
-#
-# if __name__ == '__main__':
-#     LoggerInitializer.init('SolarBr calculations')
-#     Config.init()
-#     project_name = 'solarbr'
-#     data_provider = KEngineDataProvider(project_name)
-#     output = Output()
-#
-#     # second report
-#     list_sessions = sessions = ['33eac77e-a9ef-4b31-b734-8610cc4bbc15']
-#
-#
-#     for session in list_sessions:
-#         data_provider.load_session_data(session)
-#         Calculations(data_provider, output).run_project_calculations()
+
+if __name__ == '__main__':
+    LoggerInitializer.init('SolarBr calculations')
+    Config.init()
+    project_name = 'solarbr'
+    data_provider = KEngineDataProvider(project_name)
+    output = Output()
+
+    # second report
+    list_sessions = sessions = ['c121a357-1dbc-4bbe-82bb-e1a57beec01a',
+                                'fa19ab8c-e982-46df-8907-36ee453f41be',
+                                'f8041e65-2a2e-4879-83fe-ab4cac4e12a8']
+
+
+    for session in list_sessions:
+        data_provider.load_session_data(session)
+        Calculations(data_provider, output).run_project_calculations()

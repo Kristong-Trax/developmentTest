@@ -3,6 +3,7 @@
 
 import os
 import pandas as pd
+import re
 import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -25,8 +26,8 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template.xlsx')
-MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template v0.2.xlsx')
+SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template 2019.xlsx')
+MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template 2019.xlsx')
 
 
 class SOLARBRToolBox:
@@ -116,7 +117,7 @@ class SOLARBRToolBox:
                         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
 
                         if relevant_template["numerator param 1"].all() and relevant_template[
-                            "denominator param"].all():
+                            "denominator param 1"].all():
                             function = self.get_kpi_function(kpi_type)
                             for i, kpi_line in relevant_template.iterrows():
                                 result, score = function(kpi_line, general_filters)
@@ -163,17 +164,21 @@ class SOLARBRToolBox:
         kpi_name = kpi_line[Const.KPI_NAME]
 
         # get denominator filters
-        for den_column in [col for col in kpi_line.columns if Const.DEN_TYPE in col]:  # get relevant den columns
+        for den_column in [col for col in kpi_line.keys() if Const.DEN_TYPE in col]:  # get relevant den columns
             if kpi_line[den_column]:  # check to make sure this kpi has this denominator param
                 general_filters[kpi_line[den_column]] = \
                     kpi_line[den_column.replace(Const.DEN_TYPE, Const.DEN_VALUE)].split(',')  # get associated values
 
+        general_filters = self.convert_operators_to_values(general_filters)
+
         sos_filters = {}
         # get numerator filters
-        for num_column in [col for col in kpi_line.columns if Const.NUM_TYPE in col]:  # get relevant numerator columns
-            if kpi_line[num_column]: # check to make sure this kpi has this numerator param
+        for num_column in [col for col in kpi_line.keys() if Const.NUM_TYPE in col]:  # get relevant numerator columns
+            if kpi_line[num_column]:  # check to make sure this kpi has this numerator param
                 sos_filters[kpi_line[num_column]] = \
                     kpi_line[num_column.replace(Const.NUM_TYPE, Const.NUM_VALUE)].split(',')  # get associated values
+
+        sos_filters = self.convert_operators_to_values(sos_filters)
 
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         # sos_value *= 100
@@ -182,7 +187,7 @@ class SOLARBRToolBox:
         score = self.get_score_from_range(kpi_name, sos_value)
 
         manufacturer_products = self.all_products[
-            self.all_products['manufacturer_name'] == sos_filters['manufacturer_name']].iloc[0]
+            self.all_products['manufacturer_name'] == sos_filters['manufacturer_name'][0]].iloc[0]
 
         manufacturer_fk = manufacturer_products["manufacturer_fk"]
 
@@ -243,6 +248,15 @@ class SOLARBRToolBox:
         score = score_range['Score'].iloc[0]
 
         return score
+
+    def convert_operators_to_values(self, filters):
+        if 'number_of_sub_packages' in filters.keys():
+            value = filters['number_of_sub_packages']
+            operator, number = re.split('(\d+)', value[0])
+            if operator == '>=':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] >= int(value)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+        return filters
 
     def get_kpi_function(self, kpi_type):
         """
