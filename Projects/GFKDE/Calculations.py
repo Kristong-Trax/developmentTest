@@ -65,6 +65,7 @@ class GFKDECalculations(BaseCalculationsScript):
         try:
             self.timer.start()
             dm = GFKDataManager(self.data_provider)
+            dm.add_to_sharing()
 
             for kpi in KPIs:
                 kpi(data_provider=self.data_provider).calculate()
