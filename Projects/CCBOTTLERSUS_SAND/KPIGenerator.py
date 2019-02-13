@@ -15,6 +15,7 @@ from Projects.CCBOTTLERSUS_SAND.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 # from Projects.CCBOTTLERSUS_SAND.Utils.KPIToolBox import BCIKPIToolBox
 from Projects.CCBOTTLERSUS_SAND.SOVI.KPIToolBox import SOVIToolBox
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
+from Projects.CCBOTTLERSUS_SAND.MSC.KPIToolBox import MSCToolBox
 
 __author__ = 'Elyashiv'
 
@@ -39,9 +40,10 @@ class CCBOTTLERSUS_SANDGenerator:
         self.calculate_cma_compliance()
         self.calculate_sovi()
         self.calculate_ara()
+        # self.calculate_msc() # work in progress
         self.common_db.commit_results_data()
 
-        self.calculate_cma_compliance_sw()
+        # self.calculate_cma_compliance_sw()
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUS_SANDCalculations')
     def calculate_manufacturer_displays(self):
@@ -123,3 +125,12 @@ class CCBOTTLERSUS_SANDGenerator:
             tool_box.commit_results()
         except Exception as e:
             Log.error('failed to calculate CMA Compliance due to :{}'.format(e.message))
+
+    @log_runtime('MSC CCBOTTERSUSCalculations')
+    def calculate_msc(self):
+        Log.info('starting calculate_msc')
+        try:
+            tool_box = MSCToolBox(self.data_provider, self.output, self.common_db)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calcualte MSC Compliance due to: {}'.format(e.message))

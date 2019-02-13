@@ -261,12 +261,12 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
         filters = atomic_kpi_data['filters']
         allowed = atomic_kpi_data['allowed']
         target = atomic_kpi_data['target']
-        # if atomic_kpi_data['atomic'] == 'Is Nutro Dry Dog food blocked?' or \
-        #         (atomic_kpi_data['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED'\
-        #         and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
-        #     allowed_filter = self._get_allowed_products_without_other(allowed, filters)
-        # else:
-        allowed_filter = self._get_allowed_products(allowed, filters)
+        if atomic_kpi_data['atomic'] == 'Is Nutro Dry Dog food blocked?' or \
+                (atomic_kpi_data['atomic'] == 'Nutro Dry Dog and Wet Dog are BOTH BLOCKED'\
+                and filters['Sub-section'] == ['DOG MAIN MEAL DRY']):
+            allowed_filter = self._get_allowed_products_without_other(allowed, filters)
+        else:
+            allowed_filter = self._get_allowed_products(allowed, filters)
         scene_type_filter = self._create_filter_dict(key=TEMPLATE_NAME, value=atomic_kpi_data['scene_types'])
         filters.update(scene_type_filter)
 
@@ -344,6 +344,10 @@ class TwoBlocksAtomicKpiCalculation(BlockBaseCalculation):
             score = self.calculate_block(atomic_kpi_data)
             if not score:
                 result = 0
+                break
+            if np.isnan(score):
+                result = np.nan
+                break
         return result
 
     def check_block(self, block, bay):

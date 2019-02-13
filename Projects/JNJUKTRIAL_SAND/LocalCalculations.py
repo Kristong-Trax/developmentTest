@@ -2,7 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.JNJUKTRIAL_SAND.Calculations import JNJUKCalculations
+from Projects.JNJUKTRIAL_SAND.Calculations import JNJUKTRIAL_SANDCalculations
 
 
 if __name__ == '__main__':
@@ -20,4 +20,4 @@ if __name__ == '__main__':
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
-        JNJUKCalculations(data_provider, output).run_project_calculations()
+        JNJUKTRIAL_SANDCalculations(data_provider, output).run_project_calculations()

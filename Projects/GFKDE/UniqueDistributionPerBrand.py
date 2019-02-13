@@ -19,6 +19,6 @@ class UniqueDistributionPerBrand_KPI(GfkDistributionBaseCalculationScript):
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.PRODUCT_FK,
-            "denominator": Fields.BRAND_FK,
+            "numerator": Fields.BRAND_FK,
+            "denominator": Keys.CATEGORY_FK,
         }
