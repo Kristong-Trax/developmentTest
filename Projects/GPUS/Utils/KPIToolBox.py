@@ -57,14 +57,14 @@ class GPUSToolBox:
         This function calculates the KPI results.
         """
         if not self.filter_df(self.scif, self.brand_filter).empty:
-            # self.calculate_facings_sos()
-            # self.calculate_linear_sos()
+            self.calculate_facings_sos()
+            self.calculate_linear_sos()
             self.calculate_adjacency()
-            # self.calculate_assortment()
+            self.calculate_assortment()
 
         if not self.filter_df(self.scif, self.cat_filter).empty:
-            # self.calculate_share_of_empty()
-            pass
+            self.calculate_share_of_empty()
+            # pass
 
         for result in self.kpi_results:
             self.write_to_db(**result)
