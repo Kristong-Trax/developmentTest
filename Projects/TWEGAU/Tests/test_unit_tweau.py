@@ -3,20 +3,20 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
 import pandas as pd
-from Projects.TWEAU.Utils.KPIToolBox import TWEAUToolBox
+from Projects.TWEGAU.Utils.KPIToolBox import TWEGAUToolBox
 
 
-__author__ = 'sathiyanarayanan'
+__author__ = 'nidhin'
 
 
-class TestTWEAU(TestCase):
+class TestTWEGAU(TestCase):
 
-    @mock.patch('Projects.TWEAU.Utils.KPIToolBox.ProjectConnector')
+    @mock.patch('Projects.TWEGAU.Utils.KPIToolBox.ProjectConnector')
     def setUp(self, x):
         Config.init('')
         self.data_provider_mock = MagicMock()
-        self.data_provider_mock.project_name = 'tweau'
+        self.data_provider_mock.project_name = 'twegau'
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
-        self.tool_box = TWEAUToolBox(self.data_provider_mock, MagicMock())
+        self.tool_box = TWEGAUToolBox(self.data_provider_mock, MagicMock())
 

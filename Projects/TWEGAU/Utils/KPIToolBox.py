@@ -103,7 +103,7 @@ exclude_re = re.compile("Excl( *)\((.*)\)")
 only_re = re.compile("Only( *)\((.*)\)")
 
 
-class TWEAUToolBox:
+class TWEGAUToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3
@@ -312,7 +312,7 @@ class TWEAUToolBox:
                             kpi_parent_name = kpi_sheet_row.kpi_parent_name
                             should_enter = True
                         if not denominator_id:
-                            raise Exception("Denominator ID cannot be found. [TWEAU/Utils/KPIToolBox.py]")
+                            raise Exception("Denominator ID cannot be found. [TWEGAU/Utils/KPIToolBox.py]")
                         self.common.write_to_db_result(fk=int(kpi['pk']),
                                                        numerator_id=numerator_id,
                                                        numerator_result=numerator,
