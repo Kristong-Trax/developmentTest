@@ -730,7 +730,7 @@ class BATRUToolBox:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper() == 'ALL']
-        monitored_skus = pd.DataFrame()
+        monitored_skus = pd.DataFrame(columns=['product_ean_code_lead'])
         for sku in monitored_skus_raw['ean_code'].unique().tolist():
             try:
                 product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
@@ -739,6 +739,8 @@ class BATRUToolBox:
                 continue
             monitored_skus = monitored_skus.append({'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
         monitored_skus = monitored_skus.drop_duplicates(subset=['product_ean_code_lead'], keep='last')
+        if monitored_skus.empty:
+            Log.warning('Monitored SKU are not defined in the P2 template')
         return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
@@ -863,7 +865,7 @@ class BATRUToolBox:
                 product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB'.format(row.leading))
+                Log.warning('Product ean {} is not defined in the DB'.format(row.product_ean_code))
                 continue
             try:
                 kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &

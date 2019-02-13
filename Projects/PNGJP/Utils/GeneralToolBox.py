@@ -964,7 +964,7 @@ class PNGJPGENERALToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                Log.debug('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 

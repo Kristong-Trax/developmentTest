@@ -55,9 +55,10 @@ class NESTLEUSToolBox:
         This function calculates the KPI results.
         """
         kpi_set_fk = kwargs['kpi_set_fk']
-        self.Calculate_facings_count(kpi_set_fk = kpi_set_fk)
-        self.Calculate_Linear_feet(kpi_set_fk = kpi_set_fk)
-        self.common.commit_results_data()
+        # self.Calculate_facings_count(kpi_set_fk = kpi_set_fk)
+        # self.Calculate_Linear_feet(kpi_set_fk = kpi_set_fk)
+        # self.common.commit_results_data()
+        pass
 
 
 
@@ -75,8 +76,8 @@ class NESTLEUSToolBox:
 
                 facing_count = self.availability.calculate_availability(**sos_filter)
 
-                # print('count:' + str(facing_count))
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+                if facing_count > 0:
+                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
                                            numerator_result=facing_count,
                                            denominator_id=product_fk,
                                            result=facing_count, score=facing_count)
@@ -92,7 +93,8 @@ class NESTLEUSToolBox:
                 ratio, numerator_length, denominator_length = self.linear_calc.calculate_linear_share_of_shelf_with_numerator_denominator(sos_filter, **general_filter)
 
                 numerator_length = int(round(numerator_length * 0.0393700787))
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
+                if numerator_length > 0:
+                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
                                                denominator_id=product_fk,
                                                result=numerator_length, score=numerator_length)
 

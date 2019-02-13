@@ -40,6 +40,7 @@ class Const(object):
     OSD_NUMBER_OF_SHELVES = 'OSD_Number_of_shelves'
     POSM_EAN_CODE = 'POSM_EAN_CODE'
     POSM_EAN_CODE_HOTSPOT = 'POSM_EAN_CODE_HOTSPOT'
+    STORAGE_EXCLUSION_PRICE_TAG = 'STORAGE_EXCLUSION_PRICE_TAG'
 
     # KPIs types
     FSOS = 'Facing Share of Shelf'

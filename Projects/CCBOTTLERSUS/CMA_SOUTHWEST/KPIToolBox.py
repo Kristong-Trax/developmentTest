@@ -38,7 +38,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
     INCLUDE_FILTER = 1
     CONTAIN_FILTER = 2
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common_v2):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -58,7 +58,7 @@ class CCBOTTLERSUSCMASOUTHWESTToolBox:
         self.sos = SOS(self.data_provider, self.output)
         self.templates = {}
         self.common_db = Common(self.data_provider, CMA_COMPLIANCE)
-        self.common_db2 = CommonV2(self.data_provider)
+        self.common_db2 = common_v2
         self.common_scene = CommonV2(self.data_provider)
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]

@@ -138,6 +138,7 @@ class Const(object):
     PERCENT_OF_FACINGS = 'CMA Compliance SW % of Facings'
     NUM_SHELVES_BONUS = 'CMA Compliance SW # of Shelves Bonus'
     TOTAL_COKE = 'Total Coke Cooler Purity'
+    COKE_COOLER_PURITY_BRAND = 'Coke Cooler Purity - Brand'
     ''
 
     KPI_FAMILY_KEY = {

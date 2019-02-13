@@ -19,7 +19,10 @@ from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Elyashiv'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
-ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Assortment.xlsx')
+
+# ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Assortment.xlsx')
+ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/just for local calculation', 'Assortment.xlsx')
+
 
 
 def log_runtime(description, log_start=False):
@@ -299,6 +302,8 @@ class INBEVCIINBEVCIToolBox:
         This function calculates the KPI results.
         """
         lvl3_result = self.assortment.calculate_lvl3_assortment()
+        if lvl3_result.empty:
+            return
         eye_level_sku_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL_SKU)
         eye_level_fk = self.get_kpi_fk_by_kpi_name(Const.EYE_LEVEL)
         must_have_fk = self.get_kpi_fk_by_kpi_name(Const.MUST_HAVE_SKU)
@@ -320,8 +325,7 @@ class INBEVCIINBEVCIToolBox:
                                                       denominator_id=result.assortment_group_fk)
         must_have_results = lvl3_result[lvl3_result['kpi_fk_lvl3'] == must_have_fk]
         self.calculate_oos(must_have_results)
-        if lvl3_result.empty:
-            return
+
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         for result in lvl2_result.itertuples():
             super_group_fk = result.assortment_super_group_fk
