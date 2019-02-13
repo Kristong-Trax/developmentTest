@@ -8,7 +8,7 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.DIAGEOIN_SAND.Utils.KPIToolBox import DIAGEOIN_SANDToolBox, log_runtime
 
-__author__ = 'Nimrod'
+__author__ = 'nidhin'
 
 
 class DIAGEOIN_SANDGenerator:

@@ -7,7 +7,7 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.DIAGEOIN_SAND.KPIGenerator import DIAGEOIN_SANDGenerator
 
 
-__author__ = 'Nimrod'
+__author__ = 'nidhin'
 
 
 class DIAGEOIN_SANDCalculations(BaseCalculationsScript):
