@@ -26,6 +26,7 @@ class SosOnBrandedZonesManufacturerCategory_KPI(GfkBaseCalculation):
             "numerator": Fields.MANUFACTURER_FK,
             "denominator": Keys.CATEGORY_FK,
             "kpi_additional_params": {
-                "filter_branded_zones": True
+                "filter_branded_zones": True,
+                "fill_not_found_elements": True
             }
         }
