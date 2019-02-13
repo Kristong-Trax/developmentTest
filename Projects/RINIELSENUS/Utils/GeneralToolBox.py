@@ -2,10 +2,13 @@
 import xlrd
 import json
 import pandas as pd
+from collections import defaultdict
 
 from Projects.RINIELSENUS.Utils.PositionGraph import MarsUsPositionGraphs
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
+from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
+
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -36,6 +39,7 @@ class MarsUsGENERALToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
+        self.block = Block(self.data_provider)
         self.scenes_info = self.data_provider[Data.SCENES_INFO].merge(self.data_provider[Data.ALL_TEMPLATES],
                                                                       how='left', on='template_fk', suffixes=['', '_y'])
         self.ignore_stacking = ignore_stacking
@@ -708,6 +712,110 @@ class MarsUsGENERALToolBox:
         products_count = sum(matches['counts'])
         return avg_shelf / products_count
 
+    # def parse_net_x_block(self, clusters, mpis):
+    #     clusters = clusters.sort_values('facing_percentage', ascending=False)
+    #     cluster_dicts = []
+    #     for i, row in clusters.iterrows():
+    #         row_dict = defaultdict(list)
+    #         sub_cluster = row['cluster']
+    #         for i, node in sub_cluster.nodes(data=True):
+    #             row_dict['scene_fk'] = row['scene_fk']
+    #             row_dict['orientation'] = row['orientation']
+    #             row_dict['cluster_ratio'] = row['facing_percentage']
+    #             row_dict['is_block'] = row['is_block']
+    #             node = node['group_attributes']
+    #             row_dict['all_prods'] += node['product_fk_list']
+    #             row_dict['all_scene_matches'] += node['match_fk_list']
+    #             if 'SKU' in node['product_type_list']:
+    #                 node_mpis = mpis[mpis['scene_match_fk'].isin(node['match_fk_list'])]
+    #                 if node_mpis.empty:
+    #                     continue
+    #                 row_dict['rel_scene_matches'] += list(node_mpis['scene_match_fk'])
+    #                 row_dict['rel_shelves'] += list(node_mpis['shelf_number'])
+    #                 row_dict['rel_bays'] += list(node_mpis['bay_number'].unique())
+    #                 row_dict['rel_facings'] += [node_mpis.shape[0]]
+    #         row_dict['rel_facings'] = sum(row_dict['rel_facings'])
+    #         row_dict['rel_shelves'] = list(set(row_dict['rel_shelves']))
+    #         row_dict['mpis'] = self.match_product_in_scene[self.match_product_in_scene['scene_match_fk']
+    #                                                        .isin(row_dict['all_scene_matches'])]
+    #         cluster_dicts.append(row_dict)
+    #
+    #     return cluster_dicts
+    #
+    # def test_subset_ratio(self, subset, cluster, mpis, minimum_block_ratio):
+    #     sc_mpis = mpis[self.get_filter_condition(mpis, **{'scene_fk': cluster['scene_fk']})]
+    #     num = cluster['mpis'][self.get_filter_condition(cluster['mpis'], **subset)].shape[0]
+    #     den = sc_mpis[self.get_filter_condition(sc_mpis, **subset)].shape[0]
+    #     ratio = num / float(den) if num else 0
+    #     return ratio >= minimum_block_ratio
+    #
+    # def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+    #                              minimum_block_ratio=1, block_of_blocks=False,
+    #                              block_products1=None, block_products2=None, vertical=False, biggest_block=False,
+    #                              n_cluster=None, **filters):
+    #
+    #     probe = float(filters.pop('probe_group_id')) if 'probe_group_id' in filters else None
+    #     filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
+    #     relevant_scenes = list(relevant_scenes)
+    #     if len(relevant_scenes) == 0:
+    #         Log.debug('Block Together: No relevant SKUs were found for these filters {}'.format(filters))
+    #         return False
+    #     scene_filter = {'scene_fk': relevant_scenes}
+    #     print('~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~'.format(scene_filter))
+    #     mpis_filter = {'scene_fk': relevant_scenes}
+    #     mpis_filter.update(filters)
+    #     mpis = self.match_product_in_scene
+    #     mpis = mpis[self.get_filter_condition(mpis, **mpis_filter)]
+    #     block_filters = {'product_fk': list(mpis['product_fk'].unique())}
+    #     # allowed_products_filters = {'product_type': ['Empty', 'Other']}
+    #
+    #     clusters = self.block.network_x_block_together(block_filters, location=scene_filter,
+    #                                             additional={'allowed_products_filters': allowed_products_filters,
+    #                                                         'include_stacking': False,
+    #                                                         'check_vertical_horizontal': True,
+    #                                                         'ignore_empty': False,
+    #                                                         'minimum_block_ratio': minimum_block_ratio})
+    #     if not clusters.empty:
+    #         clusters = self.parse_net_x_block(clusters, mpis)
+    #         # Debugging bits
+    #         for cluster in clusters:
+    #             print('\n\n')
+    #             for j, i in cluster['mpis'].sort_values(['bay_number', 'shelf_number', 'facing_sequence_number']).iterrows():
+    #                 print('bay:', i['bay_number'], 'shelf:', i['shelf_number'], 'face_#:', i['facing_sequence_number'],
+    #                       i['Sub-section'], i['Customer Brand'], i['Sub Brand'], i['Segment'], i['product_name'])
+    #
+    #         # kinda weirded out that n_cluster is an arbitrary number, but behavior is binary.....
+    #         if n_cluster is not None:
+    #             # sorta feel like this should be >=n_cluster
+    #             largest_cluster = clusters[0]['cluster_ratio']  # 39
+    #             if len(clusters) >= 2 and clusters[0]['scene_fk'] == clusters[1]['scene_fk']:
+    #                 second_cluster = clusters[1]['cluster_ratio']
+    #             else:
+    #                 second_cluster = 0
+    #             cluster_ratio = largest_cluster + second_cluster
+    #             if cluster_ratio >= minimum_block_ratio:
+    #                 if vertical:
+    #                     return {'block': True}
+    #
+    #         elif vertical:
+    #             biggest_block = clusters[0]
+    #             if biggest_block['is_block']:
+    #                 return {'block': True, 'shelves': len(biggest_block['rel_shelves'])}
+    #             # return biggest_block['cluster_ratio'], biggest_block # not sure this exit is actually used...
+    #
+    #         elif block_of_blocks:
+    #             # theoretically one could pass in multiple scenes, and the biggest block
+    #             # wouldn't necessarily be the right one :/
+    #             for cluster in clusters:
+    #                 if cluster['is_block']:
+    #                     if self.test_subset_ratio(block_products1, cluster, mpis, minimum_block_ratio) and \
+    #                        self.test_subset_ratio(block_products2, cluster, mpis, minimum_block_ratio):
+    #                         return True
+    #
+    #     return False
+
+
+
     def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
                                  minimum_block_ratio=1, result_by_scene=False, block_of_blocks=False,
                                  block_products1=None, block_products2=None, vertical=False, biggest_block=False,
@@ -738,7 +846,7 @@ class MarsUsGENERALToolBox:
         number_of_blocked_scenes = 0
         cluster_ratios = []
         for scene in relevant_scenes:
-            print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
+            # print('~~~~~~~~~~~~~~ SCENE {} ~~~~~~~~~~~~'.format(scene))
             # scene_graph = self.position_graphs.get(scene).copy()
             scene_graph = self.position_graphs.get(scene, probe_id=probe).copy()
 

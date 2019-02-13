@@ -288,7 +288,7 @@ class CCRUAddKPIs(CCRUConsts):
                 level3_query = \
                     """
                     INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text, presentation_order, display, atomic_weight)
-                    VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}');
+                    VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', {6});
                     """.format(kpi_fk, atomic_name, atomic_name, atomic_display_text, 1, 'Y', atomic_weight)
                 cur.execute(level3_query)
                 self.kpi_counter['atomic'] += 1
@@ -314,9 +314,9 @@ if __name__ == '__main__':
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = CCRUAddKPIs('ccru-sand', '/home/idanr/Desktop/super.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - Contract Execution.xlsx')
-    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
-    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx')
-    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
+    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
+    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx')
+    # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()

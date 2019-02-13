@@ -13,12 +13,15 @@ class SOSUnboxedManufacturerCategory_KPI(GfkBaseCalculation):
         return {
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
                 "include_operator": "and"
             },
             "numerator": Keys.MANUFACTURER_FK,
-            "denominator": Keys.CATEGORY_FK
+            "denominator": Keys.CATEGORY_FK,
+            "kpi_additional_params": {
+                "fill_not_found_elements": True
+            }
         }

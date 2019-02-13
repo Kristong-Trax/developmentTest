@@ -85,11 +85,11 @@ class MarsUsDogMainMealWet(object):
                                                                                    self._get_store_channel))
             self._writer.commit_results_data()
             return
-
-        if self._is_pet_food_category_excluded():
-            Log.warning('pet food category does not exists or it was excluded by decision unit')
-            self._writer.commit_results_data()
-            return
+        
+        # if self._is_pet_food_category_excluded():
+        #     Log.warning('pet food category does not exists or it was excluded by decision unit')
+        #     self._writer.commit_results_data()
+        #     return
 
         # template SPT
         if self.is_relevant_retailer_channel_spt():
