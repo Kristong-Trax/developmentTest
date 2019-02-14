@@ -21,4 +21,7 @@ class UniqueDistributionPerManufacturer_KPI(GfkDistributionBaseCalculationScript
             },
             "numerator": Fields.MANUFACTURER_FK,
             "denominator": Keys.CATEGORY_FK,
+            "kpi_additional_params": {
+                "fill_not_found_elements": True
+            }
         }

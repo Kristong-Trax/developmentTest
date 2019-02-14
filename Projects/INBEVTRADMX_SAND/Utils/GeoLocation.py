@@ -59,7 +59,7 @@ class INBEVTRADMX_SANDGeo:
 
     @staticmethod
     def is_store_location_none(store_location):
-        return (store_location.pos_lat.values[0] is None) and (store_location.pos_long.values[0] is None)
+        return (store_location.pos_lat.values[0] is None) or (store_location.pos_long.values[0] is None)
 
     def calculate_geo_location(self):
         """"
