@@ -11,7 +11,7 @@ __author__ = 'sam, nicolaske'
 
 class GPUSToolBox:
 
-    def __init__(self, data_provider, common, output):
+    def __init__(self, data_provider, common, output, template_path):
         self.output = output
         self.data_provider = data_provider
         self.common = common
@@ -27,8 +27,10 @@ class GPUSToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.mpis = self.make_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.jump_shelves = pd.read_excel(template_path).T.to_dict('index')
+        self.scif = self.generate_scif()
         self.scif['store_fk'] = self.store_id
         self.scif = self.scif[~(self.scif['product_type'] == Const.IRRELEVANT)]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -50,6 +52,7 @@ class GPUSToolBox:
         self.kpi_results = []
 
         self.assortment = Assortment(self.data_provider, self.output)
+        self.assortment.scif = self.scif
 
 
     def main_calculation(self, *args, **kwargs):
@@ -252,6 +255,33 @@ class GPUSToolBox:
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
         return mpis
+
+    def generate_scif(self):
+        scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        retailer = self.store_info['retailer_name'].iloc[0]
+        if retailer in self.jump_shelves:
+            mpis_groups = self.mpis.groupby('category')
+            new_mpis = pd.DataFrame()
+            for category, old_mpis in mpis_groups:
+                if category in self.jump_shelves[retailer]:
+                    old_mpis = old_mpis[old_mpis['shelf_number_from_bottom'] <= self.jump_shelves[retailer][category]]
+                new_mpis = pd.concat([new_mpis, old_mpis])
+            new_mpis = new_mpis[Const.MPIS_COLS]
+            new_mpis['facings'] = 1
+            stack = new_mpis.drop('stacking_layer', axis =1).groupby(['scene_fk', 'product_fk']).sum().rename(
+                columns={'width_mm_advance': 'net_len_add_stack'})
+            ign_stack = new_mpis[new_mpis['stacking_layer']==1].drop('stacking_layer', axis =1)\
+                .groupby(['scene_fk', 'product_fk']).sum().rename(columns={'width_mm_advance': 'net_len_ign_stack',
+                                                                           'facings': Const.FACINGS_IGN_STACKING})
+            mpis = stack.join(ign_stack).reset_index()
+            mpis.fillna(0, inplace=True)
+            scif = scif.drop(Const.FACINGS_IGN_STACKING, axis=1).drop(Const.FACINGS, axis=1)
+            for col in scif.columns:
+                if '_len_' in col or '_area_' in col:
+                    scif.drop(col, axis=1, inplace=True)
+            scif = mpis.merge(scif, right_on=['scene_id', 'item_id'], left_on=['scene_fk', 'product_fk'],
+                              suffixes=['', 'x_'])
+        return scif
 
     def dist_kpi_to_oos_kpi(self):
         dist = self.kpis[(self.kpis[Const.KPI_FAMILY] == Const.ASSORTMENT)&(self.kpis['kpi_calculation_stage_fk'] == 3)]

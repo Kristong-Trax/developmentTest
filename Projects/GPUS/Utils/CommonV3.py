@@ -204,36 +204,44 @@ class Common(object):
         return queries
 
     @log_runtime('Saving to DB')
-    def commit_results_data(self, result_entity=SESSION, scene_session_hierarchy=False):
+    def commit_results_data(self, result_entity=SESSION, scene_session_hierarchy=False, delete_results=True):
     # def commit_results_data(self, by_scene=False, scene_session_hierarchy=False):
         """
         We need to "save place" (transaction) for all the queries, enter the first pk to refresh_pks and
         then create queries function, and commit all those queries (in the tree, only the necessary ones)
         """
+        data_size = 0
         insert_queries = self.merge_insert_queries(self.kpi_results[self.QUERY].tolist())
         if not insert_queries:
             return
         self.refresh_parents()
-        delete_queries = {'delete_old_session_specific_tree_query': ''}
-        if result_entity == self.SCENE:
-            delete_queries['delete_old_session_specific_tree_query'] = self.queries.get_delete_specific_tree_queries(self.scene_id, self.HIERARCHY_SESSION_TABLE)
-            delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_scene_queries(self.scene_id, self.HIERARCHY_SCENE_TABLE)
-            delete_queries['delete_query'] = self.queries.get_delete_scene_results_query_from_new_tables(self.scene_id)
-        elif result_entity == self.SESSION:
-            # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_queries(self.session_id,  self.HIERARCHY_SESSION_TABLE)
-            # delete_queries['delete_old_tree_query_part2'] = self.queries.get_delete_tree_queries_parent_fk(self.session_id,  self.HIERARCHY_SESSION_TABLE)
-            'below temp removed'
-            pass
-            # delete_queries['delete_query'] = self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
+        if delete_results:
+            delete_queries = {'delete_old_session_specific_tree_query': ''}
+            if result_entity == self.SCENE:
+                # delete_queries['delete_old_session_specific_tree_query'] = self.queries.get_delete_specific_tree_queries(
+                #     self.scene_id, self.HIERARCHY_SESSION_TABLE)
+                # delete_queries['delete_old_tree_query'] = \
+                #     self.queries.get_delete_tree_scene_queries(self.scene_id, self.HIERARCHY_SCENE_TABLE)
+                delete_queries['delete_query'] = self.queries.get_delete_scene_results_query_from_new_tables(self.scene_id)
+            elif result_entity == self.SESSION:
+                # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_queries(self.session_id,
+                #  self.HIERARCHY_SESSION_TABLE)
+                # delete_queries['delete_old_tree_query_part2'] =
+                # self.queries.get_delete_tree_queries_parent_fk(self.session_id,  self.HIERARCHY_SESSION_TABLE)
+                delete_queries['delete_query'] = \
+                    self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
+            else:
+                Log.error('Cannot Calculate results per {}'.format(result_entity))
+                return
+            local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+            cur = local_con.db.cursor()
+            for key, value in delete_queries.iteritems():
+                if key == 'delete_old_session_specific_tree_query' and not value:
+                    continue
+                cur.execute(value)
         else:
-            Log.error('Cannot Calculate results per {}'.format(result_entity))
-            return
-        local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        cur = local_con.db.cursor()
-        for key, value in delete_queries.iteritems():
-            if key == 'delete_old_session_specific_tree_query' and not value:
-                continue
-            cur.execute(value)
+            local_con = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+            cur = local_con.db.cursor()
         # if delete_old_session_specific_tree_query:
         #     cur.execute(delete_old_session_specific_tree_query)
         # cur.execute(delete_old_tree_query)

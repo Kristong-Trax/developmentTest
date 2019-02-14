@@ -24,6 +24,7 @@ class Const(object):
     NUMERATOR = 'Numerator'
     DENOMINATOR = 'Denominator'
     EDGES = ['left', 'right']
+    MPIS_COLS = ['scene_fk', 'product_fk', 'stacking_layer', 'width_mm_advance']
     SUM_COLS = {
                 LINEAR_SOS_KPI: LINEAR_FACINGS,
                 FACING_SOS_KPI: FACINGS,
