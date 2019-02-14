@@ -245,16 +245,29 @@ class SOLARBRToolBox:
         score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +
                                                              '" & Low <= ' + str(sos_value) +
                                                              ' & High >= ' + str(sos_value) + '')
-        score = score_range['Score'].iloc[0]
+        try:
+            score = score_range['Score'].iloc[0]
+        except IndexError:
+            Log.error('No score data found for KPI name {} in store type {}'.format(kpi_name.encode("utf-8"), store_type.encode("utf-8")))
+            return 0
 
         return score
 
     def convert_operators_to_values(self, filters):
         if 'number_of_sub_packages' in filters.keys():
             value = filters['number_of_sub_packages']
-            operator, number = re.split('(\d+)', value[0])
+            operator, number = [x.strip() for x in re.split('(\d+)', value[0]) if x != '']
             if operator == '>=':
-                subpackages_num = self.scif[self.scif['number_of_sub_packages'] >= int(value)]['number_of_sub_packages'].unique().tolist()
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] >= int(number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '<=':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] <= int(number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '>':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] > int(number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '<':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] < int(number)]['number_of_sub_packages'].unique().tolist()
                 filters['number_of_sub_packages'] = subpackages_num
         return filters
 
