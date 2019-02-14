@@ -59,7 +59,8 @@ class MARSRU_PRODKPIFetcher:
                                   'BRAND in CAT': 'brand_name',
                                   'CAT': 'category',
                                   'MAN in CAT': 'category',
-                                  'MAN': 'manufacturer_name'}
+                                  'MAN': 'manufacturer_name',
+                                  'SCENE_TYPE': 'template_name'}
         object_field = object_type_conversion[object_type]
         if object_type == 'MAN in CAT':
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
@@ -392,10 +393,10 @@ class MARSRU_PRODKPIFetcher:
         return final_answers
 
     def get_must_range_skus_by_region_and_store(self, store_type, region, kpi_name, kpi_results):
-        targets = self.kpi_templates['must_range_skus'][kpi_name]
+        targets = self.kpi_templates['must_range_skus'].get(kpi_name)
         values_list = []
 
-        if store_type and region:  # Validation check
+        if store_type and region and targets:  # Validation check
 
             if 'EAN' in targets[0]:
 

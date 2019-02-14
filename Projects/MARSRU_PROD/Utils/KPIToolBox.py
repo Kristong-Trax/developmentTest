@@ -59,7 +59,8 @@ class MARSRU_PRODKPIToolBox:
         self.data_provider = data_provider
         self.output = output
         self.dict_for_planogram = {2261: 0, 2264: 0, 2265: 0,
-                                   2351: 0, 4261: 0, 4264: 0, 4265: 0, 4351: 0}
+                                   2351: 0, 4261: 0, 4264: 0, 4265: 0, 4351: 0,
+                                   4269: 0, 4271: 0, 4270: 0, 4272: 0}
         self.products = self.data_provider[Data.ALL_PRODUCTS]
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.project_name = data_provider.project_name
@@ -381,7 +382,7 @@ class MARSRU_PRODKPIToolBox:
                 'Client Sub Category Name to exclude').split(", ")]
         else:
             cl_sub_cats_to_exclude = []
-        if params.get('Stacking'):
+        if params.get('Include Stacking'):
             include_stacking = True
         if params.get('Brand Category value'):
             brand_category = params.get('Brand Category value')
@@ -405,44 +406,19 @@ class MARSRU_PRODKPIToolBox:
         return object_facings
 
     def get_relevant_scenes(self, params):
-        all_scenes = self.scenes_info['scene_fk'].unique().tolist()
-        filtered_scenes = []
-        scenes_data = {}
-        location_data = {}
-        # sub_location_data = {}
+        scif = self.scif
 
-        for scene in all_scenes:
-            scene_type = list(self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values)
-            if scene_type:
-                scene_type = scene_type[0]
-                if scene_type not in scenes_data.keys():
-                    scenes_data[scene_type] = []
-                scenes_data[scene_type].append(scene)
-                filtered_scenes.append(scene)
-            else:
-                Log.warning('Scene {} is not defined in reporting.scene_item_facts table'.format(scene))
-                continue
+        locations = params.get('Location type').split(', ')
+        if locations:
+            scif = scif.loc[scif['location_type'].isin(locations)]
 
-            location = list(self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values)
-            if location:
-                location = location[0]
-                if location not in location_data.keys():
-                    location_data[location] = []
-                location_data[location].append(scene)
+        scene_types = params.get('Scene type').split(', ')
+        if scene_types:
+            scif = scif.loc[scif['template_name'].isin(scene_types)]
 
-        include_list = []
+        scenes = scif['scene_id'].unique().tolist()
 
-        if not params.get('Location type'):
-            include_list.extend(filtered_scenes)
-        else:
-            if params.get('Location type'):
-                locations_to_include = params.get('Location type').split(', ')
-                for location in locations_to_include:
-                    if location in location_data.keys():
-                        include_list.extend(location_data[location])
-        include_list = list(set(include_list))
-
-        return include_list
+        return scenes
 
     @kpi_runtime()
     def check_number_of_scenes(self, params):
@@ -457,42 +433,22 @@ class MARSRU_PRODKPIToolBox:
             result = 0
             scenes = self.get_relevant_scenes(p)
 
-            if p.get('Type') == 'SCENES':
-                values_list = p.get('Values').split(', ')
-                manufacturer_list = p.get('Manufacturer').split(', ') if p.get('Manufacturer') else None
-                for scene in scenes:
-                    try:
-                        if manufacturer_list:
-                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene) &
-                                                       (self.scif['manufacturer_name'].isin(manufacturer_list))][
-                                'template_name'].values[0]
-                        else:
-                            scene_type = self.scif.loc[(self.scif['scene_id'] == scene)][
-                                'template_name'].values[0]
-                        if scene_type in values_list:
-                            res = 1
-                        else:
-                            res = 0
-                        result += res
-                    except:
-                        continue
+            p_copy = p.copy()
+            p_copy["Formula"] = "number of facings"
+            for scene in scenes:
+                if self.calculate_availability(p_copy,
+                                               scenes=[scene],
+                                               values_list=p_copy.get('Values').split(', ')) > 0:
+                    res = 1
+                else:
+                    res = 0
+                result += res
 
-                if p.get('Formula') == 'number of scenes vs target':
-                    if p.get('Target') and result >= p.get('Target'):
-                        result = 1
-                    else:
-                        result = 0
-
-            # checking for number of scenes with a complex condition (only certain products/brands/etc)
-            else:
-                p_copy = p.copy()
-                p_copy["Formula"] = "number of facings"
-                for scene in scenes:
-                    if self.calculate_availability(p_copy, scenes=[scene], values_list=p_copy.get('Values').split(', ')) > 0:
-                        res = 1
-                    else:
-                        res = 0
-                    result += res
+            if p.get('Formula') == 'number of scenes vs target':
+                if p.get('Target') and result >= p.get('Target'):
+                    result = 1
+                else:
+                    result = 0
 
             self.store_results_and_scores(result, p)
 
@@ -575,7 +531,7 @@ class MARSRU_PRODKPIToolBox:
                 scenes = self.get_relevant_scenes(params)
             form_factors = [str(form_factor)
                             for form_factor in p.get('Form Factor to include').split(", ")]
-            if p.get('Stacking'):
+            if p.get('Include Stacking'):
                 max_price = self.kpi_fetcher.get_object_price(scenes, values_list, p.get('Type'),
                                                               self.match_product_in_scene, form_factors, include_stacking=True)
             else:
@@ -613,7 +569,7 @@ class MARSRU_PRODKPIToolBox:
             else:
                 result = 0.0
 
-            if p.get('#Mars KPI NAME') in (2264, 2351, 4264, 4351):
+            if p.get('#Mars KPI NAME') in (2264, 2351, 4264, 4351, 4269, 4271, 4270, 4272):
                 self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
@@ -742,8 +698,8 @@ class MARSRU_PRODKPIToolBox:
 
             values_list = str(p.get('Values')).split(', ')
             scenes = self.get_relevant_scenes(p)
-            if p.get('Stacking'):
-                if p.get('Stacking') == -1:
+            if p.get('Include Stacking'):
+                if p.get('Include Stacking') == -1:
                     form_factor_filter = {"WET": 'gross_len_ign_stack',
                                           "DRY": 'gross_len_split_stack'}
                     linear_size, products = self.calculate_layout_size_by_form_factor(scenes, p.get('Type'),
@@ -759,12 +715,12 @@ class MARSRU_PRODKPIToolBox:
                 allowed_linear_size = self.calculate_allowed_products(scenes, products,
                                                                       p.get(
                                                                           'additional_attribute_for_specials'),
-                                                                      p.get('Stacking'))
+                                                                      p.get('Include Stacking'))
                 linear_size += allowed_linear_size
 
             result = round(linear_size, 1)
 
-            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265):
+            if p.get('#Mars KPI NAME') in (2261, 2265, 4261, 4265, 4269, 4271, 4270, 4272):
                 self.dict_for_planogram[p.get('#Mars KPI NAME')] = float(result)
 
             self.store_results_and_scores(result, p)
@@ -930,7 +886,7 @@ class MARSRU_PRODKPIToolBox:
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
             self.check_connection(self.rds_conn)
-            if p.get('Stacking'):
+            if p.get('Include Stacking'):
                 matches = self.kpi_fetcher.get_filtered_matches()
             else:
                 matches = self.kpi_fetcher.get_filtered_matches(include_stacking=False)
@@ -1311,7 +1267,7 @@ class MARSRU_PRODKPIToolBox:
             values_list = str(p.get('Values')).split(', *')
             scenes = self.get_relevant_scenes(p)
             object_field = self.object_type_conversion[p.get('Type')]
-            if p.get('Stacking'):
+            if p.get('Include Stacking'):
                 matches = self.kpi_fetcher.get_filtered_matches()
             else:
                 matches = self.kpi_fetcher.get_filtered_matches(include_stacking=False)
@@ -1431,7 +1387,7 @@ class MARSRU_PRODKPIToolBox:
             else:
                 form_factors = []
 
-            if p.get('Stacking'):
+            if p.get('Include Stacking'):
                 include_stacking = True
             else:
                 include_stacking = False
@@ -1485,103 +1441,112 @@ class MARSRU_PRODKPIToolBox:
             if p.get('Formula') != 'custom_mars_7':
                 continue
 
-            values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
-                                                                                   self.region,
-                                                                                   p.get(
-                                                                                       '#Mars KPI NAME'),
-                                                                                   self.results_and_scores)
-            scenes = self.get_relevant_scenes(p)
-            result = None
-            if values_list:
-                if p.get('#Mars KPI NAME') == 2317:
+            if p.get('#Mars KPI NAME') == 4704:  # If ((4269+4271)/(4270+4272))*100% >= 100% then TRUE
+                kpi_part_1 = self.dict_for_planogram[4269] + self.dict_for_planogram[4271]
+                kpi_part_2 = self.dict_for_planogram[4270] / self.dict_for_planogram[4272]
+                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 1
 
-                    top_eans = p.get('Values').split('\n')
-                    top_products_in_store = self.scif[self.scif['product_ean_code'].isin(
-                        top_eans)]['product_fk'].unique().tolist()
+                result = 'TRUE' if ratio >= 1 else 'FALSE'
 
-                    min_shelf, max_shelf = values_list.split('-')
-                    min_shelf, max_shelf = int(min_shelf), int(max_shelf)
-                    top_products_on_golden_shelf = self.match_product_in_scene[
-                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
-                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
-                    top_products_outside_golden_shelf = self.match_product_in_scene[
-                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] < min_shelf) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] > max_shelf) &
-                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+            else:
 
-                    if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
-                        result = 'FALSE'
-                    else:
-                        result = 'TRUE'
+                values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
+                                                                                       self.region,
+                                                                                       p.get(
+                                                                                           '#Mars KPI NAME'),
+                                                                                       self.results_and_scores)
+                scenes = self.get_relevant_scenes(p)
+                result = None
+                if values_list:
+                    if p.get('#Mars KPI NAME') == 2317:
 
-                if p.get('#Mars KPI NAME') == 4317:
+                        top_eans = p.get('Values').split('\n')
+                        top_products_in_store = self.scif[self.scif['product_ean_code'].isin(
+                            top_eans)]['product_fk'].unique().tolist()
 
-                    top_eans = p.get('Values').split('\n')
-                    top_products_in_store = self.scif[
-                        (self.scif['scene_fk'].isin(scenes)) &
-                        (self.scif['product_ean_code'].isin(top_eans))]['product_fk'].unique().tolist()
+                        min_shelf, max_shelf = values_list.split('-')
+                        min_shelf, max_shelf = int(min_shelf), int(max_shelf)
+                        top_products_on_golden_shelf = self.match_product_in_scene[
+                            (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                            (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+                        top_products_outside_golden_shelf = self.match_product_in_scene[
+                            (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] < min_shelf) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] > max_shelf) &
+                            (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
 
-                    min_shelf, max_shelf = values_list.split('-')
-                    min_shelf, max_shelf = int(min_shelf), int(max_shelf)
-                    top_products_on_golden_shelf = self.match_product_in_scene[
-                        (self.match_product_in_scene['scene_fk'].isin(scenes)) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
-                        (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
-                        (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
-
-                    if len(top_products_on_golden_shelf) < len(top_products_in_store):
-                        result = 'FALSE'
-                    else:
-                        result = 'TRUE'
-
-                elif p.get('#Mars KPI NAME') == 2254:
-                    if self.dict_for_planogram[2264] or self.dict_for_planogram[2351]:
-                        kpi_part_1 = self.dict_for_planogram[2261] / self.dict_for_planogram[2264] \
-                            if self.dict_for_planogram[2264] > 0 else 0
-                        kpi_part_2 = self.dict_for_planogram[2265] / self.dict_for_planogram[2351] \
-                            if self.dict_for_planogram[2351] > 0 else 0
-                        mars_shelf_size = kpi_part_1 + kpi_part_2
-                        for row in values_list:
-                            if row['shelf from'] <= mars_shelf_size < row['shelf to']:
-                                result = str(row['result'])
-
-                elif p.get('#Mars KPI NAME') == 4254:
-                    if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
-                        for row in values_list:
-                            if row['length_condition'] == '<' + str(int(p.get('Target'))):
-                                result = str(row['result'])
-                                break
-                    elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
-                        kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
-                            if self.dict_for_planogram[4264] > 0 else 0
-                        kpi_part_2 = self.dict_for_planogram[4265] / self.dict_for_planogram[4351] \
-                            if self.dict_for_planogram[4351] > 0 else 0
-                        mars_shelf_size = kpi_part_1 + kpi_part_2
-                        for row in values_list:
-                            if row['shelf from'] <= mars_shelf_size < row['shelf to'] \
-                                    and row['length_condition'] == '>=' + str(int(p.get('Target'))):
-                                result = str(row['result'])
-                                break
-
-                else:
-                    sub_results = []
-                    for value in values_list:
-                        kpi_res = self.calculate_availability(p, scenes, formula='number of SKUs',
-                                                              values_list=value.split('/'),
-                                                              object_type='SKUs', include_stacking=True)
-                        if kpi_res > 0:
-                            sub_result = 1
+                        if len(top_products_on_golden_shelf) < len(top_products_in_store) or len(top_products_outside_golden_shelf) > 0:
+                            result = 'FALSE'
                         else:
-                            sub_result = 0
-                        sub_results.append(sub_result)
-                    sum_of_facings = sum(sub_results)
-                    if sum_of_facings >= len(values_list):
-                        result = 'TRUE'
+                            result = 'TRUE'
+
+                    if p.get('#Mars KPI NAME') in (4317, 4650):
+
+                        top_eans = p.get('Values').split('\n')
+                        top_products_in_store = self.scif[
+                            (self.scif['scene_fk'].isin(scenes)) &
+                            (self.scif['product_ean_code'].isin(top_eans))]['product_fk'].unique().tolist()
+
+                        min_shelf, max_shelf = values_list.split('-')
+                        min_shelf, max_shelf = int(min_shelf), int(max_shelf)
+                        top_products_on_golden_shelf = self.match_product_in_scene[
+                            (self.match_product_in_scene['scene_fk'].isin(scenes)) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] >= min_shelf) &
+                            (self.match_product_in_scene['shelf_number_from_bottom'] <= max_shelf) &
+                            (self.match_product_in_scene['product_fk'].isin(top_products_in_store))]['product_fk'].unique().tolist()
+
+                        if len(top_products_on_golden_shelf) < len(top_products_in_store):
+                            result = 'FALSE'
+                        else:
+                            result = 'TRUE'
+
+                    elif p.get('#Mars KPI NAME') == 2254:
+                        if self.dict_for_planogram[2264] or self.dict_for_planogram[2351]:
+                            kpi_part_1 = self.dict_for_planogram[2261] / self.dict_for_planogram[2264] \
+                                if self.dict_for_planogram[2264] > 0 else 0
+                            kpi_part_2 = self.dict_for_planogram[2265] / self.dict_for_planogram[2351] \
+                                if self.dict_for_planogram[2351] > 0 else 0
+                            mars_shelf_size = kpi_part_1 + kpi_part_2
+                            for row in values_list:
+                                if row['shelf from'] <= mars_shelf_size < row['shelf to']:
+                                    result = str(row['result'])
+
+                    elif p.get('#Mars KPI NAME') == 4254:
+                        if self.dict_for_planogram[4261]+self.dict_for_planogram[4265] < p.get('Target'):
+                            for row in values_list:
+                                if row['length_condition'] == '<' + str(int(p.get('Target'))):
+                                    result = str(row['result'])
+                                    break
+                        elif self.dict_for_planogram[4264] or self.dict_for_planogram[4351]:
+                            kpi_part_1 = self.dict_for_planogram[4261] / self.dict_for_planogram[4264] \
+                                if self.dict_for_planogram[4264] > 0 else 0
+                            kpi_part_2 = self.dict_for_planogram[4265] / self.dict_for_planogram[4351] \
+                                if self.dict_for_planogram[4351] > 0 else 0
+                            mars_shelf_size = kpi_part_1 + kpi_part_2
+                            for row in values_list:
+                                if row['shelf from'] <= mars_shelf_size < row['shelf to'] \
+                                        and row['length_condition'] == '>=' + str(int(p.get('Target'))):
+                                    result = str(row['result'])
+                                    break
+
                     else:
-                        result = 'FALSE'
+                        sub_results = []
+                        for value in values_list:
+                            kpi_res = self.calculate_availability(p, scenes, formula='number of SKUs',
+                                                                  values_list=value.split('/'),
+                                                                  object_type='SKUs', include_stacking=True)
+                            if kpi_res > 0:
+                                sub_result = 1
+                            else:
+                                sub_result = 0
+                            sub_results.append(sub_result)
+                        sum_of_facings = sum(sub_results)
+                        if sum_of_facings >= len(values_list):
+                            result = 'TRUE'
+                        else:
+                            result = 'FALSE'
 
             self.store_results_and_scores(result, p)
 
