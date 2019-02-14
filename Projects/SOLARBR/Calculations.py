@@ -19,15 +19,15 @@ class Calculations(BaseCalculationsScript):
 
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('SolarBr calculations')
-    Config.init()
-    project_name = 'solarbr'
-    data_provider = KEngineDataProvider(project_name)
-    output = Output()
-
-    # second report
-    list_sessions = sessions = [
+# if __name__ == '__main__':
+#     LoggerInitializer.init('SolarBr calculations')
+#     Config.init()
+#     project_name = 'solarbr'
+#     data_provider = KEngineDataProvider(project_name)
+#     output = Output()
+#
+#     # second report
+#     list_sessions = sessions = [
 #         'dbb78a08-b0b3-41a0-b49c-80d313e6c9d5',
 # '92427d47-eeb5-4f09-8155-9ab17bdb8140',
 # 'd1150fca-3f19-4def-a357-b4c3a7f190ca',
@@ -46,13 +46,13 @@ if __name__ == '__main__':
 # 'e49c56ed-1c40-40e5-ba58-f2bda900ae27',
 # 'e572e48f-7d9a-4850-84b7-2e34847ba885',
 # 'f8041e65-2a2e-4879-83fe-ab4cac4e12a8',
-'fbd8f697-c2b6-4676-9905-0b0343291e69',
-'ffab9285-e0f3-4f8a-9e72-8b3f127f042f',
-'84e82b89-7f1c-4e2f-8ddb-13304388552f',
-'fa82d8d6-592d-41d1-95ef-5fb019e769b3']
-
-
-    for session in list_sessions:
-        print('================================={}========================================='.format(session))
-        data_provider.load_session_data(session)
-        Calculations(data_provider, output).run_project_calculations()
+# 'fbd8f697-c2b6-4676-9905-0b0343291e69',
+# 'ffab9285-e0f3-4f8a-9e72-8b3f127f042f',
+# '84e82b89-7f1c-4e2f-8ddb-13304388552f',
+# 'fa82d8d6-592d-41d1-95ef-5fb019e769b3']
+#
+#
+#     for session in list_sessions:
+#         print('================================={}========================================='.format(session))
+#         data_provider.load_session_data(session)
+#         Calculations(data_provider, output).run_project_calculations()
