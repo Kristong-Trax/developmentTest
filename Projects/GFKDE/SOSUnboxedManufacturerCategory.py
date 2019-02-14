@@ -20,5 +20,8 @@ class SOSUnboxedManufacturerCategory_KPI(GfkBaseCalculation):
                 "include_operator": "and"
             },
             "numerator": Keys.MANUFACTURER_FK,
-            "denominator": Keys.CATEGORY_FK
+            "denominator": Keys.CATEGORY_FK,
+            "kpi_additional_params": {
+                "fill_not_found_elements": True
+            }
         }
