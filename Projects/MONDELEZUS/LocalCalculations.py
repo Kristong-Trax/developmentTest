@@ -2,7 +2,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.GPUS.Calculations import Calculations
+from Projects.MONDELEZUS.Calculations import Calculations
 
 
 

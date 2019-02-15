@@ -25,7 +25,6 @@ class CSTOREToolBox:
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.mpis = self.make_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
@@ -35,38 +34,20 @@ class CSTOREToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpis = self.load_kpis()
         self.kpi_static_data = self.common.get_kpi_static_data()
-        self.dist_oos = self.dist_kpi_to_oos_kpi()
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
-        self.gp_manufacturer = self.get_gp_manufacturer()
-        self.gp_categories = self.get_gp_categories()
-        self.gp_brands = self.get_gp_brands()
-        self.all_man = self.scif[['manufacturer_name', 'manufacturer_fk']].set_index('manufacturer_name')\
-                                                                          ['manufacturer_fk'].to_dict()
-        self.all_brands = self.scif[['brand_name', 'brand_fk']].set_index('brand_name')['brand_fk'].to_dict()
-        self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
-        self.cat_filter = {'category': list(self.gp_categories.keys())}
-        self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
-        self.all_brands_filter = {'brand_name': list(self.all_brands.keys())}
-        self.all_man_filter = {'manufacturer_name': list(self.all_man.keys())}
+
         self.kpi_results = []
 
         self.assortment = Assortment(self.data_provider, self.output)
-        self.assortment.scif = self.scif
 
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        if not self.filter_df(self.scif, self.brand_filter).empty:
-            self.calculate_facings_sos()
-            self.calculate_linear_sos()
-            self.calculate_adjacency()
-            self.calculate_assortment()
-
-        if not self.filter_df(self.scif, self.cat_filter).empty:
-            self.calculate_share_of_empty()
-            # pass
+        # if not self.filter_df(self.scif, self.brand_filter).empty:
+        # self.calculate_facings_sos()
+        self.calculate_assortment()
 
         for result in self.kpi_results:
             self.write_to_db(**result)
@@ -74,15 +55,6 @@ class CSTOREToolBox:
 
     def calculate_facings_sos(self):
         self.safety_func('Facings SOS', self.calculate_sos, [Const.FACING_SOS_KPI, {}])
-
-    def calculate_linear_sos(self):
-        self.safety_func('Linear SOS', self.calculate_sos, [Const.LINEAR_SOS_KPI, {}])
-
-    def calculate_share_of_empty(self):
-        self.safety_func('Share of Empty', self.calculate_sos, [Const.SHARE_OF_EMPTY_KPI, {'numerator_id': 0}])
-
-    def calculate_adjacency(self):
-        self.safety_func('Adjacency', self.update_adjacency, [])
 
     def safety_func(self, group, func, args):
         try:
