@@ -141,7 +141,7 @@ class SOLARBRToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                return [x.strip() for x in cell.split(",")]
         return None
 
     @staticmethod
