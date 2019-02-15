@@ -396,7 +396,10 @@ class MARSRU_PRODKPIFetcher:
         targets = self.kpi_templates['must_range_skus'].get(kpi_name)
         values_list = []
 
-        if store_type and region and targets:  # Validation check
+        store_type = store_type if store_type else ''
+        region = region if region else ''
+
+        if targets:  # Validation check
 
             if 'EAN' in targets[0]:
 

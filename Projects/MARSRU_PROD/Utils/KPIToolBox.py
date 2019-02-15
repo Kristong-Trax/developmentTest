@@ -408,11 +408,11 @@ class MARSRU_PRODKPIToolBox:
     def get_relevant_scenes(self, params):
         scif = self.scif
 
-        locations = params.get('Location type').split(', ')
+        locations = str(params.get('Location type')).split(', ') if params.get('Location type') else None
         if locations:
             scif = scif.loc[scif['location_type'].isin(locations)]
 
-        scene_types = params.get('Scene type').split(', ')
+        scene_types = str(params.get('Scene type')).split(', ') if params.get('Scene type') else None
         if scene_types:
             scif = scif.loc[scif['template_name'].isin(scene_types)]
 
@@ -1452,8 +1452,7 @@ class MARSRU_PRODKPIToolBox:
 
                 values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
                                                                                        self.region,
-                                                                                       p.get(
-                                                                                           '#Mars KPI NAME'),
+                                                                                       p.get('#Mars KPI NAME'),
                                                                                        self.results_and_scores)
                 scenes = self.get_relevant_scenes(p)
                 result = None
