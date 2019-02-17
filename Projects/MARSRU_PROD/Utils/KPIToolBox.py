@@ -281,10 +281,10 @@ class MARSRU_PRODKPIToolBox:
         if not self.store_num_1:
             return
         Log.info("Updating PS Custom SCIF... ")
-        assortment_products = self.assortment.get_lvl3_relevant_ass()
-        assortment_products = assortment_products[PRODUCT_FK].tolist()
         # assortment_products = self.get_assortment_for_store_id()
-        if assortment_products:
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        if not assortment_products.empty:
+            assortment_products = assortment_products[PRODUCT_FK].tolist()
             for scene in self.scif[SCENE_FK].unique().tolist():
                 products_in_scene = self.scif[(self.scif[SCENE_FK] == scene) &
                                               (self.scif['facings'] > 0)][PRODUCT_FK].unique().tolist()
@@ -2257,12 +2257,12 @@ class MARSRU_PRODKPIToolBox:
         This function calculates OSA kpi and writes to new KPI tables.
         :return:
         """
-        assortment_products = self.assortment.get_lvl3_relevant_ass()
-        assortment_products = assortment_products['product_fk'].tolist()
         # assortment_products = self.get_assortment_for_store_id()
-        if not assortment_products:
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        if assortment_products.empty:
             return
 
+        assortment_products = assortment_products['product_fk'].tolist()
         product_facings = self.scif.groupby('product_fk')['facings'].sum().reset_index()
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME + ' - SKU')
@@ -2274,8 +2274,7 @@ class MARSRU_PRODKPIToolBox:
         for product in assortment_products:
             numerator_id = product
             try:
-                numerator_result = product_facings[product_facings['product_fk']
-                                                   == product]['facings'].iloc[0]
+                numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
             except:
                 numerator_result = 0
             denominator_result = 1
