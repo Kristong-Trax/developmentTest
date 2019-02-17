@@ -11,6 +11,7 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations import Block
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 
@@ -119,6 +120,7 @@ class MARSRU_PRODKPIToolBox:
         self.osa_kpi_dict = {}
         self.kpi_count = 0
 
+        self.assortment = Assortment(self.data_provider, self.output, common=self.common)
         self.block = Block(self.data_provider, rds_conn=self.rds_conn)
 
     def check_connection(self, rds_conn):
@@ -279,27 +281,25 @@ class MARSRU_PRODKPIToolBox:
         if not self.store_num_1:
             return
         Log.info("Updating PS Custom SCIF... ")
-        assortment_products = self.get_assortment_for_store_id()
-        if assortment_products:
-            products_in_session = self.scif.loc[self.scif['dist_sc'] == 1][PRODUCT_FK].tolist()
-            for product in assortment_products:
-                if product in products_in_session:
-                    # This means the product in assortment and is not oos. (1,0)
-                    scenes = self.get_scenes_for_product(product)
-                    for scene in scenes:
+        # assortment_products = self.get_assortment_for_store_id()
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        if not assortment_products.empty:
+            assortment_products = assortment_products[PRODUCT_FK].tolist()
+            for scene in self.scif[SCENE_FK].unique().tolist():
+                products_in_scene = self.scif[(self.scif[SCENE_FK] == scene) &
+                                              (self.scif['facings'] > 0)][PRODUCT_FK].unique().tolist()
+                for product in assortment_products:
+                    if product in products_in_scene:
+                        # This means the product in assortment and is not oos (1,0)
                         self.get_custom_query(scene, product, 1, 0)
-                else:
-                    # The product is in assortment list but is oos (1,1)
-                    scenes = self.scif[SCENE_FK].unique().tolist()
-                    for scene in scenes:
+                    else:
+                        # The product is in assortment list but is oos (1,1)
                         self.get_custom_query(scene, product, 1, 1)
 
-        products_not_in_assortment = self.scif[~self.scif[PRODUCT_FK].isin(assortment_products)]
-        for product in products_not_in_assortment[PRODUCT_FK].unique().tolist():
-            # The product is not in assortment list and not oos. (0,0)
-            scenes = self.get_scenes_for_product(product)
-            for scene in scenes:
-                self.get_custom_query(scene, product, 0, 0)
+                for product in products_in_scene:
+                    if product not in assortment_products:
+                        # The product is not in assortment list and not oos (0,0)
+                        self.get_custom_query(scene, product, 0, 0)
 
         Log.info("Done updating PS Custom SCIF... ")
         self.commit_custom_scif()
@@ -2257,10 +2257,12 @@ class MARSRU_PRODKPIToolBox:
         This function calculates OSA kpi and writes to new KPI tables.
         :return:
         """
-        assortment_products = self.get_assortment_for_store_id()
-        if not assortment_products:
+        # assortment_products = self.get_assortment_for_store_id()
+        assortment_products = self.assortment.get_lvl3_relevant_ass()
+        if assortment_products.empty:
             return
 
+        assortment_products = assortment_products['product_fk'].tolist()
         product_facings = self.scif.groupby('product_fk')['facings'].sum().reset_index()
 
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(OSA_KPI_NAME + ' - SKU')
@@ -2272,8 +2274,7 @@ class MARSRU_PRODKPIToolBox:
         for product in assortment_products:
             numerator_id = product
             try:
-                numerator_result = product_facings[product_facings['product_fk']
-                                                   == product]['facings'].iloc[0]
+                numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
             except:
                 numerator_result = 0
             denominator_result = 1

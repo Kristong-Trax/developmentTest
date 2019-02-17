@@ -13,12 +13,12 @@ class UniqueDistributionPerBrand_KPI(GfkDistributionBaseCalculationScript):
         return {
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},
                 "include_operator": "and"
             },
-            "numerator": Fields.PRODUCT_FK,
-            "denominator": Fields.BRAND_FK,
+            "numerator": Fields.BRAND_FK,
+            "denominator": Keys.CATEGORY_FK,
         }

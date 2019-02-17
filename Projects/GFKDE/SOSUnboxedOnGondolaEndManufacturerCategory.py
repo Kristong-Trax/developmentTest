@@ -12,11 +12,11 @@ class SosOnGondolaEndManufacturerCategory_KPI(GfkBaseCalculation):
     def kpi_policy(self):
         return {
             "location": {
-                "template_name": ["Washing Machines - Gondola End"]
+                "template_name": ["Washing Machines - Gondola End - Price tag"]
             },
             "population": {
                 "include": {
-                    "category_local_name": ["Washing Machines"],
+                    "category": ["Washing Machines"],
                     "additional_attribute_2": ["Y"]
                 },
                 "exclude": {},

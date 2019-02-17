@@ -123,7 +123,7 @@ class PNGJPToolBox(PNGJPConsts):
         if self.visit_date >= datetime(2018, 8, 01).date():
             template_name = 'Template.xlsx'
         elif self.visit_date >= datetime(2018, 01, 01).date():
-            template_name = 'Template01-07.18.xlsx'
+            template_name = 'Template_1-07.xlsx'
         elif self.visit_date <= datetime(2017, 10, 31).date():
             template_name = 'Template_7-10.xlsx'
         else:

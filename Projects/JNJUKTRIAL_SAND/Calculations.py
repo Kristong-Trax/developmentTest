@@ -11,7 +11,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'nissand'
 
 
-class JNJUKCalculations(BaseCalculationsScript):
+class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
 
     @log_runtime(description="Total Calculation")
     def run_project_calculations(self):
@@ -26,6 +26,7 @@ class JNJUKCalculations(BaseCalculationsScript):
         exclusive_template = pd.read_excel(exclusive_template_path)
         common = Common(self.data_provider)
         jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusive_template)
+        jnj_generator.linear_sos_out_of_store_discovery_report()
         jnj_generator.secondary_placement_location_quality(survey_template)
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
