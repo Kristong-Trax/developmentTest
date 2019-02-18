@@ -69,6 +69,7 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
         tool_box = MARSRU_PRODKPIToolBox(
             kpi_templates, self.data_provider, self.output, kpi_set_name)
 
+        # Todo - Uncomment the OSA before deploying!!!
         tool_box.handle_update_custom_scif()
         tool_box.calculate_osa()
 

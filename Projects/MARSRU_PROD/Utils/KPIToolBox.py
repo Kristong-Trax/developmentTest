@@ -1647,34 +1647,47 @@ class MARSRU_PRODKPIToolBox:
         for p in params:
             if p.get('Formula') != 'placed_near':
                 continue
+
+            scene_filter = {}
+            scene_type = p.get('Scene type')
+            if scene_type:
+                scene_filter['template_name'] = scene_type
             location_type = p.get('Location type')
+            if location_type:
+                scene_filter['location_type'] = location_type
 
             targets, allowed = p.get('Values').split('\n')
 
-            targets_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(targets)))
-            allowed_filter = self.get_filter_condition(self.scif, **(self.parse_filter_from_template(allowed)))
-
+            targets_filter = self.parse_filter_from_template(targets)
+            targets_filter.update(scene_filter)
+            targets_filter = self.get_filter_condition(self.scif, **targets_filter)
             filtered_targets_scif = self.scif[targets_filter]
-            filtered_allowed_scif = self.scif[allowed_filter]
-
             products_targets = filtered_targets_scif['product_fk'].tolist()
-            products_allowed = filtered_allowed_scif['product_fk'].tolist()
-
-            allowed_products_filters = {'product_fk': products_allowed}
             filters = {'product_fk': products_targets}
-            if location_type:
-                filters['location_type'] = location_type
 
-            score_block_together = None
-            if products_targets:
-                # score_block_together = self.calculate_block_together(allowed_products_filters=allowed_products_filters,
-                #                                                        minimum_block_ratio=1, include_empty=True,
-                #                                                        **filters)
-                score_block_together = self.block.calculate_block_together(allowed_products_filters=allowed_products_filters,
-                                                                           minimum_block_ratio=1, include_empty=True,
-                                                                           **filters)
+            allowed_filter = self.parse_filter_from_template(allowed)
+            allowed_filter.update(scene_filter)
+            allowed_filter = self.get_filter_condition(self.scif, **allowed_filter)
+            filtered_allowed_scif = self.scif[allowed_filter]
+            products_allowed = filtered_allowed_scif['product_fk'].tolist()
+            allowed_products_filters = {'product_fk': products_allowed}
 
-            if score_block_together:
+            scenes = filtered_targets_scif['scene_id'].unique().tolist()
+
+            result = None
+            if products_targets and scenes:
+                for scene in scenes:
+                    filters['scene_id'] = scene
+                    # result = self.calculate_block_together(allowed_products_filters=allowed_products_filters,
+                    #                                                        minimum_block_ratio=1, include_empty=True,
+                    #                                                        **filters)
+                    result = self.block.calculate_block_together(allowed_products_filters=allowed_products_filters,
+                                                                 minimum_block_ratio=1, include_empty=True,
+                                                                 **filters)
+                    if not result:
+                        break
+
+            if result:
                 result = 'TRUE'
             else:
                 result = 'FALSE'
