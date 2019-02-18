@@ -300,7 +300,7 @@ class CBCILCBCIL_ToolBox(object):
                 self.common.write_to_db_result(fk=kpi_lvl_2_fk,  numerator_id=self.cbcil_id, denominator_id=self.store_id,
                                                identifier_parent=identifier_result_set, identifier_result=identifier_res_kpi_2,
                                                weight=float(kpi['denominator_weight']) * 100, score=kpi_scores[kpi['kpi_fk']],
-                                               should_enter=True)
+                                               should_enter=True, result=kpi_scores[kpi['kpi_fk']])
 
             final_score = sum([score for score in kpi_scores.values()])
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
