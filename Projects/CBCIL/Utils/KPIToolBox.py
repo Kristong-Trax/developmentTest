@@ -419,11 +419,11 @@ class CBCILCBCIL_ToolBox(object):
         params = general_filters['filters']
         filters = params['2'].copy()
         try:
-            survey_question = int(filters.get('question_id')[0])
+            survey_question = str(int(filters.get('question_id')[0]))
         except:
-            survey_question = 0
+            survey_question = str(0)
         target_answers = general_filters[self.TARGET].split(self.SEPARATOR)
-        survey_answer = self.tools.get_survey_answer(('question_fk', [survey_question]))
+        survey_answer = self.tools.get_survey_answer(('code', [survey_question]))
         if survey_answer:
             return 100 if survey_answer.strip() in target_answers else False
         else:
