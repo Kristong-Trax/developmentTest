@@ -30,7 +30,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'DBC KPI Templates Final (1-7-19).xlsx')
+                             'DBC KPI Templates Final (2-19-19).xlsx')
 
 
 class DIAGEOBEERUSToolBox:
@@ -233,7 +233,7 @@ class DIAGEOBEERUSToolBox:
             score = 1 if (diageo_results >= target * den_res) else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target,
-            denominator_result=den_res, result=score, weight=weight * 100, score=diageo_result,
+            denominator_result=den_res, result=score * 100, weight=weight * 100, score=diageo_result * 100,
             identifier_result=total_dict)
         return score * weight
 
@@ -414,7 +414,7 @@ class DIAGEOBEERUSToolBox:
             result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes, i, kpi_db_names)
             all_results = all_results.append(result_dict, ignore_index=True)
         total_result = self.insert_all_levels_to_db(
-            all_results, kpi_db_names, weight)
+            all_results, kpi_db_names, weight, weighted_result=True)
         return total_result
 
     def calculate_shelf_facings_of_competition(self, competition, relevant_scenes, index, kpi_db_names):
@@ -426,6 +426,7 @@ class DIAGEOBEERUSToolBox:
         :return: passed, product_fk, standard_type
         """
         kpi_type = competition['KPI type']
+        weight_of_competition = competition[Const.WEIGHT]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
         our_sub_brands = competition[Const.OUR_SUB_BRAND].split(', ')
         our_lines = self.all_products_sku[self.all_products_sku['sub_brand'].isin(our_sub_brands)]
@@ -456,14 +457,16 @@ class DIAGEOBEERUSToolBox:
             target = 0
         our_facings = self.calculate_shelf_facings_of_sub_brand(our_sub_brands, relevant_scenes, result_identifier,
                                                                 target=target,
-                                                                diageo_product=True, kpi_db_names=kpi_db_names)
-        comparison = 1 if (our_facings >= target and our_facings > 0) else 0
+                                                                diageo_product=True, kpi_db_names=kpi_db_names,
+                                                                weight=weight_of_competition)
+        # comparison = 1 if (our_facings >= target and our_facings > 0) else 0  # used for count instead of weight
+        comparison = weight_of_competition if (our_facings >= target and our_facings > 0) else 0
         product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
                           Const.BRAND: brand_fk, Const.SUB_BRAND: sub_brand_fk}
         return product_result
 
     def calculate_shelf_facings_of_sub_brand(self, sub_brand_names, relevant_scenes, parent_identifier, target=None,
-                                             diageo_product=False, kpi_db_names=None):
+                                             diageo_product=False, kpi_db_names=None, weight=None):
         amount_of_facings = None
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.VARIANT])
         denominator_id = self.manufacturer_fk if diageo_product else None
@@ -484,7 +487,7 @@ class DIAGEOBEERUSToolBox:
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
             self.common.write_to_db_result(
                 fk=kpi_fk, numerator_id=sub_brand_fk, result=sub_brand_facing, denominator_id=denominator_id,
-                should_enter=True, identifier_parent=parent_identifier, target=target)
+                should_enter=True, identifier_parent=parent_identifier, target=target, weight=weight)
             self.calculated_sub_brands_list.append(sub_brand)
         return amount_of_facings
 
@@ -706,14 +709,15 @@ class DIAGEOBEERUSToolBox:
         return total_score * weight * 100
 
     # helpers
-    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight,
-                                should_enter=True, write_numeric=False, sub_brand_numeric=False):
+    def insert_all_levels_to_db(self, all_results, kpi_db_names, weight, should_enter=True, write_numeric=False,
+                                sub_brand_numeric=False, weighted_result=False):
         """
         This function gets all the sku results (with details) and puts in DB all the way up (sub_brand, brand, total).
         :param all_results: DF with product_fk and its details - passed, sub_brand, brand, standard_type.
         :param kpi_db_names: name as it's shown in the main sheet of the template.
         :param weight:
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :param weighted_result: assume values in all_results[Const.PASSED] are weighted
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         :param should_enter: if the total should enter the hierarchy table
         :return: the scores of all
@@ -725,15 +729,17 @@ class DIAGEOBEERUSToolBox:
                 continue
             brand_results = all_results[all_results[Const.BRAND] == brand]
             self.insert_brand_and_subs_to_db(brand_results, kpi_db_names, brand, total_identifier,
-                                             write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
+                                             write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric,
+                                             weighted_result=weighted_result)
         all_passed_results = all_results[Const.PASSED]
         total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, Const.TOTAL, weight, total_identifier,
-                                                should_enter=should_enter, write_numeric=write_numeric)
+                                                should_enter=should_enter, write_numeric=write_numeric,
+                                                weighted_result=weighted_result)
 
         return total_result
 
     def insert_brand_and_subs_to_db(self, brand_results, kpi_db_names, brand, total_identifier,
-                                    write_numeric=False, sub_brand_numeric=False):
+                                    write_numeric=False, sub_brand_numeric=False, weighted_result=False):
         """
         Inserting all brand and sub_brand results
         :param brand_results: DF from all_results
@@ -742,6 +748,7 @@ class DIAGEOBEERUSToolBox:
         :param total_identifier: for hierarchy
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
+        :param weighted_result: assume values in brand_results[Const.PASSED] are weighted
         """
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
@@ -751,10 +758,14 @@ class DIAGEOBEERUSToolBox:
             sub_brand_results = brand_results[(brand_results[Const.BRAND] == brand) &
                                               (brand_results[Const.SUB_BRAND] == sub_brand)]
             self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict,
-                                         write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
+                                         write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric,
+                                         weighted_result=weighted_result)
         results = brand_results[Const.PASSED]
         if write_numeric:
             num_res, den_res = 0, 0
+            result = results.sum()
+        elif weighted_result:
+            num_res, den_res = len(results.nonzero()[0]), results.count()
             result = results.sum()
         else:
             num_res, den_res = results.sum(), results.count()
@@ -765,7 +776,7 @@ class DIAGEOBEERUSToolBox:
             identifier_parent=total_identifier, identifier_result=brand_dict)
 
     def insert_sub_brands_to_db(self, sub_brand_results, kpi_db_names, brand, sub_brand, brand_identifier,
-                                write_numeric=False, sub_brand_numeric=False):
+                                write_numeric=False, sub_brand_numeric=False, weighted_result=False):
         """
         inserting sub_brand results into DB
         :param sub_brand_results: DF from all_products
@@ -775,6 +786,7 @@ class DIAGEOBEERUSToolBox:
         :param brand_identifier: for hierarchy
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
+        :param weighted_result: assume values in sub_brand_results[Const.PASSED] are weighted
         """
         sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
@@ -785,6 +797,9 @@ class DIAGEOBEERUSToolBox:
             result = self.get_pks_of_result(result)
         elif write_numeric:
             result = results.sum()
+        elif weighted_result:
+            num_res, den_res = len(results.nonzero()[0]), results.count()
+            result = results.sum()
         else:
             num_res, den_res = results.sum(), results.count()
             result = self.get_score(num_res, den_res)
@@ -794,7 +809,7 @@ class DIAGEOBEERUSToolBox:
             identifier_parent=brand_identifier, identifier_result=sub_brand_dict)
 
     def insert_totals_to_db(self, all_passed_results, kpi_db_names, total_kind, weight, identifier_result=None,
-                            should_enter=True, write_numeric=False):
+                            should_enter=True, write_numeric=False, weighted_result=False):
         """
         inserting all total level (includes segment and national) into DB
         :param all_passed_results: 'passed' column from all_results
@@ -804,6 +819,7 @@ class DIAGEOBEERUSToolBox:
         :param identifier_result: optional, if has children
         :param should_enter: if the total should enter the hierarchy table
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
+        :param weighted_result: assume values in all_passed_results are weighted
         :return: the score
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[total_kind])
@@ -815,6 +831,15 @@ class DIAGEOBEERUSToolBox:
                 fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
                 denominator_result=den_res, result=self.round_result(score), identifier_result=identifier_result,
                 identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100, score=result)
+        elif weighted_result:
+            num_res, den_res = len(all_passed_results.nonzero()[0]), all_passed_results.count()
+            result = all_passed_results.sum()
+            score = result * weight * 100
+            self.common.write_to_db_result(
+                fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=num_res, should_enter=should_enter,
+                denominator_result=den_res, result=result * 100, identifier_result=identifier_result,
+                identifier_parent=self.common.get_dictionary(name=total_kind), weight=weight * 100,
+                score=self.round_result(score))
         else:
             num_res, den_res = all_passed_results.sum(), all_passed_results.count()
             result = self.get_score(num_res, den_res)
