@@ -11,7 +11,9 @@ if __name__ == '__main__':
     project_name = 'jnjuktrial-sand'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '8d4af1e5-6c22-4a47-8ad9-e309dba85391'
+        'ad142a43-1979-40ed-830e-aa6d8258aab5' # second session with assortment
+        '2c54a4b5-ebfe-4bb6-bd09-f5c731cb8ff7' # first session with assortment
+        # '8d4af1e5-6c22-4a47-8ad9-e309dba85391' #last tested
         # 'faa35677-1473-47cd-a5fb-ca1c0e979d16'
         # 'b741be7a-8cf4-4cb5-8413-097544396535',
         #         '21bdd793-b6bd-4d51-8706-30d22f914513',
