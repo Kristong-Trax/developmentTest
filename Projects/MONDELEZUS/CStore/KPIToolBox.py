@@ -122,6 +122,16 @@ class CSTOREToolBox:
         if not lvl3_result.empty:
             lvl3_result['target'] = 1
 
+            # For Dist, they have assortments, but want the results by category
+            # and since there is only one policy per store (barring new which is
+            # handled elsewhere) we will kust pretend that category_fk is the
+            # level 2 assortment group.  God rest the soul of whomever needs
+            # to implement additional policies.
+            lvl3_result = lvl3_result.set_index('product_fk').join(self.scif.set_index('product_fk')['category_fk']).reset_index()
+            lvl3_result = lvl3_result.rename(columns={'assortment_group_fk': 'ass_grp_fk',
+                                                      'category_fk': 'assortment_group_fk'})
+
+
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
             lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
             lvl1_result['total'] = lvl2_result['total'].sum()
@@ -129,7 +139,7 @@ class CSTOREToolBox:
             lvl1_result['num_id'] = self.manufacturer_fk
             lvl1_result['den_id'] = self.store_id
 
-            self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_fk',
+            self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
                                           'target', None, 'assortment_group_fk')
             self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
                                           'total', 'assortment_group_fk', 'assortment_super_group_fk')
@@ -149,16 +159,6 @@ class CSTOREToolBox:
                        'ident_result': row[self_id] if self_id else None,
                        'ident_parent': row[parent] if parent else None}
             self.kpi_results.append(kpi_res)
-            oos_res = dict(kpi_res)
-            oos_res.update({
-                            'kpi_fk': self.dist_oos[row[kpi_col]],
-                            'numerator_result': row[den_col] - row[num_col],
-                            'denominator_result':0,
-                            'result': self.safe_divide((row[den_col] - row[num_col]), row[den_col]),
-                            'ident_result': 'oos_{}'.format(row[self_id]) if self_id else None,
-                            'ident_parent': 'oos_{}'.format(row[parent]) if parent else None,
-                            })
-            self.kpi_results.append(oos_res)
 
     def safe_divide(self, num, den):
         return (float(num) / den) * 100 if num else 0
@@ -182,7 +182,7 @@ class CSTOREToolBox:
 
     def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None, scene_result_fk=None,
                     denominator_result=None, numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None,
-                    kpi_fk = None, hierarchy_only=0):
+                    kpi_fk = None):
         """
         writes result in the DB
         :param kpi_name: str
@@ -197,5 +197,5 @@ class CSTOREToolBox:
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id,
                                        identifier_result=ident_result, identifier_parent=ident_parent,
-                                       scene_result_fk=scene_result_fk, hierarchy_only=0)
+                                       scene_result_fk=scene_result_fk)
 

@@ -4,7 +4,6 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.MONDELEZUS.Utils.KPIToolBox import MONDELEZUSToolBox
 from Projects.MONDELEZUS.CStore.KPIToolBox import CSTOREToolBox
 
-from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
@@ -35,5 +34,5 @@ class Generator:
         self.cstore_tool_box.main_calculation()
         # for kpi_set_fk in self.tool_box.kpi_new_static_data['pk'].unique().tolist():
         #     self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-        self.common.commit_results()
+        self.common.commit_results_data()
 
