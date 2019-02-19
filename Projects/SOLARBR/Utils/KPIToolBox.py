@@ -27,7 +27,7 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template_Solar_2019_DH_1.1.xlsx')
-MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template 2019_DH_1.1.xlsx')
+MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template 2019_DH_1.2.xlsx')
 
 
 class SOLARBRToolBox:
@@ -248,8 +248,12 @@ class SOLARBRToolBox:
         try:
             score = score_range['Score'].iloc[0]
         except IndexError:
-            Log.error('No score data found for KPI name {} in store type {}'.format(kpi_name.encode("utf-8"), store_type.encode("utf-8")))
-            return 0
+            try:
+                Log.error('No score data found for KPI name {} in store type {}'.format(kpi_name.encode("utf-8"), store_type))
+                return 0
+            except UnicodeDecodeError:
+                Log.error('Unable to generate error for KPI name or store type with weird characters')
+                return 0
 
         return score
 
