@@ -68,7 +68,8 @@ class GFKDECalculations(BaseCalculationsScript):
             dm.add_to_sharing()
 
             for kpi in KPIs:
-                kpi(data_provider=self.data_provider).calculate()
+                kpi_type, result_df = kpi(data_provider=self.data_provider).calculate()
+                dm.add_data(kpi_type, result_df)
 
             dm.commit_resutls()
             self.timer.stop('KPIGenerator.run_project_calculations')
@@ -87,7 +88,7 @@ class GFKDECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'gfkde'
 #     data_provider = KEngineDataProvider(project_name)
-#     sessions = ['d486cce5-7c51-4182-9481-f2b1377572bf']
+#     sessions = ['23007c54-8f46-453e-b90b-a79bd7067696']
 #
 #     for session in sessions:
 #         data_provider.load_session_data(session)
