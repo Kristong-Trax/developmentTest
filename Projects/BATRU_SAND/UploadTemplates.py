@@ -408,7 +408,7 @@ class BATRU_SANDNewTemplate:
             existing = self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_FK] == self.set_fk) &
                                             (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == data[0])]
         else:
-            Log.info('not valid level for checking new KPIs')
+            Log.debug('not valid level for checking new KPIs')
             return False
 
         return existing.empty
