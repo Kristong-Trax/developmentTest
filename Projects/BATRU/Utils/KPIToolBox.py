@@ -143,7 +143,7 @@ class BATRUToolBox:
                 if self.get_missing_products_to_api_set(set_fk):
                     new_products = True
         except Exception as e:
-            Log.info('Updating API sets failed')
+            Log.debug('Updating API sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
         self.custom_templates = {}
@@ -206,7 +206,7 @@ class BATRUToolBox:
         if self.tools.p1_assortment_validator(file_path):
             self.tools.upload_store_assortment_file(file_path)
         else:
-            Log.warning("Error in P1 store assortment template")
+            Log.debug("Error in P1 store assortment template")
             print "Please fix the issues and try again"
 
     def main_calculation(self):
@@ -318,7 +318,7 @@ class BATRUToolBox:
                                                            (self.all_products['manufacturer_name'] == BAT)][
                             'product_fk'].values[0]
                     except Exception as e:
-                        Log.warning('Product with the ean code {} is not defined in the data provider'.format(product))
+                        Log.debug('Product with the ean code {} is not defined in the data provider'.format(product))
                         continue
                     # bundled_products = self.bundle_fk_ean(product_fk)
                     bundled_products = self.get_bundles_by_definitions(
@@ -370,7 +370,7 @@ class BATRUToolBox:
                         product_name = self.all_products.loc[self.all_products['product_fk'] == product_fk][
                             'product_english_name'].values[0]
                     except Exception as e:
-                        Log.warning('Product with the ean code {} is not defined in the data provider'.format(product))
+                        Log.debug('Product with the ean code {} is not defined in the data provider'.format(product))
                         continue
                     oos_contracted_score_list[product] = oos_contracted_status
                     oos_rest_score_list[product] = oos_rest_status
@@ -419,7 +419,7 @@ class BATRUToolBox:
                         oos = 0
                         distribution = 0
                         availability = 0
-                        Log.info('No contracted products are defined for store {}'.format(self.scif['store_number_1']))
+                        Log.debug('No contracted products are defined for store {}'.format(self.scif['store_number_1']))
                     self.save_level2_and_level3(set_for_db, kpi_name=self.CONTRACTED, result=distribution,
                                                 score_2=availability, score_3=oos, level_2_only=True)
                     self.write_to_db_result_for_api(score=None, level=self.LEVEL3, level3_score=oos,
@@ -609,7 +609,7 @@ class BATRUToolBox:
                 merged_pricing_data['price_value'] = 0
                 merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
                                                                   as_index=False)[['price_value']].first()
-                Log.info('There are missing numeric values: {}'.format(e))
+                Log.debug('There are missing numeric values: {}'.format(e))
 
         if not merged_dates_data.empty:
             merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
@@ -619,7 +619,7 @@ class BATRUToolBox:
             except Exception as e:
                 merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
                                                               as_index=False)[['fixed_date']].first()
-                Log.info('There is a dates integrity issue: {}'.format(e))
+                Log.debug('There is a dates integrity issue: {}'.format(e))
         else:
             merged_dates_data['fixed_date'] = None
 
@@ -735,7 +735,7 @@ class BATRUToolBox:
             try:
                 product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB'.format(sku))
+                Log.debug('Product ean {} is not defined in the DB'.format(sku))
                 continue
             monitored_skus = monitored_skus.append({'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
         monitored_skus = monitored_skus.drop_duplicates(subset=['product_ean_code_lead'], keep='last')
@@ -762,7 +762,7 @@ class BATRUToolBox:
             self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == P2_FULFILMENT]['atomic_kpi_fk'].iloc[0]
         score = self.get_fulfilment(monitored_products)
         if score == -1:
-            Log.info('No Monitored products were found.')
+            Log.debug('No Monitored products were found.')
             return None
         else:
             self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
@@ -854,7 +854,7 @@ class BATRUToolBox:
                 self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
                 new_products = True
         except Exception as e:
-            Log.info('Updating Mobile price sets failed')
+            Log.debug('Updating Mobile price sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
             self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
@@ -865,7 +865,7 @@ class BATRUToolBox:
                 product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB'.format(row.product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB'.format(row.product_ean_code))
                 continue
             try:
                 kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
@@ -946,7 +946,7 @@ class BATRUToolBox:
             try:
                 self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(product_ean_code))
 
         priorities_template_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')\
             .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
@@ -957,7 +957,7 @@ class BATRUToolBox:
             try:
                 self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB for Share priority'.format(product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB for Share priority'.format(product_ean_code))
 
         sequence_template_data = parse_template(P3_TEMPLATE_PATH, 'Sequence list')\
             .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
@@ -966,7 +966,7 @@ class BATRUToolBox:
             try:
                 self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
 
         if not self.scif.empty:
             attribute_3 = self.scif['additional_attribute_3'].values[0]
@@ -1030,11 +1030,11 @@ class BATRUToolBox:
                     .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
                 if section_shelf_data_all.empty:
-                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    Log.debug('Section {} has no matching positions in scene {}'.format(section_name, scene))
                 else:
                     section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
                     if section_shelf_data.empty:
-                        Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                        Log.debug('Section {} has no matching positions in scene {}'.format(section_name, scene))
 
                 # Initial pass values
                 no_competitors = True
@@ -1108,7 +1108,7 @@ class BATRUToolBox:
                                         break
                                     last_prod_seq_ind = prod_seq_ind
                                 elif manufacturer_name == BAT and product_type in (SKU, POSM):
-                                    Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
+                                    Log.debug('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
                                     sku_sequence_passed = False
                                     break
 
@@ -1291,7 +1291,7 @@ class BATRUToolBox:
                 section_facings_histogram\
                     .append({'priority': float(priority), 'product_ean_code': product_ean_code, 'facings': facings})
             else:
-                Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
+                Log.debug('Product ean {} is not configured in Share priority template'.format(product_ean_code))
         section_facings_histogram = pd.DataFrame(section_facings_histogram)
         if section_facings_histogram.empty:
             return True
@@ -1593,7 +1593,7 @@ class BATRUToolBox:
                         try:
                             result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
                         except IndexError:
-                            Log.warning('The KPI is not in the DB yet')
+                            Log.debug('The KPI is not in the DB yet')
                             result = 0
                     else:
                         result = 0
