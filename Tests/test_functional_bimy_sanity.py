@@ -44,7 +44,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_bimy_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['42fd4479-dff9-4928-97dc-2b887cfb189c']
+        sessions = ['3fa06138-5885-4e49-890f-11d3cde21b9f']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
