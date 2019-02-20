@@ -52,7 +52,7 @@ class CCRUCanteenCalculations:
         jg.create_json('Canteen.xlsx', CANTEEN)
 
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
@@ -76,7 +76,7 @@ class CCRUCanteenCalculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])

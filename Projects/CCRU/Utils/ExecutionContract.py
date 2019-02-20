@@ -93,7 +93,7 @@ class CCRUContract:
 
     def parse_and_upload_file(self):
 
-        Log.info("Starting template parsing and validation")
+        Log.debug("Starting template parsing and validation")
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
@@ -115,7 +115,7 @@ class CCRUContract:
         raw_data[self.START_DATE] = raw_data[self.START_DATE].astype(str)
         raw_data[self.END_DATE] = raw_data[self.END_DATE].astype(str)
 
-        Log.info("Starting Stores validation")
+        Log.debug("Starting Stores validation")
         target_data_new = {}
         count_stores_total = raw_data.shape[0]
         for x, row in raw_data.iterrows():
@@ -144,13 +144,13 @@ class CCRUContract:
 
             count_stores_processed = x + 1
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.info("Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.debug("Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
 
         if self.invalid_stores:
             Log.warning("The following stores do not exist in the DB and will be ignored ({}): "
                         "{}".format(len(self.invalid_stores), self.invalid_stores))
 
-        Log.info("Starting data processing")
+        Log.debug("Starting data processing")
         count_stores_total = len(target_data_new.keys())
         for x, store_id in enumerate(target_data_new.keys()):
 
@@ -170,7 +170,7 @@ class CCRUContract:
                 target_data = []
                 target_data_cur = self.get_json_file_content(str(store_id))
                 # if target_data_cur:
-                #     Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
+                #     Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'
                 #              .format(store_id, store_number))
                 for data_cur in target_data_cur:
                     try:
@@ -205,13 +205,13 @@ class CCRUContract:
                 with open(self.temp_path, 'wb') as f:
                     f.write(json.dumps(target_data))
                 self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-                # Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
+                # Log.debug('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
 
             count_stores_processed = x + 1
             self.stores_processed += [store_number]
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
-                # Log.info("Stores processed: {}".format(self.stores_processed))
+                Log.debug("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
+                # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
         if os.path.exists(self.temp_path):
@@ -229,7 +229,7 @@ class CCRUContract:
             Log.warning("The following stores have invalid target format and were ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.info("Execution targets are uploaded successfully. " +
+        Log.debug("Execution targets are uploaded successfully. " +
                  ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
 
     @staticmethod
