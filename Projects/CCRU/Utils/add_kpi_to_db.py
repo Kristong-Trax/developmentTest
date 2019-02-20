@@ -158,7 +158,7 @@ class CCRUAddKPIs(CCRUConsts):
                 cur.execute(query)
                 print query
         self.aws_conn.db.commit()
-        Log.info("Total number of executed queries = {}".format(len(queries_to_execute)))
+        Log.debug("Total number of executed queries = {}".format(len(queries_to_execute)))
 
     def update_kpi_weights(self):
         """
@@ -197,7 +197,7 @@ class CCRUAddKPIs(CCRUConsts):
         self.add_sets_to_static()
         self.add_kpis_to_static()
         self.add_atomics_to_static()
-        Log.info('{} Sets, {} KPIs and {} Atomics have been added'
+        Log.debug('{} Sets, {} KPIs and {} Atomics have been added'
                  .format(self.kpi_counter['set'], self.kpi_counter['kpi'], self.kpi_counter['atomic']))
 
     def add_sets_to_static(self):
@@ -218,7 +218,7 @@ class CCRUAddKPIs(CCRUConsts):
             self.aws_conn.db.commit()
         set_names_ignored = set(set_names).difference(set_names_to_add)
         if set_names_ignored:
-            Log.info("KPI Sets '{}' already exist. Ignored".format(set_names_ignored))
+            Log.debug("KPI Sets '{}' already exist. Ignored".format(set_names_ignored))
 
     def add_kpis_to_static(self):
         kpis = self.data.drop_duplicates(subset=[self.SET_NAME, self.KPI_NAME], keep='first')
@@ -251,7 +251,7 @@ class CCRUAddKPIs(CCRUConsts):
                     self.kpis_added[set_name] = {kpi_name: cur.lastrowid}
                 self.kpi_counter['kpi'] += 1
             else:
-                Log.info("KPI '{}' already exists for KPI Set '{}'. Ignored".format(kpi_name, set_name))
+                Log.debug("KPI '{}' already exists for KPI Set '{}'. Ignored".format(kpi_name, set_name))
 
             if i % 10 == 0:
                 self.aws_conn.db.commit()
@@ -293,7 +293,7 @@ class CCRUAddKPIs(CCRUConsts):
                 cur.execute(level3_query)
                 self.kpi_counter['atomic'] += 1
             else:
-                Log.info("Atomic '{}' already exists for KPI '{}' Set '{}'. Ignored".format(atomic_name, kpi_name, set_name))
+                Log.debug("Atomic '{}' already exists for KPI '{}' Set '{}'. Ignored".format(atomic_name, kpi_name, set_name))
 
             if i % 10 == 0:
                 self.aws_conn.db.commit()
