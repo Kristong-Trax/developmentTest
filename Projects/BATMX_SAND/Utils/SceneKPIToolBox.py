@@ -15,18 +15,20 @@ class SceneToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.scene_matches = pd.merge(self.data_provider[Data.MATCHES], self.all_products, on="product_fk")
         self.planogram_matches = self.data_provider._planogram_matches
+        if self.planogram_matches is None:
+            self.planogram_matches = pd.DataFrame(columns=["product_fk", "shelf_number", "manufacturer_fk"])
         self.planogram_matches = pd.merge(self.planogram_matches, self.all_products, on="product_fk")
         self.pog_matches, self.rog_matches = {}, {}
         self.pog_matches[Const.TOBACCO_CENTER] = self.planogram_matches[self.planogram_matches['shelf_number'] > 1]
         self.pog_matches[Const.PROMOTIONAL_TRAY] = self.planogram_matches[self.planogram_matches['shelf_number'] == 1]
         self.rog_matches[Const.TOBACCO_CENTER] = self.scene_matches[self.scene_matches['shelf_number'] > 1]
         self.rog_matches[Const.PROMOTIONAL_TRAY] = self.scene_matches[self.scene_matches['shelf_number'] == 1]
-        self.planogram_id = self.planogram_matches['planogram_fk'].iloc[0]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'].iloc[0]
         self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"].isin(Const.BAT_MANUFACTURERS)][
             'manufacturer_fk'].iloc[0]
+        self.planogram_id = None if self.planogram_matches.empty else self.planogram_matches['planogram_fk'].iloc[0]
         self.common = Common(data_provider)
 
     def main_calculation(self):
@@ -133,7 +135,7 @@ class SceneToolBox:
             denominator_result=all_matches, denominator_id=self.store_id, score=score, by_scene=True)
 
     def calculate_oos(self):
-        fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS)
+        fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_FIXTURE)
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_SKU)
         identifier = self.common.get_dictionary(kpi_fk=fixture_kpi_fk)
         matches = self.rog_matches[Const.TOBACCO_CENTER]

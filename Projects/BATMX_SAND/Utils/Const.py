@@ -9,29 +9,29 @@ class Const(object):
     VISIT_LEVEL = "visit_level"
     SKU_LEVEL = "sku_level"
 
-    OOS = "oos"
-    OOS_VISIT = "oos - visit"
-    OOS_SKU = "oos - sku"
+    OOS_FIXTURE = "OOS - fixture level"
+    OOS_VISIT = "OOS - visit level"
+    OOS_SKU = "OOS - sku level"
 
     TOBACCO_CENTER = "tobacco_center"
     PROMOTIONAL_TRAY = "promotional_tray"
 
     POG_KPI_NAMES = {
         TOBACCO_CENTER: {
-            FIXTURE_LEVEL: "tobacco center pog compliance",
-            STATUS_LEVEL: "tobacco center pog status",
-            VISIT_LEVEL: "tobacco center pog visit",
-            SKU_LEVEL: "tobacco center pog sku"},
+            FIXTURE_LEVEL: "POG fixture level - tobacco center",
+            STATUS_LEVEL: "POG status level - tobacco center",
+            VISIT_LEVEL: "POG visit level - tobacco center	",
+            SKU_LEVEL: "POG sku level - tobacco center"},
         PROMOTIONAL_TRAY: {
-            FIXTURE_LEVEL: "promotional tray pog compliance",
-            STATUS_LEVEL: "promotional tray pog status",
-            VISIT_LEVEL: "promotional tray pog visit",
-            SKU_LEVEL: "promotional tray pog sku"},
+            FIXTURE_LEVEL: "POG fixture level - promotional tray",
+            STATUS_LEVEL: "POG status level - promotional tray",
+            VISIT_LEVEL: "POG visit level - promotional tray",
+            SKU_LEVEL: "POG sku level - promotional tray"},
     }
 
     SOS_LEVELS = {
-        FIXTURE_LEVEL: "facings_sos",
-        VISIT_LEVEL: "facings_sos - visit"
+        FIXTURE_LEVEL: "facings SOS - fixture level",
+        VISIT_LEVEL: "facings SOS - visit level"
     }
 
     BAT_MANUFACTURERS = ["British American Tobacco"]

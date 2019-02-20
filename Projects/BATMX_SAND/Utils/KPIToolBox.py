@@ -35,7 +35,12 @@ class BATMXToolBox:
         self.scenes = self.scene_info['scene_fk'].tolist()
         self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"].isin(Const.BAT_MANUFACTURERS)][
             'manufacturer_fk'].iloc[0]
-        exits, entries = [Const.EXIT], [Const.ENTRY] ################
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        scenes_with_templates = self.scif[['template_name', 'scene_fk']].drop_duplicates()
+        exits = scenes_with_templates[scenes_with_templates[
+            'template_name'].str.contains(Const.EXIT_TEMPLATE)]['scene_fk'].tolist()
+        entries = scenes_with_templates[scenes_with_templates[
+            'template_name'].str.contains(Const.ENTRY_TEMPLATE)]['scene_fk'].tolist()
         if self.scenes:
             self.scene_results = self.ps_data_provider.get_scene_results(self.scenes)
             self.exit_results = self.scene_results[self.scene_results["scene_fk"].isin(exits)]
@@ -80,7 +85,7 @@ class BATMXToolBox:
 
     def calculate_oos(self):
         visit_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_VISIT)
-        fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS)
+        fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_FIXTURE)
         identifier = self.common.get_dictionary(kpi_fk=visit_kpi_fk)
         results = self.entry_results[self.entry_results['kpi_level_2_fk'] == fixture_kpi_fk]
         if results.empty:
