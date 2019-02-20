@@ -64,7 +64,7 @@ class NESTLEUSToolBox:
         self.availability = Availability(self.data_provider)
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
-        # self.toolbox = NESTLEUSToolBox(self.data_provider)
+        self.MM_TO_FEET_CONVERSION = 0.0032808399
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -72,9 +72,7 @@ class NESTLEUSToolBox:
         """
         kpi_set_fk = kwargs['kpi_set_fk']
         self.calculate_facing_and_count(kpi_set_fk = kpi_set_fk)
-        # self.Calculate_Linear_feet(kpi_set_fk = kpi_set_fk)
         self.common.commit_results_data()
-        # pass
 
 
 
@@ -103,7 +101,7 @@ class NESTLEUSToolBox:
                     numerator_length = self.calculate_linear_share_of_shelf_with_numerator_denominator(
                         sos_filter, **general_filter)
 
-                    numerator_length = int(round(numerator_length * 0.0393700787))
+                    numerator_length = int(round(numerator_length * self.MM_TO_FEET_CONVERSION))
                     if numerator_length > 0:
                         kpi_set_fk = 136
                         self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
