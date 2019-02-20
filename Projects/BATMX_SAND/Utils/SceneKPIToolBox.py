@@ -19,10 +19,10 @@ class SceneToolBox:
             self.planogram_matches = pd.DataFrame(columns=["product_fk", "shelf_number", "manufacturer_fk"])
         self.planogram_matches = pd.merge(self.planogram_matches, self.all_products, on="product_fk")
         self.pog_matches, self.rog_matches = {}, {}
-        self.pog_matches[Const.TOBACCO_CENTER] = self.planogram_matches[self.planogram_matches['shelf_number'] > 1]
-        self.pog_matches[Const.PROMOTIONAL_TRAY] = self.planogram_matches[self.planogram_matches['shelf_number'] == 1]
-        self.rog_matches[Const.TOBACCO_CENTER] = self.scene_matches[self.scene_matches['shelf_number'] > 1]
-        self.rog_matches[Const.PROMOTIONAL_TRAY] = self.scene_matches[self.scene_matches['shelf_number'] == 1]
+        self.pog_matches[Const.TOBACCO_CENTER] = self.planogram_matches[self.planogram_matches['shelf_number'] > 2]
+        self.pog_matches[Const.PROMOTIONAL_TRAY] = self.planogram_matches[self.planogram_matches['shelf_number'] == 2]
+        self.rog_matches[Const.TOBACCO_CENTER] = self.scene_matches[self.scene_matches['shelf_number'] > 2]
+        self.rog_matches[Const.PROMOTIONAL_TRAY] = self.scene_matches[self.scene_matches['shelf_number'] == 2]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'].iloc[0]
@@ -125,7 +125,7 @@ class SceneToolBox:
     def calculate_sos(self):
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_LEVELS[Const.FIXTURE_LEVEL])
         matches = self.rog_matches[Const.TOBACCO_CENTER]
-        matches = matches[(matches["product_type"].isin(["SKU", "Other"])) &
+        matches = matches[(matches["product_type"].isin(["SKU", "Other", "Empty"])) &
                           (matches[matches["category"] == "Cigarettes"])]
         bat_matches = len(matches[matches["manufacturer_fk"] == self.manufacturer_fk])
         all_matches = len(matches)
@@ -138,7 +138,7 @@ class SceneToolBox:
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_FIXTURE)
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_SKU)
         identifier = self.common.get_dictionary(kpi_fk=fixture_kpi_fk)
-        matches = self.rog_matches[Const.TOBACCO_CENTER]
+        matches = self.pog_matches[Const.TOBACCO_CENTER]
         assortment_list = set(matches[matches["manufacturer_fk"] == self.manufacturer_fk]['product_fk'])
         scif_products = set(self.scif[self.scif['manufacturer_fk'] == self.manufacturer_fk]['product_fk'])
         oos_list = assortment_list - scif_products
