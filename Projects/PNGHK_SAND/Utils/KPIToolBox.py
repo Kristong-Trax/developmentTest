@@ -339,14 +339,15 @@ class PNGHKToolBox:
             #                                (df[df['shelf_number'] != 1]))
 
             # if no osd rule is applied
-            if (row[Const.HAS_OSD].values[0] == Const.NO):
+            if row[Const.HAS_OSD].values[0] == Const.NO:
                 continue
 
             # filter df to have only shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                               'bay_number','shelf_number']]
+                                                                                               'bay_number',
+                                                                                               'shelf_number']]
 
                 const_scene_df = scene_df.copy()
                 if not products_df.empty:

@@ -95,7 +95,8 @@ class CCRUTopSKUAssortment:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
+            product_fk = self.product_data[self.product_data['product_ean_code']
+                                           == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk
@@ -154,9 +155,10 @@ class CCRUTopSKUAssortment:
                                            str(anchor_product_fk) + '|' +
                                            str(min_facings) + '|1')
         # if not tmplt_top_sku_keys:
-        #     Log.info('No products are configured as Top SKUs for store number {} and period {} - {}'
+        #     Log.debug('No products are configured as Top SKUs for store number {} and period {} - {}'
         #              ''.format(store_number, start_date, end_date))
-        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)['top_sku_key'].tolist()
+        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)[
+            'top_sku_key'].tolist()
         products_to_deactivate = set(store_top_sku_keys).difference(tmplt_top_sku_keys)
         products_to_extend = set(tmplt_top_sku_keys).intersection(store_top_sku_keys)
         products_to_activate = set(tmplt_top_sku_keys).difference(store_top_sku_keys)
@@ -244,7 +246,8 @@ class CCRUTopSKUAssortment:
         :return: A DataFrame with valid products
         """
         raw_data = pd.read_excel(file_path, sheetname=TARGETS_SHEET_NAME)
-        raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
+        raw_data = raw_data.drop_duplicates(
+            subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
         raw_data = self.products_validator(raw_data)
@@ -254,7 +257,7 @@ class CCRUTopSKUAssortment:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
-        Log.info("Starting template parsing and EAN Codes validation")
+        Log.debug("Starting template parsing and EAN Codes validation")
         raw_data = self.parse_and_validate(file_path)
         if self.duplicate_columns:
             Log.warning("The following columns are duplicate in the template and will be ignored ({}): "
@@ -263,11 +266,12 @@ class CCRUTopSKUAssortment:
             Log.warning("The following products do not exist in the DB and will be ignored ({}): "
                         "{}".format(len(self.invalid_products), self.invalid_products))
 
-        Log.info("Starting Stores validation")
+        Log.debug("Starting Stores validation")
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
             if (index_data + 1) % 1000 == 0 or (index_data + 1) == raw_data.shape[0]:
-                Log.info("Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
+                Log.debug(
+                    "Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
             if not self.store_row_validator(store_raw_data):
                 continue
             store_data = {}
@@ -282,7 +286,7 @@ class CCRUTopSKUAssortment:
             Log.warning("The following stores have invalid date period and will be ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.info("Starting data processing")
+        Log.debug("Starting data processing")
         count_stores_total = len(data)
         count_stores_processed = 0
         for store_data in data:
@@ -310,8 +314,9 @@ class CCRUTopSKUAssortment:
                 queries = []
 
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.info("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
-                # Log.info("Stores processed: {}".format(self.stores_processed))
+                Log.debug(
+                    "Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
+                # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
         if self.duplicate_columns:
@@ -330,11 +335,11 @@ class CCRUTopSKUAssortment:
             Log.warning("The following stores have invalid date period and were ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
-                 .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
+        Log.debug("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
+                  .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
-        Log.info("Top SKU targets are uploaded successfully. " +
-                 ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
+        Log.debug("Top SKU targets are uploaded successfully. " +
+                  ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
 
         return
 
@@ -409,7 +414,7 @@ class CCRUTopSKUAssortment:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.info('DB update failed due to: {}'.format(e))
+                Log.debug('DB update failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
                 continue
             if query_num > batch_size:

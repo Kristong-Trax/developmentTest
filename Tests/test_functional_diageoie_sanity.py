@@ -10,7 +10,7 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Testing.Case import MockingTestCase, skip
 from mock import patch
 
-from Tests.Data.TestData.test_data_diageoie_sanity import ProjectsSanityData
+from Tests.Data.TestData.test_data_diageoie_sand_sanity import ProjectsSanityData
 from Projects.DIAGEOIE.Calculations import DIAGEOIECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
