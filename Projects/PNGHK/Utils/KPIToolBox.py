@@ -322,9 +322,9 @@ class PNGHKToolBox:
 
             # filter df include OSD when needed
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-            shelfs_to_include = int(shelfs_to_include)
-            if row[Const.STORAGE_EXCLUSION_PRICE_TAG] == 'N':
+            if (row[Const.STORAGE_EXCLUSION_PRICE_TAG] == 'N').bool():
                 if shelfs_to_include != "":
+                    shelfs_to_include = int(shelfs_to_include)
                     df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
             # else:
             #     scenes = set(scene_df['scene_fk'])
@@ -339,7 +339,7 @@ class PNGHKToolBox:
             #                                (df[df['shelf_number'] != 1]))
 
             # if no osd rule is applied
-            if (row[Const.HAS_OSD].values[0] == Const.NO):
+            if row[Const.HAS_OSD].values[0] == Const.NO:
                 continue
 
             # filter df to have only shelves with given ean code

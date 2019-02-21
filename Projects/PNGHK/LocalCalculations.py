@@ -11,9 +11,10 @@ if __name__ == '__main__':
     project_name = 'pnghk'
     data_provider = KEngineDataProvider(project_name)
     data_provider = KEngineDataProvider(project_name)
-    sessions = ['6BE5606E-0FC2-41BB-9907-DC60E81B79BA',
-                '3db4eb8e-4d4c-4b32-b131-2a5ac57e0234',
-                'eaf3b934-8430-4c72-87e5-9d5ea85a596e']
+    sessions = ['fd12720b-be37-43cc-ab35-4e44d3a2aa5c',
+                'fbc3e8c6-1857-46d0-9f10-ccf19cfa4d72',
+                'ea5dfbd5-8ea0-4e5c-b5f8-f05c61ac37cd'
+                ]
     for session in sessions:
         data_provider.load_session_data(session)
         output = Output()
