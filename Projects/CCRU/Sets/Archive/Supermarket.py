@@ -20,7 +20,8 @@ MARKETING = 'Marketing 2017'
 
 
 class CCRUSupermarketCalculations:
-    def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
+    # All relevant session data with KPI static info will trigger the KPI calculation
+    def __init__(self, data_provider, output, ps_data_provider):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -31,7 +32,8 @@ class CCRUSupermarketCalculations:
         self.rds_conn = self.rds_connection()
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output, ps_data_provider, SUPERMARKET)
+        self.tool_box = CCRUKPIToolBox(self.data_provider, self.output,
+                                       ps_data_provider, SUPERMARKET)
 
         self.results = {}
 
@@ -60,21 +62,23 @@ class CCRUSupermarketCalculations:
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             if set_name == SUPERMARKET:
                 score += self.tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
-                score += self.tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
+                score += self.tool_box.check_number_of_scenes(
+                    jg.project_kpi_dict.get('kpi_data')[0])
                 score += self.tool_box.check_number_of_doors(jg.project_kpi_dict.get('kpi_data')[0])
-                score += self.tool_box.check_number_of_doors_given_sos(jg.project_kpi_dict.get('kpi_data')[0])
-                score += self.tool_box.check_number_of_doors_given_number_of_sku(jg.project_kpi_dict.get('kpi_data')[0])
+                score += self.tool_box.check_number_of_doors_given_sos(
+                    jg.project_kpi_dict.get('kpi_data')[0])
+                score += self.tool_box.check_number_of_doors_given_number_of_sku(
+                    jg.project_kpi_dict.get('kpi_data')[0])
                 jg.create_gaps_json('gaps_guide.xlsx', sheet_name=SUPERMARKET)
                 self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
                 self.tool_box.write_gaps()
             attributes_for_table1 = pd.DataFrame([(set_name, self.session_uid,
-                                                   self.store_id, self.visit_date.isoformat()
-                                                   , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                            'session_uid',
-                                                                                            'store_fk',
-                                                                                            'visit_date',
-                                                                                            'score_1',
-                                                                                            'kpi_set_fk'])
+                                                   self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                      'session_uid',
+                                                                                                                                      'store_fk',
+                                                                                                                                      'visit_date',
+                                                                                                                                      'score_1',
+                                                                                                                                      'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
         extra_sets_to_calculate = [(TARGET_EXECUTION, 'Target Execution'), (MARKETING, 'Marketing')]
         for extra_set_name, template_name in extra_sets_to_calculate:
@@ -89,13 +93,12 @@ class CCRUSupermarketCalculations:
             score += self.tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.check_number_of_doors(jg.project_kpi_dict.get('kpi_data')[0])
             attributes_for_table1 = pd.DataFrame([(extra_set_name, self.session_uid,
-                                                   self.store_id, self.visit_date.isoformat()
-                                                   , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                            'session_uid',
-                                                                                            'store_fk',
-                                                                                            'visit_date',
-                                                                                            'score_1',
-                                                                                            'kpi_set_fk'])
+                                                   self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                      'session_uid',
+                                                                                                                                      'store_fk',
+                                                                                                                                      'visit_date',
+                                                                                                                                      'score_1',
+                                                                                                                                      'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 
         self.tool_box.calculate_contract_execution()

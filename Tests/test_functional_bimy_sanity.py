@@ -22,13 +22,13 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
-    
+
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-    
+
     seeder = Seeder()
-    
+
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
@@ -38,7 +38,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
-    
+
     @seeder.seed(["bimy_seed"], ProjectsSanityData())
     def test_bimy_sanity(self):
         project_name = ProjectsSanityData.project_name

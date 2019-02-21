@@ -21,7 +21,8 @@ class BATRUGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for session {}'.format(self.tool_box.session_uid))
+            Log.warning('Scene item facts is empty for session {}'.format(
+                self.tool_box.session_uid))
             return
         self.tool_box.main_calculation()
         self.tool_box.commit_results_data()

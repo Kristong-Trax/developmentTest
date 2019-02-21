@@ -17,8 +17,6 @@ class Calculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('SolarBr calculations')
 #     Config.init()

@@ -22,7 +22,8 @@ MARKETING = 'Marketing 2017'
 
 
 class CCRUCanteenCalculations:
-    def __init__(self, data_provider, output, ps_data_provider):  #All relevant session data with KPI static info will trigger the KPI calculation
+    # All relevant session data with KPI static info will trigger the KPI calculation
+    def __init__(self, data_provider, output, ps_data_provider):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -58,13 +59,12 @@ class CCRUCanteenCalculations:
         score += self.tool_box.check_survey_answer(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
         attributes_for_table1 = pd.DataFrame([(CANTEEN, self.session_uid,
-                                               self.store_id, self.visit_date.isoformat()
-                                               , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                                  'session_uid',
-                                                                                                  'store_fk',
-                                                                                                  'visit_date',
-                                                                                                  'score_1',
-                                                                                                  'kpi_set_fk'])
+                                               self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                  'session_uid',
+                                                                                                                                  'store_fk',
+                                                                                                                                  'visit_date',
+                                                                                                                                  'score_1',
+                                                                                                                                  'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
         jg.create_gaps_json('gaps_guide.xlsx', sheet_name=CANTEEN)
         self.tool_box.calculate_gaps(jg.project_kpi_dict.get('gaps'))
@@ -83,13 +83,12 @@ class CCRUCanteenCalculations:
             score += self.tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.check_number_of_doors(jg.project_kpi_dict.get('kpi_data')[0])
             attributes_for_table1 = pd.DataFrame([(extra_set_name, self.session_uid,
-                                                   self.store_id, self.visit_date.isoformat()
-                                                   , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                            'session_uid',
-                                                                                            'store_fk',
-                                                                                            'visit_date',
-                                                                                            'score_1',
-                                                                                            'kpi_set_fk'])
+                                                   self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                      'session_uid',
+                                                                                                                                      'store_fk',
+                                                                                                                                      'visit_date',
+                                                                                                                                      'score_1',
+                                                                                                                                      'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 
         self.tool_box.calculate_contract_execution()
@@ -97,7 +96,3 @@ class CCRUCanteenCalculations:
         self.tool_box.commit_results_data()
         calc_finish_time = dt.datetime.utcnow()
         Log.info('Calculation time took {}'.format(calc_finish_time-calc_start_time))
-
-
-
-

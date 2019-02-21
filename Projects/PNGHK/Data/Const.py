@@ -58,5 +58,7 @@ class Const(object):
     YES = 'Y'
     NO = 'N'
 
-    NAME_TO_FK = {"manufacturer_name":"manufacturer_fk","brand_name":"brand_fk","product_fk":"product_fk"}
-    CATEGORIES = ['Hair Care','Baby Care','Feminine Care','Toothpaste','Skin Care','Grooming','Laundry']
+    NAME_TO_FK = {"manufacturer_name": "manufacturer_fk",
+                  "brand_name": "brand_fk", "product_fk": "product_fk"}
+    CATEGORIES = ['Hair Care', 'Baby Care', 'Feminine Care',
+                  'Toothpaste', 'Skin Care', 'Grooming', 'Laundry']

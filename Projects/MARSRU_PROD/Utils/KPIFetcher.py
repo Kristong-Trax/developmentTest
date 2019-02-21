@@ -429,7 +429,8 @@ class MARSRU_PRODKPIFetcher:
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:
                                 if kpi_result in kpi_results_to_check:
-                                    values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
+                                    values_list = str(row.get('EAN')).strip().replace(
+                                        '\n', '').split(',')
                                     break
                                 else:
                                     continue

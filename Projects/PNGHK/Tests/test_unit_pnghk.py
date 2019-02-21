@@ -19,4 +19,3 @@ class TestPNGHK(TestCase):
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
         self.tool_box = PNGHKToolBox(self.data_provider_mock, MagicMock())
-
