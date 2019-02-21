@@ -48,7 +48,7 @@ class CCRUFTCalculations:
         jg.create_json('FT.xlsx', FT)
 
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
@@ -73,7 +73,7 @@ class CCRUFTCalculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -93,4 +93,4 @@ class CCRUFTCalculations:
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
         calc_finish_time = dt.datetime.utcnow()
-        Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        Log.debug('Calculation time took {}'.format(calc_finish_time - calc_start_time))

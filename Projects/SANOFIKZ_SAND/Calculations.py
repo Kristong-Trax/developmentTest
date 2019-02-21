@@ -17,6 +17,3 @@ class Calculations(BaseCalculationsScript):
                                      'Data', 'Template.xlsx')
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
-
-
-
