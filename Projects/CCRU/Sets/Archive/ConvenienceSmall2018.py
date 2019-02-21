@@ -53,7 +53,7 @@ class CCRUConvenienceSmallCalculations:
         jg.create_json('Convenience Small PoS 2018.xlsx', CONVENIENCE_SMALL_2018)
 
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
@@ -88,7 +88,7 @@ class CCRUConvenienceSmallCalculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -116,5 +116,5 @@ class CCRUConvenienceSmallCalculations:
 
         self.tool_box.commit_results_data()
         # calc_finish_time = dt.datetime.utcnow()
-        # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        # Log.debug('Calculation time took {}'.format(calc_finish_time - calc_start_time))
 

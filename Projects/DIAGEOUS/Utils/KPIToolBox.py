@@ -267,7 +267,7 @@ class DIAGEOUSToolBox:
             calculate_function = self.calculate_pod_off_sku
         elif kpi_name == Const.DISPLAY_BRAND:
             if self.survey_display_write_to_db(weight):
-                Log.info("There is no display, Display Brand got 100")
+                Log.debug("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
             calculate_function = self.calculate_display_compliance_sku
             relevant_scif = relevant_scif[relevant_scif['location_type'] == 'Secondary Shelf']
@@ -384,7 +384,7 @@ class DIAGEOUSToolBox:
         """
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
         if self.no_menu_allowed:
-            Log.info("There is no menu, Menu got 100")
+            Log.debug("There is no menu, Menu got 100")
             score = 1
             self.common.write_to_db_result(
                 fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
@@ -448,7 +448,7 @@ class DIAGEOUSToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         if self.no_display_allowed:
-            Log.info("There is no display, Display Share got 100")
+            Log.debug("There is no display, Display Share got 100")
             score = 1
             self.common.write_to_db_result(
                 fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,

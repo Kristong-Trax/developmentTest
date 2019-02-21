@@ -48,7 +48,7 @@ class CCRUSupermarketCalculations:
     def main_function(self):
         jg = CCRUJsonGenerator('ccru')
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
 
         sets_to_calculate = [(SUPERMARKET, 'Supermarket'), (BFSUPER, 'BFSuper')]
         for set_name, template_file_name in sets_to_calculate:
@@ -82,7 +82,7 @@ class CCRUSupermarketCalculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), extra_set_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -102,4 +102,4 @@ class CCRUSupermarketCalculations:
         self.tool_box.calculate_top_sku()
         self.tool_box.commit_results_data()
         calc_finish_time = dt.datetime.utcnow()
-        Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        Log.debug('Calculation time took {}'.format(calc_finish_time - calc_start_time))

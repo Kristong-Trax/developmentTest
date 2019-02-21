@@ -230,7 +230,7 @@ class BATRUPositionGraphs:
         Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
         """
         if entity not in self.ATTRIBUTES_TO_SAVE:
-            Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
+            Log.debug("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
         edges_to_remove = graph.es.select(direction_ne='left')
