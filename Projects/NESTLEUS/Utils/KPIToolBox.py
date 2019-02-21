@@ -71,7 +71,7 @@ class NESTLEUSToolBox:
         This function calculates the KPI results.
         """
         kpi_set_fk = kwargs['kpi_set_fk']
-        self.calculate_facing_and_count(kpi_set_fk = kpi_set_fk)
+        self.calculate_facing_count_and_linear_feet(kpi_set_fk = kpi_set_fk)
         self.common.commit_results_data()
 
 
@@ -80,18 +80,26 @@ class NESTLEUSToolBox:
 
 
 
-    def calculate_facing_and_count(self, kpi_set_fk= None):
-        if kpi_set_fk == 135:
+    def calculate_facing_count_and_linear_feet(self, kpi_set_fk= None):
+        kpi_name_facing_count = 'FACING_COUNT'
+        kpi_name_linear_feet = 'LINEAR_FEET'
+
+        kpi_fk_facing_count = self.common.get_kpi_fk_by_kpi_name(kpi_name_facing_count)
+        kpi_fk_linear_feet = self.common.get_kpi_fk_by_kpi_name(kpi_name_linear_feet)
+        if kpi_set_fk == kpi_fk_facing_count:
+
             product_fks = self.all_products['product_fk'][
                 (self.all_products['category_fk'] == 32) | (self.all_products['category_fk'] == 5)]
             for product_fk in product_fks:
+
                 sos_filter = {'product_fk': product_fk}
 
 
                 facing_count = self.availability.calculate_availability(**sos_filter)
-                kpi_set_fk = 135
+
                 if facing_count > 0:
-                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+
+                    self.common.write_to_db_result(fk=kpi_fk_facing_count, numerator_id=product_fk,
                                            numerator_result=facing_count,
                                            denominator_id=product_fk,
                                            result=facing_count, score=facing_count)
@@ -103,8 +111,8 @@ class NESTLEUSToolBox:
 
                     numerator_length = int(round(numerator_length * self.MM_TO_FEET_CONVERSION))
                     if numerator_length > 0:
-                        kpi_set_fk = 136
-                        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk,
+
+                        self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
                                                        numerator_result=numerator_length,
                                                        denominator_id=product_fk,
                                                        result=numerator_length, score=numerator_length)
