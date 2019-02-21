@@ -4,7 +4,7 @@ import os
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Projects.PNGHK_SAND.Data.Const import Const
+from Projects.PNGHK.Data.Const import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
