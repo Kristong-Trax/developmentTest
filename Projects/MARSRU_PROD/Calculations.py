@@ -36,7 +36,8 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
             kpi_golden_shelves = ['2019/MARS KPIs.xlsx', 'golden_shelves', 'golden_shelves']
             kpi_answers_translation = ['2019/MARS KPIs.xlsx',
                                        'survey_answers_translation', 'survey_answers_translation']
-            kpi_must_range_targets = ['2019/MARS KPIs.xlsx', 'must_range_skus', [4317, 4650, 4254, 4388, 4389]]
+            kpi_must_range_targets = ['2019/MARS KPIs.xlsx',
+                                      'must_range_skus', [4317, 4650, 4254, 4388, 4389]]
 
         jg = MARSRU_PRODJSONGenerator(project_name)
 

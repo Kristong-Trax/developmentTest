@@ -95,7 +95,8 @@ class CCRUTopSKUAssortment:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
+            product_fk = self.product_data[self.product_data['product_ean_code']
+                                           == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk
@@ -156,7 +157,8 @@ class CCRUTopSKUAssortment:
         # if not tmplt_top_sku_keys:
         #     Log.debug('No products are configured as Top SKUs for store number {} and period {} - {}'
         #              ''.format(store_number, start_date, end_date))
-        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)['top_sku_key'].tolist()
+        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)[
+            'top_sku_key'].tolist()
         products_to_deactivate = set(store_top_sku_keys).difference(tmplt_top_sku_keys)
         products_to_extend = set(tmplt_top_sku_keys).intersection(store_top_sku_keys)
         products_to_activate = set(tmplt_top_sku_keys).difference(store_top_sku_keys)
@@ -244,7 +246,8 @@ class CCRUTopSKUAssortment:
         :return: A DataFrame with valid products
         """
         raw_data = pd.read_excel(file_path, sheetname=TARGETS_SHEET_NAME)
-        raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
+        raw_data = raw_data.drop_duplicates(
+            subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
         raw_data = self.products_validator(raw_data)
@@ -267,7 +270,8 @@ class CCRUTopSKUAssortment:
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
             if (index_data + 1) % 1000 == 0 or (index_data + 1) == raw_data.shape[0]:
-                Log.debug("Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
+                Log.debug(
+                    "Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
             if not self.store_row_validator(store_raw_data):
                 continue
             store_data = {}
@@ -310,7 +314,8 @@ class CCRUTopSKUAssortment:
                 queries = []
 
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.debug(
+                    "Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
                 # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
@@ -331,10 +336,10 @@ class CCRUTopSKUAssortment:
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
         Log.debug("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
-                 .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
+                  .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
         Log.debug("Top SKU targets are uploaded successfully. " +
-                 ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
+                  ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
 
         return
 

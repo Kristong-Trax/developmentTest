@@ -20,4 +20,3 @@ if __name__ == '__main__':
     for session in session_uids:
         data_provider.load_session_data(session)
         MARSRU_PRODCalculations(data_provider, output).run_project_calculations()
-
