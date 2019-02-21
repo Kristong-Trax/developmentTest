@@ -92,9 +92,9 @@ class CCRUProjectCalculations:
 
         if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
             Log.warning('Error. Session cannot be calculated. '
-                       'POS KPI Set name in store attribute is invalid - {0}. '
-                       'Store ID {1}.'
-                       .format(self.pos_kpi_set_name, self.store_id))
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
             return
 
         self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
@@ -173,9 +173,9 @@ class CCRUProjectCalculations:
                  'weighted_score': score,
                  'level': 0})
 
-            # if kpi_set_type == POS:
-            #     Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
-            #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
+            if kpi_set_type == POS:
+                Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+                self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
             Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
