@@ -51,7 +51,7 @@ class CCRUPetrol2018Calculations:
         jg.create_json('Petroleum PoS 2018.xlsx', 'Petrol')
 
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -82,7 +82,7 @@ class CCRUPetrol2018Calculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
@@ -110,4 +110,4 @@ class CCRUPetrol2018Calculations:
 
         self.tool_box.commit_results_data()
         # calc_finish_time = dt.datetime.utcnow()
-        # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        # Log.debug('Calculation time took {}'.format(calc_finish_time - calc_start_time))
