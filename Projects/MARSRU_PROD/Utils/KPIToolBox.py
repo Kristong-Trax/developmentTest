@@ -1443,10 +1443,10 @@ class MARSRU_PRODKPIToolBox:
 
             if p.get('#Mars KPI NAME') == 4704:  # If ((4269+4271)/(4270+4272))*100% >= 100% then TRUE
                 kpi_part_1 = self.dict_for_planogram[4269] + self.dict_for_planogram[4271]
-                kpi_part_2 = self.dict_for_planogram[4270] / self.dict_for_planogram[4272]
-                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 1
+                kpi_part_2 = self.dict_for_planogram[4270] + self.dict_for_planogram[4272]
+                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 0
 
-                result = 'TRUE' if ratio >= 1 else 'FALSE'
+                result = 'FALSE' if ratio < 1 else 'TRUE'
 
             else:
 
