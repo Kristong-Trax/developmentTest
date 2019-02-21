@@ -92,12 +92,13 @@ class CCRUProjectCalculations:
 
         if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
             Log.warning('Error. Session cannot be calculated. '
-                       'POS KPI Set name in store attribute is invalid - {0}. '
-                       'Store ID {1}.'
-                       .format(self.pos_kpi_set_name, self.store_id))
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
+        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
+                                       sheet_name=self.pos_kpi_set_name)
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
         for row in kpi_source_json:
@@ -128,7 +129,8 @@ class CCRUProjectCalculations:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
+            self.json.create_kpi_data_json(
+                'kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
             score = 0
             score += self.tool_box.check_availability(kpi_data)
@@ -173,21 +175,23 @@ class CCRUProjectCalculations:
                  'weighted_score': score,
                  'level': 0})
 
-            # if kpi_set_type == POS:
-            #     Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
-            #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
+            if kpi_set_type == POS:
+                Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+                self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
             self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
-            self.json.create_kpi_data_json('gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
+            self.json.create_kpi_data_json(
+                'gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
             self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
             self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
                                              kpi_source[GAPS][SET])
 
         if kpi_source[CONTRACT][FILE]:
             Log.debug('Importing Contract Execution template')
-            self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
+            self.json.create_kpi_data_json(
+                'contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
 
         if kpi_source[TOPSKU][SET]:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))

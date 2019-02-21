@@ -91,7 +91,7 @@ class MARSRU_PRODKPIToolBox:
         else:
             self.set_name = self.kpi_level_0_name = set_name
         self.kpi_fetcher = MARSRU_PRODKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
-                                                  self.set_name, self.products, self.session_uid)
+                                                 self.set_name, self.products, self.session_uid)
         self.kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
@@ -408,11 +408,13 @@ class MARSRU_PRODKPIToolBox:
     def get_relevant_scenes(self, params):
         scif = self.scif
 
-        locations = str(params.get('Location type')).split(', ') if params.get('Location type') else None
+        locations = str(params.get('Location type')).split(
+            ', ') if params.get('Location type') else None
         if locations:
             scif = scif.loc[scif['location_type'].isin(locations)]
 
-        scene_types = str(params.get('Scene type')).split(', ') if params.get('Scene type') else None
+        scene_types = str(params.get('Scene type')).split(
+            ', ') if params.get('Scene type') else None
         if scene_types:
             scif = scif.loc[scif['template_name'].isin(scene_types)]
 
@@ -597,12 +599,12 @@ class MARSRU_PRODKPIToolBox:
                     if object_type == 'MAN in CAT':
                         # Only MARS products with object type filters
                         shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
-                                filtered_products['manufacturer_name'] == MARS) & (
-                                filtered_products['shelf_number'] == shelf)]
+                            filtered_products['manufacturer_name'] == MARS) & (
+                            filtered_products['shelf_number'] == shelf)]
                     else:
                         # All products with object type filters
                         shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
-                                filtered_products['shelf_number'] == shelf)]
+                            filtered_products['shelf_number'] == shelf)]
 
                     if not shelf_data.empty:
                         shelves_linear_sos_dict[shelf] = 1
@@ -1452,7 +1454,8 @@ class MARSRU_PRODKPIToolBox:
 
                 values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
                                                                                        self.region,
-                                                                                       p.get('#Mars KPI NAME'),
+                                                                                       p.get(
+                                                                                           '#Mars KPI NAME'),
                                                                                        self.results_and_scores)
                 scenes = self.get_relevant_scenes(p)
                 result = None
@@ -1974,8 +1977,8 @@ class MARSRU_PRODKPIToolBox:
                 except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
-                    result_value = None if result is None else \
-                        ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
+                result_value = None if result is None else \
+                    ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
             else:
                 result_value = result
 
@@ -2251,7 +2254,8 @@ class MARSRU_PRODKPIToolBox:
         for product in assortment_products:
             numerator_id = product
             try:
-                numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
+                numerator_result = product_facings[product_facings['product_fk']
+                                                   == product]['facings'].iloc[0]
             except:
                 numerator_result = 0
             denominator_result = 1
@@ -2303,4 +2307,3 @@ class MARSRU_PRODKPIToolBox:
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
-

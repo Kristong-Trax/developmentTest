@@ -1,4 +1,5 @@
 from KPIUtils.GlobalProjects.GFK.Base.DataExecutionManager import GFKDataManager
+from Projects.GFKDE.MinimumPriceManufacturerCategory import MinimumPriceDistributionManufacturerCategory_KPI
 from Projects.GFKDE.PresenceOnBrandedZoneBrandSubCategory import PresenceonBrandedZonesBrandSubCategory_KPI
 from Projects.GFKDE.PresenceOnBrandedZoneManufacturerSubCategory import \
     PresenceonBrandedZonesManufacturerSubCategory_KPI
@@ -38,7 +39,8 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'Eli'
 
 SOS = [SOSUnboxedBrandCategory_KPI, SOSUnboxedManufacturerCategory_KPI, SOSUnboxedSKUCategory_KPI]
-SOS_SUB = [SOSUnboxedBrandSubCategory_KPI, SOSUnboxedManufacturerSubCategory_KPI, SOSUnboxedSKUSubCategory_KPI]
+SOS_SUB = [SOSUnboxedBrandSubCategory_KPI,
+           SOSUnboxedManufacturerSubCategory_KPI, SOSUnboxedSKUSubCategory_KPI]
 GONDOLA_END = [SosOnGondolaEndBrandCategory_KPI, SosOnGondolaEndManufacturerCategory_KPI,
                SosOnGondolaEndSKUCategory_KPI]
 GONDOLA_END_SUB = [SosOnGondolaEndBrandSubCategory_KPI, SosOnGondolaEndManufacturerSubCategory_KPI,
@@ -48,12 +50,16 @@ SOS_BRANDED = [SosOnBrandedZonesBrandCategory_KPI, SosOnBrandedZonesManufacturer
 SOS_BRANDED_SUB = [SosOnBrandedZonesBrandSubCategory_KPI, SosOnBrandedZonesManufacturerSubCategory_KPI,
                    SosOnBrandedZonesSkuSubCategory_KPI]
 SHARE_BRANDED = [ShareOfBrandedZonesBrandCategory_KPI, ShareOfBrandedZonesManufacturerCategory_KPI]
-SHARE_BRANDED_SUB = [ShareOfBrandedZonesBrandSubCategory_KPI, ShareOfBrandedZonesManufacturerSubCategory_KPI]
-PRESENCE = [PresenceonGondolaEndSKUSubCategory_KPI, PresenceonGondolaEndManufacturerSubCategory_KPI,PresenceonGondolaEndBrandSubCategory_KPI,
+SHARE_BRANDED_SUB = [ShareOfBrandedZonesBrandSubCategory_KPI,
+                     ShareOfBrandedZonesManufacturerSubCategory_KPI]
+PRESENCE = [PresenceonGondolaEndSKUSubCategory_KPI, PresenceonGondolaEndManufacturerSubCategory_KPI, PresenceonGondolaEndBrandSubCategory_KPI,
             PresenceonBrandedZonesSKUSubCategory_KPI, PresenceonBrandedZonesManufacturerSubCategory_KPI, PresenceonBrandedZonesBrandSubCategory_KPI]
-DISTRIBUTION = [UniqueDistributionPerBrand_KPI, UniqueDistributionPerManufacturer_KPI, UniqueDistributionPerProduct_KPI]
+DISTRIBUTION = [UniqueDistributionPerBrand_KPI,
+                UniqueDistributionPerManufacturer_KPI, UniqueDistributionPerProduct_KPI]
+MINIMUM_PRICES = [MinimumPriceDistributionManufacturerCategory_KPI]
 
-KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED + SOS_BRANDED_SUB + SHARE_BRANDED + SHARE_BRANDED_SUB + PRESENCE + DISTRIBUTION
+KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED + SOS_BRANDED_SUB + \
+    SHARE_BRANDED + SHARE_BRANDED_SUB + PRESENCE + DISTRIBUTION + MINIMUM_PRICES
 
 
 class GFKDECalculations(BaseCalculationsScript):
@@ -88,7 +94,7 @@ class GFKDECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'gfkde'
 #     data_provider = KEngineDataProvider(project_name)
-#     sessions = ['23007c54-8f46-453e-b90b-a79bd7067696']
+#     sessions = ['d486cce5-7c51-4182-9481-f2b1377572bf']
 #
 #     for session in sessions:
 #         data_provider.load_session_data(session)
