@@ -144,7 +144,8 @@ class CCRUContract:
 
             count_stores_processed = x + 1
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug("Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.debug(
+                    "Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
 
         if self.invalid_stores:
             Log.warning("The following stores do not exist in the DB and will be ignored ({}): "
@@ -174,8 +175,10 @@ class CCRUContract:
                 #              .format(store_id, store_number))
                 for data_cur in target_data_cur:
                     try:
-                        start_date_cur = dt.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
-                        end_date_cur = dt.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                        start_date_cur = dt.datetime.strptime(
+                            data_cur[self.START_DATE], '%Y-%m-%d').date()
+                        end_date_cur = dt.datetime.strptime(
+                            data_cur[self.END_DATE], '%Y-%m-%d').date()
                         store_number_cur = data_cur[self.STORE_NUMBER]
                     except:
                         # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
@@ -192,7 +195,8 @@ class CCRUContract:
                         del details_cur[self.START_DATE]
                         del details_cur[self.END_DATE]
                         if details_cur == details_new:
-                            data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                            data_new[self.START_DATE] = str(
+                                start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
                         else:
                             end_date_cur = start_date_new - dt.timedelta(days=1)
                             if start_date_cur <= end_date_cur:
@@ -210,7 +214,8 @@ class CCRUContract:
             count_stores_processed = x + 1
             self.stores_processed += [store_number]
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.debug(
+                    "Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
                 # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
@@ -230,7 +235,7 @@ class CCRUContract:
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
         Log.debug("Execution targets are uploaded successfully. " +
-                 ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
+                  ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
 
     @staticmethod
     def parse_arguments():

@@ -36,6 +36,7 @@ class CCRUAddKPIs(CCRUConsts):
     - For every level of KPI (Set, KPI or Atomic) - only the ones that do not already exist by their names to be added to the DB
 
     """
+
     def __init__(self, project, template_path):
         self.project = project
         self.aws_conn = PSProjectConnector(self.project, DbUsers.CalculationEng)
@@ -101,11 +102,13 @@ class CCRUAddKPIs(CCRUConsts):
         project_current_data = pd.read_excel(path)
 
         # Get the relevant set name
-        sets_2018 = [set_name for set_name in self.kpi_static_data['kpi_set_name'].unique() if '2018' in set_name]
+        sets_2018 = [set_name for set_name in self.kpi_static_data['kpi_set_name'].unique()
+                     if '2018' in set_name]
         current_set = [set_name for set_name in sets_2018 if
                        template_channel_name in set_name and 'SPIRITS' not in set_name.upper()]
         if not current_set:
-            Log.error("Couldn't find relevant set for the current channel name = {}".format(template_channel_name))
+            Log.error("Couldn't find relevant set for the current channel name = {}".format(
+                template_channel_name))
             return pd.DataFrame.empty, pd.DataFrame.empty
         current_set = current_set[0]
         # Get the relevant KPI data and project template data
@@ -135,7 +138,8 @@ class CCRUAddKPIs(CCRUConsts):
             new_name = row[CCRUConsts.KPI_ENG_NAME].replace('\n', '').strip()
             display = row[CCRUConsts.KPI_RUS_NAME].replace('\n', '').strip()
             presentation_order = row[CCRUConsts.SORTING]
-            old_atomic_df = relevant_kpi_data[relevant_kpi_data[CCRUConsts.PRESENTATION_ORDER] == presentation_order]
+            old_atomic_df = relevant_kpi_data[relevant_kpi_data[CCRUConsts.PRESENTATION_ORDER]
+                                              == presentation_order]
             if len(old_atomic_df) > 1:
                 old_atomic_name = filtered_project_data[filtered_project_data[CCRUConsts.SORTING] == presentation_order][
                     CCRUConsts.KPI_ENG_NAME].values[0]
@@ -149,7 +153,8 @@ class CCRUAddKPIs(CCRUConsts):
                     continue
             else:
                 old_atom_fk = old_atomic_df['atomic_kpi_fk'].values[0]
-                queries_to_execute.append(update_query.format(new_name, new_name, display.encode('utf-8'), old_atom_fk))
+                queries_to_execute.append(update_query.format(
+                    new_name, new_name, display.encode('utf-8'), old_atom_fk))
 
         # Execute the queries
         if queries_to_execute:
@@ -198,7 +203,7 @@ class CCRUAddKPIs(CCRUConsts):
         self.add_kpis_to_static()
         self.add_atomics_to_static()
         Log.debug('{} Sets, {} KPIs and {} Atomics have been added'
-                 .format(self.kpi_counter['set'], self.kpi_counter['kpi'], self.kpi_counter['atomic']))
+                  .format(self.kpi_counter['set'], self.kpi_counter['kpi'], self.kpi_counter['atomic']))
 
     def add_sets_to_static(self):
         set_names = self.data[self.SET_NAME].unique().tolist()
@@ -236,7 +241,8 @@ class CCRUAddKPIs(CCRUConsts):
                     set_fk = self.sets_added[set_name]
                 else:
                     try:
-                        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                                      == set_name]['kpi_set_fk'].values[0]
                     except:
                         set_fk = self.sets_added[set_name]
                 level2_query = \
@@ -260,7 +266,8 @@ class CCRUAddKPIs(CCRUConsts):
         self.aws_conn.db.commit()
 
     def add_atomics_to_static(self):
-        atomics = self.data.drop_duplicates(subset=[self.SET_NAME, self.KPI_NAME, self.ATOMIC_NAME], keep='first')
+        atomics = self.data.drop_duplicates(
+            subset=[self.SET_NAME, self.KPI_NAME, self.ATOMIC_NAME], keep='first')
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(atomics)):
             atomic = atomics.iloc[i]
@@ -272,7 +279,8 @@ class CCRUAddKPIs(CCRUConsts):
             else:
                 atomic_weight = 'NULL'
             if self.ATOMIC_DISPLAY_TEXT in atomics.iloc[i].keys():
-                atomic_display_text = unicode(atomics.iloc[i][self.ATOMIC_DISPLAY_TEXT]).replace("'", "\\'").encode('utf-8')
+                atomic_display_text = unicode(atomics.iloc[i][self.ATOMIC_DISPLAY_TEXT]).replace(
+                    "'", "\\'").encode('utf-8')
             else:
                 atomic_display_text = atomic_name
 
@@ -293,7 +301,8 @@ class CCRUAddKPIs(CCRUConsts):
                 cur.execute(level3_query)
                 self.kpi_counter['atomic'] += 1
             else:
-                Log.debug("Atomic '{}' already exists for KPI '{}' Set '{}'. Ignored".format(atomic_name, kpi_name, set_name))
+                Log.debug("Atomic '{}' already exists for KPI '{}' Set '{}'. Ignored".format(
+                    atomic_name, kpi_name, set_name))
 
             if i % 10 == 0:
                 self.aws_conn.db.commit()
@@ -314,11 +323,11 @@ if __name__ == '__main__':
     # kpi = CCRUAddKPIs('ccru-sand', '/home/sergey/dev/kpi_factory/Projects/CCRU_SAND/Data/KPIs for DB - CCH Integration.xlsx')
     # kpi = CCRUAddKPIs('ccru-sand', '/home/idanr/Desktop/super.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs for DB - Contract Execution.xlsx')
-    kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
+    kpi = CCRUAddKPIs(
+        'ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - PoS 2019.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - Contract Execution 2019.xlsx')
     # kpi = CCRUAddKPIs('ccru', '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2019/KPIs for DB - CCH Integration 2019.xlsx')
     kpi.add_kpis_from_template()
     # kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
     # kpi.update_atomic_weights()
-

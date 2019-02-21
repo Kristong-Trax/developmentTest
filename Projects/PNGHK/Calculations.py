@@ -11,6 +11,3 @@ class Calculations(BaseCalculationsScript):
         self.timer.start()
         Generator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
-
-
-
