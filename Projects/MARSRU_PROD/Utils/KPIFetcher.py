@@ -46,7 +46,7 @@ class MARSRU_PRODKPIFetcher:
         except:
             rds_conn.disconnect_rds()
             rds_conn.connect_rds()
-            Log.warning('DB is reconnected')
+            Log.debug('DB is reconnected')
             return False
         return True
 
