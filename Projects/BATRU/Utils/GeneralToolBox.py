@@ -177,7 +177,7 @@ class BATRUGENERALToolBox:
         posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
                                     right_on='scene_fk')
         if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
+            Log.debug('scene item fact/ match display in scene is empty')
             return 0
         filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
         availability = len(filtered_df)
@@ -192,7 +192,7 @@ class BATRUGENERALToolBox:
         posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
                                     right_on='scene_fk')
         if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
+            Log.debug('scene item fact/ match display in scene is empty')
             return 0
         if filters:
             filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
@@ -759,7 +759,7 @@ class BATRUGENERALToolBox:
         if not include_empty:
             filters['product_type'] = ('Empty', self.EXCLUDE_FILTER)
         if filters and shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
-            Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
+            Log.debug("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
             return None
         shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
         shelf_matches = shelf_matches.drop_duplicates(subset=['product_ean_code'])
@@ -812,7 +812,7 @@ class BATRUGENERALToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                Log.debug('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 
@@ -842,7 +842,7 @@ class BATRUGENERALToolBox:
             try:
                 output = pd.read_excel(file_path, sheetname=sheet_name, skiprows=skiprows)
             except xlrd.biffh.XLRDError:
-                Log.warning('Sheet name {} doesn\'t exist'.format(sheet_name))
+                Log.debug('Sheet name {} doesn\'t exist'.format(sheet_name))
                 return None
             output = output.to_json(orient='records')
             output = json.loads(output)
@@ -914,11 +914,11 @@ class BATRUGENERALToolBox:
         missing_products = set()
         store_number = data.keys()[0]
         if store_number is None:
-            Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
+            Log.debug("'{}' is required in data".format(self.STORE_NUMBER))
             return
         store_fk = self.get_store_fk(store_number)
         if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
+            Log.debug('Store {} does not exist. Exiting...'.format(store_number))
             return
         for key in data[store_number]:
             validation = False
@@ -930,12 +930,12 @@ class BATRUGENERALToolBox:
                 product_ean_code = str(key).split(',')[-1]
                 product_fk = self.get_product_fk(product_ean_code)
                 if product_fk is None:
-                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
+                    Log.debug('Product EAN {} does not exist'.format(product_ean_code))
                     missing_products.add(product_ean_code)
                     continue
                 products.add(product_fk)
         if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
+            Log.debug('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
             return
         if products:
             current_date = datetime.now().date()
@@ -955,10 +955,10 @@ class BATRUGENERALToolBox:
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
+            Log.debug('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
                 store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
         else:
-            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
+            Log.debug('{} - No products are configured as Top SKUs'.format(store_number))
 
     @property
     def current_top_skus(self):
@@ -1054,7 +1054,7 @@ class BATRUGENERALToolBox:
                 cur.execute(query)
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
@@ -1068,7 +1068,7 @@ class BATRUGENERALToolBox:
                 cur.execute(query)
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = PSProjectConnector('batru', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
