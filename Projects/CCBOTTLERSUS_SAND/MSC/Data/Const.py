@@ -4,15 +4,18 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.1.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.3.xlsx')
+    MSC = 'Market Street Challenge'
 
     # sheets
     KPIS = 'KPIs'
     AVAILABILITY = 'Availability'
     DOUBLE_AVAILABILITY = 'Double Availability'
     FACINGS = 'Facings'
+    SHARE_OF_DISPLAYS = 'Share of Displays'
+    DISPLAY_PRESENCE = 'Display Presence & Location'
 
-    SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, FACINGS]
+    SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, FACINGS, SHARE_OF_DISPLAYS, DISPLAY_PRESENCE]
 
     # KPIs columns
     KPI_NAME = 'KPI Name'
@@ -38,10 +41,14 @@ class Const(object):
     GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facings'
 
     # Facings columns
-    NUMERATOR_TYPE = 'numerator_types'
+    NUMERATOR_TYPE = 'numerator_type'
     NUMERATOR_VALUE = 'numerator_value'
     DENOMINATOR_TYPE = 'denominator_type'
     DENOMINATOR_VALUE = 'denominator_value'
+
+    # Display Presence & Location columns
+    ACTIVATION_TYPE = 'activation_type'
+    ACTIVATION_VALUE = 'activation_value'
 
 
 
