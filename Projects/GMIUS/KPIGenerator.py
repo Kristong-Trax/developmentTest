@@ -9,7 +9,7 @@ __author__ = 'Sam'
 
 class Generator:
     SUPER_CATS = ['Yogurt', 'RBG', 'Mexican', 'Soup']
-    SUPER_CATS = ['Mexican'] # Overwriting for testing purposes
+    SUPER_CATS = ['RBG'] # Overwriting for testing purposes
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider

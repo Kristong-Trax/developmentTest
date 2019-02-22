@@ -84,11 +84,12 @@ class ToolBox:
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
 
+
     def calculate_main_kpi(self, main_line):
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
         scene_types = self.read_cell_from_line(main_line, Const.SCENE_TYPE)
-        print(kpi_name, kpi_type)
+        # print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
         if scene_types:
@@ -109,7 +110,7 @@ class ToolBox:
         # if kpi_name != 'Aggregation':
         #     return
         # if kpi_type == 'Blocking' or kpi_type == 'Base Measure':
-        if kpi_type == Const.IADJACENCY: # Const.COUNT_SHELVES:
+        if kpi_type == Const.AGGREGATION: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
