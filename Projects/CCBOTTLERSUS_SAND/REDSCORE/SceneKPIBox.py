@@ -58,7 +58,8 @@ class CCBOTTLERSUS_SANDSceneRedToolBox:
         for i, scene_result in self.scenes_results.iterrows():
             self.common.write_to_db_result(
                 fk=self.common.get_kpi_fk_by_kpi_name(scene_result[Const.KPI_NAME] + Const.SCENE_SUFFIX),
-                result=round(scene_result[Const.DB_RESULT], 2), by_scene=True)
+                result=round(scene_result[Const.DB_RESULT], 2), by_scene=True,
+                numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id)
 
     def write_to_scene_level(self, kpi_name, result=False, parent=""):
         """

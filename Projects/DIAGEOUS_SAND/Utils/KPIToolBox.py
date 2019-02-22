@@ -4,28 +4,18 @@ import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
-from Projects.DIAGEOUS_SAND.Utils.Const import DIAGEOUS_SANDConst
+from Projects.DIAGEOUS_SAND.Utils.Consts import Const
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-
-# from Projects.DIAGEOUS_SAND.Utils.Fetcher import Queries
-# from Trax.Cloud.Services.Connector.Keys import DbUsers
-# from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from KPIUtils_v2.DIAGEOUS_SANDCalculations.AvailabilityDIAGEOUS_SANDCalculations import Availability
-# from KPIUtils_v2.DIAGEOUS_SANDCalculations.NumberOfScenesDIAGEOUS_SANDCalculations import NumberOfScenes
-# from KPIUtils_v2.DIAGEOUS_SANDCalculations.PositionGraphsDIAGEOUS_SANDCalculations import PositionGraphs
-# from KPIUtils_v2.DIAGEOUS_SANDCalculations.SOSDIAGEOUS_SANDCalculations import SOS
-# from KPIUtils_v2.DIAGEOUS_SANDCalculations.SequenceDIAGEOUS_SANDCalculations import Sequence
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'Elyashiv'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 
-class DIAGEOUS_SANDToolBox:
+class ToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -42,29 +32,35 @@ class DIAGEOUS_SANDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty")]
+        self.scif_without_emptys = self.scif[~(self.scif['product_type'] == "Empty") &
+                                             (self.scif['substitution_product_fk'].isnull())]
         self.all_products_sku = self.all_products[(self.all_products['product_type'] == 'SKU') &
-                                                  (self.all_products['category'] == 'SPIRITS')]
+                                                  (self.all_products['category'] == 'SPIRITS') &
+                                                  (self.all_products['is_active'] == 1)]
         self.kpi_static_data = self.common.kpi_static_data
         self.manufacturer_fk = self.all_products[
             self.all_products['manufacturer_name'] == 'DIAGEO']['manufacturer_fk'].iloc[0]
-        store_type = self.store_info['store_type'].iloc[0]
         store_number_1 = self.store_info['store_number_1'].iloc[0]
-        self.on_off = DIAGEOUS_SANDConst.ON if store_type in ('Dining', 'Bar/Nightclub') else DIAGEOUS_SANDConst.OFF
+        if self.store_info['additional_attribute_6'].iloc[0]:
+            self.on_off = Const.ON if self.store_info['additional_attribute_6'].iloc[0] == 'On-Premise'\
+                else Const.OFF
+        else:
+            Log.error("The store for this session has no attribute6. Set temporary as Off-premise, fix ASAP")
+            self.on_off = Const.OFF
         self.templates = {}
         self.get_templates()
         self.kpi_results_queries = []
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.state = self.ps_data.get_state_name()
+        self.state_fk = self.store_info['state_fk'][0]
         self.sub_brands = self.ps_data.get_custom_entities(1002)
         self.result_values = self.ps_data.get_result_values()
         self.products_with_prices = self.ps_data.get_products_prices()
         self.assortment = Assortment(self.data_provider, self.output, ps_data_provider=self.ps_data,
                                      assortment_filter=store_number_1)
-        if self.on_off == DIAGEOUS_SANDConst.ON:
+        if self.on_off == Const.ON:
             self.sales_data = self.ps_data.get_sales_data()
-            self.no_menu_allowed = self.survey.check_survey_answer(survey_text=DIAGEOUS_SANDConst.NO_MENU_ALLOWED_QUESTION,
-                                                                   target_answer=DIAGEOUS_SANDConst.SURVEY_ANSWER)
+            self.no_menu_allowed = self.survey.check_survey_answer(survey_text=Const.NO_MENU_ALLOWED_QUESTION,
+                                                                   target_answer=Const.SURVEY_ANSWER)
         else:
             scenes = self.scene_info['scene_fk'].unique().tolist()
             self.scenes_with_shelves = {}
@@ -73,11 +69,13 @@ class DIAGEOUS_SANDToolBox:
                     'shelf_number_from_bottom'].max()
                 self.scenes_with_shelves[scene] = shelf
             self.converted_groups = self.convert_groups_from_template()
-            self.no_display_allowed = self.survey.check_survey_answer(survey_text=DIAGEOUS_SANDConst.NO_DISPLAY_ALLOWED_QUESTION,
-                                                                      target_answer=DIAGEOUS_SANDConst.SURVEY_ANSWER)
+            self.no_display_allowed = self.survey.check_survey_answer(survey_text=Const.NO_DISPLAY_ALLOWED_QUESTION,
+                                                                      target_answer=Const.SURVEY_ANSWER)
+            self.external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=Const.OPERATION_TYPES)
+            self.external_targets = self.external_targets.fillna("N/A")
         self.assortment_products = self.assortment.get_lvl3_relevant_ass()
-        if self.on_off == DIAGEOUS_SANDConst.OFF:
-            total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ASSORTMENTS_NAMES[DIAGEOUS_SANDConst.OFF])
+        if self.on_off == Const.OFF:
+            total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.OFF])
             self.relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] ==
                                                                 total_off_trade_fk]
 
@@ -87,18 +85,8 @@ class DIAGEOUS_SANDToolBox:
         """
         Reads the template (and makes the EANs be Strings)
         """
-        for sheet in DIAGEOUS_SANDConst.SHEETS[self.on_off]:
-            if sheet in ([DIAGEOUS_SANDConst.SHELF_FACING_SHEET, DIAGEOUS_SANDConst.PRICING_SHEET]):
-                converters = {DIAGEOUS_SANDConst.OUR_EAN_CODE: lambda x: str(x).replace(".0", ""),
-                              DIAGEOUS_SANDConst.COMP_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
-                                                      converters=converters, keep_default_na=False)
-            elif sheet == DIAGEOUS_SANDConst.SHELF_PLACMENTS_SHEET:
-                converters = {DIAGEOUS_SANDConst.PRODUCT_EAN_CODE: lambda x: str(x).replace(".0", "")}
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet,
-                                                      converters=converters, keep_default_na=False)
-            else:
-                self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
+        for sheet in Const.SHEETS[self.on_off]:
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheetname=sheet, keep_default_na=False)
 
     # main functions:
 
@@ -107,24 +95,24 @@ class DIAGEOUS_SANDToolBox:
         This function calculates the KPI results.
         """
         total_store_score, segment_store_score, national_store_score = 0, 0, 0
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_TOTAL_KPIS[self.on_off][DIAGEOUS_SANDConst.TOTAL])
-        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_TOTAL_KPIS[self.on_off][DIAGEOUS_SANDConst.SEGMENT])
-        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_TOTAL_KPIS[self.on_off][DIAGEOUS_SANDConst.NATIONAL])
-        for i, kpi_line in self.templates[DIAGEOUS_SANDConst.SHEETS[self.on_off][0]].iterrows():
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.TOTAL])
+        segment_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.SEGMENT])
+        national_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_TOTAL_KPIS[self.on_off][Const.NATIONAL])
+        for i, kpi_line in self.templates[Const.SHEETS[self.on_off][0]].iterrows():
             total_weighted_score, segment_weighted_score, national_weighted_score = self.calculate_set(kpi_line)
-            if kpi_line[DIAGEOUS_SANDConst.KPI_GROUP]:
+            if kpi_line[Const.KPI_GROUP]:
                 total_store_score += total_weighted_score
                 segment_store_score += segment_weighted_score
                 national_store_score += national_weighted_score
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, result=self.round_result(total_store_score),
             denominator_id=self.store_id,
-            identifier_result=self.common.get_dictionary(name=DIAGEOUS_SANDConst.TOTAL), score=self.round_result(total_store_score))
+            identifier_result=self.common.get_dictionary(name=Const.TOTAL), score=self.round_result(total_store_score))
         self.common.write_to_db_result(fk=segment_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
-                                       identifier_result=self.common.get_dictionary(name=DIAGEOUS_SANDConst.SEGMENT),
+                                       identifier_result=self.common.get_dictionary(name=Const.SEGMENT),
                                        score=self.round_result(segment_store_score))
         self.common.write_to_db_result(fk=national_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
-                                       identifier_result=self.common.get_dictionary(name=DIAGEOUS_SANDConst.NATIONAL),
+                                       identifier_result=self.common.get_dictionary(name=Const.NATIONAL),
                                        score=self.round_result(national_store_score))
 
     def calculate_set(self, kpi_line):
@@ -133,26 +121,26 @@ class DIAGEOUS_SANDToolBox:
         :param kpi_line: series - {KPI Name, Template Group/ Scene Type, Target, Weight}
         :return: 3 scores (total, segment, national)
         """
-        kpi_name, scene_types = kpi_line[DIAGEOUS_SANDConst.KPI_NAME], kpi_line[DIAGEOUS_SANDConst.TEMPLATE_GROUP]
-        target, weight = kpi_line[DIAGEOUS_SANDConst.TARGET], kpi_line[DIAGEOUS_SANDConst.WEIGHT]
+        kpi_name, scene_types = kpi_line[Const.KPI_NAME], kpi_line[Const.TEMPLATE_GROUP]
+        target, weight = kpi_line[Const.TARGET], kpi_line[Const.WEIGHT]
         if not self.does_exist(weight):
             weight = 0
-        if kpi_name == DIAGEOUS_SANDConst.SHELF_PLACEMENT:
+        if kpi_name == Const.SHELF_PLACEMENT:
             total_score, segment_score, national_score = self.calculate_total_shelf_placement(
                 scene_types, kpi_name, weight)
-        elif kpi_name == DIAGEOUS_SANDConst.SHELF_FACINGS:
+        elif kpi_name == Const.SHELF_FACINGS:
             total_score, segment_score, national_score = self.calculate_total_shelf_facings(
                 scene_types, kpi_name, weight)
-        elif kpi_name == DIAGEOUS_SANDConst.MSRP:
+        elif kpi_name == Const.MSRP:
             total_score, segment_score, national_score = self.calculate_total_msrp(scene_types, kpi_name, weight)
-        elif kpi_name == DIAGEOUS_SANDConst.DISPLAY_SHARE:
+        elif kpi_name == Const.DISPLAY_SHARE:
             total_score, segment_score, national_score = self.calculate_total_display_share(scene_types, weight, target)
-        elif kpi_name in (DIAGEOUS_SANDConst.POD, DIAGEOUS_SANDConst.DISPLAY_BRAND, DIAGEOUS_SANDConst.BACK_BAR):
-            if self.on_off == DIAGEOUS_SANDConst.ON:
+        elif kpi_name in (Const.POD, Const.DISPLAY_BRAND, Const.BACK_BAR):
+            if self.on_off == Const.ON:
                 total_score, segment_score, national_score = self.calculate_on_assortment(scene_types, kpi_name, weight)
             else:
                 total_score, segment_score, national_score = self.calculate_assortment(scene_types, kpi_name, weight)
-        elif kpi_name == DIAGEOUS_SANDConst.MENU:
+        elif kpi_name == Const.MENU:
             total_score, segment_score, national_score = self.calculate_menu(scene_types, weight, target)
         else:
             Log.warning("Set {} is not defined".format(kpi_name))
@@ -169,11 +157,11 @@ class DIAGEOUS_SANDToolBox:
             return False
         score = 1
         dict_of_fks = {
-            DIAGEOUS_SANDConst.TOTAL: self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_BRAND][DIAGEOUS_SANDConst.TOTAL]),
-            DIAGEOUS_SANDConst.NATIONAL: self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_BRAND][
-                                                                   DIAGEOUS_SANDConst.NATIONAL]),
-            DIAGEOUS_SANDConst.SEGMENT: self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_BRAND][
-                                                                  DIAGEOUS_SANDConst.SEGMENT])
+            Const.TOTAL: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL]),
+            Const.NATIONAL: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][
+                                                                   Const.NATIONAL]),
+            Const.SEGMENT: self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][
+                                                                  Const.SEGMENT])
         }
         for kpi in dict_of_fks:
             self.common.write_to_db_result(
@@ -196,28 +184,28 @@ class DIAGEOUS_SANDToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
-        kpi_db_names = DIAGEOUS_SANDConst.DB_ON_NAMES[kpi_name]
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[DIAGEOUS_SANDConst.SKU])
-        total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ASSORTMENTS_NAMES[DIAGEOUS_SANDConst.ON])
+        kpi_db_names = Const.DB_ON_NAMES[kpi_name]
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
+        total_on_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.ON])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_on_trade_fk]
-        all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
-            standard_type = additional_attrs[DIAGEOUS_SANDConst.NATIONAL_SEGMENT]
+            standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
             result_line = self.calculate_ass_on_sku(
                 product_line['product_fk'], relevant_scif, standard_type, kpi_name)
             if not result_line:
                 continue
-            sub_brand = result_line[DIAGEOUS_SANDConst.SUB_BRAND]
-            sub_brands_results = all_results[all_results[DIAGEOUS_SANDConst.SUB_BRAND] == sub_brand]
+            sub_brand = result_line[Const.SUB_BRAND]
+            sub_brands_results = all_results[all_results[Const.SUB_BRAND] == sub_brand]
             if sub_brands_results.empty:
                 all_results = all_results.append(result_line, ignore_index=True)
-            elif result_line[DIAGEOUS_SANDConst.PASSED] > 0:
-                all_results.loc[all_results[DIAGEOUS_SANDConst.SUB_BRAND] == sub_brand, DIAGEOUS_SANDConst.PASSED] = 1
+            elif result_line[Const.PASSED] > 0:
+                all_results.loc[all_results[Const.SUB_BRAND] == sub_brand, Const.PASSED] = 1
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
             all_results, kpi_db_names, weight, with_standard_type=True, sub_brand_numeric=True)
         # add extra products to DB:
-        if kpi_name == DIAGEOUS_SANDConst.POD:
+        if kpi_name == Const.POD:
             self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk)
         return total_result, segment_result, national_result
 
@@ -234,7 +222,7 @@ class DIAGEOUS_SANDToolBox:
             (filtered_scif['facings'] > 0)]['product_fk'].unique().tolist()
         assortment_products = relevant_assortment['product_fk'].unique().tolist()
         products_not_in_list = set(all_diageo_products) - set(assortment_products)
-        result = DIAGEOUS_SANDConst.EXTRA
+        result = Const.EXTRA
         for product in products_not_in_list:
             self.common.write_to_db_result(
                 fk=sku_kpi_fk, numerator_id=product, result=self.get_pks_of_result(result))
@@ -249,9 +237,9 @@ class DIAGEOUS_SANDToolBox:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[self.scif_without_emptys['scene_id'].isin(relevant_scenes)]
-        if kpi_name == DIAGEOUS_SANDConst.POD:
+        if kpi_name == Const.POD:
             calculate_function = self.calculate_pod_off_sku
-        elif kpi_name == DIAGEOUS_SANDConst.DISPLAY_BRAND:
+        elif kpi_name == Const.DISPLAY_BRAND:
             if self.survey_display_write_to_db(weight):
                 Log.info("There is no display, Display Brand got 100")
                 return 1 * weight, 1 * weight, 1 * weight
@@ -260,22 +248,22 @@ class DIAGEOUS_SANDToolBox:
         else:
             Log.error("Assortment '{}' is not defined in the code".format(kpi_name))
             return 0, 0, 0
-        kpi_db_names = DIAGEOUS_SANDConst.DB_OFF_NAMES[kpi_name]
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[DIAGEOUS_SANDConst.SKU])
-        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ASSORTMENTS_NAMES[DIAGEOUS_SANDConst.OFF])
+        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SKU])
+        total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ASSORTMENTS_NAMES[Const.OFF])
         relevant_assortment = self.assortment_products[self.assortment_products['kpi_fk_lvl2'] == total_off_trade_fk]
-        all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in relevant_assortment.iterrows():
             additional_attrs = json.loads(product_line['additional_attributes'])
-            if kpi_name == DIAGEOUS_SANDConst.DISPLAY_BRAND and additional_attrs[DIAGEOUS_SANDConst.DISPLAY] in (0, '0'):
+            if kpi_name == Const.DISPLAY_BRAND and additional_attrs[Const.DISPLAY] in (0, '0'):
                 continue
-            standard_type = additional_attrs[DIAGEOUS_SANDConst.NATIONAL_SEGMENT]
+            standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
             result_line = calculate_function(product_line['product_fk'], relevant_scif, standard_type)
             all_results = all_results.append(result_line, ignore_index=True)
         total_result, segment_result, national_result = self.insert_all_levels_to_db(all_results, kpi_db_names, weight,
                                                                                      with_standard_type=True)
         # add extra products to DB:
-        if kpi_name == DIAGEOUS_SANDConst.POD:
+        if kpi_name == Const.POD:
             self.calculate_extras(relevant_assortment, relevant_scif, sku_kpi_fk)
         return total_result, segment_result, national_result
 
@@ -288,18 +276,18 @@ class DIAGEOUS_SANDToolBox:
         :param kpi_name: POD or Back Bar - to know if we should check the product in the sales data
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ON_NAMES[kpi_name][DIAGEOUS_SANDConst.SKU])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ON_NAMES[kpi_name][DIAGEOUS_SANDConst.TOTAL])
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.SKU])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[kpi_name][Const.TOTAL])
         brand, sub_brand = self.get_product_details(product_fk)
-        if sub_brand is None:
+        if sub_brand is None or self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
             return None
         facings = relevant_scif[(relevant_scif['product_fk'] == product_fk)]['facings'].sum()
-        if facings > 0 or (product_fk in self.sales_data and kpi_name == DIAGEOUS_SANDConst.POD):
-            result, passed = DIAGEOUS_SANDConst.DISTRIBUTED, 1
+        if facings > 0 or (product_fk in self.sales_data and kpi_name == Const.POD):
+            result, passed = Const.DISTRIBUTED, 1
         else:
-            result, passed = DIAGEOUS_SANDConst.OOS, 0
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: passed,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand, DIAGEOUS_SANDConst.STANDARD_TYPE: standard_type}
+            result, passed = Const.OOS, 0
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
@@ -313,19 +301,21 @@ class DIAGEOUS_SANDToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.POD][DIAGEOUS_SANDConst.SKU])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.POD][DIAGEOUS_SANDConst.TOTAL])
+        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            return None
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.SKU])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.POD][Const.TOTAL])
         facings = relevant_scif[relevant_scif['product_fk'] == product_fk]['facings'].sum()
         if facings > 0:
-            result, passed = DIAGEOUS_SANDConst.DISTRIBUTED, 1
+            result, passed = Const.DISTRIBUTED, 1
         else:
-            result, passed = DIAGEOUS_SANDConst.OOS, 0
+            result, passed = Const.OOS, 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: passed,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand, DIAGEOUS_SANDConst.STANDARD_TYPE: standard_type}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
     def calculate_display_compliance_sku(self, product_fk, relevant_scif, standard_type):
@@ -336,19 +326,21 @@ class DIAGEOUS_SANDToolBox:
         :param relevant_scif: filtered scif
         :return: a line for the DF - {product: 8, passed: 1/0, standard: N/S, brand: 5, sub: 12}
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_BRAND][DIAGEOUS_SANDConst.SKU])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_BRAND][DIAGEOUS_SANDConst.TOTAL])
-        facings = self.calculate_passed_display(product_fk, relevant_scif)
+        if self.all_products_sku[self.all_products_sku['product_fk'] == product_fk].empty:
+            return None
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.SKU])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_BRAND][Const.TOTAL])
+        facings = self.calculate_passed_display_without_subst(product_fk, relevant_scif)
         if facings > 0:
-            result, passed = DIAGEOUS_SANDConst.DISTRIBUTED, 1
+            result, passed = Const.DISTRIBUTED, 1
         else:
-            result, passed = DIAGEOUS_SANDConst.OOS, 0
+            result, passed = Const.OOS, 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk,
             result=self.get_pks_of_result(result), identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: passed,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand, DIAGEOUS_SANDConst.STANDARD_TYPE: standard_type}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
     # menu
@@ -362,17 +354,17 @@ class DIAGEOUS_SANDToolBox:
         :param target: float
         :return:
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ON_NAMES[DIAGEOUS_SANDConst.MENU][DIAGEOUS_SANDConst.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.TOTAL])
         if self.no_menu_allowed:
             Log.info("There is no menu, Menu got 100")
             score = 1
             self.common.write_to_db_result(
                 fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
                 result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=self.common.get_dictionary(name=DIAGEOUS_SANDConst.TOTAL))
+                identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
             return score * weight, 0, 0
-        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ON_NAMES[DIAGEOUS_SANDConst.MENU][DIAGEOUS_SANDConst.MANUFACTURER])
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_ON_NAMES[DIAGEOUS_SANDConst.MENU][DIAGEOUS_SANDConst.SUB_BRAND])
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.MANUFACTURER])
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_ON_NAMES[Const.MENU][Const.SUB_BRAND])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[(self.scif_without_emptys['scene_id'].isin(relevant_scenes)) &
                                                  (self.scif_without_emptys['product_type'] == 'POS')]
@@ -388,6 +380,8 @@ class DIAGEOUS_SANDToolBox:
                                     (relevant_scif['brand_fk'] == brand_fk)]['facings'].sum()
             result = self.get_score(num_res, den_res)
             sub_brand_fk = self.get_sub_brand_fk(sub_brand, brand_fk)
+            if sub_brand_fk == 0:
+                continue
             self.common.write_to_db_result(
                 fk=sub_brand_kpi_fk, numerator_id=sub_brand_fk, numerator_result=num_res, denominator_result=den_res,
                 result=result, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
@@ -398,6 +392,8 @@ class DIAGEOUS_SANDToolBox:
                 diageo_facings = num_res
                 manufacturer_target = target
             result = self.get_score(num_res, den_res)
+            if manufacturer_fk == 0:
+                continue
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer_fk, numerator_result=num_res, result=result,
                 denominator_result=den_res, identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk),
@@ -408,7 +404,7 @@ class DIAGEOUS_SANDToolBox:
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_facings,
             denominator_result=den_res, result=score, score=result, weight=weight * 100,
             identifier_result=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target,
-            identifier_parent=self.common.get_dictionary(name=DIAGEOUS_SANDConst.TOTAL), should_enter=True)
+            identifier_parent=self.common.get_dictionary(name=Const.TOTAL), should_enter=True)
         return score * weight, 0, 0
 
     # display share:
@@ -421,7 +417,7 @@ class DIAGEOUS_SANDToolBox:
         :param weight: float
         :return: total_result
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_SHARE][DIAGEOUS_SANDConst.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.TOTAL])
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         if self.no_display_allowed:
             Log.info("There is no display, Display Share got 100")
@@ -429,37 +425,42 @@ class DIAGEOUS_SANDToolBox:
             self.common.write_to_db_result(
                 fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
                 result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=self.common.get_dictionary(name=DIAGEOUS_SANDConst.TOTAL))
+                identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
             return score * weight, 0, 0
-        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[
-                                                                     DIAGEOUS_SANDConst.DISPLAY_SHARE][DIAGEOUS_SANDConst.MANUFACTURER])
+        manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[
+                                                                     Const.DISPLAY_SHARE][Const.MANUFACTURER])
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[(self.scif_without_emptys['scene_fk'].isin(relevant_scenes)) &
                                                      (self.scif_without_emptys['location_type'] == 'Secondary Shelf') &
                                                      (self.scif_without_emptys['product_type'] == 'SKU')]
-        all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_DISPLAY)
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_DISPLAY)
         for product_fk in relevant_products['product_fk'].unique().tolist():
             product_result = self.calculate_display_share_of_sku(product_fk, relevant_products, manufacturer_kpi_fk)
             all_results = all_results.append(product_result, ignore_index=True)
-        den_res = all_results[DIAGEOUS_SANDConst.PASSED].sum()
+        den_res = all_results[Const.PASSED].sum()
         diageo_results, diageo_result = 0, 0
-        for manufacturer in all_results[DIAGEOUS_SANDConst.MANUFACTURER].unique().tolist():
-            num_res = all_results[all_results[DIAGEOUS_SANDConst.MANUFACTURER] == manufacturer][DIAGEOUS_SANDConst.PASSED].sum()
+        for manufacturer in all_results[Const.MANUFACTURER].unique().tolist():
+            num_res = all_results[all_results[Const.MANUFACTURER] == manufacturer][Const.PASSED].sum()
             result = self.get_score(num_res, den_res)
             target_manufacturer = None
             if manufacturer == self.manufacturer_fk:
                 diageo_result, diageo_results = result, num_res
                 target_manufacturer = target
             result_dict = self.common.get_dictionary(manufacturer_fk=manufacturer, kpi_fk=manufacturer_kpi_fk)
+            if manufacturer == 0:
+                continue
             self.common.write_to_db_result(
                 fk=manufacturer_kpi_fk, numerator_id=manufacturer, numerator_result=num_res,
                 target=target_manufacturer,
                 denominator_result=den_res, result=result, identifier_parent=total_dict, identifier_result=result_dict)
-        score = 1 if (diageo_results >= target * den_res) else 0
+        if den_res == 0:
+            score = 0
+        else:
+            score = 1 if (diageo_results >= target * den_res) else 0
         self.common.write_to_db_result(
             fk=total_kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=diageo_results, target=target,
             denominator_result=den_res, result=score, should_enter=True, weight=weight * 100, score=diageo_result,
-            identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=DIAGEOUS_SANDConst.TOTAL))
+            identifier_result=total_dict, identifier_parent=self.common.get_dictionary(name=Const.TOTAL))
         return score * weight, 0, 0
 
     def calculate_display_share_of_sku(self, product_fk, relevant_products, manufacturer_kpi_fk):
@@ -470,17 +471,17 @@ class DIAGEOUS_SANDToolBox:
         :param manufacturer_kpi_fk: for write_to_db
         :return: a line for the results DF
         """
-        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.DISPLAY_SHARE][DIAGEOUS_SANDConst.SKU])
+        sku_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.DISPLAY_SHARE][Const.SKU])
         manufacturer = self.get_manufacturer(product_fk)
-        sum_scenes_passed = self.calculate_passed_display(product_fk, relevant_products)
+        sum_scenes_passed = self.calculate_passed_display_without_subst(product_fk, relevant_products)
         parent_dict = self.common.get_dictionary(kpi_fk=manufacturer_kpi_fk, manufacturer_fk=manufacturer)
-        if sum_scenes_passed == 0:
+        if sum_scenes_passed == 0 or product_fk == 0:
             return None
         self.common.write_to_db_result(
             fk=sku_kpi_fk, numerator_id=product_fk,
             result=sum_scenes_passed, identifier_parent=parent_dict)
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: sum_scenes_passed,
-                          DIAGEOUS_SANDConst.MANUFACTURER: manufacturer}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: sum_scenes_passed,
+                          Const.MANUFACTURER: manufacturer}
         return product_result
 
     # shelf facings:
@@ -494,16 +495,20 @@ class DIAGEOUS_SANDToolBox:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        relevant_competitions = self.templates[DIAGEOUS_SANDConst.SHELF_FACING_SHEET]
-        if self.state in relevant_competitions[DIAGEOUS_SANDConst.STATE].unique().tolist():
-            relevant_competitions = relevant_competitions[relevant_competitions[DIAGEOUS_SANDConst.STATE] == self.state]
+        relevant_competitions = self.external_targets[
+            self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_FACINGS_OP]
+        if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
-            relevant_competitions = relevant_competitions[relevant_competitions[DIAGEOUS_SANDConst.STATE] == DIAGEOUS_SANDConst.OTHER]
-        all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+            default_state = relevant_competitions[Const.EX_STATE_FK][0]
+            Log.error("The store has no state, shelf_facings is calculated with state '{}'.".format(default_state))
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
+        relevant_competitions = relevant_competitions[Const.SHELF_FACINGS_COLUMNS]
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, competition in relevant_competitions.iterrows():
             result_dict = self.calculate_shelf_facings_of_competition(competition, relevant_scenes, i)
             all_results = all_results.append(result_dict, ignore_index=True)
-        kpi_db_names = DIAGEOUS_SANDConst.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
             all_results, kpi_db_names, weight, with_standard_type=True)
         return total_result, segment_result, national_result
@@ -516,74 +521,59 @@ class DIAGEOUS_SANDToolBox:
         :param index: for hierarchy
         :return: passed, product_fk, standard_type
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.SHELF_FACINGS][DIAGEOUS_SANDConst.COMPETITION])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.SHELF_FACINGS][DIAGEOUS_SANDConst.TOTAL])
-        our_eans = competition[DIAGEOUS_SANDConst.OUR_EAN_CODE].split(', ')
-        our_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(our_eans)]
-        if our_lines.empty:
-            Log.warning("The products {} in shelf facings don't exist in DB".format(our_eans))
-            return None
-        our_fks = our_lines['product_fk'].unique().tolist()
-        product_fk = our_fks[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.COMPETITION])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.TOTAL])
+        product_fk = competition[Const.EX_PRODUCT_FK]
         product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
-        if product_assortment_line.empty:
+        if product_assortment_line.empty or product_fk == 0:
             return None
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
-        standard_type = additional_attrs[DIAGEOUS_SANDConst.NATIONAL_SEGMENT]
+        standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
         result_identifier = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
-        if self.does_exist(competition[DIAGEOUS_SANDConst.COMP_EAN_CODE]):
-            comp_eans = competition[DIAGEOUS_SANDConst.COMP_EAN_CODE].split(', ')
-            comp_lines = self.all_products_sku[self.all_products_sku['product_ean_code'].isin(comp_eans)]
-            if comp_lines.empty:
-                Log.warning("The products {} in shelf facings don't exist in DB".format(comp_eans))
-                target = 0
-            else:
-                comp_fks = comp_lines['product_fk'].unique().tolist()
-                comp_facings = self.calculate_shelf_facings_of_sku(comp_fks, relevant_scenes, result_identifier)
-                bench_value = competition[DIAGEOUS_SANDConst.BENCH_VALUE]
-                target = comp_facings * bench_value
-        elif self.does_exist(competition[DIAGEOUS_SANDConst.BENCH_VALUE]):
-            target = competition[DIAGEOUS_SANDConst.BENCH_VALUE]
+        if self.does_exist(competition[Const.EX_COMPETITOR_FK]):
+            comp_fk = competition[Const.EX_COMPETITOR_FK]
+            comp_facings = self.calculate_shelf_facings_of_sku(comp_fk, relevant_scenes, result_identifier)
+            bench_value = competition[Const.EX_BENCHMARK_VALUE]
+            target = comp_facings * bench_value
+        elif self.does_exist(competition[Const.EX_BENCHMARK_VALUE]):
+            target = competition[Const.EX_BENCHMARK_VALUE]
         else:
-            Log.warning("Product {} has no target in shelf facings".format(our_eans))
+            Log.warning("Product {} has no target in shelf facings".format(product_fk))
             target = 0
         our_facings = self.calculate_shelf_facings_of_sku(
-            our_fks, relevant_scenes, result_identifier, target=target, diageo_product=True)
+            product_fk, relevant_scenes, result_identifier, target=target, diageo_product=True)
         comparison = 1 if (our_facings >= target and our_facings > 0) else 0
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=comparison * 100,
             result=our_facings, identifier_result=result_identifier,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk))
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: comparison,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand, DIAGEOUS_SANDConst.STANDARD_TYPE: standard_type}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: comparison,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
-    def calculate_shelf_facings_of_sku(self, product_fks, relevant_scenes, parent_identifier, target=None,
+    def calculate_shelf_facings_of_sku(self, product_fk, relevant_scenes, parent_identifier, target=None,
                                        diageo_product=False):
         """
         Gets product(s) and counting its facings.
-        :param product_fks: list of FKs
+        :param product_fk: int
         :param relevant_scenes: list
         :param parent_identifier: for write_to_db
         :param target: float, for the main product
         :param diageo_product: bool, if it's the main product
         :return: amount of facings
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.SHELF_FACINGS][DIAGEOUS_SANDConst.SKU])
-        amount_of_facings = 0
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_FACINGS][Const.SKU])
         denominator_id = self.manufacturer_fk if diageo_product else None
-        for product_fk in product_fks:
-            product_facing = self.scif_without_emptys[
-                (self.scif_without_emptys['product_fk'] == product_fk) &
-                (self.scif_without_emptys['scene_id'].isin(relevant_scenes))]['facings'].sum()
-            if product_facing is None or np.isnan(product_facing):
-                product_facing = 0
-            amount_of_facings += product_facing
-            self.common.write_to_db_result(
-                fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
-                should_enter=True, identifier_parent=parent_identifier, target=target)
-        return amount_of_facings
+        product_facing = self.scif_without_emptys[
+            (self.scif_without_emptys['product_fk'] == product_fk) &
+            (self.scif_without_emptys['scene_id'].isin(relevant_scenes))]['facings'].sum()
+        if product_facing is None or np.isnan(product_facing):
+            product_facing = 0
+        self.common.write_to_db_result(
+            fk=kpi_fk, numerator_id=product_fk, result=product_facing, denominator_id=denominator_id,
+            should_enter=True, identifier_parent=parent_identifier, target=target)
+        return product_facing
 
     # shelf placement:
 
@@ -596,12 +586,13 @@ class DIAGEOUS_SANDToolBox:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        all_products_table = self.templates[DIAGEOUS_SANDConst.SHELF_PLACMENTS_SHEET]
-        all_results = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_ASSORTMENT)
+        all_products_table = self.external_targets[
+            self.external_targets[Const.EX_OPERATION_TYPE] == Const.SHELF_PLACEMENT_OP][Const.SHELF_PLACEMENT_COLUMNS]
+        all_results = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_ASSORTMENT)
         for i, product_line in all_products_table.iterrows():
             result = self.calculate_shelf_placement_of_sku(product_line, relevant_scenes)
             all_results = all_results.append(result, ignore_index=True)
-        kpi_db_names = DIAGEOUS_SANDConst.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         total_result, segment_result, national_result = self.insert_all_levels_to_db(
             all_results, kpi_db_names, weight, with_standard_type=True)
         return total_result, segment_result, national_result
@@ -611,10 +602,10 @@ class DIAGEOUS_SANDToolBox:
         Creates dict that contains every number in the template and its shelves
         :return: dict of lists
         """
-        shelf_groups = self.templates[DIAGEOUS_SANDConst.SHELF_GROUPS_SHEET]
+        shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
         shelves_groups = {}
         for i, group in shelf_groups.iterrows():
-            shelves_groups[group[DIAGEOUS_SANDConst.NUMBER_GROUP]] = group[DIAGEOUS_SANDConst.SHELF_GROUP].split(', ')
+            shelves_groups[group[Const.NUMBER_GROUP]] = group[Const.SHELF_GROUP].split(', ')
         return shelves_groups
 
     def calculate_shelf_placement_of_sku(self, product_line, relevant_scenes):
@@ -624,20 +615,15 @@ class DIAGEOUS_SANDToolBox:
         :param relevant_scenes: list
         :return:
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.SHELF_PLACEMENT][DIAGEOUS_SANDConst.SKU])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.SHELF_PLACEMENT][DIAGEOUS_SANDConst.TOTAL])
-        product_fk = self.all_products_sku[self.all_products_sku['product_ean_code'] == product_line[
-            DIAGEOUS_SANDConst.PRODUCT_EAN_CODE]]['product_fk']
-        if product_fk.empty:
-            Log.warning("Product_ean '{}' does not exist".format(product_line[DIAGEOUS_SANDConst.PRODUCT_EAN_CODE]))
-            return None
-        product_fk = product_fk.iloc[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.SKU])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.SHELF_PLACEMENT][Const.TOTAL])
+        product_fk = product_line[Const.EX_PRODUCT_FK]
         product_assortment_line = self.relevant_assortment[self.relevant_assortment['product_fk'] == product_fk]
-        if product_assortment_line.empty:
+        if product_assortment_line.empty or product_fk == 0:
             return None
         additional_attrs = json.loads(product_assortment_line.iloc[0]['additional_attributes'])
-        standard_type = additional_attrs[DIAGEOUS_SANDConst.NATIONAL_SEGMENT]
-        min_shelf_loc = product_line[DIAGEOUS_SANDConst.MIN_SHELF_LOCATION]
+        standard_type = additional_attrs[Const.NATIONAL_SEGMENT]
+        min_shelf_loc = product_line[Const.EX_MINIMUM_SHELF]
         product_fk_with_substs = [product_fk]
         product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
             'product_fk'].tolist()
@@ -645,36 +631,36 @@ class DIAGEOUS_SANDToolBox:
             (self.match_product_in_scene['product_fk'].isin(product_fk_with_substs)) &
             (self.match_product_in_scene['scene_fk'].isin(relevant_scenes))]
         if relevant_products.empty:
-            passed, result = 0, DIAGEOUS_SANDConst.NO_PLACEMENT
+            passed, result = 0, Const.NO_PLACEMENT
         else:
             shelf_groups = self.converted_groups[min_shelf_loc]
-            all_shelves_placements = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT_PLACEMENT)
+            all_shelves_placements = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT_PLACEMENT)
             passed, result = 0, None
             for i, product in relevant_products.iterrows():
                 is_passed, shelf_name = self.calculate_specific_product_shelf_placement(product, shelf_groups)
                 if is_passed == 1:
                     result, passed = shelf_name, 1
-                    if shelf_name != DIAGEOUS_SANDConst.OTHER:
+                    if shelf_name != Const.OTHER:
                         break
-                if all_shelves_placements[all_shelves_placements[DIAGEOUS_SANDConst.SHELF_NAME] == shelf_name].empty:
+                if all_shelves_placements[all_shelves_placements[Const.SHELF_NAME] == shelf_name].empty:
                     all_shelves_placements = all_shelves_placements.append(
-                        {DIAGEOUS_SANDConst.SHELF_NAME: shelf_name, DIAGEOUS_SANDConst.PASSED: is_passed, DIAGEOUS_SANDConst.FACINGS: 1}, ignore_index=True)
+                        {Const.SHELF_NAME: shelf_name, Const.PASSED: is_passed, Const.FACINGS: 1}, ignore_index=True)
                 else:
-                    all_shelves_placements[all_shelves_placements[DIAGEOUS_SANDConst.SHELF_NAME] == shelf_name][
-                        DIAGEOUS_SANDConst.FACINGS] += 1
+                    all_shelves_placements[all_shelves_placements[Const.SHELF_NAME] == shelf_name][
+                        Const.FACINGS] += 1
             if passed == 0:
-                all_shelves_placements = all_shelves_placements.sort_values(by=[DIAGEOUS_SANDConst.FACINGS])
-                result = all_shelves_placements[DIAGEOUS_SANDConst.SHELF_NAME].iloc[0]
-        shelf_groups = self.templates[DIAGEOUS_SANDConst.SHELF_GROUPS_SHEET]
-        target = shelf_groups[shelf_groups[DIAGEOUS_SANDConst.NUMBER_GROUP] == min_shelf_loc][DIAGEOUS_SANDConst.SHELF_GROUP].iloc[0]
+                all_shelves_placements = all_shelves_placements.sort_values(by=[Const.FACINGS])
+                result = all_shelves_placements[Const.SHELF_NAME].iloc[0]
+        shelf_groups = self.templates[Const.SHELF_GROUPS_SHEET]
+        target = shelf_groups[shelf_groups[Const.NUMBER_GROUP] == min_shelf_loc][Const.SHELF_GROUP].iloc[0]
         target_fk, result_fk = self.get_pks_of_result(target), self.get_pks_of_result(result)
         score = passed * 100
         brand, sub_brand = self.get_product_details(product_fk)
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, score=score, result=self.get_pks_of_result(result),
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), target=target_fk)
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: passed,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand, DIAGEOUS_SANDConst.STANDARD_TYPE: standard_type}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: passed,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand, Const.STANDARD_TYPE: standard_type}
         return product_result
 
     def calculate_specific_product_shelf_placement(self, match_product_line, shelf_groups):
@@ -684,7 +670,7 @@ class DIAGEOUS_SANDToolBox:
         :param shelf_groups: list of the match group_names (['E', 'T'])
         :return: couple: if passed or not, and the location ("E")
         """
-        min_max_shleves = self.templates[DIAGEOUS_SANDConst.MINIMUM_SHELF_SHEET]
+        min_max_shleves = self.templates[Const.MINIMUM_SHELF_SHEET]
         shelf_from_bottom = match_product_line['shelf_number_from_bottom']
         scene = match_product_line['scene_fk']
         if shelf_from_bottom > len(min_max_shleves):
@@ -711,16 +697,21 @@ class DIAGEOUS_SANDToolBox:
         :return:
         """
         relevant_scenes = self.get_relevant_scenes(scene_types)
-        all_products_table = self.templates[DIAGEOUS_SANDConst.PRICING_SHEET]
-        if self.state in all_products_table[DIAGEOUS_SANDConst.STATE].unique().tolist():
-            all_products_table = all_products_table[all_products_table[DIAGEOUS_SANDConst.STATE] == self.state]
+
+        relevant_competitions = self.external_targets[
+            self.external_targets[Const.EX_OPERATION_TYPE] == Const.MSRP_OP]
+        if self.state_fk in relevant_competitions[Const.EX_STATE_FK].unique().tolist():
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == self.state_fk]
         else:
-            all_products_table = all_products_table[all_products_table[DIAGEOUS_SANDConst.STATE] == DIAGEOUS_SANDConst.OTHER]
-        all_competes = pd.DataFrame(columns=DIAGEOUS_SANDConst.COLUMNS_FOR_PRODUCT)
+            default_state = relevant_competitions[Const.EX_STATE_FK][0]
+            Log.error("The store has no state, MSRP is calculated with state '{}'.".format(default_state))
+            relevant_competitions = relevant_competitions[relevant_competitions[Const.EX_STATE_FK] == default_state]
+        all_products_table = relevant_competitions[Const.MSRP_COLUMNS]
+        all_competes = pd.DataFrame(columns=Const.COLUMNS_FOR_PRODUCT)
         for i, competition in all_products_table.iterrows():
             compete_result_dict = self.calculate_msrp_of_competition(competition, relevant_scenes, i)
             all_competes = all_competes.append(compete_result_dict, ignore_index=True)
-        kpi_db_names = DIAGEOUS_SANDConst.DB_OFF_NAMES[kpi_name]
+        kpi_db_names = Const.DB_OFF_NAMES[kpi_name]
         result, segment_result, national_result = self.insert_all_levels_to_db(
             all_competes, kpi_db_names, weight, write_numeric=True)
         return result, 0, 0
@@ -734,33 +725,22 @@ class DIAGEOUS_SANDToolBox:
         :param index: for hierarchy
         :return: 1/0
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.MSRP][DIAGEOUS_SANDConst.COMPETITION])
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.MSRP][DIAGEOUS_SANDConst.TOTAL])
-        our_ean, comp_ean = competition[DIAGEOUS_SANDConst.OUR_EAN_CODE], competition[DIAGEOUS_SANDConst.COMP_EAN_CODE]
-        min_relative, max_relative = competition[DIAGEOUS_SANDConst.MIN_MSRP_RELATIVE], competition[DIAGEOUS_SANDConst.MAX_MSRP_RELATIVE]
-        min_absolute, max_absolute = competition[DIAGEOUS_SANDConst.MIN_MSRP_ABSOLUTE], competition[DIAGEOUS_SANDConst.MAX_MSRP_ABSOLUTE]
-        our_line = self.all_products_sku[self.all_products_sku['product_ean_code'] == our_ean]
-        if our_line.empty:
-            Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
-            return None
-        product_fk = our_line['product_fk'].iloc[0]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.COMPETITION])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.TOTAL])
+        product_fk, comp_fk = competition[Const.EX_PRODUCT_FK], competition[Const.EX_COMPETITOR_FK]
+        min_relative, max_relative = competition[Const.EX_RELATIVE_MIN], competition[Const.EX_RELATIVE_MAX]
+        min_absolute, max_absolute = competition[Const.EX_TARGET_MIN], competition[Const.EX_TARGET_MAX]
         result_dict = self.common.get_dictionary(kpi_fk=kpi_fk, product_fk=product_fk, index=index)
         our_price = self.calculate_sku_price(product_fk, relevant_scenes, result_dict)
-        if our_price is None:
+        if our_price is None or product_fk == 0:
             return None
-        is_competitor = (self.does_exist(comp_ean) and
+        is_competitor = (self.does_exist(comp_fk) and
                          self.does_exist(min_relative) and self.does_exist(max_relative))
         is_absolute = self.does_exist(min_absolute) and self.does_exist(max_absolute)
         if is_competitor:
-            comp_line = self.all_products_sku[self.all_products_sku['product_ean_code'] == comp_ean]
-            if comp_line.empty:
-                Log.warning("The products {} in MSRP don't exist in DB".format(our_ean))
-                comp_price = our_price + competition[DIAGEOUS_SANDConst.MIN_MSRP_RELATIVE]
-            else:
-                comp_fk = comp_line['product_fk'].iloc[0]
-                comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
-                if comp_price is None:
-                    comp_price = our_price + min_relative
+            comp_price = self.calculate_sku_price(comp_fk, relevant_scenes, result_dict)
+            if comp_price is None:
+                comp_price = our_price + min_relative
             range_price = (round(comp_price + min_relative, 1),
                            round(comp_price + max_relative, 1))
         elif is_absolute:
@@ -777,8 +757,8 @@ class DIAGEOUS_SANDToolBox:
         self.common.write_to_db_result(
             fk=kpi_fk, numerator_id=product_fk, result=result,
             identifier_parent=self.common.get_dictionary(kpi_fk=total_kpi_fk), identifier_result=result_dict)
-        product_result = {DIAGEOUS_SANDConst.PRODUCT_FK: product_fk, DIAGEOUS_SANDConst.PASSED: (result == 0) * 1,
-                          DIAGEOUS_SANDConst.BRAND: brand, DIAGEOUS_SANDConst.SUB_BRAND: sub_brand}
+        product_result = {Const.PRODUCT_FK: product_fk, Const.PASSED: (result == 0) * 1,
+                          Const.BRAND: brand, Const.SUB_BRAND: sub_brand}
         return product_result
 
     def calculate_sku_price(self, product_fk, scenes, parent_dict):
@@ -789,10 +769,10 @@ class DIAGEOUS_SANDToolBox:
         :param parent_dict: identifier dictionary
         :return: price
         """
-        kpi_fk = self.common.get_kpi_fk_by_kpi_name(DIAGEOUS_SANDConst.DB_OFF_NAMES[DIAGEOUS_SANDConst.MSRP][DIAGEOUS_SANDConst.SKU])
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.DB_OFF_NAMES[Const.MSRP][Const.SKU])
         price = self.products_with_prices[(self.products_with_prices['product_fk'] == product_fk) &
                                           (self.products_with_prices['scene_fk'].isin(scenes))]['price_value']
-        if price.empty:
+        if price.empty or product_fk == 0:
             return None
         result = round(price.iloc[0], 1)
         self.common.write_to_db_result(
@@ -806,10 +786,11 @@ class DIAGEOUS_SANDToolBox:
         """
         Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet).
         :param product_fk:
-        :param relevant_products: relevant scif?
+        :param relevant_products: relevant scif
         :return: number of scenes. int.
         """
-        template = self.templates[DIAGEOUS_SANDConst.DISPLAY_TARGET_SHEET]
+        template = self.external_targets[self.external_targets["operation_type"] == Const.DISPLAY_TARGET_OP][
+            Const.DISPLAY_TARGET_COLUMNS]
         sum_scenes_passed, sum_facings = 0, 0
         for scene in relevant_products['scene_fk'].unique().tolist():
             scene_product = relevant_products[(relevant_products['scene_fk'] == scene) &
@@ -817,13 +798,46 @@ class DIAGEOUS_SANDToolBox:
             if scene_product.empty:
                 continue
             scene_type = scene_product['template_name'].iloc[0]
-            minimum_products = template[template[DIAGEOUS_SANDConst.SCENE_TYPE] == scene_type]
+            minimum_products = template[template[Const.EX_SCENE_TYPE] == scene_type]
             if minimum_products.empty:
-                minimum_products = template[template[DIAGEOUS_SANDConst.SCENE_TYPE] == DIAGEOUS_SANDConst.OTHER]
-            minimum_products = minimum_products[DIAGEOUS_SANDConst.MIN_FACINGS].iloc[0]
+                minimum_products = template[template[Const.EX_SCENE_TYPE] == Const.OTHER]
+            minimum_products = minimum_products[Const.EX_MIN_FACINGS].iloc[0]
             facings = scene_product['facings'].iloc[0]
             sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
         return sum_scenes_passed
+
+    def calculate_passed_display_without_subst(self, product_fk, relevant_products):
+        """
+        Counts how many scenes the given product passed the conditions of the display (defined in Display_target sheet),
+        every time it should pass the condition ONLY with the same product_fk (without the similar products).
+        :param product_fk:
+        :param relevant_products: relevant scif
+        :return: number of scenes. int.
+        """
+        template = self.external_targets[self.external_targets["operation_type"] == Const.DISPLAY_TARGET_OP][
+            Const.DISPLAY_TARGET_COLUMNS]
+        sum_scenes_passed, sum_facings = 0, 0
+        product_fk_with_substs = [product_fk]
+        product_fk_with_substs += self.all_products[self.all_products['substitution_product_fk'] == product_fk][
+            'product_fk'].tolist()
+        for product in product_fk_with_substs:
+            for scene in relevant_products['scene_fk'].unique().tolist():
+                scene_products = self.match_product_in_scene[
+                    (self.match_product_in_scene['scene_fk'] == scene) &
+                    (self.match_product_in_scene['product_fk'] == product)]
+                if scene_products.empty:
+                    continue
+                scene_type = self.get_scene_type(scene)
+                minimum_products = template[template[Const.EX_SCENE_TYPE] == scene_type]
+                if minimum_products.empty:
+                    minimum_products = template[template[Const.EX_SCENE_TYPE] == Const.OTHER]
+                minimum_products = minimum_products[Const.EX_MIN_FACINGS].iloc[0]
+                facings = len(scene_products)
+                sum_scenes_passed += 1 * (facings >= minimum_products)  # if the condition is failed, it will "add" 0.
+        return sum_scenes_passed
+
+    def get_scene_type(self, scene_fk):
+        return self.scif[self.scif['scene_fk'] == scene_fk]['template_name'].iloc[0]
 
     def get_relevant_scenes(self, scene_types):
         """
@@ -922,24 +936,24 @@ class DIAGEOUS_SANDToolBox:
         :param should_enter: if the total should enter the hierarchy table
         :return: the scores of all
         """
-        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[DIAGEOUS_SANDConst.TOTAL])
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.TOTAL])
         total_identifier = self.common.get_dictionary(kpi_fk=total_kpi_fk)
-        for brand in all_results[DIAGEOUS_SANDConst.BRAND].unique().tolist():
+        for brand in all_results[Const.BRAND].unique().tolist():
             if brand is None or np.isnan(brand):
                 continue
-            brand_results = all_results[all_results[DIAGEOUS_SANDConst.BRAND] == brand]
+            brand_results = all_results[all_results[Const.BRAND] == brand]
             self.insert_brand_and_subs_to_db(brand_results, kpi_db_names, brand, total_identifier,
                                              write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
-        all_passed_results = all_results[DIAGEOUS_SANDConst.PASSED]
-        total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, DIAGEOUS_SANDConst.TOTAL, weight, total_identifier,
+        all_passed_results = all_results[Const.PASSED]
+        total_result = self.insert_totals_to_db(all_passed_results, kpi_db_names, Const.TOTAL, weight, total_identifier,
                                                 should_enter=should_enter, write_numeric=write_numeric)
         segment_result, national_result = 0, 0
         if with_standard_type:
-            national_results = all_results[all_results[DIAGEOUS_SANDConst.STANDARD_TYPE] == DIAGEOUS_SANDConst.NATIONAL][DIAGEOUS_SANDConst.PASSED]
-            national_result = self.insert_totals_to_db(national_results, kpi_db_names, DIAGEOUS_SANDConst.NATIONAL, weight,
+            national_results = all_results[all_results[Const.STANDARD_TYPE] == Const.NATIONAL][Const.PASSED]
+            national_result = self.insert_totals_to_db(national_results, kpi_db_names, Const.NATIONAL, weight,
                                                        should_enter=should_enter, write_numeric=write_numeric)
-            segment_results = all_results[all_results[DIAGEOUS_SANDConst.STANDARD_TYPE] == DIAGEOUS_SANDConst.SEGMENT][DIAGEOUS_SANDConst.PASSED]
-            segment_result = self.insert_totals_to_db(segment_results, kpi_db_names, DIAGEOUS_SANDConst.SEGMENT, weight,
+            segment_results = all_results[all_results[Const.STANDARD_TYPE] == Const.SEGMENT][Const.PASSED]
+            segment_result = self.insert_totals_to_db(segment_results, kpi_db_names, Const.SEGMENT, weight,
                                                       should_enter=should_enter, write_numeric=write_numeric)
         return total_result, segment_result, national_result
 
@@ -954,16 +968,16 @@ class DIAGEOUS_SANDToolBox:
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         """
-        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[DIAGEOUS_SANDConst.BRAND])
+        brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.BRAND])
         brand_dict = self.common.get_dictionary(kpi_fk=brand_kpi_fk, brand_fk=brand)
-        for sub_brand in brand_results[brand_results[DIAGEOUS_SANDConst.BRAND] == brand][DIAGEOUS_SANDConst.SUB_BRAND].unique().tolist():
-            if sub_brand is None or np.isnan(sub_brand):
+        for sub_brand in brand_results[brand_results[Const.BRAND] == brand][Const.SUB_BRAND].unique().tolist():
+            if sub_brand is None or np.isnan(sub_brand) or sub_brand == 0:
                 continue
-            sub_brand_results = brand_results[(brand_results[DIAGEOUS_SANDConst.BRAND] == brand) &
-                                              (brand_results[DIAGEOUS_SANDConst.SUB_BRAND] == sub_brand)]
+            sub_brand_results = brand_results[(brand_results[Const.BRAND] == brand) &
+                                              (brand_results[Const.SUB_BRAND] == sub_brand)]
             self.insert_sub_brands_to_db(sub_brand_results, kpi_db_names, brand, sub_brand, brand_dict,
                                          write_numeric=write_numeric, sub_brand_numeric=sub_brand_numeric)
-        results = brand_results[DIAGEOUS_SANDConst.PASSED]
+        results = brand_results[Const.PASSED]
         if write_numeric:
             num_res, den_res = 0, 0
             result = results.sum()
@@ -987,12 +1001,12 @@ class DIAGEOUS_SANDToolBox:
         :param write_numeric: for MSRP - writing only the amount of passed in the result, without percentage
         :param sub_brand_numeric: write in the sub_brand if one product passed or not (like sku level)
         """
-        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[DIAGEOUS_SANDConst.SUB_BRAND])
+        sub_brand_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_db_names[Const.SUB_BRAND])
         sub_brand_dict = self.common.get_dictionary(kpi_fk=sub_brand_kpi_fk, brand_fk=brand, sub_brand_fk=sub_brand)
-        results = sub_brand_results[DIAGEOUS_SANDConst.PASSED]
+        results = sub_brand_results[Const.PASSED]
         num_res, den_res = 0, 0
         if sub_brand_numeric:
-            result = DIAGEOUS_SANDConst.DISTRIBUTED if results.sum() > 0 else DIAGEOUS_SANDConst.OOS
+            result = Const.DISTRIBUTED if results.sum() > 0 else Const.OOS
             result = self.get_pks_of_result(result)
         elif write_numeric:
             result = results.sum()

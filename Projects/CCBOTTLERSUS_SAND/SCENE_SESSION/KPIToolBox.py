@@ -19,6 +19,7 @@ STORE_TYPES = {
     "FSOP - QSR": "QSR",
 }
 
+
 class SceneSessionToolBox:
     HIERARCHY_SESSION_TABLE = "report.kpi_hierarchy"
     SESSION_RESULT_FK = "session_result_fk"
@@ -76,9 +77,7 @@ class SceneSessionToolBox:
         self.hierarchy_table = pd.DataFrame(columns=self.COLUMNS)
         self.session_hierarchy_table = pd.DataFrame(columns=self.COLUMNS)
 
-
     # main functions:
-
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -86,10 +85,7 @@ class SceneSessionToolBox:
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
         self.write_scene_parent()
-        # self.granpappy_path()
         self.commit_results(scene_session=True)
-
-        # self.write_pappies
 
     def write_scene_parent(self):
         self.results['parent_kpi'] = [int(self.SCENE_SESSION_KPI[kpi]) if kpi in self.SCENE_SESSION_KPI else None
@@ -110,20 +106,17 @@ class SceneSessionToolBox:
             self.parent_frame = self.parent_frame.append(line, ignore_index=True)
 
             self.common.write_to_db_result(fk=parent_kpi, numerator_result=num,
-                                               numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                                               denominator_result=den, result=ratio, score=score, target=den)
-
+                                           numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                           denominator_result=den, result=ratio, score=score, target=den)
             self.write_hierarchy(kpi_res, i, parent_kpi)
 
     def aggregate(self, kpi_res, parent_kpi):
         if self.BEHAVIOR[parent_kpi] == 'PASS':
             num = kpi_res['score'].sum()
             den = kpi_res['parent_kpi'].count()
-
         else:
             num = kpi_res['numerator_result'].sum()
             den = kpi_res['denominator_result'].sum()
-
         score = kpi_res['score'].sum()
         return num, den, score
 
@@ -157,28 +150,6 @@ class SceneSessionToolBox:
             ses_line = pd.DataFrame([(self.GRANPAPPY[parent], i, True, None)],
                                     columns=self.COLUMNS)
             self.session_hierarchy_table = pd.concat((self.hierarchy_table, ses_line))
-
-    def granpappy_path(self):
-        relevant_kpis = self.parent_frame['fk'].unique().tolist()
-        family_tree = self.parent_frame.set_index('session_kpi_results_fk')['session_kpi_results_parent_fk'].to_dict()
-        family_tree += self.GRANPAPPy
-        lineage = defaultdict(list)
-        for kpi in relevant_kpis:
-            while pappy in family_tree:
-                pappy = family_tree[pappy]
-                lineage[kpi].append(pappy)
-        return lineage
-
-    def write_pappies(self, lineage):
-        for kpi in lineage:
-          pass
-
-    def read_kpi(self):
-        pass
-
-    def write_kpi(self):
-        pass
-
 
     def get_session_kpi_results(self):
         query = '''

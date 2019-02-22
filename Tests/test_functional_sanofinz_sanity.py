@@ -1,8 +1,9 @@
 
 import os
+import MySQLdb
+
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
@@ -13,7 +14,7 @@ from Projects.SANOFINZ.Calculations import SANOFINZCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
-__author__ = 'yoava'
+__author__ = 'ilays'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
@@ -42,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_sanofinz_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['09F00106-246D-4E56-B518-DC4607339D68']
+        sessions = ['33BE40B3-347B-4ADB-A37E-DE89CE523891']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

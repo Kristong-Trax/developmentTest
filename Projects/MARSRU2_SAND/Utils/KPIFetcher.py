@@ -403,13 +403,13 @@ class MARSRU2_SANDKPIFetcher:
 
                     if 'Store type' in row:
                         store_types = str(row.get('Store type').encode(
-                            'utf-8')).replace('\n', '').split(',')
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
                         regions = str(row.get('Region').encode(
-                            'utf-8')).replace('\n', '').split(',')
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         regions = []
 
@@ -418,14 +418,14 @@ class MARSRU2_SANDKPIFetcher:
 
                         if 'KPI name' in row:
 
-                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
                             kpi_results_to_check = str(row.get('KPI result')).encode(
-                                'utf-8').replace('\n', '').split(',')
-                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')\
+                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))\
                                 if kpi_results.get(kpi_name_to_check) else None
                             if kpi_result:
                                 if kpi_result in kpi_results_to_check:
-                                    values_list = str(row.get('EAN')).replace('\n', '').split(',')
+                                    values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
                                     break
                                 else:
                                     continue
@@ -433,14 +433,14 @@ class MARSRU2_SANDKPIFetcher:
                                 continue
 
                         else:
-                            values_list = str(row.get('EAN')).replace('\n', '').split(',')
+                            values_list = str(row.get('EAN')).strip().replace('\n', '').split(',')
                             break
                     else:
                         continue
 
             elif 'Shelf # from the bottom' in targets[0]:
                 # for row in targets:
-                #     store_types = str(row.get('Store type').encode('utf-8')).replace('\n', '').split(',')
+                #     store_types = str(row.get('Store type').encode('utf-8')).strip().replace('\n', '').split(',')
                 #     if store_type.encode('utf-8') in store_types:
                 #         values_list = row.get('Shelf # from the bottom')
                 #         break
@@ -450,13 +450,13 @@ class MARSRU2_SANDKPIFetcher:
 
                     if 'Store type' in row:
                         store_types = str(row.get('Store type').encode(
-                            'utf-8')).replace('\n', '').split(',')
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         store_types = []
 
                     if 'Region' in row:
                         regions = str(row.get('Region').encode(
-                            'utf-8')).replace('\n', '').split(',')
+                            'utf-8')).strip().replace('\n', '').split(',')
                     else:
                         regions = []
 
@@ -465,13 +465,13 @@ class MARSRU2_SANDKPIFetcher:
 
                         if 'KPI name' in row:
 
-                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8')
+                            kpi_name_to_check = str(row.get('KPI name')).encode('utf-8').strip()
                             kpi_results_to_check = str(row.get('KPI result')).encode(
-                                'utf-8').replace('\n', '').split(',')
-                            kpi_result = kpi_results.get(kpi_name_to_check).get('result')
+                                'utf-8').strip().replace('\n', '').split(',')
+                            kpi_result = str(kpi_results.get(kpi_name_to_check).get('result'))
                             if kpi_result:
                                 if kpi_result in kpi_results_to_check:
-                                    values_list = str(row.get('Shelf # from the bottom'))
+                                    values_list = str(row.get('Shelf # from the bottom')).strip()
                                     break
                                 else:
                                     continue
@@ -479,15 +479,15 @@ class MARSRU2_SANDKPIFetcher:
                                 continue
 
                         else:
-                            values_list = str(row.get('Shelf # from the bottom'))
+                            values_list = str(row.get('Shelf # from the bottom')).strip()
                             break
                     else:
                         continue
 
             elif 'Attribute 5' in targets[0]:
                 for row in targets:
-                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8') or \
-                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8'):
+                    if region.encode('utf-8') != row.get('Attribute 5').encode('utf-8').strip() or \
+                            store_type.encode('utf-8') != row.get('Store type').encode('utf-8').strip():
                         continue
                     try:
                         shelf_length_from = float(row.get('Shelf length FROM INCLUDING'))
@@ -497,8 +497,8 @@ class MARSRU2_SANDKPIFetcher:
                         shelf_length_to = float(row.get('Shelf length TO EXCLUDING'))
                     except ValueError:
                         shelf_length_to = 10000
-                    result = str(row.get('Result'))
-                    length_condition = row.get('Length condition')
+                    result = str(row.get('Result')).strip()
+                    length_condition = str(row.get('Length condition')).strip()
                     values_list.append({'shelf from': shelf_length_from,
                                         'shelf to': shelf_length_to,
                                         'result': result,

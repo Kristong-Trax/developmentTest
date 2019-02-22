@@ -1,4 +1,3 @@
-
 import pandas as pd
 from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -8,9 +7,11 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOES_SAND.Utils.Fetcher import DIAGEOESSANDQueries
-from Projects.DIAGEOES_SAND.Utils.ToolBox import DIAGEOESSANDDIAGEOToolBox
-from Projects.DIAGEOES_SAND.Utils.GeneralToolBox import DIAGEOESSANDGENERALToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Yasmin'
 
@@ -29,7 +30,9 @@ def log_runtime(description, log_start=False):
             calc_end_time = datetime.utcnow()
             Log.info('{} took {}'.format(description, calc_end_time - calc_start_time))
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -53,7 +56,13 @@ class DIAGEOESSANDToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = DIAGEOESSANDDIAGEOToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.match_display_in_scene = self.get_match_display()
+        self.commonV2 = CommonV2(self.data_provider)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
@@ -62,40 +71,54 @@ class DIAGEOESSANDToolBox:
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
 
+    def get_match_display(self):
+        """
+        This function extracts the display matches data and saves it into one global data frame.
+        The data is taken from probedata.match_display_in_scene.
+        """
+        query = DIAGEOQueries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
+
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOESSANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
-    def main_calculation(self, kpi_set_fk):
-        """
-        This function calculates the KPI results.
-        """
-        set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == kpi_set_fk]['kpi_set_name'].values[0]
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
-        if set_name in ('MPA', 'Local MPA', 'New Products',):
-            set_score = self.calculate_assortment_sets(set_name)
-        elif set_name == 'Secondary Displays':
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-            if not set_score:
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name == 'Visible to Consumer %':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
-        if isinstance(set_score, type(None)):
-            return
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return set_score
+    def main_calculation(self, set_names):
+
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+
+            # Global Secondary Displays
+            if set_name in ('Secondary Displays',):
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
+                    set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                    self.save_level2_and_level3(set_name, set_name, set_score)
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # committing to new tables
+        self.commonV2.commit_results_data()
 
     def calculate_assortment_sets(self, set_name):
         """
@@ -182,24 +205,25 @@ class DIAGEOESSANDToolBox:
         if level == self.LEVEL1:
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        format(score,'.2f'), fk)],
+                                        format(score, '.2f'), fk)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
                                                'kpi_set_fk'])
         elif level == self.LEVEL2:
             kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-                                        fk, kpi_name.replace("'","''"), score)],
+                                        fk, kpi_name.replace("'", "''"), score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
         elif level == self.LEVEL3:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0]
             kpi_fk = data['kpi_fk'].values[0]
             kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-            attributes = pd.DataFrame([(atomic_kpi_name.replace("'","''"), self.session_uid, kpi_set_name, self.store_id,
-                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-                                        score, kpi_fk, fk)],
-                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-                                               'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
+            attributes = pd.DataFrame(
+                [(atomic_kpi_name.replace("'", "''"), self.session_uid, kpi_set_name, self.store_id,
+                  self.visit_date.isoformat(), datetime.utcnow().isoformat(),
+                  score, kpi_fk, fk)],
+                columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
+                         'calculation_time', 'score', 'kpi_fk', 'atomic_kpi_fk'])
         else:
             attributes = pd.DataFrame()
         return attributes.to_dict()
@@ -210,7 +234,7 @@ class DIAGEOESSANDToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOESSANDQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

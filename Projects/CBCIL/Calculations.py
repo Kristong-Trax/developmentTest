@@ -22,7 +22,7 @@ class CBCILCalculations(BaseCalculationsScript):
 #     project_name = 'cbcil'
 #     data_provider = KEngineDataProvider(project_name)
 #     sessions = [
-#         'fd334fd5-5d8d-449d-989b-0a69f92b829a'
+#         '40dcf168-35b6-46b9-9f10-180e9849547e'
 #         # '95513285-4c78-4c91-85dd-cae2ff83bbf5' #tested and changed
 #         # 'a0ba8c7d-7dec-40c4-9730-eaea3edcfc95' # tested
 #         # '4bc4c803-c1cb-4a0f-a753-3da1b7f94216' # tested
@@ -36,4 +36,4 @@ class CBCILCalculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         CBCILCalculations(data_provider, output).run_project_calculations()
-#
+

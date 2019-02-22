@@ -1,6 +1,6 @@
 
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
@@ -9,8 +9,11 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOKE.Utils.Fetcher import DIAGEOKEQueries
-from Projects.DIAGEOKE.Utils.ToolBox import DIAGEOKEDIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Nimrod'
 
@@ -63,17 +66,20 @@ class DIAGEOKEToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOKEDIAGEOToolBox(self.data_provider, output,
-                                           kpi_static_data=self.kpi_static_data,
-                                           match_display_in_scene=self.match_display_in_scene)
         self.kpi_results_queries = []
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_kpi_static_data(self):
         """
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOKEQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -82,37 +88,46 @@ class DIAGEOKEToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOKEQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
-        # if set_name in ('MPA', 'Local MPA', 'New Products',):
-        #     set_score = self.calculate_assortment_sets(set_name)
-        # elif set_name in ('POSM',):
-        #     set_score = self.calculate_posm_sets(set_name)
-        if set_name == 'Visible to Customer':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        # elif set_name == 'Local SOS':
-        #     set_score = self.calculate_sos_set()
-        else:
-            return
+        for set_name in set_names:
+            set_score = 0
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            # Global Visible to Customer / Visible to Consumer
+            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+                if res_dict:
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    self.commonV2.save_json_to_new_tables(res_dict)
+
+                    # Saving to old tables
+                    set_score = result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # committing to new tables
+        self.commonV2.commit_results_data()
         return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
@@ -207,9 +222,12 @@ class DIAGEOKEToolBox:
                     for product in products:
                         product_score = self.tools.calculate_assortment(product_ean_code=product)
                         result += product_score
-                        product_name = self.all_products[self.all_products['product_ean_code'] == product]['product_name'].values[0]
+                        product_name = \
+                        self.all_products[self.all_products['product_ean_code'] == product]['product_name'].values[0]
                         try:
-                            atomic_fk = kpi_static_data[kpi_static_data['atomic_kpi_name'] == product_name]['atomic_kpi_fk'].values[0]
+                            atomic_fk = \
+                            kpi_static_data[kpi_static_data['atomic_kpi_name'] == product_name]['atomic_kpi_fk'].values[
+                                0]
                         except Exception as e:
                             Log.info('Product {} is not defined in the DB'.format(product_name))
                             continue
@@ -303,7 +321,7 @@ class DIAGEOKEToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOKEQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

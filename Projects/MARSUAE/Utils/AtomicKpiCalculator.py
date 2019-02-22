@@ -35,16 +35,22 @@ class LinearSOSCalculation(SOSCalculation):
         return 'linear SOS'
 
     def calculate(self, params):
-        numerator_filters = {params['numerator type'].iloc[0]:
-                             self.split_and_strip(params['numerator value'].iloc[0])}
-        general_filters = {params['denominator type'].iloc[0]:
-                           self.split_and_strip(params['denominator value'].iloc[0])}
-
-        result, numerator_result, denominator_result = \
-            self._data_provider.sos.calculate_linear_share_of_shelf_with_numerator_denominator(
-                sos_filters=numerator_filters,
-                **general_filters)
+        scene_types = self.get_template_fk(params)
+        if scene_types:
+            numerator_filters = {params['numerator type'].iloc[0]:
+                                 self.split_and_strip(params['numerator value'].iloc[0])}
+            general_filters = {params['denominator type'].iloc[0]:
+                               self.split_and_strip(params['denominator value'].iloc[0]), 'template_fk': scene_types}
+            result, numerator_result, denominator_result = \
+                self._data_provider.sos.calculate_linear_share_of_shelf_with_numerator_denominator(
+                    sos_filters=numerator_filters, **general_filters)
+        else:
+            result = numerator_result = denominator_result = 0
         return self.calculate_result_and_write(params, result, numerator_result, denominator_result)
+
+    def get_template_fk(self, params):
+        scene_types = self.split_and_strip(params['scene type'].iloc[0])
+        return self._scif[self._scif['template_name'].isin(scene_types)]['template_fk'].unique().tolist()
 
     @staticmethod
     def split_and_strip(param):
@@ -92,7 +98,7 @@ class DisplaySOSCalculation(SOSCalculation):
 
     @staticmethod
     def get_scenes_weights(relevant_scenes):
-        return float(relevant_scenes['additional_attribute_1'].sum())
+        return sum(map(lambda x: float(x), relevant_scenes['additional_attribute_1']))
 
 
 class DistributionCalculation(KpiBaseCalculation):
@@ -111,8 +117,8 @@ class DistributionCalculation(KpiBaseCalculation):
         if kpi_sku and assortment_fk:
             assortment_result = self.get_assortment_result(assortment_fk)
             count_pass_product = self.write_to_db_per_sku_and_count_pass(kpi_sku, assortment_result, self.kpi_fk)
-            result = self.check_result_vs_threshold(params, count_pass_product)
             product_total_in_assortment = len(assortment_result)
+            result = self.check_result_vs_threshold(params, count_pass_product, product_total_in_assortment)
         # else:
         #     log.debug('Assortment name: {} not exists in DB'.format(params['Assortment group'].iloc[0]))
         return self._create_kpi_result(fk=self.kpi_fk, score=result, result=result, weight=points, target=target,
@@ -161,7 +167,8 @@ class DistributionCalculation(KpiBaseCalculation):
         return count_pass_product
 
     @staticmethod
-    def check_result_vs_threshold(params, count_pass_product):
+    def check_result_vs_threshold(params, count_pass_product, product_total_in_assortment):
+        calc_result = count_pass_product / float(product_total_in_assortment) if product_total_in_assortment else 0
         target = params['minimum products'].iloc[0]
         points = float(params['Points'].iloc[0])
         result = 0
@@ -169,9 +176,9 @@ class DistributionCalculation(KpiBaseCalculation):
             if count_pass_product >= float(target):
                 result = points
         else:
-            if result >= float(params['upper threshold'].iloc[0]):
+            if calc_result >= float(params['upper threshold'].iloc[0]):
                 result = points
-            elif result < float(params['lower threshold'].iloc[0]):
+            elif calc_result < float(params['lower threshold'].iloc[0]):
                 result = 0
             else:
                 result *= points
@@ -211,7 +218,7 @@ class AvailabilityCalculation(KpiBaseCalculation):
             score = len(filtered_scif['scene_fk'].unique().tolist())
         elif type == 'display_brand':
             display_df = self._data_provider.match_display_in_scene
-            score = len(display_df[display_df['name'] == value])
+            score = len(display_df[display_df['display_brand_name'] == value])
         else:
             score = sum(filtered_scif.facings)
 

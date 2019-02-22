@@ -54,7 +54,7 @@ class INBEVTRADMXToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
-        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_4_v2.xlsx')
+        self.excel_file_path = os.path.join(self.templates_path, 'inbevtradmx_template_5.xlsx')
         self.availability = Availability(self.data_provider)
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.geo = GeoLocation.INBEVTRADMX_SANDGeo(self.rds_conn, self.session_uid, self.data_provider,
@@ -428,7 +428,7 @@ class INBEVTRADMXToolBox:
                 elif row['KPI Level 2 Name'] == 'Pop Interior':
                     return availability_score > 1
             elif row['KPI Level 1 Name'] == 'Set Self Execution' and row['KPI Level 3 Name'] == 'Hay o no hay # frentes':
-                return availability_score > 19
+                return availability_score > 24
             else:
                 return True
 

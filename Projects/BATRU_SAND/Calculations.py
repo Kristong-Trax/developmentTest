@@ -1,9 +1,9 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.BATRU_SAND.KPIGenerator import BATRU_SANDGenerator
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
@@ -23,10 +23,9 @@ class BATRU_SANDCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('batru calculations')
 #     Config.init()
-#     project_name = 'batru_sand'
+#     project_name = 'batru-sand'
 #     sessions = [
-#          'efe1c553-79a8-4be9-a753-1981bc91fdc9',
-#         'B342DF96-9852-4CDE-A86B-523795FD3294']
+#          '33333B06-474E-4259-BF22-6A9064374E9D']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         data_provider.load_session_data(session)

@@ -111,12 +111,8 @@ class DIAGEOBR_SANDToolBox:
         """
         log_runtime('Updating templates')(self.tools.update_templates)()
 
-        # old assortment
-        self.diageo_generator.diageo_global_assortment_function()
-
         # Global assortment kpis
-        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
-                                              self.common).diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
@@ -145,13 +141,12 @@ class DIAGEOBR_SANDToolBox:
                         self.commonV2.write_to_db_result(**r)
 
                     # Saving to old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
 
                 # filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
                 # set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
                 # self.save_level2_and_level3(set_name, set_name, set_score)
-
 
             elif set_name in ('Secondary Displays', 'Secondary'):
                 # Global function

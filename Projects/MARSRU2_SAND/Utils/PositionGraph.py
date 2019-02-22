@@ -49,12 +49,12 @@ class MARSRU2_SANDPositionGraphs:
             self._match_product_in_scene = self.get_filtered_matches()
         return self._match_product_in_scene
 
-    def get(self, scene_id):
+    def get(self, scene_id, horizontal_block_only=False):
         """
         This function returns a position graph for a given scene
         """
         if scene_id not in self.position_graphs.keys():
-            self.create_position_graphs(scene_id)
+            self.create_position_graphs(scene_id, horizontal_block_only)
         return self.position_graphs.get(scene_id)
 
     def get_filtered_matches(self):
@@ -98,7 +98,7 @@ class MARSRU2_SANDPositionGraphs:
         matches = pd.read_sql_query(query, self.rds_conn.db)
         return matches
 
-    def create_position_graphs(self, scene_id=None):
+    def create_position_graphs(self, scene_id=None, horizontal_block_only=False):
         """
         This function creates a facings Graph for each scene of the given session.
         """
@@ -123,7 +123,7 @@ class MARSRU2_SANDPositionGraphs:
                 for attribute in self.ATTRIBUTES_TO_SAVE:
                     vertex[attribute] = facing[attribute]
 
-                surrounding_products = self.get_surrounding_products(facing, matches)
+                surrounding_products = self.get_surrounding_products(facing, matches, horizontal_block_only)
                 for direction in surrounding_products.keys():
                     for pk in surrounding_products[direction]:
                         edge = dict(source=facing_name, target=str(pk), direction=direction)
@@ -136,7 +136,7 @@ class MARSRU2_SANDPositionGraphs:
         Log.info('Creation of position graphs for scenes {} took {}'.format(
             scenes, calc_finish_time - calc_start_time))
 
-    def get_surrounding_products(self, anchor, matches):
+    def get_surrounding_products(self, anchor, matches, horizontal_block_only=False):
         """
         :param anchor: The tested SKU.
         :param matches: The filtered match_product_in_scene data frame for the relevant scene.
@@ -172,12 +172,12 @@ class MARSRU2_SANDPositionGraphs:
                                         matches[self.RIGHT].between(anchor_left, anchor_right) |
                                         ((matches[self.LEFT] < anchor_left) & (anchor_left < matches[self.RIGHT])) |
                                         ((matches[self.LEFT] < anchor_right) & (anchor_right < matches[self.RIGHT])))]
-        if anchor_shelf_number == 1:
+        if anchor_shelf_number == 1 or horizontal_block_only:
             surrounding_top = []
         else:
             surrounding_top = filtered_matches[matches['shelf_number']
                                                == anchor_shelf_number - 1][VERTEX_FK_FIELD]
-        if anchor_shelf_number_from_bottom == 1:
+        if anchor_shelf_number_from_bottom == 1 or horizontal_block_only:
             surrounding_bottom = []
         else:
             surrounding_bottom = filtered_matches[matches['shelf_number']

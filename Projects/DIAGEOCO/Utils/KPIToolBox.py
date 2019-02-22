@@ -51,7 +51,7 @@ class DIAGEOCOToolBox:
         self.set_templates_data = {}
         self.match_display_in_scene = self.get_match_display()
         self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
-        self.global_gen = DIAGEOGenerator(self.data_provider, self.output, self.common)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common, menu=True)
 
     def main_calculation(self):
         """
@@ -65,8 +65,15 @@ class DIAGEOCOToolBox:
                                                                header=Const.TOUCH_POINT_HEADER_ROW)
 
         # the manufacturer name for DIAGEO is 'Diageo' by default. We need to redefine this for DiageoCO
-        self.global_gen.tool_box.DIAGEO = 'DIAGEO'
-        self.global_gen.diageo_global_assortment_function()
+        self.diageo_generator.tool_box.DIAGEO = 'DIAGEO'
+
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.common_v2.save_json_to_new_tables(assortment_res_dict)
+
+        # Menu kpis
+        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function()
+        self.common_v2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             set_score = 0
@@ -75,26 +82,26 @@ class DIAGEOCOToolBox:
                 self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
             if set_name == 'Secondary Displays':
-                result = self.global_gen.diageo_global_secondary_display_secondary_function()
+                result = self.diageo_generator.diageo_global_secondary_display_secondary_function()
                 if result:
                     self.common_v2.write_to_db_result(**result)
                 set_score = self.tools.calculate_assortment(assortment_entity='scene_id', location_type='Secondary Shelf')
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
             elif set_name == 'Brand Pouring':
-                results_list = self.global_gen.diageo_global_brand_pouring_status_function(
+                results_list = self.diageo_generator.diageo_global_brand_pouring_status_function(
                     self.set_templates_data[set_name])
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_brand_pouring_sets(set_name)
 
             elif set_name == 'Brand Blocking':
-                results_list = self.global_gen.diageo_global_block_together(set_name,
+                results_list = self.diageo_generator.diageo_global_block_together(set_name,
                                                                             self.set_templates_data[set_name])
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_block_together_sets(set_name)
 
             elif set_name == 'Relative Position':
-                results_list = self.global_gen.diageo_global_relative_position_function(self.set_templates_data[set_name])
+                results_list = self.diageo_generator.diageo_global_relative_position_function(self.set_templates_data[set_name])
                 self.save_results_to_db(results_list)
                 set_score = self.calculate_relative_position_sets(set_name)
 
@@ -107,7 +114,7 @@ class DIAGEOCOToolBox:
                 store_attribute = 'additional_attribute_2'
                 template = self.set_templates_data[set_name].fillna(method='ffill').set_index(
                     self.set_templates_data[set_name].keys()[0])
-                results_list = self.global_gen.diageo_global_touch_point_function(template=template,
+                results_list = self.diageo_generator.diageo_global_touch_point_function(template=template,
                                                                                   old_tables=True, new_tables=False,
                                                                                   store_attribute=store_attribute)
                 self.save_results_to_db(results_list)

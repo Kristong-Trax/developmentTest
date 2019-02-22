@@ -22,6 +22,7 @@ STORE_ASSORTMENT_TABLE = 'pservice.custom_osa'
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
 
+
 class BATRU_SANDGENERALToolBox:
 
     STORE_NUMBER = 'Store Number'
@@ -79,7 +80,8 @@ class BATRU_SANDGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = BATRU_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = BATRU_SANDPositionGraphs(
+                self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -87,9 +89,11 @@ class BATRU_SANDGENERALToolBox:
         if not hasattr(self, '_match_product_in_scene'):
             self._match_product_in_scene = self.position_graphs.match_product_in_scene
             if self.front_facing:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['front_facing'] == 'Y']
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['front_facing'] == 'Y']
             if self.ignore_stacking:
-                self._match_product_in_scene = self._match_product_in_scene[self._match_product_in_scene['stacking_layer'] == 1]
+                self._match_product_in_scene = self._match_product_in_scene[
+                    self._match_product_in_scene['stacking_layer'] == 1]
         return self._match_product_in_scene
 
     def get_survey_answer(self, survey_data, answer_field=None):
@@ -131,7 +135,8 @@ class BATRU_SANDGENERALToolBox:
             Log.warning('Survey with {} = {} doesn\'t exist'.format(entity, value))
             return None
         answer_field = 'selected_option_text' if not survey_data['selected_option_text'].empty else 'number_value'
-        target_answers = [target_answer] if not isinstance(target_answer, (list, tuple)) else target_answer
+        target_answers = [target_answer] if not isinstance(
+            target_answer, (list, tuple)) else target_answer
         survey_answers = survey_data[answer_field].values.tolist()
         for answer in target_answers:
             if answer in survey_answers:
@@ -147,7 +152,8 @@ class BATRU_SANDGENERALToolBox:
             if set(filters.keys()).difference(self.scenes_info.keys()):
                 scene_data = self.scif[self.get_filter_condition(self.scif, **filters)]
             else:
-                scene_data = self.scenes_info[self.get_filter_condition(self.scenes_info, **filters)]
+                scene_data = self.scenes_info[self.get_filter_condition(
+                    self.scenes_info, **filters)]
         else:
             scene_data = self.scenes_info
         number_of_scenes = len(scene_data['scene_fk'].unique().tolist())
@@ -159,7 +165,8 @@ class BATRU_SANDGENERALToolBox:
         :return: Total number of SKUs facings appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(
+                self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if self.facings_field in filtered_df.columns:
@@ -177,7 +184,7 @@ class BATRU_SANDGENERALToolBox:
         posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
                                     right_on='scene_fk')
         if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
+            Log.debug('scene item fact/ match display in scene is empty')
             return 0
         filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
         availability = len(filtered_df)
@@ -192,7 +199,7 @@ class BATRU_SANDGENERALToolBox:
         posm_scif = self.scif.merge(match_display_in_scene, how='left', left_on='scene_id',
                                     right_on='scene_fk')
         if posm_scif.empty:
-            Log.warning('scene item fact/ match display in scene is empty')
+            Log.debug('scene item fact/ match display in scene is empty')
             return 0
         if filters:
             filtered_df = self.scif[self.get_filter_condition(posm_scif, **filters)]
@@ -209,7 +216,8 @@ class BATRU_SANDGENERALToolBox:
         :return: Number of unique SKUs appeared in the filtered Scene Item Facts data frame.
         """
         if set(filters.keys()).difference(self.scif.keys()):
-            filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+            filtered_df = self.match_product_in_scene[self.get_filter_condition(
+                self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
         if minimum_assortment_for_entity == 1:
@@ -239,7 +247,8 @@ class BATRU_SANDGENERALToolBox:
         subset_filter = self.get_filter_condition(self.scif, **sos_filters)
 
         try:
-            ratio = self.k_engine.calculate_sos_by_facings(pop_filter=pop_filter, subset_filter=subset_filter)
+            ratio = self.k_engine.calculate_sos_by_facings(
+                pop_filter=pop_filter, subset_filter=subset_filter)
         except:
             ratio = 0
 
@@ -271,7 +280,8 @@ class BATRU_SANDGENERALToolBox:
         :param filters: These are the parameters which the data frame is filtered by.
         :return: The total shelf width (in mm) the relevant facings occupy.
         """
-        filtered_matches = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
+        filtered_matches = self.match_product_in_scene[self.get_filter_condition(
+            self.match_product_in_scene, **filters)]
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
 
@@ -292,7 +302,8 @@ class BATRU_SANDGENERALToolBox:
             for shelf in matches['shelf_number'].unique():
                 shelf_matches = matches[matches['shelf_number'] == shelf]
                 if not shelf_matches.empty:
-                    shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
+                    shelf_matches = shelf_matches.sort_values(
+                        by=['bay_number', 'facing_sequence_number'])
                     edge_facings = edge_facings.append(shelf_matches.iloc[0])
                     if len(edge_facings) > 1:
                         edge_facings = edge_facings.append(shelf_matches.iloc[-1])
@@ -335,7 +346,8 @@ class BATRU_SANDGENERALToolBox:
             else:
                 Log.error('Eye-level configurations are not set up')
                 return False
-        number_of_products = len(self.all_products[self.get_filter_condition(self.all_products, **filters)]['product_ean_code'])
+        number_of_products = len(self.all_products[self.get_filter_condition(
+            self.all_products, **filters)]['product_ean_code'])
         min_shelf, max_shelf, min_ignore, max_ignore = eye_level_configurations.columns
         number_of_eye_level_scenes = 0
         for scene in relevant_scenes:
@@ -352,17 +364,18 @@ class BATRU_SANDGENERALToolBox:
                     configuration = {min_ignore: 0, max_ignore: 0}
                 min_include = configuration[min_ignore] + 1
                 max_include = number_of_shelves - configuration[max_ignore]
-                eye_level_shelves = bay_matches[bay_matches['shelf_number'].between(min_include, max_include)]
+                eye_level_shelves = bay_matches[bay_matches['shelf_number'].between(
+                    min_include, max_include)]
                 eye_level_facings = eye_level_facings.append(eye_level_shelves)
             eye_level_assortment = len(eye_level_facings[
-                                           self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
+                self.get_filter_condition(eye_level_facings, **filters)]['product_ean_code'])
             if min_number_of_products == self.ALL:
                 min_number_of_products = number_of_products
             if eye_level_assortment >= min_number_of_products:
                 number_of_eye_level_scenes += 1
         return number_of_eye_level_scenes, len(relevant_scenes)
 
-    def shelf_level_assortment(self, min_number_of_products ,shelf_target, strict=True, **filters):
+    def shelf_level_assortment(self, min_number_of_products, shelf_target, strict=True, **filters):
         filters, relevant_scenes = self.separate_location_filters_from_product_filters(**filters)
         if len(relevant_scenes) == 0:
             relevant_scenes = self.scif['scene_fk'].unique().tolist()
@@ -379,8 +392,8 @@ class BATRU_SANDGENERALToolBox:
                     bay_matches['product_ean_code'].isin(number_of_products))]
                 eye_level_facings = eye_level_facings.append(products_in_target_shelf)
             eye_level_assortment = len(eye_level_facings[
-                                           self.get_filter_condition(eye_level_facings, **filters)][
-                                           'product_ean_code'])
+                self.get_filter_condition(eye_level_facings, **filters)][
+                'product_ean_code'])
             if eye_level_assortment >= min_number_of_products:
                 result = 1
         return result
@@ -412,7 +425,8 @@ class BATRU_SANDGENERALToolBox:
             filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
             scenes = set(filtered_scif['scene_id'].unique())
             for filters in sequence_filters:
-                scene_for_filters = filtered_scif[self.get_filter_condition(filtered_scif, **filters)]['scene_id'].unique()
+                scene_for_filters = filtered_scif[self.get_filter_condition(
+                    filtered_scif, **filters)]['scene_id'].unique()
                 scenes = scenes.intersection(scene_for_filters)
                 if not scenes:
                     Log.debug('None of the scenes include products from all types relevant for sequence')
@@ -454,7 +468,8 @@ class BATRU_SANDGENERALToolBox:
         filtered_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
         reversed_scene_graph = graph.copy()
-        edges_to_remove = reversed_scene_graph.es.select(direction_ne=self._reverse_direction(direction))
+        edges_to_remove = reversed_scene_graph.es.select(
+            direction_ne=self._reverse_direction(direction))
         reversed_scene_graph.delete_edges([edge.index for edge in edges_to_remove])
 
         vertices_list = []
@@ -582,7 +597,8 @@ class BATRU_SANDGENERALToolBox:
             direction_data.append({'top': (0, 1), 'bottom': (0, 1)})
             direction_data.append({'right': (0, 1), 'left': (0, 1)})
         else:
-            direction_data.append({'top': (0, 1), 'bottom': (0, 1), 'right': (0, 1), 'left': (0, 1)})
+            direction_data.append({'top': (0, 1), 'bottom': (0, 1),
+                                   'right': (0, 1), 'left': (0, 1)})
         is_proximity = self.calculate_relative_position(tested_filters, anchor_filters, direction_data,
                                                         min_required_to_pass=1, **general_filters)
         return not is_proximity
@@ -601,8 +617,10 @@ class BATRU_SANDGENERALToolBox:
         :return: True if (at least) one pair of relevant SKUs fits the distance requirements; otherwise - returns False.
         """
         filtered_scif = self.scif[self.get_filter_condition(self.scif, **general_filters)]
-        tested_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **tested_filters)]['scene_id'].unique()
-        anchor_scenes = filtered_scif[self.get_filter_condition(filtered_scif, **anchor_filters)]['scene_id'].unique()
+        tested_scenes = filtered_scif[self.get_filter_condition(
+            filtered_scif, **tested_filters)]['scene_id'].unique()
+        anchor_scenes = filtered_scif[self.get_filter_condition(
+            filtered_scif, **anchor_filters)]['scene_id'].unique()
         relevant_scenes = set(tested_scenes).intersection(anchor_scenes)
 
         if relevant_scenes:
@@ -615,7 +633,8 @@ class BATRU_SANDGENERALToolBox:
                 for tested_vertex in tested_vertices:
                     for anchor_vertex in anchor_vertices:
                         moves = {'top': 0, 'bottom': 0, 'left': 0, 'right': 0}
-                        path = scene_graph.get_shortest_paths(anchor_vertex, tested_vertex, output='epath')
+                        path = scene_graph.get_shortest_paths(
+                            anchor_vertex, tested_vertex, output='epath')
                         if path:
                             path = path[0]
                             for edge in path:
@@ -643,7 +662,8 @@ class BATRU_SANDGENERALToolBox:
         vertices_indexes = None
         for field in filters.keys():
             field_vertices = set()
-            values = filters[field] if isinstance(filters[field], (list, tuple)) else [filters[field]]
+            values = filters[field] if isinstance(
+                filters[field], (list, tuple)) else [filters[field]]
             for value in values:
                 vertices = [v.index for v in graph.vs.select(**{field: value})]
                 field_vertices = field_vertices.union(vertices)
@@ -651,7 +671,8 @@ class BATRU_SANDGENERALToolBox:
                 vertices_indexes = field_vertices
             else:
                 vertices_indexes = vertices_indexes.intersection(field_vertices)
-        vertices_indexes = vertices_indexes if vertices_indexes is not None else [v.index for v in graph.vs]
+        vertices_indexes = vertices_indexes if vertices_indexes is not None else [
+            v.index for v in graph.vs]
         if self.front_facing:
             front_facing_vertices = [v.index for v in graph.vs.select(front_facing='Y')]
             vertices_indexes = set(vertices_indexes).intersection(front_facing_vertices)
@@ -662,13 +683,15 @@ class BATRU_SANDGENERALToolBox:
         """
         This function checks whether the distance between the anchor and the tested SKUs fits the requirements.
         """
-        direction_data = direction_data if isinstance(direction_data, (list, tuple)) else [direction_data]
+        direction_data = direction_data if isinstance(
+            direction_data, (list, tuple)) else [direction_data]
         validated = False
         for data in direction_data:
             data_validated = True
             for direction in moves.keys():
                 allowed_moves = data.get(direction, (0, 0))
-                min_move, max_move = allowed_moves if isinstance(allowed_moves, tuple) else (0, allowed_moves)
+                min_move, max_move = allowed_moves if isinstance(
+                    allowed_moves, tuple) else (0, allowed_moves)
                 if not min_move <= moves[direction] <= max_move:
                     data_validated = False
                     break
@@ -703,7 +726,8 @@ class BATRU_SANDGENERALToolBox:
 
             relevant_vertices = set(self.filter_vertices_from_graph(scene_graph, **filters))
             if allowed_products_filters:
-                allowed_vertices = self.filter_vertices_from_graph(scene_graph, **allowed_products_filters)
+                allowed_vertices = self.filter_vertices_from_graph(
+                    scene_graph, **allowed_products_filters)
             else:
                 allowed_vertices = set()
 
@@ -715,12 +739,14 @@ class BATRU_SANDGENERALToolBox:
             vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
             scene_graph.delete_vertices(vertices_to_remove)
             # removing clusters including 'allowed' SKUs only
-            clusters = [cluster for cluster in scene_graph.clusters() if set(cluster).difference(allowed_vertices)]
+            clusters = [cluster for cluster in scene_graph.clusters() if set(
+                cluster).difference(allowed_vertices)]
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
                 if len(new_relevant_vertices) > 0:
-                    cluster_ratio = len(relevant_vertices_in_cluster) / float(len(new_relevant_vertices))
+                    cluster_ratio = len(relevant_vertices_in_cluster) / \
+                        float(len(new_relevant_vertices))
                 else:
                     cluster_ratio = 0
                 cluster_ratios.append(cluster_ratio)
@@ -759,7 +785,7 @@ class BATRU_SANDGENERALToolBox:
         if not include_empty:
             filters['product_type'] = ('Empty', self.EXCLUDE_FILTER)
         if filters and shelf_matches[self.get_filter_condition(shelf_matches, **filters)].empty:
-            Log.info("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
+            Log.debug("Products of '{}' are not tagged in shelf number {}".format(filters, shelf_number))
             return None
         shelf_matches = shelf_matches.sort_values(by=['bay_number', 'facing_sequence_number'])
         shelf_matches = shelf_matches.drop_duplicates(subset=['product_ean_code'])
@@ -812,7 +838,7 @@ class BATRU_SANDGENERALToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                Log.debug('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 
@@ -825,7 +851,8 @@ class BATRU_SANDGENERALToolBox:
         for field in filters.keys():
             if field not in self.all_products.columns and field in self.scif.columns:
                 location_filters[field] = filters.pop(field)
-        relevant_scenes = self.scif[self.get_filter_condition(self.scif, **location_filters)]['scene_id'].unique()
+        relevant_scenes = self.scif[self.get_filter_condition(
+            self.scif, **location_filters)]['scene_id'].unique()
         return filters, relevant_scenes
 
     @staticmethod
@@ -842,7 +869,7 @@ class BATRU_SANDGENERALToolBox:
             try:
                 output = pd.read_excel(file_path, sheetname=sheet_name, skiprows=skiprows)
             except xlrd.biffh.XLRDError:
-                Log.warning('Sheet name {} doesn\'t exist'.format(sheet_name))
+                Log.debug('Sheet name {} doesn\'t exist'.format(sheet_name))
                 return None
             output = output.to_json(orient='records')
             output = json.loads(output)
@@ -881,13 +908,13 @@ class BATRU_SANDGENERALToolBox:
         valid_stores = stores.loc[stores['store_number'].isin(raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
             print "Those stores don't exist in the DB: {}".format(list(set(raw_data[OUTLET_ID].unique()) -
-                                                                         set(valid_stores['store_number'])))
+                                                                       set(valid_stores['store_number'])))
             return False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
             print "Those products don't exist in the DB: {}".format(list(set(raw_data[EAN_CODE].unique()) -
-                                                                           set(valid_product[EAN_CODE])))
+                                                                         set(valid_product[EAN_CODE])))
             return False
 
         return True
@@ -914,11 +941,11 @@ class BATRU_SANDGENERALToolBox:
         missing_products = set()
         store_number = data.keys()[0]
         if store_number is None:
-            Log.warning("'{}' is required in data".format(self.STORE_NUMBER))
+            Log.debug("'{}' is required in data".format(self.STORE_NUMBER))
             return
         store_fk = self.get_store_fk(store_number)
         if store_fk is None:
-            Log.warning('Store {} does not exist. Exiting...'.format(store_number))
+            Log.debug('Store {} does not exist. Exiting...'.format(store_number))
             return
         for key in data[store_number]:
             validation = False
@@ -930,12 +957,12 @@ class BATRU_SANDGENERALToolBox:
                 product_ean_code = str(key).split(',')[-1]
                 product_fk = self.get_product_fk(product_ean_code)
                 if product_fk is None:
-                    Log.warning('Product EAN {} does not exist'.format(product_ean_code))
+                    Log.debug('Product EAN {} does not exist'.format(product_ean_code))
                     missing_products.add(product_ean_code)
                     continue
                 products.add(product_fk)
         if missing_products and not discard_missing_products:
-            Log.warning('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
+            Log.debug('Some EANs do not exist: {}. Exiting...'.format('; '.join(missing_products)))
             return
         if products:
             current_date = datetime.now().date()
@@ -946,19 +973,21 @@ class BATRU_SANDGENERALToolBox:
                 deactivate_date = current_date
                 activate_date = current_date + timedelta(1)
             queries = []
-            current_skus = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
+            current_skus = self.current_top_skus[self.current_top_skus['store_fk']
+                                                 == store_fk]['product_fk'].tolist()
             products_to_deactivate = set(current_skus).difference(products)
             products_to_activate = set(products).difference(current_skus)
             # for product_fk in products_to_deactivate:
             if products_to_deactivate:
-                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), deactivate_date))
+                queries.append(self.get_deactivation_query(
+                    store_fk, tuple(products_to_deactivate), deactivate_date))
             for product_fk in products_to_activate:
                 queries.append(self.get_activation_query(store_fk, product_fk, activate_date))
             self.all_queries.extend(queries)
-            Log.info('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
+            Log.debug('{} - Out of {} products, {} products were deactivated and {} products were activated'.format(
                 store_number, len(products), len(products_to_deactivate), len(products_to_activate)))
         else:
-            Log.info('{} - No products are configured as Top SKUs'.format(store_number))
+            Log.debug('{} - No products are configured as Top SKUs'.format(store_number))
 
     @property
     def current_top_skus(self):
@@ -1006,7 +1035,8 @@ class BATRU_SANDGENERALToolBox:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
+            product_fk = self.product_data[self.product_data['product_ean_code']
+                                           == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk
@@ -1054,7 +1084,7 @@ class BATRU_SANDGENERALToolBox:
                 cur.execute(query)
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = PSProjectConnector('batru_sand', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()
@@ -1068,7 +1098,7 @@ class BATRU_SANDGENERALToolBox:
                 cur.execute(query)
                 print query
             except Exception as e:
-                Log.info('Inserting to DB failed due to: {}'.format(e))
+                Log.debug('Inserting to DB failed due to: {}'.format(e))
                 rds_conn.disconnect_rds()
                 rds_conn = PSProjectConnector('batru_sand', DbUsers.CalculationEng)
                 cur = rds_conn.db.cursor()

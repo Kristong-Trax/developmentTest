@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'diageous'
     sessions = [
-        "F4F21DE9-5A5F-4F7A-A8B0-423134314B20",
+        "02AB9531-BEEF-4D13-BE09-F5D37F13DD8D",
     ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)

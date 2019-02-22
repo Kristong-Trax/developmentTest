@@ -14,6 +14,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.CBCIL.Utils.Fetcher import CBCILCBCIL_Queries
 from Projects.CBCIL.Utils.GeneralToolBox import CBCILCBCIL_GENERALToolBox
 from Projects.CBCIL.Utils.ParseTemplates import parse_template
+from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils.DB.Common import Common
 
 __author__ = 'Israel'
@@ -88,6 +89,9 @@ class CBCILCBCIL_ToolBox(object):
     BLOCK_BY_BOTTOM_SHELF = 'Block by bottom shelf'
     SURVEY = 'Survey'
 
+    TOTAL_SCORE = 'Total Score'
+    CBCIL = 'Central Bottling Company'
+
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
@@ -126,6 +130,9 @@ class CBCILCBCIL_ToolBox(object):
         self.additional_attribute_1 = self.store_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').tolist()
         self.template_data = self.kpis_data[(self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
                                             (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
+
+        self.common = Common(self.data_provider)
+        self.cbcil_id = self.get_own_manufacturer_pk()
 
     def get_kpi_static_data(self):
         """
@@ -191,7 +198,11 @@ class CBCILCBCIL_ToolBox(object):
             kpis_without_score={}
             all_kpis_in_set=[]
 
+            identifier_result_set = self.get_identifier_result_set()
+
             for kpi in kpis:
+                identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
+
                 atomics = self.template_data[self.template_data[self.KPI_NAME] == kpi]
                 scores = []
 
@@ -242,6 +253,11 @@ class CBCILCBCIL_ToolBox(object):
                         if score == 0:
                             self.add_gap(atomic)
 
+                        atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
+                        self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
+                                                       denominator_id=self.store_id, identifier_parent=identifier_result_kpi,
+                                                       result=score, score=score, should_enter=True)
+
                     scores.append((score, atomic_weight))
 
                 kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi]['kpi_fk'].values[0]
@@ -278,12 +294,55 @@ class CBCILCBCIL_ToolBox(object):
                 kpi_scores[kpi['kpi_fk']] = kpi_score
                 self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']], float(kpi['denominator_weight']) * 100)
 
+                kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
+                kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
+                self.common.write_to_db_result(fk=kpi_lvl_2_fk,  numerator_id=self.cbcil_id, denominator_id=self.store_id,
+                                               identifier_parent=identifier_result_set, identifier_result=identifier_res_kpi_2,
+                                               weight=float(kpi['denominator_weight']) * 100, score=kpi_scores[kpi['kpi_fk']],
+                                               should_enter=True, result=kpi_scores[kpi['kpi_fk']])
+
             final_score = sum([score for score in kpi_scores.values()])
             set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]['kpi_set_fk'].values[0]
             self.write_to_db_result(set_fk, self.LEVEL1, final_score)
             self.write_gaps_to_db()
-            self.commit_results_data()
 
+            total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
+            self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=final_score,
+                                           score=final_score, should_enter=True)
+
+            self.commit_results_data()
+            self.common.commit_results_data()
+
+    #--------new tables functionality--------#
+    def get_own_manufacturer_pk(self):
+        query = CBCILCBCIL_Queries.get_manufacturer_pk_by_name(self.CBCIL)
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        cbcil_pk = query_result['pk'].values[0]
+        return cbcil_pk
+
+    def get_identifier_result_set(self):
+        kpi_name = self.TOTAL_SCORE
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_name),
+                                                       manufacturer_id=self.cbcil_id, store_id=self.store_id)
+        return identifier_result
+
+    def get_identifier_result_kpi_by_name(self, kpi_type):
+        identifier_result = self.common.get_dictionary(kpi_fk=self.common.get_kpi_fk_by_kpi_type(kpi_type),
+                                                       manufacturer_id=self.cbcil_id, store_id=self.store_id)
+        return identifier_result
+
+    def get_identifier_result_kpi_by_pk(self, kpi_fk):
+        identifier_result = self.common.get_dictionary(kpi_fk=kpi_fk, manufacturer_id=self.cbcil_id,
+                                                       store_id=self.store_id)
+        return identifier_result
+
+    def get_kpi_name_by_pk(self, kpi_pk):
+        kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == kpi_pk]['kpi_name'].values[0]
+        return kpi_name
+
+    #-------- existing calculations----------#
     @staticmethod
     def combine_kpi_details(kpi_fk, scores, denominator_weight):
         kpi_details = {}
@@ -360,11 +419,11 @@ class CBCILCBCIL_ToolBox(object):
         params = general_filters['filters']
         filters = params['2'].copy()
         try:
-            survey_question = int(filters.get('question_id')[0])
+            survey_question = str(int(filters.get('question_id')[0]))
         except:
-            survey_question = 0
+            survey_question = str(0)
         target_answers = general_filters[self.TARGET].split(self.SEPARATOR)
-        survey_answer = self.tools.get_survey_answer(('question_fk', [survey_question]))
+        survey_answer = self.tools.get_survey_answer(('code', [survey_question]))
         if survey_answer:
             return 100 if survey_answer.strip() in target_answers else False
         else:

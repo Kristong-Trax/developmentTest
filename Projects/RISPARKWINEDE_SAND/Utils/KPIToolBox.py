@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
+from KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider import PSAssortmentDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
-from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils.Calculations.Assortment import Assortment
 from Projects.RISPARKWINEDE_SAND.Utils.Fetcher import RISPARKWINEDEQueries
 from Projects.RISPARKWINEDE_SAND.Utils.GeneralToolBox import RISPARKWINEDEGENERALToolBox
@@ -58,7 +58,7 @@ class RISPARKWINEDEToolBox:
         self.tools = RISPARKWINEDEGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.New_kpi_static_data = self.get_new_kpi_static_data()
         self.kpi_results_new_tables_queries = []
-        self.store_assortment = PsDataProvider(self.data_provider, self.output).get_store_assortment()
+        self.store_assortment = PSAssortmentDataProvider(self.data_provider).execute()
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.current_date = datetime.now()
         self.assortment = Assortment(self.data_provider, self.output)
@@ -100,7 +100,8 @@ class RISPARKWINEDEToolBox:
         lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         for result in lvl2_result.itertuples():
             denominator_res = result.total
-            if result.target is not None and result.group_target_date > self.current_date:
+            if not pd.isnull(result.target) and not pd.isnull(
+                    result.group_target_date) and result.group_target_date <= self.current_date:
                 denominator_res = result.target
             res = np.divide(float(result.passes), float(denominator_res)) * 100
             if res >= 100:

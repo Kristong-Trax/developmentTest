@@ -34,12 +34,3 @@ class MARSRU_SANDJSONGenerator:
             self.project_kpi_dict[key] = \
                 json.loads(pd.read_excel(os.path.join(self.base_path, file_name))
                            .to_json(orient='records'))
-
-
-
-
-
-
-
-
-

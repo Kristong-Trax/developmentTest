@@ -26,8 +26,8 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'tsingtaobeercn'
     data_provider = KEngineDataProvider(project_name)
-    session = '287243b3-44f7-4b44-bcdb-487fe3aebc77'
-    for scene in [11636,11639,11647]:
+    session = 'F0805C8C-23D4-4F50-8B5B-738181F0468F'
+    for scene in [75100,75162,75168]:
         print('Calculating scene id: ' + str(scene))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_scene_data(session, scene)

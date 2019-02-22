@@ -8,9 +8,11 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOAR_SAND.Utils.Fetcher import DIAGEOARQueries
-from Projects.DIAGEOAR_SAND.Utils.GeneralToolBox import DIAGEOARGENERALToolBox
-from Projects.DIAGEOAR_SAND.Utils.ToolBox import DIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Yasmin'
 
@@ -58,7 +60,6 @@ class DIAGEOARToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.tools = DIAGEOARGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
@@ -68,11 +69,11 @@ class DIAGEOARToolBox:
         self.scores = {self.LEVEL1: {},
                        self.LEVEL2: {},
                        self.LEVEL3: {}}
-        self.tools = DIAGEOToolBox(self.data_provider, output,
-                                           kpi_static_data=self.kpi_static_data,
-                                           match_display_in_scene=self.match_display_in_scene)
-
-
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.tools = DIAGEOToolBox(self.data_provider, output, match_display_in_scene=self.match_display_in_scene)
+        self.kpi_results_queries = []
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
 
     def get_kpi_static_data(self):
@@ -80,7 +81,7 @@ class DIAGEOARToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOARQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -89,41 +90,64 @@ class DIAGEOARToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOARQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        set_score = 0
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global assortment kpis
+        assortment_res_dict = DIAGEOGenerator(self.data_provider, self.output,
+                                              self.common).diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
-        # if set_name in ('MPA', 'New Products',):
-        #     set_score = self.calculate_assortment_sets(set_name)
+        for set_name in set_names:
+            set_score = 0
+            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_name in ('Visible to Consumer %', 'Visible to Customer'):
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
 
-        elif set_name in ('Relative Position'):
-            # since migration is imminent, we aren't using self.tools within the project folder
-            set_score = self.calculate_relative_position_sets(set_name)
+            # Global Visible to Customer / Visible to Consumer
+            if set_name in ('Visible to Consumer %', 'Visible to Customer'):
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+                self.commonV2.save_json_to_new_tables(res_dict)
 
-        else:
-            return
+                # Saving to old tables
+                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                self.save_level2_and_level3(set_name, set_name, set_score)
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            # Global relative position
+            elif set_name in ('Relative Position'):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(
+                            self.set_templates_data[set_name], location_type='template_display_name')
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-        return
+                self.commonV2.save_json_to_new_tables(res_dict)
+
+                # since migration is imminent, we aren't using self.tools within the project folder
+                set_score = self.calculate_relative_position_sets(set_name)
+
+            # elif set_name in ('MPA', 'New Products',):
+            #     set_score = self.calculate_assortment_sets(set_name)
+
+            else:
+                continue
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # commiting to new tables
+        self.commonV2.commit_results_data()
 
     def calculate_relative_position_sets(self, set_name):
         """
@@ -138,7 +162,7 @@ class DIAGEOARToolBox:
                                   'bottom': self._get_direction_for_relative_position(params.get(self.tools.BOTTOM_DISTANCE)),
                                   'left': self._get_direction_for_relative_position(params.get(self.tools.LEFT_DISTANCE)),
                                   'right': self._get_direction_for_relative_position(params.get(self.tools.RIGHT_DISTANCE))}
-                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                general_filters = {'template_display_name': params.get(self.tools.LOCATION)}
                 result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data, **general_filters)
                 score = 1 if result else 0
                 scores.append(score)
@@ -298,7 +322,7 @@ class DIAGEOARToolBox:
         """
         insert_queries = self.merge_insert_queries(self.kpi_results_queries)
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOARQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in insert_queries:

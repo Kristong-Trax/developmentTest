@@ -9,8 +9,11 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
-from Projects.DIAGEOPT_SAND.Utils.Fetcher import DIAGEOPT_SANDQueries
-from Projects.DIAGEOPT_SAND.Utils.ToolBox import DIAGEOPT_SANDDIAGEOToolBox
+from KPIUtils.DIAGEO.ToolBox import DIAGEOToolBox
+from KPIUtils.GlobalProjects.DIAGEO.Utils.Fetcher import DIAGEOQueries
+from KPIUtils.GlobalProjects.DIAGEO.KPIGenerator import DIAGEOGenerator
+from KPIUtils.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 __author__ = 'Nimrod'
 
@@ -38,6 +41,8 @@ class DIAGEOPT_SANDToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
     ACTIVATION_STANDARD = 'Activation Standard'
+    DIAGEO_MANUFACTURER = 'Diageo'
+
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsScript(data_provider, output)
@@ -62,18 +67,22 @@ class DIAGEOPT_SANDToolBox:
         self.match_display_in_scene = self.get_match_display()
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
-        self.tools = DIAGEOPT_SANDDIAGEOToolBox(self.data_provider, output,
-                                                kpi_static_data=self.kpi_static_data,
-                                                match_display_in_scene=self.match_display_in_scene)
         self.set_scores = {}
         self.kpi_scores = {}
         self.kpi_results_queries = []
+
+        self.output = output
+        self.common = Common(self.data_provider)
+        self.commonV2 = CommonV2(self.data_provider)
+        self.tools = DIAGEOToolBox(self.data_provider, output,
+                                   match_display_in_scene=self.match_display_in_scene)
+        self.diageo_generator = DIAGEOGenerator(self.data_provider, self.output, self.common)
 
     def get_business_unit(self):
         """
         This function returns the session's business unit (equal to store type for some KPIs)
         """
-        query = DIAGEOPT_SANDQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
+        query = DIAGEOQueries.get_business_unit_data(self.store_info['store_fk'].values[0])
         business_unit = pd.read_sql_query(query, self.rds_conn.db)['name']
         if not business_unit.empty:
             return business_unit.values[0]
@@ -85,7 +94,7 @@ class DIAGEOPT_SANDToolBox:
         This function extracts the static KPI data and saves it into one global data frame.
         The data is taken from static.kpi / static.atomic_kpi / static.kpi_set.
         """
-        query = DIAGEOPT_SANDQueries.get_all_kpi_data()
+        query = DIAGEOQueries.get_all_kpi_data()
         kpi_static_data = pd.read_sql_query(query, self.rds_conn.db)
         return kpi_static_data
 
@@ -94,39 +103,85 @@ class DIAGEOPT_SANDToolBox:
         This function extracts the display matches data and saves it into one global data frame.
         The data is taken from probedata.match_display_in_scene.
         """
-        query = DIAGEOPT_SANDQueries.get_match_display(self.session_uid)
+        query = DIAGEOQueries.get_match_display(self.session_uid)
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_name):
+    def main_calculation(self, set_names):
         """
         This function calculates the KPI results.
         """
-        if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-            self.set_templates_data[set_name] = self.tools.download_template(set_name)
+        # Global assortment kpis
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        total_scores_dict = []
+        # saving in dictionary for  activation standard use
+        if assortment_res_dict:
+            total_scores_dict.append(assortment_res_dict)
+        for set_name in set_names:
+            set_score = 0
 
-        if set_name in ('MPA products availability', 'New Products Availability'):
-            set_score = self.calculate_assortment_sets(set_name)
-        elif set_name == 'POSM':
-            set_score = self.calculate_posm_sets(set_name)
-        elif set_name == 'Visible to Consumer %':
-            filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        elif set_name == 'Secondary Displays':
-            set_score = self.tools.calculate_number_of_scenes(location_type='Secondary Shelf')
-            self.save_level2_and_level3(set_name, set_name, set_score)
-        else:
-            return
+            # if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
+            #     self.set_templates_data[set_name] = self.tools.download_template(set_name)
 
-        if set_score == 0:
-            pass
-        elif set_score is False:
-            return
+            if set_name in ('Visible to Customer', 'Visible to Consumer %'):
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
 
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        self.set_scores[set_fk] = set_score
-        self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+                if res_dict:
+
+                    #saving in dictionary for  activation standard use
+                    total_scores_dict.append(res_dict)
+
+                    # Saving to new tables
+                    parent_res = res_dict[-1]
+                    self.commonV2.save_json_to_new_tables(res_dict)
+
+                    # Saving to old tables
+                    set_score = result = parent_res['result']
+                    self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
+
+            elif set_name in ('Secondary Displays', 'Secondary'):
+                # Global function
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # saving in dictionary for  activation standard use
+                    total_scores_dict.append(res_json)
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
+                    # Saving to old tables
+                    set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                    self.save_level2_and_level3(set_name, set_name, set_score)
+
+            elif set_name in ('Activation Standard'):
+                manufacturer_fk = self.all_products[self.all_products['manufacturer_name'] == self.DIAGEO_MANUFACTURER]['manufacturer_fk'].values[0]
+                self.set_templates_data[set_name] = self.tools.download_template(set_name)
+                results_list = self.diageo_generator.diageo_global_activation_standard_function(total_scores_dict,
+                                                                                          self.set_templates_data[set_name], self.store_id
+                                                                                          ,manufacturer_fk)
+
+                for result in results_list['old_tables_level2and3']:
+                    self.save_level2_and_level3(result['kpi_set_name'], result['kpi_name'], result['score'])
+
+                # saving results to old table
+                self.write_to_db_result(results_list['old_tables_level1']['fk'], results_list['old_tables_level1']['score'], results_list['old_tables_level1']['level'])
+                res_json = results_list['new_tables_result']
+                # saving results to new tables
+                self.commonV2.save_json_to_new_tables(res_json)
+
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+            if set_name not in ('Activation Standard'):
+                set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+                self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        # committing to new tables
+        self.commonV2.commit_results_data()
         return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
@@ -292,7 +347,8 @@ class DIAGEOPT_SANDToolBox:
                                                'score_2', 'kpi_set_fk'])
 
         elif level == self.LEVEL2:
-            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'", "\\'")
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0].replace("'",
+                                                                                                                "\\'")
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -317,7 +373,7 @@ class DIAGEOPT_SANDToolBox:
         This function writes all KPI results to the DB, and commits the changes.
         """
         cur = self.rds_conn.db.cursor()
-        delete_queries = DIAGEOPT_SANDQueries.get_delete_session_results_query(self.session_uid)
+        delete_queries = DIAGEOQueries.get_delete_session_results_query_old_tables(self.session_uid)
         for query in delete_queries:
             cur.execute(query)
         for query in self.kpi_results_queries:

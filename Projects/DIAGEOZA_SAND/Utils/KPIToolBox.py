@@ -98,17 +98,6 @@ class DIAGEOZASANDToolBox:
 
         for set_name in set_names:
             set_score = 0
-            if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
-                self.set_templates_data[set_name] = self.tools.download_template(set_name)
-
-            # if set_name in ('MPA', 'New Products',):  todo: delete after the migration is done
-            #     set_score = self.calculate_assortment_sets(set_name)
-            # elif set_name in ('POSM',):  todo: delete after the migration is done
-            #     set_score = self.calculate_posm_sets(set_name)
-            # if set_name == 'Visible to Customer':   todo: delete after the migration is done
-            #     filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-            #     set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-            #     self.save_level2_and_level3(set_name, set_name, set_score)
 
             if set_name in ('Visible to Customer', 'Visible to Consumer %'):
                 # Global function
@@ -121,10 +110,9 @@ class DIAGEOZASANDToolBox:
                     self.commonV2.save_json_to_new_tables(res_dict)
 
                     # Saving to the old tables
-                    result = parent_res['result']
+                    set_score = result = parent_res['result']
                     self.save_level2_and_level3(set_name=set_name, kpi_name=set_name, score=result)
-            else:
-                return
+
             if set_score == 0:
                 pass
             elif set_score is False:

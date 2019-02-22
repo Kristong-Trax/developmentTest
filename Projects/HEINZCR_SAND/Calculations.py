@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Utils.Conf.Configuration import Config
-
+import os
 from KPIUtils.GlobalProjects.HEINZ.KPIGenerator import HEINZGenerator
 from KPIUtils.DB.Common import Common
 import pandas as pd
@@ -20,7 +20,8 @@ class HEINZCRCalculations(BaseCalculationsScript):
         heinz = HEINZGenerator(self.data_provider, self.output, common)
         heinz.heinz_global_distribution_per_category()
         heinz.heinz_global_share_of_shelf_function()
-        heinz.heinz_global_price_adherence(pd.read_excel("/root/KEngine/prod_KPI/Projects/HEINZCR_SAND/Config/PriceAdherenceTargets010718.xlsx", sheetname="Price Adherence"))
+        heinz.heinz_global_price_adherence(pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                    'Config', 'Price Adherence Targets 3Ene2019.xlsx'), sheetname="Price Adherence"))
         heinz.heinz_global_extra_spaces()
         common.commit_results_data_to_new_tables()
         self.timer.stop('KPIGenerator.run_project_calculations')

@@ -373,10 +373,10 @@ class REDToolBox:
         """
         if kpi_name == self.RED_SCORE:
             self.common_db2.write_to_db_result(
-                fk=self.set_fk, numerator_id=Const.MANUFACTURER_FK, score=score,
+                fk=self.set_fk, score=score, numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id,
                 identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_fk))
             self.common_db2.write_to_db_result(
-                fk=self.set_integ_fk, score=score,
+                fk=self.set_integ_fk, score=score, numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id,
                 identifier_result=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
             self.write_to_db_result(
                 self.common_db.get_kpi_fk_by_kpi_name(self.RED_SCORE, 1), score=score, level=1)
@@ -391,11 +391,12 @@ class REDToolBox:
             result = self.get_pks_of_result(result_value)
             self.common_db2.write_to_db_result(
                 fk=display_kpi_fk, score=score, identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_fk),
-                should_enter=True, result=result)
+                should_enter=True, result=result, numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id)
             result = self.get_0_1_of_result(result_value)
             self.common_db2.write_to_db_result(
                 fk=integ_kpi_fk, score=score, should_enter=True, result=result,
-                identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk))
+                identifier_parent=self.common_db2.get_dictionary(kpi_fk=self.set_integ_fk),
+                numerator_id=Const.MANUFACTURER_FK, denominator_id=self.store_id)
             if result_value == Const.FAIL:
                 score = 0
             self.write_to_db_result(

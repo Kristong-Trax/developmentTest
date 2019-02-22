@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'marsuae'
     data_provider = KEngineDataProvider(project_name)
-    session = '10643805-CFCB-419A-A415-FFC0BCBE96F6'
+    session = '81dc1fc5-ecbc-4bae-88d0-9abea90fce0f '
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

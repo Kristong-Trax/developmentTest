@@ -151,12 +151,14 @@ class DISPLAYSToolBox(Consts):
         for kpi_name in kpi_results.keys():
             kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name)
             self.common.write_to_db_result(fk=kpi_fk, result=kpi_results[kpi_name][0], should_enter=True,
-                                           identifier_parent=self.common.get_dictionary(kpi_name=self.SET_NAME))
+                                           identifier_parent=self.common.get_dictionary(kpi_name=self.SET_NAME),
+                                           numerator_id=1, denominator_id=self.store_id)
             self.write_to_db_result(kpi_name, 100, level=self.LEVEL2)
             self.write_to_db_result(kpi_name, kpi_results[kpi_name], level=self.LEVEL3)
         self.write_to_db_result(self.SET_NAME, 100, level=self.LEVEL1)
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(self.SET_NAME)
         self.common.write_to_db_result(fk=kpi_fk, result=100,
+                                       numerator_id=1, denominator_id=self.store_id,
                                        identifier_result=self.common.get_dictionary(kpi_name=self.SET_NAME))
 
     def calculate_facing_sos(self, params, display):

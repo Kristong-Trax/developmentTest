@@ -49,7 +49,7 @@ class ToolBox:
             self.kpi_sheets[name] = parsed_template[parsed_template['Channel'] == self.channel]
         self.data_provider.sos = SOS(self.data_provider, output=None)
         self.data_provider.assortment = Assortment(self.data_provider, output=None)
-        self.data_provider.match_display_in_scene = self.get_match_display()
+        # self.data_provider.match_display_in_scene = self.get_match_display()
 
     def main_function(self):
         """
