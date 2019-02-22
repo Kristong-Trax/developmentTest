@@ -61,7 +61,7 @@ class PNGHKToolBox:
         for id in kpi_ids:
             kpi_df = self.kpis_sheet[self.kpis_sheet[Const.KPI_ID] == id]
             self.handle_atomic(kpi_df)
-        # self.common.commit_results_data()
+        self.common.commit_results_data()
 
     def handle_atomic(self, kpi_df):
         kpi_type = kpi_df[Const.KPI_TYPE].values[0].strip()
@@ -377,10 +377,52 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'POS']
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
-        # if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
-        #     self.exclude_hanger()
+        if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
+            df = self.exclude_special_attribute_products(df, Const.DB_HANGER_NAME)
+        if self.kpi_excluding[Const.EXCLUDE_STOCK] == Const.EXCLUDE:
+            df = self.exclude_special_attribute_products(df, Const.DB_STOCK_NAME)
         if self.kpi_excluding[Const.EXCLUDE_OSD] == Const.EXCLUDE:
             df = self.filter_out_osd(df)
         elif self.kpi_excluding[Const.EXCLUDE_SKU] == Const.EXCLUDE:
             df = self.filter_in_osd(df)
+        return df
+
+    def exclude_special_attribute_products(self, df, smart_attribute):
+        """
+        Helper to exclude smart_attribute products
+        :return: filtered df without smart_attribute products
+        """
+        hanger_df_group = self.match_probe_in_scene.query(
+            "name=='{}'".format(smart_attribute))\
+            .groupby('scene_fk')
+        for each_scene, probe_df in hanger_df_group:
+            for each_row in probe_df.iterrows():
+                data = each_row[1]
+                df.drop(df[
+                            (df["scene_fk"] == data.scene_fk) &
+                            (df["product_fk"] == data.product_fk) &
+                            (df["probe_match_fk"] == data.probe_match_fk) &
+                            (df["bay_number"] == data.bay_number) &
+                            (df["shelf_number"] == data.shelf_number) &
+                            (df["stacking_layer"] == data.stacking_layer)
+                        ].index, inplace=True)
+        return df
+
+    def get_product_special_attribute_data(self, session_uid):
+        query = """
+                select scene_fk, B.product_fk, probe_match_fk, bay_number, shelf_number, stacking_layer, name \
+                    from probedata.match_product_in_scene_recognition A
+                        left join
+                    probedata.match_product_in_probe B on A.probe_match_fk = B.pk
+                        right join
+                    probedata.match_product_in_probe_state_value C on B.pk=C.match_product_in_probe_fk
+                        left join 
+                    static.match_product_in_probe_state D on C.match_product_in_probe_state_fk = D.pk
+                        left join 
+                    probedata.scene E on E.pk= A.scene_fk
+                        where 
+                    E.session_uid="{}"
+            """.format(session_uid)
+
+        df = pd.read_sql_query(query, self.rds_conn.db)
         return df
