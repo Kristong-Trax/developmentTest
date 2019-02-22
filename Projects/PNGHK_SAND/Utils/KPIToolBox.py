@@ -61,7 +61,7 @@ class PNGHKToolBox:
         for id in kpi_ids:
             kpi_df = self.kpis_sheet[self.kpis_sheet[Const.KPI_ID] == id]
             self.handle_atomic(kpi_df)
-        self.common.commit_results_data()
+        # self.common.commit_results_data()
 
     def handle_atomic(self, kpi_df):
         kpi_type = kpi_df[Const.KPI_TYPE].values[0].strip()
@@ -298,7 +298,7 @@ class PNGHKToolBox:
 
                 # filter df to remove shelves with given ean code (only on the same bay)
             elif row[Const.HAS_HOTSPOT].values[0] == Const.YES:
-                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].split(",")
+                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'bay_number',
                                                                                                 'shelf_number']]
