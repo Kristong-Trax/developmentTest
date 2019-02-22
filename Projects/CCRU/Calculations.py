@@ -176,7 +176,7 @@ class CCRUProjectCalculations:
                  'level': 0})
 
             if kpi_set_type == POS:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
                 self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
