@@ -27,4 +27,5 @@ class RBUSRBUSGenerator:
             set_names = ['Placement count', 'Shelf occupation']
             for kpi_set_name in set_names:
                 self.tool_box.main_calculation(set_name=kpi_set_name)
-            self.tool_box.commit_results_data()
+            self.tool_box.common_new.commit_results_data()
+            self.tool_box.old_common.commit_results_data()
