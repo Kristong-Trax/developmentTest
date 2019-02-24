@@ -10,9 +10,6 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Projects.RBUS.Utils.Fetcher import RBUSRBUSQueries
 from Projects.RBUS.Utils.GeneralToolBox import RBUSRBUSGENERALToolBox
-from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.DB.Common import Common as common_old
-from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 # constant names
 ATOMIC_KPI_FK = 'atomic_kpi_fk'
@@ -20,10 +17,9 @@ KPI_SET_NAME = 'kpi_set_name'
 ATOMIC_KPI_NAME = 'atomic_kpi_name'
 SHELF_OCCUPATIONS_KPIS = 'shelf_occupations_kpis'
 KPI_LEVEL_3_NAME = 'KPI Level 3 Name'
-PLACEMENT_COUNT = 'Placement Count'
+PLACEMENT_COUNT = 'Placement count'
 MAIN_PLACEMENT = 'MAIN PLACEMENT'
 SHELF_OCCUPATION = "Shelf occupation"
-CATEGORY_ENERGY_FK = '1'
 DF = 'df'
 SKU = "sku"
 BRAND = "brand"
@@ -125,19 +121,13 @@ class RBUSRBUSToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = RBUSRBUSGENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
-        self.old_common = common_old(data_provider)
-        self.kpi_static_data = self.old_common.get_kpi_static_data()
-        # self.kpi_results_queries = []
+        self.kpi_static_data = self.get_kpi_static_data()
+        self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.template_dict = self.get_df_from_excel_path()
         self.template_dict = self.template_dict[self.template_dict['Template for KPI'] != 'none']\
                                                 .set_index('Template for KPI')['KPI Level 3 Name'].to_dict()
         self.excluded_sub_categories = self.get_excluded_sub_categories(self.get_df_from_excel_path())
-        self.common_new = Common(data_provider)
-        self.manufacturer_fk = self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0]
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
-
-        self.sub_brands = self.ps_data.get_custom_entities(1001)
 
     def get_kpi_static_data(self):
         """
@@ -159,8 +149,6 @@ class RBUSRBUSToolBox:
         :return: None
         """
         df = self.scif[['template_name', 'scene_fk']]
-        new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(PLACEMENT_COUNT)
-
         # iterate scene types names
         for template_name in df.template_name.unique():
             # get number of occurrences of this scene type
@@ -170,17 +158,11 @@ class RBUSRBUSToolBox:
             if template_name in self.template_dict:
                 atomic_kpi_name = self.template_dict[template_name]
             if atomic_kpi_name != 'no':
-
                 # get the atomic kpi fk of template name
-                old_atomic_kpi_fk = self.old_common.get_kpi_fk_by_kpi_name(atomic_kpi_name, self.LEVEL3)
-
-                Log.info(atomic_kpi_name + " " + str(old_atomic_kpi_fk) + " " + str(value))
-
+                atomic_kpi_fk = self.get_atomic_kpi_fk(atomic_kpi_name, PLACEMENT_COUNT)
+                Log.info(atomic_kpi_name + " " + str(atomic_kpi_fk) + " " + str(value))
                 # add insert query for later use
-                self.old_common.write_to_db_result(old_atomic_kpi_fk, score=value, level=self.LEVEL3)
-                self.common_new.write_to_db_result(fk=new_kpi_fk, numerator_id=template_name,
-                                                   result=value, denominator_id=self.store_id)
-
+                self.write_to_db_result(atomic_kpi_fk, value, self.LEVEL3)
 
     def get_product_list_field(self, kpi):
         """
@@ -296,9 +278,8 @@ class RBUSRBUSToolBox:
                                             bay_number, shelf_occupation_dict.get(MAIN_PLACEMENT_SCENES))
                 if not curr_probe.empty:
                     score += self.calculate_brand(curr_probe, brand_name, product_list_field)
-
-        return score
-
+        Log.info("brand score " + brand_name + " " + str(score))
+        self.write_to_db_result(self.get_atomic_kpi_fk(kpi, SHELF_OCCUPATION), score, self.LEVEL3)
 
     def is_sub_category_excluded(self, row):
         """
@@ -352,7 +333,8 @@ class RBUSRBUSToolBox:
                                             bay_number, shelf_occupation_dict.get(MAIN_PLACEMENT_SCENES))
                 if not curr_probe.empty:
                     score += self.calculate_sku(curr_probe, sku_name, product_list_field)
-        return score
+        Log.info("sku score " + sku_name + " " + str(score))
+        self.write_to_db_result(self.get_atomic_kpi_fk(kpi, SHELF_OCCUPATION), score, self.LEVEL3)
 
     def get_df_from_excel_path(self):
         """
@@ -374,80 +356,32 @@ class RBUSRBUSToolBox:
         """
         shelf_occupation_dict = self.get_shelf_occupation_dictionary()
         manufacturer_score, category_score = 0, 0
-        parent_fk = self.common_new.get_kpi_fk_by_kpi_name(SHELF_OCCUPATION)
         # iterate all atomic KPIs from this KPI set
         for kpi in shelf_occupation_dict[SHELF_OCCUPATIONS_KPIS]:
             product_list_field = self.get_product_list_field(kpi)
             # calculate redbull manufacturer score
             if kpi == 'K001':
                 manufacturer_score = self.calculate_redbull_manufacturer(shelf_occupation_dict, product_list_field)
-                self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
-                                        score=manufacturer_score, level=self.LEVEL3)
-                new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi)
-
-                self.common_new.write_to_db_result(
-                    fk=new_kpi_fk, numerator_id=self.manufacturer_fk, result=manufacturer_score,
-                    denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
-                    should_enter=True)
-
+                self.write_to_db_result(self.get_atomic_kpi_fk(kpi, shelf_occupation_dict.get(KPI_SET)),
+                                        manufacturer_score, self.LEVEL3)
             # calculate energy category score
             elif kpi == 'K002':
                 category_score = self.calculate_energy_drinks(shelf_occupation_dict, product_list_field)
-                self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
-                                        score=category_score, level=self.LEVEL3)
-                new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi)
-
-                self.common_new.write_to_db_result(
-                    fk=new_kpi_fk, numerator_id=CATEGORY_ENERGY_FK, result=category_score,
-                    denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
-                    should_enter=True)
-
+                self.write_to_db_result(self.get_atomic_kpi_fk(kpi, shelf_occupation_dict.get(KPI_SET)),
+                                        category_score, self.LEVEL3)
             # calculate score for all energy drinks that are NOT from red bull manufacturer(K002 score - K001 score)
             elif kpi == 'K003':
-                score = category_score - manufacturer_score
-                self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
-                                                   score=score, level=self.LEVEL3)
-                Log.info("K003 Score " + str(score))
-
-                new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi)
-
-                self.common_new.write_to_db_result(
-                    fk=new_kpi_fk, numerator_id=self.manufacturer_fk, result=score,
-                    denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
-                    should_enter=True)
-
+                self.write_to_db_result(self.get_atomic_kpi_fk(kpi, shelf_occupation_dict.get(KPI_SET)),
+                                        category_score - manufacturer_score, self.LEVEL3)
+                Log.info("K003 Score " + str(category_score - manufacturer_score))
             # calculate brands score
             elif kpi in shelf_occupation_dict.get(BRANDS_DICT):
-                sub_brand_name = shelf_occupation_dict.get(BRANDS_DICT).get(kpi)
-                score = self.calculate_brand_by_name(kpi, shelf_occupation_dict, sub_brand_name, product_list_field)
-                Log.info("brand score " + sub_brand_name + " " + str(score))
-                self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
-                                                   score=score, level=self.LEVEL3)
-
-                # New table's kpi name is different
-                new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi[:4])
-
-                self.common_new.write_to_db_result(
-                    fk=new_kpi_fk, numerator_id=self.get_sub_brand_fk(sub_brand_name), result=score,
-                    denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
-                    should_enter=True)
-
+                brand_name = shelf_occupation_dict.get(BRANDS_DICT).get(kpi)
+                self.calculate_brand_by_name(kpi, shelf_occupation_dict, brand_name, product_list_field)
             # calculate sku score
             elif kpi in shelf_occupation_dict.get(SKUS_DICT):
                 sku_name = shelf_occupation_dict.get(SKUS_DICT).get(kpi)
-                score = self.calculate_sku_by_name(kpi, shelf_occupation_dict, sku_name, product_list_field)
-                Log.info("sku score " + sku_name + " " + str(score))
-                self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
-                                                   score=score, level=self.LEVEL3)
-
-                # New table's kpi name is different
-                new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi[:4])
-                if new_kpi_fk:
-                    self.common_new.write_to_db_result(
-                        fk=new_kpi_fk, numerator_id=self.get_product_alt_code(sku_name), result=score,
-                        denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
-                        should_enter=True)
-
+                self.calculate_sku_by_name(kpi, shelf_occupation_dict, sku_name, product_list_field)
 
     def get_shelf_occupation_dictionary(self):
         """
@@ -489,134 +423,98 @@ class RBUSRBUSToolBox:
         excluding_sub_categories = excel_df['Excluding Sub Category'].unique()
         return excluding_sub_categories
 
-    # def get_atomic_kpi_fk(self, atomic_kpi, kpi_set):
-    #     """
-    #     this function returns atomic_kpi_fk by kpi name
-    #     :param atomic_kpi: atomic kpi name
-    #     :param kpi_set: kpi set name
-    #     :return: atomic_kpi_fk
-    #     """
-    #     atomic_kpi_fk = \
-    #         self.kpi_static_data[(self.kpi_static_data[KPI_SET_NAME] == kpi_set) &
-    #                              (self.kpi_static_data[ATOMIC_KPI_NAME] == atomic_kpi)][ATOMIC_KPI_FK].values[0]
-    #     return atomic_kpi_fk
+    def get_atomic_kpi_fk(self, atomic_kpi, kpi_set):
+        """
+        this function returns atomic_kpi_fk by kpi name
+        :param atomic_kpi: atomic kpi name
+        :param kpi_set: kpi set name
+        :return: atomic_kpi_fk
+        """
+        atomic_kpi_fk = \
+            self.kpi_static_data[(self.kpi_static_data[KPI_SET_NAME] == kpi_set) &
+                                 (self.kpi_static_data[ATOMIC_KPI_NAME] == atomic_kpi)][ATOMIC_KPI_FK].values[0]
+        return atomic_kpi_fk
 
     def main_calculation(self, set_name):
         """
         this function chooses the correct set name and calculates it's scores
         :param set_name: set name to calculate score for
         """
-        if set_name == 'Placement count':
+        if set_name == PLACEMENT_COUNT:
             self.calculate_placement_count()
         elif set_name == SHELF_OCCUPATION:
             self.calculate_shelf_occupation()
-            # save high level kpi for hierarchy in new tables
-            new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(SHELF_OCCUPATION)
 
-            self.common_new.write_to_db_result(
-                fk=new_kpi_fk, numerator_id=self.manufacturer_fk, result=0,
-                denominator_id=self.store_id, identifier_result=self.common_new.get_dictionary(kpi_fk=new_kpi_fk),
-                should_enter=False)
-
-
-    # def write_to_db_result(self, fk, score, level):
-    #     """
-    #     This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
-    #     and appends the insert SQL query into the queries' list, later to be written to the DB.
-    #     """
-    #     attributes = self.create_attributes_dict(fk, score, level)
-    #     if level == self.LEVEL1:
-    #         table = KPS_RESULT
-    #     elif level == self.LEVEL2:
-    #         table = KPK_RESULT
-    #     elif level == self.LEVEL3:
-    #         table = KPI_RESULT
-    #     else:
-    #         return
-    #     query = insert(attributes, table)
-    #     # self.kpi_results_queries.append(query)
-    #
-    # def create_attributes_dict(self, fk, score, level):
-    #     """
-    #     This function creates a data frame with all attributes needed for saving in KPI results tables.
-    #     Yoav changed it to write in level3 also to result column
-    #     """
-    #     if level == self.LEVEL1:
-    #         kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
-    #         attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
-    #                                     format(score, '.2f'), fk)],
-    #                                   columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
-    #                                            'kpi_set_fk'])
-    #     elif level == self.LEVEL2:
-    #         kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
-    #         attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
-    #                                     fk, kpi_name, score)],
-    #                                   columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
-    #     elif level == self.LEVEL3:
-    #         data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
-    #         atomic_kpi_name = data['atomic_kpi_name'].values[0]
-    #         kpi_fk = data['kpi_fk'].values[0]
-    #         kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
-    #         attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
-    #                                     self.visit_date.isoformat(), datetime.utcnow().isoformat(),
-    #                                     score, str(score), kpi_fk, fk)],
-    #                                   columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
-    #                                            'calculation_time', 'score', 'result', 'kpi_fk', 'atomic_kpi_fk'])
-    #     else:
-    #         attributes = pd.DataFrame()
-    #     return attributes.to_dict()
-
-    # @log_runtime('Saving to DB')
-    # def commit_results_data(self):
-    #     """
-    #     This function writes all KPI results to the DB, and commits the changes.
-    #     """
-    #     insert_queries = self.merge_insert_queries(self.kpi_results_queries)
-    #     cur = self.rds_conn.db.cursor()
-    #     delete_queries = RBUSRBUSQueries.get_delete_session_results_query(self.session_uid)
-    #     for query in delete_queries:
-    #         cur.execute(query)
-    #     for query in insert_queries:
-    #         cur.execute(query)
-    #     self.rds_conn.db.commit()
-
-    # @staticmethod
-    # def merge_insert_queries(insert_queries):
-    #     query_groups = {}
-    #     for query in insert_queries:
-    #         static_data, inserted_data = query.split('VALUES ')
-    #         if static_data not in query_groups:
-    #             query_groups[static_data] = []
-    #         query_groups[static_data].append(inserted_data)
-    #     merged_queries = []
-    #     for group in query_groups:
-    #         merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
-    #     return merged_queries
-
-    def get_sub_brand_fk(self, sub_brand):
+    def write_to_db_result(self, fk, score, level):
         """
-        takes sub_brand and returns its pk
-        :param sub_brand: str
-        :param brand_fk: we need it for the parent_id (different brands can have common sub_brand)
-        :return: pk
+        This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
+        and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
-        sub_brand_line = self.sub_brands[(self.sub_brands['name'] == sub_brand)]
-        if sub_brand_line.empty:
-            return None
+        attributes = self.create_attributes_dict(fk, score, level)
+        if level == self.LEVEL1:
+            table = KPS_RESULT
+        elif level == self.LEVEL2:
+            table = KPK_RESULT
+        elif level == self.LEVEL3:
+            table = KPI_RESULT
         else:
-            return sub_brand_line.iloc[0]['pk']
+            return
+        query = insert(attributes, table)
+        self.kpi_results_queries.append(query)
 
-    def get_product_alt_code(self, product_name):
+    def create_attributes_dict(self, fk, score, level):
         """
-        takes sub_brand and returns its pk
-        :param sub_brand: str
-        :param brand_fk: we need it for the parent_id (different brands can have common sub_brand)
-        :return: pk
+        This function creates a data frame with all attributes needed for saving in KPI results tables.
+        Yoav changed it to write in level3 also to result column
         """
-        products = self.all_products[['product_name', 'product_fk', 'alt_code_1']]
-        products = products.loc[products['product_name'] == product_name]
-        if products.empty:
-            Log.debug('Product {} has no valid alt_code_1 attribute'.format(product_name))
-            return None
+        if level == self.LEVEL1:
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        format(score, '.2f'), fk)],
+                                      columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
+                                               'kpi_set_fk'])
+        elif level == self.LEVEL2:
+            kpi_name = self.kpi_static_data[self.kpi_static_data['kpi_fk'] == fk]['kpi_name'].values[0]
+            attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
+                                        fk, kpi_name, score)],
+                                      columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
+        elif level == self.LEVEL3:
+            data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
+            atomic_kpi_name = data['atomic_kpi_name'].values[0]
+            kpi_fk = data['kpi_fk'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
+                                        self.visit_date.isoformat(), datetime.utcnow().isoformat(),
+                                        score, str(score), kpi_fk, fk)],
+                                      columns=['display_text', 'session_uid', 'kps_name', 'store_fk', 'visit_date',
+                                               'calculation_time', 'score', 'result', 'kpi_fk', 'atomic_kpi_fk'])
         else:
-            return products['alt_code_1'].iloc[0]
+            attributes = pd.DataFrame()
+        return attributes.to_dict()
+
+    @log_runtime('Saving to DB')
+    def commit_results_data(self):
+        """
+        This function writes all KPI results to the DB, and commits the changes.
+        """
+        insert_queries = self.merge_insert_queries(self.kpi_results_queries)
+        cur = self.rds_conn.db.cursor()
+        delete_queries = RBUSRBUSQueries.get_delete_session_results_query(self.session_uid)
+        for query in delete_queries:
+            cur.execute(query)
+        for query in insert_queries:
+            cur.execute(query)
+        self.rds_conn.db.commit()
+
+    @staticmethod
+    def merge_insert_queries(insert_queries):
+        query_groups = {}
+        for query in insert_queries:
+            static_data, inserted_data = query.split('VALUES ')
+            if static_data not in query_groups:
+                query_groups[static_data] = []
+            query_groups[static_data].append(inserted_data)
+        merged_queries = []
+        for group in query_groups:
+            merged_queries.append('{0} VALUES {1}'.format(group, ',\n'.join(query_groups[group])))
+        return merged_queries
