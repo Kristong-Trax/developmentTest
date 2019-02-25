@@ -85,6 +85,14 @@ pipeline {
         }
        stage('Deploy')  {
             steps {
+                  sh '''#!/bin/bash
+                    export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
+                    cd kpi_factory
+                    python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
+
+                    exit_code=$?
+                    exit $exit_code
+                '''
 
 
             }
@@ -115,5 +123,28 @@ pipeline {
                                                             --aws_failed=$AWS_FAILED --gcp_failed=$GCP_FAILED
             '''
         }
+        cleanup {
+            sh '''#!/bin/bash
+                echo "# Before cleanup"
+                docker images
+                docker ps -a
+
+                cd theGarage
+                export PATH=$CONDA_BIN:$PATH
+                export PROJECT_ROOT=$PWD
+                export PYTHONPATH=$PWD
+                source activate garage
+                python -u Trax/Deployment/Remote/SlaveCleaner.py
+
+                echo "# After cleanup"
+                docker images
+                docker ps -a
+            '''
+            cleanWs()
+        }
+
+
+
+
     }
 }
