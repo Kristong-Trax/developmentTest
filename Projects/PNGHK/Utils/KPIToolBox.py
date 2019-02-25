@@ -45,12 +45,6 @@ class PNGHKToolBox:
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         # self.merged_additional_data = self.get_additional_product_data()
 
-    # scene_recognition from table select * from probedata.match_display_in_scene
-
-    # smart attributes from:
-    # select * from probedata.match_product_in_probe;
-    # select * from probedata.match_product_in_probe_state_value;
-
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
