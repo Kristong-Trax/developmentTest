@@ -29,18 +29,15 @@ class Const(object):
     RELEVANT_FILTERS = {
         DRINK_JUICE_TEA: {
             TOTAL_CATEGORY: ['TTL JUICE/DRINK', 'TTL TEA'],
-            KEY_MANUFACTURER: ['CCNA'],
             STORAGE_TYPE: ['CH RTD']
         },
         MILK: {
             TOTAL_CATEGORY: ['TTL DRINKABLE DAIRY'],
-            KEY_MANUFACTURER: ['FAIRLIFE'],
             STORAGE_TYPE: ['CH RTD'],
             CATEGORY: ['VALUE ADDED DAIRY']
         },
         NATURAL_HEALTH: {
             TOTAL_CATEGORY: ['TTL NATURAL HEALTH BEVERAGES'],
-            STORAGE_TYPE: ['CH RTD'],
-            KEY_MANUFACTURER: ['CCNA']
+            STORAGE_TYPE: ['CH RTD']
         }
     }

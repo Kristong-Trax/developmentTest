@@ -38,7 +38,7 @@ class Const(object):
     GROUP1_BRAND = 'Brand Group 1'
     GROUP2_BRAND = 'Brand Group 2'
     GROUP1_MINIMUM_FACINGS = 'Group 1 Minimum Facing'
-    GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facings'
+    GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facing'
 
     # Facings columns
     NUMERATOR_TYPE = 'numerator_type'
