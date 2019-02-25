@@ -66,7 +66,8 @@ class CCRUKPIToolBox:
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.own_manufacturer_id = int(self.data_provider[Data.OWN_MANUFACTURER][self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
+        self.own_manufacturer_id = int(
+            self.data_provider[Data.OWN_MANUFACTURER][self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
 
@@ -100,7 +101,8 @@ class CCRUKPIToolBox:
         self.kpi_results_queries = []
         self.gaps_dict = {}
         self.gaps_queries = []
-        self.gap_groups_limit = {'Availability': 2, 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
+        self.gap_groups_limit = {'Availability': 2,
+                                 'Cooler/Cold Availability': 1, 'Shelf/Displays/Activation': 3}
         self.top_sku_queries = []
         self.equipment_execution_score = None
         self.top_sku_score = None
@@ -203,7 +205,8 @@ class CCRUKPIToolBox:
         else:
             if params.get('Scenes to include'):
                 scenes_to_include = \
-                    [unicode(x).strip() for x in unicode(params.get('Scenes to include')).split(', ')]
+                    [unicode(x).strip()
+                     for x in unicode(params.get('Scenes to include')).split(', ')]
                 for scene in scenes_to_include:
                     if scene in scenes_data.keys():
                         include_list_candidate.extend(scenes_data[scene])
@@ -214,7 +217,8 @@ class CCRUKPIToolBox:
             if params.get('Locations to include'):
                 include_list_candidate = []
                 locations_to_include = \
-                    [unicode(x).strip() for x in unicode(params.get('Locations to include')).split(', ')]
+                    [unicode(x).strip()
+                     for x in unicode(params.get('Locations to include')).split(', ')]
                 for location in locations_to_include:
                     if location in location_data.keys():
                         include_list_candidate.extend(location_data[location])
@@ -229,10 +233,12 @@ class CCRUKPIToolBox:
                 include_list_candidate = []
                 if type(params.get('Sub locations to include')) == float:
                     sub_locations_to_include = \
-                        [unicode(x).strip() for x in unicode(int(params.get('Sub locations to include'))).split(', ')]
+                        [unicode(x).strip() for x in unicode(
+                            int(params.get('Sub locations to include'))).split(', ')]
                 else:
                     sub_locations_to_include = \
-                        [unicode(x).strip() for x in unicode(params.get('Sub locations to include')).split(', ')]
+                        [unicode(x).strip()
+                         for x in unicode(params.get('Sub locations to include')).split(', ')]
                 for sub_location in sub_locations_to_include:
                     if sub_location in sub_location_data.keys():
                         include_list_candidate.extend(sub_location_data[sub_location])
@@ -267,14 +273,16 @@ class CCRUKPIToolBox:
 
         if params.get('Locations to exclude'):
             locations_to_exclude = \
-                [unicode(x).strip() for x in unicode(params.get('Locations to exclude')).split(', ')]
+                [unicode(x).strip()
+                 for x in unicode(params.get('Locations to exclude')).split(', ')]
             for location in locations_to_exclude:
                 if location in location_data.keys():
                     exclude_list.extend(location_data[location])
 
         if params.get('Sub locations to exclude'):
             sub_locations_to_exclude = \
-                [unicode(x).strip() for x in unicode(params.get('Sub locations to exclude')).split(', ')]
+                [unicode(x).strip()
+                 for x in unicode(params.get('Sub locations to exclude')).split(', ')]
             for sub_location in sub_locations_to_exclude:
                 if sub_location in sub_location_data.keys():
                     exclude_list.extend(sub_location_data[sub_location])
@@ -288,7 +296,8 @@ class CCRUKPIToolBox:
     @kpi_runtime()
     def check_availability(self, params, level=2):
         set_total_res = 0
-        availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT', 'MAN in CAT', 'SUB_BRAND', 'SUB_CATEGORY']
+        availability_types = ['SKUs', 'BRAND', 'MAN', 'CAT',
+                              'MAN in CAT', 'SUB_BRAND', 'SUB_CATEGORY']
         formula_types = ['number of SKUs', 'number of facings']
         atomic_result_total = 0
         for p in params.values()[0]:
@@ -310,11 +319,13 @@ class CCRUKPIToolBox:
 
                         if child.get('Children') is not None:  # atomic of atomic
                             atomic_score = 0
-                            atomic_children = [int(a_child) for a_child in str(child.get('Children')).split(', ')]
+                            atomic_children = [int(a_child) for a_child in str(
+                                child.get('Children')).split(', ')]
                             for atomic_child in params.values()[0]:
                                 if atomic_child.get('KPI ID') in atomic_children:
                                     atomic_child_res = self.calculate_availability(atomic_child)
-                                    atomic_child_score = self.calculate_score(atomic_child_res, atomic_child)
+                                    atomic_child_score = self.calculate_score(
+                                        atomic_child_res, atomic_child)
                                     atomic_score += atomic_child.get('additional_weight',
                                                                      1.0 / len(atomic_children)) * atomic_child_score
 
@@ -323,7 +334,8 @@ class CCRUKPIToolBox:
                             atomic_score = self.calculate_score(atomic_res, child)
 
                         # saving to DB
-                        attributes_for_level3 = self.create_attributes_for_level3_df(child, atomic_score, kpi_fk)
+                        attributes_for_level3 = self.create_attributes_for_level3_df(
+                            child, atomic_score, kpi_fk)
                         self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                         atomic_result = attributes_for_level3['result']
@@ -333,7 +345,8 @@ class CCRUKPIToolBox:
                         if p.get('Logical Operator') in ('OR', 'AND', 'MAX'):
                             atomic_scores.append(atomic_score)
                         elif p.get('Logical Operator') == 'SUM':
-                            kpi_total_res += child.get('additional_weight', 1 / float(len(children))) * atomic_score
+                            kpi_total_res += child.get('additional_weight',
+                                                       1 / float(len(children))) * atomic_score
 
                 if p.get('Logical Operator') == 'OR':
                     if len([sc for sc in atomic_scores if sc > 0]) > 0:
@@ -364,7 +377,8 @@ class CCRUKPIToolBox:
                 score = self.calculate_score(kpi_total_res, p)
 
             if not is_atomic:  # saving also to level3 in case this KPI has only one level
-                attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_table3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_table3, 'level3')
 
             # Saving to old tables
@@ -379,16 +393,19 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def calculate_availability(self, params, scenes=None, all_params=None):
-        values_list = [unicode(x).strip() for x in unicode(params.get('Values')).strip().split(', ')]
+        values_list = [unicode(x).strip()
+                       for x in unicode(params.get('Values')).strip().split(', ')]
         if not scenes:
             if params.get('depends on'):
                 depends_on_kpi_name = params.get('depends on')
                 for c in all_params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
@@ -418,7 +435,8 @@ class CCRUKPIToolBox:
             products_to_exclude = []
         if params.get("Form factors to exclude"):
             form_factors_to_exclude = \
-                [unicode(x).strip() for x in unicode(params.get("Form factors to exclude")).split(", ")]
+                [unicode(x).strip()
+                 for x in unicode(params.get("Form factors to exclude")).split(", ")]
         else:
             form_factors_to_exclude = []
         if params.get("Product Category"):
@@ -491,9 +509,11 @@ class CCRUKPIToolBox:
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
@@ -526,11 +546,14 @@ class CCRUKPIToolBox:
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                            depends_scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            depends_scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of doors of filled Coolers':
-                            depends_scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
+                            depends_scenes = self.check_number_of_doors_of_filled_coolers(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             depends_scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                               func='get scenes',
                                                                                               proportion_param=0.9)
@@ -550,7 +573,8 @@ class CCRUKPIToolBox:
                 values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
                 for scene in scenes:
                     try:
-                        scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+                        scene_type = self.scif.loc[self.scif['scene_id']
+                                                   == scene]['template_name'].values[0]
                         if scene_type in values_list:
                             res = 1
                         else:
@@ -562,7 +586,8 @@ class CCRUKPIToolBox:
                 values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
                 for scene in scenes:
                     try:
-                        location_type = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[0]
+                        location_type = self.scif.loc[self.scif['scene_id']
+                                                      == scene]['location_type'].values[0]
                         if location_type in values_list:
                             res = 1
                         else:
@@ -574,9 +599,10 @@ class CCRUKPIToolBox:
                 values_list = [p.get('Values')]
                 for scene in scenes:
                     try:
-                        scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+                        scene_type = self.scif.loc[self.scif['scene_id']
+                                                   == scene]['template_name'].values[0]
                         sub_location_type = int(self.templates.loc[self.templates['template_name'] == scene_type][
-                                                    'additional_attribute_2'].values[0])
+                            'additional_attribute_2'].values[0])
                         if sub_location_type in values_list:
                             res = 1
                         else:
@@ -584,7 +610,8 @@ class CCRUKPIToolBox:
                         kpi_total_res += res
                     except IndexError as e:
                         continue
-            else:  # checking for number of scenes with a complex condition (only certain products/brands/etc)
+            # checking for number of scenes with a complex condition (only certain products/brands/etc)
+            else:
                 p_copy = p.copy()
                 p_copy["Formula"] = "number of facings"
                 for scene in scenes:
@@ -603,7 +630,8 @@ class CCRUKPIToolBox:
 
             if not p.get('Children'):
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if p.get('level') == 2:
@@ -629,7 +657,8 @@ class CCRUKPIToolBox:
             # saving to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -645,7 +674,8 @@ class CCRUKPIToolBox:
             res = 0
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             num_of_doors = \
-                self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0]
+                self.templates[self.templates['template_name'] ==
+                               scene_type]['additional_attribute_1'].values[0]
             if num_of_doors is not None:
                 res = float(num_of_doors)
             total_res += res
@@ -659,7 +689,8 @@ class CCRUKPIToolBox:
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
-                    float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+                    float(self.templates[self.templates['template_name'] ==
+                                         scene_type]['additional_attribute_1'].values[0])
                 facings = self.calculate_availability(params, scenes=[scene])
                 if num_of_doors is not None:
                     res = facings / float(num_of_doors)
@@ -674,11 +705,12 @@ class CCRUKPIToolBox:
                                                                                     proportion=0.9)
                 total_scenes_passed = list(set(scenes_passed_filled) & set(scenes_passed))
                 for scene in total_scenes_passed:
-                    scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+                    scene_type = self.scif.loc[self.scif['scene_id']
+                                               == scene]['template_name'].values[0]
                     if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                         num_of_doors = \
                             float(self.templates[self.templates['template_name'] == scene_type][
-                                      'additional_attribute_1'].values[0])
+                                'additional_attribute_1'].values[0])
                         total_res += num_of_doors
             else:
                 total_scenes_passed = list(set(scenes_passed))
@@ -700,7 +732,8 @@ class CCRUKPIToolBox:
             score = 0  # default score
             if p.get('Type') != 'SURVEY' or p.get('Formula').strip() != 'answer for survey':
                 continue
-            survey_data = self.survey_response.loc[self.survey_response['question_text'] == p.get('Values')]
+            survey_data = self.survey_response.loc[self.survey_response['question_text'] == p.get(
+                'Values')]
             if not survey_data['selected_option_text'].empty:
                 result = survey_data['selected_option_text'].values[0]
                 targets = [d.get(x) if x in d.keys() else x
@@ -724,7 +757,8 @@ class CCRUKPIToolBox:
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             elif p.get('level') == 2:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -740,7 +774,7 @@ class CCRUKPIToolBox:
             if p.get('level') != level:
                 continue
             if p.get('Type') in ('MAN in CAT', 'MAN', 'BRAND', 'BRAND_IN_CAT', 'SUB_BRAND_IN_CAT') and \
-                            p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
+                    p.get('Formula').strip() in ['sos', 'SOS', 'sos with empty']:
                 ratio = self.calculate_facings_sos(p)
             else:
                 continue
@@ -760,7 +794,8 @@ class CCRUKPIToolBox:
                 score = 0
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -783,9 +818,11 @@ class CCRUKPIToolBox:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('KPI name Eng') == depends_on_kpi_name:
                             if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                    c, 'get scenes')
                             elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                    c, 'get scenes')
                                 scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                           func='get scenes',
                                                                                           proportion_param=0.9)
@@ -802,7 +839,8 @@ class CCRUKPIToolBox:
 
         if params.get('Manufacturer'):
             manufacturers = \
-                [unicode(x).strip() for x in unicode(params.get('Manufacturer')).strip().split(', ')]
+                [unicode(x).strip()
+                 for x in unicode(params.get('Manufacturer')).strip().split(', ')]
         else:
             manufacturers = self.kpi_fetcher.TCCC
         if params.get('Formula').strip() == 'sos with empty':
@@ -817,7 +855,8 @@ class CCRUKPIToolBox:
                 return 0
         else:
             try:
-                values_list = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
+                values_list = [unicode(x).strip()
+                               for x in unicode(params.get('Values')).split(', ')]
             except Exception as e:
                 values_list = [params.get('Values')]
             if params.get('Type') == 'MAN':
@@ -872,9 +911,11 @@ class CCRUKPIToolBox:
             if not (params.get('target_min', 0) < kpi_total_res <= params.get('target_max', 100)):
                 score = 0
                 if kpi_total_res < params.get('target_min', 0):
-                    self.update_kpi_scores_and_results(params, {'threshold': params.get('target_min')})
+                    self.update_kpi_scores_and_results(
+                        params, {'threshold': params.get('target_min')})
                 else:
-                    self.update_kpi_scores_and_results(params, {'threshold': params.get('target_max')})
+                    self.update_kpi_scores_and_results(
+                        params, {'threshold': params.get('target_max')})
             else:
                 self.update_kpi_scores_and_results(params, {'threshold': params.get('target_min')})
                 numerator = kpi_total_res - params.get('target_min', 0)
@@ -883,7 +924,8 @@ class CCRUKPIToolBox:
             return score
 
         elif params.get('Target') == 'targets by guide':
-            target = self.kpi_fetcher.get_category_target_by_region(params.get('Values'), self.store_id)
+            target = self.kpi_fetcher.get_category_target_by_region(
+                params.get('Values'), self.store_id)
         else:
             target = params.get('Target')
         self.update_kpi_scores_and_results(params, {'threshold': target})
@@ -930,9 +972,11 @@ class CCRUKPIToolBox:
                         if c.get('Formula').strip() == 'number of doors of filled Coolers':
                             scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of doors with more than Target facings':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
@@ -958,12 +1002,14 @@ class CCRUKPIToolBox:
                 set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
             if level == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
             else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
@@ -1007,12 +1053,14 @@ class CCRUKPIToolBox:
                 set_total_res += round(score) * p.get('KPI Weight')
             # saving to DB
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
             else:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
         return set_total_res
@@ -1036,7 +1084,8 @@ class CCRUKPIToolBox:
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
-                    float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+                    float(self.templates[self.templates['template_name'] ==
+                                         scene_type]['additional_attribute_1'].values[0])
                 sum_of_all_doors += num_of_doors
             else:
                 num_of_doors = 1
@@ -1070,7 +1119,8 @@ class CCRUKPIToolBox:
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
-                    float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+                    float(self.templates[self.templates['template_name'] ==
+                                         scene_type]['additional_attribute_1'].values[0])
             else:
                 num_of_doors = 1
             if proportion >= proportion_param:
@@ -1104,12 +1154,14 @@ class CCRUKPIToolBox:
                         if c.get('Formula').strip() == 'number of doors of filled Coolers':
                             scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
                         else:
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         break
                 if not scenes:
                     if p.get('level') == 2:
@@ -1134,7 +1186,8 @@ class CCRUKPIToolBox:
                     set_total_res += round(score)
                 else:
                     set_total_res += round(score) * p.get('KPI Weight')
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1152,11 +1205,12 @@ class CCRUKPIToolBox:
                                        (self.scif['manufacturer_name'] == 'TCCC') &
                                        (self.scif['location_type'] == p.get('Locations to include')) &
                                        (self.scif['facings'] > 0) & (self.scif['product_type'] != 'Empty')][
-                                 'product_ean_code'].unique())
+                'product_ean_code'].unique())
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
                 num_of_doors = \
-                    float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+                    float(self.templates[self.templates['template_name'] ==
+                                         scene_type]['additional_attribute_1'].values[0])
             else:
                 num_of_doors = 1
             sum_of_all_doors += num_of_doors
@@ -1175,10 +1229,11 @@ class CCRUKPIToolBox:
                                         (self.scif['manufacturer_name'] == 'TCCC') &
                                         (self.scif['location_type'] == p.get('Locations to include')) &
                                         (self.scif['facings'] > 0) & (self.scif['product_type'] != 'Empty')][
-                                  'product_ean_code'].unique())
+                'product_ean_code'].unique())
             scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
             if any(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1']):
-                doors_count += float(self.templates[self.templates['template_name'] == scene_type]['additional_attribute_1'].values[0])
+                doors_count += float(self.templates[self.templates['template_name']
+                                                    == scene_type]['additional_attribute_1'].values[0])
             else:
                 doors_count += 1
         if doors_count:
@@ -1226,7 +1281,8 @@ class CCRUKPIToolBox:
                 children_scores = []
                 for child in params.values()[0]:
                     if child.get('KPI ID') in [int(x) for x in p.get('Children').split(', ')]:
-                        res = self.calculate_number_of_skus_in_single_scene_type(params, child, kpi_fk)
+                        res = self.calculate_number_of_skus_in_single_scene_type(
+                            params, child, kpi_fk)
                         children_scores.append(res)
                 score = max(children_scores)
                 # saving to level2
@@ -1254,7 +1310,8 @@ class CCRUKPIToolBox:
             score = 0
         # Saving to old tables
         if p.get('level') == 2:  # saving also to level3 in case this KPI has only one level
-            attributes_for_table3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+            attributes_for_table3 = self.create_attributes_for_level3_df(
+                p, score, kpi_fk, level=2, additional_level=3)
             self.write_to_kpi_results_old(attributes_for_table3, 'level3')
             attributes_for_table2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_table2, 'level2')
@@ -1268,14 +1325,16 @@ class CCRUKPIToolBox:
         if not scenes:
             scenes = self.get_relevant_scenes(params)
         if params.get('Product Category'):
-            category = [unicode(x).strip() for x in unicode(params.get('Product Category')).split(', ')]
+            category = [unicode(x).strip() for x in unicode(
+                params.get('Product Category')).split(', ')]
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other'])) &
                 (self.scif['category'].isin(category))]
         else:
             relevant_products_and_facings = self.scif[
                 (self.scif['scene_id'].isin(scenes)) & ~(self.scif['product_type'].isin(['Empty', 'Other']))]
-        all_products_by_ean_code = relevant_products_and_facings.groupby(['product_ean_code'])['facings'].sum()
+        all_products_by_ean_code = relevant_products_and_facings.groupby(['product_ean_code'])[
+            'facings'].sum()
         tested_sku = [unicode(x).strip() for x in unicode(params.get('Values')).split(', ')]
         tested_facings = \
             relevant_products_and_facings[relevant_products_and_facings['product_ean_code'].isin(tested_sku)][
@@ -1301,7 +1360,8 @@ class CCRUKPIToolBox:
                 values_list = [unicode(x).strip() for x in unicode(p.get('Values')).split(', ')]
                 for scene in scenes:
                     try:
-                        scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+                        scene_type = self.scif.loc[self.scif['scene_id']
+                                                   == scene]['template_name'].values[0]
                         if scene_type in values_list:
                             res = 1
                         else:
@@ -1315,7 +1375,8 @@ class CCRUKPIToolBox:
             values_list = [unicode(x).strip() for x in p.get('Values').split(', ')]
             for scene in scenes:
                 try:
-                    location_type = self.scif.loc[self.scif['scene_id'] == scene]['location_type'].values[0]
+                    location_type = self.scif.loc[self.scif['scene_id']
+                                                  == scene]['location_type'].values[0]
                     if location_type in values_list:
                         res = 1
                     else:
@@ -1327,9 +1388,10 @@ class CCRUKPIToolBox:
             values_list = [p.get('Values')]
             for scene in scenes:
                 try:
-                    scene_type = self.scif.loc[self.scif['scene_id'] == scene]['template_name'].values[0]
+                    scene_type = self.scif.loc[self.scif['scene_id']
+                                               == scene]['template_name'].values[0]
                     sub_location_type = int(self.templates.loc[self.templates['template_name'] == scene_type][
-                                                'additional_attribute_2'].values[0])
+                        'additional_attribute_2'].values[0])
                     if sub_location_type in values_list:
                         res = 1
                     else:
@@ -1337,7 +1399,8 @@ class CCRUKPIToolBox:
                     kpi_total_res += res
                 except IndexError as e:
                     continue
-        else:  # checking for number of scenes with a complex condition (only certain products/brands/etc)
+        # checking for number of scenes with a complex condition (only certain products/brands/etc)
+        else:
             p_copy = p.copy()
             p_copy["Formula"] = "number of facings"
             for scene in scenes:
@@ -1367,7 +1430,8 @@ class CCRUKPIToolBox:
             # writing to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1389,7 +1453,8 @@ class CCRUKPIToolBox:
             # writing to DB
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             if p.get('level') == 2:
-                attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, level=2, additional_level=3)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    p, score, kpi_fk, level=2, additional_level=3)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1407,7 +1472,8 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "sum of atomic KPI result" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             atomic_result_total = 0
             for c in params.values()[0]:
@@ -1415,7 +1481,8 @@ class CCRUKPIToolBox:
                     if c.get("Formula").strip() == "number of facings":
                         atomic_res = self.calculate_availability(c)
                     elif c.get("Formula").strip() == "number of doors with more than Target facings":
-                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(c, 'sum of doors')
+                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(
+                            c, 'sum of doors')
                     elif c.get("Formula").strip() == "facings TCCC/40":
                         atomic_res = self.calculate_tccc_40(c)
                     elif c.get("Formula").strip() == "number of doors of filled Coolers":
@@ -1423,8 +1490,10 @@ class CCRUKPIToolBox:
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c)
                     elif c.get("Formula").strip() == "number of coolers with facings target and fullness target":
-                        scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
-                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(c, scenes, proportion_param=0.9)
+                        scenes = self.calculate_number_of_doors_more_than_target_facings(
+                            c, 'get scenes')
+                        atomic_res = self.calculate_number_of_doors_of_filled_coolers(
+                            c, scenes, proportion_param=0.9)
                     else:
                         # print "sum of atomic KPI result:", c.get("Formula").strip()
                         atomic_res = 0
@@ -1434,8 +1503,10 @@ class CCRUKPIToolBox:
                     kpi_total += atomic_res
                     # write to DB
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                        c.get('KPI name Eng'), kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                     atomic_result = attributes_for_level3['result']
@@ -1480,7 +1551,8 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of atomic KPI Passed" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children:
@@ -1500,14 +1572,16 @@ class CCRUKPIToolBox:
                     elif c.get("Formula").strip() == "number of facings near food":
                         atomic_res = self.calculate_number_facings_near_food(c, params)
                     elif c.get("Formula").strip() == "number of doors with more than Target facings":
-                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(c, 'sum of doors')
+                        atomic_res = self.calculate_number_of_doors_more_than_target_facings(
+                            c, 'sum of doors')
                     elif c.get("Formula").strip() == "number of doors of filled Coolers":
                         atomic_res = self.check_number_of_doors_of_filled_coolers(c)
                     elif c.get("Formula").strip() == "number of pure Coolers":
                         scenes = self.get_relevant_scenes(c)
                         atomic_res = self.calculate_share_of_cch(c, scenes, sos=False)
                     elif c.get("Formula").strip() == "number of filled Coolers (scenes)":
-                        scenes_list = self.check_number_of_doors_of_filled_coolers(c, func='get scenes')
+                        scenes_list = self.check_number_of_doors_of_filled_coolers(
+                            c, func='get scenes')
                         atomic_res = len(scenes_list)
                     elif c.get("Formula").strip() == "number of SKU per Door RANGE":
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
@@ -1521,8 +1595,10 @@ class CCRUKPIToolBox:
                     if atomic_score == -1:
                         atomic_score = self.calculate_score(atomic_res, c)
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                        c.get('KPI name Eng'), kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, atomic_score, kpi_fk, atomic_kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
                         kpi_total += 1
@@ -1551,7 +1627,8 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of atomic KPI Passed on the same scene" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             info_by_kpi_id = self.build_dict(params.values()[0], 'KPI ID')
             if p.get('depends on'):
                 depends_on_kpi_name = p.get('depends on')
@@ -1574,7 +1651,8 @@ class CCRUKPIToolBox:
                     if c.get("Formula").strip() == "number of facings":
                         atomic_res = self.calculate_availability(c, [scene])
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, [scene], parent=p, same_scene=True)
+                        atomic_res = self.calculate_sub_atomic_passed(
+                            c, params, [scene], parent=p, same_scene=True)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res = self.calculate_lead_sku(c, [scene])
                         if not atomic_res:
@@ -1612,7 +1690,8 @@ class CCRUKPIToolBox:
                 if len(closest_to_pass_scenes) == 1:
                     favorite_scene = closest_to_pass_scenes[0]
                 else:
-                    favorite_scene = self.get_favorite_scene(closest_to_pass_scenes, scenes_kpi_info)
+                    favorite_scene = self.get_favorite_scene(
+                        closest_to_pass_scenes, scenes_kpi_info)
             kpi_total = 0
             for child in children:
                 atomic_score = -1
@@ -1621,7 +1700,8 @@ class CCRUKPIToolBox:
                     if c.get("Formula").strip() == "number of facings":
                         atomic_res = self.calculate_availability(c, [favorite_scene])
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, [favorite_scene], parent=p)
+                        atomic_res = self.calculate_sub_atomic_passed(
+                            c, params, [favorite_scene], parent=p)
                     elif c.get("Formula").strip() == "Lead SKU":
                         atomic_res = self.calculate_lead_sku(c, [favorite_scene])
                         if not atomic_res:
@@ -1643,14 +1723,16 @@ class CCRUKPIToolBox:
                     kpi_total += atomic_score / 100
                 else:
                     if c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        sub_atomic_children = map(int, str(c.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+                        sub_atomic_children = map(int, str(c.get("Children")).strip().replace(
+                            " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
                         for sub_atomic in sub_atomic_children:
                             sub_atomic_info = info_by_kpi_id.get(sub_atomic)
                             sub_atomic_res = 0
                             sub_atomic_score = self.calculate_score(sub_atomic_res, sub_atomic_info)
                             kpi_name = sub_atomic_info.get('KPI name Eng')
                             sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
-                            attributes_for_level4 = self.create_attributes_for_level3_df(sub_atomic_info, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
+                            attributes_for_level4 = self.create_attributes_for_level3_df(
+                                sub_atomic_info, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                             self.write_to_kpi_results_old(attributes_for_level4, 'level4')
                     atomic_res = 0
                     atomic_score = 0
@@ -1658,7 +1740,8 @@ class CCRUKPIToolBox:
 
                 kpi_name = c.get('KPI name Eng')
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(kpi_name, kpi_fk)
-                attributes_for_level3 = self.create_attributes_for_level3_df(c, atomic_score, kpi_fk, atomic_kpi_fk)
+                attributes_for_level3 = self.create_attributes_for_level3_df(
+                    c, atomic_score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             score = self.calculate_score(kpi_total, p)
             if p.get('KPI Weight') is None:
@@ -1686,11 +1769,13 @@ class CCRUKPIToolBox:
                     doors = 0
                     for c in all_params.values()[0]:
                         if c.get('KPI name Eng') == depends_on_kpi_name:
-                            doors = self.calculate_number_of_doors_more_than_target_facings(c, 'get doors')
+                            doors = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get doors')
                             break
                     if doors < 2:
                         return -1
-        children = map(int, str(params.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+        children = map(int, str(params.get("Children")).strip().replace(
+            " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
         total_res = 0
         for c in all_params.values()[0]:
             if c.get("KPI ID") in children:
@@ -1715,8 +1800,10 @@ class CCRUKPIToolBox:
                     if parent.get('Formula').strip() == 'number of atomic KPI Passed on the same scene':
                         continue
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(parent.get('KPI name Eng'))
-                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
-                attributes_for_level4 = self.create_attributes_for_level3_df(c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
+                sub_atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                    c.get('KPI name Eng'), kpi_fk)
+                attributes_for_level4 = self.create_attributes_for_level3_df(
+                    c, sub_atomic_score, kpi_fk, sub_atomic_kpi_fk, level=4)
                 self.write_to_kpi_results_old(attributes_for_level4, 'level4')
         return total_res
 
@@ -1735,15 +1822,18 @@ class CCRUKPIToolBox:
                 for c in params.values()[0]:
                     if c.get('KPI name Eng') == depends_on_kpi_name:
                         if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                         elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
-                            scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                            scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                c, 'get scenes')
                             scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
                         break
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             kpi_total = 0
             kpi_total_weight = 0
             for c in params.values()[0]:
@@ -1751,12 +1841,15 @@ class CCRUKPIToolBox:
                     atomic_res = -1
                     atomic_score = -1
                     if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
-                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                        atomic_res = self.calculate_availability(
+                            c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "each SKU hits facings target":
-                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
+                        atomic_res = self.calculate_availability(
+                            c, scenes=scenes, all_params=params)
                         atomic_score = 100 if atomic_res == 100 else 0
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
+                        atomic_res = self.calculate_sub_atomic_passed(
+                            c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":
                         atomic_res = self.calculate_number_of_scenes_with_target(c, scenes=scenes)
                     elif c.get("Formula").strip() == "Scenes with no tagging":
@@ -1771,14 +1864,17 @@ class CCRUKPIToolBox:
                         if atomic_score == -1:
                             atomic_score = self.calculate_score(atomic_res, c)
                         if p.get('Formula').strip() in ("Weighted Average", "Weighted Sum"):
-                            kpi_total += atomic_score * (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
-                            kpi_total_weight += (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                            kpi_total += atomic_score * \
+                                (c.get('KPI Weight') if c.get('KPI Weight') is not None else 1)
+                            kpi_total_weight += (c.get('KPI Weight')
+                                                 if c.get('KPI Weight') is not None else 1)
                         else:
                             kpi_total += atomic_score
                             kpi_total_weight += 1
 
                     # write to DB
-                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(c.get('KPI name Eng'), kpi_fk)
+                    atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(
+                        c.get('KPI name Eng'), kpi_fk)
                     if c.get("Formula").strip() == "each SKU hits facings target":
                         attributes_for_level3 = self.create_attributes_for_level3_df(c, (atomic_score, atomic_res, 100),
                                                                                      kpi_fk, atomic_kpi_fk)
@@ -1809,7 +1905,8 @@ class CCRUKPIToolBox:
         scenes_info = pd.merge(self.scenes_info, self.templates, on='template_fk')
         if level == 3:
             if params.get('Scenes to include'):
-                values_list = [unicode(x).strip() for x in params.get('Scenes to include').split(', ')]
+                values_list = [unicode(x).strip()
+                               for x in params.get('Scenes to include').split(', ')]
                 number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
                 return number_relevant_scenes
             else:
@@ -1828,29 +1925,37 @@ class CCRUKPIToolBox:
                     for c in params.values()[0]:
                         if c.get('KPI name Eng') == depends_on_kpi_name:
                             if c.get('Formula').strip() == 'number of doors with more than Target facings':
-                                scenes = self.calculate_number_of_doors_more_than_target_facings(c, 'get scenes')
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                    c, 'get scenes')
                             elif c.get('Formula').strip() == 'number of doors of filled Coolers':
-                                scenes = self.check_number_of_doors_of_filled_coolers(c, 'get scenes')
+                                scenes = self.check_number_of_doors_of_filled_coolers(
+                                    c, 'get scenes')
                             break
                     if len(scenes) >= 1:
                         flag = 0
                         final_scenes = scenes_info
                         if p.get('Scenes to include'):
-                            scenes_values_list = [unicode(x).strip() for x in p.get('Scenes to include').split(', ')]
+                            scenes_values_list = [unicode(x).strip()
+                                                  for x in p.get('Scenes to include').split(', ')]
                             final_scenes = scenes_info['template_name'].isin(scenes_values_list)
                             flag = 1
                         if p.get('Locations to include'):
-                            location_values_list = [unicode(x).strip() for x in p.get('Locations to include').split(', ')]
+                            location_values_list = [unicode(x).strip() for x in p.get(
+                                'Locations to include').split(', ')]
                             if flag:
                                 if sum(final_scenes):
-                                    final_scenes = scenes_info[final_scenes]['location_type'].isin(location_values_list)
+                                    final_scenes = scenes_info[final_scenes]['location_type'].isin(
+                                        location_values_list)
                             else:
-                                final_scenes = final_scenes['location_type'].isin(location_values_list)
+                                final_scenes = final_scenes['location_type'].isin(
+                                    location_values_list)
                         number_relevant_scenes = final_scenes.sum()
                 else:
                     if p.get('Scenes to include'):
-                        values_list = [unicode(x).strip() for x in p.get('Scenes to include').split(', ')]
-                        number_relevant_scenes = scenes_info['template_name'].isin(values_list).sum()
+                        values_list = [unicode(x).strip()
+                                       for x in p.get('Scenes to include').split(', ')]
+                        number_relevant_scenes = scenes_info['template_name'].isin(
+                            values_list).sum()
 
                 score = self.calculate_score(number_relevant_scenes, p)
                 if p.get('KPI Weight') is None:
@@ -1862,7 +1967,8 @@ class CCRUKPIToolBox:
                 atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
 
                 if level == 2:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, score, kpi_fk, atomic_kpi_fk, level=2, additional_level=3)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -1943,7 +2049,8 @@ class CCRUKPIToolBox:
         self.rds_conn.disconnect_rds()
         self.rds_conn = self.rds_connection()
         cur = self.rds_conn.db.cursor()
-        delete_queries = self.kpi_fetcher.get_delete_session_results(self.session_uid, self.session_fk)
+        delete_queries = self.kpi_fetcher.get_delete_session_results(
+            self.session_uid, self.session_fk)
         for query in delete_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
@@ -1970,7 +2077,8 @@ class CCRUKPIToolBox:
         return
 
     def write_to_kpi_facts_hidden(self, kpi_id, scene, result, score):
-        self.kpi_facts_hidden.append({"KPI ID": kpi_id, "scene_fk": scene, "result": result, "score": score})
+        self.kpi_facts_hidden.append(
+            {"KPI ID": kpi_id, "scene_fk": scene, "result": result, "score": score})
         return
 
     @kpi_runtime()
@@ -2037,7 +2145,8 @@ class CCRUKPIToolBox:
             elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SESSION LEVEL":  # session level
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
-                        passed_failed = str(p.get("Values")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n")
+                        passed_failed = str(p.get("Values")).replace(" ", "").replace(
+                            ",", "\n").replace("\n\n", "\n").split("\n")
                         if k.get("score") == 100:
                             result = passed_failed[0]
                         elif len(passed_failed) > 1:
@@ -2051,7 +2160,8 @@ class CCRUKPIToolBox:
             elif p.get("Formula").strip() == "Value" and p.get("Type") == "SCENE LEVEL":  # scene level
                 scenes = self.get_relevant_scenes(params)
                 for scene in scenes:
-                    scene_uid = self.scenes_info[self.scenes_info['scene_fk'] == scene]['scene_uid'].values[0]
+                    scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+                                                 == scene]['scene_uid'].values[0]
                     kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
                                       "atomic_kpi_fk": atomic_kpi_fk, "result": p.get("Values"),
                                       "scene_uid": scene_uid, "scene_id": scene,
@@ -2061,9 +2171,12 @@ class CCRUKPIToolBox:
                 scenes = self.get_relevant_scenes(params)
                 if p.get("Values") == 'template.additional_attribute_1':
                     for scene in scenes:
-                        scene_uid = self.scenes_info[self.scenes_info['scene_fk'] == scene]['scene_uid'].values[0]
-                        template = self.scenes_info[self.scenes_info['scene_fk'] == scene]['template_fk'].values[0]
-                        result = self.templates[self.templates['template_fk'] == template]['additional_attribute_1'].values[0]
+                        scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+                                                     == scene]['scene_uid'].values[0]
+                        template = self.scenes_info[self.scenes_info['scene_fk']
+                                                    == scene]['template_fk'].values[0]
+                        result = self.templates[self.templates['template_fk']
+                                                == template]['additional_attribute_1'].values[0]
                         kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name + "@" + scene_uid,
                                           "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                           "scene_uid": scene_uid, "scene_id": scene,
@@ -2072,10 +2185,12 @@ class CCRUKPIToolBox:
             elif p.get("Formula").strip() == "Passed or Failed Value" and p.get("Type") == "SCENE LEVEL":  # scene level
                 scenes = self.get_relevant_scenes(params)
                 for scene in scenes:
-                    scene_uid = self.scenes_info[self.scenes_info['scene_fk'] == scene]['scene_uid'].values[0]
+                    scene_uid = self.scenes_info[self.scenes_info['scene_fk']
+                                                 == scene]['scene_uid'].values[0]
                     for k in self.kpi_facts_hidden:
                         if k.get("KPI ID") in p.get("Children List") and k.get("scene_fk") == scene:
-                            passed_failed = str(p.get("Values")).replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n")
+                            passed_failed = str(p.get("Values")).replace(" ", "").replace(
+                                ",", "\n").replace("\n\n", "\n").split("\n")
                             if k.get("score") == 100:
                                 result = passed_failed[0]
                             elif len(passed_failed) > 1:
@@ -2306,21 +2421,24 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of doors given sos" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             first_atomic_score = second_atomic_res = 0
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic sos":
                     first_atomic_res = self.calculate_facings_sos(c)
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     # write to DB
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, first_atomic_score, kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, first_atomic_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic number of doors":
                     second_atomic_res = self.calculate_number_of_doors(c)
                     second_atomic_score = self.calculate_score(second_atomic_res, c)
                     # write to DB
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, second_atomic_score, kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, second_atomic_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if first_atomic_score > 0:
@@ -2342,7 +2460,8 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != "number of doors given number of SKUs" or not p.get("Children"):
                 continue
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
-            children = map(int, str(p.get("Children")).strip().replace(" ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
+            children = map(int, str(p.get("Children")).strip().replace(
+                " ", "").replace(",", "\n").replace("\n\n", "\n").split("\n"))
             first_atomic_scores = []
             for c in params.values()[0]:
                 if c.get("KPI ID") in children and c.get("Formula").strip() == "atomic number of SKUs":
@@ -2350,7 +2469,8 @@ class CCRUKPIToolBox:
                     first_atomic_score = self.calculate_score(first_atomic_res, c)
                     first_atomic_scores.append(first_atomic_score)
                     # write to DB
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, first_atomic_score, kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, first_atomic_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
             second_atomic_res = 0
             for c in params.values()[0]:
@@ -2358,7 +2478,8 @@ class CCRUKPIToolBox:
                     second_atomic_res = self.calculate_number_of_doors(c)
                     second_atomic_score = self.calculate_score(second_atomic_res, c)
                     # write to DB
-                    attributes_for_level3 = self.create_attributes_for_level3_df(c, second_atomic_score, kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        c, second_atomic_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
             if 0 not in first_atomic_scores:  # if all assortment atomics have score > 0
@@ -2464,7 +2585,8 @@ class CCRUKPIToolBox:
             if gap_groups_limit.get(kpi.get('Gap Category Eng')) > 0:
                 kpi_id = self.kpi_name_to_id[POS].get(kpi.get('KPI Name Eng'))
                 if kpi_id is None:
-                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(kpi.get('KPI Name Eng')))
+                    Log.warning('Gap KPI is not found in PoS KPI set : {}'.format(
+                        kpi.get('KPI Name Eng')))
                 else:
                     score = self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][kpi_id].get('weighted_score') else 0
@@ -2473,7 +2595,8 @@ class CCRUKPIToolBox:
                     gap = (target if target else 0) - (score if score else 0)
                     if gap > 0:
                         gaps.loc[i, 'Gap'] = gap
-                        gaps.loc[i, 'KPI Name Rus'] = self.kpi_scores_and_results[POS][kpi_id].get('rus_name')
+                        gaps.loc[i, 'KPI Name Rus'] = self.kpi_scores_and_results[POS][kpi_id].get(
+                            'rus_name')
                         gap_groups_limit[kpi.get('Gap Category Eng')] -= 1
         gaps = gaps[gaps['Gap'] > 0]
 
@@ -2592,7 +2715,8 @@ class CCRUKPIToolBox:
 
         target_data_raw = self.execution_contract.get_json_file_content(str(self.store_id))
         if target_data_raw:
-            Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(self.store_id, self.store_number))
+            Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'.format(
+                self.store_id, self.store_number))
 
         target_data = None
         for data in target_data_raw:
@@ -2617,7 +2741,8 @@ class CCRUKPIToolBox:
                 if param.get('level') == 2 and param.get('KPI Set Type') == 'Equipment':
 
                     kpi_name = param.get('Channel') + '@' + param.get('KPI name Eng').strip()
-                    kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                    kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['kpi_name']
+                                                              == kpi_name]['kpi_fk'].values[0]
                     kpi_name = param.get('KPI name Eng')
                     kpi_weight = param.get('KPI Weight')
                     children = param.get('Children').replace('\n', '').replace(' ', '').split(',')
@@ -2628,8 +2753,10 @@ class CCRUKPIToolBox:
 
                     for param_child in params:
                         if str(param_child.get('KPI ID')) in children and param_child.get('KPI Set Type') == 'Equipment':
-                            atomic_kpi_name = param_child.get('Channel') + '@' + param_child.get('KPI name Eng')
-                            atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data['atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk'].values[0]
+                            atomic_kpi_name = param_child.get(
+                                'Channel') + '@' + param_child.get('KPI name Eng')
+                            atomic_kpi_fk = self.kpi_fetcher.kpi_static_data[self.kpi_fetcher.kpi_static_data[
+                                'atomic_kpi_name'] == atomic_kpi_name]['atomic_kpi_fk'].values[0]
                             atomic_kpi_name = param_child.get('KPI name Eng')
                             target = target_data.get(kpi_conversion.get(atomic_kpi_name))
                             target, weight = target if target else (None, None)
@@ -2645,13 +2772,14 @@ class CCRUKPIToolBox:
                                     target = int(target)
                                 try:
                                     result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
-                                                         .get(atomic_kpi_name)].get('result')), 2)
+                                                                                             .get(atomic_kpi_name)].get('result')), 2)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
-                                    score = int(round(result / float(target) * 100)) if target else 100
+                                    score = int(round(result / float(target) * 100)
+                                                ) if target else 100
                                     score = 100 if score > 100 else score
                                 else:
                                     score = 100 if result >= target else 0
@@ -2727,8 +2855,10 @@ class CCRUKPIToolBox:
                         score = self.top_sku_score
 
                         if score is not None:
-                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get('KPI Weight') * 100
-                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(score * param.get('KPI Weight'), 2)
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get(
+                                'KPI Weight') * 100
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(
+                                score * param.get('KPI Weight'), 2)
 
                     elif param.get('Formula').strip() == 'Equipment Execution score':
                         # kpi_id = 'EQUIPMENT'
@@ -2736,8 +2866,10 @@ class CCRUKPIToolBox:
                         score = self.equipment_execution_score
 
                         if score is not None:
-                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get('KPI Weight') * 100
-                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(score * param.get('KPI Weight'), 2)
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get(
+                                'KPI Weight') * 100
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(
+                                score * param.get('KPI Weight'), 2)
 
                     else:
                         # kpi_id = None
@@ -2855,7 +2987,8 @@ class CCRUKPIToolBox:
                                                                 'in_assortment': 1,
                                                                 'distributed': 1 if distributed else 0},
                                                                ignore_index=True)
-                query = self.top_sku.get_custom_scif_query(self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
+                query = self.top_sku.get_custom_scif_query(
+                    self.session_fk, scene_fk, int(anchor_product_fk), in_assortment, distributed)
                 self.top_sku_queries.append(query)
 
         if not top_sku_products.empty:
@@ -2871,11 +3004,14 @@ class CCRUKPIToolBox:
                 .reset_index()
             for i, row in top_sku_products.iterrows():
 
-                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=3, kpi=row['product_fk'])
-                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_result = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=3, kpi=row['product_fk'])
+                identifier_parent = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
 
                 kpi_name = self.kpi_set_type + '_SKU'
-                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_name = kpi_name.strip().replace("'", "").replace(
+                    '"', '').replace(',', '.').replace('  ', ' ').upper()
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
                 numerator_id = row['product_fk']
@@ -2921,11 +3057,14 @@ class CCRUKPIToolBox:
                 .reset_index()
             for i, row in top_sku_anchor_products.iterrows():
 
-                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
-                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+                identifier_result = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=2, kpi=row['anchor_product_fk'])
+                identifier_parent = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=1, kpi=row['category_fk'])
 
                 kpi_name = self.kpi_set_type + '_BUNDLE'
-                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_name = kpi_name.strip().replace("'", "").replace(
+                    '"', '').replace(',', '.').replace('  ', ' ').upper()
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
                 numerator_id = row['anchor_product_fk']
@@ -2978,11 +3117,14 @@ class CCRUKPIToolBox:
                 .reset_index()
             for i, row in top_sku_categories.iterrows():
 
-                identifier_result = self.common.get_dictionary(set=self.kpi_set_type, level=1, kpi=row['category_fk'])
-                identifier_parent = self.common.get_dictionary(set=self.kpi_set_type, level=0, kpi=TOPSKU)
+                identifier_result = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=1, kpi=row['category_fk'])
+                identifier_parent = self.common.get_dictionary(
+                    set=self.kpi_set_type, level=0, kpi=TOPSKU)
 
                 kpi_name = self.kpi_set_type + '_CATEGORY'
-                kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+                kpi_name = kpi_name.strip().replace("'", "").replace(
+                    '"', '').replace(',', '.').replace('  ', ' ').upper()
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
                 numerator_id = row['category_fk']
@@ -3026,7 +3168,8 @@ class CCRUKPIToolBox:
         identifier_parent = None  # self.common.get_dictionary(set=CONTRACT, level=0, kpi='0')
 
         kpi_name = self.kpi_set_type + '_0'
-        kpi_name = kpi_name.strip().replace("'", "").replace('"', '').replace(',', '.').replace('  ', ' ').upper()
+        kpi_name = kpi_name.strip().replace("'", "").replace(
+            '"', '').replace(',', '.').replace('  ', ' ').upper()
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
 
         numerator_id = self.own_manufacturer_id
@@ -3081,14 +3224,16 @@ class CCRUKPIToolBox:
                 if p.get('Formula').strip() == 'Check KPI score in POS':
                     kpi_name = p.get('Values')
                     kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
-                    kpi_result = self.kpi_scores_and_results[POS][kpi_id].get('score') if kpi_id else None
+                    kpi_result = self.kpi_scores_and_results[POS][kpi_id].get(
+                        'score') if kpi_id else None
 
                 elif p.get('Formula').strip() == 'Number of KPIs passed in POS':
                     kpi_names = [unicode(x).strip() for x in unicode(p.get('Values')).split(', ')]
                     kpi_result = 0
                     for kpi_name in kpi_names:
                         kpi_id = self.kpi_name_to_id[POS].get(kpi_name)
-                        kpi_score = self.kpi_scores_and_results[POS][kpi_id].get('score') if kpi_id else None
+                        kpi_score = self.kpi_scores_and_results[POS][kpi_id].get(
+                            'score') if kpi_id else None
                         if kpi_score == 100:
                             kpi_result += 1
 
@@ -3097,12 +3242,15 @@ class CCRUKPIToolBox:
 
                 # saving to DB
                 if level == 2:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk, level=2, additional_level=3)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, kpi_score, kpi_fk, level=2, additional_level=3)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
-                    attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
+                    attributes_for_level2 = self.create_attributes_for_level2_df(
+                        p, kpi_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level2, 'level2')
                 else:
-                    attributes_for_level3 = self.create_attributes_for_level3_df(p, kpi_score, kpi_fk)
+                    attributes_for_level3 = self.create_attributes_for_level3_df(
+                        p, kpi_score, kpi_fk)
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
                 set_total_res += round(kpi_score) * p.get('KPI Weight')
@@ -3159,7 +3307,8 @@ class CCRUKPIToolBox:
             if "number of SKUs" in formula:
                 object_facings = len(final_result['product_ean_code'].unique())
             elif "each SKU hits facings target" in formula:
-                object_facings = final_result.groupby(['scene_fk', 'product_ean_code']).agg({'facings': 'sum'})['facings'].values.tolist()
+                object_facings = final_result.groupby(['scene_fk', 'product_ean_code']).agg(
+                    {'facings': 'sum'})['facings'].values.tolist()
             else:
                 if 'facings' in final_result.columns:
                     object_facings = final_result['facings'].sum()
@@ -3185,7 +3334,8 @@ class CCRUKPIToolBox:
                 kpis = pd.DataFrame(kpis.values())
                 kpis = kpis.where((pd.notnull(kpis)), None)
                 if kpi_set_type in [EQUIPMENT, TOPSKU]:
-                    identifier_parent = self.common.get_dictionary(set=CONTRACT, level=0, kpi=CONTRACT)
+                    identifier_parent = self.common.get_dictionary(
+                        set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
                 try:
@@ -3204,11 +3354,13 @@ class CCRUKPIToolBox:
                         + (('_' + kpi['format']) if kpi['format'] else '')
                         + ('_SCENE' if kpi['scene_id'] else ''))
             kpi_name = kpi_name.strip().replace("  ", " ").replace(",", ".").upper()
-            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type'] == kpi_name]['pk'].values[0]
+            kpi_fk = self.common.kpi_static_data[self.common.kpi_static_data['type']
+                                                 == kpi_name]['pk'].values[0]
 
             scene_id = int(kpi['scene_id']) if kpi['scene_id'] else None
 
-            identifier_result = self.common.get_dictionary(set=kpi_set_type, level=kpi['level'], kpi=kpi['kpi_id'])
+            identifier_result = self.common.get_dictionary(
+                set=kpi_set_type, level=kpi['level'], kpi=kpi['kpi_id'])
 
             numerator_id = self.own_manufacturer_id if parent == 'root' \
                 else self.common.get_kpi_fk_by_kpi_type(kpi['kpi_name'])
@@ -3276,9 +3428,12 @@ class CCRUKPIToolBox:
             entities = [entities]
         entities_df = pd.DataFrame()
         for entity in entities:
-            entity_type_fk = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['pk'].values[0]
-            entity_table_name = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['table_name'].values[0]
-            entity_uid_field = self.kpi_entity_types[self.kpi_entity_types['name'] == entity]['uid_field'].values[0]
+            entity_type_fk = self.kpi_entity_types[self.kpi_entity_types['name']
+                                                   == entity]['pk'].values[0]
+            entity_table_name = self.kpi_entity_types[self.kpi_entity_types['name']
+                                                      == entity]['table_name'].values[0]
+            entity_uid_field = self.kpi_entity_types[self.kpi_entity_types['name']
+                                                     == entity]['uid_field'].values[0]
             entities_df = entities_df\
                 .append(self.kpi_fetcher.get_kpi_entity(entity, entity_type_fk, entity_table_name, entity_uid_field),
                         ignore_index=True)

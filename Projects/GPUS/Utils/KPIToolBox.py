@@ -11,7 +11,7 @@ __author__ = 'sam, nicolaske'
 
 class GPUSToolBox:
 
-    def __init__(self, data_provider, common, output):
+    def __init__(self, data_provider, common, output, template_path):
         self.output = output
         self.data_provider = data_provider
         self.common = common
@@ -27,8 +27,10 @@ class GPUSToolBox:
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.mpis = self.make_mpis()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.jump_shelves = pd.read_excel(template_path).T.to_dict('index')
+        self.scif = self.generate_scif()
         self.scif['store_fk'] = self.store_id
         self.scif = self.scif[~(self.scif['product_type'] == Const.IRRELEVANT)]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
@@ -50,6 +52,7 @@ class GPUSToolBox:
         self.kpi_results = []
 
         self.assortment = Assortment(self.data_provider, self.output)
+        self.assortment.scif = self.scif
 
 
     def main_calculation(self, *args, **kwargs):
@@ -59,11 +62,12 @@ class GPUSToolBox:
         if not self.filter_df(self.scif, self.brand_filter).empty:
             self.calculate_facings_sos()
             self.calculate_linear_sos()
-            # self.calculate_adjacency()
+            self.calculate_adjacency()
             self.calculate_assortment()
 
         if not self.filter_df(self.scif, self.cat_filter).empty:
             self.calculate_share_of_empty()
+            # pass
 
         for result in self.kpi_results:
             self.write_to_db(**result)
@@ -89,9 +93,35 @@ class GPUSToolBox:
             Log.error('ERROR {} KPIs Failed to Calculate'.format(group))
             Log.error(e)
 
-    # def update_adjacency(self):
-    #     print('asdf')
-    #     pass
+    def update_adjacency(self):
+        kpis = self.kpis[self.kpis['type'].str.contains(r'^(?=.*Total)(?=.*Adjacencies)')]
+        parent_kpi = kpis[kpis[Const.KPI_FAMILY] == Const.PS_PARENT].iloc[0]
+        columns = ['numerator_result', 'denominator_result', 'kpi_name', 'ident_result', 'ident_parent']
+        sub_columns = ['kpi_fk', 'scene_result_fk', 'ident_parent', 'hierarchy_only']
+        results = pd.DataFrame([[None]*len(columns)]*(len(Const.EDGES)+1), columns=columns)
+        for i, dir in enumerate(Const.EDGES):
+            ident = '{}_Parent'.format(dir)
+            kpi = kpis[kpis['type'].str.contains('(?i){}'.format(dir))].iloc[0]
+            df = self.scene_results[self.scene_results['type'].str.contains('(?i){}'.format(dir))]
+            df['hierarchy_only'] = 1
+            df.rename(columns={'scene_kpi_fk': 'scene_result_fk'}, inplace=True)
+            cat_res = df[df['type'].str.contains('(?i){}'.format('category'))]
+            brand_res = df[df['type'].str.contains('(?i){}'.format('brand'))]
+            cat_res['kpi_fk'] = 0
+            cat_res['ident_parent'] = ident
+            self.kpi_results += [v for k, v in cat_res[sub_columns].to_dict('index').items()]
+
+            results.loc[i, 'numerator_result'] = brand_res.shape[0]
+            results.loc[i, 'denominator_result'] = cat_res.shape[0]
+            results.loc[i, 'kpi_name'] = kpi['type']
+            results.loc[i, 'ident_result'] = ident
+            results.loc[i, 'ident_parent'] = 'Adjacency_parent'
+
+        results.loc[i+1, :] = results.sum()
+        results.loc[i+1, 'kpi_name'] = parent_kpi['type']
+        results.loc[i+1, 'ident_result'] = 'Adjacency_parent'
+        results[results.isnull()] = None
+        self.kpi_results += [v for k, v in results.to_dict('index').items()]
 
     def calculate_sos(self, kpi_family, kpi_filter):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == kpi_family]
@@ -226,6 +256,33 @@ class GPUSToolBox:
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
         return mpis
 
+    def generate_scif(self):
+        scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        retailer = self.store_info['retailer_name'].iloc[0]
+        if retailer in self.jump_shelves:
+            mpis_groups = self.mpis.groupby('category')
+            new_mpis = pd.DataFrame()
+            for category, old_mpis in mpis_groups:
+                if category in self.jump_shelves[retailer]:
+                    old_mpis = old_mpis[old_mpis['shelf_number_from_bottom'] <= self.jump_shelves[retailer][category]]
+                new_mpis = pd.concat([new_mpis, old_mpis])
+            new_mpis = new_mpis[Const.MPIS_COLS]
+            new_mpis['facings'] = 1
+            stack = new_mpis.drop('stacking_layer', axis =1).groupby(['scene_fk', 'product_fk']).sum().rename(
+                columns={'width_mm_advance': 'net_len_add_stack'})
+            ign_stack = new_mpis[new_mpis['stacking_layer']==1].drop('stacking_layer', axis =1)\
+                .groupby(['scene_fk', 'product_fk']).sum().rename(columns={'width_mm_advance': 'net_len_ign_stack',
+                                                                           'facings': Const.FACINGS_IGN_STACKING})
+            mpis = stack.join(ign_stack).reset_index()
+            mpis.fillna(0, inplace=True)
+            scif = scif.drop(Const.FACINGS_IGN_STACKING, axis=1).drop(Const.FACINGS, axis=1)
+            for col in scif.columns:
+                if '_len_' in col or '_area_' in col:
+                    scif.drop(col, axis=1, inplace=True)
+            scif = mpis.merge(scif, right_on=['scene_id', 'item_id'], left_on=['scene_fk', 'product_fk'],
+                              suffixes=['', 'x_'])
+        return scif
+
     def dist_kpi_to_oos_kpi(self):
         dist = self.kpis[(self.kpis[Const.KPI_FAMILY] == Const.ASSORTMENT)&(self.kpis['kpi_calculation_stage_fk'] == 3)]
         oos = self.kpis[(self.kpis[Const.KPI_FAMILY] == Const.OOS) & (self.kpis['kpi_calculation_stage_fk'] == 3)]
@@ -238,8 +295,9 @@ class GPUSToolBox:
     def load_kpis(self):
         return pd.read_sql_query(Const.KPI_QUERY, self.rds_conn.db)
 
-    def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None, denominator_result=None,
-                    numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None, kpi_fk = None):
+    def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None, scene_result_fk=None,
+                    denominator_result=None, numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None,
+                    kpi_fk = None, hierarchy_only=0):
         """
         writes result in the DB
         :param kpi_name: str
@@ -248,10 +306,11 @@ class GPUSToolBox:
         :param result: str
         :param threshold: int
         """
-        if not kpi_fk:
+        if not kpi_fk and kpi_name:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id,
-                                       identifier_result=ident_result, identifier_parent=ident_parent)
+                                       identifier_result=ident_result, identifier_parent=ident_parent,
+                                       scene_result_fk=scene_result_fk, hierarchy_only=0)
 
