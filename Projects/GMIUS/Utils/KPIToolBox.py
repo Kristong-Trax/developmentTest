@@ -42,6 +42,7 @@ class ToolBox:
         self.templates = self.data_provider.all_templates
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.result_values_dict = self.make_result_values_dict()
+        self.att_dict = self.make_att_dict()
         self.store_assortment = self.ps_data_provider.get_store_assortment()
         self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
@@ -113,6 +114,7 @@ class ToolBox:
         if kpi_type == Const.AGGREGATION: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
+            # function = self.calculate_orientation
             # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
             #                     'How is RTS Progresso blocked?',
             #                     'How is RTS Private Label blocked?',
@@ -726,6 +728,19 @@ class ToolBox:
                   'target': None}
         return kwargs
 
+    def calculate_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        # filters = self.get_kpi_line_filters(kpi_line)
+        filters = {}
+        filters.update(general_filters)
+        mpip = self.filter_df(self.mpip, filters)
+        orients = mpip['image_direction'].unique()
+        result = 'Mix of Orientation'
+        if len(orients) == 1:
+            result = 'ALL Cans stocked on {}'.format(orients[0])
+        result_fk = self.result_values_dict[result]
+        kwargs = {'numerator_result': result_fk, 'score': 1, 'result': result_fk}
+        return kwargs
+
     def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
@@ -994,6 +1009,8 @@ class ToolBox:
             return self.calculate_count_of_shelves
         elif kpi_type == Const.COUNT:
             return self.calculate_count_of
+        elif kpi_type == Const.ORIENT:
+            return self.calculate_orientation
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
@@ -1002,13 +1019,20 @@ class ToolBox:
         query = "SELECT * FROM static.kpi_result_value;"
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db).set_index('value')['pk'].to_dict()
 
+    def make_att_dict(self):
+        df = pd.read_excel(Const.DICTIONARY_PATH)
+        df = df[(df['unknown'] != 'Y') & (df['not_final'] != 'Y')].set_index('Name')
+        params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
+        return params
+
     def create_mpip(self):
         query = '''
-                Select mpip.*, pi.image_direction
+                Select mpip.*, pi.image_direction, t.name as 'template_name'
                 from probedata.match_product_in_probe mpip
                 left join static_new.product_image pi on mpip.product_image_fk = pi.pk
                 left join probedata.probe pr on mpip.probe_fk = pr.pk
                 left join probedata.scene sc on pr.scene_fk = sc.pk
+                left join static.template t on sc.template_fk = t.pk
                 where sc.session_uid = '{}'
                 '''.format(self.session_uid)
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)\

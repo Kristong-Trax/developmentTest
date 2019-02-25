@@ -34,11 +34,13 @@ if __name__ == '__main__':
                 '26175b23-f786-4564-a9a4-e8810ce231d9',
                   ]
     sessions = [
-        'd0e02332-b182-4ec7-9776-f79ae47fc8a6',
-        'ab70f0f1-7ea1-4e76-a21e-45b45809d301',
+        # 'd0e02332-b182-4ec7-9776-f79ae47fc8a6',
+        # 'ab70f0f1-7ea1-4e76-a21e-45b45809d301',
         '039907ec-6e6f-4d41-b1a1-595152e21225',
-        '342c2485-28ee-46d2-8d6b-11f355f574d2',
-        '70ec27f5-457c-4513-8927-697450c4cbe5',
+        # '342c2485-28ee-46d2-8d6b-11f355f574d2',
+        # '70ec27f5-457c-4513-8927-697450c4cbe5',
+
+
         # '3726b021-6bf6-40c2-aca3-2c8a28189cf1',
         # 'a01facf5-992d-462d-bfed-efc676bca6cb',
         # '5ebee0e0-0bf6-433a-a702-76cd98a0ee0e',
@@ -513,14 +515,14 @@ if __name__ == '__main__':
     ]
     # sessions = ['508e23d5-f7c4-41a3-a5fd-9c0b123f82a3']
 
-    sessions = [
-        # '36536ea2-a6c1-4c52-b9fc-8168fc0c385d',
-        # '2fe10dac-8bda-40ba-91eb-ea86016a6c6b',
-        # '10314089-10b2-416c-8db4-6c255f12492e',
-        # '3ee63d70-0696-4513-8307-957131460c3d',
-        # '50c99053-4504-4d05-af28-34a464706633',
-        '26175b23-f786-4564-a9a4-e8810ce231d9',
-    ]
+    # sessions = [
+    #     # '36536ea2-a6c1-4c52-b9fc-8168fc0c385d',
+    #     # '2fe10dac-8bda-40ba-91eb-ea86016a6c6b',
+    #     # '10314089-10b2-416c-8db4-6c255f12492e',
+    #     # '3ee63d70-0696-4513-8307-957131460c3d',
+    #     # '50c99053-4504-4d05-af28-34a464706633',
+    #     '26175b23-f786-4564-a9a4-e8810ce231d9',
+    # ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)

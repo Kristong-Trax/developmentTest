@@ -1,9 +1,11 @@
-
+import os
 __author__ = 'Sam'
 
 
 class Const(object):
     ''' Holds Constants '''
+
+    DICTIONARY_PATH = os.path.join(os.getcwd(), 'Data', 'Dictionary.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
