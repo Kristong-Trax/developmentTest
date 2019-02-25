@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.TWEGAU.Utils.KPIToolBox import TWEAUToolBox
+from Projects.TWEGAU.Utils.KPIToolBox import TWEGAUToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common
 
@@ -17,7 +17,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = TWEAUToolBox(self.data_provider, self.output)
+        self.tool_box = TWEGAUToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)

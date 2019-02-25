@@ -31,7 +31,7 @@ class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment(in_balde=True)
-        jnj_generator.promo_calc(sales_reps_date='2018-05-31')
+        jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')

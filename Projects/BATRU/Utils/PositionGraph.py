@@ -64,8 +64,10 @@ class BATRUPositionGraphs:
         matches = matches[matches['status'] == 1]
         if not include_stacking:
             matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
-        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
+        matches = matches.merge(self.get_match_product_in_scene(), how='left',
+                                on='scene_match_fk', suffixes=['', '_2'])
+        matches = matches.merge(
+            self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
         matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
                                                                            'scene_id', 'scene_fk']],
                                 how='left', on='scene_fk', suffixes=['', '_4'])
@@ -109,7 +111,8 @@ class BATRUPositionGraphs:
             scenes = self.match_product_in_scene['scene_fk'].unique()
         for scene in scenes:
             matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
-            matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
+            matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - \
+                matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
             for f in xrange(len(matches)):
@@ -131,7 +134,8 @@ class BATRUPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
+        Log.info('Creation of position graphs for scenes {} took {}'.format(
+            scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):
         """
@@ -172,11 +176,13 @@ class BATRUPositionGraphs:
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[matches['shelf_number']
+                                               == anchor_shelf_number - 1][VERTEX_FK_FIELD]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[matches['shelf_number']
+                                                  == anchor_shelf_number + 1][VERTEX_FK_FIELD]
 
         # checking left & right
         filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &
@@ -191,7 +197,8 @@ class BATRUPositionGraphs:
                                (matches['distance_from_end_of_shelf'] == 0)]
 
             if self.proximity_mode == self.STRICT_MODE:
-                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y) & (left_bay[self.BOTTOM] > anchor_y)]
+                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y)
+                                            & (left_bay[self.BOTTOM] > anchor_y)]
             else:
                 surrounding_left = left_bay[(left_bay[self.TOP].between(anchor_top, anchor_bottom) |
                                              left_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
@@ -211,7 +218,8 @@ class BATRUPositionGraphs:
                 surrounding_right = []
             else:
                 if self.proximity_mode == self.STRICT_MODE:
-                    surrounding_right = right_bay[(right_bay[self.TOP] < anchor_y) & (right_bay[self.BOTTOM] > anchor_y)]
+                    surrounding_right = right_bay[(right_bay[self.TOP] < anchor_y) & (
+                        right_bay[self.BOTTOM] > anchor_y)]
                 else:
                     surrounding_right = right_bay[(right_bay[self.TOP].between(anchor_top, anchor_bottom) |
                                                    right_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
@@ -230,7 +238,7 @@ class BATRUPositionGraphs:
         Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
         """
         if entity not in self.ATTRIBUTES_TO_SAVE:
-            Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
+            Log.debug("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
         edges_to_remove = graph.es.select(direction_ne='left')
@@ -292,5 +300,3 @@ class BATRUPositionGraphs:
         final_df = pd.DataFrame.from_dict(dict_for_df, orient='index')
         final_df = final_df.reset_index(drop=True)
         return final_df
-
-
