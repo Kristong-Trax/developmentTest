@@ -1454,8 +1454,7 @@ class MARSRU_PRODKPIToolBox:
 
                 values_list = self.kpi_fetcher.get_must_range_skus_by_region_and_store(self.store_type,
                                                                                        self.region,
-                                                                                       p.get(
-                                                                                           '#Mars KPI NAME'),
+                                                                                       p.get('#Mars KPI NAME'),
                                                                                        self.results_and_scores)
                 scenes = self.get_relevant_scenes(p)
                 result = None
