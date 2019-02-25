@@ -9,6 +9,7 @@ class Const(object):
     NIELSEN_UPC = 'Nielsen_UPC'
     TOTAL_CATEGORY = 'Total Category'
     CATEGORY = 'Category'
+    CLIENT_CATEGORY = 'category'
     STORAGE_TYPE = 'Storage Type'
     KEY_MANUFACTURER = 'Key Manufacturer'
 
@@ -28,16 +29,12 @@ class Const(object):
     # relevant filters by scene type
     RELEVANT_FILTERS = {
         DRINK_JUICE_TEA: {
-            TOTAL_CATEGORY: ['TTL JUICE/DRINK', 'TTL TEA'],
-            STORAGE_TYPE: ['CH RTD']
+            CLIENT_CATEGORY: ['Juice', 'TEA']
         },
         MILK: {
-            TOTAL_CATEGORY: ['TTL DRINKABLE DAIRY'],
-            STORAGE_TYPE: ['CH RTD'],
-            CATEGORY: ['VALUE ADDED DAIRY']
+            CLIENT_CATEGORY: ['Dairy']
         },
         NATURAL_HEALTH: {
-            TOTAL_CATEGORY: ['TTL NATURAL HEALTH BEVERAGES'],
-            STORAGE_TYPE: ['CH RTD']
+            CLIENT_CATEGORY: ['Juice', 'Tea']
         }
     }
