@@ -50,16 +50,16 @@ pipeline {
                 sh 'rm -rf theGarage'
                 dir(path: 'theGarage') {
                     checkout([$class: 'GitSCM', branches: [[name: '${COMMIT_ID}']],
-                              userRemoteConfigs: [[credentialsId: 'jenkins_git',
+                              userRemoteConfigs: [[credentialsId: 'kifbb',
                               url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
                 }
 
                 dir(path: 'kpi_factory') {
-                  git(url: 'https://bitbucket.org/traxtechnology/kpi_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'jenkins_git')
+                  git(url: 'https://bitbucket.org/traxtechnology/kpi_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
                 }
 
                 dir(path: 'trax_ace_live') {
-                  git(url: 'https://bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'jenkins_git')
+                  git(url: 'https://bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
                 }
 
 
