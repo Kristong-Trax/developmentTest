@@ -34,6 +34,7 @@ class PNGHKToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.match_probe_in_scene = self.get_product_special_attribute_data(self.session_uid)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.kpis_sheet = pd.read_excel(PATH, Const.KPIS).fillna("")
@@ -43,12 +44,6 @@ class PNGHKToolBox:
         self.tools = GENERALToolBox(self.data_provider)
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         # self.merged_additional_data = self.get_additional_product_data()
-
-    # scene_recognition from table select * from probedata.match_display_in_scene
-
-    # smart attributes from:
-    # select * from probedata.match_product_in_probe;
-    # select * from probedata.match_product_in_probe_state_value;
 
     def main_calculation(self, *args, **kwargs):
         """
