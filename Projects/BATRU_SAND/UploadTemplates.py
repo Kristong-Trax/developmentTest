@@ -222,16 +222,17 @@ class BATRU_SANDNewTemplate:
                                                                               self.kpi_counter['atomic']))
 
     def add_kpis_to_static_sas(self):
-        kpis = self.data.drop_duplicates(subset=[BATRU_SANDConst.SET_NAME, BATRU_SANDConst.KPI_NAME], keep='first')
+        kpis = self.data.drop_duplicates(
+            subset=[BATRU_SANDConst.SET_NAME, BATRU_SANDConst.KPI_NAME], keep='first')
         self.aws_conn.connect_rds()
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
             set_name = self.encode_string(kpis.iloc[i][BATRU_SANDConst.SET_NAME])
             kpi_name = self.encode_string(kpis.iloc[i][BATRU_SANDConst.KPI_NAME])
             if self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_NAME] == set_name) &
-                    (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name)].empty:
+                                    (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name)].empty:
                 set_fk = self.kpi_static_data[self.kpi_static_data[
-                                                  BATRU_SANDConst.SET_NAME] == set_name][BATRU_SANDConst.SET_FK].values[0]
+                    BATRU_SANDConst.SET_NAME] == set_name][BATRU_SANDConst.SET_FK].values[0]
                 level2_query = """
                        INSERT INTO static.kpi (kpi_set_fk, display_text)
                        VALUES ('{0}', '{1}');""".format(set_fk, kpi_name)
@@ -256,14 +257,14 @@ class BATRU_SANDNewTemplate:
             names = [atomic_name]
             for index, name in enumerate(names):
                 if self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_NAME] == set_name) &
-                        (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name) &
-                        (self.kpi_static_data[BATRU_SANDConst.ATOMIC_NAME] == name)].empty:
+                                        (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name) &
+                                        (self.kpi_static_data[BATRU_SANDConst.ATOMIC_NAME] == name)].empty:
                     if set_name in self.kpis_added.keys() and kpi_name in self.kpis_added[set_name].keys():
                         kpi_fk = self.kpis_added[set_name][kpi_name]
                     else:
                         kpi_fk = self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_NAME] == set_name) &
                                                       (self.kpi_static_data[
-                                                           BATRU_SANDConst.KPI_NAME] == kpi_name)][BATRU_SANDConst.KPI_FK].values[0]
+                                                          BATRU_SANDConst.KPI_NAME] == kpi_name)][BATRU_SANDConst.KPI_FK].values[0]
                     level3_query = """
                                INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text,
                                                               presentation_order, display)
@@ -279,14 +280,15 @@ class BATRU_SANDNewTemplate:
         self.aws_conn.db.commit()
 
     def add_kpis_to_static_p3(self):
-        kpis = self.data.drop_duplicates(subset=[BATRU_SANDConst.SET_NAME, BATRU_SANDConst.KPI_NAME], keep='first')
+        kpis = self.data.drop_duplicates(
+            subset=[BATRU_SANDConst.SET_NAME, BATRU_SANDConst.KPI_NAME], keep='first')
         self.aws_conn.connect_rds()
         cur = self.aws_conn.db.cursor()
         for i in xrange(len(kpis)):
             set_name = self.encode_string(kpis.iloc[i][BATRU_SANDConst.SET_NAME])
             kpi_name = self.encode_string(kpis.iloc[i][BATRU_SANDConst.KPI_NAME])
             if self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_NAME] == set_name) &
-                    (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name)].empty:
+                                    (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name)].empty:
                 if set_name in self.sets_added.keys():
                     set_fk = self.sets_added[set_name]
                 else:
@@ -317,9 +319,9 @@ class BATRU_SANDNewTemplate:
             names = [atomic_name]
             for index, name in enumerate(names):
                 if self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_NAME] == set_name) &
-                        (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name) &
-                        (self.kpi_static_data[BATRU_SANDConst.ATOMIC_NAME] == name) &
-                        (self.kpi_static_data['section'] == model_id)].empty:
+                                        (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == kpi_name) &
+                                        (self.kpi_static_data[BATRU_SANDConst.ATOMIC_NAME] == name) &
+                                        (self.kpi_static_data['section'] == model_id)].empty:
                     if set_name in self.kpis_added.keys() and kpi_name in self.kpis_added[set_name].keys():
                         kpi_fk = self.kpis_added[set_name][kpi_name]
                     else:
@@ -350,8 +352,8 @@ class BATRU_SANDNewTemplate:
             kpi_with_count = self.add_kpi_count(kpi)
             for kpi_count in kpi_with_count:
                 if self.kpi_static_data[
-                            (self.kpi_static_data['kpi_set_name'] == BATRU_SANDConst.P4_SET_NAME) &
-                            (self.kpi_static_data['kpi_name'] == kpi_count)].empty:
+                    (self.kpi_static_data['kpi_set_name'] == BATRU_SANDConst.P4_SET_NAME) &
+                        (self.kpi_static_data['kpi_name'] == kpi_count)].empty:
                     kpi_queries.append(kpi_count)
         self.save_kpi_level(self.set_fk, kpi_queries)
         # We need to re-run query for updated kpis.
@@ -367,10 +369,10 @@ class BATRU_SANDNewTemplate:
                 #  This will create group and product atomics
                 for kpi in kpi_with_count:
                     is_exist = self.alreadyAddedAtomics[(self.alreadyAddedAtomics[
-                                                             BATRU_SANDConst.SET_NAME] == BATRU_SANDConst.P4_SET_NAME) &
-                                                        (self.alreadyAddedAtomics[BATRU_SANDConst.KPI_NAME] == kpi) &
-                                                        (self.alreadyAddedAtomics[BATRU_SANDConst.GROUP_NAME_P4] == group) &
-                                                        (self.alreadyAddedAtomics[BATRU_SANDConst.ATOMIC_NAME] == product)]
+                        BATRU_SANDConst.SET_NAME] == BATRU_SANDConst.P4_SET_NAME) &
+                        (self.alreadyAddedAtomics[BATRU_SANDConst.KPI_NAME] == kpi) &
+                        (self.alreadyAddedAtomics[BATRU_SANDConst.GROUP_NAME_P4] == group) &
+                        (self.alreadyAddedAtomics[BATRU_SANDConst.ATOMIC_NAME] == product)]
                     if is_exist.empty:
                         try:
 
@@ -381,8 +383,10 @@ class BATRU_SANDNewTemplate:
                                                   BATRU_SANDConst.GROUP_NAME_P4: group, BATRU_SANDConst.ATOMIC_NAME: product}
                             self.alreadyAddedAtomics = self.alreadyAddedAtomics.append(
                                 dict_already_added, ignore_index=True)
-                            product_query = (kpi_fk, product, product, product, group, BATRU_SANDConst.PRODUCT_RELATIVE_SCORE)
-                            group_query = (kpi_fk, group, group, group, None, BATRU_SANDConst.GROUP_RELATIVE_SCORE)
+                            product_query = (kpi_fk, product, product, product,
+                                             group, BATRU_SANDConst.PRODUCT_RELATIVE_SCORE)
+                            group_query = (kpi_fk, group, group, group, None,
+                                           BATRU_SANDConst.GROUP_RELATIVE_SCORE)
                             atomic_queries.extend([group_query, product_query])
                         except IndexError as e:
                             print "kpi '{}' does not exist.".format(kpi)
@@ -396,7 +400,8 @@ class BATRU_SANDNewTemplate:
         for query in queries_to_commit:
             if self.is_new(query):
                 self.queries.append(level3_query.format(query[0], query[1], query[2], query[3],
-                                                        1, 'Y', '{}'.format(query[4]) if query[4] else 'NULL', query[5]
+                                                        1, 'Y', '{}'.format(
+                                                            query[4]) if query[4] else 'NULL', query[5]
                                                         ).replace("'NULL'", "NULL"))
 
     def is_new(self, data, level=3):
@@ -408,7 +413,7 @@ class BATRU_SANDNewTemplate:
             existing = self.kpi_static_data[(self.kpi_static_data[BATRU_SANDConst.SET_FK] == self.set_fk) &
                                             (self.kpi_static_data[BATRU_SANDConst.KPI_NAME] == data[0])]
         else:
-            Log.info('not valid level for checking new KPIs')
+            Log.debug('not valid level for checking new KPIs')
             return False
 
         return existing.empty
