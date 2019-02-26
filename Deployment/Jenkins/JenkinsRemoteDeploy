@@ -88,7 +88,8 @@ pipeline {
                   sh '''#!/bin/bash
                     export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
                     cd kpi_factory
-                    python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
+                    echo " Started Deployment" $PROJECT_NAME
+                    # python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
                     exit $exit_code
