@@ -34,7 +34,7 @@ class CCBOTTLERSUSGenerator:
         Common(self.data_provider).commit_results_data()
         self.calculate_red_score()
         # self.calculate_bci()
-        self.calculate_manufacturer_displays()
+        # self.calculate_manufacturer_displays()
         self.calculate_cma_compliance()
         self.calculate_cma_compliance_sw()
         self.calculate_warehouse_juice()

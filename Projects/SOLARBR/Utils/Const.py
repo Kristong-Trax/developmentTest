@@ -3,41 +3,41 @@
 
 _author_ = 'NicolasKeeton'
 
+
 class Const(object):
 
-    #sheets Score
+    # sheets Score
     RESTAURANTE_SHEET, BAR_BOTECO_SHEET, BAR_LANCHONETE_SHEET = 'RESTAURANTE', 'BAR BOTECO', 'BAR LANCHONETE'
     DROGARIA_SHEET, LOJA_SHEET, MERCERIA_SHEET, PADARIA = 'DROGARIA', 'LOJA DE CONVENIÊNCIA', 'MERCEARIA', 'PADARIA'
     AS_14_SHEET, AS_5_SHEET, ATACADO_SHEET = 'AS 1-4', 'AS 5+', 'ATACADO'
 
-    #Sheet main template
+    # Sheet main template
     KPIS = "KPIs"
     SOVI = "SOVI"
-
 
     SHEETS_SCORE = {RESTAURANTE_SHEET, BAR_BOTECO_SHEET, BAR_LANCHONETE_SHEET, DROGARIA_SHEET, LOJA_SHEET,
                     MERCERIA_SHEET, PADARIA, AS_14_SHEET, AS_5_SHEET, ATACADO_SHEET}
 
     SHEETS_MAIN = {KPIS, SOVI}
 
-    #generic columns
+    # generic columns
     KPI_NAME = "KPI NAME"
 
-    #columns for Score_sheets
+    # columns for Score_sheets
     KPI = 'Kpi'
-    LOW_PERCENT= 'Low'
-    HIGH_PERCENT ='High'
-    ACCEPTANCE_PERCENT ='range'
+    LOW_PERCENT = 'Low'
+    HIGH_PERCENT = 'High'
+    ACCEPTANCE_PERCENT = 'range'
     SCORE = 'Score'
 
-    #column for KPIs
+    # column for KPIs
     Type = "Type"
     SCENE_TYPES = "Scene Types"
     STORE_TYPES = "STORE TYPES"
     TEMPLATE_NAME = "TEMPLATE_NAME"
     TEMPLATE_GROUP = "TEMPLATE GROUP"
 
-    #column of SOVI:
+    # column of SOVI:
     SOVI_NAME = "KPI NAME"
     KPI_RULE = "KPI RULE"
     DEN_TYPE = "denominator param"

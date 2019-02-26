@@ -21,7 +21,8 @@ class CCRUFT2018Calculations:
     MARKETING = 'Marketing 2017'
     SPIRITS = 'Spirits 2018 - FT'
 
-    def __init__(self, data_provider, output, ps_data_provider):  # All relevant session data with KPI static info will trigger the KPI calculation
+    # All relevant session data with KPI static info will trigger the KPI calculation
+    def __init__(self, data_provider, output, ps_data_provider):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -51,23 +52,24 @@ class CCRUFT2018Calculations:
         jg.create_json('FT PoS 2018.xlsx', FT2018)
 
         calc_start_time = dt.datetime.utcnow()
-        Log.info('Calculation Started at {}'.format(calc_start_time))
+        Log.debug('Calculation Started at {}'.format(calc_start_time))
         score = 0
         score += self.tool_box.check_weighted_average(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_atomic_passed(jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_sum_atomics(jg.project_kpi_dict.get('kpi_data')[0])
-        score += self.tool_box.check_number_of_skus_per_door_range(jg.project_kpi_dict.get('kpi_data')[0])
+        score += self.tool_box.check_number_of_skus_per_door_range(
+            jg.project_kpi_dict.get('kpi_data')[0])
         score += self.tool_box.check_share_of_cch(jg.project_kpi_dict.get('kpi_data')[0])
-        score += self.tool_box.calculate_number_of_scenes_no_tagging(jg.project_kpi_dict.get('kpi_data')[0])
+        score += self.tool_box.calculate_number_of_scenes_no_tagging(
+            jg.project_kpi_dict.get('kpi_data')[0])
         attributes_for_table1 = pd.DataFrame([(FT2018, self.session_uid,
-                                               self.store_id, self.visit_date.isoformat()
-                                               , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                        'session_uid',
-                                                                                        'store_fk',
-                                                                                        'visit_date',
-                                                                                        'score_1',
-                                                                                        'kpi_set_fk'])
+                                               self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                  'session_uid',
+                                                                                                                                  'store_fk',
+                                                                                                                                  'visit_date',
+                                                                                                                                  'score_1',
+                                                                                                                                  'kpi_set_fk'])
         self.tool_box.write_to_db_result(attributes_for_table1, 'level1', FT2018)
 
         self.tool_box.prepare_hidden_set(jg.project_kpi_dict.get('kpi_data')[0])
@@ -84,7 +86,7 @@ class CCRUFT2018Calculations:
             jg.project_kpi_dict['kpi_data'] = []
             jg.create_json('{}.xlsx'.format(template_name), sheet_name)
             calc_start_time = dt.datetime.utcnow()
-            Log.info('Calculation Started at {}'.format(calc_start_time))
+            Log.debug('Calculation Started at {}'.format(calc_start_time))
             score = 0
             score += self.tool_box.check_availability(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.check_number_of_scenes(jg.project_kpi_dict.get('kpi_data')[0])
@@ -92,15 +94,15 @@ class CCRUFT2018Calculations:
             score += self.tool_box.facings_sos(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.customer_cooler_doors(jg.project_kpi_dict.get('kpi_data')[0])
             score += self.tool_box.check_kpi_scores(jg.project_kpi_dict.get('kpi_data')[0])
-            score += self.tool_box.calculate_number_of_scenes_no_tagging(jg.project_kpi_dict.get('kpi_data')[0])
+            score += self.tool_box.calculate_number_of_scenes_no_tagging(
+                jg.project_kpi_dict.get('kpi_data')[0])
             attributes_for_table1 = pd.DataFrame([(extra_set_name, self.session_uid,
-                                                   self.store_id, self.visit_date.isoformat()
-                                                   , format(score, '.2f'), None)], columns=['kps_name',
-                                                                                            'session_uid',
-                                                                                            'store_fk',
-                                                                                            'visit_date',
-                                                                                            'score_1',
-                                                                                            'kpi_set_fk'])
+                                                   self.store_id, self.visit_date.isoformat(), format(score, '.2f'), None)], columns=['kps_name',
+                                                                                                                                      'session_uid',
+                                                                                                                                      'store_fk',
+                                                                                                                                      'visit_date',
+                                                                                                                                      'score_1',
+                                                                                                                                      'kpi_set_fk'])
             self.tool_box.write_to_db_result(attributes_for_table1, 'level1')
 
         self.tool_box.calculate_top_sku()
@@ -112,4 +114,4 @@ class CCRUFT2018Calculations:
 
         self.tool_box.commit_results_data()
         # calc_finish_time = dt.datetime.utcnow()
-        # Log.info('Calculation time took {}'.format(calc_finish_time - calc_start_time))
+        # Log.debug('Calculation time took {}'.format(calc_finish_time - calc_start_time))

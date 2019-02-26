@@ -18,7 +18,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.6 - KENGINE - JANUARY2018.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Ambev template v3.7.1 - KENGINE - JANUARY2018.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
