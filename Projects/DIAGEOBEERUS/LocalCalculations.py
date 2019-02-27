@@ -26,6 +26,10 @@ sessions = [
     '96F40321-CDB4-4523-B81B-2CA837121223'
 ]
 
+sessions = [
+    'C682A0F1-0694-40DF-B20C-E5A3E5900E9D'
+]
+
 if __name__ == '__main__':
     LoggerInitializer.init('diageobeerus calculations')
     Config.init()
