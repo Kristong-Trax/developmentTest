@@ -184,6 +184,7 @@ class NESTLEUSToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                # Log.warning('field {} is not in the Data Frame'.format(field))
+                pass
 
         return filter_condition
