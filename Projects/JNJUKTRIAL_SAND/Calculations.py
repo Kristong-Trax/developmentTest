@@ -31,7 +31,7 @@ class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
         jnj_generator.secondary_placement_location_visibility_quality(survey_template)
         jnj_generator.share_of_shelf_manufacturer_out_of_sub_category()
         jnj_generator.calculate_auto_assortment(in_balde=True)
-        jnj_generator.store_auto_assortment_stateless_stateful(past_visit_num=2, in_blade=True, at_least_visits=2)
+        jnj_generator.store_auto_assortment_stateless_stateful(past_visit_num=2, in_blade=False, at_least_visits=2)
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
         common.commit_results_data()
