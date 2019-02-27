@@ -9,11 +9,10 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'marsru-prod'
     session_uids = [
-        '7b0d6d71-4071-4534-9f1c-bd6f8b6d7bfe',
+        'b6677800-673d-43f8-90e2-967c57d36bd6',
     ]
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     for session in session_uids:
         data_provider.load_session_data(session)
         MARSRU_PRODCalculations(data_provider, output).run_project_calculations()
-

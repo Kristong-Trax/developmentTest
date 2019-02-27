@@ -133,7 +133,7 @@ class MARSRU_PRODPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = dt.datetime.utcnow()
-        Log.info('Creation of position graphs for scenes {} took {}'.format(
+        Log.debug('Creation of position graphs for scenes {} took {}'.format(
             scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches, horizontal_block_only=False):
@@ -237,7 +237,7 @@ class MARSRU_PRODPositionGraphs:
         Each list represents a shelf in the scene - with the given entity for each facing, from left to right.
         """
         if entity not in self.ATTRIBUTES_TO_SAVE:
-            Log.warning("Entity '{}' is not set as an attribute in the graph".format(entity))
+            Log.debug("Entity '{}' is not set as an attribute in the graph".format(entity))
             return None
         graph = self.get(scene_id).copy()
         edges_to_remove = graph.es.select(direction_ne='left')

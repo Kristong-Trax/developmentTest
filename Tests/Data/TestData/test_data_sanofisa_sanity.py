@@ -3,7 +3,7 @@ from Trax.Data.Testing.Resources import BaseSeedData, DATA_TYPE, FILES_RELATIVE_
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 from Trax.Utils.Environments.DockerGlobal import PROJECT_NAME
 
-__author__ = 'yoava'
+__author__ = 'elyashiv'
 
 
 class ProjectsSanityData(BaseSeedData):

@@ -12,7 +12,7 @@ __author__ = 'Elyashiv'
 
 class MSCToolBox:
 
-    def __init__(self, data_provider, output, calculation_type, common_db):
+    def __init__(self, data_provider, output, common_db):
         self.output = output
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
@@ -30,7 +30,6 @@ class MSCToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
-        self.calculation_type = calculation_type
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.common_db = common_db
@@ -50,6 +49,10 @@ class MSCToolBox:
             self.calculate_main_kpi(main_line)
         if not main_template.empty:
             pass
+        if len(self.common_db.kpi_results) > 0:
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.MSC)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id,result=1,
+                                              identifier_result=Const.MSC, should_enter=True)
         return
 
     def calculate_main_kpi(self, main_line):
@@ -104,17 +107,20 @@ class MSCToolBox:
 
     # facings calculations
     def calculate_facings(self, kpi_line, relevant_scif):
+        if not self.check_activation_status(kpi_line, relevant_scif):
+            return
+
         numerator_param = kpi_line[Const.NUMERATOR_TYPE]
         numerator_values = self.does_exist(kpi_line, Const.NUMERATOR_VALUE)
 
-        denominator_param = self.does_exist(kpi_line, Const.DENOMINATOR_TYPE)
+        denominator_param = kpi_line[Const.DENOMINATOR_TYPE]
         if denominator_param:
             denominator_values = self.does_exist(kpi_line, Const.DENOMINATOR_VALUE)
             denominator_scif = relevant_scif[relevant_scif[denominator_param].isin(denominator_values)]
         else:
             denominator_scif = relevant_scif
 
-        excluded_param = self.does_exist(kpi_line, Const.EXCLUDED_TYPE)
+        excluded_param = kpi_line[Const.EXCLUDED_TYPE]
         if excluded_param:
             excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
             denominator_scif = denominator_scif[~denominator_scif[excluded_param].isin(excluded_values)]
@@ -124,7 +130,28 @@ class MSCToolBox:
         numerator_result = numerator_scif['facings'].sum()
         denominator_result = denominator_scif['facings'].sum()
 
+        if denominator_result > 0:
+            sos_value = numerator_result / float(denominator_result)
+        else:
+            sos_value = 0
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, numerator_result=numerator_result,
+                                          denominator_result=denominator_result, result=sos_value,
+                                          identifier_parent=Const.MSC, should_enter=True)
+
         return
+
+    def check_activation_status(self, kpi_line, relevant_scif):
+        try:
+            activation_param = kpi_line[Const.ACTIVATION_TYPE]
+        except KeyError:
+            activation_param = None
+        if activation_param:
+            activation_value = self.does_exist(kpi_line, Const.ACTIVATION_VALUE)
+            return set(activation_value).issubset(set(relevant_scif[activation_param].tolist()))
+        else:
+            return True
 
     # availability calculations
     def calculate_availability(self, kpi_line, relevant_scif):
@@ -138,7 +165,13 @@ class MSCToolBox:
         """
         filtered_scif = self.filter_scif_availability(kpi_line, relevant_scif)
         minimum_facings = kpi_line[Const.MINIMUM_FACINGS]
-        return filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
+        availability = filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
+
+        result = 19 if availability else 20
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
+        return availability
 
     def calculate_double_availability(self, kpi_line, relevant_scif):
         group_1_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=1)
@@ -148,7 +181,14 @@ class MSCToolBox:
 
         group_2_scif = self.filter_scif_availability(kpi_line, relevant_scif, group=2)
         group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
-        return group_2_scif['facings'].sum() >= group_2_minimum_facings
+        availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
+
+        result = 19 if availability else 20
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
+
+        return availability
 
     def filter_scif_availability(self, kpi_line, relevant_scif, group=None):
         """
@@ -158,7 +198,10 @@ class MSCToolBox:
         :param group: used to indicate group for double availability
         :return:
         """
-        excluded_param = self.does_exist(kpi_line, Const.EXCLUDED_TYPE)
+        try:
+            excluded_param = kpi_line[Const.EXCLUDED_TYPE]
+        except KeyError:
+            excluded_param = None
         if excluded_param:
             excluded_values = self.does_exist(kpi_line, Const.EXCLUDED_VALUE)
             relevant_scif = relevant_scif[~relevant_scif[excluded_param].isin(excluded_values)]
@@ -177,10 +220,10 @@ class MSCToolBox:
             names_of_columns = {
                 Const.MANUFACTURER: "manufacturer_name",
                 Const.BRAND: "brand_name",
-                Const.ATT1: "additional_attribute_1",
-                Const.ATT3: "additional_attribute_3",
+                Const.ATT1: "att1",
+                Const.ATT3: "att3",
                 Const.SIZE: "size",
-                Const.SUB_PACKAGES: "subpackages_num"
+                Const.SUB_PACKAGES: "number_of_sub_packages"
             }
         for name in names_of_columns:
             relevant_scif = self.filter_scif_specific(
@@ -216,6 +259,10 @@ class MSCToolBox:
             return self.calculate_double_availability
         elif kpi_type == Const.FACINGS:
             return self.calculate_facings
+        elif kpi_type == Const.SHARE_OF_DISPLAYS:
+            return self.calculate_facings
+        elif kpi_type == Const.DISPLAY_PRESENCE:
+            return self.calculate_facings
         else:
             Log.warning(
                 "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
@@ -234,5 +281,5 @@ class MSCToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(",")
+                return [x.strip() for x in cell.split(",")]
         return None
