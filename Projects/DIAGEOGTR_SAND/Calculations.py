@@ -16,12 +16,12 @@ class DIAGEOGTRCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageogtr-sand calculations')
-    Config.init()
-    project_name = 'diageogtr-sand'
-    data_provider = KEngineDataProvider(project_name)
-    session = '932CA562-BAA5-4682-81EC-B3667D8B0979'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOGTRCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageogtr-sand calculations')
+#     Config.init()
+#     project_name = 'diageogtr-sand'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '38d2ac08-4f44-49be-b7c7-3fd8c86e8715'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOGTRCalculations(data_provider, output).run_project_calculations()
