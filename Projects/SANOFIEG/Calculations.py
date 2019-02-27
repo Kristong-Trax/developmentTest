@@ -13,7 +13,8 @@ class SANOFIEGCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'SANOFIEG', 'Data', 'Template.xlsx')
-        SANOFIGenerator(self.data_provider, self.output, template_path).main_function()
+        TEMPLATE_PATH2 = template_path.replace("/Template.xlsx", "/template_jan.xlsx")
+        SANOFIGenerator(self.data_provider, self.output, template_path, template2=TEMPLATE_PATH2).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
