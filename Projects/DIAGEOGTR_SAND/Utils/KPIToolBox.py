@@ -110,6 +110,8 @@ class DIAGEOGTRToolBox:
         #     return
         # set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
         # self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+
+        self.commonV2.commit_results_data()
         return
 
     def calculate_assortment_sets(self, set_name):
