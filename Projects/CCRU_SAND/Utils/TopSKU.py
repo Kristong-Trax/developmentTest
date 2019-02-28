@@ -416,6 +416,7 @@ class CCRU_SANDTopSKUAssortment:
             except Exception as e:
                 Log.debug('DB update failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
+                cur.execute(query)
                 continue
             if query_num > batch_size:
                 query_num = 0
