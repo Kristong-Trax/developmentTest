@@ -46,6 +46,9 @@ class Const(object):
     DENOMINATOR_TYPE = 'denominator_type'
     DENOMINATOR_VALUE = 'denominator_value'
 
+    # Share of Displays
+    THRESHOLD = 'Threshold Value'
+
     # Display Presence & Location columns
     ACTIVATION_TYPE = 'activation_type'
     ACTIVATION_VALUE = 'activation_value'

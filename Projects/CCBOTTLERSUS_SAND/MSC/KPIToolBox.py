@@ -135,6 +135,9 @@ class MSCToolBox:
         else:
             sos_value = 0
 
+        if not self.check_activation_threshold(kpi_line, sos_value):
+            return
+
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_result=numerator_result,
                                           denominator_result=denominator_result, result=sos_value,
@@ -150,6 +153,13 @@ class MSCToolBox:
         if activation_param:
             activation_value = self.does_exist(kpi_line, Const.ACTIVATION_VALUE)
             return set(activation_value).issubset(set(relevant_scif[activation_param].tolist()))
+        else:
+            return True
+
+    def check_activation_threshold(self, kpi_line, sos_value):
+        threshold = self.does_exist(kpi_line, Const.THRESHOLD)
+        if threshold:
+            return sos_value > threshold
         else:
             return True
 
