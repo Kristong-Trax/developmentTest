@@ -31,7 +31,7 @@ class Generator:
 
     def find_template(self, cat):
         ''' screw maintaining 4 hardcoded template paths... '''
-        path = os.path.join(os.getcwd(), 'Data')
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data')
         files = os.listdir(path)
         candidates = [f for f in files if f.split(' ')[0] == cat and f.split('.')[-1] == 'xlsx']
         versioned_candidates = []
