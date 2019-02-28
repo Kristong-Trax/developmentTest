@@ -44,7 +44,7 @@ class MarsUsCalculations(BaseCalculationsScript):
 #     ]
 #
 #     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-#
+#     sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
 #     for session in sessions:
 #         print('*******************************************************************')
 #         print('--------------{}-------------'.format(session))
