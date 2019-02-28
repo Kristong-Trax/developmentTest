@@ -1,6 +1,4 @@
-from datetime import datetime
-import os
-import copy
+
 import pandas as pd
 from functools import reduce
 from collections import defaultdict, Counter
@@ -11,17 +9,12 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.GMIUS.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-from Projects.GMIUS.Utils.PositionGraph import Block
-from KPIUtils_v2.Calculations.BlockCalculations import Block as Block
-from Projects.GMIUS.Utils.BlockCalculations import Block as Block2
+from KPIUtils_v2.Calculations.BlockCalculations import Block
 from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import AdjacencyGraph
 
 from shapely.strtree import STRtree
 from shapely.geometry import Polygon, mapping
 
-# from KPIUtils_v2.Calculations.BlockCalculations import Block
-from Projects.GMIUS.ImageHTML.Image import ImageMaker
 
 from networkx import nx
 

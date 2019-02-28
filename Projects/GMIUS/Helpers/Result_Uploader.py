@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from Projects.GMIUS.Utils.Const import Const
 from Trax.Cloud.Services.Connector.Keys import DbUsers
