@@ -108,21 +108,21 @@ class AtomicFarse():
     def get_aux(self, item):
         main_line = self.indexed_template[Const.KPIS].loc[item]
         session_lvl = self.read_cell_from_line(main_line, Const.SESSION_LEVEL) if Const.SESSION_LEVEL in main_line.index else 'Y'
-        family = self.read_cell_from_line((main_line, Const.TYPE))
+        family = self.read_cell_from_line(main_line, Const.TYPE)[0]
         kpi_line = self.indexed_template[family].loc[item]
-        num_check = 'numerator' if [x for x in kpi_line.index if 'numerator' in x.lower()] else ''
-        den_check = [x for x in kpi_line.index if 'denominator' in x.lower()]
+        # num_check = 'numerator' if [x for x in kpi_line.index if 'numerator' in x.lower()] else ''
+        # den_check = [x for x in kpi_line.index if 'denominator' in x.lower()]
 
-        num = self.get_kpi_line_filters(kpi_line, name=num_check)[-1][-1]
-        den = self.get_kpi_line_filters(kpi_line, name='denominator')[-1][-1] if den_check else None
+        # num = self.get_kpi_line_params(kpi_line, name=num_check)[-1][-1]
+        # den = self.get_kpi_line_params(kpi_line, name='denominator')[-1][-1] if den_check else None
         use_result = self.read_cell_from_line(kpi_line, Const.RESULT) if Const.RESULT in kpi_line.index else None
 
         is_session = 1 if session_lvl else 0
         is_scene = 0 if session_lvl else 1
-        family_fk = self.family_dict[family]
+        family_fk = self.family_dict[family.upper()]
         result_fk = 2 if use_result else 'null'
-        num_fk = self.entity_dict[num]
-        den_fk = self.entity_dict[num] if den else 'null'
+        num_fk = 999 #self.entity_dict[num]
+        den_fk = 999 #self.entity_dict[num] if den else 'null'
 
         return {'family_fk': family_fk, 'num_fk': num_fk, 'den_fk': den_fk, 'result_fk': result_fk,
                 'session': is_session, 'scene': 'is_scene'}
@@ -183,15 +183,16 @@ class AtomicFarse():
         """.format(pk, family)
         self.cur.execute(query)
 
-    def insert_into_kpi2(self, kpi, pk, **kwargs):
+    def insert_into_kpi2(self, kpi, pk, family_fk, num_fk, den_fk, result_fk, session, scene):
         query = '''
         INSERT INTO static.kpi_level_2
 	    (pk, type, client_name, kpi_family_fk, version, numerator_type_fk, denominator_type_fk, kpi_result_type_fk,
 	    valid_from, valid_until, initiated_by, kpi_calculation_stage_fk, session_relevance, scene_relevance)
         VALUES      
-        ({}, {}, {}, {}, '1.0.0', {}, {}, {}, '1990-01-01', '2150-10-15', 'samk', '3', {}, {}),
+        ('{}', '{}', '{}', '{}', '1.0.0', '{}', '{}', {}, '1990-01-01', '2150-10-15', 'samk', '3', '{}', '{}')
 
         '''.format(pk, kpi, kpi, family_fk, num_fk, den_fk, result_fk, session, scene)
+        print(query)
         self.cur.execute(query)
 
     def get_table_attributes(self, table):

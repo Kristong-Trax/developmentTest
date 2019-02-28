@@ -27,7 +27,7 @@ class EntityUploader():
         self.custom_entity_set = set(self.custom_entity_table['name'])
         self.entity_type_set = set(self.entity_type_table['name'])
 
-        self.custom_entity_pk = max([int(i) for i in self.custom_entity_table['pk'] if int(i) < 999])
+        self.custom_entity_pk = max([int(i) for i in self.custom_entity_table['pk']])
         self.entity_type_pk = max([int(i) for i in self.entity_type_table['pk'] if int(i) < 999])
 
         self.entity_type_dict = self.entity_type_table.set_index('name')['pk'].to_dict()
@@ -53,8 +53,21 @@ class EntityUploader():
             entity_type_fk = self.entity_type_dict[entity_type]
             if entity and entity not in self.custom_entity_set:
                 if len(entity) <= max_custom_entity_len:
-                    self.custom_entity_pk += 1
-                    self.insert_into_custom_entity(entity, entity_type_fk)
+                    bc = 0
+                    while 1:
+                        self.custom_entity_pk += 1
+                        try:
+                            self.insert_into_custom_entity(entity, entity_type_fk)
+                            break
+                        except self.rds_conn.db.IntegrityError:
+                            print('pk taken')
+                            bc += 1
+                        except Exception as e:
+                            print(e)
+                            break
+                        if bc > 50:
+                            break
+
                 else:
                     len_errors.append('    Entity {} not added: Exceeds {} characters'\
                                       .format(entity, max_custom_entity_len))
@@ -77,25 +90,38 @@ class EntityUploader():
     def parse_all(self, template_path):
         values = []
         for sheet, df in pd.read_excel(template_path, sheetname=None).items():
+            if sheet == 'Result' or 'Map' in sheet:
+                continue
             for i, line in df.iterrows():
                 params = self.get_kpi_line_params(line)
                 values += [(entity_type, entity) for entity_type, entity in params.items()]
         return set(sum([[(t, e) for e in es if not pd.isnull(e)] for t, es in values if not pd.isnull(t)], []))
 
+    # def get_kpi_line_params(self, kpi_orig):
+    #     print(kpi_orig)
+    #     kpi_line = kpi_orig.copy()
+    #     filters = defaultdict(list)
+    #     attribs = [x.lower() if x.count(' ') < 2 else ' '.join(x.split(' ')[1:]).lower() for x in kpi_line.index]
+    #     kpi_line.index = attribs
+    #     c = 1
+    #     while 1:
+    #         if 'param {}'.format(c) in attribs and kpi_line['param {}'.format(c)]:
+    #             filters[kpi_line['param {}'.format(c)]] += self.splitter(
+    #                 kpi_line['value {}'.format(c)])
+    #         else:
+    #             if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
+    #                 break
+    #         c += 1
+    #     return filters
+
     def get_kpi_line_params(self, kpi_orig):
         kpi_line = kpi_orig.copy()
         filters = defaultdict(list)
-        attribs = [x.lower() if x.count(' ') < 2 else ' '.join(x.split(' ')[1:]).lower() for x in kpi_line.index]
+        attribs = [x.lower() for x in kpi_line.index]
         kpi_line.index = attribs
-        c = 1
-        while 1:
-            if 'param {}'.format(c) in attribs and kpi_line['param {}'.format(c)]:
-                filters[kpi_line['param {}'.format(c)]] += self.splitter(
-                    kpi_line['value {}'.format(c)])
-            else:
-                if c > 3:  # just in case someone inexplicably chose a nonlinear numbering format.
-                    break
-            c += 1
+        rel_attribs = [x for x in attribs if 'param' in x]
+        for attrib in rel_attribs:
+            filters[kpi_line[attrib]] = self.splitter(kpi_line[attrib.replace('param', 'value')])
         return filters
 
     @staticmethod

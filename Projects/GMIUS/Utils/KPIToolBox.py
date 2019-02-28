@@ -530,7 +530,9 @@ class ToolBox:
         blocks = pd.DataFrame()
         result = pd.DataFrame()
         orientation = 'Not Blocked'
-        scenes = self.scif.scene_fk.unique()
+        scenes = self.filter_df(self.scif, general_filters).scene_fk.unique()
+        if 'template_name' in general_filters:
+            del general_filters['template_name']
         mpis_dict = {}
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
