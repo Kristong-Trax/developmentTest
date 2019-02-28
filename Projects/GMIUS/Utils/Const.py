@@ -5,7 +5,8 @@ __author__ = 'Sam'
 class Const(object):
     ''' Holds Constants '''
 
-    DICTIONARY_PATH = os.path.join(os.getcwd(), 'Data', 'Dictionary.xlsx')
+    DICTIONARY_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'Data',
+                                   'Dictionary.xlsx')
 
     ''' Sheets '''
     KPIS = 'KPIs'
