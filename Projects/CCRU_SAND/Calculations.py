@@ -28,6 +28,29 @@ EQUIPMENT = 'EQUIPMENT'
 INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
+ALLOWED_POS_SETS = (
+    'PoS 2019 - FT - CAP',
+    'PoS 2019 - FT NS - CAP',
+    'PoS 2019 - FT NS - REG',
+    'PoS 2019 - FT - REG',
+    'PoS 2019 - IC Canteen - EDU',
+    'PoS 2019 - IC Canteen - OTH',
+    'PoS 2019 - IC HoReCa BarTavernClub - CAP',
+    'PoS 2019 - IC HoReCa BarTavernClub - REG',
+    'PoS 2019 - IC HoReCa RestCafeTea - CAP',
+    'PoS 2019 - IC HoReCa RestCafeTea - REG',
+    'PoS 2019 - IC Petroleum - CAP',
+    'PoS 2019 - IC Petroleum - REG',
+    'PoS 2019 - IC QSR',
+    'PoS 2019 - MT Conv Big - CAP',
+    'PoS 2019 - MT Conv Big - REG',
+    'PoS 2019 - MT Conv Small - CAP',
+    'PoS 2019 - MT Conv Small - REG',
+    'PoS 2019 - MT Hypermarket - CAP',
+    'PoS 2019 - MT Hypermarket - REG',
+    'PoS 2019 - MT Supermarket - CAP',
+    'PoS 2019 - MT Supermarket - REG',
+)
 
 
 class CCRU_SANDCalculations(BaseCalculationsScript):
@@ -36,11 +59,11 @@ class CCRU_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
 
         self.timer.start()
-        ProjectCalculations(self.data_provider, self.output).main_function()
+        CCRU_SANDProjectCalculations(self.data_provider, self.output).main_function()
         self.timer.stop('CCRU_SANDCalculations.run_project_calculations')
 
 
-class ProjectCalculations:
+class CCRU_SANDProjectCalculations:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
@@ -64,10 +87,18 @@ class ProjectCalculations:
 
         if self.tool_box.external_session_id\
                 and self.tool_box.external_session_id.find('EasyMerch-P') >= 0:
-            Log.info('Promo session, no Custom KPI calculation implied')
+            Log.debug('Promo session, no Custom KPI calculation implied')
             return
 
-        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx', sheet_name=self.pos_kpi_set_name)
+        if self.pos_kpi_set_name not in ALLOWED_POS_SETS:
+            Log.warning('Error. Session cannot be calculated. '
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
+            return
+
+        self.json.create_kpi_data_json('kpi_source', 'KPI_Source.xlsx',
+                                       sheet_name=self.pos_kpi_set_name)
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
         for row in kpi_source_json:
@@ -77,16 +108,17 @@ class ProjectCalculations:
             pass
 
         elif self.test_store == "Y":
-            Log.warning('POS KPI Set name in store attribute is invalid: {0}. '
-                        'Session Store ID {1} cannot be calculated. '
-                        'Store ID {1} is a test store'
+            Log.warning('Error. Session cannot be calculated: '
+                        'Store is a test store. '
+                        'Store ID {1}.'
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
         else:
-            Log.error('POS KPI Set name in store attribute is invalid: {0}. '
-                      'Session Store ID {1} cannot be calculated. '
-                      .format(self.pos_kpi_set_name, self.store_id))
+            Log.warning('Error. Session cannot be calculated. '
+                        'POS KPI Set name in store attribute is invalid - {0}. '
+                        'Store ID {1}.'
+                        .format(self.pos_kpi_set_name, self.store_id))
             return
 
         kpi_sets_types_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
@@ -94,10 +126,11 @@ class ProjectCalculations:
             if not kpi_source[kpi_set_type][SET]:
                 continue
 
-            Log.info('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
+            self.json.create_kpi_data_json(
+                'kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
             score = 0
             score += self.tool_box.check_availability(kpi_data)
@@ -142,24 +175,26 @@ class ProjectCalculations:
                  'weighted_score': score,
                  'level': 0})
 
-            # if kpi_set_type == POS:
-            #     Log.info('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
-            #     self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
+            if kpi_set_type == POS:
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[INTEGRATION][SET]))
+                self.tool_box.prepare_hidden_set(kpi_data, kpi_source[INTEGRATION][SET])
 
         if kpi_source[GAPS][SET]:
-            Log.info('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[GAPS][SET]))
             self.tool_box.set_kpi_set(kpi_source[GAPS][SET], GAPS)
-            self.json.create_kpi_data_json('gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
+            self.json.create_kpi_data_json(
+                'gaps', kpi_source[GAPS][FILE], sheet_name=kpi_source[GAPS][SHEET])
             self.tool_box.calculate_gaps_old(self.json.project_kpi_dict.get('gaps'))
             self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
                                              kpi_source[GAPS][SET])
 
         if kpi_source[CONTRACT][FILE]:
-            Log.info('Importing Contract Execution template')
-            self.json.create_kpi_data_json('contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
+            Log.debug('Importing Contract Execution template')
+            self.json.create_kpi_data_json(
+                'contract', kpi_source[CONTRACT][FILE], sheet_name=kpi_source[CONTRACT][SHEET])
 
         if kpi_source[TOPSKU][SET]:
-            Log.info('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[TOPSKU][SET]))
             include_to_contract = True if self.json.project_kpi_dict.get('contract') else False
             self.tool_box.set_kpi_set(kpi_source[TOPSKU][SET], TOPSKU)
             self.tool_box.calculate_top_sku(include_to_contract,
@@ -167,22 +202,22 @@ class ProjectCalculations:
 
         if self.json.project_kpi_dict.get('contract'):
             if kpi_source[EQUIPMENT][SET]:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[EQUIPMENT][SET]))
                 self.tool_box.set_kpi_set(kpi_source[EQUIPMENT][SET], EQUIPMENT)
                 self.tool_box.calculate_equipment_execution(self.json.project_kpi_dict.get('contract'),
                                                             kpi_source[EQUIPMENT][SET],
                                                             kpi_source[KPI_CONVERSION][FILE])
 
             if kpi_source[CONTRACT][SET]:
-                Log.info('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
+                Log.debug('KPI calculation stage: {}'.format(kpi_source[CONTRACT][SET]))
                 self.tool_box.set_kpi_set(kpi_source[CONTRACT][SET], CONTRACT)
                 self.tool_box.calculate_contract_execution(self.json.project_kpi_dict.get('contract'),
                                                            kpi_source[CONTRACT][SET])
 
-        Log.info('KPI calculation stage: {}'.format('Committing results old'))
+        Log.debug('KPI calculation stage: {}'.format('Committing results old'))
         self.tool_box.commit_results_data_old()
 
-        Log.info('KPI calculation stage: {}'.format('Committing results new'))
+        Log.debug('KPI calculation stage: {}'.format('Committing results new'))
         self.tool_box.commit_results_data_new()
 
     def rds_connection(self):
