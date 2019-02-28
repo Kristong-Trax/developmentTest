@@ -83,7 +83,6 @@ class ToolBox:
         kpi_name = main_line[Const.KPI_NAME]
         kpi_type = main_line[Const.TYPE]
         scene_types = self.read_cell_from_line(main_line, Const.SCENE_TYPE)
-        # print(kpi_name, kpi_type)
         general_filters = {}
         relevant_scif = self.filter_df(self.scif.copy(), Const.SOS_EXCLUDE_FILTERS, exclude=1)
         if scene_types:
@@ -95,27 +94,9 @@ class ToolBox:
         # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
         #     return
 
-        # function = self.integrated_adjacency
-        # function = self.calculate_stocking_location
-        # function = self.adjacency
-        # function = self.graph
-        # if kpi_name != 'What best describes the stocking location of Organic Yogurt?':
-        #     return
-        # if kpi_name != 'Aggregation':
-        #     return
-        # if kpi_type == 'Blocking' or kpi_type == 'Base Measure':
         if kpi_type == Const.AGGREGATION: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
-            # function = self.calculate_orientation
-            # if kpi_name not in ['What best describes the stocking location of Organic Yogurt?',
-            #                     'How is RTS Progresso blocked?',
-            #                     'How is RTS Private Label blocked?',
-            #                     'When RTS Progresso is vertically blocked, what is adjacent?',
-            #                     'If not blocked, where is RTS Private Label stocked?',
-            #                     ]:
-            #     return
-            # kpi_line = self.template[kpi_type][self.template[kpi_type][Const.KPI_NAME] == kpi_name].loc[0]
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             if not isinstance(all_kwargs, list):
                 all_kwargs = [all_kwargs]
@@ -126,7 +107,6 @@ class ToolBox:
                         self.write_to_db(kpi_name, **{'score': 0, 'result': 0})
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        print('running sos')
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
             if not super_cat:
@@ -676,7 +656,6 @@ class ToolBox:
         if mpis.empty:
             return {"score": None}
         for scene in mpis.scene_fk.unique():
-            print(kpi_name, scene)
             smpis = self.filter_df(mpis, {'scene_fk': scene})
             master_smpis = self.filter_df(master_mpis, {'scene_fk': scene})
 
@@ -772,8 +751,6 @@ class ToolBox:
         res = x.network_x_block_together(relevant_filter, location=scene_filter,
                                          additional={'allowed_products_filters': allowed_filter, 'include_stacking': False})
 
-        for block in res['block']:
-            print(sum([len(node[1]['members']) for node in block.nodes(data=True)]))
 
     def semi_numerical_results(self, val, potential_results, form='{}'):
         min_cap, max_cap = self.find_caps(potential_results)
@@ -948,7 +925,6 @@ class ToolBox:
         set_index = set(kpis_index)
         c = 0
         while dependent_index:
-            print(dependent_index)
             i = dependent_index.pop(0)
             kpi = kpis.loc[i, Const.KPI_NAME]
             dependencies = self.read_cell_from_line(kpis.loc[i, :], Const.DEPENDENT)
@@ -1060,62 +1036,3 @@ class ToolBox:
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
-
-
-    def gen_html(self, scene, components, adj_g, mpis):
-        img_maker = ImageMaker('gmius', scene, additional_attribs=['sub_category_local_name'])
-        html_x = float(img_maker.html_builder.size[1])
-        html_y = float(img_maker.html_builder.size[0])
-        adj_coords = adj_g.scene_data
-        x_mm = max(adj_coords['right'] + (adj_coords['right'] - adj_coords['left']) / 2.0)
-        y_mm = max(adj_coords['top'] + (adj_coords['top'] - adj_coords['bottom']) / 2.0)
-        x_ratio = html_x / x_mm
-        y_ratio = html_y / y_mm
-        nodes = []
-        mpis_indexed = mpis.set_index('scene_match_fk')
-        for i, component in enumerate(components):
-            img_maker.html_builder.add_cluster(group_num=i)
-            # print(len(component))
-            # print('~~~~~~~')
-            # print(len(component))
-            for j, node in component.nodes(data=True):
-                # attribs = self.gen_relevant_node_attribs(node, mpis_indexed, i)
-                # node = node['group_attributes']
-                # mpis_fk = node['match_fk_list']
-                # print(len(mpis_fk))
-                mpis_fk = node['match_fk']
-                attribs = mpis_indexed.loc[mpis_fk].to_dict()
-                attribs['scene_match_fk'] = mpis_fk
-                attribs['left'] = node['p1'].x
-                attribs['top'] = node['p2'].y
-                attribs['width'] = node['p2'].x - node['p1'].x
-                attribs['height'] = node['p2'].y - node['p1'].y
-                attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
-                attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
-
-                # attribs['w'] = attribs['width'] * x_ratio
-                # attribs['h'] = attribs['height'] * y_ratio
-                # # break
-                # attribs['rect_x'] = attribs['left'] * x_ratio
-                # attribs['rect_y'] = (node['p1'].y) * y_ratio
-                attribs['cluster'] = i
-
-                img_maker.html_builder.add_product(attribs)
-                nodes.append(attribs['scene_match_fk'])
-
-        img_maker.html_builder.add_cluster(group_num=-1)
-        remaining = mpis[~mpis['scene_match_fk'].isin(nodes)]
-        for i, node in remaining.iterrows():
-            attribs = self.gen_irrelevant_node_attribs(node)
-            img_maker.html_builder.add_product(attribs)
-
-        img_maker.html_builder.products = img_maker.html_builder.products
-        return img_maker.html_builder.return_html()
-
-    def gen_irrelevant_node_attribs(self, node):
-        attribs = node.to_dict()
-        # attribs['scene_match_fk'] = node['scene_match_fk']
-        attribs['w'] = attribs['shelf_px_right'] - attribs['shelf_px_left']
-        attribs['h'] = attribs['shelf_px_bottom'] - attribs['shelf_px_top']
-        attribs['cluster'] = -1
-        return attribs
