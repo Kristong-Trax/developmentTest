@@ -68,8 +68,11 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             for bay in bays_in_scene:
                 bay_mpis = scene_mpis[scene_mpis['bay_number'] == bay]
                 total_space = bay_mpis['width_mm'].sum()
-                tested_group_skus = self.get_product_fks_from_total_category(Const.RELEVANT_CATEGORIES[scene_type])
-                tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
+                tested_group_skus = self.get_product_fks_from_relevant_filters(Const.RELEVANT_FILTERS[scene_type])
+                if tested_group_skus:
+                    tested_group_space = bay_mpis[bay_mpis['product_fk'].isin(tested_group_skus)]['width_mm'].sum()
+                else:
+                    tested_group_space = 0
                 if tested_group_space / float(total_space) > threshold:
                     # shelf_length = self.get_normalized_shelf_length(bay_mpis)
                     set_size += 4
@@ -152,11 +155,14 @@ class CCBOTTLERSUSWAREHOUSEJUICEToolBox:
             Log.error('Template FK for {} does not exist in the database!'.format(template_name))
             return None
 
-    def get_product_fks_from_total_category(self, category_list):
-        return self.scif[self.scif[Const.TOTAL_CATEGORY].isin(category_list)]['product_fk'].unique().tolist()
-
-    # def commit_results_without_delete(self):
-    #     self.common_db.commit_results_data_without_delete_version2()
+    def get_product_fks_from_relevant_filters(self, relevant_filters):
+        relevant_scif = self.scif
+        for attribute, value_list in relevant_filters.iteritems():
+            relevant_scif = relevant_scif[relevant_scif[attribute].isin(value_list)]
+        if relevant_scif.empty:
+            return None
+        else:
+            return relevant_scif['product_fk'].unique().tolist()
 
     def commit_results(self):
         self.common_v2.commit_results_data()
