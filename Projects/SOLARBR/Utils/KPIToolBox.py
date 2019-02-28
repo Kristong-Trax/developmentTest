@@ -3,6 +3,7 @@
 
 import os
 import pandas as pd
+import re
 import numpy as np
 import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -25,8 +26,10 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
-SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Score Template.xlsx')
-MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KPI Template v0.2.xlsx')
+SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
+    __file__)), '..', 'Data', 'Score Template_Solar_2019_DH_1.4.xlsx')
+MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
+    __file__)), '..', 'Data', 'KPI Template 2019_DH_1.4.xlsx')
 
 
 class SOLARBRToolBox:
@@ -116,7 +119,7 @@ class SOLARBRToolBox:
                         relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
 
                         if relevant_template["numerator param 1"].all() and relevant_template[
-                            "denominator param"].all():
+                                "denominator param 1"].all():
                             function = self.get_kpi_function(kpi_type)
                             for i, kpi_line in relevant_template.iterrows():
                                 result, score = function(kpi_line, general_filters)
@@ -140,7 +143,7 @@ class SOLARBRToolBox:
             if type(cell) in [int, float]:
                 return [cell]
             elif type(cell) in [unicode, str]:
-                return cell.split(", ")
+                return [x.strip() for x in cell.split(",")]
         return None
 
     @staticmethod
@@ -161,25 +164,26 @@ class SOLARBRToolBox:
 
     def calculate_sos(self, kpi_line, general_filters):
         kpi_name = kpi_line[Const.KPI_NAME]
-        den_type = kpi_line[Const.DEN_TYPES_1]
-        den_value = kpi_line[Const.DEN_VALUES_1].split(',')
 
-        num_type = kpi_line[Const.NUM_TYPES_1]
-        num_value = kpi_line[Const.NUM_VALUES_1].split(',')
+        # get denominator filters
+        for den_column in [col for col in kpi_line.keys() if Const.DEN_TYPE in col]:  # get relevant den columns
+            if kpi_line[den_column]:  # check to make sure this kpi has this denominator param
+                general_filters[kpi_line[den_column]] = \
+                    kpi_line[den_column.replace(Const.DEN_TYPE, Const.DEN_VALUE)].split(
+                        ',')  # get associated values
 
-        general_filters[den_type] = den_value
+        general_filters = self.convert_operators_to_values(general_filters)
 
-        sos_filters = {num_type: num_value}
+        sos_filters = {}
+        # get numerator filters
+        # get relevant numerator columns
+        for num_column in [col for col in kpi_line.keys() if Const.NUM_TYPE in col]:
+            if kpi_line[num_column]:  # check to make sure this kpi has this numerator param
+                sos_filters[kpi_line[num_column]] = \
+                    kpi_line[num_column.replace(Const.NUM_TYPE, Const.NUM_VALUE)].split(
+                        ',')  # get associated values
 
-        if kpi_line[Const.NUM_TYPES_2]:
-            num_type_2 = kpi_line[Const.NUM_TYPES_2]
-            num_value_2 = kpi_line[Const.NUM_VALUES_2].split(',')
-            sos_filters[num_type_2] = num_value_2
-
-        if kpi_line[Const.NUM_TYPES_3]:
-            num_type_3 = kpi_line[Const.NUM_TYPES_3]
-            num_value_3 = kpi_line[Const.NUM_VALUES_3].split(',')
-            sos_filters[num_type_3] = num_value_3
+        sos_filters = self.convert_operators_to_values(sos_filters)
 
         sos_value = self.sos.calculate_share_of_shelf(sos_filters, **general_filters)
         # sos_value *= 100
@@ -188,28 +192,29 @@ class SOLARBRToolBox:
         score = self.get_score_from_range(kpi_name, sos_value)
 
         manufacturer_products = self.all_products[
-            self.all_products['manufacturer_name'] == num_value[0]].iloc[0]
+            self.all_products['manufacturer_name'] == sos_filters['manufacturer_name'][0]].iloc[0]
 
         manufacturer_fk = manufacturer_products["manufacturer_fk"]
 
         filtered_kpi_list = self.kpi_static_data[self.kpi_static_data['type'] == kpi_name]
         kpi_fk = filtered_kpi_list['pk'].iloc[0]
 
-        numerator_res, denominator_res = self.get_numerator_and_denominator(sos_filters, **general_filters)
+        numerator_res, denominator_res = self.get_numerator_and_denominator(
+            sos_filters, **general_filters)
 
-        if numerator_res == None:
+        if numerator_res is None:
             numerator_res = 0
 
         denominator_fk = None
         if general_filters.keys()[0] == 'category':
             category_fk = self.all_products["category_fk"][
-                self.all_products[den_type] == den_value[0]].iloc[0]
+                self.all_products['category'] == general_filters['category'][0]].iloc[0]
             denominator_fk = category_fk
 
         elif general_filters.keys()[0] == 'sub_category':
             try:
                 sub_category_fk = self.all_products["sub_category_fk"][
-                    self.all_products[den_type] == den_value[0]].iloc[0]
+                    self.all_products['sub_category'] == general_filters['sub_category'][0]].iloc[0]
                 denominator_fk = sub_category_fk
             except:
                 sub_brand_fk = 999
@@ -220,7 +225,7 @@ class SOLARBRToolBox:
 
             try:
                 sub_brand_fk = self.all_products["sub_category_fk"][
-                    self.all_products[den_type] == den_value[0]].iloc[0]
+                    self.all_products['sub_brand'] == general_filters['sub_brand'][0]].iloc[0]
             except:
 
                 sub_brand_fk = 999
@@ -246,9 +251,40 @@ class SOLARBRToolBox:
         score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +
                                                              '" & Low <= ' + str(sos_value) +
                                                              ' & High >= ' + str(sos_value) + '')
-        score = score_range['Score'].iloc[0]
+        try:
+            score = score_range['Score'].iloc[0]
+        except IndexError:
+            try:
+                Log.error('No score data found for KPI name {} in store type {}'.format(
+                    kpi_name.encode("utf-8"), store_type))
+                return 0
+            except UnicodeDecodeError:
+                Log.error('Unable to generate error for KPI name or store type with weird characters')
+                return 0
 
         return score
+
+    def convert_operators_to_values(self, filters):
+        if 'number_of_sub_packages' in filters.keys():
+            value = filters['number_of_sub_packages']
+            operator, number = [x.strip() for x in re.split('(\d+)', value[0]) if x != '']
+            if operator == '>=':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] >= int(
+                    number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '<=':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] <= int(
+                    number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '>':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] > int(
+                    number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+            elif operator == '<':
+                subpackages_num = self.scif[self.scif['number_of_sub_packages'] < int(
+                    number)]['number_of_sub_packages'].unique().tolist()
+                filters['number_of_sub_packages'] = subpackages_num
+        return filters
 
     def get_kpi_function(self, kpi_type):
         """
@@ -259,7 +295,8 @@ class SOLARBRToolBox:
         if kpi_type == Const.SOVI:
             return self.calculate_sos
         else:
-            Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
+            Log.warning(
+                "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
 
     @staticmethod

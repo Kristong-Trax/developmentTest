@@ -39,7 +39,8 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'Eli'
 
 SOS = [SOSUnboxedBrandCategory_KPI, SOSUnboxedManufacturerCategory_KPI, SOSUnboxedSKUCategory_KPI]
-SOS_SUB = [SOSUnboxedBrandSubCategory_KPI, SOSUnboxedManufacturerSubCategory_KPI, SOSUnboxedSKUSubCategory_KPI]
+SOS_SUB = [SOSUnboxedBrandSubCategory_KPI,
+           SOSUnboxedManufacturerSubCategory_KPI, SOSUnboxedSKUSubCategory_KPI]
 GONDOLA_END = [SosOnGondolaEndBrandCategory_KPI, SosOnGondolaEndManufacturerCategory_KPI,
                SosOnGondolaEndSKUCategory_KPI]
 GONDOLA_END_SUB = [SosOnGondolaEndBrandSubCategory_KPI, SosOnGondolaEndManufacturerSubCategory_KPI,
@@ -49,13 +50,16 @@ SOS_BRANDED = [SosOnBrandedZonesBrandCategory_KPI, SosOnBrandedZonesManufacturer
 SOS_BRANDED_SUB = [SosOnBrandedZonesBrandSubCategory_KPI, SosOnBrandedZonesManufacturerSubCategory_KPI,
                    SosOnBrandedZonesSkuSubCategory_KPI]
 SHARE_BRANDED = [ShareOfBrandedZonesBrandCategory_KPI, ShareOfBrandedZonesManufacturerCategory_KPI]
-SHARE_BRANDED_SUB = [ShareOfBrandedZonesBrandSubCategory_KPI, ShareOfBrandedZonesManufacturerSubCategory_KPI]
-PRESENCE = [PresenceonGondolaEndSKUSubCategory_KPI, PresenceonGondolaEndManufacturerSubCategory_KPI,PresenceonGondolaEndBrandSubCategory_KPI,
+SHARE_BRANDED_SUB = [ShareOfBrandedZonesBrandSubCategory_KPI,
+                     ShareOfBrandedZonesManufacturerSubCategory_KPI]
+PRESENCE = [PresenceonGondolaEndSKUSubCategory_KPI, PresenceonGondolaEndManufacturerSubCategory_KPI, PresenceonGondolaEndBrandSubCategory_KPI,
             PresenceonBrandedZonesSKUSubCategory_KPI, PresenceonBrandedZonesManufacturerSubCategory_KPI, PresenceonBrandedZonesBrandSubCategory_KPI]
-DISTRIBUTION = [UniqueDistributionPerBrand_KPI, UniqueDistributionPerManufacturer_KPI, UniqueDistributionPerProduct_KPI]
+DISTRIBUTION = [UniqueDistributionPerBrand_KPI,
+                UniqueDistributionPerManufacturer_KPI, UniqueDistributionPerProduct_KPI]
 MINIMUM_PRICES = [MinimumPriceDistributionManufacturerCategory_KPI]
 
-KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED + SOS_BRANDED_SUB + SHARE_BRANDED + SHARE_BRANDED_SUB + PRESENCE + DISTRIBUTION + MINIMUM_PRICES
+KPIs = SOS + SOS_SUB + GONDOLA_END + GONDOLA_END_SUB + SOS_BRANDED + SOS_BRANDED_SUB + \
+    SHARE_BRANDED + SHARE_BRANDED_SUB + PRESENCE + DISTRIBUTION + MINIMUM_PRICES
 
 
 class GFKDECalculations(BaseCalculationsScript):
