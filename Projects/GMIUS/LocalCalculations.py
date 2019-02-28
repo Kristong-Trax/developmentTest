@@ -7,6 +7,7 @@
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Projects.GMIUS.Calculations import Calculations
 #
+# 
 # if __name__ == '__main__':
 #     LoggerInitializer.init('gmius calculations')
 #     Config.init()
