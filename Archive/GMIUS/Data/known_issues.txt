@@ -1,0 +1,20 @@
+ASH (Segment???) doesn't seem to exist.
+BEVERAGE & BEVERAGE A/AF is not a segment
+Clarify base measure yogurt params- orignals are in ignore columns
+yogurt variety count, what do results 1-5 SS, NO MPK; 1-5 SS, 1 MPK; 1-5 SS, 2 MPK; 6-10 SS, NO MPK; 6-10 SS, 1 MPK; 6-10 SS, 2 MPK; 11+ SS, NO MPK; 11+ SS, 1 MPK; 11+ SS, 2 MPK
+    mean? This kpi will be almost identical to count_of
+
+should adjacency anchor be limited to super category?
+
+since this was set up with atomic style kpis, I am not saving numerator id's
+score should be 1 if a result was found for things like adjacency, score 0 means empty result and is intended for use in the simon to count sessions or such
+    i didn't quite do this for blocking as I haven't firmly settled on simon methodology
+
+I'm assuming survey question will simply be handled in the simon, as it doesn't seem to need calculation
+
+anchor list assumes that all potential segments, audiences whatevers have been listed in results
+anchor list results are also a random medley from different columns.... see Const.REF_COLS
+anchor currently ignores product type other, because if included everything would be continuous
+
+What format variety exists in within the Kid Segment?- I don't see drink in the db in form_factor
+
