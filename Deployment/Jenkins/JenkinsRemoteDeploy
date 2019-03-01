@@ -1,0 +1,151 @@
+String getBuildLog() {
+    return currentBuild.rawBuild.getLogFile().getText()
+}
+
+pipeline {
+    options {
+        timestamps()
+        timeout(time: 5, unit: 'HOURS')
+        checkoutToSubdirectory('master')
+        buildDiscarder(logRotator(numToKeepStr: '250'))
+    }
+    agent {
+        docker {
+            label 'spotinst-deployment'
+            image '619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:jenkins_slave_base'
+            args '-u root --log-driver=syslog -v /var/run/docker.sock:/var/run/docker.sock -v /dev/log:/dev/log \
+                  -v /root/engineCache/TestResults:/root/engineCache/TestResults -v /home/ubuntu/.ssh:/root/.ssh \
+                  -v /home/ubuntu/gcloud_creds:/root/gcloud_creds:ro --add-host bitbucket.org:18.205.93.1'
+        }
+    }
+    parameters {
+        string(name: 'COMMIT_ID', trim: true)
+        string(name: 'BRANCH_NAME', trim: true)
+        string(name: 'SYSTEM_NAME', trim: true)
+        string(name: 'PROJECT_NAME', trim: true)
+        string(name: 'TAG', trim: true)
+        string(name: 'USER_EMAIL', trim: true)
+        choice(choices: ['int', 'prod'], name: 'ENV')
+    }
+    environment {
+        CONDA_BIN = "/root/miniconda/bin"
+    }
+    stages {
+        stage('Init') {
+            steps {
+                script {
+                    currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
+                    env.FAILED_STEP = "${env.STAGE_NAME}"
+                }
+                // sh 'apt-get install -y dnsutils'
+                sh 'printenv'
+                sh 'gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json'
+            }
+        }
+        stage('Checkout') {
+            steps {
+                script {
+                    env.FAILED_STEP = "${env.STAGE_NAME}"
+                }
+                sh 'rm -rf theGarage'
+                dir(path: 'theGarage') {
+                    checkout([$class: 'GitSCM', branches: [[name: '${COMMIT_ID}']],
+                              userRemoteConfigs: [[credentialsId: 'kifbb',
+                              url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
+                }
+
+                dir(path: 'kpi_factory') {
+                  git(url: 'https://bitbucket.org/traxtechnology/kpi_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
+                }
+
+                dir(path: 'trax_ace_live') {
+                  git(url: 'https://bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
+                }
+
+
+            }
+        }
+        stage('Build Environment') {
+            steps {
+                script {
+                    env.FAILED_STEP = "${env.STAGE_NAME}"
+                }
+                sh '''#!/bin/bash
+                    cd theGarage
+                    export PATH=$CONDA_BIN:$PATH
+                    conda env update -n garage -f ./Trax/Deployment/conda/garage_final.yml
+                    echo "# Set git user.email to " $USER_EMAIL
+                    git config user.email $USER_EMAIL
+                    echo "# git config -l"
+                    git config -l
+                    exit_code=$?
+                    exit $exit_code
+                '''
+            }
+        }
+       stage('Deploy')  {
+            steps {
+                  sh '''#!/bin/bash
+                    export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
+                    cd kpi_factory
+                    echo " Started Deployment" $PROJECT_NAME
+                    # python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
+
+                    exit_code=$?
+                    exit $exit_code
+                '''
+
+
+            }
+       }
+
+    }
+    post {
+        always {
+            script {
+                env.DEPLOY_STATUS = "$currentBuild.currentResult"
+                env.START_TIME = "$currentBuild.startTimeInMillis"
+                env.DURATION = "$currentBuild.duration"
+                dir(path: 'theGarage') {
+                    writeFile(file: 'build-raw.txt', text: getBuildLog())
+                }
+            }
+            sh '''#!/bin/bash
+                cd theGarage
+                export PATH=$CONDA_BIN:$PATH
+                export PYTHONPATH=$PWD
+                export PROJECT_ROOT=$PWD
+                source activate garage
+                git remote set-url origin git@bitbucket.org:traxtechnology/trax_dev_garage.git
+                python -u Trax/Deployment/Tools/Report.py -an=$SYSTEM_NAME --result=$DEPLOY_STATUS --user=$USER_EMAIL \
+                                                           --failed_step="$FAILED_STEP" --env=$ENV --url=$RUN_DISPLAY_URL \
+                                                           --commit=$COMMIT_ID -ic=$IS_CANARY --logfile=build-raw.txt \
+                                                           --start_time=$START_TIME --duration=$DURATION --branch=$BRANCH_NAME\
+                                                            --aws_failed=$AWS_FAILED --gcp_failed=$GCP_FAILED
+            '''
+        }
+        cleanup {
+            sh '''#!/bin/bash
+                echo "# Before cleanup"
+                docker images
+                docker ps -a
+
+                cd theGarage
+                export PATH=$CONDA_BIN:$PATH
+                export PROJECT_ROOT=$PWD
+                export PYTHONPATH=$PWD
+                source activate garage
+                python -u Trax/Deployment/Remote/SlaveCleaner.py
+
+                echo "# After cleanup"
+                docker images
+                docker ps -a
+            '''
+            cleanWs()
+        }
+
+
+
+
+    }
+}

@@ -27,9 +27,9 @@ KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
 SCORE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
-    __file__)), '..', 'Data', 'Score Template_Solar_2019_DH_1.2.xlsx')
+    __file__)), '..', 'Data', 'Score Template_Solar_2019_DH_1.4.xlsx')
 MAIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(
-    __file__)), '..', 'Data', 'KPI Template 2019_DH_1.3.xlsx')
+    __file__)), '..', 'Data', 'KPI Template 2019_DH_1.4.xlsx')
 
 
 class SOLARBRToolBox:
@@ -107,7 +107,7 @@ class SOLARBRToolBox:
         # scif_template_groups = encoding_fixed_list
 
         store_type = self.store_info["store_type"].iloc[0]
-        store_types = self.does_exist_store(main_line, Const.STORE_TYPES)
+        store_types = self.does_exist(main_line, Const.STORE_TYPES)
         if store_type in store_types:
 
             if template_groups:
@@ -146,22 +146,6 @@ class SOLARBRToolBox:
                 return [x.strip() for x in cell.split(",")]
         return None
 
-    @staticmethod
-    def does_exist_store(kpi_line, column_name):
-        """
-        checks if kpi_line has values in this column, and if it does - returns a list of these values
-        :param kpi_line: line from template
-        :param column_name: str
-        :return: list of values if there are, otherwise None
-        """
-        if column_name in kpi_line.keys() and kpi_line[column_name] != "":
-            cell = kpi_line[column_name]
-            if type(cell) in [int, float]:
-                return [cell]
-            elif type(cell) in [unicode, str]:
-                return cell.split(",")
-        return None
-
     def calculate_sos(self, kpi_line, general_filters):
         kpi_name = kpi_line[Const.KPI_NAME]
 
@@ -176,8 +160,7 @@ class SOLARBRToolBox:
 
         sos_filters = {}
         # get numerator filters
-        # get relevant numerator columns
-        for num_column in [col for col in kpi_line.keys() if Const.NUM_TYPE in col]:
+        for num_column in [col for col in kpi_line.keys() if Const.NUM_TYPE in col]:  # get numerator columns
             if kpi_line[num_column]:  # check to make sure this kpi has this numerator param
                 sos_filters[kpi_line[num_column]] = \
                     kpi_line[num_column.replace(Const.NUM_TYPE, Const.NUM_VALUE)].split(
