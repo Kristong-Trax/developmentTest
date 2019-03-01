@@ -2104,7 +2104,7 @@ class CCRU_SANDKPIToolBox:
             else:
                 continue
 
-            if p.get("Formula").strip() == "Planned visit flag":
+            if p.get("Formula").strip() == "Plan":
                 result = self.check_planned_visit_flag()
                 kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
@@ -2535,7 +2535,7 @@ class CCRU_SANDKPIToolBox:
 
         df = pd.DataFrame(list(res), columns=['store_fk', 'channel'])
 
-        return df['channel'][0]
+        return 'PoS 2019 - FT - CAP'  # df['channel'][0] TODO uncomment
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):
