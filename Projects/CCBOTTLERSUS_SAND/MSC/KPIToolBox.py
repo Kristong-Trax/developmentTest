@@ -146,14 +146,34 @@ class MSCToolBox:
         return
 
     def check_activation_status(self, kpi_line, relevant_scif):
+        """
+        This function checks to see whether or not the KPI has an activation parameter and value combo defined.
+        If it does, the function makes sure that ALL values are present
+        :param kpi_line:
+        :param relevant_scif:
+        :return:
+        """
         try:
             activation_param = kpi_line[Const.ACTIVATION_TYPE]
         except KeyError:
             activation_param = None
         if activation_param:
+            # get activation parameter columns and iterate over them
+            for parameter_column in [col for col in kpi_line.keys() if Const.ACTIVATION_TYPE in col]:
+                if kpi_line[parameter_column]:  # check to make sure this kpi has this activation param
+                    # get the corresponding value column, e.g. 'activation_value 2' for 'activation_type 2'
+                    value_column = parameter_column.replace(Const.ACTIVATION_TYPE, Const.ACTIVATION_VALUE)
+                    # get the values for the value column
+                    values = self.does_exist(kpi_line, value_column)
+                    # filter the relevant_scif for these values
+                    relevant_scif = relevant_scif[relevant_scif[kpi_line[parameter_column]].isin(values)]
+
+            # verify all of the main activation values are a part of the relevant_scif
             activation_value = self.does_exist(kpi_line, Const.ACTIVATION_VALUE)
+            # return true if all values are present, else false
             return set(activation_value).issubset(set(relevant_scif[activation_param].tolist()))
         else:
+            # no activation for this KPI? return true
             return True
 
     def check_activation_threshold(self, kpi_line, sos_value):
@@ -177,7 +197,8 @@ class MSCToolBox:
         minimum_facings = kpi_line[Const.MINIMUM_FACINGS]
         availability = filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
 
-        result = 19 if availability else 20
+        result = self.ps_data_provider.get_pks_of_result(
+            Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
@@ -193,7 +214,8 @@ class MSCToolBox:
         group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
         availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
 
-        result = 19 if availability else 20
+        result = self.ps_data_provider.get_pks_of_result(
+            Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
