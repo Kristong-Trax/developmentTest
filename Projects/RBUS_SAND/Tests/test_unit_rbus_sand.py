@@ -1,7 +1,6 @@
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase
 from mock import MagicMock, mock
-import pandas as pd
 import Projects.RBUS_SAND.Tests.test_data as Data
 from Projects.RBUS_SAND.Utils.KPIToolBox import RBUSToolBox
 
@@ -11,19 +10,17 @@ __author__ = 'yoava'
 class TestRbusSand(TestCase):
 
     @mock.patch('Projects.RBUS_SAND.Utils.KPIToolBox.PSProjectConnector')
-    def setUp(self, x):
-        Config.init('')
+    @mock.patch('Projects.RBUS_SAND.Utils.KPIToolBox.common_old')
+    @mock.patch('Projects.RBUS_SAND.Utils.KPIToolBox.PsDataProvider')
+    @mock.patch('Projects.RBUS_SAND.Utils.KPIToolBox.Common')
+    def setUp(self, x, y, z, a):
+        Config.init()
         self.data_provider_mock = MagicMock()
         self.data_provider_mock.project_name = 'rbus-sand'
         self.data_provider_mock.rds_conn = MagicMock()
         self.output = MagicMock()
-        # self.test_objects = TestRbusSand()
-        # self.calc = RBUSCalculations(self.data_provider_mock, self.output)
-        # self.generator = RBUSGenerator(self.data_provider_mock, self.output)
-        # self.tool = RBUSToolBox(self.data_provider_mock, self.output)
         self.data = Data
         self.tool_box = RBUSToolBox(self.data_provider_mock, self.output)
-        # self.checks = Checks(self.data_provider_mock)
 
 
 class TestPlacementCount(TestRbusSand):
@@ -31,7 +28,7 @@ class TestPlacementCount(TestRbusSand):
     def test_df_head(self):
         df = self.data.get_scene_data_head()
         self.assertEquals(len(df.loc[df.template_name == 'ADDITIONAL AMBIENT PLACEMENT'].scene_fk.unique()),
-                         self.tool_box.get_scene_count(df, 'ADDITIONAL AMBIENT PLACEMENT'))
+                          self.tool_box.get_scene_count(df, 'ADDITIONAL AMBIENT PLACEMENT'))
 
     def test_num_of_scene_types_ambient(self):
         df = self.data.get_scene_data_complete()
