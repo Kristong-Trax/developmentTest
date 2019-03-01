@@ -72,7 +72,7 @@ class NESTLEUSToolBox:
         """
         kpi_set_fk = kwargs['kpi_set_fk']
         self.calculate_facing_count_and_linear_feet(kpi_set_fk = kpi_set_fk)
-        self.common.commit_results_data()
+
 
 
 
@@ -184,6 +184,7 @@ class NESTLEUSToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                # Log.warning('field {} is not in the Data Frame'.format(field))
+                pass
 
         return filter_condition

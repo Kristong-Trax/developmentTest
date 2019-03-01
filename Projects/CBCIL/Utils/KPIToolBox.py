@@ -25,7 +25,10 @@ KPS_RESULT = 'report.kps_results'
 
 CUSTOM_GAPS_TABLE = 'pservice.custom_gaps'
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
+TEMPLATE_NAME_UNTIL_2019_01_15 = 'Template_until_2019-01-15.xlsx'
+TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx'
+CURRENT_TEMPLATE = 'Template.xlsx'
 
 
 def log_runtime(description, log_start=False):
@@ -109,7 +112,6 @@ class CBCILCBCIL_ToolBox(object):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.tools = CBCILCBCIL_GENERALToolBox(self.data_provider, self.output, rds_conn=self.rds_conn)
         self.session_fk = self.session_info['pk'][0]
 
@@ -121,15 +123,17 @@ class CBCILCBCIL_ToolBox(object):
 
         self.rds_conn.disconnect_rds()
         self.rds_conn.connect_rds()
-        self.kpis_data = parse_template(TEMPLATE_PATH, 'KPI', lower_headers_row_index=1)
-        self.kpi_weights = parse_template(TEMPLATE_PATH, 'kpi weights', lower_headers_row_index=0)
-        self.gap_data = parse_template(TEMPLATE_PATH, 'Kpi Gap', lower_headers_row_index=0)
+        self.template_path = self.get_relevant_template()
+        self.kpis_data = parse_template(self.template_path, 'KPI', lower_headers_row_index=1)
+        self.kpi_weights = parse_template(self.template_path, 'kpi weights', lower_headers_row_index=0)
+        self.gap_data = parse_template(self.template_path, 'Kpi Gap', lower_headers_row_index=0)
 
         self.store_data = self.get_store_data_by_store_id()
         self.store_type = self.store_data[self.STORE_TYPE].str.encode('utf-8').tolist()
         self.additional_attribute_1 = self.store_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').tolist()
-        self.template_data = self.kpis_data[(self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
-                                            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
+        self.template_data = self.kpis_data[
+            (self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
+            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
 
         self.common = Common(self.data_provider)
         self.cbcil_id = self.get_own_manufacturer_pk()
@@ -185,18 +189,19 @@ class CBCILCBCIL_ToolBox(object):
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, *args, **kwargs):
+    def main_calculation(self):
         """
         This function calculates the KPI results.
         """
         if not self.template_data.empty:
-            competitor_coolers, cbc_coolers, relevant_scenes = self.get_coolers('מקרר חברה מרכזית', ['מקרר מתחרה', 'מקרר קמעונאי'])
+            competitor_coolers, cbc_coolers, relevant_scenes = self.get_coolers('מקרר חברה מרכזית',
+                                                                                ['מקרר מתחרה', 'מקרר קמעונאי'])
             kpi_scores = {}
             kpi_set = self.template_data[self.KPI_SET].values[0]
             self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == kpi_set]
             kpis = self.template_data[self.template_data[self.KPI_SET] == kpi_set][self.KPI_NAME].unique()
-            kpis_without_score={}
-            all_kpis_in_set=[]
+            kpis_without_score = {}
+            all_kpis_in_set = []
 
             identifier_result_set = self.get_identifier_result_set()
 
@@ -219,7 +224,8 @@ class CBCILCBCIL_ToolBox(object):
                         elif kpi_type == self.SOS:
                             score = self.calculate_sos(**general_filters)
                         elif kpi_type == self.SOS_COOLER:
-                            score = self.calculate_sos_cooler(competitor_coolers, cbc_coolers, relevant_scenes, **general_filters)
+                            score = self.calculate_sos_cooler(competitor_coolers, cbc_coolers, relevant_scenes,
+                                                              **general_filters)
                         elif kpi_type == self.AVAILABILITY:
                             score = self.calculate_availability(**general_filters)
                         elif kpi_type == self.AVAILABILITY_FROM_MID_AND_UP:
@@ -246,7 +252,9 @@ class CBCILCBCIL_ToolBox(object):
                         atomic_weight = None
 
                     if score is not None:
-                        atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
+                        atomic_fk = self.kpi_static_data[
+                            self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
+                                self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
                         self.write_to_db_result(atomic_fk, self.LEVEL3, score, score)
                         if isinstance(score, tuple):
                             score = score[0]
@@ -255,7 +263,8 @@ class CBCILCBCIL_ToolBox(object):
 
                         atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
                         self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
-                                                       denominator_id=self.store_id, identifier_parent=identifier_result_kpi,
+                                                       denominator_id=self.store_id,
+                                                       identifier_parent=identifier_result_kpi,
                                                        result=score, score=score, should_enter=True)
 
                     scores.append((score, atomic_weight))
@@ -292,14 +301,18 @@ class CBCILCBCIL_ToolBox(object):
                     kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
 
                 kpi_scores[kpi['kpi_fk']] = kpi_score
-                self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']], float(kpi['denominator_weight']) * 100)
+                self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']],
+                                        float(kpi['denominator_weight']) * 100)
 
                 kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
                 kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
                 identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
-                self.common.write_to_db_result(fk=kpi_lvl_2_fk,  numerator_id=self.cbcil_id, denominator_id=self.store_id,
-                                               identifier_parent=identifier_result_set, identifier_result=identifier_res_kpi_2,
-                                               weight=float(kpi['denominator_weight']) * 100, score=kpi_scores[kpi['kpi_fk']],
+                self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
+                                               denominator_id=self.store_id,
+                                               identifier_parent=identifier_result_set,
+                                               identifier_result=identifier_res_kpi_2,
+                                               weight=float(kpi['denominator_weight']) * 100,
+                                               score=kpi_scores[kpi['kpi_fk']],
                                                should_enter=True, result=kpi_scores[kpi['kpi_fk']])
 
             final_score = sum([score for score in kpi_scores.values()])
@@ -726,3 +739,16 @@ class CBCILCBCIL_ToolBox(object):
         if params.get(self.SPLIT_SCORE, 0) and not params['filters']['All'].get('scene_id'):
             return False
         return True
+
+    def get_relevant_template(self):
+        """
+        This function returns the relevant template according to it's visit date.
+        Because of a change that was done in the logic there are 3 templates that match different dates.
+        :return: Full template path
+        """
+        if self.visit_date <= datetime.date(datetime(2019, 1, 15)):
+            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_UNTIL_2019_01_15)
+        elif self.visit_date <= datetime.date(datetime(2019, 1, 3)):
+            return "{}/{}".format(TEMPLATE_PATH, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
+        else:
+            return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)

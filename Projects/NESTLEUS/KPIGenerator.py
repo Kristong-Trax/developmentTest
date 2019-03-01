@@ -31,3 +31,4 @@ class Generator:
         for kpi_set_fk in self.tool_box.new_kpi_static_data['pk'].unique().tolist():
             score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
             # self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
+        self.tool_box.common.commit_results_data()
