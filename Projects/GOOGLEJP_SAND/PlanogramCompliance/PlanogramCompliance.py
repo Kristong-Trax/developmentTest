@@ -1,6 +1,6 @@
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import PlanogramComplianceBaseClass
 from Trax.Apps.Services.KEngine.PRE.Algo.PlanogramCompliance import get_tag_planogram_compliance
-# import itertools
+import itertools
 import pandas as pd
 from Trax.Apps.Services.KEngine.PRE.Resources.Constants import Keys
 from Trax.Algo.Calculations.Core.Constants import PlanogramTagCompliance
@@ -27,6 +27,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
         :param manual_scene_data: match_product_in_scene (just for testing)
         :return: DF of match_product_in_scene_fk with the tags
         """
+        tag_compliance = pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
         try:
             self.planogram_matches = self._data_provider.planogram_data if manual_planogram_data is\
                                                                       None else manual_planogram_data
@@ -36,11 +37,13 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
             self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
             if len(self.scene_bays) == 1 and self.scene_bays == self.pog_bays:
                 tag_compliance, score = self._local_get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
-                return tag_compliance
-            return self._get_iterated_position_trial()
+            elif len(self.scene_bays) < 5 and len(self.pog_bays) < 5:
+                tag_compliance = self._get_iterated_position_full_solution()
+            else:
+                tag_compliance, score = self._get_iterated_position_greedy()
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
-            return pd.DataFrame(columns=[Keys.MATCH_FK, Keys.COMPLIANCE_STATUS_FK])
+        return tag_compliance
 
     def _filter_irrelevant_out(self):
         """
@@ -59,7 +62,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 Keys.FACING_SEQUENCE_NUMBER] -= 1
         self.scene_matches = self.scene_matches[~(self.scene_matches[Keys.PRODUCT_TYPE] == IRRELEVANT)]
 
-    def _get_iterated_position_trial(self):
+    def _get_iterated_position_greedy(self):
         """
         For multi-sided POGs. It iterates about all the possible permutations of the scene bays and the POG bays,
         and returns the tag_compliance of the permutation with the best score (most of "in position" products).
@@ -253,73 +256,73 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 tag_compliance = temp_tag_compliance
         return tag_compliance, score
 
-    # def get_iterated_position(self):
-    #     """
-    #     For multi-sided POGs. It iterates about all the possible permutations of the scene bays and the POG bays,
-    #     and returns the tag_compliance of the permutation with the best score (most of "in position" products).
-    #     """
-    #     all_combinations = pd.DataFrame()
-    #     for combination in list(itertools.product(self.scene_bays, self.pog_bays)):
-    #         scene_bay, pog_bay = combination
-    #         scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
-    #         pog_bay_data = self._get_df_of_bay(self.planogram_matches, pog_bay)
-    #         can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
-    #         if not can_match:
-    #             continue
-    #         tag_compliance = get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
-    #         score = float(len(
-    #             tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-    #         )) / len(tag_compliance)
-    #         all_combinations = all_combinations.append(
-    #             {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
-    #             ignore_index=True)
-    #     permutations, combinations = [], all_combinations[BAYS_COUPLE].tolist()
-    #     for permutation in [zip(x, self.pog_bays) for x in itertools.permutations(self.scene_bays, len(self.pog_bays))]:
-    #         should_insert = True
-    #         for combination in permutation:
-    #             if combination not in combinations:
-    #                 should_insert = False
-    #                 break
-    #         if should_insert:
-    #             permutations.append(permutation)
-    #     final_tag_compliance, highest_score = None, 0
-    #     for permutation in permutations:
-    #         score = 0
-    #         temp_final_tag_compliance = pd.DataFrame()
-    #         for combination in permutation:
-    #             combination_data = all_combinations[all_combinations[BAYS_COUPLE] == combination]
-    #             score += combination_data[SCORE].sum()
-    #             temp_final_tag_compliance = temp_final_tag_compliance.append(combination_data[TAG_COMPLIANCE].iloc[0],
-    #                                                                          ignore_index=True)
-    #         if score > highest_score:
-    #             highest_score = score
-    #             final_tag_compliance = temp_final_tag_compliance
-    #     return final_tag_compliance
-    #
-    # @staticmethod
-    # def can_match(pog_bay_data, scene_bay_data):
-    #     """
-    #     Checks if these bays can match - their sequences and shelves should be in the same amount (distance of max 1)
-    #     :param pog_bay_data: DF
-    #     :param scene_bay_data: DF
-    #     :return: Bool
-    #     """
-    #     shelves_distance = abs(
-    #         pog_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() - scene_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max())
-    #     sequences_distance = abs(
-    #         pog_bay_data[Keys.FACING_SEQUENCE_NUMBER].max() - scene_bay_data[Keys.FACING_SEQUENCE_NUMBER].max())
-    #     if shelves_distance > 1 or sequences_distance > 1:
-    #         return False
-    #     return True
+    def _get_iterated_position_full_solution(self):
+        """
+        For multi-sided POGs. It iterates about all the possible permutations of the scene bays and the POG bays,
+        and returns the tag_compliance of the permutation with the best score (most of "in position" products).
+        """
+        all_combinations = pd.DataFrame()
+        for combination in list(itertools.product(self.scene_bays, self.pog_bays)):
+            scene_bay, pog_bay = combination
+            scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
+            pog_bay_data = self._get_df_of_bay(self.planogram_matches, pog_bay)
+            can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
+            if not can_match:
+                continue
+            tag_compliance = get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
+            score = float(len(
+                tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
+            )) / len(tag_compliance)
+            all_combinations = all_combinations.append(
+                {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
+                ignore_index=True)
+        permutations, combinations = [], all_combinations[BAYS_COUPLE].tolist()
+        for permutation in [zip(x, self.pog_bays) for x in itertools.permutations(self.scene_bays, len(self.pog_bays))]:
+            should_insert = True
+            for combination in permutation:
+                if combination not in combinations:
+                    should_insert = False
+                    break
+            if should_insert:
+                permutations.append(permutation)
+        final_tag_compliance, highest_score = None, 0
+        for permutation in permutations:
+            score = 0
+            temp_final_tag_compliance = pd.DataFrame()
+            for combination in permutation:
+                combination_data = all_combinations[all_combinations[BAYS_COUPLE] == combination]
+                score += combination_data[SCORE].sum()
+                temp_final_tag_compliance = temp_final_tag_compliance.append(combination_data[TAG_COMPLIANCE].iloc[0],
+                                                                             ignore_index=True)
+            if score > highest_score:
+                highest_score = score
+                final_tag_compliance = temp_final_tag_compliance
+        return final_tag_compliance
+
+    @staticmethod
+    def can_match(pog_bay_data, scene_bay_data):
+        """
+        Checks if these bays can match - their sequences and shelves should be in the same amount (distance of max 1)
+        :param pog_bay_data: DF
+        :param scene_bay_data: DF
+        :return: Bool
+        """
+        shelves_distance = abs(
+            pog_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max() - scene_bay_data[Keys.SHELF_NUMBER_FROM_BOTTOM].max())
+        sequences_distance = abs(
+            pog_bay_data[Keys.FACING_SEQUENCE_NUMBER].max() - scene_bay_data[Keys.FACING_SEQUENCE_NUMBER].max())
+        if shelves_distance > 1 or sequences_distance > 1:
+            return False
+        return True
 
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/8/"
+#     path = "/home/elyashiv/Desktop/backup/POGs/11/"
 #     planogram_data = pd.read_csv(path + "pog.csv")
-#     scene_data = pd.read_csv(path + "scene.csv")
+#     scene_data = pd.read_csv(path + "scene 1127.csv")
 #     pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances
