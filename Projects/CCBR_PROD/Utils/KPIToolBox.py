@@ -24,7 +24,7 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template 2019 - KENGINE_DCH v6.2.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'Femsa template 2019 - KENGINE_DCH v6.5_Feb.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
@@ -158,7 +158,7 @@ class CCBRToolBox:
             if store_type_filter not in store_types:
                 return
 
-        # find the answer to the survey in session
+        # find the answer to the  in session
         question_id = row[Const.SURVEY_QUESTION_ID].values[0]
         question_answer_template = row[Const.TARGET_ANSWER].values[0]
 
@@ -381,6 +381,11 @@ class CCBRToolBox:
         if exclude_category != "":
             filters[Const.CATEGORY] = (exclude_category, Const.EXCLUDE_FILTER)
             del filters[Const.EXCLUDE_CATEGORY]
+
+        exclude_product = filters[Const.EXCLUDE_PRODUCT].strip()
+        if exclude_product != "":
+            filters[Const.EXCLUDE_PRODUCT] = (exclude_product, Const.EXCLUDE_PRODUCT)
+            del filters[Const.EXCLUDE_PRODUCT]
 
         # filter all the empty cells
         for key in filters.keys():
