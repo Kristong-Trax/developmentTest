@@ -2,6 +2,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
+import numpy as np
 from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
@@ -72,7 +73,7 @@ class NESTLEUSToolBox:
         """
         kpi_set_fk = kwargs['kpi_set_fk']
         self.calculate_facing_count_and_linear_feet(kpi_set_fk = kpi_set_fk)
-        self.common.commit_results_data()
+
 
 
 
@@ -109,7 +110,7 @@ class NESTLEUSToolBox:
                     numerator_length = self.calculate_linear_share_of_shelf_with_numerator_denominator(
                         sos_filter, **general_filter)
 
-                    numerator_length = int(round(numerator_length * self.MM_TO_FEET_CONVERSION))
+                    numerator_length = int(np.ceil(numerator_length * self.MM_TO_FEET_CONVERSION))
                     if numerator_length > 0:
 
                         self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
@@ -184,6 +185,7 @@ class NESTLEUSToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                # Log.warning('field {} is not in the Data Frame'.format(field))
+                pass
 
         return filter_condition

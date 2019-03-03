@@ -36,6 +36,7 @@ class Const(object):
     BRAND = 'Brand'
     CATEGORY = 'Category'
     EXCLUDE_CATEGORY = 'Exclude category'
+    EXCLUDE_PRODUCT = 'Exclude Product'
     MANUFACTURER = 'Manufacturer'
     PRODUCT_TYPE = 'Product Type'
     PRODUCT_SIZE = 'Product Size'
