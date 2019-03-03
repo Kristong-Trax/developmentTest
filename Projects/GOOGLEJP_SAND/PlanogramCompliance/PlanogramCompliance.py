@@ -41,6 +41,12 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 tag_compliance = self._get_iterated_position_full_solution()
             else:
                 tag_compliance, score = self._get_iterated_position_greedy()
+            compliance_products = pd.merge(self.scene_matches, tag_compliance, on='match_fk', how='left')
+            pog_products = self.planogram_matches['product_fk'].unique().tolist()
+            wrong_extra_tags = compliance_products[
+                (compliance_products['compliance_status_fk'] == 1) &
+                (compliance_products['product_fk'].isin(pog_products))]['match_fk'].tolist()
+            tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
         return tag_compliance
@@ -139,9 +145,11 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 i for i in self.all_combinations_matches.loc[scene_bay].values)
         self.all_combinations_matches = self.all_combinations_matches.sort_values(by=SUM)
         final_compliance_tag = pd.DataFrame()
+        # self.chosen_permutation = []
         final_compliance_tag = self._get_final_compliance_scored_couples_part(final_compliance_tag)
         final_compliance_tag = self._get_final_compliance_unscored_couples_part(final_compliance_tag)
         final_compliance_tag = self._get_final_compliance_unmatched_couples_part(final_compliance_tag)
+        # print self.chosen_permutation
         return final_compliance_tag
 
     def _get_final_compliance_scored_couples_part(self, final_compliance_tag):
@@ -164,6 +172,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
                                                                    ignore_index=True)
                 self._delete_bay_from_dfs(scene_bay, pog_bay)
+                # self.chosen_permutation.append((scene_bay, pog_bay))
             return final_compliance_tag
         except Exception as e:
             Log.error("First step in the compliance calculation has failed: " + e.message)
@@ -185,6 +194,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 final_compliance_tag = final_compliance_tag.append(self.all_combinations_compliances[pog_bay][scene_bay],
                                                                    ignore_index=True)
                 self._delete_bay_from_dfs(scene_bay, pog_bay)
+                # self.chosen_permutation.append((scene_bay, pog_bay))
             return final_compliance_tag
         except Exception as e:
             Log.error("Second step in the compliance calculation has failed: " + e.message)
@@ -204,6 +214,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 tag_compliance, temp_score = self._get_compliance_and_score_by_bays(scene_bay, pog_bay)
                 final_compliance_tag = final_compliance_tag.append(tag_compliance, ignore_index=True)
                 self._delete_bay_from_dfs(scene_bay, pog_bay)
+                # self.chosen_permutation.append((scene_bay, pog_bay))
             return final_compliance_tag
         except Exception as e:
             Log.error("Third step in the compliance calculation has failed: " + e.message)
@@ -286,6 +297,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
             if should_insert:
                 permutations.append(permutation)
         final_tag_compliance, highest_score = None, 0
+        # chosen_permutation = permutations[0]
         for permutation in permutations:
             score = 0
             temp_final_tag_compliance = pd.DataFrame()
@@ -295,8 +307,10 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
                 temp_final_tag_compliance = temp_final_tag_compliance.append(combination_data[TAG_COMPLIANCE].iloc[0],
                                                                              ignore_index=True)
             if score > highest_score:
+                # chosen_permutation = permutation
                 highest_score = score
                 final_tag_compliance = temp_final_tag_compliance
+        # print chosen_permutation
         return final_tag_compliance
 
     @staticmethod
@@ -322,7 +336,7 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
 #     Config.init()
 #     path = "/home/elyashiv/Desktop/backup/POGs/11/"
 #     planogram_data = pd.read_csv(path + "pog.csv")
-#     scene_data = pd.read_csv(path + "scene 1127.csv")
+#     scene_data = pd.read_csv(path + "scene 3249.csv")
 #     pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances
