@@ -70,7 +70,7 @@ class ToolBox:
         """
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
-        # self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
+        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
         # self.dependency_reorder()
 
@@ -94,7 +94,8 @@ class ToolBox:
         # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
         #     return
 
-        if kpi_type == Const.AGGREGATION: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.BLOCKING, Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
