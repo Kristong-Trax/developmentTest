@@ -119,8 +119,9 @@ class DIAGEOUSToolBox:
         """
         This function calculates the KPI results.
         """
-        if self.relevant_assortment.empty and self.on_off == Const.OFF:
-            return
+        if self.on_off == Const.OFF:
+            if self.relevant_assortment.empty:
+                return
 
         total_store_score, segment_store_score, national_store_score = 0, 0, 0
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(

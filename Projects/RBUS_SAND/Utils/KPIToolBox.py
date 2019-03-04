@@ -33,9 +33,6 @@ NUM_OF_BAYS = 'num_of_bays'
 NUM_OF_SHELVES = 'num_of_shelves'
 BRANDS_DICT = 'brands_dict'
 SKUS_DICT = 'skus_dict'
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
 KPI_SET = 'kpi_set'
 SHELF_NUMBER = 'shelf_number'
 BAY_NUMBER = 'bay_number'
@@ -174,13 +171,13 @@ class RBUSToolBox:
                 # get the atomic kpi fk of template name
                 old_atomic_kpi_fk = self.old_common.get_kpi_fk_by_kpi_name(atomic_kpi_name, self.LEVEL3)
 
-                Log.info(atomic_kpi_name + " " + str(old_atomic_kpi_fk) + " " + str(value))
+                Log.debug(atomic_kpi_name + " " + str(old_atomic_kpi_fk) + " " + str(value))
 
                 # add insert query for later use
                 self.old_common.write_to_db_result(old_atomic_kpi_fk, score=value, level=self.LEVEL3)
                 template_fk = self.templates[self.templates['template_name'] == template_name]
                 if len(template_fk) == 0:
-                    Log.info('template {} does not exist'.format(template_name))
+                    Log.debug('template {} does not exist'.format(template_name))
 
                 else:
                     template_fk = template_fk['template_fk'].values[0]
@@ -239,7 +236,7 @@ class RBUSToolBox:
                                             shelf_occupation_dict.get(MAIN_PLACEMENT_SCENES))
                 if not curr_probe.empty:
                     score += self.calculate_manufacturer(curr_probe, product_list_field)
-        Log.info("manufacturer score " + str(score))
+        Log.debug("manufacturer score " + str(score))
         return score
 
     def calculate_category(self, curr_probe, product_list_field):
@@ -270,7 +267,7 @@ class RBUSToolBox:
                                             shelf_occupation_dict.get(MAIN_PLACEMENT_SCENES))
                 if not curr_probe.empty:
                     score += self.calculate_category(curr_probe, product_list_field)
-        Log.info("category score " + str(score))
+        Log.debug("category score " + str(score))
         return score
 
     def calculate_brand(self, curr_probe, brand_value, product_list_field):
@@ -303,7 +300,6 @@ class RBUSToolBox:
                     score += self.calculate_brand(curr_probe, brand_name, product_list_field)
 
         return score
-
 
     def is_sub_category_excluded(self, row):
         """
@@ -412,7 +408,7 @@ class RBUSToolBox:
                 score = category_score - manufacturer_score
                 self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
                                                    score=score, level=self.LEVEL3)
-                Log.info("K003 Score " + str(score))
+                Log.debug("K003 Score " + str(score))
 
                 new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi)
 
@@ -425,7 +421,7 @@ class RBUSToolBox:
             elif kpi in shelf_occupation_dict.get(BRANDS_DICT):
                 sub_brand_name = shelf_occupation_dict.get(BRANDS_DICT).get(kpi)
                 score = self.calculate_brand_by_name(kpi, shelf_occupation_dict, sub_brand_name, product_list_field)
-                Log.info("brand score " + sub_brand_name + " " + str(score))
+                Log.debug("brand score " + sub_brand_name + " " + str(score))
                 self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
                                                    score=score, level=self.LEVEL3)
 
@@ -441,7 +437,7 @@ class RBUSToolBox:
             elif kpi in shelf_occupation_dict.get(SKUS_DICT):
                 sku_name = shelf_occupation_dict.get(SKUS_DICT).get(kpi)
                 score = self.calculate_sku_by_name(kpi, shelf_occupation_dict, sku_name, product_list_field)
-                Log.info("sku score " + sku_name + " " + str(score))
+                Log.debug("sku score " + sku_name + " " + str(score))
                 self.old_common.write_to_db_result(self.old_common.get_kpi_fk_by_kpi_name(kpi, self.LEVEL3),
                                                    score=score, level=self.LEVEL3)
 
@@ -452,7 +448,6 @@ class RBUSToolBox:
                         fk=new_kpi_fk, numerator_id=self.get_product_alt_code(sku_name), result=score,
                         denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
                         should_enter=True)
-
 
     def get_shelf_occupation_dictionary(self):
         """

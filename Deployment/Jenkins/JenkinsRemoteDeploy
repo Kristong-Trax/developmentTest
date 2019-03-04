@@ -34,10 +34,10 @@ pipeline {
         stage('Init') {
             steps {
                 script {
-                    currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} Canary=${IS_CANARY} User=${USER_EMAIL}"
+                    currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
                     env.FAILED_STEP = "${env.STAGE_NAME}"
                 }
-                sh 'apt-get install -y dnsutils'
+                // sh 'apt-get install -y dnsutils'
                 sh 'printenv'
                 sh 'gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json'
             }
@@ -88,7 +88,8 @@ pipeline {
                   sh '''#!/bin/bash
                     export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
                     cd kpi_factory
-                    python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
+                    echo " Started Deployment" $PROJECT_NAME
+                    # python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
                     exit $exit_code
