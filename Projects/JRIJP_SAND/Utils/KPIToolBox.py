@@ -44,6 +44,10 @@ class JRIJPToolBox:
         self.kpi_results_queries = []
         self.templates_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
         self.excel_file_path = os.path.join(self.templates_path, 'Template.xlsx')
+        self.empty_product_ids = self.all_products.query(
+            'product_name.str.contains("empty", case=False) or'
+            ' product_name.str.contains("irrelevant", case=False)',
+            engine='python')['product_fk'].values
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -65,7 +69,7 @@ class JRIJPToolBox:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
                 kpi_fk = kpi.pk.values[0]
                 grouped_data = self.match_product_in_scene.query(
-                    'stacking_layer==1'
+                    'stacking_layer==1 and product_fk not in {}'.format(self.empty_product_ids.tolist())
                 ).groupby(
                     ['scene_fk', 'bay_number', 'shelf_number', 'product_fk']
                 )
@@ -79,7 +83,7 @@ class JRIJPToolBox:
                                                    numerator_result=bay_number,
                                                    denominator_result=shelf_number,
                                                    result=facings_count_in_cell,
-                                                   score=facings_count_in_cell)
+                                                   score=scene_fk)
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
