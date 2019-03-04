@@ -91,7 +91,6 @@ class MSCToolBox:
         checks if the passed lines are more than target
         :param relevant_template: specific template filtered with the specific kpi lines
         :param filtered_scif:
-        :param isnt_dp: the main_line has "DP" flag and the store_attr is not DP
         :param target: integer
         :param kpi_function: specific function for the calculation
         :return: boolean, but it can be None if we want not to write it in DB
