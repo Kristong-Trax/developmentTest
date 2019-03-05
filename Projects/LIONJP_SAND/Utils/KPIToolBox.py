@@ -16,7 +16,7 @@ KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
 
 
-class JRIJPToolBox:
+class LIONJPToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3

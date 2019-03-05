@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.LIONJP_SAND.Utils.KPIToolBox import JRIJPToolBox
+from Projects.LIONJP_SAND.Utils.KPIToolBox import LIONJPToolBox
 
 from KPIUtils_v2.DB.Common import Common
 
@@ -17,7 +17,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = JRIJPToolBox(self.data_provider, self.output)
+        self.tool_box = LIONJPToolBox(self.data_provider, self.output)
         self.common = Common(data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
