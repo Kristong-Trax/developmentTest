@@ -8,10 +8,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 __author__ = 'nidhin'
 
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-
 KPI_SHEET_NAME = 'kpi_list'
 PS_KPI_FAMILY = 19
 KPI_FAMILY = 'kpi_family_fk'
@@ -20,7 +16,7 @@ KPI_TYPE = 'kpi_type'
 KPI_NAME = 'kpi_name'
 
 
-class JRIJPToolBox:
+class LIONJPToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
     LEVEL3 = 3

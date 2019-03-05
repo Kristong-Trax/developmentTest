@@ -17,7 +17,7 @@ TAG_COMPLIANCE = "tag_compliance"
 SUM = "SUM"
 
 
-class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
+class PlanogramCompliance(PlanogramComplianceBaseClass):
 
     def get_compliance(self, manual_planogram_data=None, manual_scene_data=None):
         """
@@ -49,6 +49,10 @@ class GOOGLEJP_SANDPlanogramCompliance(PlanogramComplianceBaseClass):
             tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
+            try:
+                tag_compliance = get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
+            except Exception as er:
+                Log.error("Calculated compliance has failed: " + er.message)
         return tag_compliance
 
     def _filter_irrelevant_out(self):
