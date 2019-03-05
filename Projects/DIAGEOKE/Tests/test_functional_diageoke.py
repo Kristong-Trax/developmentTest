@@ -5,6 +5,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
@@ -17,16 +18,16 @@ __author__ = 'yoava'
 
 class TestDiageoke(TestMockingFunctionalCase):
 
+    seeder = Seeder()
+
     def set_up(self):
         self.project_name = ProjectsSanityData.project_name
-        self.data_provider = KEngineDataProvider(self.project_name)
+        self.output = Output()
         self.last_date = self.mock_object('get_latest_directory_date_from_cloud',
                                           path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
         self.last_date.return_value = '2018-11-27'
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
         self.session_uid = '08e4dbd4-9270-4352-a68b-ca27e7853de6'
-        self.data_provider.load_session_data(self.session_uid)
-        self.output = Output()
 
     def tear_down(self):
         pass
@@ -38,8 +39,6 @@ class TestDiageoke(TestMockingFunctionalCase):
     @property
     def config_file_path(self):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
-
-    seeder = Seeder()
 
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
@@ -53,11 +52,15 @@ class TestDiageoke(TestMockingFunctionalCase):
 
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
     def test_diageoke_sanity(self):
-        DIAGEOKECalculations(self.data_provider, self.output).run_project_calculations()
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        DIAGEOKECalculations(data_provider, self.output).run_project_calculations()
         self._assert_kpi_results_filled()
 
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
     def test_calculate_sos_set(self):
-        tool_box = DIAGEOKEToolBox(self.data_provider, self.output)
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.calculate_sos_set()
         self.assertEqual(result, 92.86)
