@@ -166,14 +166,14 @@ class CSTOREToolBox:
 
     def assortment_additional(self, lvl3_result):
         assort = set(lvl3_result['product_fk'])
-        remaining = self.scif[~self.scif['product_fk'].isin(assort)]
-        remaining = remaining[remaining['manufacturer_fk'] == self.manufacturer_fk]
-        remaining = remaining[remaining['facings'] != 0][['product_fk', 'category_fk']]
-        remaining['kpi_fk_lvl3'] = lvl3_result['kpi_fk_lvl3'].values[0]
-        remaining['in_store'] = self.results_values['Additional']
-        remaining['target'] = 0
-        remaining = remaining.rename(columns={'category_fk': 'assortment_group_fk'})
-        return remaining
+        additional_sku_df = self.scif[~self.scif['product_fk'].isin(assort)]
+        additional_sku_df = additional_sku_df[additional_sku_df['manufacturer_fk'] == self.manufacturer_fk]
+        additional_sku_df = additional_sku_df[additional_sku_df['facings'] != 0][['product_fk', 'category_fk']]
+        additional_sku_df['kpi_fk_lvl3'] = lvl3_result['kpi_fk_lvl3'].values[0]
+        additional_sku_df['in_store'] = self.results_values['Additional']
+        additional_sku_df['target'] = 0
+        additional_sku_df = additional_sku_df.rename(columns={'category_fk': 'assortment_group_fk'})
+        return additional_sku_df
 
     def safe_divide(self, num, den):
         res = num
