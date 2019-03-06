@@ -31,6 +31,7 @@ class CCRUVisitPlan:
         self.users = {}
         self.invalid_stores = []
         self.invalid_users = []
+        self.duplicate_rows = 0
         self.invalid_dates = 0
         self.invalid_flags = 0
         self.delete_queries = []
@@ -63,7 +64,7 @@ class CCRUVisitPlan:
     @property
     def store_data(self):
         if not hasattr(self, '_store_data'):
-            query = "select pk as store_fk, store_number_1 as store_number from static.stores"
+            query = "select pk as store_fk, upper(store_number_1) as store_number from static.stores"
             self._store_data = pd.read_sql_query(query, self.rds_conn.db)
         return self._store_data
 
@@ -71,7 +72,7 @@ class CCRUVisitPlan:
     def user_data(self):
         if not hasattr(self, '_user_data'):
             query = """
-                    select max(pk) as user_fk, login_name as user_name from static.sales_reps
+                    select max(pk) as user_fk, upper(login_name) as user_name from static.sales_reps
                     where delete_date is null
                     group by login_name
                     """
@@ -119,11 +120,13 @@ class CCRUVisitPlan:
     def upload_visit_plan_file(self):
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
+        # file_path = "/home/sergey/Documents/CCRU/ccru_visit_plan.xlsx"
 
         Log.info("Starting template parsing and validation")
         plan_data = pd.read_excel(file_path)
-        plan_data[[STORE_NUMBER, USER_NAME, PLANNED_FLAG]] = plan_data[[STORE_NUMBER, USER_NAME, PLANNED_FLAG]].astype(str)
-        plan_data = plan_data.drop_duplicates(subset=[STORE_NUMBER, USER_NAME, VISIT_DATE], keep='first')
+        plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].astype(str).str.upper()
+        plan_data[USER_NAME] = plan_data[USER_NAME].astype(str).str.upper()
+        plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].astype(str).str.upper()
         plan_data = plan_data.merge(self.store_data, how='left', left_on=STORE_NUMBER, right_on='store_number')
         plan_data = plan_data.merge(self.user_data, how='left', left_on=USER_NAME, right_on='user_name')
         plan_data = plan_data.where((pd.notnull(plan_data)), None)
@@ -135,15 +138,18 @@ class CCRUVisitPlan:
             start_date = None
             end_date = None
 
+        plan_data = plan_data[~plan_data[STORE_NUMBER].isin([START_DATE, END_DATE])]
+        total_rows = plan_data.shape[0]
+
+        plan_data = plan_data.drop_duplicates(subset=[STORE_NUMBER, USER_NAME, VISIT_DATE], keep='first')
+        self.duplicate_rows = total_rows - plan_data.shape[0]
+
         if isinstance(start_date, np.datetime64) and isinstance(start_date, np.datetime64):
-            Log.warning("Uploading period: {} - {}"
-                        "".format(np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D')))
+            Log.info("Uploading period: {} - {}, Rows: {}"
+                     "".format(np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D'), total_rows))
         else:
             Log.info("The period Start Date and End Date are not specified properly. The template is not uploaded.")
             return
-
-        plan_data = plan_data[~plan_data[STORE_NUMBER].isin([START_DATE, END_DATE])]
-        total_rows = plan_data.shape[0]
 
         self.invalid_dates = plan_data[~((plan_data[VISIT_DATE] >= start_date) &
                                          (plan_data[VISIT_DATE] <= end_date))].shape[0]
@@ -174,15 +180,21 @@ class CCRUVisitPlan:
                 if (i + 1) % 1000 == 0 or (i + 1) == plan_data.shape[0]:
                     Log.info("Number of rows processed: {}/{}".format(i + 1, plan_data.shape[0]))
 
-            Log.warning("Committing to DB...")
+            Log.info("Committing to DB...")
             self.commit_results(self.delete_queries)
             self.commit_results(self.merge_insert_queries(self.insert_queries))
 
             uploaded_rows = self.check_upload_query(start_date, end_date)
 
-            Log.warning("{} of {} rows are uploaded for the period of {} - {}"
-                        "".format(uploaded_rows, total_rows, np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D')))
+            Log.info("{} of {} rows are uploaded for the period of {} - {}"
+                     "".format(uploaded_rows, total_rows, np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D')))
+            if uploaded_rows != total_rows:
+                Log.warning("{} of {} rows were not uploaded to the DB"
+                            "".format(total_rows-uploaded_rows, total_rows))
 
+        if self.duplicate_rows:
+            Log.warning("{} duplicate rows are ignored"
+                        "".format(self.duplicate_rows))
         if self.invalid_dates:
             Log.warning("{} rows are ignored due to visit date out of the uploading period"
                         "".format(self.invalid_dates))
