@@ -148,7 +148,7 @@ class CCRU_SANDVisitPlan:
             Log.info("Uploading period: {} - {}, Rows: {}"
                      "".format(np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D'), total_rows))
         else:
-            Log.info("The period Start Date and End Date are not specified properly. The template is not uploaded.")
+            Log.warning("The period Start Date and End Date are not specified properly. The template is not uploaded.")
             return
 
         self.invalid_dates = plan_data[~((plan_data[VISIT_DATE] >= start_date) &
