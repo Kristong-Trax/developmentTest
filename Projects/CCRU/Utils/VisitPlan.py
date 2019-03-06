@@ -72,7 +72,7 @@ class CCRUVisitPlan:
         if not hasattr(self, '_user_data'):
             query = """
                     select max(pk) as user_fk, login_name as user_name from static.sales_reps
-                    where delete_date is nul
+                    where delete_date is null
                     group by login_name
                     """
             self._user_data = pd.read_sql_query(query, self.rds_conn.db)
