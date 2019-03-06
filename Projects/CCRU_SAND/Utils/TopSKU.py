@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-PROJECT = 'ccru_sand'
+PROJECT = 'ccru-sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'
@@ -462,7 +462,7 @@ class CCRU_SANDTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU')
+    LoggerInitializer.init('CCRU Top SKU/OSA targets upload')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration

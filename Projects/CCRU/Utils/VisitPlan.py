@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru'
 
 VISIT_PLAN_TABLE = 'pservice.planned_visits'
 
@@ -233,7 +233,7 @@ class CCRUVisitPlan:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Visit Plan CCRU')
+    LoggerInitializer.init('CCRU Visit Plan upload')
     ts = CCRUVisitPlan()
     ts.upload_visit_plan_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration

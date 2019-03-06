@@ -233,7 +233,7 @@ class CCRU_SANDVisitPlan:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Visit Plan CCRU')
+    LoggerInitializer.init('CCRU Visit Plan upload')
     ts = CCRU_SANDVisitPlan()
     ts.upload_visit_plan_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration

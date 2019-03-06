@@ -241,6 +241,6 @@ class CCRUContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init(PROJECT)
-    Log.init(PROJECT, 'CCRU Execution Contract targets upload')
+    Log.init(PROJECT, 'CCRU Contract Execution targets upload')
     Config.init()
     CCRUContract().parse_and_upload_file()

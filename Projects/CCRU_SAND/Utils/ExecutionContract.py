@@ -14,7 +14,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 __author__ = 'Nimrod'
 
 
-PROJECT = 'ccru_sand'
+PROJECT = 'ccru-sand'
 BUCKET = 'traxuscalc'
 CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 TEMPLATES_TEMP_PATH = os.getcwd()
@@ -241,6 +241,6 @@ class CCRU_SANDContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init(PROJECT)
-    Log.init(PROJECT, 'CCRU Execution Contract targets upload')
+    Log.init(PROJECT, 'CCRU Contract Execution targets upload')
     Config.init()
     CCRU_SANDContract().parse_and_upload_file()
