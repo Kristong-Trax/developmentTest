@@ -124,9 +124,9 @@ class CCRU_SANDVisitPlan:
 
         Log.info("Starting template parsing and validation")
         plan_data = pd.read_excel(file_path, converters={STORE_NUMBER: str, USER_NAME: str, PLANNED_FLAG: str})
-        plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].astype(str).str.upper()
-        plan_data[USER_NAME] = plan_data[USER_NAME].astype(str).str.upper()
-        plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].astype(str).str.upper()
+        plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].str.upper()
+        plan_data[USER_NAME] = plan_data[USER_NAME].str.upper()
+        plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].str.upper()
         plan_data = plan_data.merge(self.store_data, how='left', left_on=STORE_NUMBER, right_on='store_number')
         plan_data = plan_data.merge(self.user_data, how='left', left_on=USER_NAME, right_on='user_name')
         plan_data = plan_data.where((pd.notnull(plan_data)), None)
