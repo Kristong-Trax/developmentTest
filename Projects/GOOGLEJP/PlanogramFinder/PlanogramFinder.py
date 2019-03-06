@@ -65,7 +65,7 @@ class PlanogramFinder(PlanogramFinderBaseClass):
             policy_attrs = transposed_policies[transposed_policies[i] != ''][i].count()
             filtered_planograms.loc[i, SUM_POLICY_ATTRIBUTES] = policy_attrs
         if filtered_planograms.empty:
-            Log.error("There is no Planogram that matches this scene.")
+            Log.error("There is no Planogram that matches scene {}.".format(self.scene_id))
             return None
         else:
             filtered_planograms = filtered_planograms.sort_values(by=[SUM_POLICY_ATTRIBUTES], ascending=False)
