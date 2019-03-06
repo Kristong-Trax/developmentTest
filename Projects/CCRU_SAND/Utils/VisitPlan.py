@@ -70,9 +70,11 @@ class CCRU_SANDVisitPlan:
     @property
     def user_data(self):
         if not hasattr(self, '_user_data'):
-            query = "select max(pk) as user_fk, login_name as user_name from static.sales_reps " \
-                    "group by login_name"
-            # "where delete_date is null " \  # TODO uncomment and insert into query
+            query = """
+                    select max(pk) as user_fk, login_name as user_name from static.sales_reps
+                    where delete_date is nul
+                    group by login_name
+                    """
             self._user_data = pd.read_sql_query(query, self.rds_conn.db)
         return self._user_data
 
@@ -117,11 +119,10 @@ class CCRU_SANDVisitPlan:
         return result.values[0][0]
 
     def upload_visit_plan_file(self):
-        # parsed_args = self.parse_arguments()  # TODO uncomment
-        # file_path = parsed_args.file
-        file_path = "/home/sergey/Documents/CCRU/visit_plan.xlsx"
+        parsed_args = self.parse_arguments()
+        file_path = parsed_args.file
 
-        Log.debug("Starting template parsing and validation")
+        Log.info("Starting template parsing and validation")
         plan_data = pd.read_excel(file_path)
         plan_data[[STORE_NUMBER, USER_NAME, PLANNED_FLAG]] = plan_data[[STORE_NUMBER, USER_NAME, PLANNED_FLAG]].astype(str)
         plan_data = plan_data.drop_duplicates(subset=[STORE_NUMBER, USER_NAME, VISIT_DATE], keep='first')
@@ -140,7 +141,7 @@ class CCRU_SANDVisitPlan:
             Log.warning("Uploading period: {} - {}"
                         "".format(np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D')))
         else:
-            Log.debug("The period Start Date and End Date are not specified properly. The template is not uploaded.")
+            Log.info("The period Start Date and End Date are not specified properly. The template is not uploaded.")
             return
 
         plan_data = plan_data[~plan_data[STORE_NUMBER].isin([START_DATE, END_DATE])]
@@ -173,9 +174,9 @@ class CCRU_SANDVisitPlan:
                                                                  data[PLANNED_FLAG]))
 
                 if (i + 1) % 1000 == 0 or (i + 1) == plan_data.shape[0]:
-                    Log.debug("Number of rows processed: {}/{}".format(i + 1, plan_data.shape[0]))
+                    Log.info("Number of rows processed: {}/{}".format(i + 1, plan_data.shape[0]))
 
-            Log.warning("Committing to DB")
+            Log.warning("Committing to DB...")
             self.commit_results(self.delete_queries)
             self.commit_results(self.merge_insert_queries(self.insert_queries))
 
@@ -208,7 +209,7 @@ class CCRU_SANDVisitPlan:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.debug('DB update failed due to: {}'.format(e))
+                Log.warning('DB update failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
                 cur.execute(query)
                 continue

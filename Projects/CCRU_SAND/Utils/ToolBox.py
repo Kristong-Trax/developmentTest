@@ -2507,7 +2507,7 @@ class CCRU_SANDKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < '2019-01-26':  # todo: change the date to the relevant one before deployment
+        if str(self.visit_date) < '2019-01-26':
             query = """
                     select ss.pk , ss.additional_attribute_11
                     from static.stores ss
@@ -3448,16 +3448,20 @@ class CCRU_SANDKPIToolBox:
 
     def check_planned_visit_flag(self):
 
-        if self.planned_visit_flag is not None:
-            result = self.planned_visit_flag
-        elif self.external_session_id and self.external_session_id.find('EasyMerch-P') >= 0:
+        if self.external_session_id and self.external_session_id.find('EasyMerch-P') >= 0:
             result = 0
         elif self.session_user['user_position'] == 'External':
             result = 0
         elif self.session_user['user_role'] == 'Sales Rep' and self.session_user['user_position'] != 'SMC':
-            result = 0
+            if self.planned_visit_flag is not None:
+                result = self.planned_visit_flag
+            else:
+                result = 0
         else:
-            result = 1
+            if self.planned_visit_flag is not None:
+                result = self.planned_visit_flag
+            else:
+                result = 1
 
         return result
 
