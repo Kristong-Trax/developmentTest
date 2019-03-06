@@ -18,8 +18,8 @@ USER_NAME = 'sales_rep base'
 VISIT_DATE = 'visit_date'
 PLANNED_FLAG = 'planned'
 PLANNED_FLAG_LIST = ['0', '1', '0.0', '1.0']   # 1 and 0 values both for int and float formats
-START_DATE = 'Start Date'
-END_DATE = 'End Date'
+START_DATE = 'Start Date'.upper()
+END_DATE = 'End Date'.upper()
 
 
 class CCRUVisitPlan:
@@ -148,7 +148,7 @@ class CCRUVisitPlan:
             Log.info("Uploading period: {} - {}, Rows: {}"
                      "".format(np.datetime64(start_date, 'D'), np.datetime64(end_date, 'D'), total_rows))
         else:
-            Log.info("The period Start Date and End Date are not specified properly. The template is not uploaded.")
+            Log.warning("The period Start Date and End Date are not specified properly. The template is not uploaded.")
             return
 
         self.invalid_dates = plan_data[~((plan_data[VISIT_DATE] >= start_date) &
