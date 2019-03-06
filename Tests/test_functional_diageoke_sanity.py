@@ -57,6 +57,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
            return_value=posm)
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
 
+
     def test_diageoke_sanity(self, x, y, json, json2, json3,json4):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)

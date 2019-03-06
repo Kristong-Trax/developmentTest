@@ -79,7 +79,7 @@ class JRIJPToolBox:
                                                    numerator_result=bay_number,
                                                    denominator_result=shelf_number,
                                                    result=facings_count_in_cell,
-                                                   score=facings_count_in_cell)
+                                                   score=scene_fk)
 
     def get_template_details(self, sheet_name):
         template = pd.read_excel(self.excel_file_path, sheetname=sheet_name)
