@@ -46,15 +46,19 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             elif len(self.scene_bays) < 5 and len(self.pog_bays) < 5:
                 tag_compliance = self._get_iterated_position_full_solution()
             else:
-                tag_compliance, score = self._get_iterated_position_greedy()
+                tag_compliance = self._get_iterated_position_greedy()
             if tag_compliance is None:
                 tag_compliance = get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
-            compliance_products = pd.merge(self.scene_matches, tag_compliance, on='match_fk', how='left')
-            pog_products = self.planogram_matches['product_fk'].unique().tolist()
-            wrong_extra_tags = compliance_products[
-                (compliance_products['compliance_status_fk'] == 1) &
-                (compliance_products['product_fk'].isin(pog_products))]['match_fk'].tolist()
-            tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
+            if 1 in tag_compliance['compliance_status_fk'].tolist():
+                try:
+                    compliance_products = pd.merge(self.scene_matches, tag_compliance, on='match_fk', how='left')
+                    pog_products = self.planogram_matches['product_fk'].unique().tolist()
+                    wrong_extra_tags = compliance_products[
+                        (compliance_products['compliance_status_fk'] == 1) &
+                        (compliance_products['product_fk'].isin(pog_products))]['match_fk'].tolist()
+                    tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
+                except Exception as er:
+                    Log.debug(er.message)
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
             try:
@@ -346,7 +350,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/test1/"
+#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
 #     planogram_data = pd.read_csv(path + "pog 1.csv")
 #     scene_data = pd.read_csv(path + "scene 1.csv")
 #     pog = PlanogramCompliance(data_provider=None)
