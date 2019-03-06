@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru'
 
 VISIT_PLAN_TABLE = 'pservice.planned_visits'
 
@@ -22,7 +22,7 @@ START_DATE = 'Start Date'
 END_DATE = 'End Date'
 
 
-class CCRU_SANDVisitPlan:
+class CCRUVisitPlan:
 
     def __init__(self, rds_conn=None):
         if rds_conn is not None:
@@ -234,7 +234,7 @@ class CCRU_SANDVisitPlan:
 
 if __name__ == '__main__':
     LoggerInitializer.init('CCRU Visit Plan upload')
-    ts = CCRU_SANDVisitPlan()
+    ts = CCRUVisitPlan()
     ts.upload_visit_plan_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration
 # # # At the end of the script there are logs with all of the invalid store numbers, users and dates
