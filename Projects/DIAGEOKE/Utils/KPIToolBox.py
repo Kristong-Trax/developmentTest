@@ -6,7 +6,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
@@ -98,7 +97,7 @@ class DIAGEOKEToolBox:
         This function calculates the KPI results.
         """
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2() # POSM calculetad here
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         for set_name in set_names:
@@ -328,10 +327,3 @@ class DIAGEOKEToolBox:
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-
-
-if __name__ == '__main__':
-    LoggerInitializer.init('diageoke calculations')
-    project_name = 'diageoke'
-    tool = DIAGEOKEToolBox(project_name)
-    tool.main_calculation()
