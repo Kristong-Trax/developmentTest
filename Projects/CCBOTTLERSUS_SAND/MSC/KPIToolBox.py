@@ -139,7 +139,7 @@ class MSCToolBox:
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, numerator_result=numerator_result,
-                                          denominator_result=denominator_result, result=sos_value,
+                                          denominator_result=denominator_result, result=sos_value * 100,
                                           identifier_parent=Const.MSC, should_enter=True)
 
         return
@@ -196,8 +196,9 @@ class MSCToolBox:
         minimum_facings = kpi_line[Const.MINIMUM_FACINGS]
         availability = filtered_scif[filtered_scif['facings'] > 0]['facings'].count() >= minimum_facings
 
-        result = self.ps_data_provider.get_pks_of_result(
-            Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+        # result = self.ps_data_provider.get_pks_of_result(
+        #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+        result = 100 if availability else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
@@ -213,8 +214,9 @@ class MSCToolBox:
         group_2_minimum_facings = kpi_line[Const.GROUP2_MINIMUM_FACINGS]
         availability = group_2_scif['facings'].sum() >= group_2_minimum_facings
 
-        result = self.ps_data_provider.get_pks_of_result(
-            Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+        # result = self.ps_data_provider.get_pks_of_result(
+        #     Const.PASS) if availability else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+        result = 100 if availability else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
         self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
