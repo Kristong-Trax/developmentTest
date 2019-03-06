@@ -53,8 +53,17 @@ class PlanogramFinder(PlanogramFinderBaseClass):
             self.get_scene_and_planograms_details()
             return self.get_planogram_id_by_policies()
         except Exception as e:
-            Log.error("Could not find the planogram id: " + e.message)
-            return None
+            return self.get_planogram_id_via_data_provider()
+
+    def get_planogram_id_via_data_provider(self):
+        planogram_id = None
+        try:
+            planogram_id = self._data_provider.planogram_fk
+            if planogram_id is None:
+                Log.error('There is no planogram that matches scene {}.'.format(self.scene_id))
+        except Exception as er:
+            Log.error('There was an error in finding POG for scene {}: {}'.format(self.scene_id, er.message))
+        return planogram_id
 
     def get_planogram_id_by_policies(self):
         filtered_planograms = self.planogram_policies
@@ -65,8 +74,7 @@ class PlanogramFinder(PlanogramFinderBaseClass):
             policy_attrs = transposed_policies[transposed_policies[i] != ''][i].count()
             filtered_planograms.loc[i, SUM_POLICY_ATTRIBUTES] = policy_attrs
         if filtered_planograms.empty:
-            Log.error("There is no Planogram that matches scene {}.".format(self.scene_id))
-            return None
+            return self.get_planogram_id_via_data_provider()
         else:
             filtered_planograms = filtered_planograms.sort_values(by=[SUM_POLICY_ATTRIBUTES], ascending=False)
             return filtered_planograms.iloc[0][PLANOGRAM_FK]
