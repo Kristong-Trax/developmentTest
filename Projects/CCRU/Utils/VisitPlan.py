@@ -83,8 +83,7 @@ class CCRUVisitPlan:
         query = """
                 delete from {}
                 where visit_date >= '{}' and visit_date <= '{}';
-                """ \
-            .format(VISIT_PLAN_TABLE, start_date, end_date)
+                """.format(VISIT_PLAN_TABLE, start_date, end_date)
         return query
 
     @staticmethod
@@ -113,8 +112,7 @@ class CCRUVisitPlan:
         query = """
                 select count(*) from {}
                 where visit_date >= '{}' and visit_date <= '{}';
-                """ \
-            .format(VISIT_PLAN_TABLE, start_date, end_date)
+                """.format(VISIT_PLAN_TABLE, start_date, end_date)
         result = pd.read_sql_query(query, self.rds_conn.db)
         return result.values[0][0]
 
