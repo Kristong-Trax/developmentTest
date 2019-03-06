@@ -57,7 +57,8 @@ class CCRU_SANDVisitPlan:
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
-            self._rds_conn.disconnect_rds()
+            if self._rds_conn.is_connected:
+                self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
@@ -236,7 +237,8 @@ class CCRU_SANDVisitPlan:
         This function connects to the DB and cursor
         :return: rds connection and cursor connection
         """
-        self.rds_conn.disconnect_rds()
+        if self.rds_conn.is_connected:
+            self.rds_conn.disconnect_rds()
         rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         return rds_conn, cur
