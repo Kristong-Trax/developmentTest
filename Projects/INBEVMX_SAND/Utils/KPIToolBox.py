@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v1.4.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v2.2.xlsx')
 
 
 class INBEVMXToolBox:
@@ -145,7 +145,8 @@ class INBEVMXToolBox:
         atomic_name = row[Const.TEMPLATE_ENGLISH_KPI_NAME].strip()
         kpi_type = row[Const.TEMPLATE_KPI_TYPE].strip()
         if kpi_type == Const.SOS_TARGET:
-            self.handle_sos_target_atomics(atomic_id, atomic_name)
+            if self.scene_info['number_of_probes'].sum() > 1:
+                self.handle_sos_target_atomics(atomic_id, atomic_name)
         elif kpi_type == Const.SURVEY:
             self.handle_survey_atomics(atomic_id, atomic_name)
 
@@ -254,11 +255,11 @@ class INBEVMXToolBox:
             return
         else:
             # find the answer to the survey in session
-            question_id = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_ID].values[0]
+            question_text = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_TEXT].values[0]
             question_answer_template = row_store_filter[Const.TEMPLATE_TARGET_ANSWER].values[0]
             score = row_store_filter[Const.TEMPLATE_SCORE].values[0]
 
-            survey_result = self.survey.get_survey_answer(('question_fk', question_id))
+            survey_result = self.survey.get_survey_answer(('question_text', question_text))
             if not survey_result:
                 return
             if '-' in question_answer_template:
@@ -272,9 +273,9 @@ class INBEVMXToolBox:
                     return
                 condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
-                    second_question_id = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_ID].values[0]
+                    second_question_text = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_QUESTION_TEXT].values[0]
                     second_survey_result = self.survey.get_survey_answer(
-                        ('question_fk', second_question_id))
+                        ('question_text', second_question_text))
                     if not second_survey_result:
                         second_survey_result = 0
                     second_numeric_survey_result = int(second_survey_result)
