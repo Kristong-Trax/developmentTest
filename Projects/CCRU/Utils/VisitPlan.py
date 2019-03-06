@@ -18,8 +18,8 @@ USER_NAME = 'sales_rep base'
 VISIT_DATE = 'visit_date'
 PLANNED_FLAG = 'planned'
 PLANNED_FLAG_LIST = ['0', '1', '0.0', '1.0']   # 1 and 0 values both for int and float formats
-START_DATE = 'Start Date'
-END_DATE = 'End Date'
+START_DATE = 'Start Date'.upper()
+END_DATE = 'End Date'.upper()
 
 
 class CCRUVisitPlan:
