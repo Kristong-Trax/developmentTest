@@ -22,9 +22,6 @@ class TestDiageoke(TestMockingFunctionalCase):
     def set_up(self):
         self.project_name = ProjectsSanityData.project_name
         self.output = Output()
-        self.last_date = self.mock_object('get_latest_directory_date_from_cloud',
-                                          path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
-        self.last_date.return_value = '2018-11-27'
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
         self.session_uid = '08e4dbd4-9270-4352-a68b-ca27e7853de6'
 
@@ -79,4 +76,3 @@ class TestDiageoke(TestMockingFunctionalCase):
         tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.get_kpi_static_data()
         self.assertIsNotNone(result)
-
