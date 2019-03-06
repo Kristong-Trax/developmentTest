@@ -32,7 +32,7 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.cstore_tool_box.main_calculation()
-        # for kpi_set_fk in self.tool_box.kpi_new_static_data['pk'].unique().tolist():
-        #     self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
+        for kpi_set_fk in self.tool_box.kpi_new_static_data['pk'].unique().tolist():
+            self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
         self.common.commit_results_data()
 

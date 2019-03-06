@@ -68,23 +68,25 @@ class CSTOREToolBox:
     def calculate_displays(self):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == Const.DISPLAY]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
-        df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
+        # df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
+        df_base = self.scif[self.scif['location_type'] == 'Secondary Location']
         df_base = df_base[df_base['manufacturer_fk'] == self.manufacturer_fk]
         df_base['numerator_result'], df_base['result'] = 1, 1
-        for i, kpi in relevant_kpis.iterrows():
-            parent = relevant_kpis[relevant_kpis['type'] == Const.SOS_HIERARCHY[kpi['type']]] #  Note, parent is df, kpi is a series
-            df = df_base.copy()
-            df = self.update_and_rename_df(df, kpi, parent)
-            df = self.transform_new_col(df, 'numerator_id', 'numerator_result')
-            df['result'] = df['numerator_result']
-            self.update_results(df)
-            if parent.empty:
-                df['denominator_id'] = self.store_id
-                df.drop('ident_result', axis=1, inplace=True)
-                df.rename(columns={'ident_parent': 'ident_result'}, inplace=True)
-                df['kpi_name'] = Const.SOS_HIERARCHY[kpi['type']]
-                df['numerator_id'] = self.manufacturer_fk
+        if not df_base.empty:
+            for i, kpi in relevant_kpis.iterrows():
+                parent = relevant_kpis[relevant_kpis['type'] == Const.SOS_HIERARCHY[kpi['type']]] #  Note, parent is df, kpi is a series
+                df = df_base.copy()
+                df = self.update_and_rename_df(df, kpi, parent)
+                df = self.transform_new_col(df, 'numerator_id', 'numerator_result')
+                df['result'] = df['numerator_result']
                 self.update_results(df)
+                if parent.empty:
+                    df['denominator_id'] = self.store_id
+                    df.drop('ident_result', axis=1, inplace=True)
+                    df.rename(columns={'ident_parent': 'ident_result'}, inplace=True)
+                    df['kpi_name'] = Const.SOS_HIERARCHY[kpi['type']]
+                    df['numerator_id'] = self.manufacturer_fk
+                    self.update_results(df)
 
     def update_results(self, df):
         results = [val for key, val in df.to_dict('index').items()]

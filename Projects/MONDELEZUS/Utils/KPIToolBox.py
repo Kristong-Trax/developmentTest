@@ -144,7 +144,7 @@ class MONDELEZUSToolBox:
 
             score = result
             numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
-            self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
+            self.common.write_to_db_result(kpi_set_fk, numerator_id, 999, score, score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
         """
