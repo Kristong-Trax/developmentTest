@@ -72,7 +72,7 @@ class CCRU_SANDVisitPlan:
         if not hasattr(self, '_user_data'):
             query = """
                     select max(pk) as user_fk, login_name as user_name from static.sales_reps
-                    where delete_date is nul
+                    where delete_date is null
                     group by login_name
                     """
             self._user_data = pd.read_sql_query(query, self.rds_conn.db)
@@ -83,8 +83,7 @@ class CCRU_SANDVisitPlan:
         query = """
                 delete from {}
                 where visit_date >= '{}' and visit_date <= '{}';
-                """ \
-            .format(VISIT_PLAN_TABLE, start_date, end_date)
+                """.format(VISIT_PLAN_TABLE, start_date, end_date)
         return query
 
     @staticmethod
@@ -113,8 +112,7 @@ class CCRU_SANDVisitPlan:
         query = """
                 select count(*) from {}
                 where visit_date >= '{}' and visit_date <= '{}';
-                """ \
-            .format(VISIT_PLAN_TABLE, start_date, end_date)
+                """.format(VISIT_PLAN_TABLE, start_date, end_date)
         result = pd.read_sql_query(query, self.rds_conn.db)
         return result.values[0][0]
 
