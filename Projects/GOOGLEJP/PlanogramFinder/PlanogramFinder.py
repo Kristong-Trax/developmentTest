@@ -64,11 +64,11 @@ class PlanogramFinder(PlanogramFinderBaseClass):
         for i in transposed_policies.keys():
             policy_attrs = transposed_policies[transposed_policies[i] != ''][i].count()
             filtered_planograms.loc[i, SUM_POLICY_ATTRIBUTES] = policy_attrs
-        filtered_planograms = filtered_planograms.sort_values(by=[SUM_POLICY_ATTRIBUTES], ascending=False)
         if filtered_planograms.empty:
             Log.error("There is no Planogram that matches this scene.")
             return None
         else:
+            filtered_planograms = filtered_planograms.sort_values(by=[SUM_POLICY_ATTRIBUTES], ascending=False)
             return filtered_planograms.iloc[0][PLANOGRAM_FK]
 
     def get_scene_and_planograms_details(self):
@@ -106,5 +106,5 @@ class PlanogramFinder(PlanogramFinderBaseClass):
 #     LoggerInitializer.init('POG finder test')
 #     Config.init()
 #     pog = PlanogramFinder(data_provider=None)
-#     for scene_id in [228, 1220, 1217, 1701, 1710]:
+#     for scene_id in [49741, 49780]:
 #         print "{} = {}".format(scene_id, pog.get_planogram_id(project_name="googlejp", scene_id=scene_id))
