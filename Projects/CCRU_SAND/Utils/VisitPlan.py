@@ -123,7 +123,7 @@ class CCRU_SANDVisitPlan:
         # file_path = "/home/sergey/Documents/CCRU/ccru_visit_plan.xlsx"
 
         Log.info("Starting template parsing and validation")
-        plan_data = pd.read_excel(file_path)
+        plan_data = pd.read_excel(file_path, converters={STORE_NUMBER: str, USER_NAME: str, PLANNED_FLAG: str})
         plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].astype(str).str.upper()
         plan_data[USER_NAME] = plan_data[USER_NAME].astype(str).str.upper()
         plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].astype(str).str.upper()
