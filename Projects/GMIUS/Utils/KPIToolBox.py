@@ -535,7 +535,7 @@ class ToolBox:
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': result_fk, 'numerator_result': score, 'score': score, 'result': result_fk,
+        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': result_fk,
                   'target': 1}
         return kwargs
 
