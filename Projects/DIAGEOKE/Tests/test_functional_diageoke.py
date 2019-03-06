@@ -17,7 +17,6 @@ __author__ = 'yoava'
 
 
 class TestDiageoke(TestMockingFunctionalCase):
-
     seeder = Seeder()
 
     def set_up(self):
@@ -44,8 +43,8 @@ class TestDiageoke(TestMockingFunctionalCase):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
         cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('''
-        SELECT * FROM report.kpi_results
-        ''')
+       SELECT * FROM report.kpi_results
+       ''')
         kpi_results = cursor.fetchall()
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
@@ -64,3 +63,20 @@ class TestDiageoke(TestMockingFunctionalCase):
         tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.calculate_sos_set()
         self.assertEqual(result, 92.86)
+
+    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    def test_get_match_display(self):
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        tool_box = DIAGEOKEToolBox(data_provider, self.output)
+        result = tool_box.get_match_display()
+        self.assertIsNotNone(result)
+
+    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    def test_get_kpi_static_data(self):
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        tool_box = DIAGEOKEToolBox(data_provider, self.output)
+        result = tool_box.get_kpi_static_data()
+        self.assertIsNotNone(result)
+
