@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru_sand'
 TOP_SKU_TABLE = 'pservice.custom_osa'
 CUSTOM_SCIF_TABLE = 'pservice.custom_scene_item_facts'
 CORRELATION_FIELD = 'substitution_product_fk'

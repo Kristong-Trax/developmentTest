@@ -9,7 +9,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru_sand'
 
 VISIT_PLAN_TABLE = 'pservice.planned_visits'
 
