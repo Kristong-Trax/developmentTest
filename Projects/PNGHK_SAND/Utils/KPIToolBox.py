@@ -153,6 +153,7 @@ class PNGHKToolBox:
                                                result=result, score=result)
 
     def calculate_linear_sos_kpi(self, kpi_df):
+        ratio = 1
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, get_numerator=False)
         if kpi_fk is None:
