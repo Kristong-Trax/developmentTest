@@ -57,7 +57,8 @@ class CCRUVisitPlan:
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
-            self._rds_conn.disconnect_rds()
+            if self._rds_conn.is_connected:
+                self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
@@ -123,10 +124,10 @@ class CCRUVisitPlan:
         # file_path = "/home/sergey/Documents/CCRU/ccru_visit_plan.xlsx"
 
         Log.info("Starting template parsing and validation")
-        plan_data = pd.read_excel(file_path)
-        plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].astype(str).str.upper()
-        plan_data[USER_NAME] = plan_data[USER_NAME].astype(str).str.upper()
-        plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].astype(str).str.upper()
+        plan_data = pd.read_excel(file_path, converters={STORE_NUMBER: str, USER_NAME: str, PLANNED_FLAG: str})
+        plan_data[STORE_NUMBER] = plan_data[STORE_NUMBER].str.upper()
+        plan_data[USER_NAME] = plan_data[USER_NAME].str.upper()
+        plan_data[PLANNED_FLAG] = plan_data[PLANNED_FLAG].str.upper()
         plan_data = plan_data.merge(self.store_data, how='left', left_on=STORE_NUMBER, right_on='store_number')
         plan_data = plan_data.merge(self.user_data, how='left', left_on=USER_NAME, right_on='user_name')
         plan_data = plan_data.where((pd.notnull(plan_data)), None)
@@ -236,7 +237,8 @@ class CCRUVisitPlan:
         This function connects to the DB and cursor
         :return: rds connection and cursor connection
         """
-        self.rds_conn.disconnect_rds()
+        if self.rds_conn.is_connected:
+            self.rds_conn.disconnect_rds()
         rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         return rds_conn, cur

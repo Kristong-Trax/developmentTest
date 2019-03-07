@@ -14,7 +14,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 __author__ = 'Nimrod'
 
 
-PROJECT = 'ccru-sand'
+PROJECT = 'ccru_sand'
 BUCKET = 'traxuscalc'
 CLOUD_BASE_PATH = 'CCRU/KPIData/Contract/'
 TEMPLATES_TEMP_PATH = os.getcwd()

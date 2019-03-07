@@ -2528,7 +2528,7 @@ class CCRUKPIToolBox:
 
         df = pd.DataFrame(list(res), columns=['store_fk', 'channel'])
 
-        return 'PoS 2019 - FT - CAP'  # df['channel'][0] TODO uncomment
+        return df['channel'][0]
 
     @kpi_runtime()
     def calculate_gaps_old(self, params):
