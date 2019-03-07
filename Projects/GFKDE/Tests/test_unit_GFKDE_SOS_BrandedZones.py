@@ -1,4 +1,4 @@
-from unittest import skip
+from Trax.Utils.Testing.Case import skip
 
 from Projects.GFKDE.ShareOfBrandedZonesBrandCategory import ShareOfBrandedZonesBrandCategory_KPI
 from Projects.GFKDE.Tests.Sessions_Data import bz_data

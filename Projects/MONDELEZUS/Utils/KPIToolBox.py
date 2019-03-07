@@ -4,7 +4,6 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Projects.Connector import ProjectConnector
 # from Trax.Utils.Logging.Logger import Log
 import math
-from KPIUtils_v2.DB.Common import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -53,10 +52,10 @@ class MONDELEZUSToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -83,7 +82,7 @@ class MONDELEZUSToolBox:
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.INCLUDE_FILTER = 1
         self.MM_TO_FEET_CONVERSION = MM_TO_FEET_CONVERSION
-        self.kpi_new_static_data = self.common.get_new_kpi_static_data()
+        self.kpi_new_static_data = self.common.kpi_static_data
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.template_info, on='template_fk', suffixes=['', '_t'])
@@ -145,7 +144,7 @@ class MONDELEZUSToolBox:
 
             score = result
             numerator_id = self.products['category_fk'][self.products['category'] == kpi_template['Value1']].iloc[0]
-            self.common.write_to_db_result_new_tables(kpi_set_fk, numerator_id, 999, score, score=score)
+            self.common.write_to_db_result(kpi_set_fk, numerator_id, 999, score, score=score)
 
     def calculate_category_space_length(self, kpi_name, threshold=0.5, retailer=None, exclude_pl=False, **filters):
         """
@@ -240,6 +239,3 @@ class MONDELEZUSToolBox:
             kpi_name = kpi_name.replace('{' + filter + '}', str(filters[filter]))
             kpi_name = kpi_name.replace("'", "\'")
         return kpi_name
-
-    def commit(self):
-        self.common.commit_results_data_to_new_tables()

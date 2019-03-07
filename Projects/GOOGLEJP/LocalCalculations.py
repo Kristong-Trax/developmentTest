@@ -23,7 +23,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlejp calculations')
     Config.init()
     project_name = 'googlejp'
-    sessions = ['d156741c-6647-4009-b018-fc8d5e8b274b']
+    sessions = ['21df5d78-8646-45c8-ac73-dc203cd0f4cc']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
@@ -32,8 +32,8 @@ if __name__ == '__main__':
 
         # scenes = [392]
 
-        for scene in scenes:
-            print('scene')
+        for scene in [49786]:
+            print('scene {}'.format(scene))
             data_provider = KEngineDataProvider(project_name)
             data_provider.load_scene_data(session, scene)
             output = VanillaOutput()
