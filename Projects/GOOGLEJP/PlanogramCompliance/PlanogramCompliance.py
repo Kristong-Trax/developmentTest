@@ -342,14 +342,14 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             return False
         return True
 
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-if __name__ == '__main__':
-    LoggerInitializer.init('POG compliance test')
-    Config.init()
-    path = "/home/elyashiv/Desktop/backup/POGs/test2/"
-    planogram_data = pd.read_csv(path + "pog 2.csv")
-    scene_data = pd.read_csv(path + "scene 2.csv")
-    pog = PlanogramCompliance(data_provider=None)
-    compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
-    print compliances
+# from Trax.Utils.Conf.Configuration import Config
+# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+# if __name__ == '__main__':
+#     LoggerInitializer.init('POG compliance test')
+#     Config.init()
+#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
+#     planogram_data = pd.read_csv(path + "pog 2.csv")
+#     scene_data = pd.read_csv(path + "scene 2.csv")
+#     pog = PlanogramCompliance(data_provider=None)
+#     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
+#     print compliances
