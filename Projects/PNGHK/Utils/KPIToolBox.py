@@ -153,6 +153,7 @@ class PNGHKToolBox:
                                                result=result, score=result)
 
     def calculate_linear_sos_kpi(self, kpi_df):
+        ratio = 1
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
         kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_name, get_numerator=False)
         if kpi_fk is None:
@@ -210,16 +211,20 @@ class PNGHKToolBox:
                     all_numerators = df[entity_name].drop_duplicates().values.tolist()
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = scene_size if scene_size != "" else \
-                        df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                     if denominator == 0:
                         continue
+                    if scene_size != "":
+                        ratio = scene_size / denominator
+                        denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
                         numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                         del filters[entity_name]
                         if numerator == 0:
                             continue
+                        if scene_size != "":
+                            numerator = numerator * ratio
                         result = float(numerator) / float(denominator) if denominator != 0 else 0
                         try:
                             numerator_id = self.all_products[self.all_products[entity_name] ==
@@ -231,8 +236,8 @@ class PNGHKToolBox:
                             results_dict[numerator_id, denominator_id, context_id] = [result, numerator, denominator]
                         else:
                             results_dict[numerator_id, denominator_id, context_id] = map(sum,
-                                 zip(results_dict[numerator_id, denominator_id, context_id],
-                                                                [result, numerator, denominator]))
+                                                                                         zip(results_dict[numerator_id, denominator_id, context_id],
+                                                                                             [result, numerator, denominator]))
 
         for numerator_id, denominator_id, context_id in results_dict.keys():
             result, numerator, denominator = results_dict[numerator_id, denominator_id, context_id]
