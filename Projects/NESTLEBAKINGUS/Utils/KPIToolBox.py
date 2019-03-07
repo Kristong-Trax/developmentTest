@@ -51,10 +51,11 @@ class NESTLEBAKINGUSToolBox:
         """
         This function calculates the KPI results.
         """
-        score = 0
-        return score
+        self.calculate_facings_sos_sku_out_of_scene_type()
+        self.calculate_linear_sos_sku_out_of_scene_type()
+        return
 
-    def calculate_facings_sos_out_of_scene_type(self):
+    def calculate_facings_sos_sku_out_of_scene_type(self):
         relevant_scif = self.scif
 
         denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
@@ -69,14 +70,32 @@ class NESTLEBAKINGUSToolBox:
 
         for index, row in results.iterrows():
             result_dict = self.build_dictionary_for_db_insert(
-                kpi_name='SECONDARY_FACINGS_SOS_MANUFACTURER_OUT_OF_CATEGORY_IN_WHOLE_STORE',
+                kpi_name='FACINGS_SOS_SKU_OUT_OF_SCENE_TYPE',
                 numerator_id=row['product'], denominator_id=row['template_fk'],
                 numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
                 result=row['result'], score=row['result'], score_after_actions=row['result'])
             self.common.write_to_db_result(**result_dict)
 
-    def calculate_linear_sos_out_of_scene_type(self):
-        pass
+    def calculate_linear_sos_sku_out_of_scene_type(self):
+        relevant_scif = self.scif
+
+        denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
+            ['width_mm']].sum().rename(columns={'width_mm': 'denominator_result'})
+
+        numerator_result = relevant_scif.groupby(['template_fk', 'product_fk'], as_index=False)[
+            ['width_mm']].sum().rename(columns={'width_mm': 'numerator_result'})
+
+        results = numerator_result.merge(denominator_results)
+        results['result'] = (results['numerator_result'] / results['denominator_result'])
+        results['result'].fillna(0, inplace=True)
+
+        for index, row in results.iterrows():
+            result_dict = self.build_dictionary_for_db_insert(
+                kpi_name='LINEAR_SOS_SKU_OUT_OF_SCENE_TYPE',
+                numerator_id=row['product'], denominator_id=row['template_fk'],
+                numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
+                result=row['result'], score=row['result'], score_after_actions=row['result'])
+            self.common.write_to_db_result(**result_dict)
 
     def build_dictionary_for_db_insert(self, fk=None, kpi_name=None, numerator_id=0, numerator_result=0, result=0,
                                        denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
