@@ -71,8 +71,8 @@ class ToolBox:
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
-        # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        # self.dependency_reorder()
+        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        self.dependency_reorder()
 
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
@@ -90,9 +90,9 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        # dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-        # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
-        #     return
+        dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        if dependent_result and self.dependencies[kpi_name] not in dependent_result:
+            return
 
         # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
         if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
@@ -106,6 +106,7 @@ class ToolBox:
                         self.write_to_db(kpi_name, **kwargs)
                     else:
                         self.write_to_db(kpi_name, **{'score': 0, 'result': 0})
+                self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -1059,6 +1060,7 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_rsult_type_fk']
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
