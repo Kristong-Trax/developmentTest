@@ -7,7 +7,7 @@ import pandas as pd
 import os
 
 from KPIUtils_v2.DB.Common import Common
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
+from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -32,7 +32,7 @@ class NESTLEBAKINGUSToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = Common(data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -41,98 +41,38 @@ class NESTLEBAKINGUSToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
+        self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
+        self.assortment = Assortment(self.data_provider)
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        self.calculate_facings_sos_sku_out_of_scene_type()
-        self.calculate_linear_sos_sku_out_of_scene_type()
+        self.calculate_assortment()
         return
 
-    def calculate_facings_sos_sku_out_of_scene_type(self):
-        relevant_scif = self.scif
+    def calculate_assortment(self):
+        self.assortment.main_assortment_calculation()
 
-        denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
-            ['facings']].sum().rename(columns={'facings': 'denominator_result'})
+        store_assortment = self.assortment.store_assortment
+        if store_assortment.empty:
+            return
 
-        numerator_result = relevant_scif.groupby(['template_fk', 'product_fk'], as_index=False)[
-            ['facings']].sum().rename(columns={'facings': 'numerator_result'})
+        assortment_products = store_assortment['product_fk']
+        extra_products = self.scif[~self.scif['product_fk'].isin(assortment_products)]
 
-        results = numerator_result.merge(denominator_results)
-        results['result'] = (results['numerator_result'] / results['denominator_result'])
-        results['result'].fillna(0, inplace=True)
+        self._save_extra_product_results(extra_products)
 
-        for index, row in results.iterrows():
-            result_dict = self.build_dictionary_for_db_insert(
-                kpi_name='FACINGS_SOS_SKU_OUT_OF_SCENE_TYPE',
-                numerator_id=row['product'], denominator_id=row['template_fk'],
-                numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
-                result=row['result'], score=row['result'], score_after_actions=row['result'])
-            self.common.write_to_db_result(**result_dict)
-
-    def calculate_linear_sos_sku_out_of_scene_type(self):
-        relevant_scif = self.scif
-
-        denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
-            ['width_mm']].sum().rename(columns={'width_mm': 'denominator_result'})
-
-        numerator_result = relevant_scif.groupby(['template_fk', 'product_fk'], as_index=False)[
-            ['width_mm']].sum().rename(columns={'width_mm': 'numerator_result'})
-
-        results = numerator_result.merge(denominator_results)
-        results['result'] = (results['numerator_result'] / results['denominator_result'])
-        results['result'].fillna(0, inplace=True)
-
-        for index, row in results.iterrows():
-            result_dict = self.build_dictionary_for_db_insert(
-                kpi_name='LINEAR_SOS_SKU_OUT_OF_SCENE_TYPE',
-                numerator_id=row['product'], denominator_id=row['template_fk'],
-                numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
-                result=row['result'], score=row['result'], score_after_actions=row['result'])
-            self.common.write_to_db_result(**result_dict)
-
-    def build_dictionary_for_db_insert(self, fk=None, kpi_name=None, numerator_id=0, numerator_result=0, result=0,
-                                       denominator_id=0, denominator_result=0, score=0, score_after_actions=0,
-                                       denominator_result_after_actions=None, numerator_result_after_actions=0,
-                                       weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None,
-                                       target=None,
-                                       identifier_parent=None, identifier_result=None):
-        try:
-            insert_params = dict()
-            if not fk:
-                if not kpi_name:
-                    return
-                else:
-                    insert_params['fk'] = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-            else:
-                insert_params['fk'] = fk
-            insert_params['numerator_id'] = numerator_id
-            insert_params['numerator_result'] = numerator_result
-            insert_params['denominator_id'] = denominator_id
-            insert_params['denominator_result'] = denominator_result
-            insert_params['result'] = result
-            insert_params['score'] = score
-            if target:
-                insert_params['target'] = target
-            if denominator_result_after_actions:
-                insert_params['denominator_result_after_actions'] = denominator_result_after_actions
-            if context_id:
-                insert_params['context_id'] = context_id
-            if identifier_parent:
-                insert_params['identifier_parent'] = identifier_parent
-                insert_params['should_enter'] = True
-            if identifier_result:
-                insert_params['identifier_result'] = identifier_result
-            return insert_params
-        except IndexError:
-            Log.error('error in build_dictionary_for_db_insert')
-            return None
+    def _save_extra_product_results(self, extra_products):
+        for i, row in extra_products.iterrows():
+            result = 2  # for extra
+            self.common.write_to_db_result_new_tables(row['kpi_lvl_3_fk'], row['product_fk'], row['facings'], result,
+                                                      denominator_id=row['assortment_fk'])
 
     def commit_results_data(self):
         self.common.commit_results_data()
