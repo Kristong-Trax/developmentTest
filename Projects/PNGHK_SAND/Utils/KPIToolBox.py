@@ -206,20 +206,23 @@ class PNGHKToolBox:
                         filters['category'] = category
                     else:
                         denominator_id = self.store_id
-
                     all_numerators = df[entity_name].drop_duplicates().values.tolist()
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = scene_size if scene_size != "" else \
-                        df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                     if denominator == 0:
                         continue
+                    if scene_size != "":
+                        ratio = scene_size / denominator
+                        denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
                         numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
                         del filters[entity_name]
                         if numerator == 0:
                             continue
+                        if scene_size != "":
+                            numerator = numerator * ratio
                         result = float(numerator) / float(denominator) if denominator != 0 else 0
                         try:
                             numerator_id = self.all_products[self.all_products[entity_name] ==
