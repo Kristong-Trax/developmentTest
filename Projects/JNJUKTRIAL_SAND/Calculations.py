@@ -33,6 +33,7 @@ class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
         jnj_generator.calculate_auto_assortment(in_balde=True)
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
+        jnj_generator.general_assortment_calculation()
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
