@@ -206,8 +206,20 @@ class ToolBox:
         section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
         cat_skus = self.filter_df(full_mpis, section_filters).shape[0]
         rel_skus = self.filter_df(mpis, section_filters).shape[0]
-
-
+        score = self.ratio_score(rel_skus, cat_skus, target=.95)
+        if score:
+            adj_bays = [section_filters['bay_number'] + 1, section_filters['bay_number'] - 1]
+            adj_filters = {'bay_number': adj_bays}
+            adj_filters.update(general_filters)
+            adj_mpis = self.filter_df(full_mpis, adj_filters)
+            if adj_mpis.empty:
+                result = 'No'
+                score = 0
+            else:
+                result = 'Yes'
+        result_fk = self.result_values_dict[result]
+        kwargs = {'score': score, 'result': result_fk, 'target': 1}
+        return kwargs
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' I think this should be a scene level kpi, i will need to move it to scene_kpi_toolbox '''
@@ -703,10 +715,6 @@ class ToolBox:
         kwargs = {'numerator_id': result_fk, 'numerator_result': ft_sum, 'score': 1, 'result': result_fk,
                   'target': None}
         return kwargs
-
-
-    def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        pass
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
         mpis = self.make_mpis(kpi_line, general_filters)
