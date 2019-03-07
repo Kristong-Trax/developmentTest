@@ -22,7 +22,8 @@ __author__ = 'limorc'
 KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
-
+#TEMPLATE_PATH = os.path.join(os.path.dirname(
+#    os.path.realpath(__file__)), '..', 'Data', 'Template.xlsx')
 
 class NESTLETHToolBox:
     LEVEL1 = 1
@@ -52,7 +53,10 @@ class NESTLETHToolBox:
         """
         This function calculates the KPI results.
         """
-        self.nestle_generator.nestle_global_shelf_placement_function()
+
+        shelf_placement_tmpale = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..', 'Data',
+                                                            'Placement.xlsx'), sheetname='Minimum Shelf', keep_default_na=False)
+        self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_tmpale)
         score = 0
         return score
 
