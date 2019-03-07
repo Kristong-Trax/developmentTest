@@ -93,7 +93,7 @@ class CCRUContract:
 
     def parse_and_upload_file(self):
 
-        Log.debug("Starting template parsing and validation")
+        Log.info("Starting template parsing and validation")
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
@@ -115,7 +115,7 @@ class CCRUContract:
         raw_data[self.START_DATE] = raw_data[self.START_DATE].astype(str)
         raw_data[self.END_DATE] = raw_data[self.END_DATE].astype(str)
 
-        Log.debug("Starting Stores validation")
+        Log.info("Starting Stores validation")
         target_data_new = {}
         count_stores_total = raw_data.shape[0]
         for x, row in raw_data.iterrows():
@@ -124,7 +124,6 @@ class CCRUContract:
             store_id = self.get_store_fk(store_number)
             if store_id is None:
 
-                # Log.warning('Store number {} does not exist in the DB'.format(store_number))
                 self.invalid_stores.append(store_number)
 
             else:
@@ -144,14 +143,13 @@ class CCRUContract:
 
             count_stores_processed = x + 1
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug(
-                    "Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.info("Number of stores validated: {}/{}".format(count_stores_processed, count_stores_total))
 
         if self.invalid_stores:
             Log.warning("The following stores do not exist in the DB and will be ignored ({}): "
                         "{}".format(len(self.invalid_stores), self.invalid_stores))
 
-        Log.debug("Starting data processing")
+        Log.info("Starting data processing")
         count_stores_total = len(target_data_new.keys())
         for x, store_id in enumerate(target_data_new.keys()):
 
@@ -162,17 +160,12 @@ class CCRUContract:
 
             if not start_date_new <= end_date_new:
 
-                # Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
-                #             .format(store_id, store_number))
                 self.stores_with_invalid_dates += [store_number]
 
             else:
 
                 target_data = []
                 target_data_cur = self.get_json_file_content(str(store_id))
-                # if target_data_cur:
-                #     Log.debug('Relevant Contract Execution target file for Store ID {} / Number {} is found'
-                #              .format(store_id, store_number))
                 for data_cur in target_data_cur:
                     try:
                         start_date_cur = dt.datetime.strptime(
@@ -181,8 +174,6 @@ class CCRUContract:
                             data_cur[self.END_DATE], '%Y-%m-%d').date()
                         store_number_cur = data_cur[self.STORE_NUMBER]
                     except:
-                        # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
-                        #             .format(store_id, store_number))
                         self.stores_with_invalid_targets += [store_number]
                         continue
                     if store_number_cur == store_number \
@@ -209,13 +200,11 @@ class CCRUContract:
                 with open(self.temp_path, 'wb') as f:
                     f.write(json.dumps(target_data))
                 self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-                # Log.debug('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
 
             count_stores_processed = x + 1
             self.stores_processed += [store_number]
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug(
-                    "Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
+                Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
                 # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
@@ -234,7 +223,7 @@ class CCRUContract:
             Log.warning("The following stores have invalid target format and were ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.debug("Execution targets are uploaded successfully. " +
+        Log.info("Execution targets are uploaded successfully. " +
                   ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
 
     @staticmethod
@@ -252,6 +241,6 @@ class CCRUContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init(PROJECT)
-    Log.init(PROJECT, 'CCRU Execution Contract targets upload')
+    Log.init(PROJECT, 'CCRU Contract Execution targets upload')
     Config.init()
     CCRUContract().parse_and_upload_file()

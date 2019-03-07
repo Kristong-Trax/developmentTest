@@ -35,18 +35,30 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             self._filter_irrelevant_out()
             self.scene_bays = self.scene_matches[Keys.BAY_NUMBER].unique().tolist()
             self.pog_bays = self.planogram_matches[Keys.BAY_NUMBER].unique().tolist()
-            if len(self.scene_bays) == 1 and self.scene_bays == self.pog_bays:
-                tag_compliance, score = self._local_get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
+            if len(self.scene_bays) == 1 and len(self.pog_bays) == 1:
+                if self.scene_bays != self.pog_bays:
+                    scene_bay_data = self._get_df_of_bay(self.scene_matches, self.pog_bays[0])
+                    pog_bay_data = self._get_df_of_bay(self.planogram_matches, self.pog_bays[0])
+                else:
+                    scene_bay_data = self.scene_matches
+                    pog_bay_data = self.planogram_matches
+                tag_compliance, score = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
             elif len(self.scene_bays) < 5 and len(self.pog_bays) < 5:
                 tag_compliance = self._get_iterated_position_full_solution()
             else:
-                tag_compliance, score = self._get_iterated_position_greedy()
-            compliance_products = pd.merge(self.scene_matches, tag_compliance, on='match_fk', how='left')
-            pog_products = self.planogram_matches['product_fk'].unique().tolist()
-            wrong_extra_tags = compliance_products[
-                (compliance_products['compliance_status_fk'] == 1) &
-                (compliance_products['product_fk'].isin(pog_products))]['match_fk'].tolist()
-            tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
+                tag_compliance = self._get_iterated_position_greedy()
+            if tag_compliance is None:
+                tag_compliance = get_tag_planogram_compliance(self.scene_matches, self.planogram_matches)
+            if 1 in tag_compliance['compliance_status_fk'].tolist():
+                try:
+                    compliance_products = pd.merge(self.scene_matches, tag_compliance, on='match_fk', how='left')
+                    pog_products = self.planogram_matches['product_fk'].unique().tolist()
+                    wrong_extra_tags = compliance_products[
+                        (compliance_products['compliance_status_fk'] == 1) &
+                        (compliance_products['product_fk'].isin(pog_products))]['match_fk'].tolist()
+                    tag_compliance.loc[tag_compliance['match_fk'].isin(wrong_extra_tags), 'compliance_status_fk'] = 2
+                except Exception as er:
+                    Log.debug(er.message)
         except Exception as e:
             Log.error("Calculated compliance has failed: " + e.message)
             try:
@@ -276,7 +288,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
         For multi-sided POGs. It iterates about all the possible permutations of the scene bays and the POG bays,
         and returns the tag_compliance of the permutation with the best score (most of "in position" products).
         """
-        all_combinations = pd.DataFrame()
+        all_combinations = pd.DataFrame(columns=[BAYS_COUPLE, SCORE, TAG_COMPLIANCE])
         for combination in list(itertools.product(self.scene_bays, self.pog_bays)):
             scene_bay, pog_bay = combination
             scene_bay_data = self._get_df_of_bay(self.scene_matches, scene_bay)
@@ -284,10 +296,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
             if not can_match:
                 continue
-            tag_compliance = get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
-            score = float(len(
-                tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-            )) / len(tag_compliance)
+            tag_compliance, score = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
             all_combinations = all_combinations.append(
                 {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
                 ignore_index=True)
@@ -338,9 +347,9 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
-#     path = "/home/elyashiv/Desktop/backup/POGs/11/"
-#     planogram_data = pd.read_csv(path + "pog.csv")
-#     scene_data = pd.read_csv(path + "scene 3249.csv")
-#     pog = GOOGLEJP_SANDPlanogramCompliance(data_provider=None)
+#     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
+#     planogram_data = pd.read_csv(path + "pog 2.csv")
+#     scene_data = pd.read_csv(path + "scene 2.csv")
+#     pog = PlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances

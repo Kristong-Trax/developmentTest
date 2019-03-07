@@ -92,6 +92,12 @@ class CCRUKPIToolBox:
         self.kpi_entity_types = self.kpi_fetcher.get_kpi_entity_types()
         self.kpi_entities = self.get_kpi_entities('top_sku_type')
         self.store_areas = self.kpi_fetcher.get_store_area_df(self.session_uid)
+        self.session_user = self.kpi_fetcher.get_session_user(self.session_uid)
+
+        try:
+            self.planned_visit_flag = int(self.kpi_fetcher.get_planned_visit_flag(self.session_uid))
+        except:
+            self.planned_visit_flag = None
 
         self.execution_contract = CCRUContract(rds_conn=self.rds_conn)
         self.top_sku = CCRUTopSKUAssortment(rds_conn=self.rds_conn)
@@ -2098,7 +2104,13 @@ class CCRUKPIToolBox:
             else:
                 continue
 
-            if p.get("Formula").strip() == "number of KPI Passed" and p.get("Type") == "SESSION LEVEL":  # session level
+            if p.get("Formula").strip() == "Plan":
+                result = self.check_planned_visit_flag()
+                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                                  "atomic_kpi_fk": atomic_kpi_fk, "result": result,
+                                  "format": p.get("Result Format")})
+
+            elif p.get("Formula").strip() == "number of KPI Passed" and p.get("Type") == "SESSION LEVEL":  # session level
                 result = 0
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
@@ -2121,7 +2133,7 @@ class CCRUKPIToolBox:
                 for k in self.kpi_facts_hidden:
                     if k.get("KPI ID") in p.get("Children List"):
                         result += k.get("score")
-                kpi_facts.append({"name": atomic_kpi_name, "display_text": atomic_kpi_name,
+                kpi_facts.append({"id": atomic_kpi_id, "name": atomic_kpi_name, "display_text": atomic_kpi_name,
                                   "atomic_kpi_fk": atomic_kpi_fk, "result": result,
                                   "format": p.get("Result Format")})
 
@@ -2495,14 +2507,7 @@ class CCRUKPIToolBox:
         return set_total_res
 
     def get_pos_kpi_set_name(self):
-        if str(self.visit_date) < '2017-11-25':  # todo: change the date to the relevant one before deployment
-            query = """
-                    select ss.pk , ss.additional_attribute_11
-                    from static.stores ss
-                    join probedata.session ps on ps.store_fk=ss.pk
-                    where ss.delete_date is null and ps.session_uid = '{}';
-                    """.format(self.session_uid)
-        elif str(self.visit_date) < '2019-01-26':  # todo: change the date to the relevant one before deployment
+        if str(self.visit_date) < '2019-01-26':
             query = """
                     select ss.pk , ss.additional_attribute_11
                     from static.stores ss
@@ -3440,3 +3445,23 @@ class CCRUKPIToolBox:
         if not entities_df.empty:
             entities_df = entities_df.reindex()
         return entities_df
+
+    def check_planned_visit_flag(self):
+
+        if self.external_session_id and self.external_session_id.find('EasyMerch-P') >= 0:
+            result = 0
+        elif self.session_user['user_position'] == 'External':
+            result = 0
+        elif self.session_user['user_role'] == 'Sales Rep' and self.session_user['user_position'] != 'SMC':
+            if self.planned_visit_flag is not None:
+                result = self.planned_visit_flag
+            else:
+                result = 0
+        else:
+            if self.planned_visit_flag is not None:
+                result = self.planned_visit_flag
+            else:
+                result = 1
+
+        return result
+

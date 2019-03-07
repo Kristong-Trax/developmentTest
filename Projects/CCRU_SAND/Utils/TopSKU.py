@@ -58,7 +58,8 @@ class CCRU_SANDTopSKUAssortment:
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
-            self._rds_conn.disconnect_rds()
+            if self._rds_conn.is_connected:
+                self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
@@ -125,7 +126,6 @@ class CCRU_SANDTopSKUAssortment:
         store_number = data.pop(self.STORE_NUMBER, None)
         store_fk = self.get_store_fk(store_number)
         if store_fk is None:
-            Log.warning("Store number '{}' is not defined in DB".format(self.STORE_NUMBER))
             return
         start_date = data.pop(self.START_DATE, None).date()
         start_date_minus_day = start_date - dt.timedelta(1)
@@ -143,20 +143,15 @@ class CCRU_SANDTopSKUAssortment:
                 anchor_product_ean_code = product_list[0]
                 anchor_product_fk = self.get_product_fk(anchor_product_ean_code)
                 if anchor_product_fk is None:
-                    # Log.warning("Anchor product EAN '{}' is not defined in DB".format(anchor_product_ean_code))
                     continue
                 min_facings = data[key]
                 for product in product_list:
                     product_fk = self.get_product_fk(product)
                     if product_fk is None:
-                        # Log.warning("Product EAN '{}' is not defined in DB".format(product))
                         continue
                     tmplt_top_sku_keys.add(str(product_fk) + '|' +
                                            str(anchor_product_fk) + '|' +
                                            str(min_facings) + '|1')
-        # if not tmplt_top_sku_keys:
-        #     Log.debug('No products are configured as Top SKUs for store number {} and period {} - {}'
-        #              ''.format(store_number, start_date, end_date))
         store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)[
             'top_sku_key'].tolist()
         products_to_deactivate = set(store_top_sku_keys).difference(tmplt_top_sku_keys)
@@ -193,8 +188,6 @@ class CCRU_SANDTopSKUAssortment:
         """
         for col in raw_data.columns:
             if str(col).count('.'):
-                # Log.warning("Duplicate column {} is encountered in the template and removed from loading"
-                #             "".format(col.split('.')[0]))
                 self.duplicate_columns.append(col)
         data = raw_data.drop(self.duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
@@ -207,7 +200,6 @@ class CCRU_SANDTopSKUAssortment:
             products = product.replace(' ', '').replace('\n', '').split(',')
             for prod in products:
                 if self.product_data.loc[self.product_data['product_ean_code'] == prod].empty:
-                    # Log.warning("Product with EAN Code = {} does not exist in the DB".format(prod))
                     self.invalid_products.append(prod)
         return data
 
@@ -222,19 +214,15 @@ class CCRU_SANDTopSKUAssortment:
         stores_start_date = store_row[self.START_DATE]
         stores_end_date = store_row[self.END_DATE]
         if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
-            # Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
             self.invalid_stores.append(store_number_1)
             return False
         if not stores_start_date or not stores_end_date:
-            # Log.warning("Missing dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if type(stores_start_date) in [str, unicode] or type(stores_end_date) in [str, unicode]:
-            # Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if stores_start_date > stores_end_date:
-            # Log.warning("Invalid dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
 
@@ -257,7 +245,7 @@ class CCRU_SANDTopSKUAssortment:
         parsed_args = self.parse_arguments()
         file_path = parsed_args.file
 
-        Log.debug("Starting template parsing and EAN Codes validation")
+        Log.info("Starting template parsing and EAN Codes validation")
         raw_data = self.parse_and_validate(file_path)
         if self.duplicate_columns:
             Log.warning("The following columns are duplicate in the template and will be ignored ({}): "
@@ -266,12 +254,11 @@ class CCRU_SANDTopSKUAssortment:
             Log.warning("The following products do not exist in the DB and will be ignored ({}): "
                         "{}".format(len(self.invalid_products), self.invalid_products))
 
-        Log.debug("Starting Stores validation")
+        Log.info("Starting Stores validation")
         data = []
         for index_data, store_raw_data in raw_data.iterrows():
             if (index_data + 1) % 1000 == 0 or (index_data + 1) == raw_data.shape[0]:
-                Log.debug(
-                    "Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
+                Log.info("Number of stores validated: {}/{}".format(index_data + 1, raw_data.shape[0]))
             if not self.store_row_validator(store_raw_data):
                 continue
             store_data = {}
@@ -286,7 +273,7 @@ class CCRU_SANDTopSKUAssortment:
             Log.warning("The following stores have invalid date period and will be ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.debug("Starting data processing")
+        Log.info("Starting data processing")
         count_stores_total = len(data)
         count_stores_processed = 0
         for store_data in data:
@@ -311,12 +298,9 @@ class CCRU_SANDTopSKUAssortment:
                 self.insert_queries = []
 
                 self.commit_results(queries)
-                queries = []
 
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
-                Log.debug(
-                    "Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
-                # Log.debug("Stores processed: {}".format(self.stores_processed))
+                Log.info("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
                 self.stores_processed = []
 
         if self.duplicate_columns:
@@ -335,11 +319,11 @@ class CCRU_SANDTopSKUAssortment:
             Log.warning("The following stores have invalid date period and were ignored ({}): "
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
-        Log.debug("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
-                  .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
+        Log.info("Total Top SKU uploading status for Products in Stores: Deactivated = {}, Extended = {}, New = {}"
+                 .format(self.deactivation_queries_count, self.extension_queries_count, self.insert_queries_count))
 
-        Log.debug("Top SKU targets are uploaded successfully. " +
-                  ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
+        Log.info("Top SKU targets are uploaded successfully. " +
+                 ("Incorrect template data were ignored (see above)" if self.duplicate_columns or self.invalid_products or self.invalid_stores or self.stores_with_invalid_dates else ""))
 
         return
 
@@ -399,7 +383,8 @@ class CCRU_SANDTopSKUAssortment:
         This function connects to the DB and cursor
         :return: rds connection and cursor connection
         """
-        self.rds_conn.disconnect_rds()
+        if self.rds_conn.is_connected:
+            self.rds_conn.disconnect_rds()
         rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         return rds_conn, cur
@@ -414,7 +399,7 @@ class CCRU_SANDTopSKUAssortment:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.debug('DB update failed due to: {}'.format(e))
+                Log.warning('DB update failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
                 cur.execute(query)
                 continue
@@ -477,7 +462,7 @@ class CCRU_SANDTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU')
+    LoggerInitializer.init('CCRU Top SKU/OSA targets upload')
     ts = CCRU_SANDTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration
