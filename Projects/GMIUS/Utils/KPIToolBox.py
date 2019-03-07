@@ -1060,7 +1060,8 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        if self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_rsult_type_fk']
+        if self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_rsult_type_fk']:
+            pass
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
