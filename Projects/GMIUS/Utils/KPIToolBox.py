@@ -94,8 +94,8 @@ class ToolBox:
         # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
         #     return
 
-        if kpi_type in[Const.BLOCKING, Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -194,6 +194,19 @@ class ToolBox:
         # For each polygons save the intersecting polygons
         for index, polygon in polygons_dict.items():
             adjacent_nodes[index] = [polygons_map[mapping(p)['coordinates']] for p in polygons_tree.query(polygon)]
+
+    def calculate_presence(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        general_filters.update({'Super Category': self.super_cat})
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        full_mpis = self.filter_df(self.mpis, general_filters)
+        mpis = self.filter_df(full_mpis, filters)
+        # mpis = self.mpis.copy()
+        sections = mpis.groupby(['scene_fk', 'bay_number']).count().sort_values('product_fk', ascending=False)
+        section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
+        cat_skus = self.filter_df(full_mpis, section_filters).shape[0]
+        rel_skus = self.filter_df(mpis, section_filters).shape[0]
+
 
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -521,7 +534,9 @@ class ToolBox:
             if mpis.empty:
                 continue
             result = self.block.network_x_block_together(filters, location=scene_filter,
-                                                         additional={'allowed_products_filters': Const.ALLOWED_FILTERS,
+                                                         additional={
+                                                                     # 'allowed_products_filters': Const.ALLOWED_FILTERS,
+                                                                     'allowed_products_filters': {'product_type': 'Empty'},
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': True})
             blocks = result[result['is_block'] == True]
@@ -983,6 +998,8 @@ class ToolBox:
             return self.calculate_count_of
         elif kpi_type == Const.ORIENT:
             return self.calculate_orientation
+        elif kpi_type == Const.PRESENCE:
+            return self.calculate_presence
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
