@@ -296,10 +296,7 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
             can_match = self.can_match(pog_bay_data=pog_bay_data, scene_bay_data=scene_bay_data)
             if not can_match:
                 continue
-            tag_compliance = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
-            score = float(len(
-                tag_compliance[tag_compliance[Keys.COMPLIANCE_STATUS_FK] == PlanogramTagCompliance.CORRECTLY_POSITIONED]
-            )) / len(tag_compliance)
+            tag_compliance, score = self._local_get_tag_planogram_compliance(scene_bay_data, pog_bay_data)
             all_combinations = all_combinations.append(
                 {BAYS_COUPLE: (scene_bay, pog_bay), SCORE: score, TAG_COMPLIANCE: tag_compliance},
                 ignore_index=True)
@@ -351,8 +348,8 @@ class PlanogramCompliance(PlanogramComplianceBaseClass):
 #     LoggerInitializer.init('POG compliance test')
 #     Config.init()
 #     path = "/home/elyashiv/Desktop/backup/POGs/test2/"
-#     planogram_data = pd.read_csv(path + "pog 1.csv")
-#     scene_data = pd.read_csv(path + "scene 1.csv")
+#     planogram_data = pd.read_csv(path + "pog 2.csv")
+#     scene_data = pd.read_csv(path + "scene 2.csv")
 #     pog = PlanogramCompliance(data_provider=None)
 #     compliances = pog.get_compliance(manual_planogram_data=planogram_data, manual_scene_data=scene_data)
 #     print compliances
