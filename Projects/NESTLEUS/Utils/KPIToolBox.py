@@ -66,6 +66,9 @@ class NESTLEUSToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.MM_TO_FEET_CONVERSION = 0.0032808399
+        self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
+
+
 
     def main_calculation(self, *args, **kwargs):
         """
