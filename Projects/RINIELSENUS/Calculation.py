@@ -1,7 +1,7 @@
 # import pandas as pd
 # from Trax.Utils.Conf.Keys import DbUsers
 # from mock import patch
-# 
+#
 # from KPIUtils.DB.Common import Common
 from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
@@ -37,14 +37,14 @@ class MarsUsCalculations(BaseCalculationsScript):
 #     project_name = 'rinielsenus'
 #
 #     sessions = [
-#         'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
+#         # 'd4391ffb-78a2-4f70-be3c-a0309f47b1ea',
 #         # 'b3970bc2-de98-4dc5-9289-75cf9255e8d0',
 #         # '63a38dae-84da-4214-95b3-6cdd33c27869'
-#         # 'c768c2fb-d616-4bd6-81d1-b283039b8133'
+#         'c768c2fb-d616-4bd6-81d1-b283039b8133'
 #     ]
 #
 #     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-#     # sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
+#     sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
 #     for session in sessions:
 #         print('*******************************************************************')
 #         print('--------------{}-------------'.format(session))
@@ -54,4 +54,3 @@ class MarsUsCalculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         MarsUsCalculations(data_provider, output).run_project_calculations()
-
