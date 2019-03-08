@@ -145,10 +145,11 @@ class EntityUploader():
         self.cur.execute(query)
 
     def insert_into_custom_entity(self, entity, fk):
+        q = '"' if "'" in entity else "'"
         query = '''
         Insert Into static.custom_entity 
-        Values ({}, '{}', {}, null)
-        '''.format(self.custom_entity_pk, entity, fk)
+        Values ({}, {}{}{}, {}, null)
+        '''.format(self.custom_entity_pk, q, entity, q, fk)
         self.cur.execute(query)
 
     def get_table_attributes(self, table):
