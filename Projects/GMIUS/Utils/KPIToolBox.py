@@ -1,5 +1,6 @@
 
 import pandas as pd
+import numpy as np
 from functools import reduce
 from collections import defaultdict, Counter
 
@@ -95,7 +96,8 @@ class ToolBox:
             return
 
         # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -1060,7 +1062,8 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        if self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]['kpi_rsult_type_fk']:
+        if not np.isnan(self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]
+                        ['kpi_result_type_fk'].iloc[0]):
             pass
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
