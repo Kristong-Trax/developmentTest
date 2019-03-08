@@ -48,10 +48,10 @@ class ToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
-                                               .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
-                                               .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        self.mpis = self.mpis[self.mpis['product_type'] != 'Irrelevant']
+        self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
+                                                    .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
+                                                    .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
         self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -96,8 +96,8 @@ class ToolBox:
             return
 
         # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -682,7 +682,7 @@ class ToolBox:
 
     def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
         mpis = self.make_mpis(kpi_line, general_filters)
-        master_mpis = self.filter_df(self.mpis.copy(), Const.IGN_STACKING)
+        master_mpis = self.filter_df(self.full_mpis.copy(), Const.IGN_STACKING)
         mm_sum = 0
         if mpis.empty:
             return {"score": None}
@@ -789,7 +789,8 @@ class ToolBox:
             result = form.format(val)
         return result
 
-    def make_mpis(self, kpi_line, general_filters, ign_stacking=1):
+    def make_mpis(self, kpi_line, general_filters, ign_stacking=1, use_full_mpis=0):
+        mpis = self.full_mpis if use_full_mpis else self.mpis
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         if ign_stacking:
