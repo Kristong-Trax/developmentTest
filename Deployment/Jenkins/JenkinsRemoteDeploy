@@ -50,7 +50,7 @@ pipeline {
                 }
                 sh 'rm -rf theGarage'
                 dir(path: 'theGarage') {
-                    checkout([$class: 'GitSCM', branches: [[name: '${COMMIT_ID}']],
+                    checkout([$class: 'GitSCM',
                               userRemoteConfigs: [[credentialsId: 'kifbb',
                               url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
                 }
