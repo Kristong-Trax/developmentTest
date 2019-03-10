@@ -23,6 +23,8 @@ if __name__ == '__main__':
     LoggerInitializer.init('GOOGLEMX calculations')
     Config.init()
     project_name = 'GOOGLEMX'
+    
+    # all sessions still in new status
     sessions = [
         '191d2dc0-8f2b-4133-8464-9535faa09766'
     ]
