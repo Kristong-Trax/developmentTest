@@ -5,7 +5,7 @@ import os
 __author__ = 'Eli_Shivi_Sam'
 
 FIXTURE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
-                                     'KR - Google Fixture Targets v.6 Feb Visits.xlsx')
+                                     'MX - Google Fixture Targets v.1.xlsx')
 
 
 class Calculations(BaseCalculationsScript):
@@ -13,3 +13,5 @@ class Calculations(BaseCalculationsScript):
         self.timer.start()
         Generator(self.data_provider, self.output, FIXTURE_TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGOOGLEMXGenerator.run_project_calculations')
+
+
