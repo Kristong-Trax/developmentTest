@@ -74,7 +74,7 @@ pipeline {
                     cd theGarage
                     echo $(pwd)
                     export PATH=$CONDA_BIN:$PATH
-                    conda env update -n garage -f ./Trax/Deployment/conda/garage_final.yml
+                    conda env update -n garage -f Trax/Deployment/conda/garage_final.yml
                     echo "# Set git user.email to " $USER_EMAIL
                     git config user.email $USER_EMAIL
                     echo "# git config -l"
@@ -87,6 +87,7 @@ pipeline {
        stage('Deploy')  {
             steps {
                   sh '''#!/bin/bash
+                    echo $(pwd)
                     export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
