@@ -63,6 +63,10 @@ pipeline {
                   git(url: 'https://bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
                 }
 
+                dir(path: 'sdk_factory') {
+                  git(url: 'https://bitbucket.org/traxtechnology/sdk_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
+                }
+
             }
         }
         stage('Build Environment') {
