@@ -10,8 +10,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Projects.DIAGEOMX.Calculations import DIAGEOMXCalculations
-from Projects.DIAGEOMX.
-    #.Tests.Data.test_data_diageomx import ProjectsSanityData
+from Projects.DIAGEOMX.Tests.Data.test_data_diageomx import ProjectsSanityData
 from Projects.DIAGEOMX.Utils.KPIToolBox import DIAGEOMXToolBox
 
 __author__ = 'yoava'
