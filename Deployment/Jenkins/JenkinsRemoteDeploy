@@ -91,6 +91,7 @@ pipeline {
                     export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
+                    source activate garage
                     python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
