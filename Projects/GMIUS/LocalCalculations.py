@@ -12,9 +12,9 @@
 #     LoggerInitializer.init('gmius calculations')
 #     Config.init()
 #     project_name = 'gmius'
-#     # ru = ResultUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.2.xlsx')
-#     # eu = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.2.xlsx')
-#     # af = AtomicFarse(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.2.xlsx')
+#     # ru = ResultUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.5.xlsx')
+#     # eu = EntityUploader(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.5.xlsx')
+#     # af = AtomicFarse(project_name, '/home/samk/dev/kpi_factory/Projects/GMIUS/Data/RBG GMI KPI Template v0.5.xlsx')
 #     # asdfas
 #
 #     'missing'
@@ -370,7 +370,7 @@
 #                 '40feb530-b166-488b-8982-be411329f72d',
 #                 'af2fec13-1467-46c5-804c-1d7187e1b142'
 #                 ]
-#     sessions = ['0fdfe0bb-c4b0-4a8b-b8c5-7a6f23e85fe2']
+#     sessions = ['4b13b376-4486-4e5a-a00f-8fa22d47fc9d']
 #
 #     # sessions = [
 #     #     '36536ea2-a6c1-4c52-b9fc-8168fc0c385d',
