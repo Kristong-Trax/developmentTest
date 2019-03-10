@@ -20,21 +20,15 @@ class TestDiageoke(TestMockingFunctionalCase):
     seeder = Seeder()
 
     def set_up(self):
+        super(TestDiageoke, self).set_up()
         self.project_name = ProjectsSanityData.project_name
         self.output = Output()
         self.mock_object('save_latest_templates', path='KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox')
         self.session_uid = '08e4dbd4-9270-4352-a68b-ca27e7853de6'
 
-    def tear_down(self):
-        pass
-
     @property
     def import_path(self):
         return 'Projects.DIAGEOKE.Utils.KPIToolBox'
-
-    @property
-    def config_file_path(self):
-        return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'k-engine-test.config')
 
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
