@@ -37,7 +37,8 @@ pipeline {
                     currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
                     env.FAILED_STEP = "${env.STAGE_NAME}"
                 }
-                // sh 'apt-get install -y dnsutils'
+                sh 'apt-get update'
+                sh 'apt-get install -y dnsutils'
                 sh 'printenv'
                 sh 'gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json'
             }
@@ -74,7 +75,7 @@ pipeline {
                     cd theGarage
                     echo $(pwd)
                     export PATH=$CONDA_BIN:$PATH
-                    conda env update -n garage -f Trax/Deployment/conda/garage_final.yml
+                    conda env update -n garage -f ./Trax/Deployment/conda/garage_final.yml
                     echo "# Set git user.email to " $USER_EMAIL
                     git config user.email $USER_EMAIL
                     echo "# git config -l"
