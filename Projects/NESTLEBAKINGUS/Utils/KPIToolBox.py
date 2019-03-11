@@ -47,7 +47,7 @@ class NESTLEBAKINGUSToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.assortment = Assortment(self.data_provider)
+        self.assortment = Assortment(self.data_provider, common=self.common)
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -63,17 +63,22 @@ class NESTLEBAKINGUSToolBox:
         if store_assortment.empty:
             return
 
-        assortment_products = store_assortment['product_fk']
-        extra_products = self.scif[~self.scif['product_fk'].isin(assortment_products)]
+        kpi_fk = store_assortment['kpi_fk_lvl3'].iloc[0]
+        assortment_fk = store_assortment['assortment_group_fk'].iloc[0]
 
-        self._save_extra_product_results(extra_products)
+        assortment_products = store_assortment['product_fk'].tolist()
+        extra_products = self.scif[(~self.scif['product_fk'].isin(assortment_products)) &
+                                   (self.scif['facings'] > 0) &
+                                   (~self.scif['product_type'].isin(['Empty', 'Irrelevant', 'Other']))]
 
-    def _save_extra_product_results(self, extra_products):
+        self._save_extra_product_results(extra_products, kpi_fk, assortment_fk)
+
+    def _save_extra_product_results(self, extra_products, kpi_fk, assortment_fk):
         for i, row in extra_products.iterrows():
             result = 2  # for extra
-            self.common.write_to_db_result_new_tables(row['kpi_lvl_3_fk'], row['product_fk'], row['facings'], result,
-                                                      denominator_id=row['assortment_fk'])
+            self.common.write_to_db_result_new_tables(kpi_fk, row['product_fk'], result, 100,
+                                                      denominator_id=assortment_fk, denominator_result=1)
 
     def commit_results_data(self):
-        self.common.commit_results_data()
+        self.common.commit_results_data_to_new_tables()
 
