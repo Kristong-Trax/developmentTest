@@ -18,6 +18,9 @@ __author__ = 'yoava'
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
 
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'

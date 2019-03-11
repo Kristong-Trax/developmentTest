@@ -1,16 +1,13 @@
 
 from Trax.Utils.Logging.Logger import Log
-
 from Projects.PNGHK.Utils.KPIToolBox import PNGHKToolBox
-
 from KPIUtils_v2.DB.CommonV2 import Common
-
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-__author__ = 'nidhinb'
+__author__ = 'ilays'
 
 
-class Generator:
+class PNGHKGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
