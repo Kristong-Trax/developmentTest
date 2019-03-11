@@ -68,8 +68,8 @@ class CSTOREToolBox:
     def calculate_displays(self):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == Const.DISPLAY]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
-        # df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
-        df_base = self.scif[self.scif['location_type'] == 'Secondary Location']
+        df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
+        # df_base = self.scif[self.scif['location_type'] == 'Secondary Shelf']
         df_base = df_base[df_base['manufacturer_fk'] == self.manufacturer_fk]
         df_base['numerator_result'], df_base['result'] = 1, 1
         if not df_base.empty:
