@@ -5,7 +5,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
 
@@ -76,3 +75,15 @@ class TestDiageoke(TestMockingFunctionalCase):
         tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.get_kpi_static_data()
         self.assertIsNotNone(result)
+
+    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+    def test_main_calculation(self):
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        tool_box = DIAGEOKEToolBox(data_provider, self.output)
+        set_names = tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
+        tool_box.kpi_static_data = tool_box.get_kpi_static_data()
+        result = tool_box.main_calculation(set_names)
+        self.assertIsNone(result, "Did Not returned None")
+
+
