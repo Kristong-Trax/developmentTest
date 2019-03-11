@@ -6,6 +6,7 @@
 #
 #
 #
+#
 # if __name__ == '__main__':
 #     LoggerInitializer.init('mondelezus calculations')
 #     Config.init()
@@ -13,7 +14,7 @@
 #
 #     sessions = [
 #         '8cf2b7e2-ee78-4179-98d2-a316e7c43c1c',
-#         '66432d9e-8253-4d63-962c-4e25e2ccd9b3',
+#         # '66432d9e-8253-4d63-962c-4e25e2ccd9b3',
 #
 #                 ]
 #
