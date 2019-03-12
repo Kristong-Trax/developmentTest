@@ -12,11 +12,16 @@ from Tests.Data.TestData.test_data_biph_sanity import ProjectsSanityData
 from Projects.BIPH.Calculations import BIPHCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
 
     @property
     def import_path(self):
