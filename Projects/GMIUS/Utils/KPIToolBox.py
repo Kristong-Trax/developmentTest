@@ -98,20 +98,22 @@ class ToolBox:
                 if self.dependencies[dependent_kpi] not in dependent_results:
                     return
 
-        # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
+            # try:
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+            # except:
+            #     Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
             if not isinstance(all_kwargs, list):
                 all_kwargs = [all_kwargs]
                 for kwargs in all_kwargs:
-                    if kwargs and kwargs['score'] is not None:
-                        self.write_to_db(kpi_name, **kwargs)
-                    else:
-                        self.write_to_db(kpi_name, **{'score': 0, 'result': 0})
-                self.dependencies[kpi_name] = kwargs['result']
+                    if not kwargs or kwargs['score'] is None:
+                        kwargs = {'score': 0, 'result': 0}
+                    self.write_to_db(kpi_name, **kwargs)
+                    self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -759,19 +761,20 @@ class ToolBox:
             return {}
         count = len(scif[count_col[0]].unique())
         potential_results = self.get_results_value(kpi_line)
-        if ' ' in potential_results[len(potential_results)/2]:
-            ref_dict = {}
-            for item in potential_results:
-                for i in item.split(' '):
-                    try:
-                        int(i)
-                        ref_dict[int(i)] = item
-                        break
-                    except:
-                        pass
-            result = ref_dict[count]
-        else:
-            result = self.semi_numerical_results(count, potential_results)
+        result = self.inequality_results(count, potential_results, kpi_name)
+        # if ' ' in potential_results[len(potential_results)/2]:
+        #     ref_dict = {}
+        #     for item in potential_results:
+        #         for i in item.split(' '):
+        #             try:
+        #                 int(i)
+        #                 ref_dict[int(i)] = item
+        #                 break
+        #             except:
+        #                 pass
+        #     result = ref_dict[count]
+        # else:
+        #     result = self.semi_numerical_results(count, potential_results)
         # result_fk = self.result_values_dict[result]
         kwargs = {'numerator_result': count, 'score': 1, 'result': result,
                   'target': 0}
@@ -839,7 +842,24 @@ class ToolBox:
                 max_cap = potential_results[i-1]
         return min_cap, max_cap
 
-    def inequality_results(self, potential_results):
+    def inequality_results(self, result, potential_results, kpi, mid='-'):
+        ''' handles this sort of result list <25%, 25-50%, 50%-75%, >=75% '''
+        inequality_results = []
+        for res in potential_results:
+            if mid in res:
+                a, b = res.split()
+                inequality = '{} >= result > {}'.format(a, b)
+            else:
+                inequality = 'result {}'.format(res)
+            if '%' in inequality:
+                inequality = inequality.replace('%', '')
+                result = result * 100
+            if eval(inequality):
+                return res
+        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(res))
+
+
+
 
 
     @staticmethod
