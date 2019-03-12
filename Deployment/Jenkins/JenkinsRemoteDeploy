@@ -28,7 +28,7 @@ pipeline {
     }
     environment {
         CONDA_BIN = "/root/miniconda/bin"
-        ORIG_USER = $USER
+
     }
     stages {
         stage('Init') {
@@ -119,7 +119,7 @@ pipeline {
     post {
         always {
             script {
-                USER = $ORIG_USER
+                USER = 'ubuntu'
                 env.DEPLOY_STATUS = "$currentBuild.currentResult"
                 env.START_TIME = "$currentBuild.startTimeInMillis"
                 env.DURATION = "$currentBuild.duration"
