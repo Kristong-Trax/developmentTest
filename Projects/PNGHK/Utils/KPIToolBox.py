@@ -384,8 +384,8 @@ class PNGHKToolBox:
         elif self.kpi_excluding[Const.EXCLUDE_SKU] == Const.EXCLUDE:
             df = self.filter_in_osd(df)
 
-        # if self.kpi_excluding[Const.EXCLUDE_STOCK] == Const.EXCLUDE:
-        #     df = self.exclude_special_attribute_products(df, Const.DB_STOCK_NAME)
+        if self.kpi_excluding[Const.EXCLUDE_STOCK] == Const.EXCLUDE:
+            df = self.exclude_special_attribute_products(df, Const.DB_STOCK_NAME)
         if self.kpi_excluding[Const.EXCLUDE_IRRELEVANT] == Const.EXCLUDE:
             df = df[df['product_type'] != 'Irrelevant']
         if self.kpi_excluding[Const.EXCLUDE_OTHER] == Const.EXCLUDE:
@@ -405,25 +405,22 @@ class PNGHKToolBox:
         Helper to exclude smart_attribute products
         :return: filtered df without smart_attribute products
         """
-        hanger_df_group = self.match_probe_in_scene.query("name=='{}'".format(smart_attribute)).groupby('scene_fk')
-        for each_scene, probe_df in hanger_df_group:
-            for each_row in probe_df.iterrows():
-                data = each_row[1]
-                df.drop(df[
-                            (df["scene_fk"] == data.scene_fk) &
-                            (df["product_fk"] == data.product_fk) &
-                            (df["probe_match_fk"] == data.probe_match_fk) &
-                            (df["bay_number"] == data.bay_number) &
-                            (df["shelf_number"] == data.shelf_number) &
-                            (df["stacking_layer"] == data.stacking_layer)
-                            ].index, inplace=True)
+        if self.match_probe_in_scene.empty:
+            return df
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == smart_attribute]
+        if smart_attribute_df.empty:
+            return df
+        match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()
+        df = df[~df['probe_match_fk'].isin(match_product_in_probe_fks)]
         return df
 
     def get_product_special_attribute_data(self, session_uid):
         query = """
                 SELECT * FROM probedata.match_product_in_probe_state_value A
                 left join probedata.match_product_in_probe B on B.pk = A.match_product_in_probe_fk
-                left join static.match_product_in_probe_state C on C.pk = A.match_product_in_probe_state_fk;
+                left join static.match_product_in_probe_state C on C.pk = A.match_product_in_probe_state_fk
+                left join probedata.probe on probe.pk = probe_fk
+                where session_uid = '{}';
             """.format(session_uid)
 
         df = pd.read_sql_query(query, self.rds_conn.db)
