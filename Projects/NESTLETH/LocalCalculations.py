@@ -10,7 +10,8 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'nestleth'
     data_provider = KEngineDataProvider(project_name)
-    session = '340AEC9F-628A-4519-A2B5-97CCDD792F61'
+    # session = 'b8ecbac2-262e-42c6-bb3a-6cdb4a180168' #only one result
+    session = 'F6B7FF4B-1C13-423E-B64B-09F54145E7A0'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

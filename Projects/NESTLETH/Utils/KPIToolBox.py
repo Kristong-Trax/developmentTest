@@ -6,7 +6,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 import pandas as pd
 import os
 
-from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -54,9 +54,10 @@ class NESTLETHToolBox:
         This function calculates the KPI results.
         """
 
-        shelf_placement_tmpale = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..', 'Data',
-                                                            'Placement.xlsx'), sheetname='Minimum Shelf', keep_default_na=False)
-        self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_tmpale)
+        shelf_placement_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                              'Placement.xlsx'), sheetname='Minimum Shelf',
+                                                 keep_default_na=False)
+        self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
         score = 0
         return score
 
