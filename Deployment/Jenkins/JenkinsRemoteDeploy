@@ -97,6 +97,10 @@ pipeline {
                     cd ..
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
+                    echo "# Set git user.email to " $USER_EMAIL
+                    git config user.email $USER_EMAIL
+                    echo "# git config -l"
+                    git config -l
                     export GOOGLE_APPLICATION_CREDENTIALS=$(echo /root/gcloud_creds/jenkins_GCR.json)
                     python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
