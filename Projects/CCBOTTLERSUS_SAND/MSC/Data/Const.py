@@ -4,7 +4,7 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.3.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.4.xlsx')
     MSC = 'Market Street Challenge'
 
     # sheets
@@ -46,11 +46,16 @@ class Const(object):
     DENOMINATOR_TYPE = 'denominator_type'
     DENOMINATOR_VALUE = 'denominator_value'
 
+    # Share of Displays
+    THRESHOLD = 'Threshold Value'
+
     # Display Presence & Location columns
     ACTIVATION_TYPE = 'activation_type'
     ACTIVATION_VALUE = 'activation_value'
 
-
+    # KPI result values
+    PASS = 'Pass'
+    FAIL = 'Fail'
 
     NUMERIC_VALUES_TYPES = ['size']
 

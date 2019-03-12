@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -66,22 +65,16 @@ class NESTLEUSToolBox:
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.MM_TO_FEET_CONVERSION = 0.0032808399
+        self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene['stacking_layer'] == 1]
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
         kpi_set_fk = kwargs['kpi_set_fk']
-        self.calculate_facing_count_and_linear_feet(kpi_set_fk = kpi_set_fk)
+        self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
-
-
-
-
-
-
-
-    def calculate_facing_count_and_linear_feet(self, kpi_set_fk= None):
+    def calculate_facing_count_and_linear_feet(self, kpi_set_fk=None):
         kpi_name_facing_count = 'FACING_COUNT'
         kpi_name_linear_feet = 'LINEAR_FEET'
 
@@ -95,15 +88,14 @@ class NESTLEUSToolBox:
 
                 sos_filter = {'product_fk': product_fk}
 
-
                 facing_count = self.availability.calculate_availability(**sos_filter)
 
                 if facing_count > 0:
 
                     self.common.write_to_db_result(fk=kpi_fk_facing_count, numerator_id=product_fk,
-                                           numerator_result=facing_count,
-                                           denominator_id=product_fk,
-                                           result=facing_count, score=facing_count)
+                                                   numerator_result=facing_count,
+                                                   denominator_id=product_fk,
+                                                   result=facing_count, score=facing_count)
 
                     general_filter = {'category_fk': [32, 5]}
 
@@ -112,12 +104,10 @@ class NESTLEUSToolBox:
 
                     numerator_length = int(np.ceil(numerator_length * self.MM_TO_FEET_CONVERSION))
                     if numerator_length > 0:
-
                         self.common.write_to_db_result(fk=kpi_fk_linear_feet, numerator_id=product_fk,
                                                        numerator_result=numerator_length,
                                                        denominator_id=product_fk,
                                                        result=numerator_length, score=numerator_length)
-
 
     def calculate_linear_share_of_shelf_with_numerator_denominator(self, sos_filters, include_empty=EXCLUDE_EMPTY,
                                                                    **general_filters):
@@ -132,7 +122,7 @@ class NESTLEUSToolBox:
 
         numerator_width = self.calculate_share_space_length(**dict(sos_filters, **general_filters))
 
-        return  numerator_width
+        return numerator_width
 
     def calculate_share_space_length(self, **filters):
         """
@@ -143,7 +133,6 @@ class NESTLEUSToolBox:
             self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         space_length = filtered_matches['width_mm_advance'].sum()
         return space_length
-
 
     def get_filter_condition(self, df, **filters):
         """

@@ -37,7 +37,8 @@ pipeline {
                     currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
                     env.FAILED_STEP = "${env.STAGE_NAME}"
                 }
-                // sh 'apt-get install -y dnsutils'
+                sh 'apt-get update'
+                sh 'apt-get install -y dnsutils'
                 sh 'printenv'
                 sh 'gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json'
             }
@@ -49,7 +50,7 @@ pipeline {
                 }
                 sh 'rm -rf theGarage'
                 dir(path: 'theGarage') {
-                    checkout([$class: 'GitSCM', branches: [[name: '${COMMIT_ID}']],
+                    checkout([$class: 'GitSCM',
                               userRemoteConfigs: [[credentialsId: 'kifbb',
                               url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
                 }
@@ -62,6 +63,9 @@ pipeline {
                   git(url: 'https://bitbucket.org/traxtechnology/trax_ace_live.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
                 }
 
+                dir(path: 'sdk_factory') {
+                  git(url: 'https://bitbucket.org/traxtechnology/sdk_factory.git', branch: 'master', changelog: true, poll: true, credentialsId: 'kifbb')
+                }
 
             }
         }
@@ -72,6 +76,7 @@ pipeline {
                 }
                 sh '''#!/bin/bash
                     cd theGarage
+                    echo $(pwd)
                     export PATH=$CONDA_BIN:$PATH
                     conda env update -n garage -f ./Trax/Deployment/conda/garage_final.yml
                     echo "# Set git user.email to " $USER_EMAIL
@@ -87,9 +92,14 @@ pipeline {
             steps {
                   sh '''#!/bin/bash
                     export PYTHONPATH=:$PWD/theGarage:$PWD/sdk_factory:$PWD/kpi_factory
+                    cd theGarage
+                    export PATH=$CONDA_BIN:$PATH
+                    source activate garage
+                    cd ..
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
-                    # python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
+                    gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json
+                    python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
                     exit $exit_code

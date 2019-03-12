@@ -31,6 +31,17 @@ if __name__ == '__main__':
                 '50820afd-91e4-4367-af3d-f82d37d76a7c',
                 ]
 
+    # msc sessions
+    sessions = [
+        'fb150355-0844-4168-92e4-77062f37dac5',  # CR
+        'ffbb7916-42b4-4876-acae-d7128c0c1747',  # LS
+        'FE199EC1-03F9-4D59-BE74-112F76FF8EBA',
+        'ff6bcdde-35b9-4925-beee-66829d048795',  # Drug
+        'fca64a5b-b139-4c48-9e03-df5f0d5b7a9a',
+        'ffc87836-bcb6-49b5-a6a5-7ca91e954e1e',  # Value
+        'fb8ba95d-916a-4fe4-8064-c3b1e716ee85'
+    ]
+
     for session in sessions:
         print('*************************************************************************')
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))
