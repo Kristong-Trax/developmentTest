@@ -19,7 +19,6 @@ pipeline {
         }
     }
     parameters {
-        string(name: 'COMMIT_ID', trim: true)
         string(name: 'BRANCH_NAME', trim: true)
         string(name: 'SYSTEM_NAME', trim: true)
         string(name: 'PROJECT_NAME', trim: true)
@@ -102,7 +101,7 @@ pipeline {
                     python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
-                    exit $exit_code
+                    exit $exit_cod
                 '''
 
 
@@ -127,11 +126,7 @@ pipeline {
                 export PROJECT_ROOT=$PWD
                 source activate garage
                 git remote set-url origin git@bitbucket.org:traxtechnology/trax_dev_garage.git
-                python -u Trax/Deployment/Tools/Report.py -an=$SYSTEM_NAME --result=$DEPLOY_STATUS --user=$USER_EMAIL \
-                                                           --failed_step="$FAILED_STEP" --env=$ENV --url=$RUN_DISPLAY_URL \
-                                                           --commit=$COMMIT_ID -ic=$IS_CANARY --logfile=build-raw.txt \
-                                                           --start_time=$START_TIME --duration=$DURATION --branch=$BRANCH_NAME\
-                                                            --aws_failed=$AWS_FAILED --gcp_failed=$GCP_FAILED
+
             '''
         }
         cleanup {
