@@ -27,12 +27,17 @@ from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 # from Projects.DIAGEOPT.Calculations import DIAGEOPTCalculations as diageopt_calc
 # from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations as diageoke_calc
 # from Projects.PNGJP.Calculations import PNGJPCalculations as pngcalc
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'idanr'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
-
+    
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
+    
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
