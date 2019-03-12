@@ -68,8 +68,8 @@ class CSTOREToolBox:
     def calculate_displays(self):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == Const.DISPLAY]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
-        # df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
-        df_base = self.scif[self.scif['location_type'] == 'Secondary Location']
+        df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
+        # df_base = self.scif[self.scif['location_type'] == 'Secondary Shelf']
         df_base = df_base[df_base['manufacturer_fk'] == self.manufacturer_fk]
         df_base['numerator_result'], df_base['result'] = 1, 1
         if not df_base.empty:
@@ -127,7 +127,8 @@ class CSTOREToolBox:
             # handled elsewhere) we will kust pretend that category_fk is the
             # level 2 assortment group.  God rest the soul of whomever needs
             # to implement additional policies.
-            lvl3_result = lvl3_result.set_index('product_fk').join(self.scif.set_index('product_fk')['category_fk']).reset_index()
+            lvl3_result = lvl3_result.set_index('product_fk').join(self.scif.set_index('product_fk')['category_fk'])\
+                .reset_index().drop_duplicates()
             lvl3_result = lvl3_result.rename(columns={'assortment_group_fk': 'ass_grp_fk',
                                                       'category_fk': 'assortment_group_fk'})
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
@@ -166,14 +167,14 @@ class CSTOREToolBox:
 
     def assortment_additional(self, lvl3_result):
         assort = set(lvl3_result['product_fk'])
-        remaining = self.scif[~self.scif['product_fk'].isin(assort)]
-        remaining = remaining[remaining['manufacturer_fk'] == self.manufacturer_fk]
-        remaining = remaining[remaining['facings'] != 0][['product_fk', 'category_fk']]
-        remaining['kpi_fk_lvl3'] = lvl3_result['kpi_fk_lvl3'].values[0]
-        remaining['in_store'] = self.results_values['Additional']
-        remaining['target'] = 0
-        remaining = remaining.rename(columns={'category_fk': 'assortment_group_fk'})
-        return remaining
+        additional_sku_df = self.scif[~self.scif['product_fk'].isin(assort)]
+        additional_sku_df = additional_sku_df[additional_sku_df['manufacturer_fk'] == self.manufacturer_fk]
+        additional_sku_df = additional_sku_df[additional_sku_df['facings'] != 0][['product_fk', 'category_fk']]
+        additional_sku_df['kpi_fk_lvl3'] = lvl3_result['kpi_fk_lvl3'].values[0]
+        additional_sku_df['in_store'] = self.results_values['Additional']
+        additional_sku_df['target'] = 0
+        additional_sku_df = additional_sku_df.rename(columns={'category_fk': 'assortment_group_fk'})
+        return additional_sku_df
 
     def safe_divide(self, num, den):
         res = num
