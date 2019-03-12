@@ -98,7 +98,7 @@ pipeline {
                     cd ..
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
-                    gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json
+                    export GOOGLE_APPLICATION_CREDENTIALS=$(echo /root/gcloud_creds/jenkins_GCR.json)
                     python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
