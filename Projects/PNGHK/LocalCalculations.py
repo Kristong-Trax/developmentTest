@@ -13,6 +13,7 @@ if __name__ == '__main__':
     project_name = 'pnghk'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
+        '4f43c5ec-c6c9-4139-ac19-55334d17be74',
         '41a4abd4-0ee7-490a-868b-9043f162d252',
         '8e687c04-ac58-47a4-8000-bd8afd9382d0',
         # '6dc13c96-5943-42f8-ad26-48f9e5617f0f',
