@@ -136,7 +136,6 @@ class DIAGEOITToolBox:
 
         # commiting to new tables
         self.commonV2.commit_results_data()
-        return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
