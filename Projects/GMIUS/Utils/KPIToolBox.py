@@ -97,8 +97,9 @@ class ToolBox:
             for dependent_kpi in dependent_kpis:
                 if self.dependencies[dependent_kpi] not in dependent_results:
                     return
-
-        if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        print(kpi_name)
+        if kpi_type:
+        # if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
@@ -748,7 +749,7 @@ class ToolBox:
         kwargs = {'numerator_result': result, 'score': 1, 'result': result}
         return kwargs
 
-    def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters, min=0):
+    def base_count(self, kpi_name, kpi_line, relevant_scif, general_filters, min=0):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         count_col = self.read_cell_from_line(kpi_line, 'count_attribute')
@@ -760,29 +761,23 @@ class ToolBox:
         if scif.empty:
             return {}
         count = len(scif[count_col[0]].unique())
+        return count
+
+    def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
-        result = self.inequality_results(count, potential_results, kpi_name)
-        # if ' ' in potential_results[len(potential_results)/2]:
-        #     ref_dict = {}
-        #     for item in potential_results:
-        #         for i in item.split(' '):
-        #             try:
-        #                 int(i)
-        #                 ref_dict[int(i)] = item
-        #                 break
-        #             except:
-        #                 pass
-        #     result = ref_dict[count]
-        # else:
-        #     result = self.semi_numerical_results(count, potential_results)
-        # result_fk = self.result_values_dict[result]
+        # result = self.inequality_results(count, potential_results, kpi_name)
+        result = self.semi_numerical_results(count, potential_results)
         kwargs = {'numerator_result': count, 'score': 1, 'result': result,
                   'target': 0}
         return kwargs
 
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
-        self.calculate_count_of(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
+        count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
+        kwargs = {'numerator_result': count, 'score': 1, 'result': count,
+                  'target': 0}
+        return kwargs
 
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
