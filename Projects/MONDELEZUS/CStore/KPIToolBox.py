@@ -68,8 +68,8 @@ class CSTOREToolBox:
     def calculate_displays(self):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == Const.DISPLAY]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
-        df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
-        # df_base = self.scif[self.scif['location_type'] == 'Secondary Shelf']
+        # df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
+        df_base = self.scif[self.scif['location_type'] == 'Secondary Shelf']
         df_base = df_base[df_base['manufacturer_fk'] == self.manufacturer_fk]
         df_base['numerator_result'], df_base['result'] = 1, 1
         if not df_base.empty:
@@ -127,8 +127,8 @@ class CSTOREToolBox:
             # handled elsewhere) we will kust pretend that category_fk is the
             # level 2 assortment group.  God rest the soul of whomever needs
             # to implement additional policies.
-            lvl3_result = lvl3_result.set_index('product_fk').join(self.scif.set_index('product_fk')['category_fk'])\
-                .reset_index().drop_duplicates()
+            lvl3_result = lvl3_result.set_index('product_fk').join(self.all_products.set_index('product_fk')
+                                                                   [['category_fk']]).reset_index().drop_duplicates()
             lvl3_result = lvl3_result.rename(columns={'assortment_group_fk': 'ass_grp_fk',
                                                       'category_fk': 'assortment_group_fk'})
             lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
