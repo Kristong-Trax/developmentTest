@@ -41,7 +41,6 @@ class Const(object):
                         'Displays Per SKU': 'Displays Per Brand',
                         'Displays Per Brand': 'Displays Per Category',
                         'Displays Per Category': 'Displays Per Store',
-                        'Displays Per Store': 'asdfads',
                     }
 
     RESULT_TYPE_QUERY = ''' SELECT * FROM static.kpi_result_value; '''
