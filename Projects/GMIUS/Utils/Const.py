@@ -18,6 +18,7 @@ class Const(object):
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
+    PRESENCE_WITHIN_BAY = 'Presence within Bay'
     COUNT_SHELVES = 'Count of Shelves'
     PERCENT = 'Percent'
     AGGREGATION = 'Aggregation'
@@ -79,6 +80,9 @@ class Const(object):
                  'GMI_AUDIENCE']
     TMB_VALUES = ['Top', 'Middle', 'Bottom']
     END_OF_CAT = 'END OF CATEGORY'
+    PRIV_SCIF_COLS = ['facings', 'facings_ign_stack', 'net_len_add_stack', 'gross_len_add_stack', 'net_len_split_stack',
+                      'gross_len_split_stack', 'net_len_ign_stack', 'gross_len_ign_stack', 'net_area_split_stack',
+                      'gross_area_split_stack', 'net_area_ign_stack', 'gross_area_ign_stack']
 
 
 

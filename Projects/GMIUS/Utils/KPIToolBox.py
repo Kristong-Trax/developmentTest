@@ -56,12 +56,13 @@ class ToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif = self.create_scif()
         self.mpip = self.create_mpip()
         self.template = {}
         self.super_cat = ''
         self.res_dict = {}
         self.dependencies = {}
+        self.dependency_lookup = {}
 
     # main functions:
     def main_calculation(self, template_path):
@@ -69,13 +70,16 @@ class ToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
+        main_template = self.template[Const.KPIS]
+
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
         self.dependency_reorder()
 
-        main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
 
@@ -96,8 +100,10 @@ class ToolBox:
         if dependent_kpis:
             for dependent_kpi in dependent_kpis:
                 if self.dependencies[dependent_kpi] not in dependent_results:
-                    return
+                    if dependent_results:
+                        return
         print(kpi_name)
+        # if kpi_type != Const.BLOCKING:
         if kpi_type:
         # if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
@@ -151,7 +157,7 @@ class ToolBox:
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
 
-        bay_max_shelf = self.filter_df(self.mpis, general_filters).set_index('bay_number')\
+        bay_max_shelf = self.filter_df(self.full_mpis, general_filters).set_index('bay_number')\
                                                                   .groupby(level=0)['shelf_number'].max().to_dict()
         mpis = self.filter_df(self.mpis, filters)
         if mpis.empty:
@@ -215,7 +221,7 @@ class ToolBox:
         section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
         cat_skus = self.filter_df(full_mpis, section_filters).shape[0]
         rel_skus = self.filter_df(mpis, section_filters).shape[0]
-        score = self.ratio_score(rel_skus, cat_skus, target=.95)
+        ratio, score = self.ratio_score(rel_skus, cat_skus, target=.95)
         if score:
             adj_bays = [section_filters['bay_number'] + 1, section_filters['bay_number'] - 1]
             adj_filters = {'bay_number': adj_bays}
@@ -229,6 +235,16 @@ class ToolBox:
         # result_fk = self.result_values_dict[result]
         kwargs = {'score': score, 'result': result, 'target': 1}
         return kwargs
+
+    def calculate_presence_within_bay(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        filters = self.get_kpi_line_filters(kpi_line, 'excluded')
+        num = self.filter_df(relevant_scif, filters, exclude=1).shape[0]
+        den = relevant_scif.shape[0]
+        ratio = num/float(den) * 100 if den else 0
+        potential_results = self.get_results_value(kpi_line)
+        result = self.inequality_results(ratio, potential_results, kpi_name)
+
+        return {'score': ratio, 'result': result, 'numerator_result': num, 'denominator_result': den}
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
         ''' I think this should be a scene level kpi, i will need to move it to scene_kpi_toolbox '''
@@ -727,27 +743,54 @@ class ToolBox:
         return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        mpis = self.make_mpis(kpi_line, general_filters)
+        mpis = self.filter_df(self.full_mpis, general_filters)
         num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
         potential_results = self.get_results_value(kpi_line)
-        result = self.semi_numerical_results(self, num_shelves, potential_results, form='{} Shelves')
+        result = self.semi_numerical_results(num_shelves, potential_results, form='{} Shelves')
         # result_fk = self.result_values_dict[result]
         kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
-    def calculate_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # filters = self.get_kpi_line_filters(kpi_line)
         filters = {}
         filters.update(general_filters)
         mpip = self.filter_df(self.mpip, filters)
-        orients = mpip['image_direction'].unique()
+        orients = [x for x in mpip['image_direction'].unique() if x is not None]
         result = 'Mix of Orientation'
         if len(orients) == 1:
-            result = 'ALL Cans stocked on {}'.format(orients[0])
-        # result_fk = self.result_values_dict[result]
+            orient = orients[0].lower()
+            if self.is_in_string(['front', 'back'], orient):
+                result = 'ALL Cans stocked on end'
+            else:
+                result = 'ALL Cans stocked on side'
+        base_ft = self.dependencies[self.dependency_lookup[kpi_name]]
+        num = [x for x in base_ft.split(' ') if self.is_int(x)][-1]
+        potential_results = self.get_results_value(kpi_line)
+        min_ft = min({int(x.split(' ')[0]) for x in potential_results})
+        num = min_ft if num < min_ft else num
+        base = '{} FT SET'.format(num)
+        result = '{} - {}'.format(base, result)
         kwargs = {'numerator_result': result, 'score': 1, 'result': result}
         return kwargs
+
+    @staticmethod
+    def is_int(x):
+        try:
+            int(x)
+            return True
+        except:
+            return False
+
+    @staticmethod
+    def is_in_string(substrings, string):
+        ret = False
+        for substring in substrings:
+            if substring in string:
+                ret = True
+                break
+        return ret
 
     def base_count(self, kpi_name, kpi_line, relevant_scif, general_filters, min=0):
         filters = self.get_kpi_line_filters(kpi_line)
@@ -768,17 +811,22 @@ class ToolBox:
         potential_results = self.get_results_value(kpi_line)
         # result = self.inequality_results(count, potential_results, kpi_name)
         result = self.semi_numerical_results(count, potential_results)
-        kwargs = {'numerator_result': count, 'score': 1, 'result': result,
-                  'target': 0}
+        kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0}
         return kwargs
 
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
-        kwargs = {'numerator_result': count, 'score': 1, 'result': count,
-                  'target': 0}
+        kwargs = {'numerator_result': count, 'score': 1, 'result': count, 'target': 0}
         return kwargs
 
+    def calculate_sos_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        ratio, num, den = self.sos_with_num_and_dem(kpi_line, relevant_scif, general_filters, 'facings_ign_stack')
+        if ratio is not None:
+            potential_results = self.get_results_value(kpi_line)
+            result = self.inequality_results(ratio, potential_results, kpi_name)
+        kwargs = {'numerator_result': num, 'score': ratio, 'result': result, 'denominator_result': den, 'target': 0}
+        return kwargs
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
@@ -835,23 +883,26 @@ class ToolBox:
                 min_cap = int(res)
             elif prev is True and is_int is False:
                 max_cap = potential_results[i-1]
-        return min_cap, max_cap
+        return int(min_cap), int(max_cap)
 
     def inequality_results(self, result, potential_results, kpi, mid='-'):
-        ''' handles this sort of result list <25%, 25-50%, 50%-75%, >=75% '''
+        '''
+        handles this sort of result list <25%, 25-50%, 50%-75%, >=75%
+        result should be in percentage form, not decimal. eg 75 not .75
+        '''
         inequality_results = []
         for res in potential_results:
             if mid in res:
-                a, b = res.split()
-                inequality = '{} >= result > {}'.format(a, b)
+                a, b = res.split(mid)
+                inequality = '{} <= result < {}'.format(a, b)
             else:
                 inequality = 'result {}'.format(res)
             if '%' in inequality:
                 inequality = inequality.replace('%', '')
-                result = result * 100
+                result = result
             if eval(inequality):
                 return res
-        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(res))
+        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(res, potential_results, kpi))
 
 
 
@@ -949,23 +1000,14 @@ class ToolBox:
             ret = text_str.split(delimiter)
         return ret
 
-    @staticmethod
-    def sos_with_num_and_dem(kpi_line, num_scif, den_scif, facings_field):
-
-        try:
-            Validation.is_empty_df(den_scif)
-            Validation.df_columns_equality(den_scif, num_scif)
-            Validation.is_subset(den_scif, num_scif)
-        except Exception, e:
-            msg = "Data verification failed: {}.".format(e)
-            return None, None, None
-
+    def sos_with_num_and_dem(self, kpi_line, relevant_scif, general_filters, facings_field):
+        num_filters = self.get_kpi_line_filters(kpi_line, name='numerator')
+        den_filters = self.get_kpi_line_filters(kpi_line, name='denominator')
+        num_filters.update(general_filters)
+        den_filters.update(general_filters)
+        num_scif = self.filter_df(relevant_scif, num_filters)
+        den_scif = self.filter_df(relevant_scif, den_filters)
         den = den_scif[facings_field].sum()
-        try:
-            Validation.is_empty_df(num_scif)
-        except Exception as e:
-            return (0, 0, den)
-
         num = num_scif[facings_field].sum()
         if den:
             ratio = round((num / float(den))*100, 2)
@@ -1043,6 +1085,10 @@ class ToolBox:
             return self.calculate_orientation
         elif kpi_type == Const.PRESENCE:
             return self.calculate_presence
+        elif kpi_type == Const.PRESENCE_WITHIN_BAY:
+            return self.calculate_presence_within_bay
+        elif kpi_type == Const.PERCENT:
+            return self.calculate_sos_percent
         else:
             Log.warning("The value '{}' in column sheet in the template is not recognized".format(kpi_type))
             return None
@@ -1056,6 +1102,15 @@ class ToolBox:
         df = df[(df['unknown'] != 'Y') & (df['not_final'] != 'Y')].set_index('Name')
         params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
+
+    def create_scif(self):
+        scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        priv = scif[scif['Private Label'] == 'Y']
+        scif = scif[~scif.index.isin(priv.index)]
+        priv_sum = priv.groupby('scene_id')[Const.PRIV_SCIF_COLS + ['scene_id']].sum()
+        priv.drop(Const.PRIV_SCIF_COLS, axis=1, inplace=True)
+        priv = priv.set_index('scene_id').join(priv_sum.set_index('scene_id')).reset_index()
+        z = pd.concat([scif, priv]).reset_index()[scif.columns]
 
     def create_mpip(self):
         query = '''
