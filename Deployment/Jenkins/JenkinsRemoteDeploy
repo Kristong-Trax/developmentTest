@@ -34,7 +34,7 @@ pipeline {
         stage('Init') {
             steps {
                 script {
-                    currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
+                    currentBuild.description = "[${PROJECT_NAME}] Env=${ENV} User=${USER_EMAIL}"
                     env.FAILED_STEP = "${env.STAGE_NAME}"
                 }
                 sh 'apt-get update'
