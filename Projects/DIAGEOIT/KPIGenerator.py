@@ -6,12 +6,12 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOIT_SAND.Utils.KPIToolBox import DIAGEOITToolBox, log_runtime
+from Projects.DIAGEOIT.Utils.KPIToolBox import DIAGEOITToolBox, log_runtime
 
 __author__ = 'Nimrod'
 
 
-class DIAGEOIT_SANDGenerator:
+class DIAGEOITGenerator:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
