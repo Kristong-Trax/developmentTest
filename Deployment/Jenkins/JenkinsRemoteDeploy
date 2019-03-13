@@ -20,7 +20,9 @@ pipeline {
     }
     parameters {
         string(name: 'BRANCH_NAME', trim: true)
+        string(name: 'SYSTEM_NAME', trim: true)
         string(name: 'PROJECT_NAME', trim: true)
+        string(name: 'TAG', trim: true)
         string(name: 'USER_EMAIL', trim: true)
         choice(choices: ['int', 'prod'], name: 'ENV')
     }
@@ -49,7 +51,7 @@ pipeline {
                 sh 'rm -rf theGarage'
                 dir(path: 'theGarage') {
                     checkout([$class: 'GitSCM',
-                              userRemoteConfigs: [[credentialsId: 'kifbb',
+                              userRemoteConfigs: [[credentialsId: 'kifbb', branch: 'master'
                               url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
                 }
 
