@@ -31,21 +31,61 @@ class TestDiageotw(TestMockingFunctionalCase):
 
     @seeder.seed(["diageotw_seed"], ProjectsSanityData())
     def test_get_kpi_static_data_return_type(self):
+        """
+        test the return value of "get_kpi_static_data"
+        return error massage if its not 'pd.DataFrame' type
+        """
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
         tool_box = DIAGEOTWToolBox(data_provider, self.output)
         result = tool_box.get_kpi_static_data()
-        self.assertIsNotNone(result)
         expected_result = pd.DataFrame
         self.assertIsInstance(result, expected_result)
 
     @seeder.seed(["diageotw_seed"], ProjectsSanityData())
     def test_get_match_display_return_type(self):
+        """
+        test the return value of "get_kpi_static_data"
+        return error massage if its not 'pd.DataFrame' type
+        """
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
         tool_box = DIAGEOTWToolBox(data_provider, self.output)
         result = tool_box.get_kpi_static_data()
-        self.assertIsNotNone(result)
         expected_result = pd.DataFrame
         self.assertIsInstance(result, expected_result)
 
+# _get_direction_for_relative_position(self, value)
+    @seeder.seed(["diageotw_seed"], ProjectsSanityData())
+    def test_get_direction_for_relative_position_input(self):
+        """
+        compere different types of inputs with expected result
+        """
+        data_provider = KEngineDataProvider(self.project_name)
+        data_provider.load_session_data(self.session_uid)
+        tool_box = DIAGEOTWToolBox(data_provider, self.output)
+
+        value = -8 # negative number
+        expected_result = 0
+        result = tool_box._get_direction_for_relative_position(value)
+        self.assertEqual(result, expected_result)
+
+        value = 123  # valid number
+        expected_result = 123
+        result = tool_box._get_direction_for_relative_position(value)
+        self.assertEqual(result, expected_result)
+
+        value = 'General'  # valide string
+        expected_result = 1000
+        result = tool_box._get_direction_for_relative_position(value)
+        self.assertEqual(result, expected_result)
+
+        value = 'str'  # invalide string
+        expected_result = 0
+        result = tool_box._get_direction_for_relative_position(value)
+        self.assertEqual(result, expected_result)
+
+        value = '123'  # valid string representing a number
+        expected_result = 123
+        result = tool_box._get_direction_for_relative_position(value)
+        self.assertEqual(result, expected_result)
