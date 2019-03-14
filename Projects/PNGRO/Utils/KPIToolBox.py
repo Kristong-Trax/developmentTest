@@ -778,13 +778,10 @@ class PNGRO_PRODToolBox:
         else:
             display_data = self.match_display_in_scene[self.match_display_in_scene['display_name'] == display_name]
             if not display_data.empty:
-                print 'display size from db: ', display_data['size'].values[0]
                 weight = float(display_data['size'].values[0]) if not np.isnan(display_data['size'].values[0]) else 1.0
             else:
                 weight = 1.0
         return weight
-        # return float(
-        #     self.display_data[self.display_data[self.DISPLAYS] == display_name][self.WEIGHT].values[0])
 
     def get_kpi_fk_by_kpi_name(self, kpi_name):
         assert isinstance(kpi_name, unicode), "name is not a string: %r" % kpi_name
