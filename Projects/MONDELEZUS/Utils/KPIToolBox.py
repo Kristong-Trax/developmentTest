@@ -172,8 +172,9 @@ class MONDELEZUSToolBox:
                         'width_mm_advance'].sum()
 
                     shelf_values.append(tested_group_linear_value)
-                max_shelf_mm = max(shelf_values)
-                space_length = (3 * math.ceil((max_shelf_mm * self.MM_TO_FEET_CONVERSION) / 3.))
+                # max_shelf_mm = max(shelf_values)
+                total_space_length_mm = sum(shelf_values)
+                space_length = (3 * math.ceil((total_space_length_mm * self.MM_TO_FEET_CONVERSION) / 3.))
 
 
         except Exception as e:
