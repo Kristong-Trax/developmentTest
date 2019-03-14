@@ -54,7 +54,10 @@ class NESTLETHToolBox:
         """
         This function calculates the KPI results.
         """
-        #self.nestle_generator.nestle_global_assortment_function()
-        self.nestle_generator.nestle_global_shelf_placement_function()
+
+        shelf_placement_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                              'Placement.xlsx'), sheetname='Minimum Shelf',
+                                                 keep_default_na=False)
+        self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
         score = 0
         return score

@@ -17,6 +17,7 @@ from KPIUtils_v2.DB.CommonV2 import Common
 
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 from KPIUtils.GlobalProjects.NESTLE.KPIGenerator import NESTLEGenerator
+
 __author__ = 'limorc'
 
 KPI_RESULT = 'report.kpi_results'
