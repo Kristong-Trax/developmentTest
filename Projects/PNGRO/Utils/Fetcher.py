@@ -22,7 +22,7 @@ class PNGRO_PRODQueries(object):
     @staticmethod
     def get_match_display(session_uid):
         return """
-                select sdb.name, m.scene_fk, d.display_name, m.bay_number, m.rect_x, m.rect_y, d.pk
+                select sdb.name, m.scene_fk, d.display_name, m.bay_number, m.rect_x, m.rect_y, d.pk, d.size
                 from probedata.match_display_in_scene m
                 join probedata.scene s on s.pk = m.scene_fk
                 join static.display d on d.pk = m.display_fk

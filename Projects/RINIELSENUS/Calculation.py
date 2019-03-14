@@ -1,7 +1,7 @@
 # import pandas as pd
 # from Trax.Utils.Conf.Keys import DbUsers
 # from mock import patch
-# 
+#
 # from KPIUtils.DB.Common import Common
 from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
@@ -54,4 +54,3 @@ class MarsUsCalculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         MarsUsCalculations(data_provider, output).run_project_calculations()
-

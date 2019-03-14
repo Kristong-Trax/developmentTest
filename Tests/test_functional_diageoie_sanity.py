@@ -17,11 +17,16 @@ from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Tests.Data.Templates.diageoie.MPA import mpa
 from Tests.Data.Templates.diageoie.NewProducts import products
 from Tests.Data.Templates.diageoie.LocalMPA import local_mpa
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
 
     @property
     def import_path(self):

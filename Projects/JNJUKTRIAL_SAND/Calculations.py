@@ -34,6 +34,7 @@ class JNJUKTRIAL_SANDCalculations(BaseCalculationsScript):
         jnj_generator.store_auto_assortment_stateless_stateful(past_visit_num=2, in_blade=False, at_least_visits=2)
         jnj_generator.promo_calc_recovery()
         jnj_generator.eye_hand_level_sos_calculation(eye_hand_lvl_template)
+        jnj_generator.general_assortment_calculation()
         common.commit_results_data()
         jnj_generator.tool_box.commit_osa_queries()
         self.timer.stop('KPIGenerator.run_project_calculations')

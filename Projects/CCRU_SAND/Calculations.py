@@ -29,6 +29,18 @@ INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 ALLOWED_POS_SETS = (
+    'Pos 2018 - Canteen',
+    'Pos 2018 - FT',
+    'Pos 2018 - HoReCa - Bar Tavern Night Clubs',
+    'Pos 2018 - HoReCa - Coffee Tea Shops',
+    'Pos 2018 - HoReCa - Restaurant Cafe',
+    'Pos 2018 - MT - Convenience Big',
+    'Pos 2018 - MT - Convenience Small',
+    'Pos 2018 - MT - Hypermarket',
+    'Pos 2018 - MT - Supermarket',
+    'Pos 2018 - Petroleum',
+    'Pos 2018 - QSR',
+
     'PoS 2019 - FT - CAP',
     'PoS 2019 - FT NS - CAP',
     'PoS 2019 - FT NS - REG',

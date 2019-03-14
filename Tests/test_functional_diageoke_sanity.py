@@ -17,12 +17,17 @@ from Tests.Data.TestData.test_data_diageoke_sanity import ProjectsSanityData
 from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'limorc'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
-
+    
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
+    
     @property
     def import_path(self):
         return 'Trax.Apps.Services.KEngine.Handlers.SessionHandler'
@@ -56,6 +61,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     @patch('KPIUtils.DIAGEO.ToolBox.DIAGEOToolBox.download_template',
            return_value=posm)
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
+
 
     def test_diageoke_sanity(self, x, y, json, json2, json3,json4):
         project_name = ProjectsSanityData.project_name
