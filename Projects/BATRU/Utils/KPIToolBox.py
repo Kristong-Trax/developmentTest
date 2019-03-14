@@ -71,8 +71,8 @@ LEAD2BUNDLE = "lead>bundle"
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
 
-DEFAULT_GROUP_NAME = '*******GC_A_TN_Mini_Sas'
-DEFAULT_ATOMIC_NAME = '******GC_A_TN_Mini_Sas_-_Rest'
+DEFAULT_GROUP_NAME = 'GC_A_TN_Mini_Sas'
+DEFAULT_ATOMIC_NAME = 'GC_A_TN_Mini_Sas_-_Rest'
 
 
 class BATRUToolBox:
@@ -1935,7 +1935,7 @@ class BATRUToolBox:
             kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                             (self.kpi_static_data['kpi_name'] == kpi_name)]
             if kpi_data.empty:
-                Log.warning('KPI {} in set {} is not defined in the DB'.format(kpi_name, set_name))
+                Log.debug('KPI {} in set {} is not defined in the DB'.format(kpi_name, set_name))
                 return None
             kpi_fk = kpi_data['kpi_fk'].values[0]
             atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
@@ -1944,7 +1944,7 @@ class BATRUToolBox:
             data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]['kpi_fk'].values
             if not data.any():
-                Log.warning('KPI [{}] in set [{}] is not defined in the DB'.format(
+                Log.debug('KPI [{}] in set [{}] is not defined in the DB'.format(
                     kpi_name, set_name))
                 return None
         elif not model_id:
@@ -1953,7 +1953,7 @@ class BATRUToolBox:
                                         (self.kpi_static_data['atomic_kpi_name'] == atomic_name)][
                 'atomic_kpi_fk'].values
             if not data.any():
-                Log.warning('set [{}]: KPI [{}] with atomic [{}] is not defined in the DB'.format(
+                Log.debug('set [{}]: KPI [{}] with atomic [{}] is not defined in the DB'.format(
                     set_name, kpi_name, atomic_name))
                 return None
         else:
@@ -1962,7 +1962,7 @@ class BATRUToolBox:
                                         (self.kpi_static_data['atomic_kpi_name'] == atomic_name) &
                                         (self.kpi_static_data['section'] == model_id)]['atomic_kpi_fk'].values
             if not data.any():
-                Log.warning('set [{}]: KPI [{}] with atomic [{}] and model_id [{}] is not defined in the DB'.format(
+                Log.debug('set [{}]: KPI [{}] with atomic [{}] and model_id [{}] is not defined in the DB'.format(
                     set_name, kpi_name, atomic_name, model_id))
                 return None
         return data[0]
@@ -2062,35 +2062,27 @@ class BATRUToolBox:
         if level_2_only:
             kpi_fk = self.get_kpi_fk_by_names(set_name, kpi_name)
             if kpi_fk:
-                self.write_to_db_result(kpi_fk, result, self.LEVEL2,
-                                        score_2=score_2, score_3=score_3)
+                self.write_to_db_result(kpi_fk, result, self.LEVEL2, score_2=score_2, score_3=score_3)
         elif level_3_only:
-            atomic_kpi_fk = self.get_kpi_fk_by_names(
-                set_name, level2_name_for_atomic, kpi_name, model_id)
+            atomic_kpi_fk = self.get_kpi_fk_by_names(set_name, level2_name_for_atomic, kpi_name, model_id)
             if atomic_kpi_fk:
                 if score is None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3,
-                                            score_2=score_2, score_3=score_3)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score_2=score_2, score_3=score_3)
                 elif score is not None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2,
-                                            score_3=score_3)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2, score_3=score_3)
                 else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2,
-                                            score_3=score_3, threshold=threshold)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2, score_3=score_3, threshold=threshold)
         else:
-            kpi_fk, atomic_kpi_fk = self.get_kpi_fk_by_names(
-                set_name, kpi_name, include_atomic=True)
+            kpi_fk, atomic_kpi_fk = self.get_kpi_fk_by_names(set_name, kpi_name, include_atomic=True)
             self.write_to_db_result(kpi_fk, result, self.LEVEL2)
             if score is None and threshold is None:
                 self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3)
             elif score is not None and threshold is None:
                 self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score)
             else:
-                self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3,
-                                        score=score, threshold=threshold)
+                self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
 
-    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None,
-                           result_2=None):
+    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None, result_2=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
