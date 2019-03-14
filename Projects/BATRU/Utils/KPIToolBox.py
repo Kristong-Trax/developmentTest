@@ -1679,7 +1679,7 @@ class BATRUToolBox:
         # publish POSMs to API
         self.save_level1(set_name=P4_API_SET, score=None)
         for name in self.p4_posm_to_api.keys():
-            result = self.p4_posm_to_api[name]
+            result = 1 if self.p4_posm_to_api[name] else 0
             self.write_to_db_result_for_api(score=result, level=self.LEVEL3, level3_score=None,
                                             kpi_set_name=P4_API_SET,
                                             kpi_name=P4_API_SET,
