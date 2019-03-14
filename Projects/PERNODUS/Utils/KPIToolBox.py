@@ -26,7 +26,7 @@ __author__ = 'nicolaske'
 
 CATEGORIES = []
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', "Pernod_US KPI_PS v0.1.xlsx")
-
+DISPLAY_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', "Pernod_display_kpi.xlsx")
 
 class PERNODUSToolBox:
     LEVEL1 = 1
@@ -76,71 +76,86 @@ class PERNODUSToolBox:
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        self.display_template = {}
 
     def main_calculation(self, *args, **kwargs):
 
         # Base Measurement
-        for i, row in self.BaseMeasure_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                location = row['Store Location']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        # for i, row in self.BaseMeasure_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         location = row['Store Location']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         # # Anchor
-        for i, row in self.Anchor_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-
-                self.calculate_anchor(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        # for i, row in self.Anchor_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #
+        #         self.calculate_anchor(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         # #Presence
-        self.calculate_presence()
+        # self.calculate_presence()
 
         # #Blocking
-        for i, row in self.Blocking_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_blocking(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        # for i, row in self.Blocking_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_blocking(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         # #Eye Level
-        for i, row in self.Eye_Level_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_eye_level(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
+        # for i, row in self.Eye_Level_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_eye_level(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
 
         # Adjacency
-        for i, row in self.Adjaceny_template.iterrows():
+        # for i, row in self.Adjaceny_template.iterrows():
+        #     try:
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         kpi_name = row['KPI']
+        #         self.adjacency(kpi_set_fk, kpi_name)
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+
+        # self.Calculate_linear_sos()
+
+
+        #Count of Displays
+        for i, row in self.display_template.iterrows():
             try:
                 kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
                 kpi_name = row['KPI']
+                if(kpi_name == Const.Count_of_display):
+                    self.Calculate_count_of_display()
                 self.adjacency(kpi_set_fk, kpi_name)
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
-        self.Calculate_linear_sos()
 
 
         self.common.commit_results_data()
@@ -151,6 +166,9 @@ class PERNODUSToolBox:
 
         for sheet in Const.SHEETS_MAIN:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet,
+                                                  keep_default_na=False)
+
+        self.display_template['displays'] = pd.read_excel(DISPLAY_TEMPLATE_PATH, sheetname='displays',
                                                   keep_default_na=False)
 
     def calculate_blocking(self, kpi_set_fk, kpi_name):
@@ -204,7 +222,6 @@ class PERNODUSToolBox:
                 self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=product_fk, numerator_result=numerator_length,
                                            denominator_id=product_fk,
                                            result=numerator_length, score=numerator_length)
-
 
     def calculate_presence(self):
         """
@@ -563,6 +580,35 @@ class PERNODUSToolBox:
         result = set(filters.values()[0]) < set(eye_level_assortment)
 
         return result
+
+    def Calculate_count_of_display(self, kpi_set_fk, kpi_name):
+        template = self.Eye_Level_template.loc[self.Eye_Level_template['KPI'] == kpi_name]
+        pass
+
+
+    def Calculate_sos_of_display(self):
+        pass
+
+    def Calculate_share_of_display(self):
+        pass
+
+    def Calculate_brands_on_display(self):
+        pass
+
+    def Calculate_solo_shared_display(self):
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
 
     def kpi_name_builder(self, kpi_name, **filters):
         """

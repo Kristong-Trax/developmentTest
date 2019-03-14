@@ -26,3 +26,12 @@ class Const(object):
     PARAM_VALUES = "value"
     list_value = "list"
     PRODUCT_ATTRIBUTE = "Product Att"
+
+
+
+    #DISPLAY KPIS
+    Count_of_display = 'COUNT_OF_DISPLAY'
+    Brand_on_display = 'BRANDS_ON_DISPLAY'
+    SOS_on_display = 'SOS_ON_DISPLAY'
+    Share_of_display = 'SHARE_OF_DISPLAY'
+    Solo_Shared_display = 'SOLO_SHARED'
