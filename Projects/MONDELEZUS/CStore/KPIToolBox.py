@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -68,8 +69,7 @@ class CSTOREToolBox:
     def calculate_displays(self):
         relevant_kpis = self.kpis[self.kpis[Const.KPI_FAMILY] == Const.DISPLAY]
         relevant_kpis['num_types'] = self.name_to_col_name(relevant_kpis[Const.NUMERATOR])
-        # df_base = self.scif[self.scif['template_name'].str.contains('Secondary Location')]
-        df_base = self.scif[self.scif['location_type'] == 'Secondary Shelf']
+        df_base = self.scif[self.scif['template_name'] == 'Displays - Mondelez Brands Only']
         df_base = df_base[df_base['manufacturer_fk'] == self.manufacturer_fk]
         df_base['numerator_result'], df_base['result'] = 1, 1
         if not df_base.empty:
@@ -78,15 +78,14 @@ class CSTOREToolBox:
                 df = df_base.copy()
                 df = self.update_and_rename_df(df, kpi, parent)
                 df = self.transform_new_col(df, 'numerator_id', 'numerator_result')
+                df.drop('scene_id', axis=1, inplace=True)
+                df.drop_duplicates(inplace=True)
                 df['result'] = df['numerator_result']
-                self.update_results(df)
                 if parent.empty:
                     df['denominator_id'] = self.store_id
-                    df.drop('ident_result', axis=1, inplace=True)
-                    df.rename(columns={'ident_parent': 'ident_result'}, inplace=True)
-                    df['kpi_name'] = Const.SOS_HIERARCHY[kpi['type']]
-                    df['numerator_id'] = self.manufacturer_fk
-                    self.update_results(df)
+                    df.drop('ident_parent', axis=1, inplace=True)
+                self.update_results(df)
+
 
     def update_results(self, df):
         results = [val for key, val in df.to_dict('index').items()]
@@ -101,7 +100,7 @@ class CSTOREToolBox:
         if not parent.empty:
             df['ident_parent'] = ['{}_{}'.format(row[parent['num_types'].iloc[0]], parent['type'].iloc[0])
                                   for i, row in df.iterrows()]  #parent is a df, hence the iloc
-        df = df[['numerator_result', 'result', kpi['num_types'], 'ident_result'] + parent_col]
+        df = df[['scene_id', 'numerator_result', 'result', kpi['num_types'], 'ident_result'] + parent_col]
         df.drop_duplicates(inplace=True)
         df.rename(columns={kpi['num_types']: 'numerator_id'}, inplace=True)
         df['kpi_name'] = kpi['type']
@@ -118,39 +117,54 @@ class CSTOREToolBox:
         return self.filter_df(df, filter).groupby(filter.keys()[0])
 
     def calculate_assortment(self):
-        lvl3_result = self.assortment.calculate_lvl3_assortment()
-        if not lvl3_result.empty:
-            lvl3_result['target'] = 1
+        lvl3_results = self.assortment.calculate_lvl3_assortment()
+        if not lvl3_results.empty:
+            for kpi in lvl3_results['kpi_fk_lvl3'].unique():
+                lvl3_result = lvl3_results[lvl3_results['kpi_fk_lvl3']==kpi]
+                lvl3_result['target'] = 1
+                lvlx_result = pd.DataFrame()
+                lvl1_result = pd.DataFrame()
 
-            # For Dist, they have assortments, but want the results by category
-            # and since there is only one policy per store (barring new which is
-            # handled elsewhere) we will kust pretend that category_fk is the
-            # level 2 assortment group.  God rest the soul of whomever needs
-            # to implement additional policies.
-            lvl3_result = lvl3_result.set_index('product_fk').join(self.all_products.set_index('product_fk')
-                                                                   [['category_fk']]).reset_index().drop_duplicates()
-            lvl3_result = lvl3_result.rename(columns={'assortment_group_fk': 'ass_grp_fk',
-                                                      'category_fk': 'assortment_group_fk'})
-            lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
-            lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
-            lvl1_result['total'] = lvl2_result['total'].sum()
-            lvl1_result['passes'] = lvl2_result['passes'].sum()
-            lvl1_result['num_id'] = self.manufacturer_fk
-            lvl1_result['den_id'] = self.store_id
+                # For Dist, they have assortments, but want the results by category
+                # and since there is only one policy per store (barring new which is
+                # handled elsewhere) we will kust pretend that category_fk is the
+                # level 2 assortment group.  God rest the soul of whomever needs
+                # to implement additional policies.
+                if kpi == 4000:
+                    lvl3_result = lvl3_result.set_index('product_fk').join(self.all_products.set_index('product_fk')
+                                                                           ['category_fk']).reset_index()\
+                                                                            .drop_duplicates()
+                    lvl3_result = lvl3_result.rename(columns={'assortment_group_fk': 'ass_grp_fk',
+                                                              'category_fk': 'assortment_group_fk'})
+                    lvlx_result = self.assortment_additional(lvl3_result)
 
-            lvlx_result = self.assortment_additional(lvl3_result)
-            lvl3_result['in_store'] = lvl3_result['in_store'].apply(lambda x:
-                                                                    self.results_values[Const.RESULTS_TYPE_DICT[x]])
+                lvl2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
+                if not lvl2_result['kpi_fk_lvl1'].any():
+                    lvl3_result['assortment_group_fk'] = self.manufacturer_fk
+                    lvl2_result['assortment_group_fk'] = self.manufacturer_fk
+                    lvl2_result['assortment_super_group_fk'] = self.store_id
+                else:
+                    lvl1_result = self.assortment.calculate_lvl1_assortment(lvl2_result)
+                    lvl1_result['total'] = lvl2_result['total'].sum()
+                    lvl1_result['passes'] = lvl2_result['passes'].sum()
+                    lvl1_result['num_id'] = self.manufacturer_fk
+                    lvl1_result['den_id'] = self.store_id
 
-            self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
-                                          'target', None, 'assortment_group_fk')
-            self.parse_assortment_results(lvlx_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
-                                          'target', None, 'assortment_group_fk')
-            self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
-                                          'total', 'assortment_group_fk', 'assortment_super_group_fk')
-            self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'num_id', 'passes',
-                                          'den_id', 'total', 'assortment_super_group_fk', None)
-        Log.info('Assortment KPIs Calculated')
+                lvl3_result['in_store'] = lvl3_result['in_store'].apply(lambda x:
+                                                                        self.results_values[Const.RESULTS_TYPE_DICT[x]])
+
+                self.parse_assortment_results(lvl3_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
+                                              'target', None, 'assortment_group_fk')
+                self.parse_assortment_results(lvlx_result, 'kpi_fk_lvl3', 'product_fk', 'in_store', 'assortment_group_fk',
+                                              'target', None, 'assortment_group_fk')
+                self.parse_assortment_results(lvl2_result, 'kpi_fk_lvl2', 'assortment_group_fk', 'passes', 'assortment_fk',
+                                              'total', 'assortment_group_fk', 'assortment_super_group_fk')
+                self.parse_assortment_results(lvl1_result, 'kpi_fk_lvl1', 'num_id', 'passes',
+                                              'den_id', 'total', 'assortment_super_group_fk', None)
+                self.assortment.LVL2_HEADERS += ['passes', 'total']
+                self.assortment.LVL1_HEADERS += ['passes', 'total']
+
+            Log.info('Assortment KPIs Calculated')
 
     def parse_assortment_results(self, df, kpi_col, num_id_col, num_col, den_id_col, den_col, self_id, parent):
         for i, row in df.iterrows():
