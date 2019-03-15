@@ -123,7 +123,6 @@ class ToolBox:
                     self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        scif = self.create_special_scif()
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
             if not super_cat:
@@ -133,6 +132,7 @@ class ToolBox:
             sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
             scif = self.filter_df(relevant_scif, Const.SOS_EXCLUDE_FILTERS, exclude=1)
             scif = self.filter_df(scif, {'Super Category': super_cat})
+            scif = self.create_special_scif(scif)
             scif['count'] = Const.MM_TO_FT
             for level in levels:
                 level_col = '{}_fk'.format(level).lower()
@@ -1104,12 +1104,14 @@ class ToolBox:
         params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
 
-    def create_special_scif(self):
-        scif = self.scif.copy()
+    def create_special_scif(self, scif):
         priv = scif[scif['Private Label'] == 'Y']
         scif = scif[~scif.index.isin(priv.index)]
         priv = priv.groupby('scene_id')[Const.PRIV_SCIF_COLS + ['scene_id']].sum()
-        priv[['item_id', 'product_fk']] = Const.PRIV_LABEL_SKU, Const.PRIV_LABEL_SKU
+        priv['item_id'], priv['product_fk'] = [Const.PRIV_LABEL_SKU] * 2
+        priv['brand_fk'] = Const.PRIV_LABEL_BRAND
+        priv['manufacturer_id'] = Const.PRIV_LABEL_MAN
+        priv['product_name'], priv['manufacturer_name'], priv['brand_name'] = [Const.PRIV_LABEL_NAME] * 3
         # priv.drop(Const.PRIV_SCIF_COLS, axis=1, inplace=True)
         # priv = priv.set_index('scene_id').join(priv_sum.set_index('scene_id')).reset_index()
         return pd.concat([scif, priv]).reset_index()[scif.columns]

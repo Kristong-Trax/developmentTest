@@ -62,6 +62,8 @@ class Const(object):
 
     ''' Constants '''
     PRIV_LABEL_SKU = 106529
+    PRIV_LABEL_BRAND = 6943
+    PRIV_LABEL_MAN = 5282
     PRIV_LABEL_NAME = 'Generic Private Label'
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
