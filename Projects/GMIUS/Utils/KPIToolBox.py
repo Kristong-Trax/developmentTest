@@ -56,7 +56,7 @@ class ToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scenes = self.scene_info['scene_fk'].tolist()
-        self.scif = self.create_scif()
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.mpip = self.create_mpip()
         self.template = {}
         self.super_cat = ''
@@ -104,8 +104,8 @@ class ToolBox:
                         return
         print(kpi_name)
         # if kpi_type != Const.BLOCKING:
-        if kpi_type:
-        # if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type:
+        if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
@@ -123,6 +123,7 @@ class ToolBox:
                     self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        scif = self.create_special_scif()
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
             if not super_cat:
@@ -1103,14 +1104,15 @@ class ToolBox:
         params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
 
-    def create_scif(self):
-        scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+    def create_special_scif(self):
+        scif = self.scif.copy()
         priv = scif[scif['Private Label'] == 'Y']
         scif = scif[~scif.index.isin(priv.index)]
-        priv_sum = priv.groupby('scene_id')[Const.PRIV_SCIF_COLS + ['scene_id']].sum()
-        priv.drop(Const.PRIV_SCIF_COLS, axis=1, inplace=True)
-        priv = priv.set_index('scene_id').join(priv_sum.set_index('scene_id')).reset_index()
-        z = pd.concat([scif, priv]).reset_index()[scif.columns]
+        priv = priv.groupby('scene_id')[Const.PRIV_SCIF_COLS + ['scene_id']].sum()
+        priv[['item_id', 'product_fk']] = Const.PRIV_LABEL_SKU, Const.PRIV_LABEL_SKU
+        # priv.drop(Const.PRIV_SCIF_COLS, axis=1, inplace=True)
+        # priv = priv.set_index('scene_id').join(priv_sum.set_index('scene_id')).reset_index()
+        return pd.concat([scif, priv]).reset_index()[scif.columns]
 
     def create_mpip(self):
         query = '''

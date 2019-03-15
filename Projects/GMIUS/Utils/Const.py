@@ -61,6 +61,8 @@ class Const(object):
     RESULT_TYPE = 'Result Type'
 
     ''' Constants '''
+    PRIV_LABEL_SKU = 106529
+    PRIV_LABEL_NAME = 'Generic Private Label'
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
