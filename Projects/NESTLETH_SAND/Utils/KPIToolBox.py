@@ -2,22 +2,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
 
-from KPIUtils_v2.DB.Common import Common
+from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.GlobalProjects.NESTLE.KPIGenerator import NESTLEGenerator
-
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 __author__ = 'limorc'
 
@@ -54,10 +43,14 @@ class NESTLETHToolBox:
         """
         This function calculates the KPI results.
         """
-
         shelf_placement_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                               'Placement.xlsx'), sheetname='Minimum Shelf',
                                                  keep_default_na=False)
-        self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
-        score = 0
-        return score
+        shelf_placement_dict = self.nestle_generator.nestle_global_shelf_placement_function(shelf_placement_template)
+        self.common.save_json_to_new_tables(shelf_placement_dict)
+        self.common.commit_results_data()
+        self.nestle_generator.nestle_global_assortment_function()
+        #assortment_res_dict = self.nestle_generator.nestle_global_assortment_function()
+        # self.common.save_json_to_new_tables(assortment_res_dict)
+        return
+
