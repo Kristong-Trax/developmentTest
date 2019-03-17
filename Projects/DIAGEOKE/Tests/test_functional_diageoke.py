@@ -48,14 +48,6 @@ class TestDiageoke(TestMockingFunctionalCase):
         self._assert_kpi_results_filled()
 
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
-    def test_calculate_sos_set(self):
-        data_provider = KEngineDataProvider(self.project_name)
-        data_provider.load_session_data(self.session_uid)
-        tool_box = DIAGEOKEToolBox(data_provider, self.output)
-        result = tool_box.calculate_sos_set()
-        self.assertEqual(result, 92.86)
-
-    @seeder.seed(["diageoke_seed"], ProjectsSanityData())
     def test_get_match_display(self):
         data_provider = KEngineDataProvider(self.project_name)
         data_provider.load_session_data(self.session_uid)
