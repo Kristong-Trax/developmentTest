@@ -91,24 +91,29 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-        if dependent_result and self.dependencies[kpi_name] not in dependent_result:
-            return
+        dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
+        dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        if dependent_kpis:
+            for dependent_kpi in dependent_kpis:
+                if self.dependencies[dependent_kpi] not in dependent_results:
+                    return
 
-        # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
+            # try:
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+            # except:
+            #     Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
             if not isinstance(all_kwargs, list):
                 all_kwargs = [all_kwargs]
                 for kwargs in all_kwargs:
-                    if kwargs and kwargs['score'] is not None:
-                        self.write_to_db(kpi_name, **kwargs)
-                    else:
-                        self.write_to_db(kpi_name, **{'score': 0, 'result': 0})
-                self.dependencies[kpi_name] = kwargs['result']
+                    if not kwargs or kwargs['score'] is None:
+                        kwargs = {'score': 0, 'result': 0}
+                    self.write_to_db(kpi_name, **kwargs)
+                    self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -163,8 +168,8 @@ class ToolBox:
 
         locations = sorted(list(locations))[::-1]
         ordered_result = '-'.join(locations)
-        result_fk = self.result_values_dict[ordered_result]
-        kwargs = {'score': 1, 'result': result_fk, 'target': 0}
+        # result_fk = self.result_values_dict[ordered_result]
+        kwargs = {'score': 1, 'result': ordered_result, 'target': 0}
         return kwargs
 
     def calculate_new_integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -220,8 +225,8 @@ class ToolBox:
                 score = 0
             else:
                 result = 'Yes'
-        result_fk = self.result_values_dict[result]
-        kwargs = {'score': score, 'result': result_fk, 'target': 1}
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'score': score, 'result': result, 'target': 1}
         return kwargs
 
     def integrated_adjacency(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -285,7 +290,8 @@ class ToolBox:
             else:
                 result = Const.NO_CONNECTION
 
-            result_fk = self.result_values_dict[result]
+            # result_fk = self.result_values_dict[result]
+            result_fk = result
 
     def base_adj_graph(self, scene, kpi_line, general_filters, use_allowed=0, gmi_only=0, super_cat_only=0,
                        additional_attributes=None):
@@ -413,8 +419,8 @@ class ToolBox:
         for result in sum([x for x, y in all_results.values()], []):
             if not result and kpi_line[Const.TYPE] == Const.ANCHOR_LIST:
                 result = Const.END_OF_CAT
-            result_fk = self.result_values_dict[result]
-            ret_values.append({'denominator_id': result_fk, 'score': 1, 'result': result_fk, 'target': 0})
+            # result_fk = self.result_values_dict[result]
+            ret_values.append({'denominator_id': result, 'score': 1, 'result': result, 'target': 0})
         return ret_values
 
     def calculate_anchor(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -449,8 +455,8 @@ class ToolBox:
             else:
                 result = 'Neither Kid or ASH Anchors'
 
-            result_fk = self.result_values_dict[result]
-            kwargs = {'score': 1, 'result': result_fk, 'target': 0}
+            # result_fk = self.result_values_dict[result]
+            kwargs = {'score': 1, 'result': result, 'target': 0}
             return kwargs
 
 
@@ -508,8 +514,8 @@ class ToolBox:
                 break
 
         result = comp_dict[tuple(results_list)]
-        result_fk = self.result_values_dict[result]
-        kwargs = {'score': 1, 'result': result_fk, 'target': 0}
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'score': 1, 'result': result, 'target': 0}
         return kwargs
 
     def distribution(self, kpi_line):
@@ -564,8 +570,8 @@ class ToolBox:
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
         score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
-        result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': result_fk,
+        # result_fk = self.result_values_dict[orientation]
+        kwargs = {'numerator_id': 999, 'numerator_result': score, 'score': score, 'result': orientation,
                   'target': 1}
         return kwargs
 
@@ -584,8 +590,8 @@ class ToolBox:
             else:
                 result = [x for x in potential_results if 'distribution' in orientation.lower()][0]
 
-        result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': result_fk, 'numerator_result': score, 'score': score, 'result': result_fk,
+        # result_fk = self.result_values_dict[orientation]
+        kwargs = {'numerator_id': result, 'numerator_result': score, 'score': score, 'result': result,
                   'target': 1}
         return kwargs
 
@@ -714,8 +720,8 @@ class ToolBox:
             else:
                 result = potential_results[-1]
 
-        result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_id': result_fk, 'numerator_result': ft_sum, 'score': 1, 'result': result_fk,
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'numerator_id': result, 'numerator_result': ft_sum, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
@@ -724,8 +730,8 @@ class ToolBox:
         num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
         potential_results = self.get_results_value(kpi_line)
         result = self.semi_numerical_results(self, num_shelves, potential_results, form='{} Shelves')
-        result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result_fk,
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
@@ -738,37 +744,46 @@ class ToolBox:
         result = 'Mix of Orientation'
         if len(orients) == 1:
             result = 'ALL Cans stocked on {}'.format(orients[0])
-        result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': result_fk, 'score': 1, 'result': result_fk}
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'numerator_result': result, 'score': 1, 'result': result}
         return kwargs
 
-    def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def calculate_count_of(self, kpi_name, kpi_line, relevant_scif, general_filters, min=0):
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
-        allowed = set(self.read_cell_from_line(kpi_line, 'Allowed'))
         count_col = self.read_cell_from_line(kpi_line, 'count_attribute')
-        mpis = self.filter_df(self.mpis, filters)
-        if mpis.empty:
+        scif = self.filter_df(relevant_scif, filters)
+        scif = scif[scif['facings_ign_stack'] >= min]
+        if 'Allowed' in kpi_line.index:
+            allowed = set(self.read_cell_from_line(kpi_line, 'Allowed'))
+            scif = scif[scif[count_col].isin(allowed)]
+        if scif.empty:
             return {}
-        count = len(set(mpis[count_col[0]].unique()) - allowed)
+        count = len(scif[count_col[0]].unique())
         potential_results = self.get_results_value(kpi_line)
-        if ' ' in potential_results[len(potential_results)/2]:
-            ref_dict = {}
-            for item in potential_results:
-                for i in item.split(' '):
-                    try:
-                        int(i)
-                        ref_dict[int(i)] = item
-                        break
-                    except:
-                        pass
-            result = ref_dict[count]
-        else:
-            result = self.semi_numerical_results(count, potential_results)
-        result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': count, 'score': 1, 'result': result_fk,
+        result = self.inequality_results(count, potential_results, kpi_name)
+        # if ' ' in potential_results[len(potential_results)/2]:
+        #     ref_dict = {}
+        #     for item in potential_results:
+        #         for i in item.split(' '):
+        #             try:
+        #                 int(i)
+        #                 ref_dict[int(i)] = item
+        #                 break
+        #             except:
+        #                 pass
+        #     result = ref_dict[count]
+        # else:
+        #     result = self.semi_numerical_results(count, potential_results)
+        # result_fk = self.result_values_dict[result]
+        kwargs = {'numerator_result': count, 'score': 1, 'result': result,
                   'target': 0}
         return kwargs
+
+    def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        min = self.read_cell_from_line(kpi_line, 'Min')
+        self.calculate_count_of(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
+
 
     def graph(self, kpi_name, kpi_line, relevant_scif, general_filters):
         x = Block(self.data_provider)
@@ -826,6 +841,25 @@ class ToolBox:
             elif prev is True and is_int is False:
                 max_cap = potential_results[i-1]
         return min_cap, max_cap
+
+    def inequality_results(self, result, potential_results, kpi, mid='-'):
+        ''' handles this sort of result list <25%, 25-50%, 50%-75%, >=75% '''
+        inequality_results = []
+        for res in potential_results:
+            if mid in res:
+                a, b = res.split()
+                inequality = '{} >= result > {}'.format(a, b)
+            else:
+                inequality = 'result {}'.format(res)
+            if '%' in inequality:
+                inequality = inequality.replace('%', '')
+                result = result * 100
+            if eval(inequality):
+                return res
+        Log.error('Result "{}" not found in potential results "{}" in kpi "{}"'.format(res))
+
+
+
 
 
     @staticmethod
@@ -1008,6 +1042,8 @@ class ToolBox:
             return self.calculate_count_of_shelves
         elif kpi_type == Const.COUNT:
             return self.calculate_count_of
+        elif kpi_type == Const.SET_COUNT:
+            return self.calculate_set_count
         elif kpi_type == Const.ORIENT:
             return self.calculate_orientation
         elif kpi_type == Const.PRESENCE:
@@ -1065,7 +1101,8 @@ class ToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         if not np.isnan(self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]
                         ['kpi_result_type_fk'].iloc[0]):
-            pass
+            result = self.result_values_dict[result]
+
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
