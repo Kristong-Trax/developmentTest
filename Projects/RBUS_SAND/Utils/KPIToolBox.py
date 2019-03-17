@@ -445,7 +445,7 @@ class RBUSToolBox:
                 new_kpi_fk = self.common_new.get_kpi_fk_by_kpi_name(kpi[:4])
                 if new_kpi_fk:
                     self.common_new.write_to_db_result(
-                        fk=new_kpi_fk, numerator_id=self.get_product_alt_code(sku_name), result=score,
+                        fk=new_kpi_fk, numerator_id=sku_name, result=score,
                         denominator_id=self.store_id, identifier_parent=self.common_new.get_dictionary(kpi_fk=parent_fk),
                         should_enter=True)
 
