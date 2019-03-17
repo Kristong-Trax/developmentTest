@@ -175,6 +175,7 @@ class BATRUToolBox:
         self.state = self.get_state()
         self.p4_display_count = {}
         self.p4_posm_to_api = {}
+        self.p4_posm_to_api_products = {}
 
 # init functions
 
@@ -1693,6 +1694,8 @@ class BATRUToolBox:
         :param equipment_template: a data frame filtered by equipment
         :return: num of passed posm in group
         """
+        self.p4_posm_to_api_products = {}
+
         groups = equipment_template['Group Name'].unique().tolist()
         group_counter = 0
         for group in groups:
@@ -1702,6 +1705,12 @@ class BATRUToolBox:
             else:
                 result = 0
             group_counter = group_counter + 1 if result else group_counter
+
+        # adding POSMs to API output that are not in the template but are found in the equipment (scene)
+        for product in self.p4_posm_to_api_products.keys():
+            if self.p4_posm_to_api_products[product] == 0:
+                name = '{};{};{};{}'.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME, product)
+                self.p4_posm_to_api[name] = 1
 
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
@@ -1754,16 +1763,20 @@ class BATRUToolBox:
             result = 1 if not self.posm_in_session[self.tools.get_filter_condition(self.posm_in_session, **filters)].empty \
                 else 0
             name = '{};{};{};{}'.format(equipment_name, group_name, atomic_name, product)
-            self.p4_posm_to_api[name] = self.p4_posm_to_api[name] + result if self.p4_posm_to_api.get(name) else result
+            if result:
+                self.p4_posm_to_api[name] = 1
+                self.p4_posm_to_api_products[product] = 1
+            else:
+                self.p4_posm_to_api[name] = 0
             posm_count = posm_count + 1 if result else posm_count
 
+        # adding found POSMs that are not in the template
         filters['display_name'] = (possible_products, BATRUGENERALToolBox.EXCLUDE_FILTER)
         other_products = self.posm_in_session[self.tools.get_filter_condition(self.posm_in_session, **filters)][
             'display_name'].unique().tolist()
         for product in other_products:
-            result = 1
-            name = '{};{};{};{}'.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME, product)
-            self.p4_posm_to_api[name] = self.p4_posm_to_api[name] + result if self.p4_posm_to_api.get(name) else result
+            if self.p4_posm_to_api_products.get(product) is None:
+                self.p4_posm_to_api_products[product] = 0
 
         score = 1 if posm_count else 0
         try:

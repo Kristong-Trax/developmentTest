@@ -8,6 +8,7 @@ from Projects.BATRU.Calculations import BATRUCalculations
 if __name__ == '__main__':
     LoggerInitializer.init('BATRU calculations')
     Config.init()
+
     project_name = 'batru'
     data_provider = KEngineDataProvider(project_name)
     sessions = \
