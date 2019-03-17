@@ -34,7 +34,7 @@ class PEPSICOUKToolBox:
     LEVEL3 = 3
 
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                      'Incl_Excl_Template.xlsx')
+                                           'Inclusion_Exclusion_Template.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
     INCLUDE_EMPTY = True
     EXCLUDE_EMPTY = False
@@ -74,7 +74,7 @@ class PEPSICOUKToolBox:
         # self.kpi_external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=self.OPERATION_TYPES) #option 1
         # self.kpi_external_targets = self.ps_data.get_kpi_external_targets() # option 2
         # option 3: customize parsing of external targets table
-        # self.all_external_targets = self.get_all_kpi_external_targets()
+        self.external_targets = self.get_all_kpi_external_targets()
 
         self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()

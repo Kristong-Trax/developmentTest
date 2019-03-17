@@ -81,5 +81,5 @@ class PEPSICOUK_Queries(object):
     @staticmethod
     def get_kpi_external_targets(visit_date):
         return """SELECT * from static.kpi_external_targets 
-                  where (start_date<={} and end_date is null) or 
-                  (start_date<={} and end_date>={})""".format(visit_date, visit_date, visit_date)
+                  where (start_date<='{}' and end_date is null) or 
+                  (start_date<='{}' and end_date>='{}')""".format(visit_date, visit_date, visit_date)
