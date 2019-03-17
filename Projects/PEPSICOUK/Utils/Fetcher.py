@@ -72,3 +72,14 @@ class PEPSICOUK_Queries(object):
                     and statevalue.match_product_in_probe_fk in {};
                     """.format(tuple(probe_match_list))
         return query
+
+    @staticmethod
+    def get_custom_entities_query():
+        query = """SELECT * from static.custom_entity"""
+        return query
+
+    @staticmethod
+    def get_kpi_external_targets(visit_date):
+        return """SELECT * from static.kpi_external_targets 
+                  where (start_date<={} and end_date is null) or 
+                  (start_date<={} and end_date>={})""".format(visit_date, visit_date, visit_date)

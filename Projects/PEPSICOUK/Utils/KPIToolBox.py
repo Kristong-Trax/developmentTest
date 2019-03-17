@@ -11,6 +11,7 @@ from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
 # from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
@@ -35,6 +36,12 @@ class PEPSICOUKToolBox:
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                       'Incl_Excl_Template.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
+    INCLUDE_EMPTY = True
+    EXCLUDE_EMPTY = False
+    OPERATION_TYPES = []
+
+    SOS_CATEGORIES_LIST = ['CSN']
+    HERO_SKU_LINEAR_SPACE_SHARE = 'Hero SKU Linear Space Share'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -56,14 +63,33 @@ class PEPSICOUKToolBox:
         self.kpi_results_queries = []
 
         self.toolbox = GENERALToolBox(data_provider)
+        self.custom_entities = self.get_custom_entity_data()
         self.on_display_products = self.get_on_display_products()
         self.exclusion_template = self.get_exclusion_template_data()
-        self.set_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene)
+        self.set_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # check that scif and matches really changed for data provider
+
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.store_info = self.data_provider['store_info'] # not sure i need it
+        self.full_store_info = self.ps_data.get_ps_store_info(self.store_info) # not sure i need it
+        # self.kpi_external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=self.OPERATION_TYPES) #option 1
+        # self.kpi_external_targets = self.ps_data.get_kpi_external_targets() # option 2
+        # option 3: customize parsing of external targets table
+        # self.all_external_targets = self.get_all_kpi_external_targets()
 
         self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
 
 #------------------init functions-----------------
+    def get_all_kpi_external_targets(self):
+        query = PEPSICOUK_Queries.get_kpi_external_targets(self.visit_date)
+        external_targets = pd.read_sql_query(query, self.rds_conn.db)
+        return external_targets
+
+    def get_custom_entity_data(self):
+        query = PEPSICOUK_Queries.get_custom_entities_query()
+        custom_entity_data = pd.read_sql_query(query, self.rds_conn.db)
+        return custom_entity_data
+
     def get_on_display_products(self):
         probe_match_list = self.match_product_in_scene['probe_match_fk'].values.tolist()
         query = PEPSICOUK_Queries.on_display_products_query(probe_match_list)
@@ -183,9 +209,42 @@ class PEPSICOUKToolBox:
         pass
 
     def calculate_assortment(self):
+        self.assortment.main_assortment_calculation()
+        #try first the generic function (also look up pepsicoru)
+        # for result in self.lvl3_ass_result.itertuples():
+        #     score = result.in_store * 100
+        #     self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+        #                                                  numerator_result=result.in_store, result=score,
+        #                                                  denominator_id=result.assortment_group_fk,
+        #                                                  denominator_result=1, score=score)
+        #
+        # if not self.lvl3_ass_result.empty:
+        #     lvl2_result = self.assortment.calculate_lvl2_assortment(self.lvl3_ass_result)
+        #     for result in lvl2_result.itertuples():
+        #         denominator_res = result.total
+        #         if result.target and not np.math.isnan(result.target):
+        #             if result.group_target_date <= self.visit_date:
+        #                 denominator_res = result.target
+        #         res = np.divide(float(result.passes), float(denominator_res)) * 100
+        #         if res >= 100:
+        #             score = 100
+        #         else:
+        #             score = 0
+        #         self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+        #                                                      numerator_result=result.passes, result=res,
+        #                                                      denominator_id=result.assortment_super_group_fk,
+        #                                                      denominator_result=denominator_res, score=score)
+
+    def calculate_sos_kpis(self):
+        #logic:
+        #in kpi external targets json_key=store data
+        #in json_value: num, denom, target
+        #generic function: since kpi_fk exists in external targets table
         pass
 
     def calculate_linear_sos_hero_sku(self):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_LINEAR_SPACE_SHARE)
+        general_filters = {'category': self.SOS_CATEGORIES_LIST}
         pass
 
     def calculate_linear_sos_brand(self):
@@ -196,6 +255,16 @@ class PEPSICOUKToolBox:
 
     def calculate_linear_sos_segment(self):
         pass
+
+    def calculate_sos(self, sos_filters, **general_filters):
+        numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
+        denominator_linear = self.calculate_share_space(**general_filters)
+        return numerator_linear, denominator_linear
+
+    def calculate_share_space(self, **filters):
+        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        space_length = filtered_scif['updated_gross_length'].sum()
+        return space_length
 
     def calculate_internal_kpis(self):
         pass
