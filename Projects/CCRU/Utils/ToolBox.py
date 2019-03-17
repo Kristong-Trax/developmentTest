@@ -1896,10 +1896,10 @@ class CCRUKPIToolBox:
                 kpi_total = 0
             kpi_score = self.calculate_score(kpi_total, p)
             if p.get('KPI Weight') is None:
-                set_total_res += round(kpi_score * kpi_total_weight)
+                set_total_res += round(kpi_score) * kpi_total_weight
                 p['KPI Weight'] = kpi_total_weight
             else:
-                set_total_res += round(kpi_score * p.get('KPI Weight'))
+                set_total_res += round(kpi_score) * p.get('KPI Weight')
             # saving to DB
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
