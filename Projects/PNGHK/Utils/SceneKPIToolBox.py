@@ -21,7 +21,7 @@ class SceneToolBox:
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.kpi_results_queries = []
         self.df = pd.DataFrame()
