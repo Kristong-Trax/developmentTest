@@ -4,7 +4,6 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 from Projects.NESTLETH_SAND.Utils.KPISceneToolBox import NESTLETHSceneToolBox
 from Projects.NESTLETH_SAND.Utils.KPISceneToolBox import NESTLETHSceneToolBox
-from KPIUtils_v2.DB.CommonV2 import Common
 
 
 class SceneGenerator:
@@ -14,7 +13,6 @@ class SceneGenerator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.common = Common(data_provider)
         self.scene_tool_box = NESTLETHSceneToolBox(self.data_provider, self.output)
 
 
@@ -28,5 +26,4 @@ class SceneGenerator:
             Log.warning('Match product in scene is empty for this scene')
         else:
             self.scene_tool_box.main_function()
-            self.common.commit_results_data(result_entity='scene')
 

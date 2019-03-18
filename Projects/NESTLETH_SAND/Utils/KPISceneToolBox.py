@@ -46,4 +46,5 @@ class NESTLETHSceneToolBox:
                         "Match product in scene doesnt contain Nestle product in layer 1 ".format(self.scene_info['scene_fk'].iloc[0]))
             return 0
         self.common.save_json_to_new_tables(shelf_placement_dict)
+        self.common.commit_results_data(result_entity='scene')
         return 0
