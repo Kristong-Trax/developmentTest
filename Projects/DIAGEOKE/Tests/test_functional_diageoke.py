@@ -1,5 +1,5 @@
 import os
-
+import pandas as pd
 import MySQLdb
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
@@ -7,7 +7,6 @@ from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
-
 from Projects.DIAGEOKE.Calculations import DIAGEOKECalculations
 from Projects.DIAGEOKE.Tests.Data.test_data_diageoke import ProjectsSanityData
 from Projects.DIAGEOKE.Utils.KPIToolBox import DIAGEOKEToolBox
@@ -66,7 +65,8 @@ class TestDiageoke(TestMockingFunctionalCase):
         data_provider.load_session_data(self.session_uid)
         tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.get_match_display()
-        self.assertIsNotNone(result)
+        expected_result = pd.DataFrame
+        self.assertIsInstance(result, expected_result)
 
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
     def test_get_kpi_static_data(self):
@@ -74,7 +74,8 @@ class TestDiageoke(TestMockingFunctionalCase):
         data_provider.load_session_data(self.session_uid)
         tool_box = DIAGEOKEToolBox(data_provider, self.output)
         result = tool_box.get_kpi_static_data()
-        self.assertIsNotNone(result)
+        expected_result = pd.DataFrame
+        self.assertIsInstance(result, expected_result)
 
     @seeder.seed(["diageoke_seed"], ProjectsSanityData())
     def test_main_calculation(self):
