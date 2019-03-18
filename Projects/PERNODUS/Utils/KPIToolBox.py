@@ -20,7 +20,9 @@ from Projects.PERNODUS.Utils.ParseTemplates import parse_template
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 import KPIUtils_v2.Calculations.EyeLevelCalculations as EL
 from Projects.PERNODUS.Utils.Const import Const
-from KPIUtils_v2.Calculations.SOSCalculations import SOS
+from Trax.Algo.Calculations.Core.Utils import ToolBox as TBox
+from Trax.Algo.Calculations.Core.Utils import Validation
+from Trax.Algo.Calculations.Core.Constants import Fields as Fd
 
 __author__ = 'nicolaske'
 
@@ -33,11 +35,13 @@ class PERNODUSToolBox:
     LEVEL2 = 2
     LEVEL3 = 3
     EXCLUDE_EMPTY = True
-    INCLUDE_FILTER = 1
     DEFAULT = 'Default'
     TOP = 'Top'
     BOTTOM = 'Bottom'
     STRICT_MODE = ALL = 1000
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -68,6 +72,7 @@ class PERNODUSToolBox:
         self.Adjaceny_template = parse_template(TEMPLATE_PATH, "Adjacency")
         self.Eye_Level_template = parse_template(TEMPLATE_PATH, "Eye Level")
         self.eye_level_definition = parse_template(TEMPLATE_PATH, "Shelves")
+        self.display_template = parse_template(DISPLAY_TEMPLATE_PATH, "Kpi")
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.availability = Availability(self.data_provider)
@@ -76,7 +81,7 @@ class PERNODUSToolBox:
         self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        self.display_template = {}
+
 
     def main_calculation(self, *args, **kwargs):
 
@@ -147,28 +152,38 @@ class PERNODUSToolBox:
         #Count of Displays
         for i, row in self.display_template.iterrows():
             try:
+                kpi_name = ''
+                kpi_name = row['KPI LEVEL 2']
+
                 kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                kpi_name = row['KPI']
                 if(kpi_name == Const.Count_of_display):
-                    self.Calculate_count_of_display()
-                self.adjacency(kpi_set_fk, kpi_name)
+                    self.Calculate_count_of_display(kpi_set_fk, kpi_name, row)
+
+                elif(kpi_name == Const.Brand_on_display):
+                    self.Calculate_brands_on_display(kpi_set_fk, kpi_name, row)
+
+                elif (kpi_name == Const.SOS_on_display):
+                    self.Calculate_sos_of_display(kpi_set_fk, kpi_name, row)
+
+                elif (kpi_name == Const.Share_of_display):
+                    self.Calculate_share_of_display(kpi_set_fk, kpi_name, row)
+
+                elif (kpi_name == Const.Solo_Shared_display):
+                    self.Calculate_solo_shared_display(kpi_set_fk, kpi_name, row)
+
             except Exception as e:
                 Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
                 continue
 
-
-
         self.common.commit_results_data()
-
         return
 
     def get_templates(self):
-
         for sheet in Const.SHEETS_MAIN:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet,
                                                   keep_default_na=False)
 
-        self.display_template['displays'] = pd.read_excel(DISPLAY_TEMPLATE_PATH, sheetname='displays',
+        self.templates['displays'] = pd.read_excel(DISPLAY_TEMPLATE_PATH, sheetname='displays',
                                                   keep_default_na=False)
 
     def calculate_blocking(self, kpi_set_fk, kpi_name):
@@ -581,32 +596,203 @@ class PERNODUSToolBox:
 
         return result
 
-    def Calculate_count_of_display(self, kpi_set_fk, kpi_name):
-        template = self.Eye_Level_template.loc[self.Eye_Level_template['KPI'] == kpi_name]
+
+
+
+
+
+    def Calculate_count_of_display(self, kpi_set_fk, kpi_name, row):
+        param1 = row['Param1']
+        value1 = row['Value1']
+        param2 = row['Param2']
+        value2 = row['Value2']
+        template_type = row['template_type']
+        scene_type = row['Location']
+        minimum_facings = row['minimum_facings']
+        general_filters = {}
+        score = 0
+
+        if(param1 and param2):
+            general_filters = {param1: value1, param2: value2, template_type: scene_type, 'product_type' : ['SKU','Other']}
+        elif(param1):
+            general_filters = {param1: value1, template_type: scene_type, 'product_type' : ['SKU','Other']}
+        else:
+            general_filters = {template_type: scene_type, 'product_type' : ['SKU','Other']}
+
+        filtered_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+        group_filter = filtered_df.groupby(['scene_id', 'template_name'], as_index=False)['facings'].sum()
+        group_filter = group_filter[group_filter['facings'] >= int(float(minimum_facings))]
+        scene_count = len(group_filter)
+
+        score = scene_count
+
+        if (group_filter.empty):
+            pass
+        else:
+            template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
+            self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=template_fk, numerator_result=score,
+                                           denominator_id=None,
+                                           result=score, score=score)
+
+
+    def Calculate_sos_of_display(self, kpi_set_fk, kpi_name, row):
+        #MFR / category facing
+        param1 = row['Param1']
+        value1 = row['Value1']
+        param2 = row['Param2']
+        value2 = row['Value2']
+        minimum_facings = row['minimum_facings']
+        general_filters = {param2: value2, 'product_type': ['SKU', 'Other']}
+        score = 0
+
+        if (param1 and param2):
+            sos_filters = {param1: value1, param2: value2,
+                               'product_type': ['SKU', 'Other']}
+        elif (param1):
+            sos_filters = {param1: value1, 'product_type': ['SKU', 'Other']}
+        else:
+            sos_filters = {'product_type': ['SKU', 'Other']}
+
+
+
+
+
+        numerator_res, denominator_res = self.get_numerator_and_denominator(
+            sos_filters, **general_filters)
+
+        if numerator_res is None:
+            pass
+        else:
+            score = (round(numerator_res / denominator_res, 2) * 100)
+            # template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
+            manufacturer_fk = self.scif['manufacturer_fk'][self.scif['manufacturer_name'] == value1].iloc[0]
+            category_fk = self.scif['category_fk'][self.scif['category'] == value2].iloc[0]
+            self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=manufacturer_fk, numerator_result=numerator_res,
+                                           denominator_id=category_fk, denominator_result=denominator_res,
+                                           result=score, score=score)
+
+
+
+    def Calculate_share_of_display(self, kpi_set_fk, kpi_name, row):
+        #Number of unique / all displays that are spirit
+        param1 = row['Param1']
+        value1 = row['Value1']
+        param2 = row['Param2']
+        value2 = row['Value2']
+        minimum_facings = row['minimum_facings']
+        general_filters = {param2: value2, 'product_type': ['SKU', 'Other']}
+        score = 0
+        numerator_res = 0
+
+        if (param1 and param2):
+            sos_filters = {param1: value1, param2: value2,
+                           'product_type': ['SKU', 'Other']}
+        elif (param1):
+            sos_filters = {param1: value1, 'product_type': ['SKU', 'Other']}
+        else:
+            sos_filters = {'product_type': ['SKU', 'Other']}
+
+        manufacturer_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+        manufacturer_filtered  = manufacturer_df[['scene_id', 'manufacturer_name', 'facings']][(manufacturer_df['facings'] >= minimum_facings)
+            & (manufacturer_df['manufacturer_name'] == value1) ]
+
+
+        if manufacturer_filtered.empty:
+            numerator_res = 0
+        else:
+            numerator_res = len(manufacturer_filtered.groupby(['scene_id','manufacturer_name']).size().reset_index())
+
+
+        displays = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+
+
+
+
+        score = (round(numerator_res / denominator_res, 2) * 100)
+        # template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
+        manufacturer_fk = self.scif['manufacturer_fk'][self.scif['manufacturer_name'] == value1].iloc[0]
+        category_fk = self.scif['category_fk'][self.scif['category'] == value2].iloc[0]
+        self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=manufacturer_fk, numerator_result=numerator_res,
+                                       denominator_id=category_fk, denominator_result=denominator_res,
+                                       result=score, score=score)
+
         pass
 
+    def Calculate_brands_on_display(self, kpi_set_fk, kpi_name, row):
+        #number of brands on display
+        ##### CHECK GENERAL EXAMPLE 213005 SCENEID
 
-    def Calculate_sos_of_display(self):
-        pass
+        param1 = row['Param1']
+        value1 = row['Value1']
+        param2 = row['Param2']
+        value2 = row['Value2']
+        template_type = row['template_type']
+        scene_type = row['Location']
+        minimum_facings = row['minimum_facings']
+        general_filters = {}
+        score = 0
 
-    def Calculate_share_of_display(self):
-        pass
+        if (param1 and param2):
+            general_filters = {param1: value1, param2: value2, template_type: scene_type,
+                               'product_type': ['SKU', 'Other']}
+        elif (param1):
+            general_filters = {param1: value1, template_type: scene_type, 'product_type': ['SKU', 'Other']}
+        else:
+            general_filters = {template_type: scene_type, 'product_type': ['SKU', 'Other']}
 
-    def Calculate_brands_on_display(self):
-        pass
-
-    def Calculate_solo_shared_display(self):
-        pass
-
-
-
-
-
+        filtered_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
+        group_filter = filtered_df.groupby(['scene_id', 'brand_name']).size().to_frame('count').reset_index()
+        group_df = group_filter.groupby(['scene_id'])['count'].sum().reset_index()
 
 
 
+        if (group_filter.empty):
+            pass
+        else:
 
+            for scene_id in group_df['scene_id'].tolist():
+                display_count = group_df['count'][group_df['scene_id'] == scene_id].iloc[0]
+            #denominator_id = template_fk
+            #numerator_id = scene_id
+            #score = count of brands
 
+                template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=scene_id, numerator_result=display_count,
+                                           denominator_id=template_fk,
+                                           result=display_count, score=display_count)
+
+    def Calculate_solo_shared_display(self, kpi_set_fk, kpi_name, row):
+        threshold = .9
+        param1 = row['Param1']
+        value1 = row['Value1'].split(',')
+        param2 = row['Param2']
+        value2 = row['Value2']
+        minimum_facings = row['minimum_facings']
+
+        score = 0
+
+        for brand in value1:
+            sos_filters = {param1: brand, 'product_type': ['SKU', 'Other']}
+            general_filters = {'': value2, 'product_type': ['SKU', 'Other']}
+
+            numerator_res, denominator_res = self.get_numerator_and_denominator(
+                sos_filters, **general_filters)
+
+            if numerator_res is None:
+                pass
+            else:
+                result = (round(numerator_res / denominator_res, 2) * 100)
+                if result >= threshold:
+                    score = 1 #solo
+                else:
+                    score = 0 #shared
+
+                # template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
+                    brand_fk = self.scif['brand_fk'][self.scif['brand_name'] == value1].iloc[0]
+                sub_category_fk = self.scif['sub_category_fk'][self.scif['sub_category'] == value2].iloc[0]
+                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result=numerator_res,
+                                               denominator_id=sub_category_fk, denominator_result=denominator_res,
+                                               result=result, score=score)
 
 
 
@@ -689,3 +875,46 @@ class PERNODUSToolBox:
                        select *
                        from static_new.sub_category
                    """
+
+
+    def get_numerator_and_denominator(self, sos_filters=None, include_empty=False, **general_filters):
+
+        if include_empty == self.EXCLUDE_EMPTY and 'product_type' not in sos_filters.keys() + general_filters.keys():
+            general_filters['product_type'] = (self.EMPTY, self.EXCLUDE_FILTER)
+        pop_filter = self.get_filter_condition(self.scif, **general_filters)
+        subset_filter = self.get_filter_condition(self.scif, **sos_filters)
+        try:
+            pop = self.scif
+
+            filtered_population = pop[pop_filter]
+            if filtered_population.empty:
+                return 0, 0
+            else:
+                subset_population = filtered_population[subset_filter]
+
+                df = filtered_population
+                subset_df = subset_population
+                sum_field = Fd.FACINGS
+                try:
+                    Validation.is_empty_df(df)
+                    Validation.is_empty_df(subset_df)
+                    Validation.is_subset(df, subset_df)
+                    Validation.df_columns_equality(df, subset_df)
+                    Validation.validate_columns_exists(df, [sum_field])
+                    Validation.validate_columns_exists(subset_df, [sum_field])
+                    Validation.is_none(sum_field)
+                except Exception, e:
+                    msg = "Data verification failed: {}.".format(e)
+
+                default_value = 0
+
+                numerator = TBox.calculate_frame_column_sum(subset_df, sum_field, default_value)
+                denominator = TBox.calculate_frame_column_sum(df, sum_field, default_value)
+
+                return numerator, denominator
+
+        except Exception as e:
+
+            Log.error(e.message)
+
+        return True
