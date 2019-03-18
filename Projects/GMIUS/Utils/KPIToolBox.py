@@ -63,6 +63,7 @@ class ToolBox:
         self.res_dict = {}
         self.dependencies = {}
         self.dependency_lookup = {}
+        self.base_measure = None
 
     # main functions:
     def main_calculation(self, template_path):
@@ -73,15 +74,16 @@ class ToolBox:
 
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
-        main_template = self.template[Const.KPIS]
-
-        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
         self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
         self.dependency_reorder()
+        main_template = self.template[Const.KPIS]
+        self.dependency_lookup = main_template.set_index(Const.KPI_NAME)[Const.DEPENDENT].to_dict()
+        self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
 
         for i, main_line in main_template.iterrows():
             self.calculate_main_kpi(main_line)
+
+        # self.flag_failures()
 
 
     def calculate_main_kpi(self, main_line):
@@ -95,19 +97,23 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
-        dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-        if dependent_kpis:
-            for dependent_kpi in dependent_kpis:
-                if self.dependencies[dependent_kpi] not in dependent_results:
-                    if dependent_results:
-                        return
+
         print(kpi_name)
         # if kpi_type != Const.BLOCKING:
         # if kpi_type:
-        if kpi_type in[Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
+
+
+            dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
+            dependent_results = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+            if dependent_kpis:
+                for dependent_kpi in dependent_kpis:
+                    if self.dependencies[dependent_kpi] not in dependent_results:
+                        if dependent_results or self.dependencies[dependent_kpi] is None:
+                            return
+
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             # try:
@@ -121,6 +127,11 @@ class ToolBox:
                         kwargs = {'score': 0, 'result': 0}
                     self.write_to_db(kpi_name, **kwargs)
                     self.dependencies[kpi_name] = kwargs['result']
+
+    def flag_failures(self):
+        for kpi, val in self.dependencies.items():
+            if val is None:
+                Log.warning('Warning: KPI "{}" not run for session "{}"'.format(kpi, self.session_uid))
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -167,7 +178,8 @@ class ToolBox:
 
         for bay, shelves in grouped_mpis:
             sub_map = map[bay_max_shelf[bay]]
-            shelf_with_most = shelves.groupby('shelf_number')[shelves.columns[0]].count().sort_values().index[-1]
+            shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
+                .sort_values().index[-1]
             locations.add(sub_map[shelf_with_most])
             # for shelf in shelves:
             #     locations.add(sub_map[shelf])
@@ -239,8 +251,9 @@ class ToolBox:
 
     def calculate_presence_within_bay(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line, 'excluded')
-        num = self.filter_df(relevant_scif, filters, exclude=1).shape[0]
-        den = relevant_scif.shape[0]
+        num = self.filter_df(self.scif, general_filters)
+        num = self.filter_df(num, filters, exclude=1).shape[0]
+        den = self.filter_df(self.scif, general_filters).shape[0]
         ratio = num/float(den) * 100 if den else 0
         potential_results = self.get_results_value(kpi_line)
         result = self.inequality_results(ratio, potential_results, kpi_name)
@@ -723,6 +736,7 @@ class ToolBox:
                 if linear_mm / master_linear_mm >= .5:
                     mm_sum += linear_mm / num_shelves
         ft_sum = mm_sum / Const.MM_TO_FT
+        self.base_measure = ft_sum
         potential_results = self.get_results_value(kpi_line)
         cleaned_results = [(i, x.replace('Feet', '').replace('and', 'ft_sum').replace('>', '<').strip())
                            for i, x in enumerate(potential_results)
@@ -759,22 +773,35 @@ class ToolBox:
         filters.update(general_filters)
         mpip = self.filter_df(self.mpip, filters)
         orients = [x for x in mpip['image_direction'].unique() if x is not None]
-        result = 'Mix of Orientation'
+        result = 'Mix of orientation'
         if len(orients) == 1:
             orient = orients[0].lower()
             if self.is_in_string(['front', 'back'], orient):
-                result = 'ALL Cans stocked on end'
-            else:
                 result = 'ALL Cans stocked on side'
-        base_ft = self.dependencies[self.dependency_lookup[kpi_name]]
-        num = [x for x in base_ft.split(' ') if self.is_int(x)][-1]
+            else:
+                result = 'ALL Cans stocked on end'
+
+        # base_ft = self.dependencies[self.dependency_lookup[kpi_name]]
+        # num = [x for x in base_ft.split(' ') if self.is_int(x)][-1]
         potential_results = self.get_results_value(kpi_line)
-        min_ft = min({int(x.split(' ')[0]) for x in potential_results})
-        num = min_ft if num < min_ft else num
-        base = '{} FT SET'.format(num)
+        extracted_nums = {int(x.split(' ')[0]) for x in potential_results}
+        # num = min_ft if num < min_ft else num
+        match = self.nearest_number(self.base_measure, extracted_nums)
+        base = '{} FT SET'.format(match)
         result = '{} - {}'.format(base, result)
         kwargs = {'numerator_result': result, 'score': 1, 'result': result}
         return kwargs
+
+    @staticmethod
+    def nearest_number(num, num_list):
+        min_diff = float('inf')
+        for i in num_list:
+            diff = abs(i - num)
+            if diff < min_diff:
+                min_diff = diff
+                match = i
+        return match
+
 
     @staticmethod
     def is_int(x):
@@ -818,7 +845,14 @@ class ToolBox:
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
-        kwargs = {'numerator_result': count, 'score': 1, 'result': count, 'target': 0}
+        den = 0
+        result = count
+        if min != 0:
+            potential_results = self.get_results_value(kpi_line)
+            den = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=0)
+            ratio, score = self.ratio_score(count, den)
+            result = self.inequality_results(ratio, potential_results, kpi_name)
+        kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0, 'denominator_result': den}
         return kwargs
 
     def calculate_sos_percent(self, kpi_name, kpi_line, relevant_scif, general_filters):
