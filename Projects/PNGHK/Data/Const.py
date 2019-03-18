@@ -66,3 +66,5 @@ class Const(object):
     # database aliases
     DB_STOCK_NAME = 'stock'
     DB_HANGER_NAME = 'additional display'
+
+    OSD_KPI = 'OSD'
