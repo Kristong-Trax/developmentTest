@@ -371,12 +371,14 @@
 #                 'af2fec13-1467-46c5-804c-1d7187e1b142'
 #                 ]
 #     sessions = ['4b13b376-4486-4e5a-a00f-8fa22d47fc9d']
+#     sessions = ['04771142-03b9-4e27-a074-45a8688a187b']
+#     sessions = ['04aaad4f-3fec-4a18-b9d3-6f404d29cafa']
 #
-#     # sessions = [
-#     #     '36536ea2-a6c1-4c52-b9fc-8168fc0c385d',
-#     #     '2fe10dac-8bda-40ba-91eb-ea86016a6c6b',
-#     #     '10314089-10b2-416c-8db4-6c255f12492e',
-#     # ]
+#     sessions = [
+#         '36536ea2-a6c1-4c52-b9fc-8168fc0c385d',
+#         '2fe10dac-8bda-40ba-91eb-ea86016a6c6b',
+#         '10314089-10b2-416c-8db4-6c255f12492e',
+#     ]
 #
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)

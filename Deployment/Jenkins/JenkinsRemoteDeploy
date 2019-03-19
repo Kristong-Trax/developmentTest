@@ -19,22 +19,20 @@ pipeline {
         }
     }
     parameters {
-        string(name: 'COMMIT_ID', trim: true)
         string(name: 'BRANCH_NAME', trim: true)
-        string(name: 'SYSTEM_NAME', trim: true)
         string(name: 'PROJECT_NAME', trim: true)
-        string(name: 'TAG', trim: true)
         string(name: 'USER_EMAIL', trim: true)
         choice(choices: ['int', 'prod'], name: 'ENV')
     }
     environment {
         CONDA_BIN = "/root/miniconda/bin"
+
     }
     stages {
         stage('Init') {
             steps {
                 script {
-                    currentBuild.description = "[${SYSTEM_NAME}] Tag=${TAG} Env=${ENV} User=${USER_EMAIL}"
+                    currentBuild.description = "[${PROJECT_NAME}] Env=${ENV} User=${USER_EMAIL}"
                     env.FAILED_STEP = "${env.STAGE_NAME}"
                 }
                 sh 'apt-get update'
@@ -51,7 +49,7 @@ pipeline {
                 sh 'rm -rf theGarage'
                 dir(path: 'theGarage') {
                     checkout([$class: 'GitSCM',
-                              userRemoteConfigs: [[credentialsId: 'kifbb',
+                              userRemoteConfigs: [[credentialsId: 'kifbb', branch: 'master',
                               url: 'https://bitbucket.org/traxtechnology/trax_dev_garage.git']]])
                 }
 
@@ -98,11 +96,17 @@ pipeline {
                     cd ..
                     cd kpi_factory
                     echo " Started Deployment" $PROJECT_NAME
-                    gcloud auth activate-service-account --key-file /root/gcloud_creds/jenkins_GCR.json
+                    echo "# Set git user.email to " $USER_EMAIL
+                    git config --global user.email $USER_EMAIL
+                    git config --global user.name $USER_EMAIL
+                    export USER=$USER_EMAIL
+                    echo "# git config -l"
+                    git config -l
+                    export GOOGLE_APPLICATION_CREDENTIALS=$(echo /root/gcloud_creds/jenkins_GCR.json)
                     python Deployment/fabfile/DeployProjectCli.py --project $PROJECT_NAME -e  $ENV -am local
 
                     exit_code=$?
-                    exit $exit_code
+                    exit $exit_cod
                 '''
 
 
@@ -113,6 +117,7 @@ pipeline {
     post {
         always {
             script {
+                USER = 'ubuntu'
                 env.DEPLOY_STATUS = "$currentBuild.currentResult"
                 env.START_TIME = "$currentBuild.startTimeInMillis"
                 env.DURATION = "$currentBuild.duration"
@@ -127,11 +132,9 @@ pipeline {
                 export PROJECT_ROOT=$PWD
                 source activate garage
                 git remote set-url origin git@bitbucket.org:traxtechnology/trax_dev_garage.git
-                python -u Trax/Deployment/Tools/Report.py -an=$SYSTEM_NAME --result=$DEPLOY_STATUS --user=$USER_EMAIL \
-                                                           --failed_step="$FAILED_STEP" --env=$ENV --url=$RUN_DISPLAY_URL \
-                                                           --commit=$COMMIT_ID -ic=$IS_CANARY --logfile=build-raw.txt \
-                                                           --start_time=$START_TIME --duration=$DURATION --branch=$BRANCH_NAME\
-                                                            --aws_failed=$AWS_FAILED --gcp_failed=$GCP_FAILED
+                git config --global user.email ""
+                git config --global user.name ""
+
             '''
         }
         cleanup {

@@ -11,7 +11,7 @@ from Projects.DIAGEOIT_SAND.Utils.KPIToolBox import DIAGEOITToolBox, log_runtime
 __author__ = 'Nimrod'
 
 
-class DIAGEOITGenerator:
+class DIAGEOIT_SANDGenerator:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -36,5 +36,5 @@ class DIAGEOITGenerator:
         log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         self.tool_box.main_calculation(set_names=set_names)
-        # self.tool_box.commit_results_data()
+        self.tool_box.commit_results_data()
 
