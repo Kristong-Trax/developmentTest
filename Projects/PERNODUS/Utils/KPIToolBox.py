@@ -602,6 +602,7 @@ class PERNODUSToolBox:
 
 
     def Calculate_count_of_display(self, kpi_set_fk, kpi_name, row):
+        #count displays with facings 2 or more
         param1 = row['Param1']
         value1 = row['Value1']
         param2 = row['Param2']
