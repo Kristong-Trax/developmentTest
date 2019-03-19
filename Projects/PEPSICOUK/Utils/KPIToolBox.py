@@ -2,10 +2,11 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
+from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 import os
 import numpy as np
+import json
 
 from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -40,8 +41,10 @@ class PEPSICOUKToolBox:
     EXCLUDE_EMPTY = False
     OPERATION_TYPES = []
 
-    SOS_CATEGORIES_LIST = ['CSN']
-    HERO_SKU_LINEAR_SPACE_SHARE = 'Hero SKU Linear Space Share'
+    SOS_VS_TARGET = 'SOS vs Target'
+
+    # SOS_CATEGORIES_LIST = ['CSN']
+    # HERO_SKU_LINEAR_SPACE_SHARE = 'Hero SKU Linear Space Share'
 
     def __init__(self, data_provider, output):
         self.output = output
@@ -83,6 +86,9 @@ class PEPSICOUKToolBox:
     def get_all_kpi_external_targets(self):
         query = PEPSICOUK_Queries.get_kpi_external_targets(self.visit_date)
         external_targets = pd.read_sql_query(query, self.rds_conn.db)
+        # if not external_targets.empty:
+        #     external_targets['key_json'] = external_targets['key_json'].apply(lambda x: json.loads(x))
+        #     external_targets['data_json'] = external_targets['data_json'].apply(lambda x: json.loads(x))
         return external_targets
 
     def get_custom_entity_data(self):
@@ -202,10 +208,12 @@ class PEPSICOUKToolBox:
 
     def calculate_external_kpis(self):
         self.calculate_assortment()
-        self.calculate_linear_sos_hero_sku()
-        self.calculate_linear_sos_brand()
-        self.calculate_linear_sos_sub_brand()
-        self.calculate_linear_sos_segment()
+        self.calculate_sos_vs_target_kpis()
+
+        # self.calculate_linear_sos_hero_sku()
+        # self.calculate_linear_sos_brand()
+        # self.calculate_linear_sos_sub_brand()
+        # self.calculate_linear_sos_segment()
         pass
 
     def calculate_assortment(self):
@@ -235,16 +243,94 @@ class PEPSICOUKToolBox:
         #                                                      denominator_id=result.assortment_super_group_fk,
         #                                                      denominator_result=denominator_res, score=score)
 
-    def calculate_sos_kpis(self):
-        #logic:
+    def calculate_sos_vs_target_kpis(self):
+        sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
+
+        all_products_columns = self.all_products.columns.values.tolist()
+        sos_targets['numerator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                        args=('numerator_type', 'numerator_value',
+                                                              all_products_columns))
+        sos_targets['denominator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                          args=('denominator_type', 'denominator_value',
+                                                                all_products_columns))
+        # potentially add row with identifier parent dictionary
+        for i, row in sos_targets.iterrows():
+            general_filters = {row['denominator_type']: row['denominator_value']}
+            sos_filters = {row['numerator_type']: row['numerator_value']}
+            numerator_linear, denominator_linear = self.calculate_sos(sos_filters, **general_filters)
+            result = numerator_linear/denominator_linear if denominator_linear != 0 else 0
+            score = result/row['Target'] if row['Target'] else 0 # what should we have in else case???
+            self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
+                                           numerator_result=numerator_linear, denominator_id=row.denominator_id,
+                                           denominator_result=denominator_linear, result=result, score=score)
         #in kpi external targets json_key=store data
         #in json_value: num, denom, target
         #generic function: since kpi_fk exists in external targets table
         pass
 
+    def get_relevant_sos_vs_target_kpi_targets(self):
+        sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]
+        sos_vs_target_kpis = sos_vs_target_kpis.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk',
+                                                                        'key_json', 'data_json'])
+        relevant_targets_df = pd.DataFrame(columns=sos_vs_target_kpis.columns.values.tolist())
+        if not sos_vs_target_kpis.empty:
+            policies_df = self.unpack_external_targets_json_fields_to_df(sos_vs_target_kpis, field_name='key_json')
+            policy_columns = policies_df.columns.values.tolist()
+            del policy_columns[policy_columns.index('pk')]
+            store_dict = self.full_store_info.to_dict('records')[0]
+            for column in policy_columns:
+                store_att_value = store_dict.get(column)
+                policies_df = policies_df[policies_df[column] == store_att_value]
+            kpi_targets_pks = policies_df['pk'].values.tolist()
+            relevant_targets_df = sos_vs_target_kpis[sos_vs_target_kpis['pk'].isin(kpi_targets_pks)]
+            # relevant_targets_df = relevant_targets_df.merge(policies_df, on='pk', how='left') # see if i will need it in the code
+            data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_targets_df, 'data_json')
+            relevant_targets_df = relevant_targets_df.merge(data_json_df, on='pk', how='left')
+        return relevant_targets_df
+
+        # policies_list = []
+        # for row in sos_vs_target_kpis.itertuples():
+        #     policy = json.loads(row.key_json)
+        #     policy.update({'pk': row.pk})
+        #     policies_list.append(policy)
+        #
+        # policies_df = pd.DataFrame(policies_list)
+
+    def retrieve_relevant_item_pks(self, row, type_field_name, value_field_name, all_products_columns):
+        try:
+            if row[type_field_name] in all_products_columns:
+                item_id = self.all_products[self.all_products[row[type_field_name]] ==
+                                                                  row[value_field_name]][type_field_name].values[0]
+            else:
+                item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]]['name'].values[0]
+            # fk_field = '{}_fk'.format(row[type_field_name])
+            # name_field = row[type_field_name].replace('_name', '')
+            # if fk_field in all_products_columns:
+            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]][fk_field].values[0]
+            # elif name_field in all_products_columns:
+            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]][name_field].values[0]
+            # elif row[type_field_name].contains('product'):
+            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]]['product_fk'].values[0]
+            # else:
+            #     item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]].values[0]
+        except KeyError as e:
+            Log.error('No id found for field {}. Error: {}'.format(row[type_field_name], e))
+            item_id = None
+        return item_id
+
+    @staticmethod
+    def unpack_external_targets_json_fields_to_df(input_df, field_name):
+        data_list = []
+        for row in input_df.itertuples():
+            data_item = json.loads(row[field_name])
+            data_item.update({'pk': row.pk})
+            data_list.append(data_item)
+        output_df = pd.DataFrame(data_list)
+        return output_df
+
     def calculate_linear_sos_hero_sku(self):
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_LINEAR_SPACE_SHARE)
-        general_filters = {'category': self.SOS_CATEGORIES_LIST}
+        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_LINEAR_SPACE_SHARE)
+        # general_filters = {'category': self.SOS_CATEGORIES_LIST}
         pass
 
     def calculate_linear_sos_brand(self):
