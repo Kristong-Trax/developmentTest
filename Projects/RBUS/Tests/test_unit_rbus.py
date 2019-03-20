@@ -1,15 +1,15 @@
 from Trax.Algo.Calculations.Core.DataProvider import Output, KEngineDataProvider
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Utils.Testing.Case import TestCase
-from mock import MagicMock, mock
+from Trax.Utils.Testing.Case import TestCase, MockingTestCase
+from mock import MagicMock
 import Projects.RBUS_SAND.Tests.test_data as Data
 from Projects.RBUS_SAND.Utils.KPIToolBox import RBUSToolBox
 
 __author__ = 'yoava'
 
 
-class TestRbusSand(TestMockingFunctionalCase):
+class TestRbusSand(MockingTestCase):
 
     def setUp(self):
         Config.init()
