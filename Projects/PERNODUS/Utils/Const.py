@@ -33,6 +33,8 @@ class Const(object):
     #DISPLAY KPIS
     Count_of_display = 'COUNT_OF_DISPLAY'
     Brand_on_display = 'BRANDS_ON_DISPLAY'
-    SOS_on_display = 'SOS_ON_DISPLAY'
-    Share_of_display = 'SHARE_OF_DISPLAY'
+    SOS_on_display_manufacturer  = 'SOS_ON_DISPLAY_MANUFACTURER'
+    SOS_on_display_brand  = 'SOS_ON_DISPLAY_BRANDS'
+    Share_of_display_manufacturer = 'SHARE_OF_DISPLAY_MANUFACTURER'
+    Share_of_display_brand = 'SHARE_OF_DISPLAY_BRANDS'
     Solo_Shared_display = 'SOLO_SHARED'
