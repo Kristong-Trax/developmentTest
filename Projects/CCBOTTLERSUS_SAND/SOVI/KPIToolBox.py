@@ -13,15 +13,15 @@ from Projects.CCBOTTLERSUS_SAND.SOVI.Const import Const
 # from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
 
 
-__author__ = 'huntery'
+__author__ = 'Hunter'
 
 
 class SOVIToolBox:
 
-    def __init__(self, data_provider, output, common_db2):
+    def __init__(self, data_provider, output, common_v2):
         self.output = output
         self.data_provider = data_provider
-        self.common = common_db2
+        self.common = common_v2
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
@@ -33,26 +33,29 @@ class SOVIToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.region = self.store_info['region_name'].iloc[0]
-        self.valid_regions = ['UNITED']
+        if self.region == Const.UNITED:
+            self.manufacturer_attribute = 'United Deliver'
+            self.manufacturer_value = 'Y'
+        else:
+            self.manufacturer_attribute = 'manufacturer_fk'
+            self.manufacturer_value = Const.MANUFACTURER_FK
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.sos = SOS(self.data_provider, self.output)
         self.pseudo_pk = 0
 
     def main_calculation(self, *args, **kwargs):
         """
         This function calculates the KPI results.
         """
-        if self.region in self.valid_regions:
-            self.sanitize_scif()
-            self.calculate_entire_store_sos()
+        self.sanitize_scif()
+        self.calculate_entire_store_sos()
 
     def calculate_entire_store_sos(self):
         # general_filters = {}  # entire session/store visit
-        # sos_filters = {'United Deliver': 'Y'}
+        # sos_filters = {self.manufacturer_attribute: 'Y'}
 
         # this assumes that template groups where United does NOT have products should NOT be shown
-        united_df = self.scif[self.scif['United Deliver'] == 'Y']
-        template_group_list = united_df.template_group.unique()
+        united_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
+        template_group_list = united_df.template_group.unique().tolist()
 
         numerator_result = united_df.facings.sum()
         denominator_result = self.scif.facings.sum()
@@ -67,16 +70,17 @@ class SOVIToolBox:
                                        denominator_id=self.store_id, denominator_result=denominator_result)
 
         for template_group in template_group_list:
-            self.calculate_template_group_sos(template_group, own_pk)
+            if template_group is not None:
+                self.calculate_template_group_sos(template_group, own_pk)
 
     def calculate_template_group_sos(self, template_group, parent_pk):
         # general_filters = {}  # entire session/store visit
-        # sos_filters = {'United Deliver': 'Y',
+        # sos_filters = {self.manufacturer_attribute: self.manufacturer_value,
         #                'template_group': template_group}
 
-        template_group_df = self.scif[(self.scif['United Deliver'] == 'Y') &
+        template_group_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) &
                                       (self.scif['template_group'] == template_group)]
-        att4_list = template_group_df.att4.unique()
+        att4_list = template_group_df.att4.unique().tolist()
         template_group_id = template_group_df.template_fk.unique()[0]
 
         numerator_result = template_group_df.facings.sum()
@@ -94,19 +98,20 @@ class SOVIToolBox:
                                        identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for att4 in att4_list:
-            self.calculate_att4_sos(template_group, att4, own_pk)
+            if att4 is not None:
+                self.calculate_att4_sos(template_group, att4, own_pk)
 
     def calculate_att4_sos(self, template_group, att4, parent_pk):
         # general_filters = {}  # entire session/store visit
-        # sos_filters = {'United Deliver': 'Y',
+        # sos_filters = {self.manufacturer_attribute: 'Y',
         #                'template_group': template_group,
         #                'att4': att4
         #                }
 
-        att4_df = self.scif[(self.scif['United Deliver'] == 'Y') &
+        att4_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) &
                             (self.scif['template_group'] == template_group) &
                             (self.scif['att4'] == att4)]
-        category_list = att4_df.category.unique()
+        category_list = att4_df.category.unique().tolist()
         template_group_id = att4_df.template_fk.unique()[0]
         att4_id = Const.STILL_FK if att4 == 'Still' else Const.SSD_FK
 
@@ -125,7 +130,8 @@ class SOVIToolBox:
                                        identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for category in category_list:
-            self.calculate_category_sos(template_group, att4, category, own_pk, template_group_id)
+            if category is not None:
+                self.calculate_category_sos(template_group, att4, category, own_pk, template_group_id)
 
     def calculate_category_sos(self, template_group, att4, category, parent_pk, template_group_id):
         # general_filters = {}
@@ -142,7 +148,7 @@ class SOVIToolBox:
         manufacturer_list = category_df.manufacturer_name.unique()
 
         # we need to apply United Deliver filter to return the correct KPI result
-        category_df = category_df[(category_df['United Deliver'] == 'Y')]
+        category_df = category_df[(category_df[self.manufacturer_attribute] == self.manufacturer_value)]
 
         att4_id = Const.STILL_FK if att4 == 'Still' else Const.SSD_FK
         category_id = category_df.category_fk.unique()[0]
@@ -177,7 +183,7 @@ class SOVIToolBox:
                                     (self.scif['category'] == category) &
                                     (self.scif['manufacturer_name'] == manufacturer_name)]
 
-        brand_name_list = manufacturer_df.brand_name.unique()
+        brand_name_list = manufacturer_df.brand_name.unique().tolist()
         category_id = manufacturer_df.category_fk.unique()[0]
         manufacturer_id = manufacturer_df.manufacturer_fk.unique()[0]
 
@@ -196,7 +202,8 @@ class SOVIToolBox:
                                        identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for brand_name in brand_name_list:
-            self.calculate_brand_sos(template_group, att4, category, manufacturer_name, brand_name, own_pk)
+            if brand_name is not None:
+                self.calculate_brand_sos(template_group, att4, category, manufacturer_name, brand_name, own_pk)
 
     def calculate_brand_sos(self, template_group, att4, category, manufacturer_name, brand_name, parent_pk):
         general_filters = {
@@ -215,7 +222,7 @@ class SOVIToolBox:
                              (self.scif['brand_name'] == brand_name) &
                              (self.scif['product_type'] != 'Empty')]
 
-        product_name_list = brand_df.product_name.unique()
+        product_name_list = brand_df.product_name.unique().tolist()
         brand_id = brand_df.brand_fk.unique()[0]
         manufacturer_id = brand_df.manufacturer_fk.unique()[0]
 
@@ -235,8 +242,9 @@ class SOVIToolBox:
                                        identifier_parent=parent_pk, identifier_result=own_pk, should_enter=True)
 
         for product_name in product_name_list:
-            self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name, product_name,
-                                            own_pk)
+            if product_name is not None:
+                self.calculate_product_name_sos(template_group, att4, category, manufacturer_name, brand_name,
+                                                product_name, own_pk)
 
     def calculate_product_name_sos(self, template_group, att4, category, manufacturer_name, brand_name, product_name,
                                    parent_pk):
@@ -302,3 +310,6 @@ class SOVIToolBox:
     def commit_results(self):
         pass
         # self.common_v2.commit_results_data()
+
+    def commit_results_without_delete(self):
+        self.common.commit_results_data_without_delete_version2()
