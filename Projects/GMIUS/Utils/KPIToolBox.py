@@ -100,10 +100,10 @@ class ToolBox:
 
         print(kpi_name)
         # if kpi_type != Const.BLOCKING:
-        # if kpi_type:
+        if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -116,15 +116,15 @@ class ToolBox:
 
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
-            # try:
-            all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            # except:
-            #     Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+            try:
+               all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
+            except:
+                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
             if not isinstance(all_kwargs, list):
                 all_kwargs = [all_kwargs]
                 for kwargs in all_kwargs:
                     if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 0}
+                        kwargs = {'score': 0, 'result': 0, 'failed': 1}
                     self.write_to_db(kpi_name, **kwargs)
                     self.dependencies[kpi_name] = kwargs['result']
 
@@ -753,7 +753,7 @@ class ToolBox:
                 result = potential_results[-1]
 
         # result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_id': result, 'numerator_result': ft_sum, 'score': 1, 'result': result,
+        kwargs = {'numerator_result': ft_sum, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
@@ -789,7 +789,7 @@ class ToolBox:
         match = self.nearest_number(self.base_measure, extracted_nums)
         base = '{} FT SET'.format(match)
         result = '{} - {}'.format(base, result)
-        kwargs = {'numerator_result': result, 'score': 1, 'result': result}
+        kwargs = {'score': 1, 'result': result}
         return kwargs
 
     @staticmethod
@@ -1176,8 +1176,8 @@ class ToolBox:
         return mpip
 
 
-    def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=None,
-                    denominator_result=None, numerator_id=999, denominator_id=999):
+    def write_to_db(self, kpi_name, score=0, result=None, target=None, numerator_result=0,
+                    denominator_result=None, numerator_id=999, denominator_id=999, failed=0):
         """
         writes result in the DB
         :param kpi_name: str
@@ -1189,7 +1189,8 @@ class ToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         if not np.isnan(self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]
                         ['kpi_result_type_fk'].iloc[0]):
-            result = self.result_values_dict[result]
+            if not failed:
+                result = self.result_values_dict[result]
 
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
