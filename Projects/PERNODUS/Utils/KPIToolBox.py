@@ -779,32 +779,32 @@ class PERNODUSToolBox:
         value1 = row['Value1'].split(',')
         param2 = row['Param2']
         value2 = row['Value2']
+        template_names = row['Location'].split(',')
         minimum_facings = row['minimum_facings']
 
         score = 0
 
-        for brand in value1:
-            sos_filters = {param1: brand, 'product_type': ['SKU', 'Other']}
-            general_filters = {'': value2, 'product_type': ['SKU', 'Other']}
+        for scene_id in self.scif['scene_id'].unique().tolist():
+            for brand in value1:
+                sos_filters = {param1: brand, 'product_type': ['SKU', 'Other'], 'template_name' : template_names, 'scene_id': scene_id}
+                general_filters = {'product_type': ['SKU', 'Other'], 'template_name' : template_names, 'scene_id': scene_id}
 
-            numerator_res, denominator_res = self.get_numerator_and_denominator(
-                sos_filters, **general_filters)
+                numerator_res, denominator_res = self.get_numerator_and_denominator(
+                    sos_filters, **general_filters)
 
-            if numerator_res is None:
-                pass
-            else:
-                result = (round(numerator_res / denominator_res, 2) * 100)
-                if result >= threshold:
-                    score = 1 #solo
+                if numerator_res is None:
+                    pass
                 else:
-                    score = 0 #shared
+                    result = (round(numerator_res / float(denominator_res), 2))
+                    if result >= threshold:
+                        score = 1 #solo
+                    else:
+                        score = 0 #shared
 
-                # template_fk = self.scif['template_fk'][self.scif['template_name'] == scene_type].iloc[0]
                     brand_fk = self.scif['brand_fk'][self.scif['brand_name'] == value1].iloc[0]
-                sub_category_fk = self.scif['sub_category_fk'][self.scif['sub_category'] == value2].iloc[0]
-                self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result=numerator_res,
-                                               denominator_id=sub_category_fk, denominator_result=denominator_res,
-                                               result=result, score=score)
+                    self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=brand_fk, numerator_result= numerator_res,
+                                                   denominator_id=scene_id, denominator_result=denominator_res,
+                                                   result=result, score=score)
 
 
 
