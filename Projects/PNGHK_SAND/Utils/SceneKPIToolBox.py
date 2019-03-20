@@ -83,7 +83,7 @@ class SceneToolBox:
             template_fk = -1
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, result=1, by_scene=True,
                                        denominator_id=template_fk)
-        
+
     def find_row_osd(self, s):
         rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE] == s]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
