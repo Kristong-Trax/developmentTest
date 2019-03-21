@@ -42,6 +42,14 @@ class PEPSICOUKToolBox:
     OPERATION_TYPES = []
 
     SOS_VS_TARGET = 'SOS vs Target'
+    HERO_SKU_SPACE_TO_SALES_INDEX = 'Hero SKU Space to Sales Index'
+    HERO_SKU_SOS_VS_TARGET = 'Hero SKU SOS vs Target'
+    LINEAR_SOS_INDEX = 'Linear SOS Index'
+    PEPSICO = 'PEPSICO'
+    SHELF_PLACEMENT = 'Shelf Placement'
+    HERO_SKU_PLACEMENT_TOP = 'Hero SKU Placement by shelf numbers_Top'
+    # SENSATIONS_VS_KETTLE_INDEX = 'Sensations Greater Linear Space vs Kettle'
+    # DORITOS_VS_PRINGLES_INDEX = 'Doritos Greater Linear Space vs Pringles'
 
     # SOS_CATEGORIES_LIST = ['CSN']
     # HERO_SKU_LINEAR_SPACE_SHARE = 'Hero SKU Linear Space Share'
@@ -55,12 +63,12 @@ class PEPSICOUKToolBox:
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_product_in_scene = self.data_provider[Data.MATCHES] # initial matches
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] # initial scif
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
@@ -69,9 +77,12 @@ class PEPSICOUKToolBox:
         self.custom_entities = self.get_custom_entity_data()
         self.on_display_products = self.get_on_display_products()
         self.exclusion_template = self.get_exclusion_template_data()
-        self.set_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # check that scif and matches really changed for data provider
+        self.filtered_scif = self.scif # filtered scif acording to exclusion template
+        self.filtered_matches = self.match_product_in_scene # filtered scif according to exclusion template
+        self.set_filtered_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # also sets scif and matches in data provider
 
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
+        self.ps_data = PsDataProvider(self.data_provider, self.output) # which scif and matches do I need
         self.store_info = self.data_provider['store_info'] # not sure i need it
         self.full_store_info = self.ps_data.get_ps_store_info(self.store_info) # not sure i need it
         # self.kpi_external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=self.OPERATION_TYPES) #option 1
@@ -81,8 +92,15 @@ class PEPSICOUKToolBox:
 
         self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
+        self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
 #------------------init functions-----------------
+    def get_facings_scene_bay_shelf_product(self):
+        self.filtered_matches['count'] = 1
+        aggregate_df = self.filtered_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
+                                                     as_index=False).agg({'count': np.sum})
+        return aggregate_df
+
     def get_all_kpi_external_targets(self):
         query = PEPSICOUK_Queries.get_kpi_external_targets(self.visit_date)
         external_targets = pd.read_sql_query(query, self.rds_conn.db)
@@ -107,14 +125,19 @@ class PEPSICOUKToolBox:
         excl_templ = excl_templ.fillna('')
         return excl_templ
 
-    def set_scif_and_matches_for_all_kpis(self, scif, matches):
+    def set_filtered_scif_and_matches_for_all_kpis(self, scif, matches):
         excl_template_all_kpis = self.exclusion_template[self.exclusion_template['KPI'].str.upper() == 'ALL']
         if not excl_template_all_kpis.empty:
             template_filters = self.get_filters_dictionary(excl_template_all_kpis)
             scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
             scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
-            self.data_provider._set_scene_item_facts(scif)
-            self.data_provider._set_matches(matches)
+            self.filtered_scif = scif
+            self.filtered_matches = matches
+            self.set_scif_and_matches_in_data_provider(scif, matches)
+
+    def set_scif_and_matches_in_data_provider(self, scif, matches):
+        self.data_provider._set_scene_item_facts(scif)
+        self.data_provider._set_matches(matches)
 
 #------------------utility functions--------------
     def update_scif_and_matches_for_smart_attributes(self, scif, matches):
@@ -207,14 +230,114 @@ class PEPSICOUKToolBox:
         self.calculate_internal_kpis()
 
     def calculate_external_kpis(self):
-        self.calculate_assortment()
-        self.calculate_sos_vs_target_kpis()
+        self.calculate_assortment() # uses filtered scif
+        self.calculate_sos_vs_target_kpis() # uses filtered scif
+        self.calculate_linear_brand_vs_brand_index() # uses filtered scif
+        self.calculate_shelf_placement_hero_skus() # uses both initial and filtered scif / matches
 
-        # self.calculate_linear_sos_hero_sku()
-        # self.calculate_linear_sos_brand()
-        # self.calculate_linear_sos_sub_brand()
-        # self.calculate_linear_sos_segment()
-        pass
+    def calculate_shelf_placement_hero_skus(self):
+        shelf_placement_targets = self.get_shelf_placement_kpi_targets_data()
+        if not shelf_placement_targets.empty:
+            scene_bay_max_shelves = self.get_scene_bay_max_shelves(shelf_placement_targets)
+            aggregated_matches = self.scene_bay_shelf_product[~(self.scene_bay_shelf_product['bay_number'] == -1)]
+            # aggregated_matches = aggregated_matches.merge(scene_bay_max_shelves, on=['scene_fk', 'bay_number'], how='left')
+            placement_kpis = scene_bay_max_shelves['type'].unique().tolist()
+            for kpi in placement_kpis:
+                kpi_df = scene_bay_max_shelves[scene_bay_max_shelves['type'] == kpi]
+
+
+    def get_scene_bay_max_shelves(self, shelf_placement_targets):
+        scene_bay_max_shelves = self.match_product_in_scene.groupby(['scene_fk', 'bay_number'],
+                                                                    as_index=False).agg({'shelf_number': np.max})
+        scene_bay_max_shelves.rename({'shelf_number': 'shelves_in_bay'})
+        scene_bay_max_shelves = scene_bay_max_shelves.merge(shelf_placement_targets, left_on='shelves_in_bay',
+                                                            right_on='No of Shelves in Fixture (per bay) (key)')
+        scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves)
+        scene_bay_max_shelves['shelves_all_placements'] = scene_bay_max_shelves.groupby(['scene_fk', 'bay_number']) \
+                                            ['No of Shelves in Fixture (per bay) (key)'].apply(lambda x: ','.join(str(x)))
+        relevant_scenes = self.filtered_matches['scene_fk'].unique().tolist()
+        scene_bay_max_shelves = scene_bay_max_shelves[(scene_bay_max_shelves['scene_fk'].isin(relevant_scenes)) &
+                                                      (~(scene_bay_max_shelves['bay_number']==-1))]
+        final_df = pd.DataFrame(columns=scene_bay_max_shelves.columns.value.tolist())
+        for i, row in scene_bay_max_shelves.iterrows():
+            relevant_bays = self.filtered_matches[self.filtered_matches['scene_fk']==row['scene_fk']]['bay_number'].values.tolist()
+            if row['bay_number'] in relevant_bays:
+                final_df.append(row)
+        return scene_bay_max_shelves
+
+    def complete_missing_target_shelves(self, scene_bay_df):
+        for i, row in scene_bay_df.iterrows():
+            if row['shelves_in_bay'] > 7:
+                scene_bay_df.loc[(scene_bay_df['scene_fk'] == row['scene_fk']) &
+                                 (scene_bay_df['bay_number'] == row['bay_number']) &
+                                 (scene_bay_df['type'] == self.HERO_SKU_PLACEMENT_TOP),
+                                 'Shelves From Bottom To Include (data)'] = row['shelves_in_bay']
+                scene_bay_df.loc[(scene_bay_df['scene_fk'] == row['scene_fk']) &
+                                 (scene_bay_df['bay_number'] == row['bay_number']) &
+                                 (scene_bay_df['type'] == self.HERO_SKU_PLACEMENT_TOP),
+                                 'No of Shelves in Fixture (per bay) (key)'] = row['shelves_in_bay']
+        scene_bay_df = scene_bay_df[~scene_bay_df['Shelves From Bottom To Include (data)'].isnull()]
+        return scene_bay_df
+
+    def get_shelf_placement_kpi_targets_data(self):
+        shelf_placement_targets = self.external_targets[self.external_targets['operation_type'] == self.SHELF_PLACEMENT]
+        shelf_placement_targets = shelf_placement_targets.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk',
+                                                                                  'key_json', 'data_json'])
+        output_targets_df = pd.DataFrame(columns=shelf_placement_targets.columns.values.tolist())
+        if not shelf_placement_targets.empty:
+            shelf_number_df = self.unpack_external_targets_json_fields_to_df(shelf_placement_targets, field_name='key_json')
+            shelves_to_include_df = self.unpack_external_targets_json_fields_to_df(shelf_placement_targets,
+                                                                                   field_name='data_json')
+            shelf_placement_targets = shelf_placement_targets.merge(shelf_number_df, on='pk', how='left')
+            output_targets_df = shelf_placement_targets.merge(shelves_to_include_df, on='pk', how='left')
+            kpi_data = self.kpi_static_data[['pk', 'type']]
+            output_targets_df = output_targets_df.merge(kpi_data, left_on='kpi_level_2_fk', right_on='pk', how='left')
+        return output_targets_df
+
+    def calculate_linear_brand_vs_brand_index(self):
+        index_targets = self.get_relevant_sos_index_kpi_targets_data()
+        index_targets['numerator_id'] = index_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                            args=('numerator_type', 'numerator_value'))
+        index_targets['denominator_id'] = index_targets.apply(self.retrieve_relevant_item_pks, axis=1,
+                                                              args=('denominator_type', 'denominator_value'))
+        index_targets['identifier_parent'] = index_targets['KPI Parent'].apply(lambda x:
+                                                                           self.common.get_dictionary(
+                                                                               kpi_fk=int(float(x))))
+        for i, row in index_targets.iterrows():
+            general_filters = {row['additional_filter_type_1']: row['additional_filter_value_1']}
+            numerator_sos_filters = {row['numerator_type']: row['numerator_value']}
+            num_num_linear, num_denom_linear = self.calculate_sos(numerator_sos_filters, **general_filters)
+            numerator_sos = num_num_linear/num_denom_linear if num_denom_linear else 0 # ToDO: what should it be if denom is 0
+
+            denominator_sos_filters = {row['denominator_type']: row['denominator_value']}
+            denom_num_linear, denom_denom_linear = self.calculate_sos(denominator_sos_filters, **general_filters)
+            denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0 #TODo: what should it be if denom is 0
+
+            index = numerator_sos / denominator_sos if denominator_sos else 0 # TODO: what should it be if denom is 0
+            self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
+                                           numerator_result=numerator_sos, denominator_id=row.denominator_id,
+                                           denominator_result=denominator_sos, result=index, score=index,
+                                           identifier_parent=row.identifier_parent, should_enter=True)
+
+        parent_kpis_df = index_targets[['KPI Parent', 'identifier_parent']].drop_duplicates().reset_index(drop=True)
+        parent_kpis_df.rename({'identifier_parent': 'identifier_result'}, inplace=True)
+        for i, row in parent_kpis_df.iterrows():
+            self.common.write_to_db_result(fk=row['KPI Parent'], numerator_id=self.own_manuf_fk,
+                                           denominator_id=self.store_id, score=1, # TODO: think of what might be the score (we can have score type)
+                                           identifier_result=row.identifier_result, should_enter=True)
+
+    def get_relevant_sos_index_kpi_targets_data(self):
+        sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]
+        sos_vs_target_kpis = sos_vs_target_kpis.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk',
+                                                                        'key_json', 'data_json'])
+        relevant_targets_df = pd.DataFrame(columns=sos_vs_target_kpis.columns.values.tolist())
+        if not sos_vs_target_kpis.empty:
+            data_json_df = self.unpack_external_targets_json_fields_to_df(sos_vs_target_kpis, 'data_json')
+            data_json_df = data_json_df[data_json_df['KPI Parent'] == self.LINEAR_SOS_INDEX]
+            kpi_targets_pks = data_json_df['pk'].values.tolist()
+            relevant_targets_df = sos_vs_target_kpis[sos_vs_target_kpis['pk'].isin(kpi_targets_pks)]
+            relevant_targets_df = relevant_targets_df.merge(data_json_df, on='pk', how='left')
+        return relevant_targets_df
 
     def calculate_assortment(self):
         self.assortment.main_assortment_calculation()
@@ -245,7 +368,6 @@ class PEPSICOUKToolBox:
 
     def calculate_sos_vs_target_kpis(self):
         sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
-
         all_products_columns = self.all_products.columns.values.tolist()
         sos_targets['numerator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
                                                         args=('numerator_type', 'numerator_value',
@@ -253,7 +375,8 @@ class PEPSICOUKToolBox:
         sos_targets['denominator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
                                                           args=('denominator_type', 'denominator_value',
                                                                 all_products_columns))
-        # potentially add row with identifier parent dictionary
+        sos_targets['identifier_parent'] = sos_targets['KPI Parent'].apply(lambda x:
+                                                                           self.common.get_dictionary(kpi_fk=int(float(x))))
         for i, row in sos_targets.iterrows():
             general_filters = {row['denominator_type']: row['denominator_value']}
             sos_filters = {row['numerator_type']: row['numerator_value']}
@@ -262,11 +385,15 @@ class PEPSICOUKToolBox:
             score = result/row['Target'] if row['Target'] else 0 # what should we have in else case???
             self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                            numerator_result=numerator_linear, denominator_id=row.denominator_id,
-                                           denominator_result=denominator_linear, result=result, score=score)
-        #in kpi external targets json_key=store data
-        #in json_value: num, denom, target
-        #generic function: since kpi_fk exists in external targets table
-        pass
+                                           denominator_result=denominator_linear, result=result, score=score,
+                                           identifier_parent=row.identifier_parent, should_enter=True)
+
+        parent_kpis_df = sos_targets[['KPI Parent', 'identifier_parent']].drop_duplicates().reset_index(drop=True)
+        parent_kpis_df.rename({'identifier_parent': 'identifier_result'}, inplace=True)
+        for i, row in parent_kpis_df.iterrows():
+            self.common.write_to_db_result(fk=row['KPI Parent'], score=1, should_enter=True,
+                                           numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           identifier_result=row.identifier_result) # think of what might be the score (we can have score type)
 
     def get_relevant_sos_vs_target_kpi_targets(self):
         sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]
@@ -286,6 +413,9 @@ class PEPSICOUKToolBox:
             # relevant_targets_df = relevant_targets_df.merge(policies_df, on='pk', how='left') # see if i will need it in the code
             data_json_df = self.unpack_external_targets_json_fields_to_df(relevant_targets_df, 'data_json')
             relevant_targets_df = relevant_targets_df.merge(data_json_df, on='pk', how='left')
+
+            kpi_data = self.kpi_static_data[self.kpi_static_data['delete_time'].isnull()][['pk', 'type']].drop_duplicates() # see if I need more columns
+            relevant_targets_df = relevant_targets_df.merge(kpi_data, left_on='kpi_level_2_fk', right_on='pk', how='left')
         return relevant_targets_df
 
         # policies_list = []
@@ -296,13 +426,13 @@ class PEPSICOUKToolBox:
         #
         # policies_df = pd.DataFrame(policies_list)
 
-    def retrieve_relevant_item_pks(self, row, type_field_name, value_field_name, all_products_columns):
+    def retrieve_relevant_item_pks(self, row, type_field_name, value_field_name):
         try:
-            if row[type_field_name] in all_products_columns:
+            if row[type_field_name].endswith("_fk"):
                 item_id = self.all_products[self.all_products[row[type_field_name]] ==
-                                                                  row[value_field_name]][type_field_name].values[0]
+                                                                 row[value_field_name]][type_field_name].values[0]
             else:
-                item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]]['name'].values[0]
+                item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]]['pk'].values[0]
             # fk_field = '{}_fk'.format(row[type_field_name])
             # name_field = row[type_field_name].replace('_name', '')
             # if fk_field in all_products_columns:
@@ -328,27 +458,13 @@ class PEPSICOUKToolBox:
         output_df = pd.DataFrame(data_list)
         return output_df
 
-    def calculate_linear_sos_hero_sku(self):
-        # kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_LINEAR_SPACE_SHARE)
-        # general_filters = {'category': self.SOS_CATEGORIES_LIST}
-        pass
-
-    def calculate_linear_sos_brand(self):
-        pass
-
-    def calculate_linear_sos_sub_brand(self):
-        pass
-
-    def calculate_linear_sos_segment(self):
-        pass
-
     def calculate_sos(self, sos_filters, **general_filters):
         numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
         denominator_linear = self.calculate_share_space(**general_filters)
         return numerator_linear, denominator_linear
 
     def calculate_share_space(self, **filters):
-        filtered_scif = self.scif[self.toolbox.get_filter_condition(self.scif, **filters)]
+        filtered_scif = self.filtered_scif[self.toolbox.get_filter_condition(self.filtered_scif, **filters)]
         space_length = filtered_scif['updated_gross_length'].sum()
         return space_length
 
