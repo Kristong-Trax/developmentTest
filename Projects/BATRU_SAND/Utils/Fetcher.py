@@ -45,3 +45,9 @@ class BATRU_SANDQueries(object):
             join static.display_brand sdb on sdb.pk=d.display_brand_fk
             where s.session_uid = '{}'
         """.format(session_uid)
+
+    @staticmethod
+    def get_templates_data():
+        return """
+                select key_json, data_json, start_date, end_date from static.kpi_external_targets where end_date is null
+               """

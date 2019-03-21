@@ -468,7 +468,7 @@ class BATRU_SANDNewTemplate:
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('New BATRU Template')
-    project_name = 'batru_sand'
+    project_name = 'batru-sand'
     kpi_names = [
         # FOR P1: there is a black line "self.tools.upload_store_assortment_file(P1_PATH)". We only need to paste
         # the template in Data/StoreAssortment.csv, activate this line and run it.
