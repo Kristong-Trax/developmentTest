@@ -175,7 +175,7 @@ class MONDELEZUSToolBox:
                 # max_shelf_mm = max(shelf_values)
                 # TEST_MAX_SHELF_space_length = (3 * math.ceil((max_shelf_mm * self.MM_TO_FEET_CONVERSION) / 3.))
                 total_space_length_mm = sum(shelf_values)
-                space_length = (3 * math.ceil((total_space_length_mm * self.MM_TO_FEET_CONVERSION) / 3.))
+                space_length = (total_space_length_mm * self.MM_TO_FEET_CONVERSION)
 
 
         except Exception as e:
