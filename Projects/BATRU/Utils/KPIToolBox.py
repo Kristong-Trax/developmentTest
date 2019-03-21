@@ -3,6 +3,7 @@
 import pandas as pd
 from datetime import datetime
 import os
+import json
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -73,6 +74,14 @@ EAN_CODE = 'product_ean_code'
 
 DEFAULT_GROUP_NAME = 'GC_A_TN_Mini_Sas'
 DEFAULT_ATOMIC_NAME = 'GC_A_TN_Mini_Sas_-_Rest'
+
+P2_TEMPLATE = 'P2_monitored_sku'
+P3_TEMPLATE = 'P3_template'
+P4_TEMPLATE = 'p4_template'
+P5_TEMPLATE = 'p5_template'
+
+TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
+                        P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
 
 
 class BATRUToolBox:
@@ -177,6 +186,8 @@ class BATRUToolBox:
         self.p4_posm_to_api = {}
         self.p4_posm_to_api_products = {}
 
+        self.all_templates = self.get_templates_from_db()
+
 # init functions
 
     def encode_data_frames(self):
@@ -245,6 +256,36 @@ class BATRUToolBox:
                 template = parse_template(template_path, name, 2)
             self.custom_templates[name] = template
         return self.custom_templates[name]
+
+    def get_relevant_template_sheet(self, template_name, sheet_name):
+        if template_name in self.all_templates.keys():
+            if sheet_name in self.all_templates[template_name].keys():
+                return self.all_templates[template_name][sheet_name]
+        else:
+            return self.fall_back_to_excel_files(template_name, sheet_name)
+
+    def fall_back_to_excel_files(self, template_name, sheet_name):
+        template_path = TEMPLATE_PATH_MAPPER[template_name]
+        sheet_content = self.get_custom_template(template_path, sheet_name)
+        return sheet_content
+
+    def get_templates_from_db(self):
+        all_templates = {}
+
+        query = BATRUQueries.get_templates_data()
+        templates_data = pd.read_sql_query(query, self.rds_conn.db)
+        templates_data['key_json'] = templates_data['key_json'].apply(lambda x: json.loads(x))
+        templates_data['template_name'] = templates_data['key_json'].apply(lambda x: x['template'])
+        templates_data['sheet_name'] = templates_data['key_json'].apply(lambda x: x['sheet'])
+        for i, row in templates_data.iterrows():
+            template_name = row['template_name']
+            if all_templates.get(template_name) is None:
+                all_templates.update({template_name: {}})
+            sheet_name = row['sheet_name']
+            # sheet_content = pd.DataFrame.from_records(row['data_json'])
+            sheet_content = pd.read_json(row['data_json'])
+            all_templates[template_name].update({sheet_name: sheet_content})
+        return all_templates
 
     def get_bundles_by_definitions(self, input_products,
                                    convert=BUNDLE2LEAD,
@@ -759,7 +800,8 @@ class BATRUToolBox:
                                             score_2=format(efficiency_score, '.2f'))
 
     def get_sku_monitored(self, state):
-        monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
+        # monitored_skus_raw = self.get_custom_template(P2_PATH, 'SKUs')
+        monitored_skus_raw = self.get_relevant_template_sheet(P2_TEMPLATE, 'SKUs')
         states = monitored_skus_raw['State'].tolist()
         if state in states:
             monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(
@@ -992,16 +1034,19 @@ class BATRUToolBox:
 
         scenes = self.scif['scene_fk'].unique().tolist()
 
-        sections_template_data = parse_template(P3_PATH, 'Sections')
+        # sections_template_data = parse_template(P3_PATH, 'Sections')
+        sections_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections')
         sections_template_data['fixture'] = self.encode_column_in_df(
             sections_template_data, 'fixture')
 
-        sas_zone_template_data = parse_template(P3_PATH, 'P3 SAS zone')
+        # sas_zone_template_data = parse_template(P3_PATH, 'P3 SAS zone')
+        sas_zone_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'P3 SAS zone')
         sas_zone_template_data['fixture'] = self.encode_column_in_df(
             sas_zone_template_data, 'fixture')
 
-        sections_products_template_data = parse_template(P3_PATH, 'SKU_Lists for sections')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # sections_products_template_data = parse_template(P3_PATH, 'SKU_Lists for sections') \
+        sections_products_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'SKU_Lists for sections') \
+                    .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # check product ean codes from the template
         for product_ean_code in sections_products_template_data['product_ean_code'].unique().tolist():
             try:
@@ -1011,8 +1056,9 @@ class BATRUToolBox:
                 Log.debug('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(
                     product_ean_code))
 
-        priorities_template_data = parse_template(P3_PATH, 'Share priority')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # priorities_template_data = parse_template(P3_PATH, 'Share priority')\
+        priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority') \
+                .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         priorities_template_data['Index (Duplications priority)'] = \
             priorities_template_data['Index (Duplications priority)'].astype(float)
         # check product ean codes from the template
@@ -1024,8 +1070,9 @@ class BATRUToolBox:
                 Log.debug('Product ean {} is not defined in the DB for Share priority'.format(
                     product_ean_code))
 
-        sequence_template_data = parse_template(P3_PATH, 'Sequence list')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # sequence_template_data = parse_template(P3_PATH, 'Sequence list')\
+        sequence_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sequence list') \
+                .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # check product ean codes from the template
         for product_ean_code in sequence_template_data['product_ean_code'].unique().tolist():
             try:
@@ -1570,7 +1617,8 @@ class BATRUToolBox:
         match_display = self.match_display_in_scene
         match_display['display_name'] = self.encode_column_in_df(match_display, 'display_name')
         scene_match_display = match_display[match_display['scene_fk'] == scene]
-        sas_template = parse_template(P3_PATH, 'SAS Zone Compliance')
+        # sas_template = parse_template(P3_PATH, 'SAS Zone Compliance')
+        sas_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'SAS Zone Compliance')
         sas_template['Equipment'] = self.encode_column_in_df(sas_template, 'Equipment')
         sas_template['display_name'] = self.encode_column_in_df(sas_template, 'display_name')
         if self.state in sas_template['State'].unique().tolist():
@@ -1619,7 +1667,8 @@ class BATRUToolBox:
     @kpi_runtime()
     def handle_priority_4(self):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY]['kpi_set_fk'].iloc[0]
-        posm_template = self.get_custom_template(P4_PATH, 'Availability')
+        # posm_template = self.get_custom_template(P4_PATH, 'Availability')
+        posm_template = self.get_relevant_template_sheet(P4_TEMPLATE, 'Availability')
         posm_template['KPI Display Name'] = self.encode_column_in_df(posm_template, 'KPI Display Name')
         posm_template['Group Name'] = self.encode_column_in_df(posm_template, 'Group Name')
         posm_template['Atomic KPI Name'] = self.encode_column_in_df(posm_template, 'Atomic KPI Name')
@@ -1794,7 +1843,8 @@ class BATRUToolBox:
     def handle_priority_5(self):
         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                       == SHARE_OF]['kpi_set_fk'].iloc[0]
-        kpi_template = self.get_custom_template(P5_PATH, 'KPIs')
+        # kpi_template = self.get_custom_template(P5_PATH, 'KPIs')
+        kpi_template = self.get_relevant_template_sheet(P5_TEMPLATE, 'KPIs')
         kpi_template['KPI Name(scene type attribute 1)'] = self.encode_column_in_df(
             kpi_template, 'KPI Name(scene type attribute 1)')
         score = 0
