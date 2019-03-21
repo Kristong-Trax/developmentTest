@@ -9,7 +9,6 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.PNGCN_PROD.Fetcher import PNGQueries
 from Projects.PNGCN_PROD.ShareOfDisplay.Calculation import calculate_share_of_display
 
@@ -64,12 +63,10 @@ class PNGToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.matches = self.get_match_product_in_scene()
         self.kpi_static_data = self.get_kpi_static_data()
         self.session_categories_data = self.get_session_categories_data()
         self.kpi_results_queries = []
-        self.common = Common()
         self.empty_spaces = {self.get_category_name(category): {} for category in RELEVANT_CATEGORIES
                              if self.check_validation_of_category(category)}
         self.irrelevant_empties = 0
@@ -160,7 +157,6 @@ class PNGToolBox:
 
 
     def main_calculation(self):
-        self.save_nlsos_to_custom_scif()
         self.calculate_total_number_of_display()
         self.calculate_empty_spaces()
         relevant_facings = self.scif[(~self.scif['product_type'].isin([self.IRRELEVANT, self.EMPTY])) &
@@ -230,39 +226,6 @@ class PNGToolBox:
                         #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
         for set_fk in sets_to_save:
             self.write_to_db_result(set_fk, 100, self.LEVEL1)
-
-    def save_nlsos_to_custom_scif(self):
-        matches = self.matches_from_data_provider.copy()
-        mask = (matches.status != 2) & (matches.bay_number != -1) & (matches.shelf_number != -1) & \
-               (matches.stacking_layer != -1) & (matches.facing_sequence_number != -1)
-        matches_reduced = matches[mask]
-
-        # calculate number of products in each stack
-        items_in_stack = matches.loc[mask, ['scene_fk','bay_number', 'shelf_number', 'facing_sequence_number']].groupby(
-            ['scene_fk','bay_number', 'shelf_number', 'facing_sequence_number']).size().reset_index()
-        items_in_stack.rename(columns={0: 'items_in_stack'}, inplace=True)
-        matches_reduced = matches_reduced.merge(items_in_stack, how='left',
-                                                on=['scene_fk','bay_number', 'shelf_number', 'facing_sequence_number'])
-
-        matches_reduced['w_split'] = 1 / matches_reduced.items_in_stack
-
-        matches_reduced['gross_len_split_stack_old'] = matches_reduced['width_mm'] * matches_reduced.w_split
-
-        matches_reduced['gross_len_split_stack_new'] = matches_reduced['width_mm_advance'] * matches_reduced.w_split
-        new_scif_gross_split = matches_reduced[['product_fk','scene_fk',
-                                'gross_len_split_stack_old','width_mm','gross_len_split_stack_new',
-                                'width_mm_advance']].groupby(by=['product_fk','scene_fk']).sum().reset_index()
-        new_scif = pd.merge(self.scif, new_scif_gross_split, how='left',on=['scene_fk','product_fk'])
-        self.insert_data_into_custom_scif(new_scif)
-
-    def insert_data_into_custom_scif(self, new_scif):
-        query = """INSERT INTO  probedata.match_product_in_probe_state_value 
-                    (session_fk, scene_fk, product_fk, in_assortment_osa, length_mm_custom) 
-                    VALUES """
-        for i, row in new_scif.iterrows():
-            query += str(tuple(row[['session_id', 'scene_fk', 'product_fk', 'gross_len_split_stack_new']])) + ", "
-        query = query[:-2]
-        self.common.execute_custom_query(query)
 
     def calculate_empty_spaces(self):
         empty_facings = self.matches[self.matches['product_type'] == 'Empty']
