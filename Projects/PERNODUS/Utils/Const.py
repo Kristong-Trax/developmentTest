@@ -38,3 +38,21 @@ class Const(object):
     Share_of_display_manufacturer = 'SHARE_OF_DISPLAY_MANUFACTURER'
     Share_of_display_brand = 'SHARE_OF_DISPLAY_BRANDS'
     Solo_Shared_display = 'SOLO_SHARED'
+
+
+
+    #columns
+    brand = 'brand_name'
+    manufacturer = 'manufacturer_name'
+    category = 'category'
+    sub_category = 'sub_category'
+    facings = 'facings'
+    template_name = 'template_name'
+    scene_id = 'scene_id'
+
+
+    #
+    product_type = 'product_type'
+    SKU = 'SKU'
+    OTHER = 'Other'
+
