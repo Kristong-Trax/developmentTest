@@ -24,7 +24,7 @@ class BATRUQueries(object):
     @staticmethod
     def get_store_data(store_fk):
         return """
-                SELECT s.pk as store_fk, s.store_number_1, additional_attribute_3
+                SELECT s.pk as store_fk, s.store_number_1, additional_attribute_3, additional_attribute_11
                 FROM static.stores s
                 WHERE s.pk = '{}'
         """.format(store_fk)
