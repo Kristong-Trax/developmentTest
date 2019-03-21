@@ -4,8 +4,9 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.5.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final.xlsx')
     LIBERTY = 'Liberty'
+    RED_SCORE_PARENT = 'RED SCORE'
 
     # sheets
     KPIS = 'KPIs'
@@ -14,44 +15,39 @@ class Const(object):
     COUNT_OF_DISPLAY = 'Count of Display'
     SHARE_OF_DISPLAY = 'Share of Display'
     MARKET_SHARE = 'market_share'
+    SURVEY = 'Survey'
 
-    SHEETS = [KPIS, AVAILABILITY, DOUBLE_AVAILABILITY, FACINGS, SHARE_OF_DISPLAYS, DISPLAY_PRESENCE]
+    SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, MARKET_SHARE]
 
     # KPIs columns
     KPI_NAME = 'KPI Name'
     KPI_TYPE = 'Type'
     SCENE_TYPE = 'Scene Type'
+    EXCLUDED_SCENE_TYPE = 'Excluded Scene Type'
     STORE_TYPE = 'store_type'
+    WEIGHT = 'Weight'
+    TEMPLATE_NAME = 'Template'
+    TEMPLATE_GROUP = 'Template Group'
+
+    # SOS columns
+    MANUFACTURER = 'manufacturer'
+    MARKET_SHARE_TARGET = 'market_share_target'
 
     # Availability columns
-    MANUFACTURER = 'manufacturer'
-    BRAND = 'brand'
-    ATT1 = 'att1'
-    ATT3 = 'att3'
-    MINIMUM_FACINGS = 'Minimum facings'
-    SIZE = 'size'
-    SUB_PACKAGES = 'number_of_sub_packages'
-    EXCLUDED_TYPE = 'excluded_type'
-    EXCLUDED_VALUE = 'excluded_value'
+    BRAND = 'Brand'
+    CATEGORY = 'category'
+    EXCLUDED_BRAND = 'Excluded_Brand'
+    MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
+    SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'
 
-    # Double Availability columns
-    GROUP1_BRAND = 'Brand Group 1'
-    GROUP2_BRAND = 'Brand Group 2'
-    GROUP1_MINIMUM_FACINGS = 'Group 1 Minimum Facing'
-    GROUP2_MINIMUM_FACINGS = 'Group 2 Minimum Facing'
+    # Count of Display
+    ATT4 = 'att4'
+    SIZE_SUBPACKAGES_NUM = 'size;subpackages_num'
+    SUBPACKAGES_NUM = 'subpackages_num'
+    MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
 
-    # Facings columns
-    NUMERATOR_TYPE = 'numerator_type'
-    NUMERATOR_VALUE = 'numerator_value'
-    DENOMINATOR_TYPE = 'denominator_type'
-    DENOMINATOR_VALUE = 'denominator_value'
+    # Share of Display
 
-    # Share of Displays
-    THRESHOLD = 'Threshold Value'
-
-    # Display Presence & Location columns
-    ACTIVATION_TYPE = 'activation_type'
-    ACTIVATION_VALUE = 'activation_value'
 
     # KPI result values
     PASS = 'Pass'

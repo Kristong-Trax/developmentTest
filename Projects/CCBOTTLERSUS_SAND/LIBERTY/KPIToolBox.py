@@ -10,7 +10,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 __author__ = 'Hunter'
 
 
-class MSCToolBox:
+class LIBERTYToolBox:
 
     def __init__(self, data_provider, output, common_db):
         self.output = output
@@ -50,9 +50,9 @@ class MSCToolBox:
         if not main_template.empty:
             pass
         if len(self.common_db.kpi_results) > 0:
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.MSC)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id,result=1,
-                                              identifier_result=Const.MSC, should_enter=True)
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
+                                              identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
         return
 
     def calculate_main_kpi(self, main_line):
@@ -104,6 +104,26 @@ class MSCToolBox:
                 return None
         return passed_counter >= target
 
+    # SOS functions
+    def calculate_sos(self, kpi_line, relevant_scif):
+        pass
+
+    # Availability functions
+    def calculate_availability(self, kpi_line, relevant_scif):
+        pass
+
+    # Count of Display functions
+    def calculate_count_of_display(self, kpi_line, relevant_scif):
+        pass
+
+    # Share of Display functions
+    def calculate_share_of_display(self, kpi_line, relevant_scif):
+        pass
+
+    # Survey functions
+    def calculate_survey(self, kpi_line, relevant_scif):
+        pass
+
     # helper functions
     def get_kpi_function(self, kpi_type):
         """
@@ -111,16 +131,16 @@ class MSCToolBox:
         :param kpi_type: value from "sheet" column in the main sheet
         :return: function
         """
-        if kpi_type == Const.AVAILABILITY:
+        if kpi_type == Const.SOS:
+            return self.calculate_sos
+        elif kpi_type == Const.AVAILABILITY:
             return self.calculate_availability
-        elif kpi_type == Const.DOUBLE_AVAILABILITY:
-            return self.calculate_double_availability
-        elif kpi_type == Const.FACINGS:
-            return self.calculate_facings
-        elif kpi_type == Const.SHARE_OF_DISPLAYS:
-            return self.calculate_facings
-        elif kpi_type == Const.DISPLAY_PRESENCE:
-            return self.calculate_facings
+        elif kpi_type == Const.COUNT_OF_DISPLAY:
+            return self.calculate_count_of_display
+        elif kpi_type == Const.SHARE_OF_DISPLAY:
+            return self.calculate_share_of_display
+        elif kpi_type == Const.SURVEY:
+            return self.calculate_survey
         else:
             Log.warning(
                 "The value '{}' in column sheet in the template is not recognized".format(kpi_type))
