@@ -17,11 +17,11 @@ class DIAGEOINCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 # if __name__ == '__main__':
-#    LoggerInitializer.init('DIAGEOIN calculations')
-#    Config.init()
-#    project_name = 'DIAGEOIN'
-#    data_provider = KEngineDataProvider(project_name)
-#    session = '37ae1878-bc8b-4d1b-8b26-1798f4c562da'
-#    data_provider.load_session_data(session)
-#    output = Output()
-#    DIAGEOINCalculations(data_provider, output).run_project_calculations()
+#     LoggerInitializer.init('DIAGEOIN calculations')
+#     Config.init()
+#     project_name = 'DIAGEOIN'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '37ae1878-bc8b-4d1b-8b26-1798f4c562da'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOINCalculations(data_provider, output).run_project_calculations()
