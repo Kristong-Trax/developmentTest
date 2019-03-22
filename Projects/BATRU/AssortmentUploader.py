@@ -113,16 +113,21 @@ class BATRUAssortment:
         raw_data = self.parse_assortment_template()
         legal_template = True
         invalid_inputs = {INVALID_STORES: [], INVALID_PRODUCTS: []}
-        valid_stores = self.store_data.loc[self.store_data['store_number'].isin(raw_data[OUTLET_ID])]
+        valid_stores = self.store_data.loc[self.store_data['store_number'].isin(
+            raw_data[OUTLET_ID])]
         if len(valid_stores) != len(raw_data[OUTLET_ID].unique()):
-            invalid_inputs[INVALID_STORES] = list(set(raw_data[OUTLET_ID].unique()) - set(valid_stores['store_number']))
-            Log.debug("The following stores don't exist in the DB: {}".format(invalid_inputs[INVALID_STORES]))
+            invalid_inputs[INVALID_STORES] = list(
+                set(raw_data[OUTLET_ID].unique()) - set(valid_stores['store_number']))
+            Log.debug("The following stores don't exist in the DB: {}".format(
+                invalid_inputs[INVALID_STORES]))
             legal_template = False
 
         valid_product = self.all_products.loc[self.all_products[EAN_CODE].isin(raw_data[EAN_CODE])]
         if len(valid_product) != len(raw_data[EAN_CODE].unique()):
-            invalid_inputs[INVALID_PRODUCTS] = list(set(raw_data[EAN_CODE].unique()) - set(valid_product[EAN_CODE]))
-            Log.debug("The following products don't exist in the DB: {}".format(invalid_inputs[INVALID_PRODUCTS]))
+            invalid_inputs[INVALID_PRODUCTS] = list(
+                set(raw_data[EAN_CODE].unique()) - set(valid_product[EAN_CODE]))
+            Log.debug("The following products don't exist in the DB: {}".format(
+                invalid_inputs[INVALID_PRODUCTS]))
             legal_template = False
         return legal_template, invalid_inputs
 
@@ -147,7 +152,8 @@ class BATRUAssortment:
         :param stores_list: List of the stores from the assortment template
         """
         Log.debug("Closing assortment for stores out of template")
-        irrelevant_stores = self.store_data.loc[~self.store_data['store_number'].isin(stores_list)]['store_fk'].unique().tolist()
+        irrelevant_stores = self.store_data.loc[~self.store_data['store_number'].isin(
+            stores_list)]['store_fk'].unique().tolist()
         current_assortment_stores = self.current_top_skus['store_fk'].unique().tolist()
         stores_to_remove = list(set(irrelevant_stores).intersection(set(current_assortment_stores)))
         for store in stores_to_remove:
@@ -173,7 +179,8 @@ class BATRUAssortment:
 
             store_counter += 1
             if store_counter % 1000 == 0 or store_counter == len(list_of_stores):
-                Log.debug("Assortment is prepared for {}/{} stores".format(store_counter, len(list_of_stores)))
+                Log.debug(
+                    "Assortment is prepared for {}/{} stores".format(store_counter, len(list_of_stores)))
 
         Log.debug("Updating assortment data in DB")
         store_counter = 0
@@ -244,25 +251,28 @@ class BATRUAssortment:
 
         if missing_products:
             Log.debug('The following EAN Codes for Store Number {} do not exist in DB: {}.'
-                        ''.format(store_number, list(missing_products)))
+                      ''.format(store_number, list(missing_products)))
         queries = []
-        current_products = self.current_top_skus[self.current_top_skus['store_fk'] == store_fk]['product_fk'].tolist()
+        current_products = self.current_top_skus[self.current_top_skus['store_fk']
+                                                 == store_fk]['product_fk'].tolist()
 
         products_to_deactivate = tuple(set(current_products).difference(update_products))
         products_to_activate = tuple(set(update_products).difference(current_products))
 
         if products_to_deactivate:
             if len(products_to_deactivate) == 1:
-                queries.append(self.get_deactivation_query(store_fk, "(" + str(products_to_deactivate[0]) + ")", self.deactivate_date))
+                queries.append(self.get_deactivation_query(
+                    store_fk, "(" + str(products_to_deactivate[0]) + ")", self.deactivate_date))
             else:
-                queries.append(self.get_deactivation_query(store_fk, tuple(products_to_deactivate), self.deactivate_date))
+                queries.append(self.get_deactivation_query(
+                    store_fk, tuple(products_to_deactivate), self.deactivate_date))
 
         for product_fk in products_to_activate:
             queries.append(self.get_activation_query(store_fk, product_fk, self.activate_date))
 
         self.all_queries.extend(queries)
         Log.debug('Store Number {} - Products to update {}: Deactivated {}, Activated {}'
-                 ''.format(store_number, len(update_products), len(products_to_deactivate), len(products_to_activate)))
+                  ''.format(store_number, len(update_products), len(products_to_deactivate), len(products_to_activate)))
 
     def get_store_fk(self, store_number):
         """
@@ -287,7 +297,8 @@ class BATRUAssortment:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.all_products[self.all_products['product_ean_code'] == product_ean_code]
+            product_fk = self.all_products[self.all_products['product_ean_code']
+                                           == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk

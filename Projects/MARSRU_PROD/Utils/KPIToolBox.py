@@ -91,7 +91,7 @@ class MARSRU_PRODKPIToolBox:
         else:
             self.set_name = self.kpi_level_0_name = set_name
         self.kpi_fetcher = MARSRU_PRODKPIFetcher(self.project_name, self.kpi_templates, self.scif, self.match_product_in_scene,
-                                                  self.set_name, self.products, self.session_uid)
+                                                 self.set_name, self.products, self.session_uid)
         self.kpi_set_fk = self.kpi_fetcher.get_kpi_set_fk()
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.sales_rep_fk = self.data_provider[Data.SESSION_INFO]['s_sales_rep_fk'].iloc[0]
@@ -132,7 +132,7 @@ class MARSRU_PRODKPIToolBox:
         except:
             rds_conn.disconnect_rds()
             rds_conn.connect_rds()
-            Log.warning('DB is reconnected')
+            Log.debug('DB is reconnected')
             return False
         return True
 
@@ -185,7 +185,7 @@ class MARSRU_PRODKPIToolBox:
                 (self.match_product_in_scene['shelf_number_from_bottom'].isin(relevant_shelves))]
 
             if golden_shelves_filtered_df.empty:
-                Log.info("In the session {} there are not shelves that stands in the "
+                Log.debug("In the session {} there are not shelves that stands in the "
                          "criteria for availability_on_golden_shelves KPI".format(self.session_uid))
                 result = 'FALSE'
             else:
@@ -281,7 +281,7 @@ class MARSRU_PRODKPIToolBox:
         """
         if not self.store_num_1:
             return
-        Log.info("Updating PS Custom SCIF... ")
+        Log.debug("Updating PS Custom SCIF... ")
         # assortment_products = self.get_assortment_for_store_id()
         assortment_products = self.assortment.get_lvl3_relevant_ass()
         if not assortment_products.empty:
@@ -302,7 +302,7 @@ class MARSRU_PRODKPIToolBox:
                         # The product is not in assortment list and not oos (0,0)
                         self.get_custom_query(scene, product, 0, 0)
 
-        Log.info("Done updating PS Custom SCIF... ")
+        Log.debug("Done updating PS Custom SCIF... ")
         self.commit_custom_scif()
 
     def get_static_list(self, type):
@@ -316,7 +316,7 @@ class MARSRU_PRODKPIToolBox:
         elif type == 'MAN':
             object_static_list = self.products['manufacturer_name'].values.tolist()
         else:
-            Log.warning('The type {} does not exist in the data base'.format(type))
+            Log.debug('The type {} does not exist in the data base'.format(type))
         return object_static_list
 
     @kpi_runtime()
@@ -408,11 +408,13 @@ class MARSRU_PRODKPIToolBox:
     def get_relevant_scenes(self, params):
         scif = self.scif
 
-        locations = str(params.get('Location type')).split(', ') if params.get('Location type') else None
+        locations = str(params.get('Location type')).split(
+            ', ') if params.get('Location type') else None
         if locations:
             scif = scif.loc[scif['location_type'].isin(locations)]
 
-        scene_types = str(params.get('Scene type')).split(', ') if params.get('Scene type') else None
+        scene_types = str(params.get('Scene type')).split(
+            ', ') if params.get('Scene type') else None
         if scene_types:
             scif = scif.loc[scif['template_name'].isin(scene_types)]
 
@@ -504,12 +506,12 @@ class MARSRU_PRODKPIToolBox:
                         result = None
 
                 else:
-                    Log.info('The answer type {} is not defined for surveys'.format(
+                    Log.debug('The answer type {} is not defined for surveys'.format(
                         params.get('Answer type')))
                     result = None
 
             else:
-                Log.warning('No survey data with survey response code {} for this session'
+                Log.debug('No survey data with survey response code {} for this session'
                             .format(survey_question_code))
                 result = None
 
@@ -597,12 +599,12 @@ class MARSRU_PRODKPIToolBox:
                     if object_type == 'MAN in CAT':
                         # Only MARS products with object type filters
                         shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
-                                filtered_products['manufacturer_name'] == MARS) & (
-                                filtered_products['shelf_number'] == shelf)]
+                            filtered_products['manufacturer_name'] == MARS) & (
+                            filtered_products['shelf_number'] == shelf)]
                     else:
                         # All products with object type filters
                         shelf_data = filtered_products.loc[(filtered_products[object_field].isin(values)) & (
-                                filtered_products['shelf_number'] == shelf)]
+                            filtered_products['shelf_number'] == shelf)]
 
                     if not shelf_data.empty:
                         shelves_linear_sos_dict[shelf] = 1
@@ -1443,10 +1445,10 @@ class MARSRU_PRODKPIToolBox:
 
             if p.get('#Mars KPI NAME') == 4704:  # If ((4269+4271)/(4270+4272))*100% >= 100% then TRUE
                 kpi_part_1 = self.dict_for_planogram[4269] + self.dict_for_planogram[4271]
-                kpi_part_2 = self.dict_for_planogram[4270] / self.dict_for_planogram[4272]
-                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 1
+                kpi_part_2 = self.dict_for_planogram[4270] + self.dict_for_planogram[4272]
+                ratio = kpi_part_1 / kpi_part_2 if kpi_part_2 else 0
 
-                result = 'TRUE' if ratio >= 1 else 'FALSE'
+                result = 'FALSE' if ratio < 1 else 'TRUE'
 
             else:
 
@@ -1907,7 +1909,7 @@ class MARSRU_PRODKPIToolBox:
                 else:
                     filter_condition &= condition
             else:
-                Log.warning('field {} is not in the Data Frame'.format(field))
+                Log.debug('field {} is not in the Data Frame'.format(field))
 
         return filter_condition
 
@@ -1974,8 +1976,8 @@ class MARSRU_PRODKPIToolBox:
                 except:
                     result_value = None
             elif params.get('Answer type') == 'Boolean':
-                    result_value = None if result is None else \
-                        ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
+                result_value = None if result is None else \
+                    ('FALSE' if result == 'FALSE' else ('TRUE' if result else 'FALSE'))
             else:
                 result_value = result
 
@@ -2251,7 +2253,8 @@ class MARSRU_PRODKPIToolBox:
         for product in assortment_products:
             numerator_id = product
             try:
-                numerator_result = product_facings[product_facings['product_fk'] == product]['facings'].iloc[0]
+                numerator_result = product_facings[product_facings['product_fk']
+                                                   == product]['facings'].iloc[0]
             except:
                 numerator_result = 0
             denominator_result = 1
@@ -2303,4 +2306,3 @@ class MARSRU_PRODKPIToolBox:
                                        identifier_result=identifier_result,
                                        identifier_parent=identifier_parent,
                                        should_enter=True)
-

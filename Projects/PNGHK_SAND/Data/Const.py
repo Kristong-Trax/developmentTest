@@ -1,5 +1,5 @@
 
-__author__ = 'ilays'
+__author__ = 'nidhinb'
 
 
 class Const(object):
@@ -39,7 +39,7 @@ class Const(object):
     HAS_HOTSPOT = 'Has_hotspot'
     OSD_NUMBER_OF_SHELVES = 'OSD_Number_of_shelves'
     POSM_EAN_CODE = 'POSM_EAN_CODE'
-    POSM_EAN_CODE_HOTSPOT = 'POSM_EAN_CODE_HOTSPOT'
+    POSM_EAN_CODE_HOTSPOT = 'HOTSPOT_EAN_CODE'
     STORAGE_EXCLUSION_PRICE_TAG = 'STORAGE_EXCLUSION_PRICE_TAG'
 
     # KPIs types
@@ -58,5 +58,13 @@ class Const(object):
     YES = 'Y'
     NO = 'N'
 
-    NAME_TO_FK = {"manufacturer_name":"manufacturer_fk","brand_name":"brand_fk","product_fk":"product_fk"}
-    CATEGORIES = ['Hair Care','Baby Care','Feminine Care','Toothpaste','Skin Care','Grooming','Laundry']
+    NAME_TO_FK = {"manufacturer_name": "manufacturer_fk",
+                  "brand_name": "brand_fk", "product_fk": "product_fk"}
+    CATEGORIES = ['Hair Care', 'Baby Care', 'Feminine Care',
+                  'Toothpaste', 'Skin Care', 'Grooming', 'Laundry']
+
+    # database aliases
+    DB_STOCK_NAME = 'stock'
+    DB_HANGER_NAME = 'additional display'
+
+    OSD_KPI = 'OSD'

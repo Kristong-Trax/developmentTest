@@ -74,6 +74,6 @@ class ProjectDeploy(ProjectDeployment):
 if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
-    deploy_instance = ProjectDeploy(project=['gpus'])
+    deploy_instance = ProjectDeploy(project=['mondelezus'])
     deploy_instance.deploy()
     pass

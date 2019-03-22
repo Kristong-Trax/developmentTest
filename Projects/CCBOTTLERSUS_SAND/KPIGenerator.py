@@ -40,7 +40,7 @@ class CCBOTTLERSUS_SANDGenerator:
         self.calculate_cma_compliance()
         self.calculate_sovi()
         self.calculate_ara()
-        # self.calculate_msc() # work in progress
+        self.calculate_msc()
         self.common_db.commit_results_data()
 
         # self.calculate_cma_compliance_sw()

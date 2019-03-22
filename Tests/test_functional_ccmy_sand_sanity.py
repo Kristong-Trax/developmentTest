@@ -12,11 +12,16 @@ from Tests.Data.TestData.test_data_ccmy_sand_sanity import ProjectsSanityData
 from Projects.CCMY_SAND.Calculations import CCMY_SANDCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
 
     @property
     def import_path(self):

@@ -76,13 +76,20 @@ class CCRU_SANDCCHKPIFetcher:
         else:
             return None
 
-    def get_atomic_kpi_fk(self, atomic_kpi_name):
+    def get_atomic_kpi_fk(self, atomic_kpi_name, kpi_fk=None):
         try:
             atomic_kpi_name = atomic_kpi_name.decode('utf-8')
         except UnicodeEncodeError:
             pass
-        atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] ==
-                                             atomic_kpi_name.replace("\\'", "'")]['atomic_kpi_fk']
+
+        if kpi_fk:
+            atomic_kpi_fk = self.kpi_static_data[(self.kpi_static_data['kpi_fk'] == kpi_fk) &
+                                                 (self.kpi_static_data['atomic_kpi_name'] ==
+                                                  atomic_kpi_name.replace("\\'", "'"))]['atomic_kpi_fk']
+        else:
+            atomic_kpi_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] ==
+                                                 atomic_kpi_name.replace("\\'", "'")]['atomic_kpi_fk']
+
         if not atomic_kpi_fk.empty:
             return atomic_kpi_fk.values[0]
         else:
@@ -234,3 +241,30 @@ class CCRU_SANDCCHKPIFetcher:
                 """.format(entity, entity_type_fk, entity_uid_field, entity_table_name)
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
+
+    def get_session_user(self, session_uid):
+        query = """
+                SELECT 
+                    sr.login_name AS user_name, 
+                    ur.role AS user_role, 
+                    sr.position AS user_position
+                FROM probedata.session ss
+                LEFT JOIN static.sales_reps sr ON sr.pk=ss.s_sales_rep_fk
+                LEFT JOIN static.mobile_user_roles ur ON ur.sales_rep_fk=sr.pk
+                WHERE ss.session_uid='{}';
+                """.format(session_uid)
+        result = pd.read_sql_query(query, self.rds_conn.db).to_dict(orient='records')[0]
+        return result
+
+    def get_planned_visit_flag(self, session_uid):
+        query = """
+                SELECT pv.planned_flag
+                FROM probedata.session ss
+                LEFT JOIN pservice.planned_visits pv ON 1
+                AND pv.store_fk=ss.store_fk 
+                AND pv.sales_rep_fk=ss.s_sales_rep_fk 
+                AND pv.visit_date=ss.visit_date
+                WHERE ss.session_uid='{}';
+                """.format(session_uid)
+        result = pd.read_sql_query(query, self.rds_conn.db)[0][0]
+        return result

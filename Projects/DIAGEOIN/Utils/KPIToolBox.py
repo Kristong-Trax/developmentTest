@@ -56,6 +56,7 @@ class DIAGEOINToolBox:
         if self.store_channel:
             self.store_channel = self.store_channel.upper()
         self.segment = self.get_business_unit_name()
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.kpi_static_data = self.get_kpi_static_data()
         self.common = Common(self.data_provider)
