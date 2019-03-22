@@ -6,6 +6,7 @@ __author__ = 'hunter'
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'MSC Template v1.5.xlsx')
     MSC = 'Market Street Challenge'
+    MANUFACTURER_FK = 1
 
     # sheets
     KPIS = 'KPIs'
