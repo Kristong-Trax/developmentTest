@@ -273,5 +273,5 @@ def run(sd=None, ed=None, to=None, pivoted=None):
 if __name__ == '__main__':
     LoggerInitializer.init('test run')
     # marsru_report = MARSRU_KPIsStatistics()
-    marsru_report = MARSRU_KPIsStatistics('2019-02-25', '2019-03-24', 'sergey@traxretail.com')
+    marsru_report = MARSRU_KPIsStatistics('2019-02-25', '2019-03-10', 'sergey@traxretail.com')
     marsru_report.create_report()
