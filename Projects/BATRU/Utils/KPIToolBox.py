@@ -1017,7 +1017,10 @@ class BATRUToolBox:
         section_data = section_data.loc[section_data['store_attribute_11'].isin([attribute_11, 'ALL'])]
 
         # Filter by valid Sections
-        section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
+        try:
+            section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
+        except TypeError:
+            section_data = section_data.loc[section_data['Section'] == int(float(section))]
 
         return section_data
 
@@ -1857,7 +1860,7 @@ class BATRUToolBox:
                 score = self.calculate_soa(row)
             elif row['KPI Type'] == 'Share of Shelf':
                 score = self.calculate_sos(row)
-            if row['is_set_score'] == '1':
+            if row['is_set_score'] in ['1', 1]:
                 set_score = score
 
             atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
