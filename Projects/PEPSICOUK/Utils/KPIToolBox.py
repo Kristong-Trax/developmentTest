@@ -48,6 +48,10 @@ class PEPSICOUKToolBox:
     PEPSICO = 'PEPSICO'
     SHELF_PLACEMENT = 'Shelf Placement'
     HERO_SKU_PLACEMENT_TOP = 'Hero SKU Placement by shelf numbers_Top'
+    HERO_PLACEMENT = 'Hero Placement'
+    HERO_SKU_STACKING = 'Hero SKU Stacking'
+    HERO_SKU_PRICE = 'Hero SKU Price'
+    HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     # SENSATIONS_VS_KETTLE_INDEX = 'Sensations Greater Linear Space vs Kettle'
     # DORITOS_VS_PRINGLES_INDEX = 'Doritos Greater Linear Space vs Pringles'
 
@@ -234,6 +238,46 @@ class PEPSICOUKToolBox:
         self.calculate_sos_vs_target_kpis() # uses filtered scif
         self.calculate_linear_brand_vs_brand_index() # uses filtered scif
         self.calculate_shelf_placement_hero_skus() # uses both initial and filtered scif / matches
+        self.calculate_brand_full_bay()
+
+        # should I put in one function stacking, price and promo price?
+        self.calculate_hero_sku_information_kpis() # uses filtered matches
+
+    def calculate_brand_full_bay(self):
+        pass
+
+    def calculate_hero_sku_information_kpis(self):
+        hero_sku_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
+        stacking_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_STACKING)
+        price_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_PRICE)
+        promo_price_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_PROMO_PRICE)
+        for sku in hero_sku_list:
+            self.calculate_hero_sku_stacking(sku, stacking_kpi_fk)
+            self.calculate_hero_sku_price(sku, price_kpi_fk)
+            self.calculate_hero_sku_promo_price(sku, promo_price_kpi_fk)
+
+    def calculate_hero_sku_promo_price(self, sku, kpi_fk):
+        price = -1
+        prices_df = self.filtered_matches[~(self.filtered_matches['promotion_price'].isnull())]
+        if not prices_df.empty:
+            price = prices_df['price'].max()
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
+
+    def calculate_hero_sku_price(self, sku, kpi_fk):
+        # what should we write if there is no price at all?
+        price = -1
+        prices_df = self.filtered_matches[~(self.filtered_matches['price'].isnull())]
+        if not prices_df.empty:
+            price = prices_df['price'].max()
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
+
+    def calculate_hero_sku_stacking(self, sku, kpi_fk):
+        score = 0
+        stacked_df = self.filtered_matches[self.filtered_matches['product_fk'] == sku &
+                                           self.filtered_matches['stacking_layer'] > 1]
+        if not stacked_df.empty:
+            score = 1
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=score, result=score)
 
     def calculate_shelf_placement_hero_skus(self):
         shelf_placement_targets = self.get_shelf_placement_kpi_targets_data()
@@ -256,7 +300,7 @@ class PEPSICOUKToolBox:
                                                score=result['ratio'], identifier_parent=result['identifier_parent'],
                                                should_enter=True)
             hero_parent_results = hero_results.drop_duplicates(subset=['product_fk'])
-            hero_top_kpi = self.common.get_kpi_fk_by_kpi_type('Hero Placement')
+            hero_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.HERO_PLACEMENT)
             hero_top_kpi_identifier_parent = self.common.get_dictionary(kpi_fk=hero_top_kpi)
             for i, result in hero_parent_results.iterrows():
                 hero_parent_fk = self.common.get_kpi_fk_by_kpi_type(result['KPI Parent'])
