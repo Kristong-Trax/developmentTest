@@ -187,6 +187,7 @@ class BATRUToolBox:
         self.p4_posm_to_api_products = {}
 
         self.all_templates = self.get_templates_from_db()
+        self.template_warnings = set()
 
 # init functions
 
@@ -262,6 +263,7 @@ class BATRUToolBox:
             if sheet_name in self.all_templates[template_name].keys():
                 return self.all_templates[template_name][sheet_name]
         else:
+            self.template_warnings.update([template_name])
             return self.fall_back_to_excel_files(template_name, sheet_name)
 
     def fall_back_to_excel_files(self, template_name, sheet_name):

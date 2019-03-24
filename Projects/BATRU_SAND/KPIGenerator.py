@@ -26,3 +26,6 @@ class BATRU_SANDGenerator:
             return
         self.tool_box.main_calculation()
         self.tool_box.commit_results_data()
+        if self.tool_box.template_warnings:
+            Log.warning('The following templates did not exist in DB - '
+                        'fallback to excel. Details: {}'.format(self.tool_box.template_warnings))
