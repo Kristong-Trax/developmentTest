@@ -227,7 +227,7 @@ class PEPSICOUKToolBox:
         This function calculates and writes to DB the KPI results.
         """
         self.calculate_external_kpis()
-        self.calculate_internal_kpis()
+        # self.calculate_internal_kpis() # all on scene_level
 
     def calculate_external_kpis(self):
         self.calculate_assortment() # uses filtered scif
@@ -239,12 +239,75 @@ class PEPSICOUKToolBox:
         shelf_placement_targets = self.get_shelf_placement_kpi_targets_data()
         if not shelf_placement_targets.empty:
             scene_bay_max_shelves = self.get_scene_bay_max_shelves(shelf_placement_targets)
-            aggregated_matches = self.scene_bay_shelf_product[~(self.scene_bay_shelf_product['bay_number'] == -1)]
-            # aggregated_matches = aggregated_matches.merge(scene_bay_max_shelves, on=['scene_fk', 'bay_number'], how='left')
-            placement_kpis = scene_bay_max_shelves['type'].unique().tolist()
-            for kpi in placement_kpis:
-                kpi_df = scene_bay_max_shelves[scene_bay_max_shelves['type'] == kpi]
+            scene_bay_all_shelves = scene_bay_max_shelves.drop_duplicates(subset=['scene_fk', 'bay_number',
+                                                                                  'shelves_all_placements'], keep='first')
+            relevant_matches = self.filter_out_irrelevant_matches(scene_bay_all_shelves)
+            for i, row in scene_bay_max_shelves:
+                shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
+                relevant_matches.loc[(relevant_matches['scene_fk'] == row['scene_fk']) &
+                                     (relevant_matches['bay_number'] == row['bay_number']) &
+                                     (relevant_matches['shelf_number'].isin(shelf_list)), 'position'] = row['type']
+            hero_results = self.get_kpi_results_df(relevant_matches, scene_bay_max_shelves)
+            for i, result in hero_results.iterrows():
+                self.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
+                                               denominator_id=result['product_fk'],
+                                               denominator_result=result['total_facings'],
+                                               numerator_result=result['count'], result=result['ratio'],
+                                               score=result['ratio'], identifier_parent=result['identifier_parent'],
+                                               should_enter=True)
+            hero_parent_results = hero_results.drop_duplicates(subset=['product_fk'])
+            hero_top_kpi = self.common.get_kpi_fk_by_kpi_type('Hero Placement')
+            hero_top_kpi_identifier_parent = self.common.get_dictionary(kpi_fk=hero_top_kpi)
+            for i, result in hero_parent_results.iterrows():
+                hero_parent_fk = self.common.get_kpi_fk_by_kpi_type(result['KPI Parent'])
+                self.common.write_to_db_result(fk=hero_parent_fk, result=100, numerator_id=result['product_fk'],
+                                               score=100, identifier_result=result['identifier_parent'],
+                                               identifier_parent=hero_top_kpi_identifier_parent,
+                                               should_enter=True)
+            # add result fpr all hero
+            self.common.write_to_db_result(fk=hero_top_kpi, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           identifier_result=hero_top_kpi_identifier_parent, should_enter=True,
+                                           score=1) # maybe customize picture for score type
 
+    def get_kpi_results_df(self, relevant_matches, kpi_targets_df):
+        total_products_facings = relevant_matches.groupby(['product_fk'], as_index=False).agg({'count': np.sum})
+        total_products_facings.rename(columns={'count': 'total_facings'})
+        # result_df = pd.pivot_table(relevant_matches, index=['product_fk'], columns=['type'], values='count',
+        #                            aggfunc=np.sum)
+        # result_df = result_df.reset_index()
+        result_df = relevant_matches.groupby(['product_fk', 'type'], as_index=False).agg({'count':np.sum})
+        result_df.merge(total_products_facings, on='product_fk', how='left')
+
+        kpis_df = kpi_targets_df.drop_duplicates(subset=['kpi_level_2_fk', 'type', 'KPI Parent'])
+        result_df = result_df.merge(kpis_df, on='type', how='left')
+        result_df['identifier_parent'] = result_df['KPI Parent'].apply(lambda x:
+                                                                       self.common.get_dictionary(
+                                                                       kpi_fk=int(float(x))))
+        result_df['ratio'] = result_df.apply(self.get_sku_ratio, axis=1)
+        # kpi_list = kpi_targets_df['type'].values.tolist()
+        # for kpi in kpi_list:
+        #     facings_column = '{}_facings'.format(kpi)
+        #     result_df[facings_column] = result_df[kpi]
+        #     kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi)
+        #     result_df[kpi_fk] = result_df[facings_column] / result_df['total_facings']
+        # # write results for hero skus
+        hero_results = result_df[result_df['product_fk'].isin(self.lvl3_ass_result['product_fk'].values.tolist())]
+        return hero_results
+
+    def get_sku_ratio(self, row):
+        ratio = row['count'] / row['total_facings']
+        return ratio
+
+    def filter_out_irrelevant_matches(self, target_kpis_df):
+        relevant_matches = self.scene_bay_shelf_product[~(self.scene_bay_shelf_product['bay_number'] == -1)]
+        for i, row in target_kpis_df.iterrows():
+            all_shelves = map(lambda x: float(x), row['shelves_all_placements'].split(','))
+            rows_to_remove = relevant_matches[(relevant_matches['scene_fk'] == row['scene_fk']) &
+                                              (relevant_matches['bay_number'] == row['bay_number']) &
+                                              (~(relevant_matches['shelf_number'].isin(all_shelves)))].index
+            relevant_matches.drop(rows_to_remove, inplace=True)
+        relevant_matches['position'] = ''
+        return relevant_matches
 
     def get_scene_bay_max_shelves(self, shelf_placement_targets):
         scene_bay_max_shelves = self.match_product_in_scene.groupby(['scene_fk', 'bay_number'],
@@ -254,7 +317,7 @@ class PEPSICOUKToolBox:
                                                             right_on='No of Shelves in Fixture (per bay) (key)')
         scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves)
         scene_bay_max_shelves['shelves_all_placements'] = scene_bay_max_shelves.groupby(['scene_fk', 'bay_number']) \
-                                            ['No of Shelves in Fixture (per bay) (key)'].apply(lambda x: ','.join(str(x)))
+                                            ['Shelves From Bottom To Include (data)'].apply(lambda x: ','.join(str(x))) # need to debug
         relevant_scenes = self.filtered_matches['scene_fk'].unique().tolist()
         scene_bay_max_shelves = scene_bay_max_shelves[(scene_bay_max_shelves['scene_fk'].isin(relevant_scenes)) &
                                                       (~(scene_bay_max_shelves['bay_number']==-1))]
