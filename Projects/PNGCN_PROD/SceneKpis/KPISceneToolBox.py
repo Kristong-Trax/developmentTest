@@ -672,14 +672,9 @@ class PngcnSceneKpis(object):
         items_in_stack.rename(columns={0: 'items_in_stack'}, inplace=True)
         matches_reduced = matches_reduced.merge(items_in_stack, how='left',
                                                 on=['scene_fk','bay_number', 'shelf_number', 'facing_sequence_number'])
-
         matches_reduced['w_split'] = 1 / matches_reduced.items_in_stack
-
-        matches_reduced['gross_len_split_stack_old'] = matches_reduced['width_mm'] * matches_reduced.w_split
-
         matches_reduced['gross_len_split_stack_new'] = matches_reduced['width_mm_advance'] * matches_reduced.w_split
-        new_scif_gross_split = matches_reduced[['product_fk','scene_fk',
-                                'gross_len_split_stack_old','width_mm','gross_len_split_stack_new',
+        new_scif_gross_split = matches_reduced[['product_fk','scene_fk','gross_len_split_stack_new',
                                 'width_mm_advance']].groupby(by=['product_fk','scene_fk']).sum().reset_index()
         new_scif = pd.merge(self.scif, new_scif_gross_split, how='left',on=['scene_fk','product_fk'])
         new_scif = new_scif.fillna(0)
