@@ -2,7 +2,7 @@
 import pandas as pd
 import os
 from datetime import datetime
-
+from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
@@ -70,6 +70,7 @@ class PNGToolBox:
         self.empty_spaces = {self.get_category_name(category): {} for category in RELEVANT_CATEGORIES
                              if self.check_validation_of_category(category)}
         self.irrelevant_empties = 0
+        self.common = Common(self.data_provider)
 
     def get_category_name(self, category_fk):
         return self.all_products[self.all_products['category_fk'] == category_fk]['category_local_name'].values[0]
