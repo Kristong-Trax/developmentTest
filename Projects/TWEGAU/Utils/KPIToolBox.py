@@ -288,16 +288,21 @@ class TWEGAUToolBox:
                     denominator_row,
                     DENOMINATOR_FILTER_ENTITIES, )
                 if denominator_filter_string:
+                    # remove empty irrelevant products from denominator
+                    # denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
+                    #     prod_id_col_scif=PROD_ID_COL_SCIF,
+                    #     empty_prod_ids=self.empty_product_ids.tolist()
+                    # )
                     denominator_data = self.scif.query(denominator_filter_string).fillna(0). \
                         groupby(denominator_filters, as_index=False).agg({length_field: 'sum'})
                 else:
                     # nothing to query; no grouping
-                    denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
-                        prod_id_col_scif=PROD_ID_COL_SCIF,
-                        empty_prod_ids=self.empty_product_ids.tolist()
-                    )
-                    denominator_data = pd.DataFrame(self.scif.query(denominator_filter_string).
-                                                    agg({length_field: 'sum'})).T
+                    # remove empty irrelevant products from denominator
+                    # denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
+                    #     prod_id_col_scif=PROD_ID_COL_SCIF,
+                    #     empty_prod_ids=self.empty_product_ids.tolist()
+                    # )
+                    denominator_data = pd.DataFrame(self.scif.agg({length_field: 'sum'})).T
                 for d_idx, denominator_row in denominator_data.iterrows():
                     denominator = denominator_row.get(length_field)
                     for idx, numerator_row in numerator_data.iterrows():
