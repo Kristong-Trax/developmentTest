@@ -3,7 +3,7 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCBOTTLERSUS_SAND.MSC.Data.Const import Const
+from Projects.CCBOTTLERSUS.MSC.Data.Const import Const
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
