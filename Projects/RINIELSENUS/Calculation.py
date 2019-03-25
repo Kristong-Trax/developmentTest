@@ -1,7 +1,7 @@
 # import pandas as pd
 # from Trax.Utils.Conf.Keys import DbUsers
 # from mock import patch
-# 
+#
 # from KPIUtils.DB.Common import Common
 from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
 from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
@@ -44,7 +44,7 @@ class MarsUsCalculations(BaseCalculationsScript):
 #     ]
 #
 #     # sessions = pd.read_csv('/home/Ilan/Documents/projects/marus/0612_batch_300.csv')['session_uid'].tolist()[:25]
-#
+#     sessions = ['c5ef379f-54d6-45b3-b907-303a81fc1876']
 #     for session in sessions:
 #         print('*******************************************************************')
 #         print('--------------{}-------------'.format(session))
@@ -54,4 +54,3 @@ class MarsUsCalculations(BaseCalculationsScript):
 #         data_provider.load_session_data(session)
 #         output = Output()
 #         MarsUsCalculations(data_provider, output).run_project_calculations()
-

@@ -15,22 +15,15 @@ class CCRURunSql:
     def run_it(self):
         statements = \
 """
-UPDATE `static`.`atomic_kpi` SET `name`='Juice Shelf: Moya Semya - Apple Mix - 0.95L', `description`='Juice Shelf: Moya Semya - Apple Mix - 0.95L', `display_text`='Juice Shelf: Moya Semya - Apple Mix - 0.95L' WHERE `pk`='3362';
-UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple Mix - 0.95L', `description`='Moya Semya - Apple Mix - 0.95L', `display_text`='Moya Semya - Apple Mix - 0.95L' WHERE `pk`='4235';
-UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple Mix - 0.95L', `description`='Moya Semya - Apple Mix - 0.95L', `display_text`='Moya Semya - Apple Mix - 0.95L' WHERE `pk`='4281';
-UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Pineapple-Mango - 0.95L', `description`='Moya Semya - Pineapple-Mango - 0.95L', `display_text`='Moya Semya - Pineapple-Mango - 0.95L' WHERE `pk`='4236';
-UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Pineapple-Mango - 0.95L', `description`='Moya Semya - Pineapple-Mango - 0.95L', `display_text`='Moya Semya - Pineapple-Mango - 0.95L' WHERE `pk`='4282';
-UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple-Strawberry - 0.95L', `description`='Moya Semya - Apple-Strawberry - 0.95L', `display_text`='Moya Semya - Apple-Strawberry - 0.95L' WHERE `pk`='4248';
+    CREATE TABLE pservice.planned_visits 
+    (
+        store_fk INT(11) NOT NULL,
+        visit_date DATE NOT NULL,
+        sales_rep_fk INT(11) NOT NULL,
+        planned_flag INT(1) NOT NULL,
+        PRIMARY KEY (store_fk, visit_date, sales_rep_fk)
+    );
 """
-# """
-# DELETE FROM `static`.`kpi_set` WHERE `pk`>='64';
-# """
-# """
-# DELETE FROM `static`.`kpi` WHERE `pk`>='2843';
-# """
-# """
-# UPDATE `static`.`kpi_set` SET `name`='Contract Execution 2018 X' WHERE `pk`='56';
-# """
 
         statements = statements.split(';\n')
         for statement in statements:
@@ -42,9 +35,9 @@ UPDATE `static`.`atomic_kpi` SET `name`='Moya Semya - Apple-Strawberry - 0.95L',
 
 
 if __name__ == '__main__':
-    Log.init('Run SQL')
+    # Log.init('Run SQL')
     Config.init()
-    for project in ['ccru']:
+    for project in ['ccru-sand']:
         print 'Start Project: ' + str(project)
         sql_to_run = CCRURunSql(project)
         sql_to_run.run_it()

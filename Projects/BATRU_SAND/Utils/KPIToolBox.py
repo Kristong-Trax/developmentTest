@@ -32,7 +32,7 @@ POSM = 'POS'
 NON_COMPETITOR_PRODUCTS = ("Cigarettes Empty", "Empty")
 # P1_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'StoreAssortment.csv')
 P2_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P2_monitored_sku.xlsx')
-P3_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
+P3_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'P3_template.xlsx')
 P4_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'p4_template.xlsx')
 P5_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'p5_template.xlsx')
 POSM_AVAILABILITY = 'POSM Status'
@@ -65,18 +65,23 @@ ASSORTMENT_DISTRIBUTION_ENTRY_FOR_API = 'Assortment Distribution Raw Data - Entr
 ASSORTMENT_DISTRIBUTION_AGGREGATION_ENTRY = 'Assortment Distribution Aggregations - Entry'
 ASSORTMENT_DISTRIBUTION_AGGREGATION_EXIT = 'Assortment Distribution Aggregations - Exit'
 EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
-ATTRIBUTE_3 = 'Filter stores by \'attribute 3\''
+ATTRIBUTE_3 = 'store_attribute_3'
+ATTRIBUTE_11 = 'store_attribute_11'
 BUNDLE2LEAD = "bundle>lead"
 LEAD2BUNDLE = "lead>bundle"
 OUTLET_ID = 'Outlet ID'
 EAN_CODE = 'product_ean_code'
+
+DEFAULT_GROUP_NAME = 'GC_A_TN_Mini_Sas'
+DEFAULT_ATOMIC_NAME = 'GC_A_TN_Mini_Sas_-_Rest'
 
 P2_TEMPLATE = 'P2_monitored_sku'
 P3_TEMPLATE = 'P3_template'
 P4_TEMPLATE = 'p4_template'
 P5_TEMPLATE = 'p5_template'
 
-TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_TEMPLATE_PATH, P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
+TEMPLATE_PATH_MAPPER = {P2_TEMPLATE: P2_PATH, P3_TEMPLATE: P3_PATH,
+                        P4_TEMPLATE: P4_PATH, P5_TEMPLATE: P5_PATH}
 
 
 class BATRU_SANDToolBox:
@@ -115,17 +120,23 @@ class BATRU_SANDToolBox:
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
-        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.products['product_ean_code']
-        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_name_lead'] = self.products['product_name']
-        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.products['product_fk']
+        self.products.loc[self.products['product_fk_lead'].isnull(
+        ), 'product_ean_code_lead'] = self.products['product_ean_code']
+        self.products.loc[self.products['product_fk_lead'].isnull(
+        ), 'product_name_lead'] = self.products['product_name']
+        self.products.loc[self.products['product_fk_lead'].isnull(
+        ), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.all_products['product_ean_code']
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_name_lead'] = self.all_products['product_name']
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.all_products['product_fk']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
+        ), 'product_ean_code_lead'] = self.all_products['product_ean_code']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
+        ), 'product_name_lead'] = self.all_products['product_name']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
+        ), 'product_fk_lead'] = self.all_products['product_fk']
 
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
 
@@ -151,7 +162,7 @@ class BATRU_SANDToolBox:
                 if self.get_missing_products_to_api_set(set_fk):
                     new_products = True
         except Exception as e:
-            Log.info('Updating API sets failed')
+            Log.debug('Updating API sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
         self.custom_templates = {}
@@ -162,7 +173,8 @@ class BATRU_SANDToolBox:
         self.position_graph = BATRU_SANDPositionGraphs(self.data_provider)
         self.session_fk = self.data_provider[Data.SESSION_INFO]['pk'].iloc[0]
         self.kpi_results_queries = []
-        self.section_products = pd.DataFrame([], columns=['section', 'product'])  # todo change this to get_template
+        # todo change this to get_template
+        self.section_products = pd.DataFrame([], columns=['section', 'product'])
         self.filters_params = {'Template Group': 'template_group', 'Product Name': 'display_name',
                                'KPI Display Name': 'additional_attribute_1'}
         self.posm_in_session = None
@@ -171,16 +183,23 @@ class BATRU_SANDToolBox:
         self.sas_zones_scores_dict = {}
         self.state = self.get_state()
         self.p4_display_count = {}
+        self.p4_posm_to_api = {}
+        self.p4_posm_to_api_products = {}
 
         self.all_templates = self.get_templates_from_db()
+        self.template_warnings = set()
 
 # init functions
 
     def encode_data_frames(self):
-        self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
-        self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
-        self.scif['additional_attribute_1'] = self.encode_column_in_df(self.scif, 'additional_attribute_1')
-        self.templates['additional_attribute_1'] = self.encode_column_in_df(self.templates, 'additional_attribute_1')
+        self.kpi_static_data['kpi_name'] = self.encode_column_in_df(
+            self.kpi_static_data, 'kpi_name')
+        self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(
+            self.kpi_static_data, 'atomic_kpi_name')
+        self.scif['additional_attribute_1'] = self.encode_column_in_df(
+            self.scif, 'additional_attribute_1')
+        self.templates['additional_attribute_1'] = self.encode_column_in_df(
+            self.templates, 'additional_attribute_1')
 
     def get_store_number_1(self):
         """
@@ -216,7 +235,7 @@ class BATRU_SANDToolBox:
         if self.tools.p1_assortment_validator(file_path):
             self.tools.upload_store_assortment_file(file_path)
         else:
-            Log.warning("Error in P1 store assortment template")
+            Log.debug("Error in P1 store assortment template")
             print "Please fix the issues and try again"
 
     def main_calculation(self):
@@ -244,6 +263,7 @@ class BATRU_SANDToolBox:
             if sheet_name in self.all_templates[template_name].keys():
                 return self.all_templates[template_name][sheet_name]
         else:
+            self.template_warnings.update([template_name])
             return self.fall_back_to_excel_files(template_name, sheet_name)
 
     def fall_back_to_excel_files(self, template_name, sheet_name):
@@ -253,6 +273,7 @@ class BATRU_SANDToolBox:
 
     def get_templates_from_db(self):
         all_templates = {}
+
         query = BATRU_SANDQueries.get_templates_data()
         templates_data = pd.read_sql_query(query, self.rds_conn.db)
         templates_data['key_json'] = templates_data['key_json'].apply(lambda x: json.loads(x))
@@ -268,8 +289,11 @@ class BATRU_SANDToolBox:
             all_templates[template_name].update({sheet_name: sheet_content})
         return all_templates
 
-    def get_bundles_by_definitions(self, input_products, convert=BUNDLE2LEAD, input_type='product_fk',
-                                   output_type='product_fk', get_only_one=False):
+    def get_bundles_by_definitions(self, input_products,
+                                   convert=BUNDLE2LEAD,
+                                   input_type='product_fk',
+                                   output_type='product_fk',
+                                   get_only_one=False):
         """
         the function takes eans/fks and returns their lead/bundle products
         :param input_products: str/float, or a list of strings/floats
@@ -291,7 +315,8 @@ class BATRU_SANDToolBox:
         else:
             Log.debug("Wrong input, get_bundles_by_definitions can't convert '{}'".format(convert))
             return None
-        output = self.all_products[self.all_products['product_fk'].isin(output_fks)][output_type].unique().tolist()
+        output = self.all_products[self.all_products['product_fk'].isin(
+            output_fks)][output_type].unique().tolist()
         if get_only_one:
             if output:
                 return output[0]
@@ -357,7 +382,8 @@ class BATRU_SANDToolBox:
                                                            (self.all_products['manufacturer_name'] == BAT)][
                             'product_fk'].values[0]
                     except Exception as e:
-                        Log.warning('Product with the ean code {} is not defined in the data provider'.format(product))
+                        Log.debug(
+                            'Product with the ean code {} is not defined in the data provider'.format(product))
                         continue
                     # bundled_products = self.bundle_fk_ean(product_fk)
                     bundled_products = self.get_bundles_by_definitions(
@@ -409,7 +435,8 @@ class BATRU_SANDToolBox:
                         product_name = self.all_products.loc[self.all_products['product_fk'] == product_fk][
                             'product_english_name'].values[0]
                     except Exception as e:
-                        Log.warning('Product with the ean code {} is not defined in the data provider'.format(product))
+                        Log.debug(
+                            'Product with the ean code {} is not defined in the data provider'.format(product))
                         continue
                     oos_contracted_score_list[product] = oos_contracted_status
                     oos_rest_score_list[product] = oos_rest_status
@@ -429,13 +456,18 @@ class BATRU_SANDToolBox:
                                                         kpi_name=contracted_api_mapping[template_group],
                                                         atomic_kpi_name=product)
                 if assortment == total_assortment:
-                    oos = round((sum(oos_rest_score_list.values()) / float(len(total_assortment))) * 100, 1)
-                    distribution = round((sum(dist_score_list.values()) / float(len(total_assortment))) * 100, 1)
+                    oos = round((sum(oos_rest_score_list.values()) /
+                                 float(len(total_assortment))) * 100, 1)
+                    distribution = round((sum(dist_score_list.values()) /
+                                          float(len(total_assortment))) * 100, 1)
                     availability = round((sum(availability_score_list.values()) / float(len(total_assortment))) * 100,
                                          1)
-                    self.save_level1(set_for_db, score=distribution, score2=availability, score3=oos)
-                    self.save_level1(set_for_api, score=distribution, score2=availability, score3=oos)
-                    self.save_level1(set_for_api_aggregations, score=distribution, score2=availability, score3=oos)
+                    self.save_level1(set_for_db, score=distribution,
+                                     score2=availability, score3=oos)
+                    self.save_level1(set_for_api, score=distribution,
+                                     score2=availability, score3=oos)
+                    self.save_level1(set_for_api_aggregations, score=distribution,
+                                     score2=availability, score3=oos)
                     self.write_to_db_result_for_api(score=None, level=self.LEVEL3, level3_score=oos,
                                                     kpi_set_name=set_for_api_aggregations,
                                                     kpi_name=contracted_api_mapping[template_group],
@@ -451,14 +483,18 @@ class BATRU_SANDToolBox:
                 elif assortment == contracted_products:
                     if contracted_products:
                         total_contract = len(dist_score_list)
-                        oos = round((sum(oos_contracted_score_list.values()) / float(total_contract)) * 100, 1)
-                        distribution = round((sum(dist_score_list.values()) / float(total_contract)) * 100, 1)
-                        availability = round((sum(availability_score_list.values()) / float(total_contract)) * 100, 1)
+                        oos = round((sum(oos_contracted_score_list.values()) /
+                                     float(total_contract)) * 100, 1)
+                        distribution = round((sum(dist_score_list.values()) /
+                                              float(total_contract)) * 100, 1)
+                        availability = round(
+                            (sum(availability_score_list.values()) / float(total_contract)) * 100, 1)
                     else:
                         oos = 0
                         distribution = 0
                         availability = 0
-                        Log.info('No contracted products are defined for store {}'.format(self.scif['store_number_1']))
+                        Log.debug('No contracted products are defined for store {}'.format(
+                            self.scif['store_number_1']))
                     self.save_level2_and_level3(set_for_db, kpi_name=self.CONTRACTED, result=distribution,
                                                 score_2=availability, score_3=oos, level_2_only=True)
                     self.write_to_db_result_for_api(score=None, level=self.LEVEL3, level3_score=oos,
@@ -484,7 +520,8 @@ class BATRU_SANDToolBox:
         :return:
         """
         days_back = MAX_DAYS_BACK_FOR_HISTORY_BASED_ASSORTMENT
-        previous_sessions = self.get_previous_sessions_in_the_same_store_by_session(session_id, days_back)
+        previous_sessions = self.get_previous_sessions_in_the_same_store_by_session(
+            session_id, days_back)
         if previous_sessions.empty:
             return self._get_empty_assortment()
         else:
@@ -518,7 +555,8 @@ class BATRU_SANDToolBox:
         existing_skus = self.all_products[self.all_products['product_type'].isin([SKU, POSM])]
         set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk][
             'atomic_kpi_name'].unique().tolist()
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == set_fk]['kpi_fk'].iloc[0]
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                      == set_fk]['kpi_fk'].iloc[0]
         not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
         if not_in_db_products.empty:
             return False
@@ -648,17 +686,18 @@ class BATRU_SANDToolBox:
                 merged_pricing_data['price_value'] = 0
                 merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
                                                                   as_index=False)[['price_value']].first()
-                Log.info('There are missing numeric values: {}'.format(e))
+                Log.debug('There are missing numeric values: {}'.format(e))
 
         if not merged_dates_data.empty:
-            merged_dates_data['fixed_date'] = merged_dates_data.apply(lambda row: self._get_formate_date(row), axis=1)
+            merged_dates_data['fixed_date'] = merged_dates_data.apply(
+                lambda row: self._get_formate_date(row), axis=1)
             try:
                 merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
                                                               as_index=False)[['fixed_date']].first()
             except Exception as e:
                 merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
                                                               as_index=False)[['fixed_date']].first()
-                Log.info('There is a dates integrity issue: {}'.format(e))
+                Log.debug('There is a dates integrity issue: {}'.format(e))
         else:
             merged_dates_data['fixed_date'] = None
 
@@ -687,7 +726,7 @@ class BATRU_SANDToolBox:
         cur = self.rds_conn.db.cursor()
         for i in xrange(len(new_kpi_list)):
             kpi = new_kpi_list.iloc[i]
-            kpi_name = kpi['product_short_name'].encode('utf-8')
+            kpi_name = kpi['product_short_name'].replace("'", "\\'").encode('utf-8')
             product_fk = kpi['product_fk']
             level3_query = """
                    INSERT INTO static.atomic_kpi (kpi_fk, name, description, display_text, model_id)
@@ -767,18 +806,25 @@ class BATRU_SANDToolBox:
         monitored_skus_raw = self.get_relevant_template_sheet(P2_TEMPLATE, 'SKUs')
         states = monitored_skus_raw['State'].tolist()
         if state in states:
-            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(lambda x: pd.Series(x.split(', ')).isin([state]).any())]
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].apply(
+                lambda x: pd.Series(x.split(', ')).isin([state]).any())]
         else:
-            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper() == 'ALL']
-        monitored_skus = pd.DataFrame()
+            monitored_skus_raw = monitored_skus_raw.loc[monitored_skus_raw['State'].str.upper(
+            ) == 'ALL']
+        monitored_skus = pd.DataFrame(columns=['product_ean_code_lead'])
         for sku in monitored_skus_raw['ean_code'].unique().tolist():
             try:
-                product_ean_code_lead = self.all_products[self.all_products['product_ean_code'] == sku]['product_ean_code_lead'].values[0]
+                product_ean_code_lead = self.all_products[self.all_products['product_ean_code']
+                                                          == sku]['product_ean_code_lead'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB'.format(sku))
+                Log.debug('Product ean {} is not defined in the DB'.format(sku))
                 continue
-            monitored_skus = monitored_skus.append({'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
-        monitored_skus = monitored_skus.drop_duplicates(subset=['product_ean_code_lead'], keep='last')
+            monitored_skus = monitored_skus.append(
+                {'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
+        monitored_skus = monitored_skus.drop_duplicates(
+            subset=['product_ean_code_lead'], keep='last')
+        if monitored_skus.empty:
+            Log.warning('Monitored SKU are not defined in the P2 template')
         return monitored_skus
 
     def is_relevant_bundle(self, product_sku, bundle_sku):
@@ -794,13 +840,16 @@ class BATRU_SANDToolBox:
         return 0
 
     def calculate_fulfilment(self, monitored_products):
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_FULFILMENT]['kpi_fk'].iloc[0]
-        mobile_kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_MOBILE_FULFILMENT]['kpi_fk'].iloc[0]
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                      == P2_FULFILMENT]['kpi_fk'].iloc[0]
+        mobile_kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                             == P2_MOBILE_FULFILMENT]['kpi_fk'].iloc[0]
         atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == P2_FULFILMENT]['atomic_kpi_fk'].iloc[0]
+            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name']
+                                 == P2_FULFILMENT]['atomic_kpi_fk'].iloc[0]
         score = self.get_fulfilment(monitored_products)
         if score == -1:
-            Log.info('No Monitored products were found.')
+            Log.debug('No Monitored products were found.')
             return None
         else:
             self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
@@ -809,9 +858,11 @@ class BATRU_SANDToolBox:
             return score
 
     def calculate_efficiency(self):
-        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == P2_EFFICIENCY]['kpi_fk'].iloc[0]
+        kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                      == P2_EFFICIENCY]['kpi_fk'].iloc[0]
         atomic_fk = \
-            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == P2_EFFICIENCY]['atomic_kpi_fk'].iloc[0]
+            self.kpi_static_data[self.kpi_static_data['atomic_kpi_name']
+                                 == P2_EFFICIENCY]['atomic_kpi_fk'].iloc[0]
         score = self.get_efficiency()
         self.write_to_db_result(kpi_fk, round(score, 2), self.LEVEL2)
         self.write_to_db_result(atomic_fk, round(score, 2), self.LEVEL3)
@@ -877,7 +928,8 @@ class BATRU_SANDToolBox:
                                             atomic_kpi_name=product_for_db)
 
         # using P4 save function to save None without problems so will add set name to api.
-        self.write_to_db_result_for_api(score=None, level=self.LEVEL1, level3_score=None, kpi_set_name=P2_SET_DATE)
+        self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
+                                        level3_score=None, kpi_set_name=P2_SET_DATE)
 
     def set_p2_sku_mobile_results(self, monitored_sku):
         new_products = False
@@ -886,24 +938,27 @@ class BATRU_SANDToolBox:
         try:
             existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
                                               (self.all_products['product_ean_code'].isin(monitored_sku['product_ean_code_lead'].values))]
-            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['atomic_kpi_name'].unique().tolist()
+            set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                            == set_name]['atomic_kpi_name'].unique().tolist()
             not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
             if not_in_db_products.any:
                 self.add_new_kpi_to_static_tables(kpi_fk, not_in_db_products)
                 new_products = True
         except Exception as e:
-            Log.info('Updating Mobile price sets failed')
+            Log.debug('Updating Mobile price sets failed')
         if new_products:
             self.kpi_static_data = self.get_kpi_static_data()
-            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'kpi_name')
-            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(self.kpi_static_data, 'atomic_kpi_name')
+            self.kpi_static_data['kpi_name'] = self.encode_column_in_df(
+                self.kpi_static_data, 'kpi_name')
+            self.kpi_static_data['atomic_kpi_name'] = self.encode_column_in_df(
+                self.kpi_static_data, 'atomic_kpi_name')
         for index in xrange(len(monitored_sku)):
             row = monitored_sku.iloc[index]
             try:
                 product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
                     'product_short_name'].drop_duplicates().values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB'.format(row.leading))
+                Log.debug('Product ean {} is not defined in the DB'.format(row.product_ean_code))
                 continue
             try:
                 kpi_fk = self.kpi_static_data[(self.kpi_static_data['atomic_kpi_name'] == product_name) &
@@ -911,11 +966,11 @@ class BATRU_SANDToolBox:
                     'atomic_kpi_fk'].drop_duplicates().values[0]
 
                 score = 0 if self.merged_additional_data[self.merged_additional_data[
-                                                             'product_ean_code_lead'] == row.product_ean_code_lead]\
+                    'product_ean_code_lead'] == row.product_ean_code_lead]\
                     .empty else 1
 
                 result = self.merged_additional_data[self.merged_additional_data[
-                                                         'product_ean_code_lead'] == row.product_ean_code_lead][
+                    'product_ean_code_lead'] == row.product_ean_code_lead][
                     'price_value']
                 if result.empty:
                     result = 0
@@ -925,7 +980,7 @@ class BATRU_SANDToolBox:
                     result = format(result.values[0], '.2f')
 
                 result2 = self.merged_additional_data[self.merged_additional_data[
-                                                          'product_ean_code_lead'] == row.product_ean_code_lead][
+                    'product_ean_code_lead'] == row.product_ean_code_lead][
                     'fixed_date']
                 if result2.empty:
                     result2 = '0'
@@ -934,12 +989,13 @@ class BATRU_SANDToolBox:
                 else:
                     result2 = pd.to_datetime(str(result2.values[0])).strftime('%m.%Y')
 
-                self.write_to_db_result(fk=kpi_fk, result=result, level=self.LEVEL3, score=score, result_2=result2)
+                self.write_to_db_result(fk=kpi_fk, result=result,
+                                        level=self.LEVEL3, score=score, result_2=result2)
             except Exception as e:
                 Log.error('{}'.format(e))
 
     @staticmethod
-    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture, attribute_3):
+    def get_relevant_section_products(raw_data, section, state_for_calculation, fixture, attribute_3, attribute_11):
         """
         This function filters the raw data from the template's SKU_Lists for sections sheet according to it's filters.
         If there aren't relevant filters it filters by GEO = 'ALL' and the relevant section of course.
@@ -951,79 +1007,84 @@ class BATRU_SANDToolBox:
         :return: The relevant product's data for the current section
         """
         # Filter by state
-        section_data = raw_data.loc[(raw_data['State'] == state_for_calculation) | (raw_data['State'] == 'ALL')]
+        section_data = raw_data.loc[raw_data['State'].isin([state_for_calculation, 'ALL'])]
 
         # Filter by fixture
-        section_data = section_data.loc[(raw_data['Fixture'] == fixture) | (section_data['Fixture'] == 'ALL')]
+        section_data = section_data.loc[section_data['Fixture'].isin([fixture, 'ALL'])]
 
         # Filter by cluster
-        section_data = section_data.loc[
-            (raw_data['additional_attribute_3'] == attribute_3) | (section_data['additional_attribute_3'] == 'ALL')]
+        section_data = section_data.loc[section_data['store_attribute_3'].isin([attribute_3, 'ALL'])]
+
+        # Filter by contract
+        section_data = section_data.loc[section_data['store_attribute_11'].isin([attribute_11, 'ALL'])]
 
         # Filter by valid Sections
-        section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
-
+        try:
+            section_data = section_data.loc[section_data['Section'] == str(int(float(section)))]
+        except TypeError:
+            section_data = section_data.loc[section_data['Section'] == int(float(section))]
         return section_data
 
     # P3 KPI
     @kpi_runtime()
     def handle_priority_3(self):
 
+        if not self.scif.empty:
+            attribute_3 = self.scif['additional_attribute_3'].values[0]
+            attribute_11 = self.scif['additional_attribute_11'].values[0]
+        else:
+            attribute_3 = ''
+            attribute_11 = ''
+
         scenes = self.scif['scene_fk'].unique().tolist()
 
+        # sections_template_data = parse_template(P3_PATH, 'Sections')
         sections_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sections')
-        # sections_template_data = parse_template(P3_TEMPLATE_PATH, 'Sections')
-        sections_template_data['fixture'] = self.encode_column_in_df(sections_template_data, 'fixture')
+        sections_template_data['fixture'] = self.encode_column_in_df(
+            sections_template_data, 'fixture')
 
+        # sas_zone_template_data = parse_template(P3_PATH, 'P3 SAS zone')
         sas_zone_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'P3 SAS zone')
-        # sas_zone_template_data = parse_template(P3_TEMPLATE_PATH, 'P3 SAS zone')
-        sas_zone_template_data['fixture'] = self.encode_column_in_df(sas_zone_template_data, 'fixture')
+        sas_zone_template_data['fixture'] = self.encode_column_in_df(
+            sas_zone_template_data, 'fixture')
 
-        sections_products_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'SKU_Lists for sections')\
+        # sections_products_template_data = parse_template(P3_PATH, 'SKU_Lists for sections')\
+        sections_products_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'SKU_Lists for sections') \
             .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
-
-        # sections_products_template_data = parse_template(P3_TEMPLATE_PATH, 'SKU_Lists for sections')\
-        #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # check product ean codes from the template
         for product_ean_code in sections_products_template_data['product_ean_code'].unique().tolist():
             try:
-                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+                self.all_products[self.all_products['product_ean_code']
+                                  == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB from SKU_Lists for sessions template'.format(
+                    product_ean_code))
 
-        priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
-        # priorities_template_data = parse_template(P3_TEMPLATE_PATH, 'Share priority')\
-        #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # priorities_template_data = parse_template(P3_PATH, 'Share priority') \
+        priorities_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Share priority') \
+                    .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         priorities_template_data['Index (Duplications priority)'] = \
             priorities_template_data['Index (Duplications priority)'].astype(float)
         # check product ean codes from the template
         for product_ean_code in priorities_template_data['product_ean_code'].unique().tolist():
             try:
-                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+                self.all_products[self.all_products['product_ean_code']
+                                  == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB for Share priority'.format(product_ean_code))
+                Log.debug('Product ean {} is not defined in the DB for Share priority'.format(
+                    product_ean_code))
 
-        sequence_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sequence list')\
-            .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
-        # sequence_template_data = parse_template(P3_TEMPLATE_PATH, 'Sequence list')\
-        #     .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
+        # sequence_template_data = parse_template(P3_PATH, 'Sequence list') \
+        sequence_template_data = self.get_relevant_template_sheet(P3_TEMPLATE, 'Sequence list') \
+                    .merge(self.all_products, how='left', on='product_ean_code', suffixes=['', '_all_products'])
         # check product ean codes from the template
         for product_ean_code in sequence_template_data['product_ean_code'].unique().tolist():
             try:
-                self.all_products[self.all_products['product_ean_code'] == product_ean_code]['product_fk'].values[0]
+                self.all_products[self.all_products['product_ean_code']
+                                  == product_ean_code]['product_fk'].values[0]
             except Exception as e:
-                Log.warning('Product ean {} is not defined in the DB for Sequence list'.format(product_ean_code))
-
-        if self.state in sections_template_data['State'].unique().tolist():
-            state_for_calculation = self.state
-        else:
-            state_for_calculation = 'ALL'
-
-        if not self.scif.empty:
-            attribute_3 = self.scif['additional_attribute_3'].values[0]
-        else:
-            attribute_3 = ''
+                Log.debug('Product ean {} is not defined in the DB for Sequence list'.format(
+                    product_ean_code))
 
         for scene in scenes:
 
@@ -1033,20 +1094,26 @@ class BATRU_SANDToolBox:
             self.sas_zones_scores_dict = {}
             sections_statuses = {}
             template_name = self.scif[self.scif['scene_fk'] == scene]['template_name'].values[0]
-            fixture = self.templates.loc[self.templates['template_name'] == template_name]['additional_attribute_1'].values[0]
+            fixture = self.templates.loc[self.templates['template_name']
+                                         == template_name]['additional_attribute_1'].values[0]
             if fixture not in sections_template_data['fixture'].unique().tolist():
                 continue
 
             fixture_name_for_db = self.check_fixture_past_present_in_visit(fixture)
 
+            if self.state in sections_template_data['State'].unique().tolist():
+                state_for_calculation = self.state
+            else:
+                state_for_calculation = 'ALL'
             relevant_sections_data = sections_template_data.loc[
-                (sections_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
+                (sections_template_data['store_attribute_3'] == attribute_3) &
+                (sections_template_data['store_attribute_11'].isin([attribute_11, 'ALL'])) &
                 (sections_template_data['fixture'] == fixture) &
                 (sections_template_data['State'] == state_for_calculation)]
             relevant_sections_data[['section_number']] = relevant_sections_data[['section_number']].astype(int)
 
             relevant_sas_zone_data = sas_zone_template_data.loc[
-                (sas_zone_template_data['store_attribute_3'] == self.scif['additional_attribute_3'].values[0]) &
+                (sas_zone_template_data['store_attribute_3'] == attribute_3) &
                 (sas_zone_template_data['fixture'] == fixture)]
 
             try:
@@ -1059,7 +1126,8 @@ class BATRU_SANDToolBox:
                 scene_products_matrix = pd.DataFrame()
 
             if not (relevant_sas_zone_data.empty or scene_products_matrix.empty):
-                self.check_sas_zone_in_fixture(scene_products_matrix, relevant_sas_zone_data, fixture)
+                self.check_sas_zone_in_fixture(
+                    scene_products_matrix, relevant_sas_zone_data, fixture)
 
             for section in sorted(relevant_sections_data['section_number'].unique().tolist()):
 
@@ -1078,11 +1146,14 @@ class BATRU_SANDToolBox:
                     .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])
                 section_shelf_data_all = self.get_absolute_sequence(section_shelf_data)
                 if section_shelf_data_all.empty:
-                    Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                    Log.debug('Section {} has no matching positions in scene {}'.format(
+                        section_name, scene))
                 else:
-                    section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(start_sequence, end_sequence)]
+                    section_shelf_data = section_shelf_data_all.loc[section_shelf_data_all['sequence'].between(
+                        start_sequence, end_sequence)]
                     if section_shelf_data.empty:
-                        Log.info('Section {} has no matching positions in scene {}'.format(section_name, scene))
+                        Log.debug('Section {} has no matching positions in scene {}'.format(
+                            section_name, scene))
 
                 # Initial pass values
                 no_competitors = True
@@ -1106,18 +1177,27 @@ class BATRU_SANDToolBox:
                             .merge(self.scene_info[['scene_fk', 'template_name']], how='left', left_on='scene_fk', right_on='scene_fk')
                         outside_shelf_data = outside_shelf_data[
                             ~(
-                                    (outside_shelf_data['scene_fk'] == scene) &
-                                    (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
+                                (outside_shelf_data['scene_fk'] == scene) &
+                                (outside_shelf_data[shelf_number].between(start_shelf, end_shelf))
                             ) &
                             (
-                                    (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
-                                    (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
+                                (outside_shelf_data['template_name'].str.contains(EXIT_TEMPLATE_NAME)) |
+                                (outside_shelf_data['template_name'] == EXIT_STOCK_NAME)
                             )]\
                             .merge(self.all_products, how='left', left_on='product_fk', right_on='product_fk', suffixes=['', '_all_products'])\
                             .append(section_shelf_data_all.loc[~(section_shelf_data_all['sequence'].between(start_sequence, end_sequence))], ignore_index=True)
 
-                        specific_section_products_template = self.get_relevant_section_products(
-                            sections_products_template_data, section, state_for_calculation, fixture, attribute_3)
+                        if self.state in sections_products_template_data['State'].unique().tolist():
+                            state_for_calculation = self.state
+                        else:
+                            state_for_calculation = 'ALL'
+                        specific_section_products_template = \
+                            self.get_relevant_section_products(sections_products_template_data,
+                                                               section,
+                                                               state_for_calculation,
+                                                               fixture,
+                                                               attribute_3,
+                                                               attribute_11)
                         section_products = specific_section_products_template['product_ean_code_lead'].unique().tolist()
 
                         sku_presence_passed = self.check_sku_presence(specific_section_products_template,
@@ -1152,7 +1232,8 @@ class BATRU_SANDToolBox:
                                         break
                                     last_prod_seq_ind = prod_seq_ind
                                 elif manufacturer_name == BAT and product_type in (SKU, POSM):
-                                    Log.warning('Product ean {} is not configured in Sequence list template'.format(product_ean_code))
+                                    Log.debug('Product ean {} is not configured in Sequence list template'.format(
+                                        product_ean_code))
                                     sku_sequence_passed = False
                                     break
 
@@ -1161,31 +1242,38 @@ class BATRU_SANDToolBox:
                                 # Checking SKU Repeating
                                 if len(specific_section_products_template['product_ean_code_lead'].tolist()) == \
                                         len(specific_section_products_template[
-                                                specific_section_products_template['Index (Duplications priority)'] != '']
+                                            specific_section_products_template['Index (Duplications priority)'] != '']
                                             ['Index (Duplications priority)'].tolist()):
 
                                     max_priority = \
-                                        priorities_template_data['Index (Duplications priority)'].max()
+                                        priorities_template_data['Index (Duplications priority)'].max(
+                                        )
 
                                     priorities_section = \
-                                        specific_section_products_template[['product_ean_code_lead', 'Index (Duplications priority)']]
+                                        specific_section_products_template[[
+                                            'product_ean_code_lead', 'Index (Duplications priority)']]
                                     priorities_section['Index (Duplications priority)'] = \
-                                        priorities_section['Index (Duplications priority)'].astype(float)
+                                        priorities_section['Index (Duplications priority)'].astype(
+                                            float)
                                     priorities_section['Index (Duplications priority)'] = \
-                                        priorities_section['Index (Duplications priority)'] + max_priority + 1
+                                        priorities_section['Index (Duplications priority)'] + \
+                                        max_priority + 1
                                     priorities_section = priorities_section.append(priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']])\
                                         .drop_duplicates(subset=['product_ean_code_lead', 'Index (Duplications priority)'], keep='first')
                                 else:
                                     priorities_section = \
-                                        priorities_template_data[['product_ean_code_lead', 'Index (Duplications priority)']]
+                                        priorities_template_data[[
+                                            'product_ean_code_lead', 'Index (Duplications priority)']]
 
-                                sku_repeating_passed = self.check_sku_repeating(section_shelf_data, priorities_section)
+                                sku_repeating_passed = self.check_sku_repeating(
+                                    section_shelf_data, priorities_section)
 
                         else:  # SKU Presence failed
 
                             # Defining misplaced products
                             misplaced_products_eans = \
-                                list(set(section_shelf_data['product_ean_code_lead']).difference(section_products))
+                                list(set(section_shelf_data['product_ean_code_lead']).difference(
+                                    section_products))
                             misplaced_products = \
                                 section_shelf_data[section_shelf_data['product_ean_code_lead'].isin(misplaced_products_eans)][
                                     'product_name'].unique().tolist()
@@ -1199,7 +1287,8 @@ class BATRU_SANDToolBox:
                 section_score = 0
                 section_score_2 = 'FAIL'
 
-                misplaced_products_result = ','.join([product_name.replace("'", "\\'") for product_name in misplaced_products])
+                misplaced_products_result = ','.join(
+                    [product_name.replace("'", "\\'") for product_name in misplaced_products])
 
                 # Defining section scores
                 section_status = 0
@@ -1277,14 +1366,17 @@ class BATRU_SANDToolBox:
             else:
                 fixture_score = 0
             self.fixtures_statuses_dict[fixture] = fixture_score
-            self.save_level2_and_level3(SK, fixture_name_for_db, result=fixture_score, level_2_only=True)
+            self.save_level2_and_level3(SK, fixture_name_for_db,
+                                        result=fixture_score, level_2_only=True)
             self.write_to_db_result_for_api(score=fixture_score, level=self.LEVEL3, kpi_set_name=SK_RAW_DATA,
                                             kpi_name=SK_RAW_DATA,
                                             atomic_kpi_name=self.API_EQUIPMENT_KPI_NAME.format(
                                                 fixture=fixture_name_for_db))
 
-            fixture_sas_zone_score = self.calculate_sas_zone_compliance(fixture_name_for_db, self.sas_zones_scores_dict, scene)
-            self.save_level2_and_level3(SAS, fixture_name_for_db, result=fixture_sas_zone_score, level_2_only=True)
+            fixture_sas_zone_score = self.calculate_sas_zone_compliance(
+                fixture_name_for_db, self.sas_zones_scores_dict, scene)
+            self.save_level2_and_level3(SAS, fixture_name_for_db,
+                                        result=fixture_sas_zone_score, level_2_only=True)
             self.write_to_db_result_for_api(score=None, level=self.LEVEL3,
                                             level3_score=fixture_sas_zone_score, kpi_set_name=SAS_RAW_DATA,
                                             kpi_name=SAS_RAW_DATA,
@@ -1294,12 +1386,12 @@ class BATRU_SANDToolBox:
         # Store level results
         if self.sas_zone_statuses_dict:
             sas_zone_score = str(sum(self.sas_zone_statuses_dict.values())/100) + '/' +\
-                             str(len(self.sas_zone_statuses_dict.values()))
+                str(len(self.sas_zone_statuses_dict.values()))
         else:
             sas_zone_score = str(0) + '/' + str(len(self.sas_zone_statuses_dict.values()))
 
         if self.fixtures_statuses_dict:
-            sk_score = min(self.fixtures_statuses_dict.values())  # todo validate this assumption
+            sk_score = min(self.fixtures_statuses_dict.values())
         else:
             sk_score = 0
 
@@ -1335,14 +1427,16 @@ class BATRU_SANDToolBox:
                 section_facings_histogram\
                     .append({'priority': float(priority), 'product_ean_code': product_ean_code, 'facings': facings})
             else:
-                Log.warning('Product ean {} is not configured in Share priority template'.format(product_ean_code))
+                Log.debug('Product ean {} is not configured in Share priority template'.format(
+                    product_ean_code))
         section_facings_histogram = pd.DataFrame(section_facings_histogram)
         if section_facings_histogram.empty:
             return True
 
         min_max_facings = pd.DataFrame(columns=['priority', 'max', 'min'])
         for current_priority in section_facings_histogram['priority'].unique().tolist():
-            current_priority_data = section_facings_histogram[section_facings_histogram['priority'] == current_priority]
+            current_priority_data = section_facings_histogram[section_facings_histogram['priority']
+                                                              == current_priority]
             min_max_facings = min_max_facings.append({'priority': float(current_priority_data['priority'].values[0]),
                                                       'max': current_priority_data['facings'].max(),
                                                       'min': current_priority_data['facings'].min()}, ignore_index=True)
@@ -1370,30 +1464,34 @@ class BATRU_SANDToolBox:
         if section_template['product_fk_lead'].empty:
             return False  # Empty template
 
-        products_on_shelf = products_on_shelf[~(products_on_shelf['product_type'].isin([EMPTY, OTHER]))]
+        products_on_shelf = products_on_shelf[~(
+            products_on_shelf['product_type'].isin([EMPTY, OTHER]))]
         if products_on_shelf.empty:
             return False  # Empty section
 
         mandatory_fks_template = \
             section_template[section_template['Mandatory'] == 'Yes']['product_fk_lead'].unique().tolist()
         mandatory_fks_section = \
-            products_on_shelf[products_on_shelf['product_fk_lead'].isin(mandatory_fks_template)]['product_fk_lead'].unique().tolist()
+            products_on_shelf[products_on_shelf['product_fk_lead'].isin(
+                mandatory_fks_template)]['product_fk_lead'].unique().tolist()
         if len(mandatory_fks_section) == 0:
 
             products_outside = products_outside[~(products_outside['product_type'].isin([EMPTY, OTHER]))]
             mandatory_fks_outside = \
-                products_outside[products_outside['product_fk_lead'].isin(mandatory_fks_template)]['product_fk_lead'].unique().tolist()
+                products_outside[products_outside['product_fk_lead'].isin(
+                    mandatory_fks_template)]['product_fk_lead'].unique().tolist()
             if len(mandatory_fks_outside) == 0:
 
                 brands_template = \
-                    self.all_products[self.all_products['product_fk_lead'].isin(mandatory_fks_template)][
-                        'brand_name'].unique().tolist()
+                    self.all_products[self.all_products['product_fk_lead'].isin(
+                        mandatory_fks_template)]['brand_name'].unique().tolist()
                 brands_section = products_on_shelf['brand_name'].unique().tolist()
                 if set(brands_template).issuperset(brands_section):
                     return True
                 else:
 
-                    brands_outside = products_outside[products_outside['brand_name'].isin(brands_template)]['brand_name'].unique().tolist()
+                    brands_outside = products_outside[products_outside['brand_name'].isin(
+                        brands_template)]['brand_name'].unique().tolist()
                     if len(brands_outside) == 0:
 
                         manufacturers_section = products_on_shelf['manufacturer_name'].unique().tolist()
@@ -1411,8 +1509,8 @@ class BATRU_SANDToolBox:
         elif len(mandatory_fks_section) == len(mandatory_fks_template):
 
             products_fks_template = section_template['product_fk_lead'].unique().tolist()
-            products_fks_section = products_on_shelf[~(products_on_shelf['product_type'].isin([EMPTY, OTHER]))][
-                'product_fk_lead'].unique().tolist()
+            products_fks_section = products_on_shelf[~(products_on_shelf['product_type'].isin(
+                [EMPTY, OTHER]))]['product_fk_lead'].unique().tolist()
             if set(products_fks_template).issuperset(products_fks_section):
                 return True
             else:
@@ -1420,9 +1518,10 @@ class BATRU_SANDToolBox:
 
         else:
 
-            mandatory_fks_template = filter(lambda x: x not in mandatory_fks_section, mandatory_fks_template)
-            mandatory_fks_outside = products_outside[products_outside['product_fk_lead'].isin(mandatory_fks_template)][
-                'product_fk_lead'].unique().tolist()
+            mandatory_fks_template = filter(
+                lambda x: x not in mandatory_fks_section, mandatory_fks_template)
+            mandatory_fks_outside = products_outside[products_outside['product_fk_lead'].isin(
+                mandatory_fks_template)]['product_fk_lead'].unique().tolist()
             if len(mandatory_fks_outside) == 0:
                 return True
             else:
@@ -1456,7 +1555,7 @@ class BATRU_SANDToolBox:
             last_abs_seq = 0
             for previous_bay in shelf_data.loc[shelf_data['bay_number'] < bay]['bay_number'].unique().tolist():
                 last_bay_seq = max(shelf_data.loc[shelf_data['bay_number'] == previous_bay][
-                                       'facing_sequence_number'].unique().tolist())
+                    'facing_sequence_number'].unique().tolist())
                 last_abs_seq += last_bay_seq
             for i, row in shelf_data.iterrows():
                 if row['bay_number'] == bay:
@@ -1499,15 +1598,6 @@ class BATRU_SANDToolBox:
         return start_sequence, end_sequence, start_shelf, end_shelf
 
     def check_no_competitors_in_sas_zone(self, bay_data, start_shelf, end_shelf, start_seq, end_seq):
-        # shelf_rlv_data = bay_data.loc[
-        #     (bay_data['shelf_number'] == shelf) & (bay_data['facing_sequence_number'] <= end_seq)
-        #     & (bay_data['facing_sequence_number'] >= start_seq)]
-        # shelf_rlv_data = shelf_rlv_data.merge(self.all_products, on=['product_fk'])
-        # if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY, OTHER])]['manufacturer_name'].unique().tolist()) == 1 and BAT in shelf_rlv_data[
-        #     'manufacturer_name'].values.tolist():
-        #     return True
-        # else:
-        #     return False
         if end_seq.upper() == 'ALL':
             end_seq = bay_data['sequence'].max()
         else:
@@ -1517,8 +1607,8 @@ class BATRU_SANDToolBox:
             (bay_data['sequence'].between(start_seq, end_seq))]
         shelf_rlv_data = shelf_rlv_data.merge(self.all_products, on=['product_name'])
         if len(shelf_rlv_data[~shelf_rlv_data['product_type'].isin([EMPTY])][
-                   'manufacturer_name'].unique().tolist()) == 1 and BAT in shelf_rlv_data[
-            'manufacturer_name'].values.tolist():
+                'manufacturer_name'].unique().tolist()) == 1 and BAT in shelf_rlv_data[
+                'manufacturer_name'].values.tolist():
             return True
         else:
             return False
@@ -1531,20 +1621,22 @@ class BATRU_SANDToolBox:
         match_display = self.match_display_in_scene
         match_display['display_name'] = self.encode_column_in_df(match_display, 'display_name')
         scene_match_display = match_display[match_display['scene_fk'] == scene]
+        # sas_template = parse_template(P3_PATH, 'SAS Zone Compliance')
         sas_template = self.get_relevant_template_sheet(P3_TEMPLATE, 'SAS Zone Compliance')
-        # sas_template = parse_template(P3_TEMPLATE_PATH, 'SAS Zone Compliance')
         sas_template['Equipment'] = self.encode_column_in_df(sas_template, 'Equipment')
         sas_template['display_name'] = self.encode_column_in_df(sas_template, 'display_name')
         if self.state in sas_template['State'].unique().tolist():
             state_for_calculation = self.state
         else:
             state_for_calculation = 'ALL'
-        if self.scif['additional_attribute_3'].values[0] in sas_template['attribute_3'].unique().tolist():
+        if self.scif['additional_attribute_3'].values[0] in sas_template['store_attribute_3'].unique().tolist():
             attribute_3 = self.scif['additional_attribute_3'].values[0]
         else:
             attribute_3 = 'ALL'
+        attribute_11 = self.scif['additional_attribute_11'].values[0]
         relevant_df = sas_template.loc[(sas_template['Equipment'] == fixture) &
-                                       (sas_template['attribute_3'] == attribute_3) &
+                                       (sas_template['store_attribute_3'] == attribute_3) &
+                                       (sas_template['store_attribute_11'].isin([attribute_11, 'ALL'])) &
                                        (sas_template['State'] == state_for_calculation)]
         if relevant_df.empty:
             status = 0
@@ -1565,18 +1657,6 @@ class BATRU_SANDToolBox:
                                                     kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
                                                     atomic_kpi_name=self.API_DISPLAY_KPI_NAME.format(
                                                         fixture=fixture, display=display))
-                    # for sr_display in relevant_display['Names of template in SR'].split(", "):
-                    #     if sr_display in scene_match_display['display_name'].unique().tolist():
-                    #         presence_score = 100
-                    #     else:
-                    #         presence_score = 0
-                    #         status = 0
-                    #     self.save_level2_and_level3(SAS, display, result=None, score=presence_score, level_3_only=True,
-                    #                                 level2_name_for_atomic=fixture)
-                    #     self.write_to_db_result_for_api(score=None, level=self.LEVEL3, level3_score=presence_score,
-                    #                                     kpi_set_name=SAS_RAW_DATA, kpi_name=SAS_RAW_DATA,
-                    #                                     atomic_kpi_name=self.API_DISPLAY_KPI_NAME.format(
-                    #                                         fixture=fixture, display=display.encode('utf-8')))
         self.sas_zone_statuses_dict[fixture] = status
         self.save_level2_and_level3(SAS, self.NO_COMPETITORS_IN_SAS_ZONE, result=None, score=no_competitors_status,
                                     level_3_only=True,
@@ -1607,12 +1687,13 @@ class BATRU_SANDToolBox:
         if attribute_3 not in attribute_3_in_template:
             attribute_3 = 'OTHER'
         posm_template = posm_template.loc[posm_template[ATTRIBUTE_3].isin(['ALL', attribute_3])]
+        attribute_11 = self.scif['additional_attribute_11'].iloc[0]
+        posm_template = posm_template.loc[posm_template['store_attribute_11'].isin(['ALL', attribute_11])]
         posm_template = posm_template.loc[posm_template['Product Name'] != '']
         score = 0
         self.posm_in_session = self.tools.get_posm_availability()
         equipment_in_store = 0
         equipments = posm_template['KPI Display Name'].unique().tolist()
-        self.save_level1(set_name=P4_API_SET, score=None)
         for equipment in equipments:
             if equipment in self.scif['additional_attribute_1'].unique().tolist():
                 equipment_template = posm_template.loc[posm_template['KPI Display Name'] == equipment]
@@ -1639,14 +1720,25 @@ class BATRU_SANDToolBox:
                         try:
                             result = self.calculate_passed_equipments(equipment_template, equipment_to_db, scene)  # has equipment passed?
                         except IndexError:
-                            Log.warning('The KPI is not in the DB yet')
+                            Log.debug('The KPI is not in the DB yet')
                             result = 0
                     else:
                         result = 0
 
                     score = score + 1 if result else score
+
         set_score = '{}/{}'.format(score, equipment_in_store)
         self.write_to_db_result(set_fk, set_score, level=self.LEVEL1)
+
+        # publish POSMs to API
+        self.save_level1(set_name=P4_API_SET, score=None)
+        for name in self.p4_posm_to_api.keys():
+            result = 1 if self.p4_posm_to_api[name] else 0
+            self.write_to_db_result_for_api(score=result, level=self.LEVEL3, level3_score=None,
+                                            kpi_set_name=P4_API_SET,
+                                            kpi_name=P4_API_SET,
+                                            atomic_kpi_name=name)
+
         return
 
     def calculate_passed_equipments(self, equipment_template, equipment_name, scene_fk):
@@ -1655,6 +1747,8 @@ class BATRU_SANDToolBox:
         :param equipment_template: a data frame filtered by equipment
         :return: num of passed posm in group
         """
+        self.p4_posm_to_api_products = {}
+
         groups = equipment_template['Group Name'].unique().tolist()
         group_counter = 0
         for group in groups:
@@ -1665,13 +1759,18 @@ class BATRU_SANDToolBox:
                 result = 0
             group_counter = group_counter + 1 if result else group_counter
 
+        # adding POSMs to API output that are not in the template but are found in the equipment (scene)
+        for product in self.p4_posm_to_api_products.keys():
+            if self.p4_posm_to_api_products[product] == 0:
+                name = '{};{};{};{}'.format(equipment_name, DEFAULT_GROUP_NAME, DEFAULT_ATOMIC_NAME, product)
+                self.p4_posm_to_api[name] = 1
+
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
                                           (~self.kpi_static_data['atomic_kpi_fk'].isnull())]['kpi_fk'].iloc[0]
         score = 1 if group_counter == len(groups) else 0
         threshold = len(groups)
-        self.write_to_db_result(kpi_fk, result=group_counter, score_2=score, score_3=threshold,
-                                level=self.LEVEL2)
+        self.write_to_db_result(kpi_fk, result=group_counter, score_2=score, score_3=threshold, level=self.LEVEL2)
         return score
 
     def calculate_passed_groups(self, group_template, equipment_name, scene_fk):
@@ -1689,8 +1788,7 @@ class BATRU_SANDToolBox:
                 posm_counter += 1 if result else 0
         kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                           (self.kpi_static_data['kpi_name'] == equipment_name) &
-                                          (self.kpi_static_data['atomic_kpi_name'] == group_name)][
-            'atomic_kpi_fk'].iloc[0]
+                                          (self.kpi_static_data['atomic_kpi_name'] == group_name)]['atomic_kpi_fk'].iloc[0]
         score = 1 if posm_counter == len(group_template) else 0
         self.write_to_db_result(kpi_fk, result=posm_counter, score=score,
                                 threshold=len(group_template), level=self.LEVEL3)
@@ -1711,43 +1809,46 @@ class BATRU_SANDToolBox:
         atomic_name = row['Atomic KPI Name']
         posm_count = 0
         possible_products = row['Product Name'].replace(".jpg", "").replace(".png", "").split(", ")
+        filters = self.get_posm_filters(['Template Group', 'KPI Display Name'], row)
+        filters['scene_id'] = scene_fk
         for product in possible_products:
-            filters = self.get_posm_filters(['Template Group', 'KPI Display Name'], row)
             filters['display_name'] = product
-            filters['scene_id'] = scene_fk
-            result = self.filter_posm_in_session(filters)
+            result = 1 if not self.posm_in_session[self.tools.get_filter_condition(self.posm_in_session, **filters)].empty \
+                else 0
             name = '{};{};{};{}'.format(equipment_name, group_name, atomic_name, product)
-            self.write_to_db_result_for_api(score=result, level=self.LEVEL3, level3_score=None,
-                                            kpi_set_name=P4_API_SET,
-                                            kpi_name=P4_API_SET,
-                                            atomic_kpi_name=name)
+            if result:
+                self.p4_posm_to_api[name] = 1
+                self.p4_posm_to_api_products[product] = 1
+            else:
+                self.p4_posm_to_api[name] = 0
             posm_count = posm_count + 1 if result else posm_count
+
+        # adding found POSMs that are not in the template
+        filters['display_name'] = (possible_products, BATRU_SANDGENERALToolBox.EXCLUDE_FILTER)
+        other_products = self.posm_in_session[self.tools.get_filter_condition(self.posm_in_session, **filters)][
+            'display_name'].unique().tolist()
+        for product in other_products:
+            if self.p4_posm_to_api_products.get(product) is None:
+                self.p4_posm_to_api_products[product] = 0
 
         score = 1 if posm_count else 0
         try:
             kpi_fk = self.kpi_static_data.loc[(self.kpi_static_data['kpi_set_name'] == POSM_AVAILABILITY) &
                                               (self.kpi_static_data['kpi_name'] == equipment_name) &
-                                              (self.kpi_static_data['atomic_kpi_name'] == atomic_name)][
-                'atomic_kpi_fk'].iloc[0]
+                                              (self.kpi_static_data['atomic_kpi_name'] == atomic_name)]['atomic_kpi_fk'].iloc[0]
             self.write_to_db_result(kpi_fk, result=score, score=score, level=self.LEVEL3)
-        except IndexError as e:
-            Log.warning("KPI {}:{}:{}:{} was not found in static.".format(POSM_AVAILABILITY,
-                                                                          equipment_name, group_name, atomic_name))
+        except IndexError:
+            Log.debug("KPI {}:{}:{}:{} was not found in static.".format(POSM_AVAILABILITY,
+                                                                        equipment_name, group_name, atomic_name))
         return 1 if posm_count else 0
-
-    def filter_posm_in_session(self, filters):
-        posm_df = self.posm_in_session[self.tools.get_filter_condition(self.posm_in_session, **filters)]
-        if posm_df.empty:
-            return 0
-        else:
-            return 1
 
     # P5 KPI
     @kpi_runtime()
     def handle_priority_5(self):
-        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == SHARE_OF]['kpi_set_fk'].iloc[0]
-        kpi_template = self.get_relevant_template_sheet(P5_TEMPLATE, 'KPIs')
+        set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                      == SHARE_OF]['kpi_set_fk'].iloc[0]
         # kpi_template = self.get_custom_template(P5_PATH, 'KPIs')
+        kpi_template = self.get_relevant_template_sheet(P5_TEMPLATE, 'KPIs')
         kpi_template['KPI Name(scene type attribute 1)'] = self.encode_column_in_df(
             kpi_template, 'KPI Name(scene type attribute 1)')
         score = 0
@@ -1760,14 +1861,15 @@ class BATRU_SANDToolBox:
                 score = self.calculate_soa(row)
             elif row['KPI Type'] == 'Share of Shelf':
                 score = self.calculate_sos(row)
-            if row['is_set_score'] == '1':
+            if row['is_set_score'] in ['1', 1]:
                 set_score = score
 
             atomic_fk = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == kpi_name]['atomic_kpi_fk'].iloc[0]
             kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].iloc[0]
             self.write_to_db_result(atomic_fk, result=format(score * 100, '.2f'), score=format(score * 100, '.0f'),
                                     score_2=format(score, '.2f'), level=self.LEVEL3)
-            self.write_to_db_result(kpi_fk, result=format(score, '.0f'), score_2=format(score, '.2f'), level=self.LEVEL2)
+            self.write_to_db_result(kpi_fk, result=format(score, '.0f'),
+                                    score_2=format(score, '.2f'), level=self.LEVEL2)
         self.write_to_db_result(set_fk, result=format(set_score * 100, '.2f'), level=self.LEVEL1)
 
     def calculate_soa(self, row):
@@ -1893,7 +1995,6 @@ class BATRU_SANDToolBox:
     #
     #     return bundle_lead
 
-
     # DB FUNCTIONS
 
     def get_kpi_fk_by_names(self, set_name, kpi_name, atomic_name=None, model_id=None, include_atomic=False):
@@ -1901,7 +2002,7 @@ class BATRU_SANDToolBox:
             kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                             (self.kpi_static_data['kpi_name'] == kpi_name)]
             if kpi_data.empty:
-                Log.warning('KPI {} in set {} is not defined in the DB'.format(kpi_name, set_name))
+                Log.debug('KPI {} in set {} is not defined in the DB'.format(kpi_name, set_name))
                 return None
             kpi_fk = kpi_data['kpi_fk'].values[0]
             atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
@@ -1910,7 +2011,8 @@ class BATRU_SANDToolBox:
             data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
                                         (self.kpi_static_data['kpi_name'] == kpi_name)]['kpi_fk'].values
             if not data.any():
-                Log.warning('KPI [{}] in set [{}] is not defined in the DB'.format(kpi_name, set_name))
+                Log.debug('KPI [{}] in set [{}] is not defined in the DB'.format(
+                    kpi_name, set_name))
                 return None
         elif not model_id:
             data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
@@ -1918,7 +2020,7 @@ class BATRU_SANDToolBox:
                                         (self.kpi_static_data['atomic_kpi_name'] == atomic_name)][
                 'atomic_kpi_fk'].values
             if not data.any():
-                Log.warning('set [{}]: KPI [{}] with atomic [{}] is not defined in the DB'.format(
+                Log.debug('set [{}]: KPI [{}] with atomic [{}] is not defined in the DB'.format(
                     set_name, kpi_name, atomic_name))
                 return None
         else:
@@ -1927,7 +2029,7 @@ class BATRU_SANDToolBox:
                                         (self.kpi_static_data['atomic_kpi_name'] == atomic_name) &
                                         (self.kpi_static_data['section'] == model_id)]['atomic_kpi_fk'].values
             if not data.any():
-                Log.warning('set [{}]: KPI [{}] with atomic [{}] and model_id [{}] is not defined in the DB'.format(
+                Log.debug('set [{}]: KPI [{}] with atomic [{}] and model_id [{}] is not defined in the DB'.format(
                     set_name, kpi_name, atomic_name, model_id))
                 return None
         return data[0]
@@ -1937,7 +2039,8 @@ class BATRU_SANDToolBox:
         This function creates the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
         """
-        attributes = self.create_attributes_dict_for_api(score, level, threshold, level3_score, **kwargs)
+        attributes = self.create_attributes_dict_for_api(
+            score, level, threshold, level3_score, **kwargs)
         if level == self.LEVEL1:
             table = KPS_RESULT
         elif level == self.LEVEL2:
@@ -1956,7 +2059,8 @@ class BATRU_SANDToolBox:
         """
         if level == self.LEVEL1:
             set_name = kwargs['kpi_set_name']
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
+                                          == set_name]['kpi_set_fk'].values[0]
             if score is not None:
                 attributes = pd.DataFrame([(set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                             format(score, '.2f'), set_fk)],
@@ -1969,7 +2073,8 @@ class BATRU_SANDToolBox:
                                                    'kpi_set_fk'])
         elif level == self.LEVEL2:
             kpi_name = kwargs['kpi_name']
-            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+            kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
+                                          == kpi_name]['kpi_fk'].values[0]
             attributes = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         kpi_fk, kpi_name, score)],
                                       columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name', 'score'])
@@ -2031,11 +2136,9 @@ class BATRU_SANDToolBox:
                 if score is None and threshold is None:
                     self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score_2=score_2, score_3=score_3)
                 elif score is not None and threshold is None:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2,
-                                            score_3=score_3)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2, score_3=score_3)
                 else:
-                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2,
-                                            score_3=score_3, threshold=threshold)
+                    self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, score_2=score_2, score_3=score_3, threshold=threshold)
         else:
             kpi_fk, atomic_kpi_fk = self.get_kpi_fk_by_names(set_name, kpi_name, include_atomic=True)
             self.write_to_db_result(kpi_fk, result, self.LEVEL2)
@@ -2046,8 +2149,7 @@ class BATRU_SANDToolBox:
             else:
                 self.write_to_db_result(atomic_kpi_fk, result, self.LEVEL3, score=score, threshold=threshold)
 
-    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None,
-                           result_2=None):
+    def write_to_db_result(self, fk, result, level, score=None, threshold=None, score_2=None, score_3=None, result_2=None):
         """
         This function the result data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
@@ -2072,7 +2174,8 @@ class BATRU_SANDToolBox:
 
         """
         if level == self.LEVEL1:
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['kpi_set_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(kpi_set_name, self.session_uid, self.store_id, self.visit_date.isoformat(),
                                         result, score2, fk, score_3)],
                                       columns=['kps_name', 'session_uid', 'store_fk', 'visit_date', 'score_1',
@@ -2089,7 +2192,8 @@ class BATRU_SANDToolBox:
             data = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]
             atomic_kpi_name = data['atomic_kpi_name'].values[0].replace("'", "\\'")
             kpi_fk = data['kpi_fk'].values[0]
-            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk'] == fk]['kpi_set_name'].values[0]
+            kpi_set_name = self.kpi_static_data[self.kpi_static_data['atomic_kpi_fk']
+                                                == fk]['kpi_set_name'].values[0]
             attributes = pd.DataFrame([(atomic_kpi_name, self.session_uid, kpi_set_name, self.store_id,
                                         self.visit_date.isoformat(), datetime.utcnow().isoformat(),
                                         result, kpi_fk, fk, threshold, score, score2, score_3, result_2)],
@@ -2105,6 +2209,7 @@ class BATRU_SANDToolBox:
         """
         This function writes all KPI results to the DB, and commits the changes.
         """
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         cur = self.rds_conn.db.cursor()
         delete_queries = BATRU_SANDQueries.get_delete_session_results_query(self.session_uid)
         for query in delete_queries:
@@ -2113,36 +2218,3 @@ class BATRU_SANDToolBox:
             cur.execute(query)
             # print query
         self.rds_conn.db.commit()
-
-# @staticmethod
-# def most_common(lst):
-#     product_counter = max(zip((lst.count(item) for item in set(lst)), set(lst)))
-#     if product_counter[0] > 1:
-#         current_value = product_counter[0]
-#         current_product = product_counter[1]
-#         new_lst = lst
-#         new_lst.remove(current_product)
-#         new_product_counter = max(zip((new_lst.count(item) for item in set(new_lst)), set(new_lst)))
-#         new_lst.append(current_product)
-#         if new_product_counter[0] == current_value and new_product_counter[1] != current_product:
-#             return [new_product_counter[1], current_product]
-#         else:
-#             return product_counter[1]
-#     else:
-#         return None
-
-
-# def _get_latest_session_for_cycle(self, previous_sessions_in_store):
-#     """
-#     Find latest session for the in the same store as current session
-#     :param previous_sessions_in_store:
-#     :type previous_sessions_in_store: pandas.DataFrame
-#     :return:
-#     :rtype pd.DataFrame
-#     """
-#     max_start_time_per_cycle = previous_sessions_in_store.groupby('plan_fk', as_index=False)['start_time'].max()
-#     latest_session_for_cycle = previous_sessions_in_store.merge(max_start_time_per_cycle,
-#                                                                 on=['plan_fk', 'start_time'])
-#     latest_single_session_for_cycle = latest_session_for_cycle.groupby(['plan_fk', 'cycle_start_date'],
-#                                                                        as_index=False)['session_id'].max()
-#     return latest_single_session_for_cycle.sort_values(['cycle_start_date'], ascending=False).reset_index(drop=True)

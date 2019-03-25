@@ -10,7 +10,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 __author__ = 'ilays'
 
 
-class Generator:
+class PNGHKGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider

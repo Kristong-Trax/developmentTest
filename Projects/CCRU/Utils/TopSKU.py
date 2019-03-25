@@ -58,7 +58,8 @@ class CCRUTopSKUAssortment:
         try:
             pd.read_sql_query('select pk from probedata.session limit 1', self._rds_conn.db)
         except Exception as e:
-            self._rds_conn.disconnect_rds()
+            if self._rds_conn.is_connected:
+                self._rds_conn.disconnect_rds()
             self._rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         return self._rds_conn
 
@@ -95,7 +96,8 @@ class CCRUTopSKUAssortment:
         if product_ean_code in self.products:
             product_fk = self.products[product_ean_code]
         else:
-            product_fk = self.product_data[self.product_data['product_ean_code'] == product_ean_code]
+            product_fk = self.product_data[self.product_data['product_ean_code']
+                                           == product_ean_code]
             if not product_fk.empty:
                 product_fk = product_fk['product_fk'].values[0]
                 self.products[product_ean_code] = product_fk
@@ -124,7 +126,6 @@ class CCRUTopSKUAssortment:
         store_number = data.pop(self.STORE_NUMBER, None)
         store_fk = self.get_store_fk(store_number)
         if store_fk is None:
-            Log.warning("Store number '{}' is not defined in DB".format(self.STORE_NUMBER))
             return
         start_date = data.pop(self.START_DATE, None).date()
         start_date_minus_day = start_date - dt.timedelta(1)
@@ -142,21 +143,17 @@ class CCRUTopSKUAssortment:
                 anchor_product_ean_code = product_list[0]
                 anchor_product_fk = self.get_product_fk(anchor_product_ean_code)
                 if anchor_product_fk is None:
-                    # Log.warning("Anchor product EAN '{}' is not defined in DB".format(anchor_product_ean_code))
                     continue
                 min_facings = data[key]
                 for product in product_list:
                     product_fk = self.get_product_fk(product)
                     if product_fk is None:
-                        # Log.warning("Product EAN '{}' is not defined in DB".format(product))
                         continue
                     tmplt_top_sku_keys.add(str(product_fk) + '|' +
                                            str(anchor_product_fk) + '|' +
                                            str(min_facings) + '|1')
-        # if not tmplt_top_sku_keys:
-        #     Log.info('No products are configured as Top SKUs for store number {} and period {} - {}'
-        #              ''.format(store_number, start_date, end_date))
-        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)['top_sku_key'].tolist()
+        store_top_sku_keys = self.get_store_top_skus(store_fk, start_date, end_date)[
+            'top_sku_key'].tolist()
         products_to_deactivate = set(store_top_sku_keys).difference(tmplt_top_sku_keys)
         products_to_extend = set(tmplt_top_sku_keys).intersection(store_top_sku_keys)
         products_to_activate = set(tmplt_top_sku_keys).difference(store_top_sku_keys)
@@ -191,8 +188,6 @@ class CCRUTopSKUAssortment:
         """
         for col in raw_data.columns:
             if str(col).count('.'):
-                # Log.warning("Duplicate column {} is encountered in the template and removed from loading"
-                #             "".format(col.split('.')[0]))
                 self.duplicate_columns.append(col)
         data = raw_data.drop(self.duplicate_columns, axis=1)
         data = data.rename_axis(str.replace(' ', ' ', ''), axis=1)
@@ -205,7 +200,6 @@ class CCRUTopSKUAssortment:
             products = product.replace(' ', '').replace('\n', '').split(',')
             for prod in products:
                 if self.product_data.loc[self.product_data['product_ean_code'] == prod].empty:
-                    # Log.warning("Product with EAN Code = {} does not exist in the DB".format(prod))
                     self.invalid_products.append(prod)
         return data
 
@@ -220,19 +214,15 @@ class CCRUTopSKUAssortment:
         stores_start_date = store_row[self.START_DATE]
         stores_end_date = store_row[self.END_DATE]
         if store_data.loc[store_data['store_number'] == str(store_number_1)].empty:
-            # Log.warning('Store number {} does not exist in the DB'.format(store_number_1))
             self.invalid_stores.append(store_number_1)
             return False
         if not stores_start_date or not stores_end_date:
-            # Log.warning("Missing dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if type(stores_start_date) in [str, unicode] or type(stores_end_date) in [str, unicode]:
-            # Log.warning("The dates for store number {} are in the wrong format".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
         if stores_start_date > stores_end_date:
-            # Log.warning("Invalid dates for store number {}".format(store_number_1))
             self.stores_with_invalid_dates.append(store_number_1)
             return False
 
@@ -244,7 +234,8 @@ class CCRUTopSKUAssortment:
         :return: A DataFrame with valid products
         """
         raw_data = pd.read_excel(file_path, sheetname=TARGETS_SHEET_NAME)
-        raw_data = raw_data.drop_duplicates(subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
+        raw_data = raw_data.drop_duplicates(
+            subset=[self.STORE_NUMBER, self.START_DATE, self.END_DATE], keep='first')
         raw_data = raw_data.fillna('')
         raw_data.columns.str.replace(' ', '').str.replace('\n', '')
         raw_data = self.products_validator(raw_data)
@@ -307,11 +298,9 @@ class CCRUTopSKUAssortment:
                 self.insert_queries = []
 
                 self.commit_results(queries)
-                queries = []
 
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
                 Log.info("Number of stores processed and committed to DB: {}/{}".format(count_stores_processed, count_stores_total))
-                # Log.info("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
         if self.duplicate_columns:
@@ -394,7 +383,8 @@ class CCRUTopSKUAssortment:
         This function connects to the DB and cursor
         :return: rds connection and cursor connection
         """
-        self.rds_conn.disconnect_rds()
+        if self.rds_conn.is_connected:
+            self.rds_conn.disconnect_rds()
         rds_conn = PSProjectConnector(PROJECT, DbUsers.CalculationEng)
         cur = rds_conn.db.cursor()
         return rds_conn, cur
@@ -409,8 +399,9 @@ class CCRUTopSKUAssortment:
             try:
                 cur.execute(query)
             except Exception as e:
-                Log.info('DB update failed due to: {}'.format(e))
+                Log.warning('DB update failed due to: {}'.format(e))
                 rds_conn, cur = self.connection_ritual()
+                cur.execute(query)
                 continue
             if query_num > batch_size:
                 query_num = 0
@@ -471,7 +462,7 @@ class CCRUTopSKUAssortment:
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Top SKU CCRU')
+    LoggerInitializer.init('CCRU Top SKU/OSA targets upload')
     ts = CCRUTopSKUAssortment()
     ts.upload_top_sku_file()
 # # # To run it locally just copy: -e prod --file **your file path** to the configuration

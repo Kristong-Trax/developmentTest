@@ -124,7 +124,6 @@ class CCRUContract:
             store_id = self.get_store_fk(store_number)
             if store_id is None:
 
-                # Log.warning('Store number {} does not exist in the DB'.format(store_number))
                 self.invalid_stores.append(store_number)
 
             else:
@@ -161,25 +160,20 @@ class CCRUContract:
 
             if not start_date_new <= end_date_new:
 
-                # Log.warning('Contract Execution target date period for Store ID {} / Number {} is invalid'
-                #             .format(store_id, store_number))
                 self.stores_with_invalid_dates += [store_number]
 
             else:
 
                 target_data = []
                 target_data_cur = self.get_json_file_content(str(store_id))
-                # if target_data_cur:
-                #     Log.info('Relevant Contract Execution target file for Store ID {} / Number {} is found'
-                #              .format(store_id, store_number))
                 for data_cur in target_data_cur:
                     try:
-                        start_date_cur = dt.datetime.strptime(data_cur[self.START_DATE], '%Y-%m-%d').date()
-                        end_date_cur = dt.datetime.strptime(data_cur[self.END_DATE], '%Y-%m-%d').date()
+                        start_date_cur = dt.datetime.strptime(
+                            data_cur[self.START_DATE], '%Y-%m-%d').date()
+                        end_date_cur = dt.datetime.strptime(
+                            data_cur[self.END_DATE], '%Y-%m-%d').date()
                         store_number_cur = data_cur[self.STORE_NUMBER]
                     except:
-                        # Log.warning('Contract Execution target format for Store ID {} / Number {} is invalid'
-                        #             .format(store_id, store_number))
                         self.stores_with_invalid_targets += [store_number]
                         continue
                     if store_number_cur == store_number \
@@ -192,7 +186,8 @@ class CCRUContract:
                         del details_cur[self.START_DATE]
                         del details_cur[self.END_DATE]
                         if details_cur == details_new:
-                            data_new[self.START_DATE] = str(start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
+                            data_new[self.START_DATE] = str(
+                                start_date_cur) if start_date_cur <= start_date_new else str(start_date_new)
                         else:
                             end_date_cur = start_date_new - dt.timedelta(days=1)
                             if start_date_cur <= end_date_cur:
@@ -205,13 +200,12 @@ class CCRUContract:
                 with open(self.temp_path, 'wb') as f:
                     f.write(json.dumps(target_data))
                 self.amz_conn.save_file(self.cloud_path, str(store_id), self.temp_path)
-                # Log.info('File for Store ID {} was uploaded {}/{}'.format(store_id, x+1, len(target_data_new)))
 
             count_stores_processed = x + 1
             self.stores_processed += [store_number]
             if count_stores_processed % 1000 == 0 or count_stores_processed == count_stores_total:
                 Log.info("Number of stores processed: {}/{}".format(count_stores_processed, count_stores_total))
-                # Log.info("Stores processed: {}".format(self.stores_processed))
+                # Log.debug("Stores processed: {}".format(self.stores_processed))
                 self.stores_processed = []
 
         if os.path.exists(self.temp_path):
@@ -230,7 +224,7 @@ class CCRUContract:
                         "{}".format(len(self.stores_with_invalid_dates), self.stores_with_invalid_dates))
 
         Log.info("Execution targets are uploaded successfully. " +
-                 ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
+                  ("Incorrect template data were ignored (see above)" if self.invalid_stores or self.stores_with_invalid_dates or self.stores_with_invalid_targets else ""))
 
     @staticmethod
     def parse_arguments():
@@ -247,6 +241,6 @@ class CCRUContract:
 
 if __name__ == '__main__':
     # LoggerInitializer.init(PROJECT)
-    Log.init(PROJECT, 'CCRU Execution Contract targets upload')
+    Log.init(PROJECT, 'CCRU Contract Execution targets upload')
     Config.init()
     CCRUContract().parse_and_upload_file()
