@@ -27,7 +27,7 @@ class BISEASKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'biseask'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'EE588AB6-103A-40D3-998D-5C696B5527BD'
+#     session = '77408F47-4EE3-4A68-B02B-00E0892BC47C'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     BISEASKCalculations(data_provider, output).run_project_calculations()
