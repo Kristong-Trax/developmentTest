@@ -58,6 +58,7 @@ class CCMY_SANDConsts(object):
 
     CCBM = 2  # CCBM
     GENERAL_MANUFACTURER = 0
+    OTHER_MANUFACTURER = 12
     GENERAL_EMPTY_PRODUCT = 0
     IRRELEVANT = 184
 
@@ -138,7 +139,6 @@ class CCMY_SANDToolBox:
                score = self.calculate_facings_sos(kpi_data)
             elif kpi_type == CCMY_SANDConsts.SHELF_PURITY:
                 score = self.calculate_self_purity(kpi_data)
-                print "Session_id={}".format(self.common.session_id)
                 self.common.commit_results_data_to_new_tables()
             else:
                 continue
@@ -245,9 +245,8 @@ class CCMY_SANDToolBox:
                             (row_data_x[CCMY_SANDConsts.IS_PURE]==CCMY_SANDConsts.PURE)):
 
                         row_data_x[CCMY_SANDConsts.IS_PURE] = CCMY_SANDConsts.IMPURE
-
+                        print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
                         continue
-
                     elif ((row_data_x[CCMY_SANDConsts.SCENE_FK] == row_data_y[CCMY_SANDConsts.SCENE_FK]) &
                           (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
                           (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
@@ -256,7 +255,16 @@ class CCMY_SANDToolBox:
                           (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
 
                         row_data_x[CCMY_SANDConsts.IS_PURE] = CCMY_SANDConsts.IMPURE
-
+                        print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
+                        continue
+                    elif ((row_data_x[CCMY_SANDConsts.SCENE_FK] == row_data_y[CCMY_SANDConsts.SCENE_FK]) &
+                      (row_data_x[CCMY_SANDConsts.BAY_NUMBER] == row_data_y[CCMY_SANDConsts.BAY_NUMBER]) &
+                      (row_data_x[CCMY_SANDConsts.SHELF_NUMBER] == row_data_y[CCMY_SANDConsts.SHELF_NUMBER]) &
+                      (row_data_y[CCMY_SANDConsts.MANUFACTURER_FK] == CCMY_SANDConsts.GENERAL_MANUFACTURER) &
+                      (row_data_y[CCMY_SANDConsts.PRODUCT_FK] != CCMY_SANDConsts.GENERAL_EMPTY_PRODUCT) &
+                      (row_data_x[CCMY_SANDConsts.IS_PURE] == CCMY_SANDConsts.PURE)):
+                        row_data_x[CCMY_SANDConsts.IS_PURE] = CCMY_SANDConsts.IMPURE
+                        print "Impure Shelf={}".format(row_data_y[CCMY_SANDConsts.SHELF_NUMBER])
                         continue
 
             if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
@@ -303,7 +311,7 @@ class CCMY_SANDToolBox:
                 total_num_of_shelfs = len(df_shelf_pure)
 
                 if total_num_of_shelfs != 0:
-                    score = num_of_pure_shelfs / total_num_of_shelfs
+                    score = num_of_pure_shelfs / float(total_num_of_shelfs)
 
                 # KPI old tables
                 if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
@@ -374,7 +382,6 @@ class CCMY_SANDToolBox:
             return
         query = insert(attributes, table)
         self.kpi_results_queries.append(query)
-
 
     def create_attributes_dict(self, fk, score, level):
         """
