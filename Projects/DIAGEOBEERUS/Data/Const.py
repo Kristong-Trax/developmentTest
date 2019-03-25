@@ -60,14 +60,14 @@ class Const(object):
             COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark'},
         SHELF_FACINGS_MAIN_SHELF: {
             TOTAL: '# of Facings (Main Shelf)',
-            BRAND: 'Facings (Main Shelf) - Brand', SUB_BRAND: 'Facings (Main Shelf) - Brand Variant',
-            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
-            VARIANT: 'Facings (Main Shelf) - Brand Variant vs. Benchmark'},
+            BRAND: '# of Facings (Main Shelf) - Brand', SUB_BRAND: '# of Facings (Main Shelf) - Brand Variant',
+            COMPETITION: '# of Shelf Facings - Brand Variant Size', SKU: '# of Shelf Facings - BVS + Brand Benchmark',
+            VARIANT: '# of Facings (Main Shelf) - Brand Variant vs. Benchmark'},
         SHELF_FACINGS_COLD_BOX: {
             TOTAL: '# of Facings (Cold Box)',
-            BRAND: 'Facings (Cold Box) - Brand', SUB_BRAND: 'Facings (Cold Box) - Brand Variant',
-            COMPETITION: 'Shelf Facings - Brand Variant Size', SKU: 'Shelf Facings - BVS + Brand Benchmark',
-            VARIANT: 'Facings (Cold Box) - Brand Variant vs. Benchmark'},
+            BRAND: '# of Facings (Cold Box) - Brand', SUB_BRAND: '# of Facings (Cold Box) - Brand Variant',
+            COMPETITION: '# of Shelf Facings - Brand Variant Size', SKU: '# of Shelf Facings - BVS + Brand Benchmark',
+            VARIANT: '# of Facings (Cold Box) - Brand Variant vs. Benchmark'},
         NUMBER_OF_DISPLAYS: {
             TOTAL: '# of Displays',
             BRAND: '# of Displays - Brand', SUB_BRAND: '# of Displays - Brand Variant',

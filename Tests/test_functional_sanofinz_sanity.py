@@ -14,7 +14,7 @@ from Projects.SANOFINZ.Calculations import SANOFINZCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
-__author__ = 'ilays'
+__author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
@@ -43,7 +43,7 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
     def test_sanofinz_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['33BE40B3-347B-4ADB-A37E-DE89CE523891']
+        sessions = ['FE1548DD-E3EE-445B-82EA-4602F2996F82']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()

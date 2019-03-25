@@ -133,7 +133,7 @@ class CCRUProjectCalculations:
                         .format(self.pos_kpi_set_name, self.store_id))
             return
 
-        kpi_sets_types_to_calculate = [POS, TARGET, MARKETING, SPIRITS]
+        kpi_sets_types_to_calculate = [POS, TARGET, SPIRITS]
         for kpi_set_type in kpi_sets_types_to_calculate:
             if not kpi_source[kpi_set_type][SET]:
                 continue

@@ -1896,10 +1896,10 @@ class CCRUKPIToolBox:
                 kpi_total = 0
             kpi_score = self.calculate_score(kpi_total, p)
             if p.get('KPI Weight') is None:
-                set_total_res += round(kpi_score * kpi_total_weight)
+                set_total_res += round(kpi_score) * kpi_total_weight
                 p['KPI Weight'] = kpi_total_weight
             else:
-                set_total_res += round(kpi_score * p.get('KPI Weight'))
+                set_total_res += round(kpi_score) * p.get('KPI Weight')
             # saving to DB
             if kpi_fk:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, kpi_score, kpi_fk)
@@ -2052,7 +2052,7 @@ class CCRUKPIToolBox:
 
     @kpi_runtime()
     def commit_results_data_old(self):
-        self.rds_conn.disconnect_rds()
+        # self.rds_conn.disconnect_rds()
         self.rds_conn = self.rds_connection()
         cur = self.rds_conn.db.cursor()
         delete_queries = self.kpi_fetcher.get_delete_session_results(
@@ -2060,26 +2060,26 @@ class CCRUKPIToolBox:
         for query in delete_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
+        # self.rds_conn.disconnect_rds()
         self.rds_conn = self.rds_connection()
         cur = self.rds_conn.db.cursor()
         for query in self.kpi_results_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
+        # self.rds_conn.disconnect_rds()
         self.rds_conn = self.rds_connection()
         cur = self.rds_conn.db.cursor()
         for query in set(self.gaps_queries):
             cur.execute(query)
         self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
+        # self.rds_conn.disconnect_rds()
         self.rds_conn = self.rds_connection()
         cur = self.rds_conn.db.cursor()
         top_sku_queries = self.merge_insert_queries(self.top_sku_queries)
         for query in top_sku_queries:
             cur.execute(query)
         self.rds_conn.db.commit()
-        self.rds_conn.disconnect_rds()
+        # self.rds_conn.disconnect_rds()
         return
 
     def write_to_kpi_facts_hidden(self, kpi_id, scene, result, score):
@@ -3343,10 +3343,10 @@ class CCRUKPIToolBox:
                         set=CONTRACT, level=0, kpi=CONTRACT)
                 else:
                     identifier_parent = None
-                try:
-                    self.write_kpi_tree(kpi_set_type, kpis, identifier_parent=identifier_parent)
-                except Exception as e:
-                    print 'write_to_kpi_results_new Exception Error: {}'.format(e)
+                # try:
+                self.write_kpi_tree(kpi_set_type, kpis, identifier_parent=identifier_parent)
+                # except Exception as e:
+                #     Log.warning('write_to_kpi_results_new Exception Error ({}): {}'.format(kpi_set_type, e))
 
         return
 

@@ -12,11 +12,13 @@ class Const(object):
     KPIS = 'KPIs'
     TMB = 'Top-Middle-Bottom'
     COUNT = 'Count of'
+    SET_COUNT = 'Set Count of'
     BLOCKING = 'Blocking'
     BASE_MEASURE = 'Base Measure'
     SURVEY = 'Survey Question'
     ORIENT = 'Product Orientation'
     PRESENCE = 'Presence'
+    PRESENCE_WITHIN_BAY = 'Presence within Bay'
     COUNT_SHELVES = 'Count of Shelves'
     PERCENT = 'Percent'
     AGGREGATION = 'Aggregation'
@@ -32,9 +34,9 @@ class Const(object):
     RESULT = 'Result'
     SEQUENCE = 'Sequence'
 
-    SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
-              ADJACENCY, TMB_MAP, STOCKING, YOGURT_MAP, ANCHOR, ANCHOR_LIST, SURVEY_QUESTION, VARIETY_COUNT, RESULT,
-              SEQUENCE]
+    # SHEETS = [KPIS, TMB, COUNT, BLOCKING, BASE_MEASURE, SURVEY, ORIENT, PRESENCE, COUNT_SHELVES, PERCENT, AGGREGATION,
+    #           ADJACENCY, TMB_MAP, STOCKING, YOGURT_MAP, ANCHOR, ANCHOR_LIST, SURVEY_QUESTION, VARIETY_COUNT, RESULT,
+    #           SEQUENCE]
 
     RESULT = 'Result'
 
@@ -59,6 +61,10 @@ class Const(object):
     RESULT_TYPE = 'Result Type'
 
     ''' Constants '''
+    PRIV_LABEL_SKU = 106529
+    PRIV_LABEL_BRAND = 6943
+    PRIV_LABEL_MAN = 5282
+    PRIV_LABEL_NAME = 'Generic Private Label'
     MM_TO_FT = 304.8
     COMMA_SPACE = ', '
     COMMA = ','
@@ -78,6 +84,9 @@ class Const(object):
                  'GMI_AUDIENCE']
     TMB_VALUES = ['Top', 'Middle', 'Bottom']
     END_OF_CAT = 'END OF CATEGORY'
+    PRIV_SCIF_COLS = ['facings', 'facings_ign_stack', 'net_len_add_stack', 'gross_len_add_stack', 'net_len_split_stack',
+                      'gross_len_split_stack', 'net_len_ign_stack', 'gross_len_ign_stack', 'net_area_split_stack',
+                      'gross_area_split_stack', 'net_area_ign_stack', 'gross_area_ign_stack']
 
 
 
