@@ -348,7 +348,7 @@ class BATRU_SANDAssortment:
                 cursor.execute(query)
                 # print query
             except Exception as e:
-                Log.info('Committing to DB failed to due to: {}. Query: {}'.format(e, query))
+                Log.warning('Committing to DB failed to due to: {}. Query: {}'.format(e, query))
                 self.rds_conn.db.commit()
                 failed_queries.append(query)
                 self.rds_conn.connect_rds()

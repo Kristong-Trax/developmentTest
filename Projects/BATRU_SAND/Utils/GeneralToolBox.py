@@ -80,8 +80,7 @@ class BATRU_SANDGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = BATRU_SANDPositionGraphs(
-                self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = BATRU_SANDPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
