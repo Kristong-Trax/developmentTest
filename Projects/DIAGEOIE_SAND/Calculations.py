@@ -19,7 +19,7 @@ class DIAGEOIECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageoie-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '92F2A083-6400-43F4-A88C-CDB9A8FEC756'
+#     session = 'FDE1C869-3955-4C86-AD55-A5897C21BC00'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOIECalculations(data_provider, output).run_project_calculations()
