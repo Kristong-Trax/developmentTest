@@ -85,68 +85,68 @@ class PERNODUSToolBox:
 
     def main_calculation(self, *args, **kwargs):
 
-        # Base Measurement
-        for i, row in self.BaseMeasure_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                location = row['Store Location']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # Anchor
-        for i, row in self.Anchor_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                value = row['value']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-
-                self.calculate_anchor(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        #Presence
-        self.calculate_presence()
-
-        #Blocking
-        for i, row in self.Blocking_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_blocking(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        #Eye Level
-        for i, row in self.Eye_Level_template.iterrows():
-            try:
-                kpi_name = row['KPI']
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                self.calculate_eye_level(kpi_set_fk, kpi_name)
-
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        # Adjacency
-        for i, row in self.Adjaceny_template.iterrows():
-            try:
-                kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
-                kpi_name = row['KPI']
-                self.adjacency(kpi_set_fk, kpi_name)
-            except Exception as e:
-                Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
-                continue
-
-        self.Calculate_linear_sos()
+        # # Base Measurement
+        # for i, row in self.BaseMeasure_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         location = row['Store Location']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_category_space(kpi_set_fk, kpi_name, value, location)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # Anchor
+        # for i, row in self.Anchor_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         value = row['value']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #
+        #         self.calculate_anchor(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # #Presence
+        # self.calculate_presence()
+        #
+        # #Blocking
+        # for i, row in self.Blocking_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_blocking(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # #Eye Level
+        # for i, row in self.Eye_Level_template.iterrows():
+        #     try:
+        #         kpi_name = row['KPI']
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         self.calculate_eye_level(kpi_set_fk, kpi_name)
+        #
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # # Adjacency
+        # for i, row in self.Adjaceny_template.iterrows():
+        #     try:
+        #         kpi_set_fk = self.kpi_static_data['pk'][self.kpi_static_data['type'] == row['KPI LEVEL 2']].iloc[0]
+        #         kpi_name = row['KPI']
+        #         self.adjacency(kpi_set_fk, kpi_name)
+        #     except Exception as e:
+        #         Log.info('KPI {} calculation failed due to {}'.format(kpi_name.encode('utf-8'), e))
+        #         continue
+        #
+        # self.Calculate_linear_sos()
 
 
         #Count of Displays
@@ -692,10 +692,10 @@ class PERNODUSToolBox:
                 sub_category = self.all_products['sub_category'][self.all_products['brand_name'] == value1].max()
                 general_filters = {'sub_category': sub_category, Const.product_type: [Const.SKU, Const.OTHER]}
                 filter_df_columns = [Const.scene_id, Const.manufacturer,'brand_name', Const.facings]
-                groupby_df_columns = [[Const.scene_id,Const.manufacturer, 'brand_name']]
+                groupby_df_columns = [Const.scene_id,Const.manufacturer, 'brand_name']
             else:
                 category = self.all_products[Const.category][self.all_products[param1] == value1].iloc[0]
-                general_filters = {Const.manufacturer: category, Const.product_type: [Const.SKU, Const.OTHER]}
+                general_filters = {Const.category: category, Const.product_type: [Const.SKU, Const.OTHER]}
                 filter_df_columns = [Const.scene_id, 'brand_name', Const.facings]
                 groupby_df_columns = [Const.scene_id,  'brand_name']
 
@@ -714,12 +714,12 @@ class PERNODUSToolBox:
                 numerator_res = len(numerator_df_filtered.groupby(groupby_df_columns).size().reset_index())
 
 
-            if display_filtered.empty or display_filtered == 0:
+            if display_filtered.empty or len(display_filtered)== 0:
                 pass
 
             else:
                 denominator_res = len(display_filtered.groupby(groupby_df_columns).size().reset_index())
-                score = (round(float(numerator_res) / denominator_res, 2) * 100)
+                score = (round(float(numerator_res) / denominator_res, 2))
 
                 if param1 == Const.manufacturer:
                     manufacturer_fk = \
@@ -745,28 +745,28 @@ class PERNODUSToolBox:
         param1 = row['Param1']
         value1 = row['Value1']
 
-        template_types = row['template_type'].split()
-        scene_type = row['Location']
+        template_types = row['Location'].split(',')
+
         general_filters = {}
 
         for template_type in template_types:
             if (param1):
-                general_filters = {param1: value1, template_type: scene_type, Const.product_type: [Const.SKU, Const.OTHER]}
+                general_filters = {param1: value1, Const.template_name: template_type, Const.product_type: [Const.SKU, Const.OTHER]}
             else:
-                general_filters = {template_type: scene_type, Const.product_type: [Const.SKU, Const.OTHER]}
+                general_filters = { Const.template_name: template_type, Const.product_type: [Const.SKU, Const.OTHER]}
 
             filtered_df = self.scif[self.get_filter_condition(self.scif, **general_filters)]
             group_filter = filtered_df.groupby([Const.scene_id, 'brand_name']).size().to_frame('count').reset_index()
             group_df = group_filter.groupby([Const.scene_id])['count'].sum().reset_index()
 
-            if (group_filter.empty):
+            if (group_df.empty):
                 pass
             else:
 
                 for scene_id in group_df[Const.scene_id].tolist():
                     display_count = group_df['count'][group_df[Const.scene_id] == scene_id].iloc[0]
 
-                    template_fk = self.scif['template_fk'][self.scif[Const.template_name] == scene_type].iloc[0]
+                    template_fk = self.scif['template_fk'][self.scif[Const.template_name] == template_type].iloc[0]
                     self.common.write_to_db_result(fk=kpi_set_fk, numerator_id=scene_id, numerator_result=display_count,
                                                denominator_id=template_fk,
                                                result=display_count, score=display_count)
