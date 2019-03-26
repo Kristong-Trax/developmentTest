@@ -4,10 +4,10 @@ __author__ = 'hunter'
 
 
 class Const(object):
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final_Final.xlsx')
     LIBERTY = 'Liberty'
     RED_SCORE_PARENT = 'RED SCORE'
-    BODY_ARMOR_FK = 203
+    BODY_ARMOR_BRAND_FK = 203
 
     # sheets
     KPIS = 'KPIs'
