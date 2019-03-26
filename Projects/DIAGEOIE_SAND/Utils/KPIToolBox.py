@@ -102,7 +102,7 @@ class DIAGEOIESandToolBox:
         self.activate_ootb_kpis()
 
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global Tap Brand Score
