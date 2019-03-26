@@ -64,7 +64,7 @@ class MONDELEZUSSOSToolBox:
 
     def calculate_facings_sos_sku_out_of_template(self):
         try:
-            relevant_scif = self.scif
+            relevant_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant'])]
 
             denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
                     [self.facings_field]].sum().rename(columns={self.facings_field: 'denominator_result'})
@@ -77,19 +77,20 @@ class MONDELEZUSSOSToolBox:
             results['result'].fillna(0, inplace=True)
 
             for index, row in results.iterrows():
-                result_dict = self.build_dictionary_for_db_insert(
-                    kpi_name='FACINGS_SOS_SKU_OUT_OF_TEMPLATE_IN_WHOLE_STORE',
-                    numerator_id=row['product_fk'], denominator_id=row['template_fk'],
-                    numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
-                    result=row['result'], score=row['result'], score_after_actions=row['result'])
-                self.common.write_to_db_result(**result_dict)
+                if row['numerator_result'] > 0:
+                    result_dict = self.build_dictionary_for_db_insert(
+                        kpi_name='FACINGS_SOS_SKU_OUT_OF_TEMPLATE_IN_WHOLE_STORE',
+                        numerator_id=row['product_fk'], denominator_id=row['template_fk'],
+                        numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
+                        result=row['result'], score=row['result'], score_after_actions=row['result'])
+                    self.common.write_to_db_result(**result_dict)
 
         except Exception as e:
             Log.info('FACINGS_SOS_SKU_OUT_OF_TEMPLATE calculation failed due to {}'.format(e))
 
     def calculate_linear_sos_sku_out_of_template(self):
         try:
-            relevant_scif = self.scif
+            relevant_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant'])]
 
             denominator_results = relevant_scif.groupby('template_fk', as_index=False)[
                 ['net_len_ign_stack']].sum().rename(columns={'net_len_ign_stack': 'denominator_result'})
@@ -102,12 +103,13 @@ class MONDELEZUSSOSToolBox:
             results['result'].fillna(0, inplace=True)
 
             for index, row in results.iterrows():
-                result_dict = self.build_dictionary_for_db_insert(
-                    kpi_name='LINEAR_SOS_SKU_OUT_OF_TEMPLATE_IN_WHOLE_STORE',
-                    numerator_id=row['product_fk'], denominator_id=row['template_fk'],
-                    numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
-                    result=row['result'], score=row['result'], score_after_actions=row['result'])
-                self.common.write_to_db_result(**result_dict)
+                if row['numerator_result'] > 0:
+                    result_dict = self.build_dictionary_for_db_insert(
+                        kpi_name='LINEAR_SOS_SKU_OUT_OF_TEMPLATE_IN_WHOLE_STORE',
+                        numerator_id=row['product_fk'], denominator_id=row['template_fk'],
+                        numerator_result=row['numerator_result'], denominator_result=row['denominator_result'],
+                        result=row['result'], score=row['result'], score_after_actions=row['result'])
+                    self.common.write_to_db_result(**result_dict)
 
         except Exception as e:
             Log.info('LINEAR_SOS_SKU_OUT_OF_TEMPLATE calculation failed due to {}'.format(e))
