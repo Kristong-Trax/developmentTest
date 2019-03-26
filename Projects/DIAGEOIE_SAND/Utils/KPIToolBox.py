@@ -180,8 +180,7 @@ class DIAGEOIESandToolBox:
                         denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
                         identifier_result="level_1", should_enter=False)
 
-        for i in level_2:
-            res = i
+        for res in level_2:
             self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
                         denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
                         denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
@@ -223,14 +222,14 @@ class DIAGEOIESandToolBox:
         if den_df is None:
             denominator = 0
         else:
-            denominator = len(den_df)
+            denominator = len(den_df[den_df])
         for cat_fk in categories_fk:
             filters['category_fk'] = cat_fk
             num_df = self.tools.get_filter_condition(df=extended_matches, **filters)
             if num_df is None:
                 numerator = 0
             else:
-                numerator = len(num_df)
+                numerator = len(num_df[num_df])
             if denominator != 0:
                 result = float(numerator) / denominator
             else:
@@ -242,7 +241,7 @@ class DIAGEOIESandToolBox:
             res_dict['denominator_result'] = denominator
             res_dict['result'] = result
             res_dict['score'] = result
-            res_list.append(res_dict)
+            res_list.append(res_dict.copy())
         return res_list
 
     def calculate_assortment_sets(self, set_name):
