@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.DIAGEOIE_SAND.KPIGenerator import DIAGEOIESandGenerator
 
@@ -19,7 +19,7 @@ class DIAGEOIECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'diageoie-sand'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'C8521623-1175-44D5-898E-8D213084B6D2'
+#     session = '92F2A083-6400-43F4-A88C-CDB9A8FEC756'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     DIAGEOIECalculations(data_provider, output).run_project_calculations()

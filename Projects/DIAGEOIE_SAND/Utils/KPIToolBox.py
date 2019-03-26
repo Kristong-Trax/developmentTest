@@ -2,6 +2,11 @@
 from datetime import datetime
 import pandas as pd
 import os
+
+from OutOfTheBox.Calculations.BrandSOS import BrandFacingsSOSPerSubCategoryInStore
+from OutOfTheBox.Calculations.ManufacturerSOS import ManufacturerFacingsSOSInWholeStore, \
+    ManufacturerFacingsSOSPerSubCategoryInStore
+from OutOfTheBox.Calculations.SubCategorySOS import SubCategoryFacingsSOSPerCategory
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Utils.Conf.Keys import DbUsers
@@ -93,6 +98,9 @@ class DIAGEOIESandToolBox:
         """
         This function calculates the KPI results.
         """
+        # activate ootb kpis
+        self.activate_ootb_kpis()
+
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
@@ -102,6 +110,7 @@ class DIAGEOIESandToolBox:
                                      'Data', 'Brand Score.xlsx')
         res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
         self.commonV2.save_json_to_new_tables(res_dict)
+
 
         for set_name in set_names:
             set_score = 0
@@ -143,6 +152,98 @@ class DIAGEOIESandToolBox:
         # committing to new tables
         self.commonV2.commit_results_data()
         return
+
+    def activate_ootb_kpis(self):
+        sos_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS OUT OF STORE')
+        sos_store = ManufacturerFacingsSOSInWholeStore(data_provider=self.data_provider,
+                                                       kpi_definition_fk=sos_store_fk).calculate()  #'FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE' - level 1
+
+        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
+        sos_cat_out_of_store = self.calculate_sos_cat_store(sos_sub_cat_out_of_cat_fk)
+
+        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
+        sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
+                                                        kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate() #'FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY' - level 3
+        sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS MANUFACTURER OUT OF SUB CATEGORY')
+        sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
+                                                        kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate() #'FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE' - level 4
+        sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
+        sos_brand_out_of_sub_cat = BrandFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
+                                                        kpi_definition_fk=sos_brand_out_of_sub_cat_fk).calculate() #'FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE' - level 5
+        self.save_hirerchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat, sos_brand_out_of_sub_cat)
+
+    def save_hirerchy(self, level_1, level_2, level_3, level_4, level_5):
+        for i in level_1:
+            res = i.to_dict
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
+                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
+                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
+                        identifier_result="level_1", should_enter=False)
+
+        for i in level_2:
+            res = i
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
+                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
+                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
+                        identifier_result="level_2_"+str(res['numerator_id']),
+                        identifier_parent="level_1", should_enter=True)
+
+        for i in level_3:
+            res = i.to_dict
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
+                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
+                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
+                        identifier_result="level_3_"+str(res['numerator_id']),
+                        identifier_parent="level_2_"+str(res['denominator_id']), should_enter=True)
+
+        for i in level_4:
+            res = i.to_dict
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
+                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
+                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
+                        identifier_result="level_4_"+str(res['numerator_id']),
+                        identifier_parent="level_3_"+str(res['denominator_id']), should_enter=True)
+
+        for i in level_5:
+            res = i.to_dict
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
+                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
+                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
+                        identifier_result="level_5_" + str(res['numerator_id']),
+                        identifier_parent="level_3_" + str(res['denominator_id']), should_enter=True)
+
+    def calculate_sos_cat_store(self, fk):
+        res_list = []
+        res_dict = dict()
+        extended_matches = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk", how="left")
+        categories = extended_matches['category_fk'].drop_duplicates()
+        categories_fk = set(categories[~categories.isnull()])
+        filters = {}
+        den_df = self.tools.get_filter_condition(df=extended_matches, **filters)
+        if den_df is None:
+            denominator = 0
+        else:
+            denominator = len(den_df)
+        for cat_fk in categories_fk:
+            filters['category_fk'] = cat_fk
+            num_df = self.tools.get_filter_condition(df=extended_matches, **filters)
+            if num_df is None:
+                numerator = 0
+            else:
+                numerator = len(num_df)
+            if denominator != 0:
+                result = float(numerator) / denominator
+            else:
+                result = 0
+            res_dict['kpi_definition_fk'] = fk
+            res_dict['numerator_id'] = cat_fk
+            res_dict['numerator_result'] = numerator
+            res_dict['denominator_id'] = self.store_id
+            res_dict['denominator_result'] = denominator
+            res_dict['result'] = result
+            res_dict['score'] = result
+            res_list.append(res_dict)
+        return res_list
 
     def calculate_assortment_sets(self, set_name):
         """
