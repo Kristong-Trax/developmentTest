@@ -170,9 +170,9 @@ class DIAGEOIESandToolBox:
         sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
         sos_brand_out_of_sub_cat = BrandFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
                                                         kpi_definition_fk=sos_brand_out_of_sub_cat_fk).calculate() #'FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE' - level 5
-        self.save_hirerchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat, sos_brand_out_of_sub_cat)
+        self.save_hierarchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat, sos_brand_out_of_sub_cat)
 
-    def save_hirerchy(self, level_1, level_2, level_3, level_4, level_5):
+    def save_hierarchy(self, level_1, level_2, level_3, level_4, level_5):
         for i in level_1:
             res = i.to_dict
             self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
