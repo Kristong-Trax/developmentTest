@@ -326,7 +326,7 @@ class CCMY_SANDToolBox:
                 if params[CCMY_SANDConsts.KPI_NAME] == CCMY_SANDConsts.KPI_NUM_PURE_SHELVES:
                     self.common.write_to_db_result_new_tables(fk=kpi_level_2_fk,
                                                               numerator_id=template_fk[0],
-                                                              denominator_id=self_purity_scene_list[0],
+                                                              denominator_id=self.store_id,
                                                               numerator_result=num_of_pure_shelfs,
                                                               denominator_result=total_num_of_shelfs,
                                                               #numerator_result_after_actions=0,
