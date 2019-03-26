@@ -102,7 +102,7 @@ class DIAGEOIESandToolBox:
         self.activate_ootb_kpis()
 
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global Tap Brand Score
@@ -205,11 +205,16 @@ class DIAGEOIESandToolBox:
 
         for i in level_5:
             res = i.to_dict
+            try:
+                manufacturer_fk = self.all_products[self.all_products['brand_fk'] ==
+                                                res['numerator_id']]['manufacturer_fk'].values[0]
+            except:
+                manufacturer_fk = 1
             self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
                         denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
                         denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
                         identifier_result="level_5_" + str(int(res['numerator_id'])),
-                        identifier_parent="level_3_" + str(int(res['denominator_id'])), should_enter=True)
+                        identifier_parent="level_4_" + str(int(manufacturer_fk)), should_enter=True)
 
     def calculate_sos_cat_store(self, fk):
         res_list = []
