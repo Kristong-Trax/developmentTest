@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.PNGCN_PROD.KPIToolBox import PNGToolBox, log_runtime
@@ -30,7 +30,7 @@ class PngCNEmptyCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'pngcn-prod'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '0efdaaf3-61ba-47cf-a20a-fbe8709975c6'
+#     session = 'cb2cc33d-de43-4c35-a25b-ce538730037e'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     PngCNEmptyCalculations(data_provider, output).run_project_calculations()
