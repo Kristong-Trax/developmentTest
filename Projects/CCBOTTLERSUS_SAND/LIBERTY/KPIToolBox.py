@@ -35,6 +35,9 @@ class LIBERTYToolBox:
         self.common_db = common_db
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
+        self.retailer = self.store_info['retailer_name'].iloc[0]
+        self.branch = self.store_info['branch_name'].iloc[0]
+        self.body_armor_delivered = self.get_body_armor_delivery_status()
 
 
     # main functions:
@@ -49,10 +52,10 @@ class LIBERTYToolBox:
             self.calculate_main_kpi(main_line)
         if not main_template.empty:
             pass
-        if len(self.common_db.kpi_results) > 0:
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
-                                              identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
+        # if len(self.common_db.kpi_results) > 0:
+        #     kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+        #     self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
+        #                                       identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
         return
 
     def calculate_main_kpi(self, main_line):
@@ -66,6 +69,12 @@ class LIBERTYToolBox:
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
             relevant_scif = relevant_scif[relevant_scif['template_name'].isin(scene_types)]
+        excluded_scene_types = self.does_exist(main_line, Const.EXCLUDED_SCENE_TYPE)
+        if excluded_scene_types:
+            relevant_scif = relevant_scif[~relevant_scif['template_name'].isin(excluded_scene_types)]
+        template_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
+        if template_groups:
+            relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_groups)]
         result = self.calculate_kpi_by_type(main_line, relevant_scif)
         # self.write_to_session_level(kpi_name=kpi_name, result=result)
         return result
@@ -106,25 +115,136 @@ class LIBERTYToolBox:
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif):
-        pass
+        market_share_required = self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET)
+        if market_share_required:
+            market_share_target = self.get_market_share_target()
+        else:
+            market_share_target = 0
+
+        if not market_share_target:
+            market_share_target = 0
+
+        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        if manufacturer:
+            relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+
+        return relevant_scif['facings'].sum() > market_share_target
 
     # Availability functions
     def calculate_availability(self, kpi_line, relevant_scif):
-        pass
+        survey_question_skus_required = self.does_exist(kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
+        if survey_question_skus_required:
+            survey_question_skus = self.get_kpi_function(kpi_line[Const.KPI_NAME])
+            unique_skus = \
+                relevant_scif[relevant_scif['product_fk'].isin(survey_question_skus)]['product_fk'].unique().tolist()
+        else:
+            manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+            if manufacturer:
+                relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+            brand = self.does_exist(kpi_line[Const.BRAND])
+            if brand:
+                relevant_scif = relevant_scif[relevant_scif['brand_name'] == brand]
+            category = self.does_exist(kpi_line[Const.CATEGORY])
+            if category:
+                relevant_scif = relevant_scif[relevant_scif['category'] == category]
+            excluded_brand = self.does_exist(kpi_line[Const.EXCLUDED_BRAND])
+            if excluded_brand:
+                relevant_scif = relevant_scif[~relevant_scif['brand_name'] == excluded_brand]
+            unique_skus = relevant_scif['product_fk'].unique().tolist()
+
+        return len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
+
+    def get_relevant_product_assortment_by_kpi_name(self, kpi_name):
+        template = self.templates[Const.SURVEY_QUESTION_SKUS]
+        relevant_template = template[template[Const.KPI_NAME] == kpi_name]
+        return relevant_template['product_fk'].unique().tolist()
 
     # Count of Display functions
     def calculate_count_of_display(self, kpi_line, relevant_scif):
-        pass
+        filtered_scif = relevant_scif
+
+        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        if manufacturer:
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+
+        brand = self.does_exist(kpi_line[Const.BRAND])
+        if brand:
+            relevant_scif = relevant_scif[relevant_scif['brand_name'] == brand]
+
+        ssd_still = self.does_exist(kpi_line[Const.ATT4])
+        if ssd_still:
+            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
+
+        #TODO add filtered for size;subpackages_num
+
+        #TODO add filtering for subpackages_num
+
+        if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
+            number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
+            return number_of_passing_displays
+        else:
+            return False
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif):
-        pass
+        filtered_scif = relevant_scif
+
+        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        if manufacturer:
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+
+        ssd_still = self.does_exist(kpi_line[Const.ATT4])
+        if ssd_still:
+            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
+
+        if self.does_exist(kpi_line[Const.MARKET_SHARE_TARGET]):
+            market_share_target = self.get_market_share_target(ssd_still=ssd_still)
+        else:
+            market_share_target = 0
+
+        if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]):
+            body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+            filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
+
+        if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
+            number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
+            return number_of_passing_displays > market_share_target
+        else:
+            return False
+
+    def get_number_of_passing_displays(self, filtered_scif):
+        #TODO compute number of displays based on minimum_facings
+        return 0
 
     # Survey functions
     def calculate_survey(self, kpi_line, relevant_scif):
         pass
 
     # helper functions
+    def get_market_share_target(self, ssd_still=None):
+        template = self.templates[Const.MARKET_SHARE]
+        relevant_template = template[(template[Const.STORE_TYPE] == self.store_type) &
+                                     (template[Const.RETAILER] == self.retailer) &
+                                     (template[Const.BRANCH] == self.branch)]
+
+        if relevant_template.empty:
+            return 0
+        if ssd_still:
+            if ssd_still.lower() == Const.SSD.lower():
+                return relevant_template[Const.SSD].iloc[0]
+            elif ssd_still.lower() == Const.STILL.lower():
+                return relevant_template[Const.STILL].iloc[0]
+
+        return relevant_template[Const.SSD_AND_STILL].iloc[0]
+
+    def get_body_armor_delivery_status(self):
+        list_of_zip_codes = self.templates[Const.BODY_ARMOR][Const.ZIP].unique().tolist()
+        store_zip_code = self.store_info['postal_code'].iloc[0]
+        if store_zip_code in list_of_zip_codes:
+            return 'Y'
+        else:
+            return 'N'
+
     def get_kpi_function(self, kpi_type):
         """
         transfers every kpi to its own function

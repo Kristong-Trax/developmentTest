@@ -6,7 +6,7 @@ __author__ = 'hunter'
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final_Final.xlsx')
     LIBERTY = 'Liberty'
-    RED_SCORE_PARENT = 'RED SCORE'
+    RED_SCORE_PARENT = 'RED SCORE - Liberty'
     BODY_ARMOR_BRAND_FK = 203
 
     # sheets
@@ -15,10 +15,15 @@ class Const(object):
     AVAILABILITY = 'Availability'
     COUNT_OF_DISPLAY = 'Count of Display'
     SHARE_OF_DISPLAY = 'Share of Display'
-    MARKET_SHARE = 'market_share'
     SURVEY = 'Survey'
+    MINIMUM_FACINGS = 'minimum_facings'
+    SURVEY_QUESTION_SKUS = 'Survey_Question_SKUs'
+    MARKET_SHARE = 'market_share'
+    BODY_ARMOR = 'Body_Armor_Zip'
 
-    SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, MARKET_SHARE]
+
+    SHEETS = [KPIS, SOS, AVAILABILITY, COUNT_OF_DISPLAY, SHARE_OF_DISPLAY, SURVEY, MINIMUM_FACINGS,
+              SURVEY_QUESTION_SKUS, MARKET_SHARE, BODY_ARMOR]
 
     # KPIs columns
     KPI_NAME = 'KPI Name'
@@ -41,17 +46,35 @@ class Const(object):
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
     SURVEY_QUESTION_SKUS_REQUIRED = 'Survey_Question_SKUs_required'
 
-    # Count of Display
+    # Count of Display columns
     ATT4 = 'att4'
     SIZE_SUBPACKAGES_NUM = 'size;subpackages_num'
     SUBPACKAGES_NUM = 'subpackages_num'
     MINIMUM_FACINGS_REQUIRED = 'facings_threshold'
 
-    # Share of Display
+    # Share of Display columns
+    INCLUDE_BODY_ARMOR = 'include_body_armor'
 
+    # minimum_facings columns
+    SIZE = 'size'
+    UNIT_OF_MEASURE = 'unit_of_measure'
+
+    # Survey_Question_SKUs columns
+    EAN_CODE = 'ean_code'
+
+    # Body_Armor_Zip
+    ZIP = 'Zip'
+
+    # market_share columns
+    RETAILER = 'retailer_name'
+    BRANCH = 'Branch'
+    SSD_AND_STILL = 'Total_SSD_and_Still'
+    SSD = 'SSD'
+    STILL = 'Still'
 
     # KPI result values
     PASS = 'Pass'
     FAIL = 'Fail'
 
+    NOT_NULL = 'NOT NULL'
     NUMERIC_VALUES_TYPES = ['size']
