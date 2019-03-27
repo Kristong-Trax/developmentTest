@@ -33,8 +33,7 @@ class BATMXToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.scenes = self.scene_info['scene_fk'].tolist()
-        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"].isin(Const.BAT_MANUFACTURERS)][
-            'manufacturer_fk'].iloc[0]
+        self.manufacturer_fk = self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         scenes_with_templates = self.scif[['template_name', 'scene_fk']].drop_duplicates()
         exits = scenes_with_templates[scenes_with_templates[
