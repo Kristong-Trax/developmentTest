@@ -55,6 +55,10 @@ class PEPSICOUKToolBox:
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay 90', 'Brand Full Bay 100']
     HERO_PREFIX = 'Hero SKU'
+    ALL = 'ALL'
+    HERO_SKU_OOS_SKU = 'Hero SKU OOS - SKU'
+    HERO_SKU_OOS = 'Hero SKU OOS'
+    HERO_SKU_AVAILABILITY = 'Hero SKU Availability'
     # SENSATIONS_VS_KETTLE_INDEX = 'Sensations Greater Linear Space vs Kettle'
     # DORITOS_VS_PRINGLES_INDEX = 'Doritos Greater Linear Space vs Pringles'
 
@@ -551,13 +555,23 @@ class PEPSICOUKToolBox:
     def calculate_assortment(self):
         # self.assortment.main_assortment_calculation()
         # try first the generic function (also look up pepsicoru)
+        oos_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_OOS_SKU)
+        oos_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_OOS)
+        distribution_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_AVAILABILITY)
+        identifier_parent = self.common.get_dictionary(kpi_fk=distribution_kpi_fk)
         for result in self.lvl3_ass_result.itertuples():
             score = result.in_store * 100
-
-            self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
-                                                         numerator_result=result.in_store, result=score,
-                                                         denominator_id=self.store_id,
-                                                         denominator_result=1, score=score)
+            result = self.commontools.get_yes_no_result(score)
+            self.common.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                                           numerator_result=result.in_store, result=result,
+                                           denominator_id=self.store_id, should_enter=True,
+                                           denominator_result=1, score=score, identifier_parent=identifier_parent)
+            if score == 0:
+                # OOS
+                self.common.write_to_db_result(fk=oos_sku_fk,
+                                               numerator_id=result.product_fk, numerator_result=score,
+                                               result=score, denominator_id=self.store_id,
+                                               denominator_result=1, score=score)
 
         if not self.lvl3_ass_result.empty:
             lvl2_result = self.assortment.calculate_lvl2_assortment(self.lvl3_ass_result)
@@ -567,14 +581,16 @@ class PEPSICOUKToolBox:
                     if result.group_target_date <= self.visit_date:
                         denominator_res = result.target
                 res = np.divide(float(result.passes), float(denominator_res)) * 100
-                if res >= 100:
-                    score = 100
-                else:
-                    score = 0
-                self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
-                                                             numerator_result=result.passes, result=res,
-                                                             denominator_id=result.assortment_super_group_fk,
-                                                             denominator_result=denominator_res, score=score)
+                score = 100 if res >= 100 else 0
+                self.common.write_to_db_result(fk=result.kpi_fk_lvl2, numerator_id=self.own_manuf_fk,
+                                               numerator_result=result.passes, result=res,
+                                               denominator_id=self.store_id, denominator_result=denominator_res, score=score,
+                                               identifier_result=identifier_parent, should_enter=True)
+
+                self.common.write_to_db_result(fk=oos_fk, numerator_id=self.own_manuf_fk,
+                                               numerator_result=denominator_res - result.passes,
+                                               denominator_id=self.store_id, denominator_result=denominator_res,
+                                               result=1 - res, score=(1 - res))
 
     def calculate_sos_vs_target_kpis(self):
         sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
@@ -617,7 +633,7 @@ class PEPSICOUKToolBox:
             store_dict = self.full_store_info.to_dict('records')[0]
             for column in policy_columns:
                 store_att_value = store_dict.get(column)
-                policies_df = policies_df[policies_df[column] == store_att_value]
+                policies_df = policies_df[policies_df[column].isin([store_att_value, self.ALL])]
             kpi_targets_pks = policies_df['pk'].values.tolist()
             relevant_targets_df = sos_vs_target_kpis[sos_vs_target_kpis['pk'].isin(kpi_targets_pks)]
             # relevant_targets_df = relevant_targets_df.merge(policies_df, on='pk', how='left') # see if i will need it in the code
