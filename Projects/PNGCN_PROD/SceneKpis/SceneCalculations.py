@@ -7,19 +7,22 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+from KPIUtils_v2.DB.CommonV2 import Common
+from Trax.Algo.Calculations.Core.DataProvider import Data
 
 
 
 class SceneCalculations(SceneBaseClass):
     def __init__(self, data_provider):
         super(SceneCalculations, self).__init__(data_provider)
+        self.data_provider = data_provider
         self.scene_generator = SceneGenerator(self._data_provider)
         # self._monitor = None
         # self.timer = self._monitor.Timer('Perform', 'Init Session')
 
     def calculate_kpis(self):
         # self.timer.start()
-        self.scene_generator.scene_share_of_display()
+        self.scene_generator.PngcnSceneKpis()
         # self.timer.stop('KPIGenerator.run_project_calculations')
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -31,15 +34,14 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
 
-
 # if __name__ == '__main__':
 #     LoggerInitializer.init('pngcn calculations')
 #     Config.init()
 #     project_name = 'pngcn-prod'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '0813b0a8-a104-4994-a3d9-1fcd8dbed465'
+#     session = 'cb2cc33d-de43-4c35-a25b-ce538730037e'
 #
-#     scenes = [9377272, ]
+#     scenes = [15140013, ]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()
