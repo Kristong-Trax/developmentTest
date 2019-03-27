@@ -72,10 +72,11 @@ class JRIJPToolBox:
                 for data_tup, scene_data_df in grouped_data:
                     scene_fk, bay_number, shelf_number, product_fk = data_tup
                     facings_count_in_cell = len(scene_data_df)
+                    cur_template_fk = int(self.scene_info[self.scene_info['scene_fk'] == scene_fk].get('template_fk'))
                     self.common.write_to_db_result(fk=kpi_fk,
                                                    numerator_id=product_fk,
                                                    denominator_id=self.store_id,
-                                                   context_id=scene_fk,
+                                                   context_id=cur_template_fk,
                                                    numerator_result=bay_number,
                                                    denominator_result=shelf_number,
                                                    result=facings_count_in_cell,

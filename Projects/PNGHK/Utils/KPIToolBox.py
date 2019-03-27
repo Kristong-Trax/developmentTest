@@ -203,15 +203,18 @@ class PNGHKToolBox:
                 # Iterate categories
                 for category in categories:
                     if category != "":
-                        denominator_id = self.all_products[self.all_products['category'] == category]['category_fk'].iloc[0]
+                        denominator_id = self.all_products[self.all_products['category'] ==
+                                                                category]['category_fk'].iloc[0]
                         filters['category'] = category
+                        all_numerators = self.df[self.df['category'] ==
+                                               category][entity_name].drop_duplicates().values.tolist()
                     else:
                         denominator_id = self.store_id
+                        all_numerators = df[entity_name].drop_duplicates().values.tolist()
 
-                    all_numerators = df[entity_name].drop_duplicates().values.tolist()
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                     if denominator == 0:
                         continue
                     if scene_size != "":
@@ -219,13 +222,10 @@ class PNGHKToolBox:
                         denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
-                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                         del filters[entity_name]
-                        if numerator == 0:
-                            continue
                         if scene_size != "":
                             numerator = numerator * ratio
-                        result = float(numerator) / float(denominator) if denominator != 0 else 0
                         try:
                             numerator_id = self.all_products[self.all_products[entity_name] ==
                                                              entity][entity_name_for_fk].values[0]
@@ -233,14 +233,22 @@ class PNGHKToolBox:
                             Log.warning("No entity in this name " + entity)
                             numerator_id = -1
                         if (numerator_id, denominator_id, context_id) not in results_dict.keys():
-                            results_dict[numerator_id, denominator_id, context_id] = [result, numerator, denominator]
+                            results_dict[numerator_id, denominator_id, context_id] = [numerator, denominator]
                         else:
                             results_dict[numerator_id, denominator_id, context_id] = map(sum,
-                                                                                         zip(results_dict[numerator_id, denominator_id, context_id],
-                                                                                             [result, numerator, denominator]))
+                                                         zip(results_dict[numerator_id, denominator_id, context_id],
+                                                             [numerator, denominator]))
+        results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
 
-        for numerator_id, denominator_id, context_id in results_dict.keys():
-            result, numerator, denominator = results_dict[numerator_id, denominator_id, context_id]
+        # numerator became column 0, denominator column 1, result will enter column 2
+        filtered_results_as_df = results_as_df[results_as_df[0] != 0]
+        filtered_df = filtered_results_as_df.copy()
+        filtered_df[2] = filtered_results_as_df[0] / filtered_results_as_df[1]
+        filtered_results_as_dict = filtered_df.to_dict(orient="index")
+
+        for numerator_id, denominator_id, context_id in filtered_results_as_dict.keys():
+            result_row = filtered_results_as_dict[numerator_id, denominator_id, context_id]
+            result, numerator, denominator = result_row[2], result_row[0], result_row[1]
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=numerator_id, denominator_id=denominator_id,
                                            context_id=context_id, numerator_result=numerator,
                                            denominator_result=denominator, result=result, score=result)
@@ -288,8 +296,7 @@ class PNGHKToolBox:
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
-                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                               'bay_number','shelf_number']]
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
                 products_df = products_df.drop_duplicates()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
@@ -297,8 +304,8 @@ class PNGHKToolBox:
                                               (scene_df['shelf_number'] == p['shelf_number']))]
                 df_list.append(scene_df)
 
-                # filter df to remove shelves with given ean code (only on the same bay)
-            elif row[Const.HAS_HOTSPOT].values[0] == Const.YES:
+            # filter df to remove shelves with given ean code (only on the same bay)
+            if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'bay_number',
@@ -318,6 +325,7 @@ class PNGHKToolBox:
         scene_types = set(df['template_name'])
         for s in scene_types:
             scene_df = df[df['template_name'] == s]
+            const_scene_df = scene_df.copy()
             row = self.find_row_osd(s)
             if row.empty:
                 continue
@@ -348,14 +356,25 @@ class PNGHKToolBox:
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                               'bay_number',
                                                                                                'shelf_number']]
                 products_df = products_df.drop_duplicates()
-                const_scene_df = scene_df.copy()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
                         scene_df = const_scene_df[((const_scene_df['scene_fk'] == p['scene_fk']) &
                                                    (const_scene_df['shelf_number'] == p['shelf_number']))]
+                        df_list.append(scene_df)
+
+            if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
+                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
+                                                                                               'bay_number',
+                                                                                               'shelf_number']]
+                products_df = products_df.drop_duplicates()
+                if not products_df.empty:
+                    for index, p in products_df.iterrows():
+                        scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
+                                              (const_scene_df['bay_number'] == p['bay_number']) &
+                                              (const_scene_df['shelf_number'] == p['shelf_number']))]
                         df_list.append(scene_df)
         if len(df_list) != 0:
             final_df = pd.concat(df_list)
@@ -388,8 +407,8 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'POS']
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
-        if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
-            df = self.exclude_special_attribute_products(df, Const.DB_HANGER_NAME)
+        # if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
+        #     df = self.exclude_special_attribute_products(df, Const.DB_HANGER_NAME)
         return df
 
     def exclude_special_attribute_products(self, df, smart_attribute):
@@ -397,36 +416,22 @@ class PNGHKToolBox:
         Helper to exclude smart_attribute products
         :return: filtered df without smart_attribute products
         """
-        hanger_df_group = self.match_probe_in_scene.query(
-            "name=='{}'".format(smart_attribute)) \
-            .groupby('scene_fk')
-        for each_scene, probe_df in hanger_df_group:
-            for each_row in probe_df.iterrows():
-                data = each_row[1]
-                df.drop(df[
-                            (df["scene_fk"] == data.scene_fk) &
-                            (df["product_fk"] == data.product_fk) &
-                            (df["probe_match_fk"] == data.probe_match_fk) &
-                            (df["bay_number"] == data.bay_number) &
-                            (df["shelf_number"] == data.shelf_number) &
-                            (df["stacking_layer"] == data.stacking_layer)
-                            ].index, inplace=True)
+        if self.match_probe_in_scene.empty:
+            return df
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == smart_attribute]
+        if smart_attribute_df.empty:
+            return df
+        match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()
+        df = df[~df['probe_match_fk'].isin(match_product_in_probe_fks)]
         return df
 
     def get_product_special_attribute_data(self, session_uid):
         query = """
-                select scene_fk, B.product_fk, probe_match_fk, bay_number, shelf_number, stacking_layer, name \
-                    from probedata.match_product_in_scene_recognition A
-                        left join
-                    probedata.match_product_in_probe B on A.probe_match_fk = B.pk
-                        right join
-                    probedata.match_product_in_probe_state_value C on B.pk=C.match_product_in_probe_fk
-                        left join 
-                    static.match_product_in_probe_state D on C.match_product_in_probe_state_fk = D.pk
-                        left join 
-                    probedata.scene E on E.pk= A.scene_fk
-                        where 
-                    E.session_uid="{}"
+                SELECT * FROM probedata.match_product_in_probe_state_value A
+                left join probedata.match_product_in_probe B on B.pk = A.match_product_in_probe_fk
+                left join static.match_product_in_probe_state C on C.pk = A.match_product_in_probe_state_fk
+                left join probedata.probe on probe.pk = probe_fk
+                where session_uid = '{}';
             """.format(session_uid)
 
         df = pd.read_sql_query(query, self.rds_conn.db)

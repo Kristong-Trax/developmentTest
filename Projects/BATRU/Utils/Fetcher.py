@@ -24,7 +24,7 @@ class BATRUQueries(object):
     @staticmethod
     def get_store_data(store_fk):
         return """
-                SELECT s.pk as store_fk, s.store_number_1, additional_attribute_3
+                SELECT s.pk as store_fk, s.store_number_1, additional_attribute_3, additional_attribute_11
                 FROM static.stores s
                 WHERE s.pk = '{}'
         """.format(store_fk)
@@ -45,3 +45,9 @@ class BATRUQueries(object):
             join static.display_brand sdb on sdb.pk=d.display_brand_fk
             where s.session_uid = '{}'
         """.format(session_uid)
+
+    @staticmethod
+    def get_templates_data():
+        return """
+                select key_json, data_json, start_date, end_date from static.kpi_external_targets where end_date is null
+                """

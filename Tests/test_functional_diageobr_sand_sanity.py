@@ -15,11 +15,16 @@ from Tests.Data.TestData.test_data_diageobr_sand_sanity import ProjectsSanityDat
 from Projects.DIAGEOBR_SAND.Calculations import DIAGEOBR_SANDCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
+from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'ilays'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+
+    def set_up(self):
+        super(TestKEngineOutOfTheBox, self).set_up()
+        remove_cache_and_storage()
 
     @property
     def import_path(self):

@@ -1,8 +1,9 @@
 
 import os
+import MySQLdb
+
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
-import MySQLdb
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
@@ -13,7 +14,7 @@ from Projects.CCMY_SAND.Calculations import CCMY_SANDCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
 
-__author__ = 'yoava'
+__author__ = 'sathiyanarayanan'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):

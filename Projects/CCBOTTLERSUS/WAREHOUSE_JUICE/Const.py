@@ -14,7 +14,7 @@ class Const(object):
     KEY_MANUFACTURER = 'Key Manufacturer'
 
     # template stuff
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Warehouse Juice Must Have SKUs.xlsx')
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Must Have SKUs v2.xlsx')
     RETAILERS = ['C&S NE Key Foods', 'Krasdale', 'General Trading', 'C&S Foodtown', 'C&S Heritage']
     UPC = 'UPC'
     PRODUCT_NAME = 'Product/No'
