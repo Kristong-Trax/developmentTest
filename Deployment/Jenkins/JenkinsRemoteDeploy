@@ -115,6 +115,27 @@ pipeline {
 
     }
     post {
+
+         cleanup {
+            sh '''#!/bin/bash
+                echo "Before cleanup"
+                docker images
+                docker ps
+
+                cd master
+                export PATH=$CONDA_BIN:$PATH
+                export PROJECT_ROOT=$PWD
+                export PYTHONPATH=$PWD
+                source activate garage
+                python -u Trax/Deployment/Remote/SlaveCleaner.py
+
+                echo "After cleanup"
+                docker images
+                docker ps
+            '''
+            cleanWs()
+        }
+
         always {
             script {
                 USER = 'ubuntu'
