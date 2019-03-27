@@ -26,8 +26,7 @@ class SceneToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'].iloc[0]
-        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"].isin(Const.BAT_MANUFACTURERS)][
-            'manufacturer_fk'].iloc[0]
+        self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.planogram_id = None if self.planogram_matches.empty else self.planogram_matches['planogram_fk'].iloc[0]
         self.common = Common(data_provider)
 
