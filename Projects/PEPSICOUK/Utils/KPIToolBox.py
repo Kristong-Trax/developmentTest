@@ -12,6 +12,7 @@ from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
+from Projects.PEPSICOUK.Utils.CommonToolBox import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -52,6 +53,8 @@ class PEPSICOUKToolBox:
     HERO_SKU_STACKING = 'Hero SKU Stacking'
     HERO_SKU_PRICE = 'Hero SKU Price'
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
+    BRAND_FULL_BAY_KPIS = ['Brand Full Bay 90', 'Brand Full Bay 100']
+    HERO_PREFIX = 'Hero SKU'
     # SENSATIONS_VS_KETTLE_INDEX = 'Sensations Greater Linear Space vs Kettle'
     # DORITOS_VS_PRINGLES_INDEX = 'Doritos Greater Linear Space vs Pringles'
 
@@ -78,6 +81,8 @@ class PEPSICOUKToolBox:
         self.kpi_results_queries = []
 
         self.toolbox = GENERALToolBox(data_provider)
+        self.commontools = PEPSICOUKCommonToolBox(data_provider) # see if I will use this setup
+
         self.custom_entities = self.get_custom_entity_data()
         self.on_display_products = self.get_on_display_products()
         self.exclusion_template = self.get_exclusion_template_data()
@@ -89,16 +94,21 @@ class PEPSICOUKToolBox:
         self.ps_data = PsDataProvider(self.data_provider, self.output) # which scif and matches do I need
         self.store_info = self.data_provider['store_info'] # not sure i need it
         self.full_store_info = self.ps_data.get_ps_store_info(self.store_info) # not sure i need it
-        # self.kpi_external_targets = self.ps_data.get_kpi_external_targets(kpi_operation_types=self.OPERATION_TYPES) #option 1
-        # self.kpi_external_targets = self.ps_data.get_kpi_external_targets() # option 2
-        # option 3: customize parsing of external targets table
         self.external_targets = self.get_all_kpi_external_targets()
 
         self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
+        self.scene_kpi_results = self.get_results_of_scene_level_kpis()
+
 #------------------init functions-----------------
+    def get_results_of_scene_level_kpis(self):
+        scene_kpi_results = pd.DataFrame()
+        if not self.scene_info.empty:
+            scene_kpi_results = self.ps_data.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
+        return scene_kpi_results
+
     def get_facings_scene_bay_shelf_product(self):
         self.filtered_matches['count'] = 1
         aggregate_df = self.filtered_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
@@ -231,20 +241,57 @@ class PEPSICOUKToolBox:
         This function calculates and writes to DB the KPI results.
         """
         self.calculate_external_kpis()
-        # self.calculate_internal_kpis() # all on scene_level
+        self.calculate_internal_kpis() # all on scene_level
 
     def calculate_external_kpis(self):
         self.calculate_assortment() # uses filtered scif
         self.calculate_sos_vs_target_kpis() # uses filtered scif
         self.calculate_linear_brand_vs_brand_index() # uses filtered scif
         self.calculate_shelf_placement_hero_skus() # uses both initial and filtered scif / matches
-        self.calculate_brand_full_bay()
+        self.calculate_brand_full_bay()  # uses filtered matches
 
-        # should I put in one function stacking, price and promo price?
         self.calculate_hero_sku_information_kpis() # uses filtered matches
 
     def calculate_brand_full_bay(self):
-        pass
+        external_kpi_targets = self.get_relevant_full_bay_kpi_targets()
+        filtered_matches = self.filtered_matches[~(self.filtered_matches['bay_number'] == -1)]
+        scene_bay_product = filtered_matches.groupby(['scene_fk', 'bay_number', 'product_fk'],
+                                                     as_index=False).agg({'count' : np.sum})
+        scene_bay_product = scene_bay_product.merge(self.all_products, on='product_fk', how='left')
+        scene_bay = scene_bay_product.groupby(['scene_fk', 'bay_number'], as_index=False).agg({'count':np.sum})
+        scene_bay.rename(columns={'count': 'total_facings'}, inplace=True)
+        for i, row in external_kpi_targets:
+            filters = self.get_full_bay_and_positional_filters(row)
+            brand_relevant_df = scene_bay_product[self.toolbox.get_filter_condition(scene_bay_product, **filters)]
+            result_df = brand_relevant_df.groupby(['scene_fk', 'bay_number'], as_index=False).agg({'count':np.sum})
+            result_df = result_df.merge(scene_bay, on=['scene_fk', 'bay_number'], how='left')
+            result_df['ratio'] = result_df['count'] / result_df['total_facings']
+            result_100 = len(result_df[result_df['ratio'] == 1])
+            result_90 = len(result_df[result_df['ratio'] >= 0.9])
+            self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['Group Name'], score=result_100)
+            kpi_90_fk = self.common.get_kpi_fk_by_kpi_type('Brand Full Bay 90')
+            self.common.write_to_db_result(fk=kpi_90_fk,  numerator_id=row['Group Name'], score=result_90)
+
+    def get_full_bay_and_positional_filters(self, parameters): # get a function from ccbza
+        filters = {parameters['Parameter 1']: parameters['Value 1']}
+        if parameters['Parameter 2']:
+            filters.update({parameters['Parameter 2']: parameters['Value 2']})
+        if parameters['Parameter 3']:
+            filters.update({parameters['Parameter 3']: parameters['Value 3']})
+        return filters
+
+    def get_relevant_full_bay_kpi_targets(self):
+        brand_full_bay_kpi_fks = [self.common.get_kpi_fk_by_kpi_type(kpi) for kpi in self.BRAND_FULL_BAY_KPIS]
+        full_bay_targets = self.external_targets[self.external_targets['kpi_level_2_fk'].isin(brand_full_bay_kpi_fks)]
+        full_bay_targets = full_bay_targets.drop_duplicates(subset=['operation_type', 'kpi_level_2_fk',
+                                                                    'key_json', 'data_json'])
+        output_targets_df = pd.DataFrame(columns=full_bay_targets.columns.values.tolist())
+        if not full_bay_targets.empty:
+            groups_df = self.unpack_external_targets_json_fields_to_df(full_bay_targets, field_name='key_json')
+            full_bay_targets = full_bay_targets.merge(groups_df, on='pk', how='left')
+            parameters_df = self.unpack_external_targets_json_fields_to_df(full_bay_targets, field_name='data_json')
+            output_targets_df = full_bay_targets.merge(parameters_df, on='pk', how='left')
+        return output_targets_df
 
     def calculate_hero_sku_information_kpis(self):
         hero_sku_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
@@ -280,38 +327,93 @@ class PEPSICOUKToolBox:
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, score=score, result=score)
 
     def calculate_shelf_placement_hero_skus(self):
-        shelf_placement_targets = self.get_shelf_placement_kpi_targets_data()
-        if not shelf_placement_targets.empty:
-            scene_bay_max_shelves = self.get_scene_bay_max_shelves(shelf_placement_targets)
-            scene_bay_all_shelves = scene_bay_max_shelves.drop_duplicates(subset=['scene_fk', 'bay_number',
-                                                                                  'shelves_all_placements'], keep='first')
-            relevant_matches = self.filter_out_irrelevant_matches(scene_bay_all_shelves)
-            for i, row in scene_bay_max_shelves:
-                shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
-                relevant_matches.loc[(relevant_matches['scene_fk'] == row['scene_fk']) &
-                                     (relevant_matches['bay_number'] == row['bay_number']) &
-                                     (relevant_matches['shelf_number'].isin(shelf_list)), 'position'] = row['type']
-            hero_results = self.get_kpi_results_df(relevant_matches, scene_bay_max_shelves)
-            for i, result in hero_results.iterrows():
-                self.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
-                                               denominator_id=result['product_fk'],
-                                               denominator_result=result['total_facings'],
-                                               numerator_result=result['count'], result=result['ratio'],
-                                               score=result['ratio'], identifier_parent=result['identifier_parent'],
+        external_targets = self.commontools.all_targets_unpacked
+        shelf_placmnt_targets = external_targets[external_targets['operation_type'] == self.SHELF_PLACEMENT]
+        kpi_fks = shelf_placmnt_targets['kpi_level_2_fk'].unique().tolist()
+        scene_placement_results = self.scene_kpi_results[self.scene_kpi_results['kpi_level_2_fk'].isin(kpi_fks)]
+        hero_results = self.get_hero_results_df(scene_placement_results)
+        if not hero_results.empty:
+            kpis_df = self.kpi_static_data[['pk', 'type']]
+            kpis_df.rename(columns={'pk': 'kpi_level_2_fk'}, inplace=True)
+            hero_results = hero_results.merge(kpis_df, on='kpi_level_2_fk', how='left')
+            hero_results['parent_type'] = hero_results['KPI Parent'].apply(self.get_kpi_type_by_pk)
+            hero_results['type'] = hero_results['type'].apply(lambda x: '{} {}'.format(self.HERO_PREFIX, x))
+            hero_results['parent_type'] = hero_results['parent_type'].apply(lambda x: '{} {}'.format(self.HERO_PREFIX, x))
+            hero_results['kpi_level_2_fk'] = hero_results['type'].apply(self.common.get_kpi_fk_by_kpi_type)
+            hero_results['KPI Parent'] = hero_results['parent_type'].apply(self.common.get_kpi_fk_by_kpi_type)
+            hero_results['identifier_parent'] = hero_results['KPI Parent'].apply(lambda x: self.common.get_dictionary(
+                                                                                 kpi_fk=int(float(x))))
+            for i, row in hero_results.iterrows():
+                self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['numerator_id'],
+                                               denominator_id=row['numerator_id'], denominator_result=row['denominator_result'],
+                                               numerator_result=row['numerator_result'], result=row['ratio'],
+                                               score=row['ratio'], identifier_parent=row['identifier_parent'],
                                                should_enter=True)
-            hero_parent_results = hero_results.drop_duplicates(subset=['product_fk'])
-            hero_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.HERO_PLACEMENT)
-            hero_top_kpi_identifier_parent = self.common.get_dictionary(kpi_fk=hero_top_kpi)
-            for i, result in hero_parent_results.iterrows():
-                hero_parent_fk = self.common.get_kpi_fk_by_kpi_type(result['KPI Parent'])
-                self.common.write_to_db_result(fk=hero_parent_fk, result=100, numerator_id=result['product_fk'],
-                                               score=100, identifier_result=result['identifier_parent'],
-                                               identifier_parent=hero_top_kpi_identifier_parent,
+            hero_parent_results = hero_results.drop_duplicates(subset=['numerator_id'])
+            top_sku_parent = self.common.get_kpi_fk_by_kpi_type(self.HERO_PLACEMENT)
+            top_parent_identifier_par = self.common.get_dictionary(kpi_fk=top_sku_parent)
+            for i, row in hero_parent_results.iterrows():
+                self.common.write_to_db_result(fk=row['KPI Parent'], numerator_id=row['numerator_id'], result=1,
+                                               score=1, identifier_result=row['identifier_parent'],
+                                               identifier_parent= top_parent_identifier_par,
                                                should_enter=True)
-            # add result fpr all hero
-            self.common.write_to_db_result(fk=hero_top_kpi, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                           identifier_result=hero_top_kpi_identifier_parent, should_enter=True,
-                                           score=1) # maybe customize picture for score type
+            self.common.write_to_db_result(fk=top_sku_parent, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+                                           result=len(hero_parent_results), score=len(hero_parent_results),
+                                           identifier_result=top_parent_identifier_par, should_enter=True)
+
+    def get_hero_results_df(self, scene_placement_results):
+        kpi_results = scene_placement_results.groupby(['kpi_level_2_fk', 'numerator_id'], as_index=False).agg(
+            {'numerator_result': np.sum,
+             'denominator_result': np.sum})
+        hero_skus = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
+        hero_results = kpi_results[kpi_results['numerator_id'].isin(hero_skus)]
+        kpi_parent = self.commontools.all_targets_unpacked.drop_duplicates(subset=['kpi_level_2_fk', 'KPI Parent'])
+        hero_results = hero_results.merge(kpi_parent, on='kpi_level_2_fk')
+        hero_results['ratio'] = hero_results.apply(self.get_sku_ratio, axis=1)
+        return hero_results
+
+    def get_kpi_type_by_pk(self, kpi_fk):
+        # assert isinstance(kpi_fk, (unicode, basestring)), "name is not a string: %r" % kpi_fk
+        try:
+            kpi_fk = int(float(kpi_fk))
+            return self.kpi_static_data[self.kpi_static_data['pk'] == kpi_fk]['type'].values[0]
+        except IndexError:
+            Log.info("Kpi name: {} is not equal to any kpi name in static table".format(kpi_fk))
+            return None
+
+    # def calculate_shelf_placement_hero_skus(self):
+    #     shelf_placement_targets = self.get_shelf_placement_kpi_targets_data()
+    #     if not shelf_placement_targets.empty:
+    #         scene_bay_max_shelves = self.get_scene_bay_max_shelves(shelf_placement_targets)
+    #         scene_bay_all_shelves = scene_bay_max_shelves.drop_duplicates(subset=['scene_fk', 'bay_number',
+    #                                                                               'shelves_all_placements'], keep='first')
+    #         relevant_matches = self.filter_out_irrelevant_matches(scene_bay_all_shelves)
+    #         for i, row in scene_bay_max_shelves:
+    #             shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
+    #             relevant_matches.loc[(relevant_matches['scene_fk'] == row['scene_fk']) &
+    #                                  (relevant_matches['bay_number'] == row['bay_number']) &
+    #                                  (relevant_matches['shelf_number'].isin(shelf_list)), 'position'] = row['type']
+    #         hero_results = self.get_kpi_results_df(relevant_matches, scene_bay_max_shelves)
+    #         for i, result in hero_results.iterrows():
+    #             self.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
+    #                                            denominator_id=result['product_fk'],
+    #                                            denominator_result=result['total_facings'],
+    #                                            numerator_result=result['count'], result=result['ratio'],
+    #                                            score=result['ratio'], identifier_parent=result['identifier_parent'],
+    #                                            should_enter=True)
+    #         hero_parent_results = hero_results.drop_duplicates(subset=['product_fk'])
+    #         hero_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.HERO_PLACEMENT)
+    #         hero_top_kpi_identifier_parent = self.common.get_dictionary(kpi_fk=hero_top_kpi)
+    #         for i, result in hero_parent_results.iterrows():
+    #             hero_parent_fk = self.common.get_kpi_fk_by_kpi_type(result['KPI Parent'])
+    #             self.common.write_to_db_result(fk=hero_parent_fk, result=100, numerator_id=result['product_fk'],
+    #                                            score=100, identifier_result=result['identifier_parent'],
+    #                                            identifier_parent=hero_top_kpi_identifier_parent,
+    #                                            should_enter=True)
+    #         # add result fpr all hero
+    #         self.common.write_to_db_result(fk=hero_top_kpi, numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+    #                                        identifier_result=hero_top_kpi_identifier_parent, should_enter=True,
+    #                                        score=1) # maybe customize picture for score type
 
     def get_kpi_results_df(self, relevant_matches, kpi_targets_df):
         total_products_facings = relevant_matches.groupby(['product_fk'], as_index=False).agg({'count': np.sum})
@@ -370,7 +472,7 @@ class PEPSICOUKToolBox:
             relevant_bays = self.filtered_matches[self.filtered_matches['scene_fk']==row['scene_fk']]['bay_number'].values.tolist()
             if row['bay_number'] in relevant_bays:
                 final_df.append(row)
-        return scene_bay_max_shelves
+        return final_df
 
     def complete_missing_target_shelves(self, scene_bay_df):
         for i, row in scene_bay_df.iterrows():
@@ -447,31 +549,32 @@ class PEPSICOUKToolBox:
         return relevant_targets_df
 
     def calculate_assortment(self):
-        self.assortment.main_assortment_calculation()
-        #try first the generic function (also look up pepsicoru)
-        # for result in self.lvl3_ass_result.itertuples():
-        #     score = result.in_store * 100
-        #     self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
-        #                                                  numerator_result=result.in_store, result=score,
-        #                                                  denominator_id=result.assortment_group_fk,
-        #                                                  denominator_result=1, score=score)
-        #
-        # if not self.lvl3_ass_result.empty:
-        #     lvl2_result = self.assortment.calculate_lvl2_assortment(self.lvl3_ass_result)
-        #     for result in lvl2_result.itertuples():
-        #         denominator_res = result.total
-        #         if result.target and not np.math.isnan(result.target):
-        #             if result.group_target_date <= self.visit_date:
-        #                 denominator_res = result.target
-        #         res = np.divide(float(result.passes), float(denominator_res)) * 100
-        #         if res >= 100:
-        #             score = 100
-        #         else:
-        #             score = 0
-        #         self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
-        #                                                      numerator_result=result.passes, result=res,
-        #                                                      denominator_id=result.assortment_super_group_fk,
-        #                                                      denominator_result=denominator_res, score=score)
+        # self.assortment.main_assortment_calculation()
+        # try first the generic function (also look up pepsicoru)
+        for result in self.lvl3_ass_result.itertuples():
+            score = result.in_store * 100
+
+            self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
+                                                         numerator_result=result.in_store, result=score,
+                                                         denominator_id=self.store_id,
+                                                         denominator_result=1, score=score)
+
+        if not self.lvl3_ass_result.empty:
+            lvl2_result = self.assortment.calculate_lvl2_assortment(self.lvl3_ass_result)
+            for result in lvl2_result.itertuples():
+                denominator_res = result.total
+                if result.target and not np.math.isnan(result.target):
+                    if result.group_target_date <= self.visit_date:
+                        denominator_res = result.target
+                res = np.divide(float(result.passes), float(denominator_res)) * 100
+                if res >= 100:
+                    score = 100
+                else:
+                    score = 0
+                self.common_v1.write_to_db_result_new_tables(fk=result.kpi_fk_lvl2, numerator_id=result.assortment_group_fk,
+                                                             numerator_result=result.passes, result=res,
+                                                             denominator_id=result.assortment_super_group_fk,
+                                                             denominator_result=denominator_res, score=score)
 
     def calculate_sos_vs_target_kpis(self):
         sos_targets = self.get_relevant_sos_vs_target_kpi_targets()
