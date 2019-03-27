@@ -335,7 +335,7 @@ class PNGHKToolBox:
             if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
                 if shelfs_to_include != "":
                     shelfs_to_include = int(shelfs_to_include)
-                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
+                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
             # else:
             #     scenes = set(scene_df['scene_fk'])
             #     for scene in scenes:
