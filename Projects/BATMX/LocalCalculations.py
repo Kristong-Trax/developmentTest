@@ -23,15 +23,13 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlejp calculations')
     Config.init()
     project_name = 'batmx'
-    sessions = ['EDBC9D00-B7B9-4277-96DC-555BA459E2B3']
+    sessions = ['25BB1516-642F-428F-9D07-BF79BC1B5B66']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         # scif = data_provider['scene_item_facts']
         # scenes = scif['scene_id'].unique().tolist()
-        #
-        # # scenes = [392]
-        #
+        # scenes = [60]
         # for scene in scenes:
         #     print('scene')
         #     data_provider = KEngineDataProvider(project_name)
