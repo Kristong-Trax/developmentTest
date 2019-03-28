@@ -29,10 +29,8 @@ if __name__ == '__main__':
         data_provider.load_session_data(session)
         # scif = data_provider['scene_item_facts']
         # scenes = scif['scene_id'].unique().tolist()
-        #
-        # scenes = [392]
-
-        # for scene in [61]:
+        # scenes = [60]
+        # for scene in scenes:
         #     print('scene')
         #     data_provider = KEngineDataProvider(project_name)
         #     data_provider.load_scene_data(session, scene)
