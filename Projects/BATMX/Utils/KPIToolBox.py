@@ -81,17 +81,21 @@ class BATMXToolBox:
         if entry_results.empty:
             return
         else:
-            results = entry_results.iloc[0]
             self.common.write_to_db_result(
                 fk=visit_kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                score=results['score'], numerator_result=results['numerator_result'],
-                denominator_result=results['denominator_result'], identifier_result=identifier)
+                score=self.get_average(entry_results, 'score'), identifier_result=identifier,
+                numerator_result=self.get_average(entry_results, 'numerator_result'),
+                denominator_result=self.get_average(entry_results, 'denominator_result'))
             fixture_results_pk = entry_results['pk'].tolist() + self.exit_results[
                 self.exit_results['kpi_level_2_fk'] == fixture_kpi_fk]['pk'].tolist()
             for scene_result_fk in fixture_results_pk:
                 self.common.write_to_db_result(
                     should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
                     denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True)
+
+    @staticmethod
+    def get_average(df, column):
+        return df[column].sum() / len(df)
 
     @staticmethod
     def get_averages(fixture_results):
