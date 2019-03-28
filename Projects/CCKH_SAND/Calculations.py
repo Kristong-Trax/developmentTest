@@ -4,6 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 #from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
+
 from Projects.CCKH_SAND.KPIGenerator import CCKH_SANDGenerator
 
 __author__ = 'Nimrod'
@@ -17,9 +18,9 @@ class CCKH_SANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('cckh calculations')
+#     LoggerInitializer.init('cckh_sand calculations')
 #     Config.init()
-#     project_name = 'cckh-sand'
+#     project_name = 'cckh_sand'
 #     data_provider = KEngineDataProvider(project_name)
 #     session = ''
 #     data_provider.load_session_data(session)
