@@ -6,11 +6,11 @@ from Projects.LIONNZ.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    # LoggerInitializer.init('lionnz-sand calculations')
     Config.init()
     project_name = 'lionnzdev'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
+        'a70cf08d-ab91-4136-9b0e-dab5a15153c1',
         '6561D6CE-C995-4032-8568-3F3ACCC306CD'
     ]
     for session in sessions:
