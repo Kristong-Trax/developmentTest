@@ -10,6 +10,7 @@ from Projects.CCUS.MSC_NEW.Utils.KPIToolBox import MSC_NEWToolBox
 from Projects.CCUS.Holiday.Utils.KPIToolBox import HOLIDAYToolBox
 from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.KPIToolBox import GOLD_PEAK_BLOCKToolBox
 from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBox
+from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
 
 __author__ = 'ortal'
 
@@ -25,15 +26,16 @@ class CCUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        self.calculate_manufacturer_displays()
+        # self.calculate_manufacturer_displays()
         # self.calculate_obbo()
         # self.calculate_dunkin_donuts()
-        self.calculate_monster()
-        self.calculate_programs()
-        self.calculate_holiday_programs()
+        # self.calculate_monster()
+        # self.calculate_programs()
+        # self.calculate_holiday_programs()
         # self.calculate_msc_new()
         # self.calculate_gold_peak_block()
-        self.calculate_special_programs()
+        # self.calculate_special_programs()
+        self.calculate_validation()
 
     @log_runtime('Manufacturer Displays Calculations')
     def calculate_manufacturer_displays(self):
@@ -95,3 +97,10 @@ class CCUSGenerator:
         tool_box = SpecialProgramsToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data(kpi_set_fk=32)
+
+
+    @log_runtime('Special Programs Calculations')
+    def calculate_validation(self):
+        tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=33)
+        tool_box.main_calculation()
+        tool_box.commit_results_data(kpi_set_fk=33)
