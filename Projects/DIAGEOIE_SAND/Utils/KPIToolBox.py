@@ -102,75 +102,118 @@ class DIAGEOIESandToolBox:
         self.activate_ootb_kpis()
 
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global Tap Brand Score
-        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                     'Data', 'Brand Score.xlsx')
-        res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
-        self.commonV2.save_json_to_new_tables(res_dict)
+        # template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+        #                              'Data', 'Brand Score.xlsx')
+        # res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
+        # self.commonV2.save_json_to_new_tables(res_dict)
 
 
-        for set_name in set_names:
-            set_score = 0
-
-            # Global Secondary Displays
-            if set_name in ('Secondary Displays', 'Secondary'):
-                # Global function
-                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-                if res_json:
-                    # Saving to new tables
-                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                     result=res_json['result'])
-
-                # Saving to old tables
-                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-                self.save_level2_and_level3(set_name, set_name, set_score)
-
-            # Global Visible to Consumer
-            elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
-                # Global function
-                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-                # Saving to new tables
-                self.commonV2.save_json_to_new_tables(res_dict)
-
-                # Saving to old tables
-                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-                self.save_level2_and_level3(set_name, set_name, set_score)
-
-            if set_score == 0:
-                pass
-            elif set_score is False:
-                continue
-
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+        # for set_name in set_names:
+        #     set_score = 0
+        #
+        #     # Global Secondary Displays
+        #     if set_name in ('Secondary Displays', 'Secondary'):
+        #         # Global function
+        #         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+        #         if res_json:
+        #             # Saving to new tables
+        #             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+        #                                              result=res_json['result'])
+        #
+        #         # Saving to old tables
+        #         set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+        #         self.save_level2_and_level3(set_name, set_name, set_score)
+        #
+        #     # Global Visible to Consumer
+        #     elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
+        #         # Global function
+        #         sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+        #         res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+        #         # Saving to new tables
+        #         self.commonV2.save_json_to_new_tables(res_dict)
+        #
+        #         # Saving to old tables
+        #         filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+        #         set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+        #         self.save_level2_and_level3(set_name, set_name, set_score)
+        #
+        #     if set_score == 0:
+        #         pass
+        #     elif set_score is False:
+        #         continue
+        #
+        #     set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+        #     self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # committing to new tables
         self.commonV2.commit_results_data()
         return
 
     def activate_ootb_kpis(self):
+        # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
         sos_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS OUT OF STORE')
         sos_store = ManufacturerFacingsSOSInWholeStore(data_provider=self.data_provider,
-                                                       kpi_definition_fk=sos_store_fk).calculate()  #'FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE' - level 1
+                                                       kpi_definition_fk=sos_store_fk).calculate()
+        # FACINGS_SOS_CATEGORY_IN_WHOLE_STORE - level 2
+        sos_cat_out_of_store_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
+        sos_cat_out_of_store = self.calculate_sos_of_cat_of_out_of_store_new(sos_cat_out_of_store_fk)
 
-        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
-        sos_cat_out_of_store = self.calculate_sos_cat_store(sos_sub_cat_out_of_cat_fk)
-
+        # FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY - level 3
         sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
         sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
-                                                        kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate() #'FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY' - level 3
+                                                        kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
+
+        # FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY - level 4
         sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS MANUFACTURER OUT OF SUB CATEGORY')
         sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
-                                                        kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate() #'FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE' - level 4
+                                                        kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
+
+        # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
         sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
         sos_brand_out_of_sub_cat = BrandFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
-                                                        kpi_definition_fk=sos_brand_out_of_sub_cat_fk).calculate() #'FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE' - level 5
+                                                        kpi_definition_fk=sos_brand_out_of_sub_cat_fk).calculate()
         self.save_hierarchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat, sos_brand_out_of_sub_cat)
+
+    def calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(self, kpi_fk):
+        pass
+        res_list = []
+        res_dict = dict()
+        # Get rid of Irrelevant and Empty
+        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty'])]
+
+        sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
+        for sub_cat in sub_cat_fk_list:
+            continue
+
+    def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
+        res_list = []
+        res_dict = dict()
+        # Get rid of Irrelevant and Empty
+        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty'])]
+        denominator_result = filtered_scif['facings_ign_stack'].sum()
+        categories_fk_list = filtered_scif['category_fk'].unique().tolist()
+
+        # Calculate result per category (using facings_ign_stack!)
+        for category_fk in categories_fk_list:
+            filtered_scif_by_category = filtered_scif[filtered_scif['category_fk'] == category_fk]
+            facings_category_result = filtered_scif_by_category['facings_ign_stack'].sum()
+            result_for_category = facings_category_result / denominator_result
+
+            # Preparing the results' dictionary
+            res_dict['kpi_definition_fk'] = kpi_fk
+            res_dict['numerator_id'] = category_fk
+            res_dict['numerator_result'] = facings_category_result
+            res_dict['denominator_id'] = self.store_id
+            res_dict['denominator_result'] = denominator_result
+            res_dict['result'] = result_for_category
+            res_dict['score'] = result_for_category
+            res_list.append(res_dict.copy())
+        return res_list
+
 
     def save_hierarchy(self, level_1, level_2, level_3, level_4, level_5):
         for i in level_1:
@@ -215,6 +258,33 @@ class DIAGEOIESandToolBox:
                         denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
                         identifier_result="level_5_" + str(int(res['numerator_id'])),
                         identifier_parent="level_4_" + str(int(manufacturer_fk)), should_enter=True)
+
+    def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
+        res_list = []
+        res_dict = dict()
+        # Get rid of Irrelevant and Empty
+        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty'])]
+        denominator_result = filtered_scif['facings_ign_stack'].sum()
+        categories_fk_list = filtered_scif['category_fk'].unique().tolist()
+
+        # Calculate result per category (using facings_ign_stack!)
+        for category_fk in categories_fk_list:
+            filtered_scif_by_category = filtered_scif[filtered_scif['category_fk'] == category_fk]
+            facings_category_result = filtered_scif_by_category['facings_ign_stack'].sum()
+            result_for_category = facings_category_result / denominator_result
+
+            # Preparing the results' dictionary
+            res_dict['kpi_definition_fk'] = kpi_fk
+            res_dict['numerator_id'] = category_fk
+            res_dict['numerator_result'] = facings_category_result
+            res_dict['denominator_id'] = self.store_id
+            res_dict['denominator_result'] = denominator_result
+            res_dict['result'] = result_for_category
+            res_dict['score'] = result_for_category
+            res_list.append(res_dict.copy())
+        return res_list
+
+
 
     def calculate_sos_cat_store(self, fk):
         res_list = []
