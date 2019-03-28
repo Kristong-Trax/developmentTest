@@ -158,25 +158,6 @@ pipeline {
 
             '''
         }
-        cleanup {
-            sh '''#!/bin/bash
-                echo "# Before cleanup"
-                docker images
-                docker ps -a
-
-                cd theGarage
-                export PATH=$CONDA_BIN:$PATH
-                export PROJECT_ROOT=$PWD
-                export PYTHONPATH=$PWD
-                source activate garage
-                python -u Trax/Deployment/Remote/SlaveCleaner.py
-
-                echo "# After cleanup"
-                docker images
-                docker ps -a
-            '''
-            cleanWs()
-        }
 
 
 
