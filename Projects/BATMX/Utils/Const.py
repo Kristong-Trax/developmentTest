@@ -20,7 +20,7 @@ class Const(object):
         TOBACCO_CENTER: {
             FIXTURE_LEVEL: "POG fixture level - tobacco center",
             STATUS_LEVEL: "POG status level - tobacco center",
-            VISIT_LEVEL: "POG visit level - tobacco center	",
+            VISIT_LEVEL: "POG visit level - tobacco center",
             SKU_LEVEL: "POG sku level - tobacco center"},
         PROMOTIONAL_TRAY: {
             FIXTURE_LEVEL: "POG fixture level - promotional tray",
