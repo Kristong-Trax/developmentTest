@@ -26,8 +26,7 @@ class SceneToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.store_id = self.data_provider[Data.STORE_INFO]['store_fk'].iloc[0]
-        self.manufacturer_fk = self.all_products[self.all_products["manufacturer_name"].isin(Const.BAT_MANUFACTURERS)][
-            'manufacturer_fk'].iloc[0]
+        self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER]['param_value'].iloc[0])
         self.planogram_id = None if self.planogram_matches.empty else self.planogram_matches['planogram_fk'].iloc[0]
         self.common = Common(data_provider)
 
@@ -48,16 +47,12 @@ class SceneToolBox:
             self.calculate_sos()
         except Exception as e:
             Log.error('{}'.format(e))
-        try:
-            self.common.commit_results_data()
-        except Exception as e:
-            Log.error('{}'.format(e))
 
     def calculate_planogram_compliance(self, area):
         kpi_names = Const.POG_KPI_NAMES[area]
-        pog_matches, rog_matches = self.pog_matches[area], self.pog_matches[area]
+        pog_matches, rog_matches = self.pog_matches[area], self.rog_matches[area]
         pog_matches = pog_matches[pog_matches['manufacturer_fk'] == self.manufacturer_fk]
-        rog_matches = rog_matches[pog_matches['manufacturer_fk'] == self.manufacturer_fk]
+        rog_matches = rog_matches[rog_matches['manufacturer_fk'] == self.manufacturer_fk]
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_names[Const.FIXTURE_LEVEL])
         all_facings, numerator_result, result = 0, 0, 0
         score = 0
@@ -126,7 +121,7 @@ class SceneToolBox:
         fixture_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.SOS_LEVELS[Const.FIXTURE_LEVEL])
         matches = self.rog_matches[Const.TOBACCO_CENTER]
         matches = matches[(matches["product_type"].isin(["SKU", "Other", "Empty"])) &
-                          (matches[matches["category"] == "Cigarettes"])]
+                          (matches["category"] == "Cigarettes")]
         bat_matches = len(matches[matches["manufacturer_fk"] == self.manufacturer_fk])
         all_matches = len(matches)
         score = self.get_percentage_score(bat_matches, all_matches)
