@@ -8,6 +8,7 @@ class Const(object):
     LIBERTY = 'Liberty'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
     BODY_ARMOR_BRAND_FK = 203
+    MANUFACTURER_FK = 1
 
     # sheets
     KPIS = 'KPIs'
@@ -58,6 +59,7 @@ class Const(object):
     # minimum_facings columns
     SIZE = 'size'
     UNIT_OF_MEASURE = 'unit_of_measure'
+    MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY = 'Facings_Required_for_Display'
 
     # Survey_Question_SKUs columns
     EAN_CODE = 'ean_code'

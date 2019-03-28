@@ -33,12 +33,12 @@ class LIBERTYToolBox:
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.common_db = common_db
+        self.manufacturer_fk = Const.MANUFACTURER_FK
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
         self.branch = self.store_info['branch_name'].iloc[0]
         self.body_armor_delivered = self.get_body_armor_delivery_status()
-
 
     # main functions:
 
@@ -47,15 +47,19 @@ class LIBERTYToolBox:
             This function gets all the scene results from the SceneKPI, after that calculates every session's KPI,
             and in the end it calls "filter results" to choose every KPI and scene and write the results in DB.
         """
+        red_score = 0
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
-            self.calculate_main_kpi(main_line)
-        if not main_template.empty:
-            pass
-        # if len(self.common_db.kpi_results) > 0:
-        #     kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
-        #     self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
-        #                                       identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
+            relevant_store_types = self.does_exist(main_line[Const.STORE_TYPE])
+            if relevant_store_types and self.store_type not in relevant_store_types:
+                continue
+            result = self.calculate_main_kpi(main_line)
+            if result:
+                red_score += main_line[Const.WEIGHT]
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=red_score,
+                                          identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
         return
 
     def calculate_main_kpi(self, main_line):
@@ -64,7 +68,6 @@ class LIBERTYToolBox:
         KPIs in the same name in the match sheet.
         :param main_line: series from the template of the main_sheet.
         """
-        kpi_name = main_line[Const.KPI_NAME]
         relevant_scif = self.scif
         scene_types = self.does_exist(main_line, Const.SCENE_TYPE)
         if scene_types:
@@ -76,7 +79,7 @@ class LIBERTYToolBox:
         if template_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_groups)]
         result = self.calculate_kpi_by_type(main_line, relevant_scif)
-        # self.write_to_session_level(kpi_name=kpi_name, result=result)
+
         return result
 
     def calculate_kpi_by_type(self, main_line, filtered_scif):
@@ -88,30 +91,10 @@ class LIBERTYToolBox:
         """
         kpi_type = main_line[Const.KPI_TYPE]
         relevant_template = self.templates[kpi_type]
-        relevant_template = relevant_template[relevant_template[Const.KPI_NAME]
-                                              == main_line[Const.KPI_NAME]]
+        kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]]
         kpi_function = self.get_kpi_function(kpi_type)
 
-        return self.calculate_specific_kpi(relevant_template, filtered_scif, kpi_function)
-
-    @staticmethod
-    def calculate_specific_kpi(relevant_template, filtered_scif, kpi_function, target=None):
-        """
-        checks if the passed lines are more than target
-        :param relevant_template: specific template filtered with the specific kpi lines
-        :param filtered_scif:
-        :param target: integer
-        :param kpi_function: specific function for the calculation
-        :return: boolean, but it can be None if we want not to write it in DB
-        """
-        passed_counter = 0
-        for i, kpi_line in relevant_template.iterrows():
-            answer = kpi_function(kpi_line, filtered_scif)
-            if answer:
-                passed_counter += 1
-            elif answer is None:
-                return None
-        return passed_counter >= target
+        return kpi_function(kpi_line, filtered_scif)
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif):
@@ -128,7 +111,14 @@ class LIBERTYToolBox:
         if manufacturer:
             relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
 
-        return relevant_scif['facings'].sum() > market_share_target
+        result = relevant_scif['facings'].sum() > market_share_target
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                          denominator_id=self.store_id, denominator_result=0,
+                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
+
+        return result
 
     # Availability functions
     def calculate_availability(self, kpi_line, relevant_scif):
@@ -152,7 +142,14 @@ class LIBERTYToolBox:
                 relevant_scif = relevant_scif[~relevant_scif['brand_name'] == excluded_brand]
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
-        return len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
+        result = len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                          denominator_id=self.store_id, denominator_result=0,
+                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
+
+        return result
 
     def get_relevant_product_assortment_by_kpi_name(self, kpi_name):
         template = self.templates[Const.SURVEY_QUESTION_SKUS]
@@ -169,18 +166,36 @@ class LIBERTYToolBox:
 
         brand = self.does_exist(kpi_line[Const.BRAND])
         if brand:
-            relevant_scif = relevant_scif[relevant_scif['brand_name'] == brand]
+            filtered_scif = filtered_scif[filtered_scif['brand_name'] == brand]
 
         ssd_still = self.does_exist(kpi_line[Const.ATT4])
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
 
-        #TODO add filtered for size;subpackages_num
+        size_subpackages = self.does_exist(kpi_line, Const.SIZE_SUBPACKAGES_NUM)
+        if size_subpackages:
+            # convert all pairings of size and number of subpackages to tuples
+            size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
+            filtered_scif = filtered_scif[
+                pd.Series(list(zip(filtered_scif['size'], filtered_scif['subpackages_num']))).isin(
+                    size_subpackages_tuples)]
 
-        #TODO add filtering for subpackages_num
+        sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
+        if sub_packages:
+            if sub_packages == Const.NOT_NULL:
+                filtered_scif = filtered_scif[~filtered_scif['subpackages_num'].isnull()]
+            else:
+                filtered_scif = filtered_scif[filtered_scif['subpackages_num'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
+
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0,
+                                              result=number_of_passing_displays,
+                                              identifier_parent=Const.RED_SCORE_PARENT,
+                                              should_enter=True)
             return number_of_passing_displays
         else:
             return False
@@ -208,13 +223,31 @@ class LIBERTYToolBox:
 
         if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
-            return number_of_passing_displays > market_share_target
+
+            result = number_of_passing_displays > market_share_target
+
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0,
+                                              result=result, identifier_parent=Const.RED_SCORE_PARENT,
+                                              should_enter=True)
+            return result
         else:
             return False
 
     def get_number_of_passing_displays(self, filtered_scif):
-        #TODO compute number of displays based on minimum_facings
-        return 0
+        filtered_scif['passed_displays'] = filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row))
+
+        return filtered_scif['passed_displays'].sum()
+
+    def _calculate_pass_status_of_display(self, row):
+        template = self.templates[Const.MINIMUM_FACINGS]
+        package_category = (row['size'], row['subpackages_num'], row['unit_of_measure'])
+        relevant_template = template[pd.Series(zip(template['size'],
+                                                  template['subpackages_num'],
+                                                  template['unit_of_measure'])) == package_category]
+        minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
+        return 1 if row['facings'] > minimum_facings else 0
 
     # Survey functions
     def calculate_survey(self, kpi_line, relevant_scif):

@@ -47,9 +47,10 @@ class MSCToolBox:
         """
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
+            relevant_store_types = self.does_exist(main_line[Const.STORE_TYPE])
+            if relevant_store_types and self.store_type not in relevant_store_types:
+                continue
             self.calculate_main_kpi(main_line)
-        if not main_template.empty:
-            pass
         if len(self.common_db.kpi_results) > 0:
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.MSC)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
