@@ -37,8 +37,8 @@ class LIBERTYToolBox:
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
-        self.branch = self.store_info['branch_name'].iloc[0]
-        self.body_armor_delivered = self.get_body_armor_delivery_status()
+        # self.branch = self.store_info['branch_name'].iloc[0]
+        # self.body_armor_delivered = self.get_body_armor_delivery_status()
 
     # main functions:
 
@@ -50,7 +50,7 @@ class LIBERTYToolBox:
         red_score = 0
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
-            relevant_store_types = self.does_exist(main_line[Const.STORE_TYPE])
+            relevant_store_types = self.does_exist(main_line, Const.STORE_TYPE)
             if relevant_store_types and self.store_type not in relevant_store_types:
                 continue
             result = self.calculate_main_kpi(main_line)
@@ -98,6 +98,7 @@ class LIBERTYToolBox:
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif):
+        return
         market_share_required = self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET)
         if market_share_required:
             market_share_target = self.get_market_share_target()
@@ -107,13 +108,13 @@ class LIBERTYToolBox:
         if not market_share_target:
             market_share_target = 0
 
-        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
 
         result = relevant_scif['facings'].sum() > market_share_target
 
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0,
                                           result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
@@ -128,23 +129,23 @@ class LIBERTYToolBox:
             unique_skus = \
                 relevant_scif[relevant_scif['product_fk'].isin(survey_question_skus)]['product_fk'].unique().tolist()
         else:
-            manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+            manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
             if manufacturer:
                 relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
-            brand = self.does_exist(kpi_line[Const.BRAND])
+            brand = self.does_exist(kpi_line, Const.BRAND)
             if brand:
                 relevant_scif = relevant_scif[relevant_scif['brand_name'] == brand]
-            category = self.does_exist(kpi_line[Const.CATEGORY])
+            category = self.does_exist(kpi_line, Const.CATEGORY)
             if category:
                 relevant_scif = relevant_scif[relevant_scif['category'] == category]
-            excluded_brand = self.does_exist(kpi_line[Const.EXCLUDED_BRAND])
+            excluded_brand = self.does_exist(kpi_line, Const.EXCLUDED_BRAND)
             if excluded_brand:
                 relevant_scif = relevant_scif[~relevant_scif['brand_name'] == excluded_brand]
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
         result = len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
 
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0,
                                           result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
@@ -160,15 +161,15 @@ class LIBERTYToolBox:
     def calculate_count_of_display(self, kpi_line, relevant_scif):
         filtered_scif = relevant_scif
 
-        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
 
-        brand = self.does_exist(kpi_line[Const.BRAND])
+        brand = self.does_exist(kpi_line, Const.BRAND)
         if brand:
             filtered_scif = filtered_scif[filtered_scif['brand_name'] == brand]
 
-        ssd_still = self.does_exist(kpi_line[Const.ATT4])
+        ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
 
@@ -187,10 +188,10 @@ class LIBERTYToolBox:
             else:
                 filtered_scif = filtered_scif[filtered_scif['subpackages_num'].isin([int(i) for i in sub_packages])]
 
-        if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
+        if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
 
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                               denominator_id=self.store_id, denominator_result=0,
                                               result=number_of_passing_displays,
@@ -202,31 +203,32 @@ class LIBERTYToolBox:
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif):
+        return
         filtered_scif = relevant_scif
 
-        manufacturer = self.does_exist(kpi_line[Const.MANUFACTURER])
+        manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
             filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
 
-        ssd_still = self.does_exist(kpi_line[Const.ATT4])
+        ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
             filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
 
-        if self.does_exist(kpi_line[Const.MARKET_SHARE_TARGET]):
+        if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
         else:
             market_share_target = 0
 
-        if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]):
-            body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
-            filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
+        # if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]):
+        #     body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+        #     filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
-        if self.does_exist(kpi_line[Const.MINIMUM_FACINGS_REQUIRED]):
+        if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
 
             result = number_of_passing_displays > market_share_target
 
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                               denominator_id=self.store_id, denominator_result=0,
                                               result=result, identifier_parent=Const.RED_SCORE_PARENT,
@@ -244,8 +246,8 @@ class LIBERTYToolBox:
         template = self.templates[Const.MINIMUM_FACINGS]
         package_category = (row['size'], row['subpackages_num'], row['unit_of_measure'])
         relevant_template = template[pd.Series(zip(template['size'],
-                                                  template['subpackages_num'],
-                                                  template['unit_of_measure'])) == package_category]
+                                                   template['subpackages_num'],
+                                                   template['unit_of_measure'])) == package_category]
         minimum_facings = relevant_template[Const.MINIMUM_FACINGS_REQUIRED_FOR_DISPLAY].min()
         return 1 if row['facings'] > minimum_facings else 0
 
