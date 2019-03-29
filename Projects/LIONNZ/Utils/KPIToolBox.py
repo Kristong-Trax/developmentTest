@@ -122,18 +122,18 @@ class LIONNZToolBox:
                 dataframe_to_process = self.get_sanitized_match_prod_scene(include_exclude_data_dict)
 
             if kpi_sheet_row[KPI_FAMILY_COL] == FSOS:
-                self.calculate_FSOS(detail, groupers, query_string, dataframe_to_process)
+                self.write_to_db(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == DISTRIBUTION:
                 self.calculate_distribution(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == OOS:
                 self.calculate_OOS(detail, groupers, query_string, dataframe_to_process)
             elif kpi_sheet_row[KPI_FAMILY_COL] == Count:
-                self.calculate_count(detail, groupers, query_string, dataframe_to_process)
+                self.write_to_db(detail, groupers, query_string, dataframe_to_process)
             else:
                 pass
         return True
 
-    def calculate_FSOS(self, kpi, groupers, query_string, dataframe_to_process):
+    def write_to_db(self, kpi, groupers, query_string, dataframe_to_process):
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
@@ -167,39 +167,14 @@ class LIONNZToolBox:
     def calculate_OOS(self, kpi, groupers, query_string, dataframe_to_process):
         pass
 
-    def calculate_count(self, kpi, groupers, query_string, dataframe_to_process):
-        if query_string:
-            grouped_data_frame = dataframe_to_process.groupby(groupers)
-            # grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
-        else:
-            grouped_data_frame = dataframe_to_process.groupby(groupers)
-        for group_id_tup, group_data in grouped_data_frame:
-            param_id_map = dict(zip(groupers, group_id_tup))
-            numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            result = len(group_data) / float(len(grouped_data_frame))
-            should_enter = False
-            identifier_parent = None
-            identifier_result = None
-            if not is_nan(kpi['kpi_parent'].iloc[0]):
-                should_enter = True
-                identifier_result = kpi[KPI_NAME_COL]
-                identifier_parent = kpi[KPI_PARENT_COL]
-            self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
-                                           numerator_id=numerator_id,
-                                           denominator_id=denominator_id,
-                                           result=result,
-                                           identifier_result=identifier_result,
-                                           identifier_parent=identifier_parent,
-                                           should_enter=should_enter,
-                                           )
-
-        return True
-
     def get_sanitized_match_prod_scene(self, include_exclude_data_dict):
         sanitized_products_in_scene = self.match_product_in_scene.merge(
             self.scif, how='left', on=['scene_fk', 'product_fk'],  suffixes=('', '_scif')
         )
+        # IF sub_category_fk is not there
+        # sanitized_products_in_scene_prod = sanitized_products_in_scene.merge(
+        #     self.products, how='left', on='product_fk', suffixes=('', '_prod')
+        # )
         # flags
         should_include_empty = include_exclude_data_dict.get('empty')
         should_include_irrelevant = include_exclude_data_dict.get('irrelevant')
