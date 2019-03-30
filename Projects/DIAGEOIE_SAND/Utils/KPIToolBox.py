@@ -106,48 +106,47 @@ class DIAGEOIESandToolBox:
         self.commonV2.save_json_to_new_tables(assortment_res_dict)
 
         # Global Tap Brand Score
-        # template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-        #                              'Data', 'Brand Score.xlsx')
-        # res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
-        # self.commonV2.save_json_to_new_tables(res_dict)
+        template_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                                     'Data', 'Brand Score.xlsx')
+        res_dict = self.diageo_generator.diageo_global_tap_brand_score_function(template_path, save_to_tables=False)
+        self.commonV2.save_json_to_new_tables(res_dict)
 
+        for set_name in set_names:
+            set_score = 0
 
-        # for set_name in set_names:
-        #     set_score = 0
-        #
-        #     # Global Secondary Displays
-        #     if set_name in ('Secondary Displays', 'Secondary'):
-        #         # Global function
-        #         res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-        #         if res_json:
-        #             # Saving to new tables
-        #             self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-        #                                              result=res_json['result'])
-        #
-        #         # Saving to old tables
-        #         set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-        #         self.save_level2_and_level3(set_name, set_name, set_score)
-        #
-        #     # Global Visible to Consumer
-        #     elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
-        #         # Global function
-        #         sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
-        #         res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
-        #         # Saving to new tables
-        #         self.commonV2.save_json_to_new_tables(res_dict)
-        #
-        #         # Saving to old tables
-        #         filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
-        #         set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
-        #         self.save_level2_and_level3(set_name, set_name, set_score)
-        #
-        #     if set_score == 0:
-        #         pass
-        #     elif set_score is False:
-        #         continue
-        #
-        #     set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-        #     self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+            # Global Secondary Displays
+            if set_name in ('Secondary Displays', 'Secondary'):
+                # Global function
+                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+                if res_json:
+                    # Saving to new tables
+                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                                     result=res_json['result'])
+
+                # Saving to old tables
+                set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
+            # Global Visible to Consumer
+            elif set_name in ('Visible to Customer', 'Visible to Consumer %'):
+                # Global function
+                sku_list = filter(None, self.scif[self.scif['product_type'] == 'SKU'].product_ean_code.tolist())
+                res_dict = self.diageo_generator.diageo_global_visible_percentage(sku_list)
+                # Saving to new tables
+                self.commonV2.save_json_to_new_tables(res_dict)
+
+                # Saving to old tables
+                filters = {self.tools.VISIBILITY_PRODUCTS_FIELD: 'Y'}
+                set_score = self.tools.calculate_visible_percentage(visible_filters=filters)
+                self.save_level2_and_level3(set_name, set_name, set_score)
+
+            if set_score == 0:
+                pass
+            elif set_score is False:
+                continue
+
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
 
         # committing to new tables
         self.commonV2.commit_results_data()
@@ -165,16 +164,19 @@ class DIAGEOIESandToolBox:
         # FACINGS_SOS_SUB_CATEGORY_OUT_OF_CATEGORY - level 3
         sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
         sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
-                                                        kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
+                                                                  kpi_definition_fk=sos_sub_cat_out_of_cat_fk).calculate()
 
         # FACINGS_SOS_MANUFACTURER_OUT_OF_SUB_CATEGORY - level 4
         sos_man_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS MANUFACTURER OUT OF SUB CATEGORY')
-        sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(data_provider=self.data_provider,
-                                                        kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
+        sos_man_out_of_sub_cat = ManufacturerFacingsSOSPerSubCategoryInStore(
+            data_provider=self.data_provider, kpi_definition_fk=sos_man_out_of_sub_cat_fk).calculate()
 
         # FACINGS_SOS_BRAND_OUT_OF_SUB_CATEGORY_IN_WHOLE_STORE - level 5
         sos_brand_out_of_sub_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS BRAND OUT OF MANUFACTURER')
-        sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(sos_brand_out_of_sub_cat_fk)
+        sos_brand_out_of_sub_cat = self.calculate_sos_of_brand_out_of_manufacturer_in_sub_cat(
+            sos_brand_out_of_sub_cat_fk)
+
+        # Savings results in Hierarchy
         self.save_hierarchy(sos_store, sos_cat_out_of_store, sos_sub_cat_out_of_cat, sos_man_out_of_sub_cat,
                             sos_brand_out_of_sub_cat)
 
@@ -182,22 +184,24 @@ class DIAGEOIESandToolBox:
         pass
         res_list = []
         res_dict = dict()
-        # Get rid of Irrelevant and Empty
-        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty'])]
-        # Filter by Sub Category and Manufacturer
+        # Get rid of Irrelevant and Empty types and keep only facings > 1
+        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings'] > 0]
+
+        # Filter by each Sub Category and Manufacturer
         sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
         for sub_cat in sub_cat_fk_list:
             filtered_scif_by_sub_cat = filtered_scif[filtered_scif['sub_category_fk'] == sub_cat]
             list_of_relevant_manufacturers = filtered_scif_by_sub_cat['manufacturer_fk'].unique().tolist()
             for manu_fk in list_of_relevant_manufacturers:
-                filtered_scif_by_sub_cat_and_manufactutrer = filtered_scif_by_sub_cat[
+                filtered_scif_by_sub_cat_and_manufacturer = filtered_scif_by_sub_cat[
                     filtered_scif_by_sub_cat['manufacturer_fk'] == manu_fk]
-                denominator_result = filtered_scif_by_sub_cat_and_manufactutrer['facings_ign_stack'].sum()
-                # Calculate result per Brand
-                list_of_relevant_brand = filtered_scif_by_sub_cat_and_manufactutrer['brand_fk'].unique().tolist()
-                for brand_fk in list_of_relevant_brand:
-                    filtered_scif_by_brand = filtered_scif_by_sub_cat_and_manufactutrer[
-                        filtered_scif_by_sub_cat_and_manufactutrer['brand_fk'] == brand_fk]
+                denominator_result = filtered_scif_by_sub_cat_and_manufacturer['facings_ign_stack'].sum()
+
+                # Calculate results per Brand
+                list_of_relevant_brands = filtered_scif_by_sub_cat_and_manufacturer['brand_fk'].unique().tolist()
+                for brand_fk in list_of_relevant_brands:
+                    filtered_scif_by_brand = filtered_scif_by_sub_cat_and_manufacturer[
+                        filtered_scif_by_sub_cat_and_manufacturer['brand_fk'] == brand_fk]
                     facings_brand_results = filtered_scif_by_brand['facings_ign_stack'].sum()
                     result_for_brand = facings_brand_results / denominator_result
 
@@ -208,7 +212,7 @@ class DIAGEOIESandToolBox:
                     res_dict['denominator_id'] = manu_fk
                     res_dict['denominator_result'] = denominator_result
                     res_dict['identifier_result'] = (int(brand_fk), int(sub_cat), int(manu_fk))
-                    res_dict['identifier_parent'] = (int(sub_cat), int(manu_fk))
+                    res_dict['identifier_parent'] = int(manu_fk), (int(sub_cat))
                     res_dict['result'] = result_for_brand
                     res_dict['score'] = result_for_brand
                     res_list.append(res_dict.copy())
@@ -217,8 +221,8 @@ class DIAGEOIESandToolBox:
     def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
         res_list = []
         res_dict = dict()
-        # Get rid of Irrelevant and Empty
-        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty'])]
+        # Get rid of Irrelevant and Empty types and keep only facings > 1
+        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings'] > 0]
         denominator_result = filtered_scif['facings_ign_stack'].sum()
         categories_fk_list = filtered_scif['category_fk'].unique().tolist()
 
@@ -239,77 +243,62 @@ class DIAGEOIESandToolBox:
             res_list.append(res_dict.copy())
         return res_list
 
-
     def save_hierarchy(self, level_1, level_2, level_3, level_4, level_5):
         for i in level_1:
             res = i.to_dict
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
-                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
-                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
-                        identifier_result="level_1", should_enter=False)
+            kpi_identifier = "level_1"
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier, should_enter=False)
 
         for res in level_2:
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
-                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
-                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
-                        identifier_result="level_2_"+str(int(res['numerator_id'])),
-                        identifier_parent="level_1", should_enter=True)
+            kpi_identifier = "level_2_"+str(int(res['numerator_id']))
+            parent_identifier = "level_1"
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
 
         for i in level_3:
             res = i.to_dict
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
-                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
-                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
-                        identifier_result=str(int(res['numerator_id'])),
-                        identifier_parent="level_2_"+str(int(res['denominator_id'])), should_enter=True)
+            kpi_identifier = str(int(res['numerator_id']))
+            parent_identifier = "level_2_"+str(int(res['denominator_id']))
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
 
         for i in level_4:
             res = i.to_dict
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
-                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
-                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
-                        identifier_result=str((int(res['numerator_id']), int(res['denominator_id']))),
-                        identifier_parent=str(int(res['denominator_id'])), should_enter=True)
+            kpi_identifier = "level_4_"+str((int(res['numerator_id']), int(res['denominator_id'])))
+            parent_identifier = str(int(res['denominator_id']))
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier,
+                                             identifier_parent=parent_identifier, should_enter=True)
 
         for res in level_5:
-            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'],numerator_id=res['numerator_id'],
-                        denominator_id=res['denominator_id'], numerator_result=res['numerator_result'],
-                        denominator_result=res['denominator_result'], result=res['result'], score=res['result'],
-                        identifier_result=str(res['identifier_result']),
-                        identifier_parent=str(res['identifier_parent']), should_enter=True)
-
-    def calculate_sos_cat_store(self, fk):
-        res_list = []
-        res_dict = dict()
-        extended_matches = pd.merge(self.match_product_in_scene, self.all_products, on="product_fk", how="left")
-        categories = extended_matches['category_fk'].drop_duplicates()
-        categories_fk = set(categories[~categories.isnull()])
-        filters = {}
-        den_df = self.tools.get_filter_condition(df=extended_matches, **filters)
-        if den_df is None:
-            denominator = 0
-        else:
-            denominator = len(den_df[den_df])
-        for cat_fk in categories_fk:
-            filters['category_fk'] = cat_fk
-            num_df = self.tools.get_filter_condition(df=extended_matches, **filters)
-            if num_df is None:
-                numerator = 0
-            else:
-                numerator = len(num_df[num_df])
-            if denominator != 0:
-                result = float(numerator) / denominator
-            else:
-                result = 0
-            res_dict['kpi_definition_fk'] = fk
-            res_dict['numerator_id'] = cat_fk
-            res_dict['numerator_result'] = numerator
-            res_dict['denominator_id'] = self.store_id
-            res_dict['denominator_result'] = denominator
-            res_dict['result'] = result
-            res_dict['score'] = result
-            res_list.append(res_dict.copy())
-        return res_list
+            kpi_identifier = "level_5_"+str(res['identifier_result'])
+            parent_identifier = "level_4_"+str(res['identifier_parent'])
+            self.commonV2.write_to_db_result(fk=res['kpi_definition_fk'], numerator_id=res['numerator_id'],
+                                             denominator_id=res['denominator_id'],
+                                             numerator_result=res['numerator_result'],
+                                             denominator_result=res['denominator_result'], result=res['result'],
+                                             score=res['result'],
+                                             identifier_result=kpi_identifier, identifier_parent=parent_identifier,
+                                             should_enter=True)
 
     def calculate_assortment_sets(self, set_name):
         """
