@@ -98,7 +98,7 @@ class DIAGEOIESandToolBox:
         """
         This function calculates the KPI results.
         """
-        # activate ootb kpis
+        # SOS Out Of The Box kpis
         self.activate_ootb_kpis()
 
         # Global assortment kpis
@@ -185,7 +185,8 @@ class DIAGEOIESandToolBox:
         res_list = []
         res_dict = dict()
         # Get rid of Irrelevant and Empty types and keep only facings > 1
-        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings'] > 0]
+        filtered_scif = self.scif[
+            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
 
         # Filter by each Sub Category and Manufacturer
         sub_cat_fk_list = filtered_scif['sub_category_fk'].unique().tolist()
@@ -221,8 +222,9 @@ class DIAGEOIESandToolBox:
     def calculate_sos_of_cat_of_out_of_store_new(self, kpi_fk):
         res_list = []
         res_dict = dict()
-        # Get rid of Irrelevant and Empty types and keep only facings > 1
-        filtered_scif = self.scif[~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings'] > 0]
+        # Get rid of Irrelevant and Empty types and keep only facings ignore stacking > 1
+        filtered_scif = self.scif[
+            ~self.scif['product_type'].isin(['Irrelevant', 'Empty']) & self.scif['facings_ign_stack'] > 0]
         denominator_result = filtered_scif['facings_ign_stack'].sum()
         categories_fk_list = filtered_scif['category_fk'].unique().tolist()
 
