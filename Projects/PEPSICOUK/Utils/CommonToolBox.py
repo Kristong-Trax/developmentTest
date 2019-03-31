@@ -53,8 +53,7 @@ class PEPSICOUKCommonToolBox:
     HERO_SKU_PROMO_PRICE = 'Hero SKU Promo Price'
     BRAND_FULL_BAY_KPIS = ['Brand Full Bay 90', 'Brand Full Bay 100']
 
-
-    def __init__(self, data_provider):
+    def __init__(self, data_provider, rds_conn=None):
         self.data_provider = data_provider
         self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
@@ -66,8 +65,9 @@ class PEPSICOUKCommonToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
+        self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] # initial scif
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng) if rds_conn is None else rds_conn
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -156,9 +156,9 @@ class PEPSICOUKCommonToolBox:
         return scif, matches
 
     def get_filters_for_scif_and_matches(self, template_filters):
-        product_keys = filter(lambda x: x in self.data_provider[Data.ALL_PRODUCTS].columns.values.tolist(),
+        product_keys = filter(lambda x: x in self.all_products.columns.values.tolist(),
                               template_filters.keys())
-        scene_keys = filter(lambda x: x in self.data_provider[Data.ALL_TEMPLATES].columns.values.tolist(),
+        scene_keys = filter(lambda x: x in self.all_templates.columns.values.tolist(),
                             template_filters.keys())
         product_filters = {}
         scene_filters = {}
@@ -177,13 +177,13 @@ class PEPSICOUKCommonToolBox:
         return filters_all
 
     def get_product_fk_from_filters(self, filters):
-        all_products = self.data_provider.all_products
+        all_products = self.all_products
         product_fk_list = all_products[self.toolbox.get_filter_condition(all_products, **filters)]
         product_fk_list = product_fk_list['product_fk'].unique().tolist()
         return product_fk_list
 
     def get_scene_fk_from_filters(self, filters):
-        scif_data = self.data_provider[Data.SCENE_ITEM_FACTS]
+        scif_data = self.scif
         scene_fk_list = scif_data[self.toolbox.get_filter_condition(scif_data, **filters)]
         scene_fk_list = scene_fk_list['scene_fk'].unique().tolist()
         return scene_fk_list
@@ -237,8 +237,8 @@ class PEPSICOUKCommonToolBox:
     @staticmethod
     def unpack_external_targets_json_fields_to_df(input_df, field_name):
         data_list = []
-        for row in input_df.itertuples():
-            data_item = json.loads(row[field_name])
+        for i, row in input_df.iterrows():
+            data_item = json.loads(row[field_name]) if row[field_name] else {}
             data_item.update({'pk': row.pk})
             data_list.append(data_item)
         output_df = pd.DataFrame(data_list)

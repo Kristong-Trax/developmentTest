@@ -84,34 +84,55 @@ class PEPSICOUKToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
-        self.toolbox = GENERALToolBox(data_provider)
-        self.commontools = PEPSICOUKCommonToolBox(data_provider) # see if I will use this setup
+        self.probe_groups = self.get_probe_group(self.session_uid)
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
+                                                                        how='left')
+        self.toolbox = GENERALToolBox(self.data_provider)
+        self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
 
-        self.custom_entities = self.get_custom_entity_data()
-        self.on_display_products = self.get_on_display_products()
-        self.exclusion_template = self.get_exclusion_template_data()
-        self.filtered_scif = self.scif # filtered scif acording to exclusion template
-        self.filtered_matches = self.match_product_in_scene # filtered scif according to exclusion template
-        self.set_filtered_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # also sets scif and matches in data provider
+        # self.custom_entities = self.get_custom_entity_data()
+        # self.on_display_products = self.get_on_display_products()
+        # self.exclusion_template = self.get_exclusion_template_data()
+        # self.filtered_scif = self.scif # filtered scif acording to exclusion template
+        # self.filtered_matches = self.match_product_in_scene # filtered scif according to exclusion template
+        # self.set_filtered_scif_and_matches_for_all_kpis(self.scif, self.match_product_in_scene) # also sets scif and matches in data provider
+
+        self.custom_entities = self.commontools.custom_entities
+        self.on_display_products = self.commontools.on_display_products
+        self.exclusion_template = self.commontools.exclusion_template
+        self.filtered_scif = self.commontools.filtered_scif
+        self.filtered_matches = self.commontools.filtered_matches
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
         self.ps_data = PsDataProvider(self.data_provider, self.output) # which scif and matches do I need
-        self.store_info = self.data_provider['store_info'] # not sure i need it
-        self.full_store_info = self.ps_data.get_ps_store_info(self.store_info) # not sure i need it
+        # self.store_info = self.data_provider['store_info'] # not sure i need it
+        self.full_store_info = self.get_store_data_by_store_id() # not sure i need it
         self.external_targets = self.get_all_kpi_external_targets()
 
-        self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
+        # self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
+        self.assortment = Assortment(self.commontools.data_provider, self.output)
         self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
 
 #------------------init functions-----------------
+    def get_probe_group(self, session_uid):
+        query = PEPSICOUK_Queries.get_probe_group(session_uid)
+        probe_group = pd.read_sql_query(query, self.rds_conn.db)
+        return probe_group
+
     def get_results_of_scene_level_kpis(self):
         scene_kpi_results = pd.DataFrame()
         if not self.scene_info.empty:
             scene_kpi_results = self.ps_data.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
         return scene_kpi_results
+
+    def get_store_data_by_store_id(self):
+        store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
+        query = PEPSICOUK_Queries.get_store_data_by_store_id(store_id)
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
 
     def get_facings_scene_bay_shelf_product(self):
         self.filtered_matches['count'] = 1
@@ -270,7 +291,7 @@ class PEPSICOUKToolBox:
             result_df = brand_relevant_df.groupby(['scene_fk', 'bay_number'], as_index=False).agg({'count':np.sum})
             result_df = result_df.merge(scene_bay, on=['scene_fk', 'bay_number'], how='left')
             result_df['ratio'] = result_df['count'] / result_df['total_facings']
-            result_100 = len(result_df[result_df['ratio'] == 1])
+            result_100 = len(result_df[result_df['ratio'] >= 1])
             result_90 = len(result_df[result_df['ratio'] >= 0.9])
             self.common.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['Group Name'], score=result_100)
             kpi_90_fk = self.common.get_kpi_fk_by_kpi_type('Brand Full Bay 90')

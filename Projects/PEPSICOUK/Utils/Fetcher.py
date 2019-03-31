@@ -16,7 +16,7 @@ class PEPSICOUK_Queries(object):
     @staticmethod
     def get_store_data_by_store_id(store_fk):
         return """
-                select s.store_type, s.additional_attribute_1, s.additional_attribute_2
+                select *
                 from static.stores s
                 where s.pk = {}
             """.format(store_fk)
@@ -80,7 +80,22 @@ class PEPSICOUK_Queries(object):
 
     @staticmethod
     def get_kpi_external_targets(visit_date):
-        return """SELECT * from static.kpi_external_targets ext
+        return """SELECT ext.*, ot.operation_type from static.kpi_external_targets ext
                   LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk 
                   WHERE (ext.start_date<='{}' and ext.end_date is null) or 
                   (ext.start_date<='{}' and ext.end_date>='{}')""".format(visit_date, visit_date, visit_date)
+
+    @staticmethod
+    def get_probe_group(session_uid):
+        return """
+                SELECT distinct sub_group_id probe_group_id, mpip.pk probe_match_fk
+                FROM probedata.stitching_probe_info as spi
+                INNER JOIN probedata.stitching_scene_info ssi on
+                ssi.pk = spi.stitching_scene_info_fk
+                INNER JOIN probedata.match_product_in_probe mpip on
+                mpip.probe_fk = spi.probe_fk
+                INNER JOIN probedata.scene as sc on
+                sc.pk = ssi.scene_fk
+                WHERE ssi.delete_time is null
+                AND sc.session_uid = '{}';
+            """.format(session_uid)

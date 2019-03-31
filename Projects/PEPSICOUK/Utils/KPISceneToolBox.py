@@ -11,6 +11,7 @@ import os
 
 # from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.DB.CommonV2 import Common
+from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
@@ -48,7 +49,7 @@ class PEPSICOUKSceneToolBox:
     SHELF_PLACEMENT_VERTICAL_RIGHT = 'Shelf Placement Vertical Right'
     PRODUCT_BLOCKING = 'Product Blocking'
     PRODUCT_BLOCKING_ADJACENCY = 'Product Blocking Adjacency'
-    PRIMARRY_SHELF = 'Primary Shelf'
+    PRIMARY_SHELF = 'Primary Shelf'
     
     def __init__(self, data_provider, output, common):
         self.output = output
@@ -71,8 +72,12 @@ class PEPSICOUKSceneToolBox:
         self.kpi_results_queries = []
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]  # initial scif - check if it works for scene calculations
 
-        self.toolbox = GENERALToolBox(data_provider)
-        self.commontools = PEPSICOUKCommonToolBox(data_provider)
+        self.probe_groups = self.get_probe_group(self.session_uid)
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
+                                                                        how='left')
+        self.is_solid_scene = True if len(self.probe_groups['probe_group_id'].unique().tolist()) <= 1 else False
+        self.toolbox = GENERALToolBox(self.data_provider)
+        self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
 
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
@@ -91,6 +96,11 @@ class PEPSICOUKSceneToolBox:
         self.adjacency = Adjancency(self.data_provider)
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
 
+    def get_probe_group(self, session_uid):
+        query = PEPSICOUK_Queries.get_probe_group(session_uid)
+        probe_group = pd.read_sql_query(query, self.rds_conn.db)
+        return probe_group
+
     def compare_matches(self):
         initial_matches = set(self.match_product_in_scene['probe_match_fk'].values.tolist())
         filtered_matches = set(self.filtered_matches['probe_match_fk'].values.tolist())
@@ -99,9 +109,9 @@ class PEPSICOUKSceneToolBox:
 
     def main_function(self):
         # if not self.filtered_matches.empty:
-        if self.scif['location_type'].values[0] == self.PRIMARRY_SHELF:
-            self.calculate_external_kpis()
+        if self.scif['location_type'].values[0] == self.PRIMARY_SHELF:
             self.calculate_internal_kpis()
+            self.calculate_external_kpis()
 
     def calculate_external_kpis(self):
         self.calculate_product_blocking()
@@ -163,20 +173,44 @@ class PEPSICOUKSceneToolBox:
             # maybe add summarizing parent - commented out
 
     def calculate_shelf_placement_vertical(self):
-        left_edge = self.match_product_in_scene['rect_x'].min()
-        right_edge = self.match_product_in_scene['rect_x'].max()
-        shelf_length = float(right_edge - left_edge)
-        matches = self.match_product_in_scene.copy()
-        shift = 0 - left_edge
-        matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
-        matches = self.define_product_position(matches, shelf_length)
-        matches_position = matches[['probe_match_fk', 'position']]
-        filtered_matches = self.filtered_matches.merge(matches_position, on='probe_match_fk', how='left')
-        result_df = self.get_vertical_placement_kpi_result_df(filtered_matches)
+        probe_groups_list = self.probe_groups['probe_group_id'].unique().tolist()
+        resulting_matches = pd.DataFrame(columns=self.match_product_in_scene.columns.values.tolist())
+
+        for probe_group in probe_groups_list:
+            matches = self.match_product_in_scene[self.match_product_in_scene['probe_group_id'] == probe_group]
+            filtered_matches = self.filtered_matches[self.filtered_matches['probe_group_id'] == probe_group]
+            left_edge = matches['rect_x'].min()
+            right_edge = matches['rect_x'].max()
+            shelf_length = float(right_edge - left_edge)
+            shift = 0 - left_edge # todo: change
+            matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
+            matches = self.define_product_position(matches, shelf_length)
+            matches_position = matches[['probe_match_fk', 'position']]
+            filtered_matches = filtered_matches.merge(matches_position, on='probe_match_fk', how='left')
+            resulting_matches.append(filtered_matches)
+
+        result_df = self.get_vertical_placement_kpi_result_df(resulting_matches)
         for i, row in result_df.iterrows():
-            self.common.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'], denominator_id=self.store_id,
+            self.common.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'],
+                                           denominator_id=self.store_id,
                                            numerator_result=row['count'], denominator_result=row['total_facings'],
                                            result=row['ratio'], score=row['ratio'])
+
+    # def calculate_shelf_placement_vertical(self):
+    #     left_edge = self.match_product_in_scene['rect_x'].min()
+    #     right_edge = self.match_product_in_scene['rect_x'].max()
+    #     shelf_length = float(right_edge - left_edge)
+    #     matches = self.match_product_in_scene.copy()
+    #     shift = 0 - left_edge
+    #     matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
+    #     matches = self.define_product_position(matches, shelf_length)
+    #     matches_position = matches[['probe_match_fk', 'position']]
+    #     filtered_matches = self.filtered_matches.merge(matches_position, on='probe_match_fk', how='left')
+    #     result_df = self.get_vertical_placement_kpi_result_df(filtered_matches)
+    #     for i, row in result_df.iterrows():
+    #         self.common.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'], denominator_id=self.store_id,
+    #                                        numerator_result=row['count'], denominator_result=row['total_facings'],
+    #                                        result=row['ratio'], score=row['ratio'])
 
     def define_product_position(self, matches, shelf_length):
         matches['position'] = ''
@@ -242,6 +276,7 @@ class PEPSICOUKSceneToolBox:
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PRODUCT_BLOCKING)
 
         for i, row in external_targets.iterrows():
+            # group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
             group_fk = self.custom_entities[self.custom_entities['name'] == row['Group Name']]
             filters = self.get_block_and_adjacency_filters(row)
             target = row['Target'] # check case in temaplate
