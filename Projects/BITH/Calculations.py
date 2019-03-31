@@ -1,10 +1,7 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
-from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -22,12 +19,15 @@ class BITHCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('sanofith calculations')
-#     Config.init()
-#     project_name = 'bith'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = '09cecbd2-550f-46db-b39a-e52477920aca'
-#     data_provider.load_session_data(session)
-#     output = Output()
-#     BITHCalculations(data_provider, output).run_project_calculations()
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+if __name__ == '__main__':
+    LoggerInitializer.init('sanofith calculations')
+    Config.init()
+    project_name = 'bith'
+    data_provider = KEngineDataProvider(project_name)
+    session = '36704105-2E2A-498B-97DF-17FC97BCF835'
+    data_provider.load_session_data(session)
+    output = Output()
+    BITHCalculations(data_provider, output).run_project_calculations()
