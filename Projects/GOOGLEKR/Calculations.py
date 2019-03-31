@@ -12,4 +12,4 @@ class Calculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         Generator(self.data_provider, self.output, FIXTURE_TEMPLATE_PATH).main_function()
-        self.timer.stop('KPIGOOGLKRGenerator.run_project_calculations')
+        self.timer.stop('KPIGOOGLEKRGenerator.run_project_calculations')
