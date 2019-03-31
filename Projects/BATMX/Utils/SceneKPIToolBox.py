@@ -14,6 +14,7 @@ class SceneToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.template_fk = self.data_provider[Data.TEMPLATES].iloc[0]['template_fk']
         self.scene_matches = pd.merge(self.data_provider[Data.MATCHES], self.all_products, on="product_fk")
         self.planogram_matches = self.data_provider._planogram_matches
         if self.planogram_matches is None:
@@ -71,7 +72,7 @@ class SceneToolBox:
             score = self.get_percentage_score(numerator_result, all_facings)
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=self.planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings, result=result, should_enter=True, denominator_id=self.store_id,
+            denominator_result=all_facings, result=result, should_enter=True, denominator_id=self.template_fk,
             score=score, by_scene=True, identifier_result=self.common.get_dictionary(kpi_fk=fixture_kpi_fk))
 
     def get_compliance_per_status(self, pog_matches, rog_matches, kpi_names):
