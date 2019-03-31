@@ -3,6 +3,7 @@ import pandas as pd
 from Projects.BATMX.Common import Common
 from Projects.BATMX.Utils.Const import Const
 from Trax.Utils.Logging.Logger import Log
+from Projects.BATMX.Utils.PlanogramCompliance import PlanogramCompliance
 
 __author__ = 'Eli_Sam_Shivi'
 
@@ -17,6 +18,13 @@ class SceneToolBox:
         self.planogram_matches = self.data_provider._planogram_matches
         if self.planogram_matches is None:
             self.planogram_matches = pd.DataFrame(columns=["product_fk", "shelf_number", "manufacturer_fk"])
+        else:
+            self.scene_matches['match_fk'] = self.scene_matches['scene_match_fk']
+            pog = PlanogramCompliance(data_provider=None)
+            compliances = pog.get_compliance(manual_planogram_data=self.planogram_matches.copy(),
+                                             manual_scene_data=self.scene_matches.copy())
+            self.scene_matches.drop("compliance_status_fk", axis=1, inplace=True)
+            self.scene_matches = self.scene_matches.merge(compliances, how="left", on="match_fk")
         self.planogram_matches = pd.merge(self.planogram_matches, self.all_products, on="product_fk")
         self.pog_matches, self.rog_matches = {}, {}
         self.pog_matches[Const.TOBACCO_CENTER] = self.planogram_matches[self.planogram_matches['shelf_number'] > 2]
