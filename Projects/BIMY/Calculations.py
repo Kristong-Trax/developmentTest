@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 import os
 import datetime as dt
-from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -13,9 +13,6 @@ __author__ = 'Shani'
 class BIMYCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-
-        # TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-        #                                                                'BIMY', 'Data', 'Template.xlsx')
 
         if dt.datetime(2018, 7, 1).date() <= self.data_provider.visit_date <= dt.datetime(2018, 7, 31).date():
             TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
@@ -39,7 +36,7 @@ class BIMYCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'bimy'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '893de63a-b205-490b-8466-4612708323f5'
+#     session = '581EF080-3130-4B88-AAA1-4F6F6AC29544'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     BIMYCalculations(data_provider, output).run_project_calculations()
