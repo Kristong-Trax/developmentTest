@@ -13,6 +13,7 @@ __author__ = 'ilays'
 
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
 
+
 class PNGHKToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
@@ -107,7 +108,6 @@ class PNGHKToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, denominator_id=self.store_id,
                                            numerator_result=total_numerator, denominator_result=total_denominator,
                                            result=result, score=result)
-
 
     def calculate_facings_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
@@ -214,7 +214,7 @@ class PNGHKToolBox:
 
                     if row[Const.NUMERATOR] != "":
                         all_numerators = [row[Const.NUMERATOR]]
-                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                    denominator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                     if denominator == 0:
                         continue
                     if scene_size != "":
@@ -222,7 +222,7 @@ class PNGHKToolBox:
                         denominator = scene_size
                     for entity in all_numerators:
                         filters[entity_name] = entity
-                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_x'].sum()
+                        numerator = df[self.tools.get_filter_condition(df, **filters)]['width_mm_advance'].sum()
                         del filters[entity_name]
                         if scene_size != "":
                             numerator = numerator * ratio
@@ -291,13 +291,12 @@ class PNGHKToolBox:
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
             if shelfs_to_include != "":
                 shelfs_to_include = int(shelfs_to_include)
-                scene_df = scene_df[scene_df['shelf_number_from_bottom'] <= shelfs_to_include]
+                scene_df = scene_df[scene_df['shelf_number_from_bottom'] < shelfs_to_include]
 
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
-                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                               'bay_number','shelf_number']]
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
                 products_df = products_df.drop_duplicates()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
@@ -305,8 +304,8 @@ class PNGHKToolBox:
                                               (scene_df['shelf_number'] == p['shelf_number']))]
                 df_list.append(scene_df)
 
-                # filter df to remove shelves with given ean code (only on the same bay)
-            elif row[Const.HAS_HOTSPOT].values[0] == Const.YES:
+            # filter df to remove shelves with given ean code (only on the same bay)
+            if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'bay_number',
@@ -326,6 +325,7 @@ class PNGHKToolBox:
         scene_types = set(df['template_name'])
         for s in scene_types:
             scene_df = df[df['template_name'] == s]
+            const_scene_df = scene_df.copy()
             row = self.find_row_osd(s)
             if row.empty:
                 continue
@@ -335,7 +335,7 @@ class PNGHKToolBox:
             if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
                 if shelfs_to_include != "":
                     shelfs_to_include = int(shelfs_to_include)
-                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
+                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
             # else:
             #     scenes = set(scene_df['scene_fk'])
             #     for scene in scenes:
@@ -356,14 +356,25 @@ class PNGHKToolBox:
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                               'bay_number',
                                                                                                'shelf_number']]
                 products_df = products_df.drop_duplicates()
-                const_scene_df = scene_df.copy()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():
                         scene_df = const_scene_df[((const_scene_df['scene_fk'] == p['scene_fk']) &
                                                    (const_scene_df['shelf_number'] == p['shelf_number']))]
+                        df_list.append(scene_df)
+
+            if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
+                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
+                                                                                               'bay_number',
+                                                                                               'shelf_number']]
+                products_df = products_df.drop_duplicates()
+                if not products_df.empty:
+                    for index, p in products_df.iterrows():
+                        scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
+                                              (const_scene_df['bay_number'] == p['bay_number']) &
+                                              (const_scene_df['shelf_number'] == p['shelf_number']))]
                         df_list.append(scene_df)
         if len(df_list) != 0:
             final_df = pd.concat(df_list)

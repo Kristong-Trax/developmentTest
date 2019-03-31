@@ -15,12 +15,12 @@ class DIAGEOMXCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('diageomx calculations')
-    Config.init()
-    project_name = 'diageomx'
-    data_provider = KEngineDataProvider(project_name)
-    session = '8e5c105e-5457-4c50-a934-7324706c1c29'
-    data_provider.load_session_data(session)
-    output = Output()
-    DIAGEOMXCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('diageomx calculations')
+#     Config.init()
+#     project_name = 'diageomx'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = 'fd7d2a19-3a1c-40fd-a7d1-3a01260392d1'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     DIAGEOMXCalculations(data_provider, output).run_project_calculations()
