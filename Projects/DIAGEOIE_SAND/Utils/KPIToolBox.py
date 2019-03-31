@@ -158,8 +158,8 @@ class DIAGEOIESandToolBox:
         sos_store = ManufacturerFacingsSOSInWholeStore(data_provider=self.data_provider,
                                                        kpi_definition_fk=sos_store_fk).calculate()  #'FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE' - level 1
 
-        sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
-        sos_cat_out_of_store = self.calculate_sos_cat_store(sos_sub_cat_out_of_cat_fk)
+        sos_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS CATEGORY OUT OF STORE')
+        sos_cat_out_of_store = self.calculate_sos_cat_store(sos_cat_out_of_cat_fk)
 
         sos_sub_cat_out_of_cat_fk = self.commonV2.get_kpi_fk_by_kpi_name('SOS SUB CATEGORY OUT OF CATEGORY')
         sos_sub_cat_out_of_cat = SubCategoryFacingsSOSPerCategory(data_provider=self.data_provider,
