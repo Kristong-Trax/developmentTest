@@ -210,7 +210,7 @@ class DIAGEOIESandToolBox:
                     res_dict['kpi_definition_fk'] = kpi_fk
                     res_dict['numerator_id'] = brand_fk
                     res_dict['numerator_result'] = facings_brand_results
-                    res_dict['denominator_id'] = manu_fk
+                    res_dict['denominator_id'] = int(sub_cat)
                     res_dict['denominator_result'] = denominator_result
                     res_dict['identifier_result'] = (int(brand_fk), int(sub_cat), int(manu_fk))
                     res_dict['identifier_parent'] = int(manu_fk), (int(sub_cat))
