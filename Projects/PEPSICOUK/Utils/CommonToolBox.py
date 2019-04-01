@@ -97,7 +97,8 @@ class PEPSICOUKCommonToolBox:
 
     def get_facings_scene_bay_shelf_product(self):
         self.filtered_matches['count'] = 1
-        aggregate_df = self.filtered_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
+        aggregate_df = self.filtered_matches.groupby(['scene_fk', 'bay_number', 'shelf_number',
+                                                      'shelf_number_from_bottom', 'product_fk'],
                                                      as_index=False).agg({'count': np.sum})
         return aggregate_df
 
@@ -139,10 +140,14 @@ class PEPSICOUKCommonToolBox:
     def get_filters_dictionary(self, excl_template_all_kpis):
         filters = {}
         for i, row in excl_template_all_kpis.iterrows():
-            if row['Action'].upper() == 'INCLUDE':
-                filters.update({row['Type']: self.split_and_strip(row['Value'])})
-            if row['Action'].upper() == 'EXCLUDE':
-                filters.update({row['Type']: (self.split_and_strip(row['Value']), 0)})
+            action = row['Action']
+            if action == action:
+                if action.upper() == 'INCLUDE':
+                    filters.update({row['Type']: self.split_and_strip(row['Value'])})
+                if action.upper() == 'EXCLUDE':
+                    filters.update({row['Type']: (self.split_and_strip(row['Value']), 0)})
+            else:
+                Log.warning('Exclusion template: filter in row {} has no action will be omitted'.format(i+1))
         return filters
 
     @staticmethod
@@ -202,7 +207,7 @@ class PEPSICOUKCommonToolBox:
         scif.rename(columns={'width_mm_advance': 'updated_gross_length', 'facings_matches': 'updated_facings'},
                     inplace=True)
         scif['facings'] = scif['updated_facings']
-        scif['gross_length_add_stack'] = scif['updated_gross_length']
+        scif['gross_len_add_stack'] = scif['updated_gross_length']
         return scif
 
     def filter_matches_for_products_with_smart_attributes(self, matches):

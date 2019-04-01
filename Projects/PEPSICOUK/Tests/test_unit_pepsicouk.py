@@ -25,7 +25,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKToolBox
-from Projects.PEPSICOUK.Tests.data_test_unit_ccbza_sand import DataTestUnitPEPSICOUK, DataScores, SCIFDataTestCCBZA_SAND, MatchProdSceneDataTestCCBZA_SAND
+from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK, DataScores, SCIFDataTestCCBZA_SAND, MatchProdSceneDataTestCCBZA_SAND
 from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os

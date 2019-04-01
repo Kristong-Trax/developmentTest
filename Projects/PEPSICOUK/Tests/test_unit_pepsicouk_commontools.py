@@ -3,7 +3,7 @@ from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKCommonToolBox
-from Projects.PEPSICOUK.Tests.data_test_unit_ccbza_sand import DataTestUnitPEPSICOUK
+from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK
 from Trax.Algo.Calculations.Core.DataProvider import Output
 from pandas.util.testing import assert_frame_equal
 import os
@@ -127,65 +127,152 @@ class Test_PEPSICOUKCommon(MockingTestCase):
     def mock_all_products_in_data_provider(self, data):
         self.data_provider_data_mock['all_products'] = data.where(data.notnull(), None)
 
-    # def test_unpack_external_targets_json_fields_to_df_gets_all_fields_from_json_and_matches_correct_pks(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    #     expected_result = pd.DataFrame.from_records([
-    #         {'pk': 2, u'store_type': u'CORE', u'additional_attribute_2': np.nan, u'additional_attribute_1': u'ALL'},
-    #         {'pk': 3, u'store_type': u'ALL', u'additional_attribute_2': np.nan, u'additional_attribute_1': u'OT'},
-    #         {'pk': 10, u'store_type': u'CORE', u'additional_attribute_2': u'SAINSBURY', u'additional_attribute_1': np.nan},
-    #     ])
-    #     result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_1, 'json_field')
-    #     self.assertItemsEqual(['pk', 'store_type', 'additional_attribute_1','additional_attribute_2'],
-    #                           result_df.columns.values.tolist())
-    #     assert_frame_equal(expected_result, result_df)
-    #
-    # def test_unpack_external_targets_json_fields_to_df_returns_empty_df_if_input_empty(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    #     result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_empty,
-    #                                                                    'json_field')
-    #     self.assertTrue(result_df.empty)
-    #
-    # def test_unpack_external_targets_json_fields_to_df_returns_df_with_pk_field_only(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    #     result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_empty_with_pks,
-    #                                                                    'json_field')
-    #     self.assertItemsEqual(result_df.columns.values.tolist(), ['pk'])
-    #
-    # # def test_filtered_matches(self):
-    # #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    # #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    # #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    # #     print tool_box.match_product_in_scene
-    # #     print tool_box.filtered_matches
-    # #
-    # # def test_filtered_scif(self):
-    # #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    # #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    # #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    # #     print tool_box.scif
-    # #     print tool_box.filtered_scif
-    #
-    # def test_filters_for_scif_and_matches_are_retrieved_in_the_right_format(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-    #     expected_result = {'smart_attribute_state': (['additional display'], 0),
-    #                        'location_type': ['Primary Shelf'],
-    #                        'product_name': (['General Empty'], 0)}
-    #     template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
-    #     self.assertDictEqual(expected_result, template_filters)
+    def test_unpack_external_targets_json_fields_to_df_gets_all_fields_from_json_and_matches_correct_pks(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_result = pd.DataFrame.from_records([
+            {'pk': 2, u'store_type': u'CORE', u'additional_attribute_2': np.nan, u'additional_attribute_1': u'ALL'},
+            {'pk': 3, u'store_type': u'ALL', u'additional_attribute_2': np.nan, u'additional_attribute_1': u'OT'},
+            {'pk': 10, u'store_type': u'CORE', u'additional_attribute_2': u'SAINSBURY', u'additional_attribute_1': np.nan},
+        ])
+        result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_1, 'json_field')
+        self.assertItemsEqual(['pk', 'store_type', 'additional_attribute_1','additional_attribute_2'],
+                              result_df.columns.values.tolist())
+        assert_frame_equal(expected_result, result_df)
 
-        # # print excl_template_all_kpis
-        # print template_filters
-        # # product_keys = filter(lambda x: x in tool_box.all_products.columns.values.tolist(),
-        # #                       template_filters.keys())
-        # # print product_keys
-        # filters = tool_box.get_filters_for_scif_and_matches(template_filters)
-        # print filters
-        # # print tool_box.all_products
+    def test_unpack_external_targets_json_fields_to_df_returns_empty_df_if_input_empty(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_empty,
+                                                                       'json_field')
+        self.assertTrue(result_df.empty)
+
+    def test_unpack_external_targets_json_fields_to_df_returns_df_with_pk_field_only(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result_df = tool_box.unpack_external_targets_json_fields_to_df(DataTestUnitPEPSICOUK.data_json_empty_with_pks,
+                                                                       'json_field')
+        self.assertItemsEqual(result_df.columns.values.tolist(), ['pk'])
+
+    def test_excluded_matches_are_not_present_in_filtered_matches_and_included_are_present(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        excluded_matches = tool_box.match_product_in_scene[~(tool_box.match_product_in_scene['Out'].
+                                        isnull())]['probe_match_fk'].values.tolist()
+        matches_negative_check = tool_box.filtered_matches[tool_box.filtered_matches['probe_match_fk'].\
+                                                isin(excluded_matches)]
+        self.assertTrue(matches_negative_check.empty)
+        included_matches = tool_box.match_product_in_scene[tool_box.match_product_in_scene['Out'].
+                                        isnull()]['probe_match_fk'].values.tolist()
+        matches_positive_check = tool_box.filtered_matches[tool_box.filtered_matches['probe_match_fk'].\
+                                                isin(included_matches)]
+        self.assertItemsEqual(included_matches, matches_positive_check['probe_match_fk'].values.tolist())
+
+    def test_filtered_scif_facings_and_gross_length_reduced_following_matches(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        for i, row in tool_box.filtered_scif.iterrows():
+            expected_facings = len(tool_box.filtered_matches[(tool_box.filtered_matches['scene_fk'] == row['scene_fk']) &
+                                                             (tool_box.filtered_matches['product_fk'] == row['product_fk'])])
+            expected_len = tool_box.filtered_matches[(tool_box.filtered_matches['scene_fk'] == row['scene_fk']) &
+                                                     (tool_box.filtered_matches['product_fk'] == row['product_fk'])] \
+                                                    ['width_mm_advance'].sum()
+            self.assertEquals(row['facings'], expected_facings)
+            self.assertEquals(row['gross_len_add_stack'], expected_len)
+
+    def test_filters_for_scif_and_matches_are_retrieved_in_the_right_format(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_result = {'smart_attribute_state': (['additional display'], 0),
+                           'location_type': ['Primary Shelf'],
+                           'product_name': (['General Empty'], 0)}
+        template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
+        self.assertDictEqual(expected_result, template_filters)
+
+    def test_filters_for_scif_and_matches_return_empty_dict_if_template_empty(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_result = {}
+        template_filters = tool_box.get_filters_dictionary(DataTestUnitPEPSICOUK.empty_exclusion_template)
+        self.assertDictEqual(expected_result, template_filters)
+        self.assertIsInstance(template_filters, dict)
+
+    def test_filters_for_scif_and_matches_return_empty_dict_with_ommitted_action_field(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_result = {'category': (['Cat 1', 'Cat 2'], 0),
+                           'location_type': ['Primary Shelf']}
+        template_filters = tool_box.get_filters_dictionary(DataTestUnitPEPSICOUK.exclusion_template_missing_action)
+        self.assertDictEqual(expected_result, template_filters)
+
+    def test_get_filters_for_scif_and_matches_returns_values_with_product_and_scene_pks(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
+        filters = tool_box.get_filters_for_scif_and_matches(template_filters)
+        expected_result = {'scene_fk': [1, 2], 'product_fk': [1, 2, 3, 4]}
+        self.assertDictEqual(filters, expected_result)
+
+    def test_unpack_all_external_targets_forms_data_frame_with_all_relevant_columns_and_all_records(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        columns = tool_box.all_targets_unpacked.columns.values.tolist()
+        expected_columns_in_output_df = DataTestUnitPEPSICOUK.external_targets_columns
+        validation_list = [col in columns for col in expected_columns_in_output_df]
+        self.assertTrue(all(validation_list))
+        self.assertEquals(len(tool_box.all_targets_unpacked), 28)
+
+    def test_unpack_all_external_targets_kpi_relevant_columns_are_filled(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        targets = tool_box.all_targets_unpacked
+        shelf_placement_targets = targets[targets['operation_type'] == tool_box.SHELF_PLACEMENT]
+        data_with_null_values = shelf_placement_targets[shelf_placement_targets \
+                                            ['Shelves From Bottom To Include (data)'].isnull()]
+        self.assertEquals(len(data_with_null_values), 0)
+        keys_with_null_values = shelf_placement_targets[shelf_placement_targets \
+                    ['No of Shelves in Fixture (per bay) (key)'].isnull()]
+        self.assertEquals(len(keys_with_null_values), 0)
+        # sos_vs_index_targets = targets[targets['operation_type'] == tool_box.SOS_VS_TARGET]
+
+    def test_get_yes_no_result_type_fk_if_score_value_not_zero(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_res = 4
+        result_fk = tool_box.get_yes_no_result(1)
+        self.assertEquals(result_fk, expected_res)
+
+    def test_get_yes_no_result_type_fk_if_score_value_zero(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_res = 5
+        result_fk = tool_box.get_yes_no_result(0)
+        self.assertEquals(result_fk, expected_res)
+
+    def test_get_yes_no_score_type_fk_if_score_value_not_zero(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_res = 4
+        result_fk = tool_box.get_yes_no_score(1)
+        self.assertEquals(result_fk, expected_res)
+
+    def test_get_yes_no_score_type_fk_if_score_value_zero(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        expected_res = 5
+        result_fk = tool_box.get_yes_no_score(0)
+        self.assertEquals(result_fk, expected_res)
+
+    def test_get_kpi_result_value_pk_by_value_returns_none_if_value_does_not_exist(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result_fk = tool_box.get_kpi_result_value_pk_by_value('non_existing_value')
+        self.assertIsNone(result_fk)
+
+    def test_get_kpi_score_value_pk_by_value_returns_none_if_value_does_not_exist(self):
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        result_fk = tool_box.get_kpi_score_value_pk_by_value('non_existing_value')
+        self.assertIsNone(result_fk)
+
+    def test_whatever(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        print tool_box.all_templates
+

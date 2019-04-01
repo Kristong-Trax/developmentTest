@@ -12,7 +12,8 @@ if __name__ == '__main__':
     project_name = 'pepsicouk'
     # project_name = 'diageous-sand'
     data_provider = KEngineDataProvider(project_name)
-    session = '5aeb5ce9-6d1e-499d-8b9c-c736b5ad82cd'
+    # session = '470e2eb1-9031-46c1-8699-c47e18c58b9c'
+    session = '10e09fd5-3537-48ba-85ca-eb14ab421400'
     data_provider.load_session_data(session)
     # output = Output()
     # Calculations(data_provider, output).run_project_calculations()

@@ -2,6 +2,7 @@ import datetime
 import os
 import pandas as pd
 from numpy import nan
+import numpy as np
 
 class DataScores(object):
     SCORES_1 = [(None, 0.15), (100, 0.15), (3, 0.15)]
@@ -94,11 +95,23 @@ class DataTestUnitPEPSICOUK(object):
         {'pk': 2, 'json_field': u''}, {'pk': 3, 'json_field': u''}
     ])
 
-    all_templates = pd.DataFrame(
+    all_templates = pd.DataFrame.from_records(
         [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf'},
          {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf'}]
     )
 
+    empty_exclusion_template = pd.DataFrame(columns=['KPI', 'Action', 'Type', 'Value'])
+    exclusion_template_missing_action = pd.DataFrame([
+        {'KPI': 'All', 'Action': 'Include', 'Type': 'location_type', 'Value': 'Primary Shelf'},
+        {'KPI': 'ALL', 'Action': np.nan, 'Type': 'product_name', 'Value': 'General Empty'},
+        {'KPI': 'All', 'Action': 'Exclude', 'Type': 'category', 'Value': 'Cat 1, Cat 2'}
+    ])
+
+    external_targets_columns = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'store_type',
+            'additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'numerator_type', 'numerator_value',
+            'denominator_type', 'denominator_value', 'additional_filter_type_1',
+            'additional_filter_value_1', 'Target', 'KPI Parent',
+            'Shelves From Bottom To Include (data)', 'No of Shelves in Fixture (per bay) (key)', 'type']
     # required_template_tabs = [KPI_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, PLANOGRAM_TAB]
     # columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY, BONUS]
     # columns_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]

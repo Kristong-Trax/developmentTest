@@ -84,7 +84,7 @@ class PEPSICOUKToolBox:
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
-        self.probe_groups = self.get_probe_group(self.session_uid)
+        self.probe_groups = self.get_probe_group()
         self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
                                                                         how='left')
         self.toolbox = GENERALToolBox(self.data_provider)
@@ -117,8 +117,8 @@ class PEPSICOUKToolBox:
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
 
 #------------------init functions-----------------
-    def get_probe_group(self, session_uid):
-        query = PEPSICOUK_Queries.get_probe_group(session_uid)
+    def get_probe_group(self):
+        query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
         probe_group = pd.read_sql_query(query, self.rds_conn.db)
         return probe_group
 
@@ -629,18 +629,25 @@ class PEPSICOUKToolBox:
             sos_filters = {row['numerator_type']: row['numerator_value']}
             numerator_linear, denominator_linear = self.calculate_sos(sos_filters, **general_filters)
             result = numerator_linear/denominator_linear if denominator_linear != 0 else 0
-            score = result/row['Target'] if row['Target'] else 0 # what should we have in else case???
+            score = result/row['Target'] if row['Target'] else 0 # todo: what should we have in else case???
             self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                            numerator_result=numerator_linear, denominator_id=row.denominator_id,
                                            denominator_result=denominator_linear, result=result, score=score,
                                            identifier_parent=row.identifier_parent, should_enter=True)
 
-        parent_kpis_df = sos_targets[['KPI Parent', 'identifier_parent']].drop_duplicates().reset_index(drop=True)
-        parent_kpis_df.rename({'identifier_parent': 'identifier_result'}, inplace=True)
+        sos_targets['count'] = 1
+        parent_kpis_df = sos_targets.groupby(['KPI Parent', 'identifier_parent'], as_index=False).agg({'count': np.sum})
         for i, row in parent_kpis_df.iterrows():
-            self.common.write_to_db_result(fk=row['KPI Parent'], score=1, should_enter=True,
+            self.common.write_to_db_result(fk=row['KPI Parent'], score=row.count, should_enter=True,
                                            numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-                                           identifier_result=row.identifier_result) # think of what might be the score (we can have score type)
+                                           identifier_result=row.identifier_parent)
+        #Option 1 for parent kpis
+        # parent_kpis_df = sos_targets[['KPI Parent', 'identifier_parent']].drop_duplicates().reset_index(drop=True)
+        # parent_kpis_df.rename({'identifier_parent': 'identifier_result'}, inplace=True)
+        # for i, row in parent_kpis_df.iterrows():
+        #     self.common.write_to_db_result(fk=row['KPI Parent'], score=1, should_enter=True,
+        #                                    numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
+        #                                    identifier_result=row.identifier_result)
 
     def get_relevant_sos_vs_target_kpi_targets(self):
         sos_vs_target_kpis = self.external_targets[self.external_targets['operation_type'] == self.SOS_VS_TARGET]

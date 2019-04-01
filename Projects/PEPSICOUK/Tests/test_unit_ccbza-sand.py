@@ -19,7 +19,7 @@
 #         self.data_provider_mock.rds_conn = MagicMock()
 #         self.output = MagicMock()
 #         self.tool_box = CCBZAToolBox(self.data_provider_mock, MagicMock())
-#
+
 #
 # from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 # from Trax.Data.Testing.SeedNew import Seeder

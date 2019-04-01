@@ -50,8 +50,17 @@ class PEPSICOUKSceneToolBox:
     PRODUCT_BLOCKING = 'Product Blocking'
     PRODUCT_BLOCKING_ADJACENCY = 'Product Blocking Adjacency'
     PRIMARY_SHELF = 'Primary Shelf'
+    NUMBER_OF_SHELVES_TEMPL_COLUMN = 'No of Shelves in Fixture (per bay) (key)'
+    RELEVANT_SHELVES_TEMPL_COLUMN = 'Shelves From Bottom To Include (data)'
+    SHELF_PLC_TARGETS_COLUMNS = ['pk', 'kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'type',
+                                 NUMBER_OF_SHELVES_TEMPL_COLUMN, RELEVANT_SHELVES_TEMPL_COLUMN, 'KPI Parent']
+    SHELF_PLC_TARGET_COL_RENAME = {'pk_x': 'pk', 'kpi_operation_type_fk_x': 'kpi_operation_type_fk',
+                                   'operation_type_x': 'operation_type', 'kpi_level_2_fk_x': 'kpi_level_2_fk',
+                                   'type_x': 'type', NUMBER_OF_SHELVES_TEMPL_COLUMN+'_x': NUMBER_OF_SHELVES_TEMPL_COLUMN,
+                                   RELEVANT_SHELVES_TEMPL_COLUMN+'_x': RELEVANT_SHELVES_TEMPL_COLUMN,
+                                   'KPI Parent_x':  'KPI Parent'}
     
-    def __init__(self, data_provider, output, common):
+    def __init__(self, data_provider, output, common=None):
         self.output = output
         self.data_provider = data_provider
         # self.common = common
@@ -65,14 +74,16 @@ class PEPSICOUKSceneToolBox:
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
+        self.store_id = self.data_provider[Data.STORE_FK] if self.data_provider[Data.STORE_FK] is not None \
+                                                            else self.session_info['store_fk'].values[0]
+        self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.store_type = self.data_provider.store_type
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]  # initial scif - check if it works for scene calculations
 
-        self.probe_groups = self.get_probe_group(self.session_uid)
+        self.probe_groups = self.get_probe_group()
         self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
                                                                         how='left')
         self.is_solid_scene = True if len(self.probe_groups['probe_group_id'].unique().tolist()) <= 1 else False
@@ -85,6 +96,7 @@ class PEPSICOUKSceneToolBox:
         self.filtered_scif = self.commontools.filtered_scif
         self.filtered_matches = self.commontools.filtered_matches
         self.excluded_matches = self.compare_matches()
+        self.filtered_matches = self.filtered_matches.merge(self.probe_groups, on='probe_match_fk', how='left')
         # self.filtered_scif = self.scif  # filtered scif acording to exclusion template
         # self.filtered_matches = self.match_product_in_scene  # filtered scif according to exclusion template
         # self.set_filtered_scif_and_matches_for_all_kpis(self.scif,
@@ -95,16 +107,17 @@ class PEPSICOUKSceneToolBox:
         self.block = Block(self.data_provider)
         self.adjacency = Adjancency(self.data_provider)
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
+        self.kpi_results = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
 
-    def get_probe_group(self, session_uid):
-        query = PEPSICOUK_Queries.get_probe_group(session_uid)
+    def get_probe_group(self):
+        query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
         probe_group = pd.read_sql_query(query, self.rds_conn.db)
         return probe_group
 
     def compare_matches(self):
         initial_matches = set(self.match_product_in_scene['probe_match_fk'].values.tolist())
         filtered_matches = set(self.filtered_matches['probe_match_fk'].values.tolist())
-        excluded_matches = filtered_matches.difference(initial_matches)
+        excluded_matches = initial_matches.difference(filtered_matches)
         return excluded_matches
 
     def main_function(self):
@@ -126,11 +139,14 @@ class PEPSICOUKSceneToolBox:
     def calculate_number_of_facings_and_linear_space(self):
         facing_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.NUMBER_OF_FACINGS)
         linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_LINEAR_SPACE)
-        for i, row in self.filtered_scif:
-            self.common.write_to_db_result(fk=facing_kpi_fk, numerator_id=row['product_fk'], result=row['updated_facings'],
+        for i, row in self.filtered_scif.iterrows():
+            self.common.write_to_db_result(fk=facing_kpi_fk, numerator_id=row['product_fk'], result=row['facings'],
                                            denominator_id=self.store_id, by_scene=True)
             self.common.write_to_db_result(fk=linear_kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
-                                           result=row['updated_gross_length'], by_scene=True)
+                                           result=row['gross_len_add_stack'], by_scene=True)
+            self.add_kpi_result_to_kpi_results_df([facing_kpi_fk, row['product_fk'], self.store_id, row['facings'], None])
+            self.add_kpi_result_to_kpi_results_df(
+                [linear_kpi_fk, row['product_fk'], self.store_id, row['gross_len_add_stack'], None])
 
     def calculate_number_of_bays_and_shelves(self):
         bays_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.NUMBER_OF_BAYS)
@@ -141,14 +157,13 @@ class PEPSICOUKSceneToolBox:
         bays_num = len(bays_in_scene)
         bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
         shelf_num = len(bay_shelf)
-        # shelf_num = 0
-        # for bay in bays_in_scene:
-        #     bay_matches = self.filtered_matches[self.filtered_matches['bay_number'] == bay]
-        #     shelf_num += len(bay_matches['shelf_number'].unique().tolist()) # is it filtered or regular?
-        self.common.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.PEPSICO, result=bays_num,
+        self.common.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.own_manuf_fk, result=bays_num,
                                        denominator_id=self.store_id, by_scene=True)
-        self.common.write_to_db_result(fk=shelves_kpi_fk, numerator_id=self.PEPSICO, result=shelf_num,
+        self.common.write_to_db_result(fk=shelves_kpi_fk, numerator_id=self.own_manuf_fk, result=shelf_num,
                                        denominator_id=self.store_id, by_scene=True)
+        self.add_kpi_result_to_kpi_results_df([bays_kpi_fk, self.own_manuf_fk, self.store_id, bays_num, None])
+        self.add_kpi_result_to_kpi_results_df(
+            [shelves_kpi_fk, self.own_manuf_fk, self.store_id, shelf_num, None])
 
     def calculate_shelf_placement_horizontal(self):
         # shelf_placement_targets = self.commontools.get_shelf_placement_kpi_targets_data()
@@ -159,7 +174,7 @@ class PEPSICOUKSceneToolBox:
             bay_all_shelves = bay_max_shelves.drop_duplicates(subset=['bay_number', 'shelves_all_placements'],
                                                               keep='first')
             relevant_matches = self.filter_out_irrelevant_matches(bay_all_shelves)
-            for i, row in bay_max_shelves:
+            for i, row in bay_max_shelves.iterrows():
                 shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
                 relevant_matches.loc[(relevant_matches['bay_number'] == row['bay_number']) &
                                      (relevant_matches['shelf_number_from_bottom'].isin(shelf_list)), 'position'] = row['type']
@@ -170,21 +185,25 @@ class PEPSICOUKSceneToolBox:
                                                denominator_result=result['total_facings'],
                                                numerator_result=result['count'], result=result['ratio'],
                                                score=result['ratio'])
+                self.add_kpi_result_to_kpi_results_df([result['kpi_level_2_fk'], result['product_fk'],
+                                                       result['product_fk'], result['ratio'], result['ratio']])
             # maybe add summarizing parent - commented out
 
     def calculate_shelf_placement_vertical(self):
         probe_groups_list = self.probe_groups['probe_group_id'].unique().tolist()
-        resulting_matches = pd.DataFrame(columns=self.match_product_in_scene.columns.values.tolist())
+        resulting_matches = pd.DataFrame(columns=self.filtered_matches.columns.values.tolist()+['position'])
 
         for probe_group in probe_groups_list:
             matches = self.match_product_in_scene[self.match_product_in_scene['probe_group_id'] == probe_group]
             filtered_matches = self.filtered_matches[self.filtered_matches['probe_group_id'] == probe_group]
-            left_edge = matches['rect_x'].min()
-            right_edge = matches['rect_x'].max()
+            # left_edge = matches['rect_x'].min()
+            # right_edge = matches['rect_x'].max()
+            left_edge = self.get_left_edge(matches)
+            right_edge = self.get_right_edge(matches)
             shelf_length = float(right_edge - left_edge)
-            shift = 0 - left_edge # todo: change
-            matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
-            matches = self.define_product_position(matches, shelf_length)
+            # shift = 0 - left_edge # todo: change - explain to israel why i decided to go for this option
+            # matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
+            matches = self.define_product_position(matches, shelf_length, left_edge, right_edge)
             matches_position = matches[['probe_match_fk', 'position']]
             filtered_matches = filtered_matches.merge(matches_position, on='probe_match_fk', how='left')
             resulting_matches.append(filtered_matches)
@@ -195,6 +214,20 @@ class PEPSICOUKSceneToolBox:
                                            denominator_id=self.store_id,
                                            numerator_result=row['count'], denominator_result=row['total_facings'],
                                            result=row['ratio'], score=row['ratio'])
+
+    @staticmethod
+    def get_left_edge(matches):
+        left_tag = matches['rect_x'].min()
+        additional_left_margin = matches[matches['rect_x'] == left_tag]['rect_width'].max()/2 # not sure about this field
+        left_edge = left_tag - additional_left_margin
+        return left_edge
+
+    @staticmethod
+    def get_right_edge(matches):
+        right_tag = matches['rect_x'].max()
+        additional_right_margin = matches[matches['rect_x'] == right_tag]['rect_width'].max() / 2
+        right_edge = right_tag + additional_right_margin
+        return right_edge
 
     # def calculate_shelf_placement_vertical(self):
     #     left_edge = self.match_product_in_scene['rect_x'].min()
@@ -212,14 +245,22 @@ class PEPSICOUKSceneToolBox:
     #                                        numerator_result=row['count'], denominator_result=row['total_facings'],
     #                                        result=row['ratio'], score=row['ratio'])
 
-    def define_product_position(self, matches, shelf_length):
+    def define_product_position(self, matches, shelf_length, left_edge, right_edge):
         matches['position'] = ''
-        matches.loc[(matches['adjusted_rect_x'] >= 0) &
-                    (matches['adjusted_rect_x'] <= (shelf_length / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_LEFT
-        matches.loc[(matches['adjusted_rect_x'] > (shelf_length / 3)) &
-                    (matches['adjusted_rect_x'] <= (shelf_length * 2 / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_CENTER
-        matches.loc[(matches['adjusted_rect_x'] > (shelf_length * 2 / 3)) &
-                    (matches['adjusted_rect_x'] <= shelf_length), 'position'] = self.SHELF_PLACEMENT_VERTICAL_RIGHT
+        # matches.loc[(matches['adjusted_rect_x'] >= 0) &
+        #             (matches['adjusted_rect_x'] <= (shelf_length / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_LEFT
+        # matches.loc[(matches['adjusted_rect_x'] > (shelf_length / 3)) &
+        #             (matches['adjusted_rect_x'] <= (shelf_length * 2 / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_CENTER
+        # matches.loc[(matches['adjusted_rect_x'] > (shelf_length * 2 / 3)) &
+        #             (matches['adjusted_rect_x'] <= shelf_length), 'position'] = self.SHELF_PLACEMENT_VERTICAL_RIGHT
+
+        matches.loc[(matches['rect_x'] >= left_edge) &
+                    (matches['rect_x'] <= (left_edge+shelf_length / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_LEFT
+        matches.loc[(matches['rect_x'] > (left_edge+shelf_length / 3)) &
+                    (matches['rect_x'] <= (left_edge+
+                            shelf_length * 2 / 3)), 'position'] = self.SHELF_PLACEMENT_VERTICAL_CENTER
+        matches.loc[(matches['rect_x'] > (left_edge+shelf_length * 2 / 3)) &
+                    (matches['rect_x'] <= right_edge), 'position'] = self.SHELF_PLACEMENT_VERTICAL_RIGHT
         return matches
 
     def get_vertical_placement_kpi_result_df(self, filtered_matches):
@@ -381,21 +422,41 @@ class PEPSICOUKSceneToolBox:
     def get_scene_bay_max_shelves(self, shelf_placement_targets):
         scene_bay_max_shelves = self.match_product_in_scene.groupby(['bay_number'],
                                                                     as_index=False).agg({'shelf_number_from_bottom':np.max})
-        scene_bay_max_shelves.rename({'shelf_number_from_bottom': 'shelves_in_bay'})
-        max_shelf_in_template = shelf_placement_targets['No of Shelves in Fixture (per bay) (key)'].max()
+        scene_bay_max_shelves.rename(columns = {'shelf_number_from_bottom': 'shelves_in_bay'}, inplace=True)
+        max_shelf_in_template = shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN].max()
         scene_bay_max_shelves = scene_bay_max_shelves.merge(shelf_placement_targets, left_on='shelves_in_bay',
-                                                            right_on='No of Shelves in Fixture (per bay) (key)')
+                                                            right_on=self.NUMBER_OF_SHELVES_TEMPL_COLUMN)
+        scene_bay_max_shelves.rename(columns=self.SHELF_PLC_TARGET_COL_RENAME, inplace=True)
+        scene_bay_max_shelves = scene_bay_max_shelves.drop_duplicates()
+        scene_bay_max_shelves = scene_bay_max_shelves[self.SHELF_PLC_TARGETS_COLUMNS+['bay_number', 'shelves_in_bay']]
         scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves, max_shelf_in_template)
-        scene_bay_max_shelves['shelves_all_placements'] = scene_bay_max_shelves.groupby(['bay_number']) \
-                                            ['Shelves From Bottom To Include (data)'].apply(lambda x: ','.join(str(x)))
-        # relevant_scenes = self.filtered_matches['scene_fk'].unique().tolist()
+
+        bay_all_relevant_shelves = self.get_bay_relevant_shelves_df(scene_bay_max_shelves)
+        scene_bay_max_shelves = scene_bay_max_shelves.merge(bay_all_relevant_shelves, on='bay_number', how='left')
+
         scene_bay_max_shelves = scene_bay_max_shelves[~(scene_bay_max_shelves['bay_number'] == -1)]
-        final_df = pd.DataFrame(columns=scene_bay_max_shelves.columns.value.tolist())
-        relevant_bays = self.filtered_matches['bay_number'].values.tolist()
-        for i, row in scene_bay_max_shelves.iterrows():
-            if row['bay_number'] in relevant_bays:
-                final_df.append(row)
+
+        relevant_bays = self.filtered_matches['bay_number'].unique().tolist()
+        final_df = scene_bay_max_shelves[scene_bay_max_shelves['bay_number'].isin(relevant_bays)]
         return final_df
+        # final_df = pd.DataFrame(columns=scene_bay_max_shelves.columns.values.tolist())
+        # for i, row in scene_bay_max_shelves.iterrows():
+        #     if row['bay_number'] in relevant_bays:
+        #         final_df.append(row)
+        # return final_df
+
+    def get_bay_relevant_shelves_df(self, scene_bay_max_shelves):
+        scene_bay_max_shelves[self.RELEVANT_SHELVES_TEMPL_COLUMN] = scene_bay_max_shelves[
+            self.RELEVANT_SHELVES_TEMPL_COLUMN].astype(str)
+        bay_all_relevant_shelves = scene_bay_max_shelves[
+            ['bay_number', self.RELEVANT_SHELVES_TEMPL_COLUMN]].drop_duplicates()
+        bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves.groupby('bay_number') \
+            [self.RELEVANT_SHELVES_TEMPL_COLUMN].apply(lambda x: (x + ',').cumsum().str.strip())
+        bay_all_relevant_shelves = bay_all_relevant_shelves.drop_duplicates(subset=['bay_number'], keep='last') \
+            [['bay_number', 'shelves_all_placements']]
+        bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves['shelves_all_placements']. \
+            apply(lambda x: x[0:-1])
+        return bay_all_relevant_shelves
 
     def complete_missing_target_shelves(self, scene_bay_df, max_shelf_template):
         for i, row in scene_bay_df.iterrows():
@@ -414,22 +475,19 @@ class PEPSICOUKSceneToolBox:
         for i, row in target_kpis_df.iterrows():
             all_shelves = map(lambda x: float(x), row['shelves_all_placements'].split(','))
             rows_to_remove = relevant_matches[(relevant_matches['bay_number'] == row['bay_number']) &
-                                              (~(relevant_matches['shelf_number'].isin(all_shelves)))].index
+                                              (~(relevant_matches['shelf_number_from_bottom'].isin(all_shelves)))].index
             relevant_matches.drop(rows_to_remove, inplace=True)
         relevant_matches['position'] = ''
         return relevant_matches
 
     def get_kpi_results_df(self, relevant_matches, kpi_targets_df):
         total_products_facings = relevant_matches.groupby(['product_fk'], as_index=False).agg({'count': np.sum})
-        total_products_facings.rename(columns={'count': 'total_facings'})
-        # result_df = pd.pivot_table(relevant_matches, index=['product_fk'], columns=['type'], values='count',
-        #                            aggfunc=np.sum)
-        # result_df = result_df.reset_index()
-        result_df = relevant_matches.groupby(['product_fk', 'type'], as_index=False).agg({'count':np.sum})
-        result_df.merge(total_products_facings, on='product_fk', how='left')
+        total_products_facings.rename(columns={'count': 'total_facings'}, inplace=True)
+        result_df = relevant_matches.groupby(['product_fk', 'position'], as_index=False).agg({'count':np.sum})
+        result_df = result_df.merge(total_products_facings, on='product_fk', how='left')
 
         kpis_df = kpi_targets_df.drop_duplicates(subset=['kpi_level_2_fk', 'type', 'KPI Parent'])
-        result_df = result_df.merge(kpis_df, on='type', how='left')
+        result_df = result_df.merge(kpis_df, left_on='position', right_on='type', how='left')
         # result_df['identifier_parent'] = result_df['KPI Parent'].apply(lambda x:
         #                                                                self.common.get_dictionary(
         #                                                                kpi_fk=int(float(x)))) # looks like no need for parent
@@ -437,5 +495,8 @@ class PEPSICOUKSceneToolBox:
         return result_df
 
     def get_sku_ratio(self, row):
-        ratio = row['count'] / row['total_facings']
+        ratio = float(row['count']) / row['total_facings']
         return ratio
+
+    def add_kpi_result_to_kpi_results_df(self, result_list):
+        self.kpi_results.loc[len(self.kpi_results)] = result_list
