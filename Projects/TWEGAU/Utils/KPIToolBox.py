@@ -260,9 +260,13 @@ class TWEGAUToolBox:
                 print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
-                permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
-                if self.store_info.store_type.values[0] not in permitted_store_types:
-                    continue
+                if not is_nan(kpi_sheet_row[STORE_TYPE]):
+                    if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
+                        print "Check the store types in excel..."
+                        permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
+                        if self.store_info.store_type.values[0] not in permitted_store_types:
+                            print "Store type not permitted..."
+                            continue
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
                 # NUMERATOR
