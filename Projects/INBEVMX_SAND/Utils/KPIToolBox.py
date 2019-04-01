@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v2.2.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.1.xlsx')
 
 
 class INBEVMXToolBox:
@@ -69,6 +69,7 @@ class INBEVMXToolBox:
         self.sos_target_sheet = pd.read_excel(
             PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
+        self.survey_combo_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY_COMBO).fillna("")
 
     def get_policies(self):
         query = INBEVMXQueries.get_policies()
@@ -142,13 +143,17 @@ class INBEVMXToolBox:
 
     def handle_atomic(self, row):
         atomic_id = row[Const.TEMPLATE_KPI_ID]
-        atomic_name = row[Const.TEMPLATE_ENGLISH_KPI_NAME].strip()
+        # atomic_name = row[Const.TEMPLATE_ENGLISH_KPI_NAME].strip()
         kpi_type = row[Const.TEMPLATE_KPI_TYPE].strip()
+        atomic_name = 'hey'
         if kpi_type == Const.SOS_TARGET:
-            if self.scene_info['number_of_probes'].sum() > 1:
-                self.handle_sos_target_atomics(atomic_id, atomic_name)
-        elif kpi_type == Const.SURVEY:
-            self.handle_survey_atomics(atomic_id, atomic_name)
+            pass
+        #     if self.scene_info['number_of_probes'].sum() > 1:
+        #         self.handle_sos_target_atomics(atomic_id, atomic_name)
+        # elif kpi_type == Const.SURVEY:
+        #     self.handle_survey_atomics(atomic_id, atomic_name)
+        elif kpi_type == Const.SURVEY_COMBO:
+            self.handle_survey_combo(atomic_id, atomic_name)
 
     def handle_sos_target_atomics(self, atomic_id, atomic_name):
 
@@ -243,6 +248,62 @@ class INBEVMXToolBox:
         facing_data = df[self.tools.get_filter_condition(df, **filters)]
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
+
+    def handle_survey_combo(self, atomic_id, atomic_name):
+        # bring the kpi rows from the survey sheet
+        numerator = denominator = 0
+        rows = self.survey_combo_sheet.loc[self.survey_combo_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
+        temp = rows[Const.TEMPLATE_STORE_TYPE]
+        row_store_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip() for item in
+                                                                                 r.split(",")])) | (temp == "")]
+        if row_store_filter.empty:
+            return
+
+        condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
+        condition_type = row_store_filter[Const.TEMPLATE_CONDITION_TYPE].values[0]
+        score = row_store_filter[Const.TEMPLATE_SCORE].values[0]
+
+        # find the answer to the survey in session
+        for i, row in row_store_filter.iterrows():
+            question_text = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_TEXT]
+            question_answer_template = row_store_filter[Const.TEMPLATE_TARGET_ANSWER]
+
+            survey_result = self.survey.get_survey_answer(('question_text', question_text))
+            if not survey_result:
+                continue
+            if '-' in question_answer_template:
+                numbers = question_answer_template.split('-')
+                try:
+                    numeric_survey_result = int(survey_result)
+                except:
+                    Log.warning("Survey doesn't have a numeric result")
+                    return
+                if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
+                    return
+                numerator_or_denominator = row_store_filter[Const.NUMERATOR_OR_DENOMINATOR].values[0]
+                if numerator_or_denominator != Const.DENOMINATOR:
+                    denominator += numeric_survey_result
+                else:
+                    numerator += numeric_survey_result
+            else:
+                continue
+        if condition_type == '%':
+            if denominator != 0:
+                fraction = 100 * (float(numerator) / float(denominator))
+            else:
+                fraction = 0
+            result = score if fraction >= condition else 0
+        else:
+            return
+
+        try:
+            atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
+        except IndexError:
+            Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
+            return
+        self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=numerator,
+                                          denominator_result=denominator, denominator_id=self.store_id, result=result,
+                                          score=result)
 
     def handle_survey_atomics(self, atomic_id, atomic_name):
         # bring the kpi rows from the survey sheet
