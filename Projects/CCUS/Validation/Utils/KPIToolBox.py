@@ -77,7 +77,7 @@ class VALIDATIONToolBox:
         This function calculates the KPI results.
         """
         score = 1
-        if not sum([1 for t in self.templates['template_name'] if t in self.rules['template']]):
+        if sum([1 for t in self.templates['template_name'] if t in self.rules['template']]) < int(self.rules['target']):
             score = 0
         if int(self.scene_info.shape[0]) < int(self.rules['scene_count']):
             score = 0
@@ -85,11 +85,11 @@ class VALIDATIONToolBox:
             score = 0
 
 
-        self.write_to_db_result('Validation_KPI', result=score, score=score, level=self.LEVEL3)
+        self.write_to_db_result(3, name='Validation_KPI', result=score, score=score, level=self.LEVEL3)
         return
 
 
-    def write_to_db_result(self, score, level, result=None, name=None):
+    def write_to_db_result(self, level, result=None, score=0, name=None):
         """
         This function creates the result Data frame of every KPI (atomic KPI/KPI/KPI set),
         and appends the insert SQL query into the queries' list, later to be written to the DB.
@@ -137,7 +137,7 @@ class VALIDATIONToolBox:
         """
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         atomic_pks = tuple()
-        if kpi_set_fk is not None:
+        if self.kpi_set_fk is not None:
             query = NEW_OBBOQueries.get_atomic_pk_to_delete(self.session_uid, self.kpi_set_fk)
             kpi_atomic_data = pd.read_sql_query(query, self.rds_conn.db)
             atomic_pks = tuple(kpi_atomic_data['pk'].tolist())

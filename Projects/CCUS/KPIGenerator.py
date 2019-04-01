@@ -103,4 +103,4 @@ class CCUSGenerator:
     def calculate_validation(self):
         tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=33)
         tool_box.main_calculation()
-        tool_box.commit_results_data(kpi_set_fk=33)
+        # tool_box.commit_results_data()
