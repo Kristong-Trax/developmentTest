@@ -20,7 +20,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('googlejp calculations')
+    LoggerInitializer.init('batmx calculations')
     Config.init()
     project_name = 'batmx'
     sessions = ['25BB1516-642F-428F-9D07-BF79BC1B5B66']

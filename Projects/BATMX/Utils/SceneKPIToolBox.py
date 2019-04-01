@@ -3,6 +3,7 @@ import pandas as pd
 from Projects.BATMX.Common import Common
 from Projects.BATMX.Utils.Const import Const
 from Trax.Utils.Logging.Logger import Log
+from Projects.BATMX.Utils.PlanogramCompliance import PlanogramCompliance
 
 __author__ = 'Eli_Sam_Shivi'
 
@@ -13,10 +14,18 @@ class SceneToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.template_fk = self.data_provider[Data.TEMPLATES].iloc[0]['template_fk']
         self.scene_matches = pd.merge(self.data_provider[Data.MATCHES], self.all_products, on="product_fk")
         self.planogram_matches = self.data_provider._planogram_matches
         if self.planogram_matches is None:
             self.planogram_matches = pd.DataFrame(columns=["product_fk", "shelf_number", "manufacturer_fk"])
+        else:
+            self.scene_matches['match_fk'] = self.scene_matches['scene_match_fk']
+            pog = PlanogramCompliance(data_provider=None)
+            compliances = pog.get_compliance(manual_planogram_data=self.planogram_matches.copy(),
+                                             manual_scene_data=self.scene_matches.copy())
+            self.scene_matches.drop("compliance_status_fk", axis=1, inplace=True)
+            self.scene_matches = self.scene_matches.merge(compliances, how="left", on="match_fk")
         self.planogram_matches = pd.merge(self.planogram_matches, self.all_products, on="product_fk")
         self.pog_matches, self.rog_matches = {}, {}
         self.pog_matches[Const.TOBACCO_CENTER] = self.planogram_matches[self.planogram_matches['shelf_number'] > 2]
@@ -63,7 +72,7 @@ class SceneToolBox:
             score = self.get_percentage_score(numerator_result, all_facings)
         self.common.write_to_db_result(
             fk=fixture_kpi_fk, numerator_id=self.planogram_id, numerator_result=numerator_result,
-            denominator_result=all_facings, result=result, should_enter=True, denominator_id=self.store_id,
+            denominator_result=all_facings, result=result, should_enter=True, denominator_id=self.template_fk,
             score=score, by_scene=True, identifier_result=self.common.get_dictionary(kpi_fk=fixture_kpi_fk))
 
     def get_compliance_per_status(self, pog_matches, rog_matches, kpi_names):

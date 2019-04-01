@@ -7,21 +7,17 @@ from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.TestProjects import TestProjectsNames
+from Trax.Utils.Testing.Case import MockingTestCase
 
-from Tests.Data.TestData.test_data_bimy_sanity import ProjectsSanityData
-from Projects.BIMY.Calculations import BIMYCalculations
+from Tests.Data.TestData.test_data_bith_sanity import ProjectsSanityData
+from Projects.BITH.Calculations import BITHCalculations
 from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
 
-from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'jasmineg'
 
 
 class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
-
-    def set_up(self):
-        super(TestKEngineOutOfTheBox, self).set_up()
-        remove_cache_and_storage()
 
     @property
     def import_path(self):
@@ -43,13 +39,13 @@ class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
         self.assertNotEquals(len(kpi_results), 0)
         connector.disconnect_rds()
     
-    @seeder.seed(["bimy_seed"], ProjectsSanityData())
-    def test_bimy_sanity(self):
+    @seeder.seed(["bith_seed"], ProjectsSanityData())
+    def test_bith_sanity(self):
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = ['581EF080-3130-4B88-AAA1-4F6F6AC29544']
+        sessions = ['36704105-2E2A-498B-97DF-17FC97BCF835']
         for session in sessions:
             data_provider.load_session_data(session)
             output = Output()
-            BIMYCalculations(data_provider, output).run_project_calculations()
+            BITHCalculations(data_provider, output).run_project_calculations()
             self._assert_kpi_results_filled()
