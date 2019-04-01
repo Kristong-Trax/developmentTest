@@ -238,6 +238,9 @@ class PNGHKToolBox:
                             results_dict[numerator_id, denominator_id, context_id] = map(sum,
                                                          zip(results_dict[numerator_id, denominator_id, context_id],
                                                              [numerator, denominator]))
+        if len(results_dict) == 0:
+            return
+
         results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
 
         # numerator became column 0, denominator column 1, result will enter column 2
