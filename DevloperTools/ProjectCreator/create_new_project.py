@@ -156,10 +156,10 @@ if __name__ == '__main__':
     try:
         LoggerInitializer.init('new_project')
         Config.init(app_name='new_project_new')
-        project = 'NESTLETH'
+        project = 'sanofikz-sand'
         Log.info("project name : " + project)
         new = CreateKPIProject(project)
         new.create_new_project()
         Log.info('project {} was created successfully'.format(project))
-    except Exception as e:
+    except Exception as e:  
         Log.warning(str(e))
