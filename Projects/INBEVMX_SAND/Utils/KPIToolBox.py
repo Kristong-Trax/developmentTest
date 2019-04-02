@@ -49,6 +49,8 @@ class INBEVMXToolBox:
         self.kpi_results_new_tables_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.oos_policies = self.get_policies()
+        self.result_dict = {}
+        self.hierarchy_dict = {}
 
         try:
             self.store_type_filter = self.store_info['store_type'].values[0].strip()
@@ -84,6 +86,7 @@ class INBEVMXToolBox:
         self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
+        self.save_parent_kpis()
         self.common_v2.commit_results_data()
 
 
@@ -140,22 +143,59 @@ class INBEVMXToolBox:
                                            denominator_result=len(products_to_check), result=result, score=result,
                                           identifier_result=Const.OOS_KPI)
 
+    def save_parent_kpis(self):
+        for kpi in self.result_dict.keys():
+            try:
+                kpi_fk = self.common_v2.get_kpi_fk_by_kpi_name(kpi)
+            except IndexError:
+                Log.warning("There is no matching Kpi fk for kpi name: " + kpi)
+                continue
+            if kpi not in self.hierarchy_dict:
+                self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk, denominator_id=self.store_id,
+                                                  result=self.result_dict[kpi], score=self.result_dict[kpi],
+                                                    identifier_result=kpi)
+            else:
+                self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk,
+                                                  denominator_id=self.store_id,
+                                                  result=self.result_dict[kpi], score=self.result_dict[kpi],
+                                                  identifier_result=kpi, identifier_parent=self.hierarchy_dict[kpi],
+                                                  should_enter=True)
 
     def handle_atomic(self, row):
+        result = 0
         atomic_id = row[Const.TEMPLATE_KPI_ID]
-        # atomic_name = row[Const.TEMPLATE_ENGLISH_KPI_NAME].strip()
+        atomic_name = row[Const.KPI_LEVEL_3].strip()
+        kpi_name = row[Const.KPI_LEVEL_2].strip()
+        set_name = row[Const.KPI_LEVEL_1].strip()
         kpi_type = row[Const.TEMPLATE_KPI_TYPE].strip()
-        atomic_name = 'hey'
+        if atomic_name != kpi_name:
+            parent_name = kpi_name
+        else:
+            parent_name = set_name
         if kpi_type == Const.SOS_TARGET:
-            pass
-        #     if self.scene_info['number_of_probes'].sum() > 1:
-        #         self.handle_sos_target_atomics(atomic_id, atomic_name)
-        # elif kpi_type == Const.SURVEY:
-        #     self.handle_survey_atomics(atomic_id, atomic_name)
+            if self.scene_info['number_of_probes'].sum() > 1:
+                result = self.handle_sos_target_atomics(atomic_id, atomic_name, parent_name)
+        elif kpi_type == Const.SURVEY:
+            result = self.handle_survey_atomics(atomic_id, atomic_name, parent_name)
         elif kpi_type == Const.SURVEY_COMBO:
-            self.handle_survey_combo(atomic_id, atomic_name)
+            result = self.handle_survey_combo(atomic_id, atomic_name, parent_name)
 
-    def handle_sos_target_atomics(self, atomic_id, atomic_name):
+        # Update kpi results
+        if atomic_name != kpi_name:
+            if kpi_name not in self.result_dict.keys():
+                self.result_dict[kpi_name] = result
+                self.hierarchy_dict[kpi_name] = set_name
+            else:
+                self.result_dict[kpi_name] += result
+
+
+        # Update set results
+        if set_name not in self.result_dict.keys():
+            self.result_dict[set_name] = result
+        else:
+            self.result_dict[set_name] += result
+
+    def handle_sos_target_atomics(self, atomic_id, atomic_name, parent_name):
 
         denominator_number_of_total_facings = 0
         count_result = -1
@@ -166,7 +206,7 @@ class INBEVMXToolBox:
         # get a single row
         row = self.find_row(rows)
         if row.empty:
-            return
+            return 0
 
         target = row[Const.TEMPLATE_TARGET_PRECENT].values[0]
         score = row[Const.TEMPLATE_SCORE].values[0]
@@ -188,18 +228,20 @@ class INBEVMXToolBox:
 
 
         if count_result == -1:
-            return
+            return 0
 
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
+            return 0
 
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
-                                          score=count_result)
+                                          score=count_result, identifier_result=atomic_name, identifier_parent=parent_name,
+                                          should_enter=True)
+        return count_result
 
     def find_row(self, rows):
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -249,7 +291,7 @@ class INBEVMXToolBox:
         number_of_facings = facing_data['facings'].sum()
         return number_of_facings
 
-    def handle_survey_combo(self, atomic_id, atomic_name):
+    def handle_survey_combo(self, atomic_id, atomic_name, parent_name):
         # bring the kpi rows from the survey sheet
         numerator = denominator = 0
         rows = self.survey_combo_sheet.loc[self.survey_combo_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
@@ -265,8 +307,8 @@ class INBEVMXToolBox:
 
         # find the answer to the survey in session
         for i, row in row_store_filter.iterrows():
-            question_text = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_TEXT]
-            question_answer_template = row_store_filter[Const.TEMPLATE_TARGET_ANSWER]
+            question_text = row[Const.TEMPLATE_SURVEY_QUESTION_TEXT]
+            question_answer_template = row[Const.TEMPLATE_TARGET_ANSWER]
 
             survey_result = self.survey.get_survey_answer(('question_text', question_text))
             if not survey_result:
@@ -281,7 +323,7 @@ class INBEVMXToolBox:
                 if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
                     return
                 numerator_or_denominator = row_store_filter[Const.NUMERATOR_OR_DENOMINATOR].values[0]
-                if numerator_or_denominator != Const.DENOMINATOR:
+                if numerator_or_denominator == Const.DENOMINATOR:
                     denominator += numeric_survey_result
                 else:
                     numerator += numeric_survey_result
@@ -303,9 +345,11 @@ class INBEVMXToolBox:
             return
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=numerator,
                                           denominator_result=denominator, denominator_id=self.store_id, result=result,
-                                          score=result)
+                                          score=result, identifier_result=atomic_name, identifier_parent=parent_name,
+                                          should_enter=True)
+        return result
 
-    def handle_survey_atomics(self, atomic_id, atomic_name):
+    def handle_survey_atomics(self, atomic_id, atomic_name, parent_name):
         # bring the kpi rows from the survey sheet
         rows = self.survey_sheet.loc[self.survey_sheet[Const.TEMPLATE_KPI_ID] == atomic_id]
         temp = rows[Const.TEMPLATE_STORE_TYPE]
@@ -313,7 +357,7 @@ class INBEVMXToolBox:
                                                                                  r.split(",")])) | (temp == "")]
 
         if row_store_filter.empty:
-            return
+            return 0
         else:
             # find the answer to the survey in session
             question_text = row_store_filter[Const.TEMPLATE_SURVEY_QUESTION_TEXT].values[0]
@@ -322,16 +366,16 @@ class INBEVMXToolBox:
 
             survey_result = self.survey.get_survey_answer(('question_text', question_text))
             if not survey_result:
-                return
+                return 0
             if '-' in question_answer_template:
                 numbers = question_answer_template.split('-')
                 try:
                     numeric_survey_result = int(survey_result)
                 except:
                     Log.warning("Survey doesn't have a numeric result")
-                    return
+                    return 0
                 if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
-                    return
+                    return 0
                 condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
                 if condition != "":
                     second_question_text = row_store_filter[Const.TEMPLATE_SECOND_SURVEY_QUESTION_TEXT].values[0]
@@ -356,10 +400,12 @@ class INBEVMXToolBox:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
+            return 0
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=0,
-                                           denominator_result=0, denominator_id=self.store_id, result=survey_result,
-                                          score=final_score)
+                                        denominator_result=0, denominator_id=self.store_id, result=survey_result,
+                                        score=final_score, identifier_result=atomic_name, identifier_parent=parent_name,
+                                        should_enter=True)
+        return final_score
 
     def get_new_kpi_static_data(self):
         """
