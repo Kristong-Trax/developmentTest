@@ -98,9 +98,9 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        print(kpi_name)
-        # if kpi_type == Const.AGGREGATION:
-        if kpi_type:
+        # print(kpi_name)
+        if kpi_type == Const.AGGREGATION:
+        # if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
