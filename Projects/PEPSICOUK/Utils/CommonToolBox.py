@@ -185,12 +185,14 @@ class PEPSICOUKCommonToolBox:
         all_products = self.all_products
         product_fk_list = all_products[self.toolbox.get_filter_condition(all_products, **filters)]
         product_fk_list = product_fk_list['product_fk'].unique().tolist()
+        product_fk_list = product_fk_list if product_fk_list else [None]
         return product_fk_list
 
     def get_scene_fk_from_filters(self, filters):
         scif_data = self.scif
         scene_fk_list = scif_data[self.toolbox.get_filter_condition(scif_data, **filters)]
         scene_fk_list = scene_fk_list['scene_fk'].unique().tolist()
+        scene_fk_list = scene_fk_list if scene_fk_list else [None]
         return scene_fk_list
 
     def update_scif_and_matches_for_smart_attributes(self, scif, matches):

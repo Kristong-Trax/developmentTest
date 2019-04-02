@@ -29,6 +29,7 @@ from Projects.PEPSICOUK.Utils.KPISceneToolBox import PEPSICOUKSceneToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Output
 import os
 import pandas as pd
+from pandas.util.testing import assert_frame_equal
 
 
 __author__ = 'natalyak'
@@ -211,6 +212,94 @@ class Test_PEPSICOUKScene(MockingTestCase):
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
+
+    def test_get_scene_bay_max_shelves_retrieves_expected_df_in_case_of_8_shelves(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        expected_result = pd.DataFrame(
+            [{u'kpi_level_2_fk': 304, u'type': PEPSICOUKSceneToolBox.PLACEMENT_BY_SHELF_NUMBERS_TOP,
+              u'No of Shelves in Fixture (per bay) (key)': 8, u'Shelves From Bottom To Include (data)': '7,8',
+             u'shelves_all_placements': '7,8,5,6,3,4,1,2'},
+             {u'kpi_level_2_fk': 305, u'type': 'Placement by shelf numbers_Eye',
+              u'No of Shelves in Fixture (per bay) (key)': 8, u'Shelves From Bottom To Include (data)': '5,6',
+              u'shelves_all_placements': '7,8,5,6,3,4,1,2'},
+             {u'kpi_level_2_fk': 306, u'type': 'Placement by shelf numbers_Middle',
+              u'No of Shelves in Fixture (per bay) (key)': 8, u'Shelves From Bottom To Include (data)': '3,4',
+              u'shelves_all_placements': '7,8,5,6,3,4,1,2'},
+             {u'kpi_level_2_fk': 307, u'type': 'Placement by shelf numbers_Bottom',
+              u'No of Shelves in Fixture (per bay) (key)': 8, u'Shelves From Bottom To Include (data)': '1,2',
+              u'shelves_all_placements': '7,8,5,6,3,4,1,2'}])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        external_targets = scene_tb.commontools.all_targets_unpacked
+        shelf_placmnt_targets = external_targets[external_targets['operation_type'] == scene_tb.SHELF_PLACEMENT]
+        if not shelf_placmnt_targets.empty:
+            bay_max_shelves = scene_tb.get_scene_bay_max_shelves(shelf_placmnt_targets)
+            bay_max_shelves = bay_max_shelves[['kpi_level_2_fk', 'type', 'No of Shelves in Fixture (per bay) (key)',
+                                               'Shelves From Bottom To Include (data)', 'shelves_all_placements']]
+            assert_frame_equal(expected_result.sort_index(axis=1), bay_max_shelves.sort_index(axis=1),
+                               check_dtype=False, check_column_type=False, check_names=True)
+
+    def test_get_scene_bay_max_shelves_retrieves_expected_df_in_case_of_several_bays(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        expected_result = pd.DataFrame([
+             {u'kpi_level_2_fk': 304, u'type': PEPSICOUKSceneToolBox.PLACEMENT_BY_SHELF_NUMBERS_TOP,
+              u'No of Shelves in Fixture (per bay) (key)': 6, u'Shelves From Bottom To Include (data)': '6',
+             u'shelves_all_placements': '6,4,5,2,3,1'},
+             {u'kpi_level_2_fk': 305, u'type': 'Placement by shelf numbers_Eye',
+              u'No of Shelves in Fixture (per bay) (key)': 6, u'Shelves From Bottom To Include (data)': '4,5',
+              u'shelves_all_placements': '6,4,5,2,3,1'},
+             {u'kpi_level_2_fk': 306, u'type': 'Placement by shelf numbers_Middle',
+              u'No of Shelves in Fixture (per bay) (key)': 6, u'Shelves From Bottom To Include (data)': '2,3',
+              u'shelves_all_placements': '6,4,5,2,3,1'},
+             {u'kpi_level_2_fk': 307, u'type': 'Placement by shelf numbers_Bottom',
+              u'No of Shelves in Fixture (per bay) (key)': 6, u'Shelves From Bottom To Include (data)': '1',
+              u'shelves_all_placements': '6,4,5,2,3,1'},
+            {u'kpi_level_2_fk': 304, u'type': PEPSICOUKSceneToolBox.PLACEMENT_BY_SHELF_NUMBERS_TOP,
+             u'No of Shelves in Fixture (per bay) (key)': 3, u'Shelves From Bottom To Include (data)': '3',
+             u'shelves_all_placements': '3,2,1'},
+            {u'kpi_level_2_fk': 305, u'type': 'Placement by shelf numbers_Eye',
+             u'No of Shelves in Fixture (per bay) (key)': 3, u'Shelves From Bottom To Include (data)': '2',
+             u'shelves_all_placements': '3,2,1'},
+            {u'kpi_level_2_fk': 307, u'type': 'Placement by shelf numbers_Bottom',
+             u'No of Shelves in Fixture (per bay) (key)': 3, u'Shelves From Bottom To Include (data)': '1',
+             u'shelves_all_placements': '3,2,1'}
+        ])
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        external_targets = scene_tb.commontools.all_targets_unpacked
+        shelf_placmnt_targets = external_targets[external_targets['operation_type'] == scene_tb.SHELF_PLACEMENT]
+        if not shelf_placmnt_targets.empty:
+            bay_max_shelves = scene_tb.get_scene_bay_max_shelves(shelf_placmnt_targets)
+            bay_max_shelves = bay_max_shelves[['kpi_level_2_fk', 'type', 'No of Shelves in Fixture (per bay) (key)',
+                                               'Shelves From Bottom To Include (data)', 'shelves_all_placements']]
+            assert_frame_equal(expected_result.sort_index(axis=1), bay_max_shelves.sort_index(axis=1),
+                               check_dtype=False, check_column_type=False, check_names=True)
+
+    def test_get_scene_bay_max_shelves_retrieves_expected_df_in_case_of_excluded_shelves(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 3)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        external_targets = scene_tb.commontools.all_targets_unpacked
+        shelf_placmnt_targets = external_targets[external_targets['operation_type'] == scene_tb.SHELF_PLACEMENT]
+        if not shelf_placmnt_targets.empty:
+            bay_max_shelves = scene_tb.get_scene_bay_max_shelves(shelf_placmnt_targets)
+            self.assertTrue(bay_max_shelves.empty)
+
+    # def test_calculate_horizontal_placement(self):
+    #     probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+    #         DataTestUnitPEPSICOUK.test_case_1, 1)
+    #     scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+    #     external_targets = scene_tb.commontools.all_targets_unpacked
+    #         bay_all_shelves = bay_max_shelves.drop_duplicates(subset=['bay_number', 'shelves_all_placements'],
+    #                                                           keep='first')
+    #         relevant_matches = scene_tb.filter_out_irrelevant_matches(bay_all_shelves)
+    #         if not relevant_matches.empty:
+    #             for i, row in bay_max_shelves.iterrows():
+    #                 shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
+    #                 relevant_matches.loc[(relevant_matches['bay_number'] == row['bay_number']) &
+    #                                      (relevant_matches['shelf_number_from_bottom'].isin(shelf_list)), 'position'] = row['type']
+    #             kpi_results = scene_tb.get_kpi_results_df(relevant_matches, bay_max_shelves)
+    #             print kpi_results
 
     def check_kpi_results(self, kpi_results_df, expected_results_dict):
         column = []

@@ -52,9 +52,9 @@ class PEPSICOUKSceneToolBox:
     PRIMARY_SHELF = 'Primary Shelf'
     NUMBER_OF_SHELVES_TEMPL_COLUMN = 'No of Shelves in Fixture (per bay) (key)'
     RELEVANT_SHELVES_TEMPL_COLUMN = 'Shelves From Bottom To Include (data)'
-    SHELF_PLC_TARGETS_COLUMNS = ['pk', 'kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'type',
+    SHELF_PLC_TARGETS_COLUMNS = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'type',
                                  NUMBER_OF_SHELVES_TEMPL_COLUMN, RELEVANT_SHELVES_TEMPL_COLUMN, 'KPI Parent']
-    SHELF_PLC_TARGET_COL_RENAME = {'pk_x': 'pk', 'kpi_operation_type_fk_x': 'kpi_operation_type_fk',
+    SHELF_PLC_TARGET_COL_RENAME = {'kpi_operation_type_fk_x': 'kpi_operation_type_fk',
                                    'operation_type_x': 'operation_type', 'kpi_level_2_fk_x': 'kpi_level_2_fk',
                                    'type_x': 'type', NUMBER_OF_SHELVES_TEMPL_COLUMN+'_x': NUMBER_OF_SHELVES_TEMPL_COLUMN,
                                    RELEVANT_SHELVES_TEMPL_COLUMN+'_x': RELEVANT_SHELVES_TEMPL_COLUMN,
@@ -174,19 +174,20 @@ class PEPSICOUKSceneToolBox:
             bay_all_shelves = bay_max_shelves.drop_duplicates(subset=['bay_number', 'shelves_all_placements'],
                                                               keep='first')
             relevant_matches = self.filter_out_irrelevant_matches(bay_all_shelves)
-            for i, row in bay_max_shelves.iterrows():
-                shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
-                relevant_matches.loc[(relevant_matches['bay_number'] == row['bay_number']) &
-                                     (relevant_matches['shelf_number_from_bottom'].isin(shelf_list)), 'position'] = row['type']
-            kpi_results = self.get_kpi_results_df(relevant_matches, bay_max_shelves)
-            for i, result in kpi_results.iterrows():
-                self.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
-                                               denominator_id=result['product_fk'],
-                                               denominator_result=result['total_facings'],
-                                               numerator_result=result['count'], result=result['ratio'],
-                                               score=result['ratio'], by_scene=True)
-                self.add_kpi_result_to_kpi_results_df([result['kpi_level_2_fk'], result['product_fk'],
-                                                       result['product_fk'], result['ratio'], result['ratio']])
+            if not relevant_matches.empty:
+                for i, row in bay_max_shelves.iterrows():
+                    shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
+                    relevant_matches.loc[(relevant_matches['bay_number'] == row['bay_number']) &
+                                         (relevant_matches['shelf_number_from_bottom'].isin(shelf_list)), 'position'] = row['type']
+                kpi_results = self.get_kpi_results_df(relevant_matches, bay_max_shelves)
+                for i, result in kpi_results.iterrows():
+                    self.common.write_to_db_result(fk=result['kpi_level_2_fk'], numerator_id=result['product_fk'],
+                                                   denominator_id=result['product_fk'],
+                                                   denominator_result=result['total_facings'],
+                                                   numerator_result=result['count'], result=result['ratio'],
+                                                   score=result['ratio'], by_scene=True)
+                    self.add_kpi_result_to_kpi_results_df([result['kpi_level_2_fk'], result['product_fk'],
+                                                           result['product_fk'], result['ratio'], result['ratio']])
             # maybe add summarizing parent - commented out
 
     def calculate_shelf_placement_vertical(self):
@@ -358,8 +359,8 @@ class PEPSICOUKSceneToolBox:
 
     def adjust_filters_and_data_provider_for_calculations(self, filters, instance):
         # matches = matches_df.copy()
-        matches = self.block.data_provider[Data.MATCHES] if isinstance(instance, Block) \
-                                                else self.adjacency.data_provider[Data.MATCHES]
+        matches = self.block.data_provider[Data.MATCHES].copy() if isinstance(instance, Block) \
+                                                else self.adjacency.data_provider[Data.MATCHES].copy()
         matches_products = pd.merge(self.filtered_matches, self.all_products, on='product_fk', how='left')
         output_filters = {}
         for field, value in filters.items():
@@ -429,12 +430,16 @@ class PEPSICOUKSceneToolBox:
                                                                     as_index=False).agg({'shelf_number_from_bottom':np.max})
         scene_bay_max_shelves.rename(columns = {'shelf_number_from_bottom': 'shelves_in_bay'}, inplace=True)
         max_shelf_in_template = shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN].max()
+        shelf_placement_targets = self.complete_missing_target_shelves(scene_bay_max_shelves, max_shelf_in_template,
+                                                                     shelf_placement_targets)
+
         scene_bay_max_shelves = scene_bay_max_shelves.merge(shelf_placement_targets, left_on='shelves_in_bay',
                                                             right_on=self.NUMBER_OF_SHELVES_TEMPL_COLUMN)
         scene_bay_max_shelves.rename(columns=self.SHELF_PLC_TARGET_COL_RENAME, inplace=True)
+        scene_bay_max_shelves = scene_bay_max_shelves[self.SHELF_PLC_TARGETS_COLUMNS + ['bay_number', 'shelves_in_bay']]
         scene_bay_max_shelves = scene_bay_max_shelves.drop_duplicates()
-        scene_bay_max_shelves = scene_bay_max_shelves[self.SHELF_PLC_TARGETS_COLUMNS+['bay_number', 'shelves_in_bay']]
-        scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves, max_shelf_in_template)
+        # scene_bay_max_shelves = scene_bay_max_shelves[self.SHELF_PLC_TARGETS_COLUMNS+['bay_number', 'shelves_in_bay']]
+        # scene_bay_max_shelves = self.complete_missing_target_shelves(scene_bay_max_shelves, max_shelf_in_template)
 
         bay_all_relevant_shelves = self.get_bay_relevant_shelves_df(scene_bay_max_shelves)
         scene_bay_max_shelves = scene_bay_max_shelves.merge(bay_all_relevant_shelves, on='bay_number', how='left')
@@ -463,17 +468,33 @@ class PEPSICOUKSceneToolBox:
             apply(lambda x: x[0:-1])
         return bay_all_relevant_shelves
 
-    def complete_missing_target_shelves(self, scene_bay_df, max_shelf_template):
+    def complete_missing_target_shelves(self, scene_bay_df, max_shelf_template, shelf_placement_targets):
+        shelf_placement_targets = shelf_placement_targets[self.SHELF_PLC_TARGETS_COLUMNS]
+        shelf_placement_targets = shelf_placement_targets.reset_index(drop=True)
         for i, row in scene_bay_df.iterrows():
             if row['shelves_in_bay'] > max_shelf_template:
-                scene_bay_df.loc[(scene_bay_df['bay_number'] == row['bay_number']) &
-                                 (scene_bay_df['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP),
-                                 'Shelves From Bottom To Include (data)'] = row['shelves_in_bay']
-                scene_bay_df.loc[(scene_bay_df['bay_number'] == row['bay_number']) &
-                                 (scene_bay_df['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP),
-                                 'No of Shelves in Fixture (per bay) (key)'] = row['shelves_in_bay']
-        scene_bay_df = scene_bay_df[~scene_bay_df['Shelves From Bottom To Include (data)'].isnull()]
-        return scene_bay_df
+                if row['shelves_in_bay'] not in shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN].values.tolist():
+                    rows_to_add = shelf_placement_targets[shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN] \
+                                                                == max_shelf_template]
+                    rows_to_add[self.NUMBER_OF_SHELVES_TEMPL_COLUMN] = row['shelves_in_bay']
+                    top_shelf_range = ','.join(map(lambda x: str(x),
+                                                        range(int(float(max_shelf_template)), int(float(row['shelves_in_bay']+1)))))
+                    rows_to_add.loc[rows_to_add['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP,
+                                    self.RELEVANT_SHELVES_TEMPL_COLUMN] = top_shelf_range
+                    shelf_placement_targets = shelf_placement_targets.append(rows_to_add, ignore_index=True)
+                # shelf_placement_targets.loc[(shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN] == row['shelves_in_bay']) &
+                #                             (scene_bay_df['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP),
+                #                             'Shelves From Bottom To Include (data)'] = row['shelves_in_bay']
+                #
+                # scene_bay_df.loc[(scene_bay_df['bay_number'] == row['bay_number']) &
+                #                  (scene_bay_df['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP),
+                #                  'Shelves From Bottom To Include (data)'] = row['shelves_in_bay']
+                # scene_bay_df.loc[(scene_bay_df['bay_number'] == row['bay_number']) &
+                #                  (scene_bay_df['type'] == self.PLACEMENT_BY_SHELF_NUMBERS_TOP),
+                #                  'No of Shelves in Fixture (per bay) (key)'] = row['shelves_in_bay']
+        # scene_bay_df = scene_bay_df[~scene_bay_df['Shelves From Bottom To Include (data)'].isnull()]
+        # return scene_bay_df
+        return shelf_placement_targets
 
     def filter_out_irrelevant_matches(self, target_kpis_df):
         relevant_matches = self.scene_bay_shelf_product[~(self.scene_bay_shelf_product['bay_number'] == -1)]
