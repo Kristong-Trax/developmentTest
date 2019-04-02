@@ -16,6 +16,7 @@ from Projects.CCBOTTLERSUS_SAND.DISPLAYS.KPIToolBox import DISPLAYSToolBox
 from Projects.CCBOTTLERSUS_SAND.SOVI.KPIToolBox import SOVIToolBox
 from Projects.CCBOTTLERSUS_SAND.REDSCORE.Const import Const
 from Projects.CCBOTTLERSUS_SAND.MSC.KPIToolBox import MSCToolBox
+from Projects.CCBOTTLERSUS_SAND.LIBERTY.KPIToolBox import LIBERTYToolBox
 
 __author__ = 'Elyashiv'
 
@@ -34,13 +35,14 @@ class CCBOTTLERSUS_SANDGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        self.calculate_red_score()  # should be first, because it can include a deletion from the common
-        # # self.calculate_bci()
-        self.calculate_manufacturer_displays()
-        self.calculate_cma_compliance()
-        self.calculate_sovi()
-        self.calculate_ara()
-        self.calculate_msc()
+        # self.calculate_red_score()  # should be first, because it can include a deletion from the common
+        # # # self.calculate_bci()
+        # self.calculate_manufacturer_displays()
+        # self.calculate_cma_compliance()
+        # self.calculate_sovi()
+        # self.calculate_ara()
+        # self.calculate_msc()
+        self.calculate_liberty()
         self.common_db.commit_results_data()
 
         # self.calculate_cma_compliance_sw()
@@ -133,4 +135,13 @@ class CCBOTTLERSUS_SANDGenerator:
             tool_box = MSCToolBox(self.data_provider, self.output, self.common_db)
             tool_box.main_calculation()
         except Exception as e:
-            Log.error('failed to calcualte MSC Compliance due to: {}'.format(e.message))
+            Log.error('failed to calculate MSC KPIs due to: {}'.format(e.message))
+
+    @log_runtime('LIBERTY CCBOTTERSUSCalculations')
+    def calculate_liberty(self):
+        Log.info('starting calculate_liberty')
+        try:
+            tool_box = LIBERTYToolBox(self.data_provider, self.output, self.common_db)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate LIBERTY KPIs due to: {}'.format(e.message))
