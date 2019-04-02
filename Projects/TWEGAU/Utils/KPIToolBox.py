@@ -260,9 +260,13 @@ class TWEGAUToolBox:
                 print("KPI Name:{} not found in DB".format(kpi_sheet_row[KPI_NAME]))
             else:
                 print("KPI Name:{} found in DB".format(kpi_sheet_row[KPI_NAME]))
-                permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
-                if self.store_info.store_type.values[0] not in permitted_store_types:
-                    continue
+                if not is_nan(kpi_sheet_row[STORE_TYPE]):
+                    if bool(kpi_sheet_row[STORE_TYPE].strip()) and kpi_sheet_row[STORE_TYPE].strip().lower() != 'all':
+                        print "Check the store types in excel..."
+                        permitted_store_types = [x.strip() for x in kpi_sheet_row[STORE_TYPE].split(',') if x.strip()]
+                        if self.store_info.store_type.values[0] not in permitted_store_types:
+                            print "Store type not permitted..."
+                            continue
                 # get the length field
                 length_field = STACKING_MAP[kpi_sheet_row[STACKING_COL]]
                 # NUMERATOR
@@ -288,16 +292,21 @@ class TWEGAUToolBox:
                     denominator_row,
                     DENOMINATOR_FILTER_ENTITIES, )
                 if denominator_filter_string:
+                    # remove empty irrelevant products from denominator
+                    # denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
+                    #     prod_id_col_scif=PROD_ID_COL_SCIF,
+                    #     empty_prod_ids=self.empty_product_ids.tolist()
+                    # )
                     denominator_data = self.scif.query(denominator_filter_string).fillna(0). \
                         groupby(denominator_filters, as_index=False).agg({length_field: 'sum'})
                 else:
                     # nothing to query; no grouping
-                    denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
-                        prod_id_col_scif=PROD_ID_COL_SCIF,
-                        empty_prod_ids=self.empty_product_ids.tolist()
-                    )
-                    denominator_data = pd.DataFrame(self.scif.query(denominator_filter_string).
-                                                    agg({length_field: 'sum'})).T
+                    # remove empty irrelevant products from denominator
+                    # denominator_filter_string += "{prod_id_col_scif} not in {empty_prod_ids}".format(
+                    #     prod_id_col_scif=PROD_ID_COL_SCIF,
+                    #     empty_prod_ids=self.empty_product_ids.tolist()
+                    # )
+                    denominator_data = pd.DataFrame(self.scif.agg({length_field: 'sum'})).T
                 for d_idx, denominator_row in denominator_data.iterrows():
                     denominator = denominator_row.get(length_field)
                     for idx, numerator_row in numerator_data.iterrows():

@@ -98,9 +98,9 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        print(kpi_name)
-        # if kpi_type != Const.BLOCKING:
-        if kpi_type:
+        # print(kpi_name)
+        if kpi_type == Const.AGGREGATION:
+        # if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
@@ -143,7 +143,7 @@ class ToolBox:
             sos_types = self.read_cell_from_line(kpi_line, Const.SOS_TYPE)
             scif = self.filter_df(relevant_scif, Const.SOS_EXCLUDE_FILTERS, exclude=1)
             scif = self.filter_df(scif, {'Super Category': super_cat})
-            scif = self.create_special_scif(scif)
+            scif = self.create_special_scif(scif, fake_cat=1)
             scif['count'] = Const.MM_TO_FT
             for level in levels:
                 level_col = '{}_fk'.format(level).lower()
@@ -1138,16 +1138,21 @@ class ToolBox:
         params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
 
-    def create_special_scif(self, scif):
+    def create_special_scif(self, scif, fake_cat=0):
         priv = scif[scif['Private Label'] == 'Y']
         scif = scif[~scif.index.isin(priv.index)]
         priv = priv.groupby('scene_id')[Const.PRIV_SCIF_COLS + ['scene_id']].sum()
         priv['item_id'], priv['product_fk'] = [Const.PRIV_LABEL_SKU] * 2
         priv['brand_fk'] = Const.PRIV_LABEL_BRAND
-        priv['manufacturer_id'] = Const.PRIV_LABEL_MAN
+        priv['manufacturer_fk'] = Const.PRIV_LABEL_MAN
         priv['product_name'], priv['manufacturer_name'], priv['brand_name'] = [Const.PRIV_LABEL_NAME] * 3
-        # priv.drop(Const.PRIV_SCIF_COLS, axis=1, inplace=True)
-        # priv = priv.set_index('scene_id').join(priv_sum.set_index('scene_id')).reset_index()
+        if fake_cat:
+            cats = scif[~np.isnan(scif['category_fk'])].reset_index()
+            list_cats = list(cats['category_fk'].unique())
+            if np.isnan(list_cats[0]) or list_cats[0] is None:
+                Log.error('Category error in Session {} create_special_scif'.format(self.session_uid))
+            else:
+                priv['category'], priv['category_fk'] = cats.loc[0, 'category'], cats.loc[0, 'category_fk']
         return pd.concat([scif, priv]).reset_index()[scif.columns]
 
     def create_mpip(self):

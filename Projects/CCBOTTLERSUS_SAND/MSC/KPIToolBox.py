@@ -7,7 +7,7 @@ from Projects.CCBOTTLERSUS_SAND.MSC.Data.Const import Const
 from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
-__author__ = 'Elyashiv'
+__author__ = 'Hunter'
 
 
 class MSCToolBox:
@@ -35,6 +35,7 @@ class MSCToolBox:
         self.common_db = common_db
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
+        self.manufacturer_fk = Const.MANUFACTURER_FK
 
 
     # main functions:
@@ -46,12 +47,13 @@ class MSCToolBox:
         """
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
+            relevant_store_types = self.does_exist(main_line, Const.STORE_TYPE)
+            if relevant_store_types and self.store_type not in relevant_store_types:
+                continue
             self.calculate_main_kpi(main_line)
-        if not main_template.empty:
-            pass
         if len(self.common_db.kpi_results) > 0:
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.MSC)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id,result=1,
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=1,
                                               identifier_result=Const.MSC, should_enter=True)
         return
 
@@ -138,9 +140,9 @@ class MSCToolBox:
             return
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
-        self.common_db.write_to_db_result(kpi_fk, numerator_result=numerator_result,
-                                          denominator_result=denominator_result, result=sos_value * 100,
-                                          identifier_parent=Const.MSC, should_enter=True)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=numerator_result,
+                                          denominator_id=self.store_id, denominator_result=denominator_result,
+                                          result=sos_value * 100, identifier_parent=Const.MSC, should_enter=True)
 
         return
 
@@ -201,7 +203,8 @@ class MSCToolBox:
         result = 100 if availability else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
-        self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                          result=result, identifier_parent=Const.MSC, should_enter=True)
         return availability
 
     def calculate_double_availability(self, kpi_line, relevant_scif):
@@ -219,7 +222,8 @@ class MSCToolBox:
         result = 100 if availability else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME])
-        self.common_db.write_to_db_result(kpi_fk, result=result, identifier_parent=Const.MSC, should_enter=True)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                                          result=result, identifier_parent=Const.MSC, should_enter=True)
 
         return availability
 

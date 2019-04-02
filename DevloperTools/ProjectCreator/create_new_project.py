@@ -161,5 +161,5 @@ if __name__ == '__main__':
         new = CreateKPIProject(project)
         new.create_new_project()
         Log.info('project {} was created successfully'.format(project))
-    except Exception as e:
+    except Exception as e:  
         Log.warning(str(e))
