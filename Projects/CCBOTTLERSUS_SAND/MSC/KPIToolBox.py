@@ -47,7 +47,7 @@ class MSCToolBox:
         """
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
-            relevant_store_types = self.does_exist(main_line[Const.STORE_TYPE])
+            relevant_store_types = self.does_exist(main_line, Const.STORE_TYPE)
             if relevant_store_types and self.store_type not in relevant_store_types:
                 continue
             self.calculate_main_kpi(main_line)
