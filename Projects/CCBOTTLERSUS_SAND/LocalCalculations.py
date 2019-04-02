@@ -22,7 +22,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus calculations')
     Config.init()
-    project_name = 'ccbottlersus'
+    project_name = 'ccbottlersus-sand'
 
     sessions = [
                 '6ce2258b-6a4a-4a85-ba18-6ead7cf1b772',
@@ -44,10 +44,43 @@ if __name__ == '__main__':
 
     # liberty sessions
     sessions = [
-        'cdca16d6-6242-4b1d-b590-38eaaab8269f',
-        '4af7543e-7804-4092-91e6-f896640098f7',
-        'abf1c868-6bf5-4588-abfe-76257e7a13fe',
-        'eedafa69-86fe-4323-9e75-d456fd6f280c'
+        "71728e9c-f58a-49cc-9d44-5935d8040dcf",
+        "f5c93d46-cab9-4295-8bda-a6b86d7e095b",
+        "aca3dc10-c2a0-4fa6-9051-591bc6f74ac9",
+        "9b27735f-cd29-42b1-87d2-09c1323da21a",
+        "d3025ed7-9508-4540-9ad8-9898faa57c64",
+        "71740d9f-dbc6-4e76-88f7-2d224dca534a",
+        "c6516767-392b-489b-bd70-f840cf2f0351",
+        "ecf2084f-3f01-4edd-ae3c-2a78de33ea60",
+        "ac35736a-9947-4cc0-a54a-0afc3b4b1b95",
+        "2e3ae4c7-beba-4c65-9b49-5d22fed3f2c3",
+        "9285bbe6-458e-48e2-936e-26c76686f51a",
+        "1EFFC14B-CD92-4235-B2B3-743858ACAB08",
+        "ca186a4e-6378-4269-b333-a47d3fc9d462",
+        "11006a86-31ed-4579-a48d-d91964e35b6a",
+        "157086fd-1be9-46df-9d75-6c2990e290ec",
+        "7455ef5b-1340-4ae1-b6ba-96eeda80885d",
+        "2C00C628-C89D-45A8-AF39-B6D5055DFC72",
+        "0fdcb37d-d7d4-453d-b3da-a8dc7a3f11ef",
+        "63ee7243-30cf-4a93-a199-a1de8856059b",
+        "5657c8f8-b6d2-4b17-abb6-9cbb288a5594",
+        "1daedaf6-4da0-4ab9-bfdc-c2c4f13440f7",
+        "830f4210-8119-45df-b8b7-56714fbfa999",
+        "E4FAA01B-36BA-4CC6-B384-119C34958074",
+        "7248681e-5b6a-4a79-bcef-2be712569501",
+        "C20CEC79-5CDD-48CB-BFCE-3BAFF4245A62",
+        "fc620f3c-2928-4c34-b19b-b959e1299184",
+        "3c359054-301d-4bc6-8820-037258a118cd",
+        "50FBB7A3-12E5-4B02-8EF9-89D92F8ED188",
+        "ce279084-9c17-4719-bc14-3777728a0183",
+        "b524e8de-8b9e-49eb-96f2-bf6689e64e5d",
+        "C16C261B-E23C-4623-B70A-C279C76EA2AD",
+        "dde7bb25-d32d-44fe-b541-243e22b36bcf",
+        "37EE89EB-C1CD-4661-8307-D9DC053A6FC4",
+        "3a3cc10c-be72-41d7-95aa-3ab9d4bfc4da",
+        "ffdd7097-6081-4a50-9cea-2739d647341d",
+        "ce806488-783e-4df7-b5af-fb6f802a8f8d",
+        "30003B8E-25C0-4326-9E93-D8C417FF1AB2"
     ]
 
     for session in sessions:

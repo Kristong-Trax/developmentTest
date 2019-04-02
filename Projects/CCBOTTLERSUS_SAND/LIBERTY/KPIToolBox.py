@@ -1,5 +1,6 @@
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -24,10 +25,10 @@ class LIBERTYToolBox:
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.store_info = self.ps_data_provider.get_ps_store_info(self.data_provider[Data.STORE_INFO])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.scif = self.scif[self.scif['product_type'] != "Irrelevant"]
-        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.templates = {}
         self.result_values = self.ps_data_provider.get_result_values()
         for sheet in Const.SHEETS:
@@ -37,7 +38,8 @@ class LIBERTYToolBox:
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
-        # self.branch = self.store_info['branch_name'].iloc[0]
+        self.branch = self.store_info['branch_name'].iloc[0]
+        self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
         # self.body_armor_delivered = self.get_body_armor_delivery_status()
 
     # main functions:
@@ -50,16 +52,17 @@ class LIBERTYToolBox:
         red_score = 0
         main_template = self.templates[Const.KPIS]
         for i, main_line in main_template.iterrows():
-            relevant_store_types = self.does_exist(main_line, Const.STORE_TYPE)
-            if relevant_store_types and self.store_type not in relevant_store_types:
+            relevant_store_types = self.does_exist(main_line, Const.ADDITIONAL_ATTRIBUTE_7)
+            if relevant_store_types and self.additional_attribute_7 not in relevant_store_types:
                 continue
             result = self.calculate_main_kpi(main_line)
             if result:
                 red_score += main_line[Const.WEIGHT]
 
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
-        self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=red_score,
-                                          identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
+        if len(self.common_db.kpi_results) > 0:
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(Const.RED_SCORE_PARENT)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=1, denominator_id=self.store_id, result=red_score,
+                                              identifier_result=Const.RED_SCORE_PARENT, should_enter=True)
         return
 
     def calculate_main_kpi(self, main_line):
@@ -78,6 +81,10 @@ class LIBERTYToolBox:
         template_groups = self.does_exist(main_line, Const.TEMPLATE_GROUP)
         if template_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_groups)]
+
+        if relevant_scif.empty:
+            return False
+
         result = self.calculate_kpi_by_type(main_line, relevant_scif)
 
         return result
@@ -91,14 +98,13 @@ class LIBERTYToolBox:
         """
         kpi_type = main_line[Const.KPI_TYPE]
         relevant_template = self.templates[kpi_type]
-        kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]]
+        kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]].iloc[0]
         kpi_function = self.get_kpi_function(kpi_type)
 
         return kpi_function(kpi_line, filtered_scif)
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif):
-        return
         market_share_required = self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET)
         if market_share_required:
             market_share_target = self.get_market_share_target()
@@ -110,9 +116,9 @@ class LIBERTYToolBox:
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+            relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
-        result = relevant_scif['facings'].sum() > market_share_target
+        result = 1 if relevant_scif['facings'].sum() > market_share_target else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
@@ -125,25 +131,25 @@ class LIBERTYToolBox:
     def calculate_availability(self, kpi_line, relevant_scif):
         survey_question_skus_required = self.does_exist(kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
         if survey_question_skus_required:
-            survey_question_skus = self.get_kpi_function(kpi_line[Const.KPI_NAME])
+            survey_question_skus = self.get_relevant_product_assortment_by_kpi_name(kpi_line[Const.KPI_NAME])
             unique_skus = \
                 relevant_scif[relevant_scif['product_fk'].isin(survey_question_skus)]['product_fk'].unique().tolist()
         else:
             manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
             if manufacturer:
-                relevant_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+                relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
             brand = self.does_exist(kpi_line, Const.BRAND)
             if brand:
-                relevant_scif = relevant_scif[relevant_scif['brand_name'] == brand]
+                relevant_scif = relevant_scif[relevant_scif['brand_name'].isin(brand)]
             category = self.does_exist(kpi_line, Const.CATEGORY)
             if category:
-                relevant_scif = relevant_scif[relevant_scif['category'] == category]
+                relevant_scif = relevant_scif[relevant_scif['category'].isin(category)]
             excluded_brand = self.does_exist(kpi_line, Const.EXCLUDED_BRAND)
             if excluded_brand:
-                relevant_scif = relevant_scif[~relevant_scif['brand_name'] == excluded_brand]
+                relevant_scif = relevant_scif[~relevant_scif['brand_name'].isin(excluded_brand)]
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
-        result = len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
+        result = 1 if len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS] else 0
 
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
@@ -155,7 +161,10 @@ class LIBERTYToolBox:
     def get_relevant_product_assortment_by_kpi_name(self, kpi_name):
         template = self.templates[Const.SURVEY_QUESTION_SKUS]
         relevant_template = template[template[Const.KPI_NAME] == kpi_name]
-        return relevant_template['product_fk'].unique().tolist()
+        relevant_ean_codes = relevant_template[Const.EAN_CODE].unique().tolist()
+        relevant_ean_codes = [str(int(x)) for x in relevant_ean_codes if x != '']  # we need this to fix dumb template
+        relevant_products = self.all_products[self.all_products['product_ean_code'].isin(relevant_ean_codes)]
+        return relevant_products['product_fk'].unique().tolist()
 
     # Count of Display functions
     def calculate_count_of_display(self, kpi_line, relevant_scif):
@@ -163,30 +172,30 @@ class LIBERTYToolBox:
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
         brand = self.does_exist(kpi_line, Const.BRAND)
         if brand:
-            filtered_scif = filtered_scif[filtered_scif['brand_name'] == brand]
+            filtered_scif = filtered_scif[filtered_scif['brand_name'].isin(brand)]
 
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
-            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
+            filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
 
         size_subpackages = self.does_exist(kpi_line, Const.SIZE_SUBPACKAGES_NUM)
         if size_subpackages:
             # convert all pairings of size and number of subpackages to tuples
             size_subpackages_tuples = [tuple([float(i) for i in x.split(';')]) for x in size_subpackages]
-            filtered_scif = filtered_scif[
-                pd.Series(list(zip(filtered_scif['size'], filtered_scif['subpackages_num']))).isin(
-                    size_subpackages_tuples)]
+            filtered_scif = filtered_scif[pd.Series(list(zip(filtered_scif['size'],
+                                                             filtered_scif['number_of_sub_packages'])),
+                                                    index=filtered_scif.index).isin(size_subpackages_tuples)]
 
         sub_packages = self.does_exist(kpi_line, Const.SUBPACKAGES_NUM)
         if sub_packages:
-            if sub_packages == Const.NOT_NULL:
-                filtered_scif = filtered_scif[~filtered_scif['subpackages_num'].isnull()]
+            if sub_packages == [Const.NOT_NULL]:
+                filtered_scif = filtered_scif[~filtered_scif['number_of_sub_packages'].isnull()]
             else:
-                filtered_scif = filtered_scif[filtered_scif['subpackages_num'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
@@ -203,16 +212,15 @@ class LIBERTYToolBox:
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif):
-        return
         filtered_scif = relevant_scif
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
         if manufacturer:
-            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'] == manufacturer]
+            filtered_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
         ssd_still = self.does_exist(kpi_line, Const.ATT4)
         if ssd_still:
-            filtered_scif = filtered_scif[filtered_scif['manufacturer_name'] == manufacturer]
+            filtered_scif = filtered_scif[filtered_scif['att4'].isin(ssd_still)]
 
         if self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET):
             market_share_target = self.get_market_share_target(ssd_still=ssd_still)
@@ -226,7 +234,7 @@ class LIBERTYToolBox:
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
 
-            result = number_of_passing_displays > market_share_target
+            result = 1 if number_of_passing_displays > market_share_target else 0
 
             kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
             self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
@@ -238,13 +246,17 @@ class LIBERTYToolBox:
             return False
 
     def get_number_of_passing_displays(self, filtered_scif):
-        filtered_scif['passed_displays'] = filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row))
+        if filtered_scif.empty:
+            return 0
+
+        filtered_scif['passed_displays'] = \
+            filtered_scif.apply(lambda row: self._calculate_pass_status_of_display(row), axis=1)
 
         return filtered_scif['passed_displays'].sum()
 
-    def _calculate_pass_status_of_display(self, row):
+    def _calculate_pass_status_of_display(self, row):  # need to move to external KPI targets
         template = self.templates[Const.MINIMUM_FACINGS]
-        package_category = (row['size'], row['subpackages_num'], row['unit_of_measure'])
+        package_category = (row['size'], row['number_of_sub_packages'], row['size_unit'])
         relevant_template = template[pd.Series(zip(template['size'],
                                                    template['subpackages_num'],
                                                    template['unit_of_measure'])) == package_category]
@@ -256,7 +268,7 @@ class LIBERTYToolBox:
         pass
 
     # helper functions
-    def get_market_share_target(self, ssd_still=None):
+    def get_market_share_target(self, ssd_still=None):  # need to move to external KPI targets
         template = self.templates[Const.MARKET_SHARE]
         relevant_template = template[(template[Const.STORE_TYPE] == self.store_type) &
                                      (template[Const.RETAILER] == self.retailer) &
@@ -265,9 +277,9 @@ class LIBERTYToolBox:
         if relevant_template.empty:
             return 0
         if ssd_still:
-            if ssd_still.lower() == Const.SSD.lower():
+            if ssd_still[0].lower() == Const.SSD.lower():
                 return relevant_template[Const.SSD].iloc[0]
-            elif ssd_still.lower() == Const.STILL.lower():
+            elif ssd_still[0].lower() == Const.STILL.lower():
                 return relevant_template[Const.STILL].iloc[0]
 
         return relevant_template[Const.SSD_AND_STILL].iloc[0]

@@ -35,6 +35,7 @@ class Const(object):
     WEIGHT = 'Weight'
     TEMPLATE_NAME = 'Template'
     TEMPLATE_GROUP = 'Template Group'
+    ADDITIONAL_ATTRIBUTE_7 = 'additional_attribute_7'
 
     # SOS columns
     MANUFACTURER = 'manufacturer'
@@ -69,7 +70,7 @@ class Const(object):
 
     # market_share columns
     RETAILER = 'retailer_name'
-    BRANCH = 'Branch'
+    BRANCH = 'branch_name'
     SSD_AND_STILL = 'Total_SSD_and_Still'
     SSD = 'SSD'
     STILL = 'Still'
