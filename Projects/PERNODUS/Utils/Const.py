@@ -43,16 +43,21 @@ class Const(object):
 
     #columns
     brand = 'brand_name'
+    brand_fk = 'brand_fk'
     manufacturer = 'manufacturer_name'
+    manufacturer_fk = 'manufacturer_fk'
     category = 'category'
+    category_fk = 'category_fk'
     sub_category = 'sub_category'
+    sub_category_fk = 'sub_category_fk'
     facings = 'facings'
     template_name = 'template_name'
     scene_id = 'scene_id'
+    template_fk = 'template_fk'
 
 
     #
     product_type = 'product_type'
     SKU = 'SKU'
     OTHER = 'Other'
-
+    facings = 'facings'
