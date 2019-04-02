@@ -44,9 +44,9 @@ class PEPSICOUKSceneToolBox:
     PEPSICO = 'PEPSICO'
     PLACEMENT_BY_SHELF_NUMBERS_TOP = 'Placement by shelf numbers_Top'
     SHELF_PLACEMENT = 'Shelf Placement'
-    SHELF_PLACEMENT_VERTICAL_LEFT = 'Shelf Placement Vertical Left'
-    SHELF_PLACEMENT_VERTICAL_CENTER = 'Shelf Placement Vertical Center'
-    SHELF_PLACEMENT_VERTICAL_RIGHT = 'Shelf Placement Vertical Right'
+    SHELF_PLACEMENT_VERTICAL_LEFT = 'Shelf Placement Vertical_Left'
+    SHELF_PLACEMENT_VERTICAL_CENTER = 'Shelf Placement Vertical_Center'
+    SHELF_PLACEMENT_VERTICAL_RIGHT = 'Shelf Placement Vertical_Right'
     PRODUCT_BLOCKING = 'Product Blocking'
     PRODUCT_BLOCKING_ADJACENCY = 'Product Blocking Adjacency'
     PRIMARY_SHELF = 'Primary Shelf'
@@ -184,14 +184,14 @@ class PEPSICOUKSceneToolBox:
                                                denominator_id=result['product_fk'],
                                                denominator_result=result['total_facings'],
                                                numerator_result=result['count'], result=result['ratio'],
-                                               score=result['ratio'])
+                                               score=result['ratio'], by_scene=True)
                 self.add_kpi_result_to_kpi_results_df([result['kpi_level_2_fk'], result['product_fk'],
                                                        result['product_fk'], result['ratio'], result['ratio']])
             # maybe add summarizing parent - commented out
 
     def calculate_shelf_placement_vertical(self):
         probe_groups_list = self.probe_groups['probe_group_id'].unique().tolist()
-        resulting_matches = pd.DataFrame(columns=self.filtered_matches.columns.values.tolist()+['position'])
+        resulting_matches = pd.DataFrame()
 
         for probe_group in probe_groups_list:
             matches = self.match_product_in_scene[self.match_product_in_scene['probe_group_id'] == probe_group]
@@ -206,14 +206,19 @@ class PEPSICOUKSceneToolBox:
             matches = self.define_product_position(matches, shelf_length, left_edge, right_edge)
             matches_position = matches[['probe_match_fk', 'position']]
             filtered_matches = filtered_matches.merge(matches_position, on='probe_match_fk', how='left')
-            resulting_matches.append(filtered_matches)
+            if resulting_matches.empty:
+                resulting_matches = filtered_matches
+            else:
+                resulting_matches = resulting_matches.append(filtered_matches)
 
         result_df = self.get_vertical_placement_kpi_result_df(resulting_matches)
         for i, row in result_df.iterrows():
             self.common.write_to_db_result(fk=row['kpi_fk'], numerator_id=row['product_fk'],
-                                           denominator_id=self.store_id,
+                                           denominator_id=row['product_fk'],
                                            numerator_result=row['count'], denominator_result=row['total_facings'],
-                                           result=row['ratio'], score=row['ratio'])
+                                           result=row['ratio'], score=row['ratio'], by_scene=True)
+            self.add_kpi_result_to_kpi_results_df([row['kpi_fk'], row['product_fk'], row['product_fk'], row['ratio'],
+                                                   row['ratio']])
 
     @staticmethod
     def get_left_edge(matches):
@@ -265,7 +270,7 @@ class PEPSICOUKSceneToolBox:
 
     def get_vertical_placement_kpi_result_df(self, filtered_matches):
         all_products_df = filtered_matches.groupby(['product_fk'], as_index=False).agg({'count': np.sum})
-        all_products_df.rename({'count': 'total_facings'})
+        all_products_df.rename(columns={'count': 'total_facings'}, inplace=True)
         result_df = filtered_matches.groupby(['product_fk', 'position'], as_index=False).agg({'count': np.sum})
         result_df = result_df.merge(all_products_df, on='product_fk', how='left')
         result_df['ratio'] = result_df['count'] / result_df['total_facings']

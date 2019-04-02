@@ -199,6 +199,19 @@ class Test_PEPSICOUKScene(MockingTestCase):
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
+    def test_calculate_number_of_bays_and_shelves(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_number_of_bays_and_shelves()
+        expected_list = []
+        expected_list.append({'kpi_fk': 323, 'numerator': 2, 'result': 2})
+        expected_list.append({'kpi_fk': 324, 'numerator': 2, 'result': 9})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
     def check_kpi_results(self, kpi_results_df, expected_results_dict):
         column = []
         expression = []
@@ -210,3 +223,4 @@ class Test_PEPSICOUKScene(MockingTestCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = kpi_results_df.query(query)
         return len(filtered_df)
+

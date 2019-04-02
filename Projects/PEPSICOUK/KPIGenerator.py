@@ -31,7 +31,7 @@ class Generator:
         else:
             self.tool_box.main_calculation()
             self.tool_box.common.commit_results_data()
-            self.tool_box.common_v1.commit_results_data_without_delete_version2()
+            # self.tool_box.common_v1.commit_results_data_without_delete_version2()
         # for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
         #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
         #     self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)

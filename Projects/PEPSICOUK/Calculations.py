@@ -6,7 +6,7 @@ from Projects.PEPSICOUK.KPIGenerator import Generator
 __author__ = 'natalyak'
 
 
-class Calculations(BaseCalculationsScript):
+class PEPSICOUKCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
         Generator(self.data_provider, self.output).main_function()
