@@ -188,7 +188,6 @@ class INBEVMXToolBox:
             else:
                 self.result_dict[kpi_name] += result
 
-
         # Update set results
         if set_name not in self.result_dict.keys():
             self.result_dict[set_name] = result
@@ -299,7 +298,7 @@ class INBEVMXToolBox:
         row_store_filter = rows[(temp.apply(lambda r: self.store_type_filter in [item.strip() for item in
                                                                                  r.split(",")])) | (temp == "")]
         if row_store_filter.empty:
-            return
+            return 0
 
         condition = row_store_filter[Const.TEMPLATE_CONDITION].values[0]
         condition_type = row_store_filter[Const.TEMPLATE_CONDITION_TYPE].values[0]
@@ -318,10 +317,10 @@ class INBEVMXToolBox:
                 try:
                     numeric_survey_result = int(survey_result)
                 except:
-                    Log.warning("Survey doesn't have a numeric result")
-                    return
+                    Log.warning("Survey question - " + str(question_text) + " - doesn't have a numeric result")
+                    continue
                 if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
-                    return
+                    continue
                 numerator_or_denominator = row_store_filter[Const.NUMERATOR_OR_DENOMINATOR].values[0]
                 if numerator_or_denominator == Const.DENOMINATOR:
                     denominator += numeric_survey_result
@@ -336,13 +335,13 @@ class INBEVMXToolBox:
                 fraction = 0
             result = score if fraction >= condition else 0
         else:
-            return
+            return 0
 
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(atomic_name)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + atomic_name)
-            return
+            return 0
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=numerator,
                                           denominator_result=denominator, denominator_id=self.store_id, result=result,
                                           score=result, identifier_result=atomic_name, identifier_parent=parent_name,
@@ -372,7 +371,7 @@ class INBEVMXToolBox:
                 try:
                     numeric_survey_result = int(survey_result)
                 except:
-                    Log.warning("Survey doesn't have a numeric result")
+                    Log.warning("Survey question - " + str(question_text) + " - doesn't have a numeric result")
                     return 0
                 if numeric_survey_result < int(numbers[0]) or numeric_survey_result > int(numbers[1]):
                     return 0
