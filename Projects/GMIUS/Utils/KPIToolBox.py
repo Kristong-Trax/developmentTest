@@ -64,6 +64,7 @@ class ToolBox:
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
+        self.global_fail = 0
 
     # main functions:
     def main_calculation(self, template_path):
@@ -81,6 +82,7 @@ class ToolBox:
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
 
         for i, main_line in main_template.iterrows():
+            self.global_fail = 0
             self.calculate_main_kpi(main_line)
 
         # self.flag_failures()
@@ -98,7 +100,7 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        print(kpi_name)
+        # print(kpi_name)
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
@@ -120,11 +122,16 @@ class ToolBox:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
                 Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
-            if not isinstance(all_kwargs, list):
-                all_kwargs = [all_kwargs]
+                if self.global_fail:
+                    all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                else:
+                    all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+            finally:
+                if not isinstance(all_kwargs, list):
+                    all_kwargs = [all_kwargs]
                 for kwargs in all_kwargs:
                     if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 0, 'failed': 1}
+                        kwargs = {'score': 0, 'result': None, 'failed': 1}
                     self.write_to_db(kpi_name, **kwargs)
                     self.dependencies[kpi_name] = kwargs['result']
 
@@ -584,6 +591,7 @@ class ToolBox:
             mpis = self.filter_df(mpis, filters)
             mpis_dict[scene] = mpis
             if mpis.empty:
+                score = -1
                 continue
             result = self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={
@@ -596,7 +604,9 @@ class ToolBox:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
-
+        if score == -1:
+            self.global_fail = 1
+            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):

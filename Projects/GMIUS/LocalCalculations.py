@@ -372,7 +372,7 @@ if __name__ == '__main__':
                 ]
     # sessions = ['4b13b376-4486-4e5a-a00f-8fa22d47fc9d']
     # sessions = ['04771142-03b9-4e27-a074-45a8688a187b']
-    sessions = ['d9748d6b-fc89-4bfc-a920-2779c51652c0']
+    sessions = ['064f2a01-4620-4214-9646-586ebc0a47e1']
 
     sessions = [
     '86e142d5-31a5-469b-bd89-104f88b041b3',
@@ -422,7 +422,7 @@ if __name__ == '__main__':
     #     '2dfd94d2-baca-4154-8c56-921e175b07fe',
     #
     # ]
-    # sessions = ['d9748d6b-fc89-4bfc-a920-2779c51652c0']
+    sessions = ['064f2a01-4620-4214-9646-586ebc0a47e1']
 
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
