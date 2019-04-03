@@ -25,10 +25,10 @@ if __name__ == '__main__':
     project_name = 'batmx'
     sessions = ['25BB1516-642F-428F-9D07-BF79BC1B5B66']
     for session in sessions:
-        # data_provider = KEngineDataProvider(project_name)
-        # data_provider.load_session_data(session)
-        # scif = data_provider['scene_item_facts']
-        # scenes = scif['scene_id'].unique().tolist()
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
+        scif = data_provider['scene_item_facts']
+        scenes = scif['scene_id'].unique().tolist()
         scenes = [60, 61]
         for scene in scenes:
             print('scene')
