@@ -99,11 +99,11 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        if kpi_type == Const.AGGREGATION:
+        # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.COUNT]: # Const.COUNT_SHELVES:
+        if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -252,8 +252,8 @@ class ToolBox:
     def calculate_presence_within_bay(self, kpi_name, kpi_line, relevant_scif, general_filters):
         filters = self.get_kpi_line_filters(kpi_line, 'excluded')
         num = self.filter_df(self.scif, general_filters)
-        num = self.filter_df(num, filters, exclude=1).shape[0]
-        den = self.filter_df(self.scif, general_filters).shape[0]
+        num = self.filter_df(num, filters, exclude=1)['facings_ign_stack'].sum()
+        den = self.filter_df(self.scif, general_filters)['facings_ign_stack'].sum()
         ratio = num/float(den) * 100 if den else 0
         potential_results = self.get_results_value(kpi_line)
         result = self.inequality_results(ratio, potential_results, kpi_name)
@@ -733,8 +733,9 @@ class ToolBox:
                 num_shelves = len(master_bmpis['shelf_number'].unique().tolist())
                 linear_mm = float(bmpis['width_mm_advance'].sum())
                 master_linear_mm = float(master_bmpis['width_mm_advance'].sum())
-                if linear_mm / master_linear_mm >= .5:
-                    mm_sum += linear_mm / num_shelves
+                # if linear_mm / master_linear_mm >= .5:
+                #     mm_sum += linear_mm / num_shelves
+                mm_sum += (linear_mm / num_shelves) * (linear_mm / master_linear_mm)
         ft_sum = mm_sum / Const.MM_TO_FT
         self.base_measure = ft_sum
         potential_results = self.get_results_value(kpi_line)
