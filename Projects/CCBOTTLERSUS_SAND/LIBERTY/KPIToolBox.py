@@ -1,11 +1,7 @@
-from datetime import datetime
 import pandas as pd
-import numpy as np
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS_SAND.LIBERTY.Data.Const import Const
-from KPIUtils_v2.DB.Common import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Hunter'
@@ -82,18 +78,15 @@ class LIBERTYToolBox:
         if template_groups:
             relevant_scif = relevant_scif[relevant_scif['template_group'].isin(template_groups)]
 
-        if relevant_scif.empty:
-            return False
-
         result = self.calculate_kpi_by_type(main_line, relevant_scif)
 
         return result
 
-    def calculate_kpi_by_type(self, main_line, filtered_scif):
+    def calculate_kpi_by_type(self, main_line, relevant_scif):
         """
         the function calculates all the kpis
         :param main_line: one kpi line from the main template
-        :param filtered_scif:
+        :param relevant_scif:
         :return: boolean, but it can be None if we want not to write it in DB
         """
         kpi_type = main_line[Const.KPI_TYPE]
@@ -101,7 +94,17 @@ class LIBERTYToolBox:
         kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]].iloc[0]
         kpi_function = self.get_kpi_function(kpi_type)
 
-        return kpi_function(kpi_line, filtered_scif)
+        if relevant_scif.empty:
+            result = 0
+        else:
+            result = kpi_function(kpi_line, relevant_scif)
+
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                          denominator_id=self.store_id, denominator_result=0,
+                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
+
+        return result
 
     # SOS functions
     def calculate_sos(self, kpi_line, relevant_scif):
@@ -119,11 +122,6 @@ class LIBERTYToolBox:
             relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
         result = 1 if relevant_scif['facings'].sum() > market_share_target else 0
-
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
-        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                          denominator_id=self.store_id, denominator_result=0,
-                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
 
         return result
 
@@ -150,11 +148,6 @@ class LIBERTYToolBox:
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
         result = 1 if len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS] else 0
-
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
-        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                          denominator_id=self.store_id, denominator_result=0,
-                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
 
         return result
 
@@ -195,20 +188,14 @@ class LIBERTYToolBox:
             if sub_packages == [Const.NOT_NULL]:
                 filtered_scif = filtered_scif[~filtered_scif['number_of_sub_packages'].isnull()]
             else:
-                filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[
+                    filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
-
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                              denominator_id=self.store_id, denominator_result=0,
-                                              result=number_of_passing_displays,
-                                              identifier_parent=Const.RED_SCORE_PARENT,
-                                              should_enter=True)
             return number_of_passing_displays
         else:
-            return False
+            return 0
 
     # Share of Display functions
     def calculate_share_of_display(self, kpi_line, relevant_scif):
@@ -236,14 +223,9 @@ class LIBERTYToolBox:
 
             result = 1 if number_of_passing_displays > market_share_target else 0
 
-            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
-            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                              denominator_id=self.store_id, denominator_result=0,
-                                              result=result, identifier_parent=Const.RED_SCORE_PARENT,
-                                              should_enter=True)
             return result
         else:
-            return False
+            return 0
 
     def get_number_of_passing_displays(self, filtered_scif):
         if filtered_scif.empty:
