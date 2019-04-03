@@ -11,10 +11,12 @@ if __name__ == '__main__':
     project_name = 'inbevmx'
     data_provider = KEngineDataProvider(project_name)
     list_sessions = [
-
-                'e840f5e3-ca0f-4e1a-a47b-13c655cdce47',
-                '0707768f-05d0-4872-b5af-706f45a5d8a0',
-                '86c209de-c40e-4e8b-a2fe-a2b7bf81b89b'
+                'FC8C65F2-5DE5-4440-9B91-FF9EF6CB302B',
+                '2ecbf3fa-59b9-46bf-86b8-2b11fe49d4e9',
+                'ffcecdd2-7eda-446b-af6e-cee7628b89ed',
+                '6b4fc678-1f82-45c7-a1d3-3bf85ea4c013',
+                'fac755c5-c53b-40f3-832d-62c13cacec1e',
+                '113ad721-6fae-4f13-ab64-19e00304abef',
                 # 'fff20792-6a60-4a13-bb00-879a308c1ea6',
                 # '341a9b53-65ad-43b6-9fe0-2ae56fcbe9bd',
                 # '6a19080f-9741-4760-85fb-22a5e774d13b'
