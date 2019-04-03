@@ -372,7 +372,7 @@ if __name__ == '__main__':
                 ]
     # sessions = ['4b13b376-4486-4e5a-a00f-8fa22d47fc9d']
     # sessions = ['04771142-03b9-4e27-a074-45a8688a187b']
-    sessions = ['d9748d6b-fc89-4bfc-a920-2779c51652c0']
+    sessions = ['064f2a01-4620-4214-9646-586ebc0a47e1']
 
     sessions = [
     '86e142d5-31a5-469b-bd89-104f88b041b3',
@@ -382,47 +382,47 @@ if __name__ == '__main__':
     'a46fce27-f3b9-4d2a-ae03-fc0f03da6d30',
     '39564a00-5e62-4e1e-88dc-faf06f0b4bab',
     ]
-    sessions = [
-        '62657be6-d37f-459c-8e97-177c8b564a82',
-        'bb3317e0-49cc-4dcd-99d8-12772df0ee9c',
-        '0caca320-7992-4798-93b3-0bf2ef071f4d',
-        '12a65226-996a-41ea-a64a-900f0b36e3d5',
-        '9951a242-3699-4346-83ee-969131c9e4bf',
-        'fbca7c8d-e42d-40b5-b169-3143f19016b5',
-        '08ded8d0-6068-4df8-9c05-4e151ea764a9',
-        '4d39201e-96c1-4655-919e-ce90b3e01c26',
-        '14cbc2c6-2a40-491f-bd5e-1f11d8f7a065',
-        '37930a2c-5d89-44a4-a388-f8f69ea4ec8d',
-        '9dda5ad2-ba22-493e-945f-b79386e10a39',
-        '28d8bab5-affb-4812-9ed4-67c504d7356f',
-        'ed997d7b-4ea0-44ee-b518-55e70c6029fc',
-        'f8e1125c-8cca-4df0-a4c3-3ec256696c84',
-        '128e01c6-53d8-4e5f-abed-986c10c32848',
-        '5b44d5da-f21e-4e41-9397-45460fc77f40',
-        '83e857ea-d233-4516-8e2b-a857be394b2e',
-        'c7747289-4b32-407f-b49f-7381b4f32cd4',
-        'b2070a87-6ebc-468c-a0e6-0f9c234d7a03',
-        '9ec4eb70-a2f0-45ea-a890-c1c3d85d677e',
-        '0fd121d8-6209-4837-af4c-f81c04b1d5ce',
-        'cf93dc60-2b4b-4b35-bbba-ef424bc69555',
-        'a5009945-eca4-4b64-b498-39137f785b9e',
-        '0ed5db7f-b63d-457f-99ac-fa51d86210ef',
-        'bb58a5e6-9913-489a-b640-32cd113c13f9',
-        'bbd1f148-c82a-4b8f-a2f7-75c7de96963a',
-        '7d0852f7-35bd-4337-8141-fcd77caab793',
-        '5706dffd-4e98-4708-8dce-1b6b25a272e0',
-        'd3cc1306-5b40-4303-b9dd-a3fe804832e6',
-        'c712233b-0cd4-4b56-b989-f4d8b5f22cb6',
-        '56e84270-d30b-46e1-a99f-b110c0c6335e',
-        '6bce8b12-095a-43c2-bd97-34ff010f8acd',
-        '2090174e-8534-48bc-a453-2016915459c6',
-        '949f5c5d-d9f0-44d2-972a-9626e9a388ac',
-        '61f23d03-5aac-4239-ab84-45205b5dc07d',
-        'a7781a11-a8cc-4c32-ab22-caf607e6b5cb',
-        '2dfd94d2-baca-4154-8c56-921e175b07fe',
-
-    ]
-    sessions = ['d9748d6b-fc89-4bfc-a920-2779c51652c0']
+    # sessions = [
+    #     '62657be6-d37f-459c-8e97-177c8b564a82',
+    #     'bb3317e0-49cc-4dcd-99d8-12772df0ee9c',
+    #     '0caca320-7992-4798-93b3-0bf2ef071f4d',
+    #     '12a65226-996a-41ea-a64a-900f0b36e3d5',
+    #     '9951a242-3699-4346-83ee-969131c9e4bf',
+    #     'fbca7c8d-e42d-40b5-b169-3143f19016b5',
+    #     '08ded8d0-6068-4df8-9c05-4e151ea764a9',
+    #     '4d39201e-96c1-4655-919e-ce90b3e01c26',
+    #     '14cbc2c6-2a40-491f-bd5e-1f11d8f7a065',
+    #     '37930a2c-5d89-44a4-a388-f8f69ea4ec8d',
+    #     '9dda5ad2-ba22-493e-945f-b79386e10a39',
+    #     '28d8bab5-affb-4812-9ed4-67c504d7356f',
+    #     'ed997d7b-4ea0-44ee-b518-55e70c6029fc',
+    #     'f8e1125c-8cca-4df0-a4c3-3ec256696c84',
+    #     '128e01c6-53d8-4e5f-abed-986c10c32848',
+    #     '5b44d5da-f21e-4e41-9397-45460fc77f40',
+    #     '83e857ea-d233-4516-8e2b-a857be394b2e',
+    #     'c7747289-4b32-407f-b49f-7381b4f32cd4',
+    #     'b2070a87-6ebc-468c-a0e6-0f9c234d7a03',
+    #     '9ec4eb70-a2f0-45ea-a890-c1c3d85d677e',
+    #     '0fd121d8-6209-4837-af4c-f81c04b1d5ce',
+    #     'cf93dc60-2b4b-4b35-bbba-ef424bc69555',
+    #     'a5009945-eca4-4b64-b498-39137f785b9e',
+    #     '0ed5db7f-b63d-457f-99ac-fa51d86210ef',
+    #     'bb58a5e6-9913-489a-b640-32cd113c13f9',
+    #     'bbd1f148-c82a-4b8f-a2f7-75c7de96963a',
+    #     '7d0852f7-35bd-4337-8141-fcd77caab793',
+    #     '5706dffd-4e98-4708-8dce-1b6b25a272e0',
+    #     'd3cc1306-5b40-4303-b9dd-a3fe804832e6',
+    #     'c712233b-0cd4-4b56-b989-f4d8b5f22cb6',
+    #     '56e84270-d30b-46e1-a99f-b110c0c6335e',
+    #     '6bce8b12-095a-43c2-bd97-34ff010f8acd',
+    #     '2090174e-8534-48bc-a453-2016915459c6',
+    #     '949f5c5d-d9f0-44d2-972a-9626e9a388ac',
+    #     '61f23d03-5aac-4239-ab84-45205b5dc07d',
+    #     'a7781a11-a8cc-4c32-ab22-caf607e6b5cb',
+    #     '2dfd94d2-baca-4154-8c56-921e175b07fe',
+    #
+    # ]
+    sessions = ['064f2a01-4620-4214-9646-586ebc0a47e1']
 
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
