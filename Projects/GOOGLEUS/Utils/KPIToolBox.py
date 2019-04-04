@@ -87,6 +87,8 @@ class GOOGLEUSToolBox:
     def get_custom_template(self, name):
         if name not in self.custom_templates.keys():
             template = parse_template(TEMPLATE_PATH, sheet_name=name)
+            if 'Unnamed: 0' in template.columns:
+                template = parse_template(TEMPLATE_PATH, name, 1)
             if template.empty:
                 template = parse_template(TEMPLATE_PATH, name, 2)
             self.custom_templates[name] = template

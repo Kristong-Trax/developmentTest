@@ -9,15 +9,16 @@ pipeline {
         checkoutToSubdirectory('master')
         buildDiscarder(logRotator(numToKeepStr: '250'))
     }
-    agent {
-        docker {
-            label 'spotinst-deployment'
-            image '619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:jenkins_slave_base'
-            args '-u root --log-driver=syslog -v /var/run/docker.sock:/var/run/docker.sock -v /dev/log:/dev/log \
-                  -v /root/engineCache/TestResults:/root/engineCache/TestResults -v /home/ubuntu/.ssh:/root/.ssh \
-                  -v /home/ubuntu/gcloud_creds:/root/gcloud_creds:ro --add-host bitbucket.org:18.205.93.1'
-        }
-    }
+    
+agent {
+       docker {
+           label 'spotinst-deployment'
+           image '619597279328.dkr.ecr.us-east-1.amazonaws.com/garage:jenkins_slave_base'
+           args '-u root --log-driver=syslog -v /var/run/docker.sock:/var/run/docker.sock -v /dev/log:/dev/log \
+                 -v /root/engineCache/TestResults:/root/engineCache/TestResults --add-host bitbucket.org:18.205.93.1'
+       }
+   }
+   
     parameters {
         string(name: 'BRANCH_NAME', trim: true)
         string(name: 'PROJECT_NAME', trim: true)
@@ -157,25 +158,6 @@ pipeline {
                 git config --global user.name ""
 
             '''
-        }
-        cleanup {
-            sh '''#!/bin/bash
-                echo "# Before cleanup"
-                docker images
-                docker ps -a
-
-                cd theGarage
-                export PATH=$CONDA_BIN:$PATH
-                export PROJECT_ROOT=$PWD
-                export PYTHONPATH=$PWD
-                source activate garage
-                python -u Trax/Deployment/Remote/SlaveCleaner.py
-
-                echo "# After cleanup"
-                docker images
-                docker ps -a
-            '''
-            cleanWs()
         }
 
 

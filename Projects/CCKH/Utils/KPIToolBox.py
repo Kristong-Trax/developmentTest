@@ -166,7 +166,8 @@ class CCKHToolBox(CCKHConsts):
                 percentage = 0 if max_points == 0 else round((actual_points / float(max_points)) * 100, 2)
 
                 kpi_name = main_child[self.template.TRANSLATION]
-                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'] == kpi_name]['kpi_fk'].values[0]
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
+                                              kpi_name.encode('utf-8')]['kpi_fk'].values[0]
                 self.write_to_db_result(kpi_fk, (actual_points, max_points, percentage), level=self.LEVEL2)
                 set_scores[kpi_name] = (max_points, actual_points)
 
@@ -224,8 +225,10 @@ class CCKHToolBox(CCKHConsts):
         """
         atomic_name = params[self.template.TRANSLATION]
         kpi_name = pillar[self.template.TRANSLATION]
-        atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'] == kpi_name) &
-                                         (self.kpi_static_data['atomic_kpi_name'] == atomic_name)]['atomic_kpi_fk']
+        atomic_fk = self.kpi_static_data[(self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
+                                          kpi_name.encode('utf-8')) & (
+                self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic_name.encode('utf-8'))][
+            'atomic_kpi_fk']
         if atomic_fk.empty:
             return None
         return atomic_fk.values[0]
