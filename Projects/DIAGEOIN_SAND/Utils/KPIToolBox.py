@@ -104,8 +104,8 @@ class DIAGEOIN_SANDToolBox:
         """
         This function calculates the KPI results.
         """
-        # SOS Out Of The Box kpis
-        self.activate_ootb_kpis()
+        # # SOS Out Of The Box kpis
+        # self.activate_ootb_kpis()
 
         # Global assortment kpis
         assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v3()
