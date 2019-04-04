@@ -317,9 +317,14 @@ class TWEGAUToolBox:
                             result = 0
                         numerator_id = int(numerator_row[EXCEL_DB_MAP[kpi_sheet_row.numerator_fk]])
                         denominator_key_str = EXCEL_DB_MAP[kpi_sheet_row.denominator_fk]
-                        denominator_id = self.get_denominator_id(denominator_key_str,
-                                                                 numerator_row,
-                                                                 denominator_row)
+                        denominator_id = self.get_relavant_id(denominator_key_str,
+                                                              numerator_row,
+                                                              denominator_row)
+                        context_key_str = EXCEL_DB_MAP[kpi_sheet_row.context_fk]
+                        context_id = self.get_relavant_id(context_key_str,
+                                                          numerator_row,
+                                                          denominator_row)
+
                         kpi_parent_name = None
                         should_enter = False
                         if not is_nan(kpi_sheet_row.kpi_parent_name):
@@ -329,8 +334,9 @@ class TWEGAUToolBox:
                             raise Exception("Denominator ID cannot be found. [TWEGAU/Utils/KPIToolBox.py]")
                         self.common.write_to_db_result(fk=int(kpi['pk']),
                                                        numerator_id=numerator_id,
-                                                       numerator_result=numerator,
                                                        denominator_id=denominator_id,
+                                                       context_id=context_id,
+                                                       numerator_result=numerator,
                                                        denominator_result=denominator,
                                                        result=result,
                                                        score=result,
@@ -503,7 +509,7 @@ class TWEGAUToolBox:
             return scene_data_map
         return []
 
-    def get_denominator_id(self, denominator_key_str, numerator_row, denominator_row):
+    def get_relavant_id(self, denominator_key_str, numerator_row, denominator_row):
         """
 
         :param denominator_key_str: str
