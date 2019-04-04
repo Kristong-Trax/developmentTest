@@ -122,7 +122,7 @@ class PEPSICOUKSceneToolBox:
 
     def main_function(self):
         if not self.filtered_matches.empty:
-            # self.calculate_internal_kpis()
+            self.calculate_internal_kpis()
             self.calculate_external_kpis()
 
     def calculate_external_kpis(self):
@@ -133,8 +133,8 @@ class PEPSICOUKSceneToolBox:
         self.calculate_number_of_facings_and_linear_space()
         self.calculate_number_of_bays_and_shelves()
         self.calculate_shelf_placement_horizontal()
-        # self.calculate_shelf_placement_vertical()
         self.calculate_shelf_placement_vertical_mm()
+        # self.calculate_shelf_placement_vertical()
 
     def calculate_shelf_placement_vertical_mm(self):
         probe_groups_list = self.probe_groups['probe_group_id'].unique().tolist()
@@ -250,10 +250,10 @@ class PEPSICOUKSceneToolBox:
         for probe_group in probe_groups_list:
             matches = self.match_product_in_scene[self.match_product_in_scene['probe_group_id'] == probe_group]
             filtered_matches = self.filtered_matches[self.filtered_matches['probe_group_id'] == probe_group]
-            # left_edge = matches['rect_x'].min()
-            # right_edge = matches['rect_x'].max()
-            left_edge = self.get_left_edge(matches)
-            right_edge = self.get_right_edge(matches)
+            left_edge = matches['rect_x'].min()
+            right_edge = matches['rect_x'].max()
+            # left_edge = self.get_left_edge(matches)
+            # right_edge = self.get_right_edge(matches)
             shelf_length = float(right_edge - left_edge)
             # shift = 0 - left_edge # todo: change - explain to israel why i decided to go for this option
             # matches['adjusted_rect_x'] = matches['rect_x'].apply(lambda x: x + shift)
@@ -274,19 +274,19 @@ class PEPSICOUKSceneToolBox:
             self.add_kpi_result_to_kpi_results_df([row['kpi_fk'], row['product_fk'], row['product_fk'], row['ratio'],
                                                    row['ratio']])
 
-    @staticmethod
-    def get_left_edge(matches):
-        left_tag = matches['rect_x'].min()
-        additional_left_margin = matches[matches['rect_x'] == left_tag]['rect_width'].max()/2 # not sure about this field
-        left_edge = left_tag - additional_left_margin
-        return left_edge
-
-    @staticmethod
-    def get_right_edge(matches):
-        right_tag = matches['rect_x'].max()
-        additional_right_margin = matches[matches['rect_x'] == right_tag]['rect_width'].max() / 2
-        right_edge = right_tag + additional_right_margin
-        return right_edge
+    # @staticmethod
+    # def get_left_edge(matches):
+    #     left_tag = matches['rect_x'].min()
+    #     additional_left_margin = matches[matches['rect_x'] == left_tag]['rect_width'].max()/2 # not sure about this field
+    #     left_edge = left_tag - additional_left_margin
+    #     return left_edge
+    #
+    # @staticmethod
+    # def get_right_edge(matches):
+    #     right_tag = matches['rect_x'].max()
+    #     additional_right_margin = matches[matches['rect_x'] == right_tag]['rect_width'].max() / 2
+    #     right_edge = right_tag + additional_right_margin
+    #     return right_edge
 
     # def calculate_shelf_placement_vertical(self):
     #     left_edge = self.match_product_in_scene['rect_x'].min()
@@ -391,52 +391,52 @@ class PEPSICOUKSceneToolBox:
             filters.update({target_series['Parameter 2']: target_series['Value 2']})
         return filters
 
-    def adjust_filters_and_data_provider_for_calculations(self, filters, instance):
-        # matches = matches_df.copy()
-        matches = self.block.data_provider[Data.MATCHES].copy() if isinstance(instance, Block) \
-                                                else self.adjacency.data_provider[Data.MATCHES].copy()
-
-        all_products = self.block.data_provider[Data.ALL_PRODUCTS].copy() if isinstance(instance, Block) \
-                                                else self.adjacency.data_provider[Data.ALL_PRODUCTS].copy()  # nissan
-
-        matches_products = pd.merge(self.filtered_matches, self.all_products, on='product_fk', how='left')
-        output_filters = {}
-        for field, value in filters.items():
-            add_field = '{}_add'.format(field)
-            new_filter = {add_field: value}
-            if add_field not in matches.columns.values.tolist():
-                matches[add_field] = 'N/A'
-
-            if add_field not in all_products.columns.values.tolist():  # nissan
-                all_products[add_field] = 'N/A'
-                # if isinstance(instance, Block):
-                #     self.block.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
-                # else:
-                #     self.adjacency.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
-
-            included_matches = set(matches_products[self.toolbox.get_filter_condition \
-                                                        (matches_products, **{field: value})]['probe_match_fk'].values.tolist())
-            matches.loc[matches['probe_match_fk'].isin(included_matches), add_field] = value
-            output_filters.update(new_filter)
-
-            included_products = matches[matches['probe_match_fk'].isin(included_matches)]['product_fk'].unique().tolist()  # nissan
-            all_products.loc[all_products['product_fk'].isin(included_products), add_field] = value
-            # if isinstance(instance, Block):  # nissan
-            #     self.block.data_provider[Data.ALL_PRODUCTS].loc[self.block.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
-            # else:  # nissan
-            #     self.adjacency.data_provider[Data.ALL_PRODUCTS].loc[
-            #         self.adjacency.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
-
-        if isinstance(instance, Block):
-            self.block.data_provider._set_matches(matches)
-        else:
-            self.adjacency.data_provider._set_matches(matches)
-
-        if isinstance(instance, Block): #nissan
-            self.block.data_provider._set_all_products(all_products)
-        else:
-            self.adjacency.data_provider._set_all_products(all_products)
-        return output_filters
+    # def adjust_filters_and_data_provider_for_calculations(self, filters, instance):
+    #     # matches = matches_df.copy()
+    #     matches = self.block.data_provider[Data.MATCHES].copy() if isinstance(instance, Block) \
+    #                                             else self.adjacency.data_provider[Data.MATCHES].copy()
+    #
+    #     all_products = self.block.data_provider[Data.ALL_PRODUCTS].copy() if isinstance(instance, Block) \
+    #                                             else self.adjacency.data_provider[Data.ALL_PRODUCTS].copy()  # nissan
+    #
+    #     matches_products = pd.merge(self.filtered_matches, self.all_products, on='product_fk', how='left')
+    #     output_filters = {}
+    #     for field, value in filters.items():
+    #         add_field = '{}_add'.format(field)
+    #         new_filter = {add_field: value}
+    #         if add_field not in matches.columns.values.tolist():
+    #             matches[add_field] = 'N/A'
+    #
+    #         if add_field not in all_products.columns.values.tolist():  # nissan
+    #             all_products[add_field] = 'N/A'
+    #             # if isinstance(instance, Block):
+    #             #     self.block.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
+    #             # else:
+    #             #     self.adjacency.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
+    #
+    #         included_matches = set(matches_products[self.toolbox.get_filter_condition \
+    #                                                     (matches_products, **{field: value})]['probe_match_fk'].values.tolist())
+    #         matches.loc[matches['probe_match_fk'].isin(included_matches), add_field] = value
+    #         output_filters.update(new_filter)
+    #
+    #         included_products = matches[matches['probe_match_fk'].isin(included_matches)]['product_fk'].unique().tolist()  # nissan
+    #         all_products.loc[all_products['product_fk'].isin(included_products), add_field] = value
+    #         # if isinstance(instance, Block):  # nissan
+    #         #     self.block.data_provider[Data.ALL_PRODUCTS].loc[self.block.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
+    #         # else:  # nissan
+    #         #     self.adjacency.data_provider[Data.ALL_PRODUCTS].loc[
+    #         #         self.adjacency.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
+    #
+    #     if isinstance(instance, Block):
+    #         self.block.data_provider._set_matches(matches)
+    #     else:
+    #         self.adjacency.data_provider._set_matches(matches)
+    #
+    #     if isinstance(instance, Block): #nissan
+    #         self.block.data_provider._set_all_products(all_products)
+    #     else:
+    #         self.adjacency.data_provider._set_all_products(all_products)
+    #     return output_filters
 
     def calculate_adjacency(self):
         block_pairs = self.get_group_pairs()
