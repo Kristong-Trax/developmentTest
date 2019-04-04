@@ -179,8 +179,9 @@ class DIAGEOUKToolBox:
         """
         Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
         """
-        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
+        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                         set_name.encode('utf-8')) & (self.kpi_static_data['kpi_name'].str.
+                                                                      encode('utf-8') == kpi_name.encode('utf-8'))]
         try:
             kpi_fk = kpi_data['kpi_fk'].values[0]
         except:

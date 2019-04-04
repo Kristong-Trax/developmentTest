@@ -3,6 +3,7 @@ from Trax.Utils.Logging.Logger import Log
 
 from Projects.MONDELEZUS.Utils.KPIToolBox import MONDELEZUSToolBox
 from Projects.MONDELEZUS.CStore.KPIToolBox import CSTOREToolBox
+from Projects.MONDELEZUS.SOS.KPIToolBox import MONDELEZUSSOSToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common
 
@@ -22,6 +23,7 @@ class Generator:
         self.common = Common(data_provider)
         self.tool_box = MONDELEZUSToolBox(self.data_provider, self.output, self.common)
         self.cstore_tool_box = CSTOREToolBox(self.data_provider, self.output, self.common)
+        self.sos_tool_box = MONDELEZUSSOSToolBox(self.data_provider, self.output, self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -32,6 +34,7 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.cstore_tool_box.main_calculation()
+        self.sos_tool_box.main_calculation()
         for kpi_set_fk in self.tool_box.kpi_new_static_data['pk'].unique().tolist():
             self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
         self.common.commit_results_data()

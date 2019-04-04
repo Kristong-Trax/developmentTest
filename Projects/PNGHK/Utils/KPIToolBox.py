@@ -13,6 +13,7 @@ __author__ = 'ilays'
 
 PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
 
+
 class PNGHKToolBox:
     LEVEL1 = 1
     LEVEL2 = 2
@@ -107,7 +108,6 @@ class PNGHKToolBox:
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=self.store_id, denominator_id=self.store_id,
                                            numerator_result=total_numerator, denominator_result=total_denominator,
                                            result=result, score=result)
-
 
     def calculate_facings_sos_kpi(self, kpi_df):
         kpi_name = kpi_df[Const.KPI_NAME].values[0]
@@ -238,6 +238,9 @@ class PNGHKToolBox:
                             results_dict[numerator_id, denominator_id, context_id] = map(sum,
                                                          zip(results_dict[numerator_id, denominator_id, context_id],
                                                              [numerator, denominator]))
+        if len(results_dict) == 0:
+            return
+
         results_as_df = pd.DataFrame.from_dict(results_dict, orient="index")
 
         # numerator became column 0, denominator column 1, result will enter column 2
@@ -291,7 +294,7 @@ class PNGHKToolBox:
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
             if shelfs_to_include != "":
                 shelfs_to_include = int(shelfs_to_include)
-                scene_df = scene_df[scene_df['shelf_number_from_bottom'] <= shelfs_to_include]
+                scene_df = scene_df[scene_df['shelf_number_from_bottom'] < shelfs_to_include]
 
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
@@ -335,7 +338,7 @@ class PNGHKToolBox:
             if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
                 if shelfs_to_include != "":
                     shelfs_to_include = int(shelfs_to_include)
-                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] > shelfs_to_include])
+                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
             # else:
             #     scenes = set(scene_df['scene_fk'])
             #     for scene in scenes:
