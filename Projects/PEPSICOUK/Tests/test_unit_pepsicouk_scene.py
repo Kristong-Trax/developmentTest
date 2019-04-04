@@ -275,7 +275,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
             assert_frame_equal(expected_result.sort_index(axis=1), bay_max_shelves.sort_index(axis=1),
                                check_dtype=False, check_column_type=False, check_names=True)
 
-    def test_get_scene_bay_max_shelves_retrieves_expected_df_in_case_of_excluded_shelves(self):
+    def test_get_scene_bay_max_shelves_retrieves_empty_df_in_case_of_excluded_shelves(self):
         probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 3)
         scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
@@ -285,21 +285,24 @@ class Test_PEPSICOUKScene(MockingTestCase):
             bay_max_shelves = scene_tb.get_scene_bay_max_shelves(shelf_placmnt_targets)
             self.assertTrue(bay_max_shelves.empty)
 
-    # def test_calculate_horizontal_placement(self):
-    #     probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
-    #         DataTestUnitPEPSICOUK.test_case_1, 1)
-    #     scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
-    #     external_targets = scene_tb.commontools.all_targets_unpacked
-    #         bay_all_shelves = bay_max_shelves.drop_duplicates(subset=['bay_number', 'shelves_all_placements'],
-    #                                                           keep='first')
-    #         relevant_matches = scene_tb.filter_out_irrelevant_matches(bay_all_shelves)
-    #         if not relevant_matches.empty:
-    #             for i, row in bay_max_shelves.iterrows():
-    #                 shelf_list = map(lambda x: float(x), row['Shelves From Bottom To Include (data)'].split(','))
-    #                 relevant_matches.loc[(relevant_matches['bay_number'] == row['bay_number']) &
-    #                                      (relevant_matches['shelf_number_from_bottom'].isin(shelf_list)), 'position'] = row['type']
-    #             kpi_results = scene_tb.get_kpi_results_df(relevant_matches, bay_max_shelves)
-    #             print kpi_results
+    def test_calculate_horizontal_placement(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        expected_list = []
+        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5})
+        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6, 5)})
+        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6, 5)})
+        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6, 5)})
+        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0/1})
+        scene_tb.calculate_shelf_placement_horizontal()
+        kpi_results = scene_tb.kpi_results
+        print kpi_results
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
     def check_kpi_results(self, kpi_results_df, expected_results_dict):
         column = []
