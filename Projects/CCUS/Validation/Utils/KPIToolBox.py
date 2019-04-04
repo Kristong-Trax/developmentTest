@@ -62,6 +62,7 @@ class VALIDATIONToolBox:
         self.store_type = self.store_info['store_type'].iloc[0]
         self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.scene_data = self.load_scene_data()
         self.kpi_set_fk = kpi_set_fk
 
     def get_kpi_static_data(self):
@@ -78,17 +79,37 @@ class VALIDATIONToolBox:
         This function calculates the KPI results.
         """
         if self.store_type in STORE_TYPE_LIST:
-            self.rules = self.rules[self.store_type]
-            score = 1
-            if sum([1 for t in self.templates['template_name'] if t in self.rules['template']]) < int(self.rules['target']):
-                score = 0
-            if int(self.scene_info.shape[0]) < int(self.rules['scene_count']):
-                score = 0
-            if self.scene_info['number_of_probes'].sum() < int(self.rules['image_count']):
-                score = 0
+            result = 'Pass'
+            score = self.determine_pass(self.rules[self.store_type])
+            if not score:
+                score2 = self.determine_pass(self.rules['All'], image_rule='>')
+                if not score2:
+                    result = 'Fail'
+                else:
+                    result = 'Exterior Only'
 
-            self.write_to_db_result(3, name='Validation_KPI', result=score, score=score)
+            self.write_to_db_result(3, name='Validation_KPI', result=result, score=score)
         return
+
+    def determine_pass(self, rules, image_rule='<'):
+        score = 1
+        if sum([1 for t in self.templates['template_name'] if t in rules['template']]) < int(rules['target']):
+            score = 0
+        if int(self.scene_data.shape[0]) < int(rules['scene_count']):
+            score = 0
+        if eval('{} {} {}'.format(self.scene_data['Images'].sum(), image_rule, int(rules['image_count']))):
+            score = 0
+        return score
+
+    def load_scene_data(self):
+        query = '''
+                select sc.scene_uid, (sc.number_of_probes - sc.number_of_ignored_probes) as 'Images'
+                from probedata.session ses
+                left join probedata.scene sc on ses.session_uid = sc.session_uid
+                where sc.delete_time is null and sc.status = 6
+                and ses.session_uid = '{}';
+                '''.format(self.session_uid)
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
 
 
     def write_to_db_result(self, level, result=None, score=0, name=None):
