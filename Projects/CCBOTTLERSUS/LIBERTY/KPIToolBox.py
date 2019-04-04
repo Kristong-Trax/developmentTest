@@ -2,6 +2,7 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.CCBOTTLERSUS.LIBERTY.Data.Const import Const
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Hunter'
@@ -30,13 +31,15 @@ class LIBERTYToolBox:
         for sheet in Const.SHEETS:
             self.templates[sheet] = pd.read_excel(Const.TEMPLATE_PATH, sheetname=sheet).fillna('')
         self.common_db = common_db
+        self.survey = Survey(self.data_provider, output=self.output, ps_data_provider=self.ps_data_provider,
+                             common=self.common_db)
         self.manufacturer_fk = Const.MANUFACTURER_FK
         self.region = self.store_info['region_name'].iloc[0]
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
         self.branch = self.store_info['branch_name'].iloc[0]
         self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
-        # self.body_armor_delivered = self.get_body_armor_delivery_status()
+        self.body_armor_delivered = self.get_body_armor_delivery_status()
 
     # main functions:
 
@@ -93,21 +96,24 @@ class LIBERTYToolBox:
         relevant_template = self.templates[kpi_type]
         kpi_line = relevant_template[relevant_template[Const.KPI_NAME] == main_line[Const.KPI_NAME]].iloc[0]
         kpi_function = self.get_kpi_function(kpi_type)
+        weight = main_line[Const.WEIGHT]
 
         if relevant_scif.empty:
             result = 0
         else:
-            result = kpi_function(kpi_line, relevant_scif)
+            result = kpi_function(kpi_line, relevant_scif, weight)
 
-        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_line[Const.KPI_NAME] + Const.LIBERTY)
+        kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
-                                          denominator_id=self.store_id, denominator_result=0,
-                                          result=result, identifier_parent=Const.RED_SCORE_PARENT, should_enter=True)
+                                          denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                          result=result, identifier_parent=Const.RED_SCORE_PARENT,
+                                          identifier_result=kpi_name, should_enter=True)
 
         return result
 
     # SOS functions
-    def calculate_sos(self, kpi_line, relevant_scif):
+    def calculate_sos(self, kpi_line, relevant_scif, weight):
         market_share_required = self.does_exist(kpi_line, Const.MARKET_SHARE_TARGET)
         if market_share_required:
             market_share_target = self.get_market_share_target()
@@ -121,12 +127,20 @@ class LIBERTYToolBox:
         if manufacturer:
             relevant_scif = relevant_scif[relevant_scif['manufacturer_name'].isin(manufacturer)]
 
-        result = 1 if relevant_scif['facings'].sum() > market_share_target else 0
+        number_of_facings = relevant_scif['facings'].sum()
+        result = 1 if number_of_facings > market_share_target else 0
+
+        parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                          denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                          result=number_of_facings, target=market_share_target,
+                                          identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
 
     # Availability functions
-    def calculate_availability(self, kpi_line, relevant_scif):
+    def calculate_availability(self, kpi_line, relevant_scif, weight):
         survey_question_skus_required = self.does_exist(kpi_line, Const.SURVEY_QUESTION_SKUS_REQUIRED)
         if survey_question_skus_required:
             survey_question_skus = self.get_relevant_product_assortment_by_kpi_name(kpi_line[Const.KPI_NAME])
@@ -147,7 +161,17 @@ class LIBERTYToolBox:
                 relevant_scif = relevant_scif[~relevant_scif['brand_name'].isin(excluded_brand)]
             unique_skus = relevant_scif['product_fk'].unique().tolist()
 
-        result = 1 if len(unique_skus) >= kpi_line[Const.MINIMUM_NUMBER_OF_SKUS] else 0
+        length_of_unique_skus = len(unique_skus)
+        minimum_number_of_skus = kpi_line[Const.MINIMUM_NUMBER_OF_SKUS]
+
+        result = 1 if length_of_unique_skus >= minimum_number_of_skus else 0
+
+        parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+        kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+        self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                          denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                          result=length_of_unique_skus, target=minimum_number_of_skus,
+                                          identifier_parent=parent_kpi_name, should_enter=True)
 
         return result
 
@@ -160,7 +184,7 @@ class LIBERTYToolBox:
         return relevant_products['product_fk'].unique().tolist()
 
     # Count of Display functions
-    def calculate_count_of_display(self, kpi_line, relevant_scif):
+    def calculate_count_of_display(self, kpi_line, relevant_scif, weight):
         filtered_scif = relevant_scif
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
@@ -197,7 +221,7 @@ class LIBERTYToolBox:
             return 0
 
     # Share of Display functions
-    def calculate_share_of_display(self, kpi_line, relevant_scif):
+    def calculate_share_of_display(self, kpi_line, relevant_scif, weight):
         filtered_scif = relevant_scif
 
         manufacturer = self.does_exist(kpi_line, Const.MANUFACTURER)
@@ -213,14 +237,21 @@ class LIBERTYToolBox:
         else:
             market_share_target = 0
 
-        # if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]):
-        #     body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
-        #     filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
+        if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]) and self.body_armor_delivered:
+            body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
+            filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
 
             result = 1 if number_of_passing_displays > market_share_target else 0
+
+            parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                              result=number_of_passing_displays, target=market_share_target,
+                                              identifier_parent=parent_kpi_name, should_enter=True)
 
             return result
         else:
@@ -246,7 +277,7 @@ class LIBERTYToolBox:
 
     # Survey functions
     def calculate_survey(self, kpi_line, relevant_scif):
-        pass
+        return 1 if self.survey.check_survey_answer(kpi_line[Const.QUESTION_TEXT], 'Yes') else 0
 
     # helper functions
     def get_market_share_target(self, ssd_still=None):  # need to move to external KPI targets
@@ -266,12 +297,10 @@ class LIBERTYToolBox:
         return relevant_template[Const.SSD_AND_STILL].iloc[0]
 
     def get_body_armor_delivery_status(self):
-        list_of_zip_codes = self.templates[Const.BODY_ARMOR][Const.ZIP].unique().tolist()
-        store_zip_code = self.store_info['postal_code'].iloc[0]
-        if store_zip_code in list_of_zip_codes:
-            return 'Y'
+        if self.store_info['additional_attribute_8'] == 'Y':
+            return True
         else:
-            return 'N'
+            return False
 
     def get_kpi_function(self, kpi_type):
         """
