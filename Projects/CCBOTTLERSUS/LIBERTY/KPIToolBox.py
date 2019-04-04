@@ -1,7 +1,7 @@
 import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCBOTTLERSUS_SAND.LIBERTY.Data.Const import Const
+from Projects.CCBOTTLERSUS.LIBERTY.Data.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Hunter'
@@ -188,8 +188,7 @@ class LIBERTYToolBox:
             if sub_packages == [Const.NOT_NULL]:
                 filtered_scif = filtered_scif[~filtered_scif['number_of_sub_packages'].isnull()]
             else:
-                filtered_scif = filtered_scif[
-                    filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
+                filtered_scif = filtered_scif[filtered_scif['number_of_sub_packages'].isin([int(i) for i in sub_packages])]
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
