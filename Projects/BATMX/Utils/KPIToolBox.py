@@ -103,7 +103,7 @@ class BATMXToolBox:
         for scene_result_fk in fixture_results_pk:
             self.common.write_to_db_result(
                 should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
-                denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True)
+                denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True, only_hierarchy2=True)
 
     def calculate_oos(self):
         visit_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_VISIT)
@@ -123,7 +123,8 @@ class BATMXToolBox:
             for scene_result_fk in fixture_results_pk:
                 self.common.write_to_db_result(
                     should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
-                    denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True)
+                    denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True,
+                    only_hierarchy2=True)
 
     @staticmethod
     def get_average(df, column):

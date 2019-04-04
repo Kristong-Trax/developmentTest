@@ -42,7 +42,7 @@ class Const(object):
     MARKET_SHARE_TARGET = 'market_share_target'
 
     # Availability columns
-    BRAND = 'Brand'
+    BRAND = 'brand'
     CATEGORY = 'category'
     EXCLUDED_BRAND = 'Excluded_Brand'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'

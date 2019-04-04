@@ -42,7 +42,8 @@ class NESTLETHToolBox:
         """
         linear_sos_dict = self.nestle_generator.nestle_global_linear_sos_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
-        self.nestle_generator.nestle_global_assortment_function()
+        assortment_dict = self.nestle_generator.nestle_global_assortment_function()
+        self.common.save_json_to_new_tables(assortment_dict)
         self.common.commit_results_data()
         return
 
