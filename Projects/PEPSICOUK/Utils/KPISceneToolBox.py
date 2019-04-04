@@ -81,7 +81,7 @@ class PEPSICOUKSceneToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]  # initial scif - check if it works for scene calculations
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
 
         self.probe_groups = self.get_probe_group()
         self.match_product_in_scene = self.match_product_in_scene.merge(self.probe_groups, on='probe_match_fk',
