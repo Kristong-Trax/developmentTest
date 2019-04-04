@@ -26,15 +26,15 @@ class CCUSGenerator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        # self.calculate_manufacturer_displays()
+        self.calculate_manufacturer_displays()
         # self.calculate_obbo()
         # self.calculate_dunkin_donuts()
-        # self.calculate_monster()
-        # self.calculate_programs()
-        # self.calculate_holiday_programs()
+        self.calculate_monster()
+        self.calculate_programs()
+        self.calculate_holiday_programs()
         # self.calculate_msc_new()
         # self.calculate_gold_peak_block()
-        # self.calculate_special_programs()
+        self.calculate_special_programs()
         self.calculate_validation()
 
     @log_runtime('Manufacturer Displays Calculations')
@@ -101,6 +101,6 @@ class CCUSGenerator:
 
     @log_runtime('Special Programs Calculations')
     def calculate_validation(self):
-        tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=33)
+        tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=34)
         tool_box.main_calculation()
-        # tool_box.commit_results_data()
+        tool_box.commit_results_data()

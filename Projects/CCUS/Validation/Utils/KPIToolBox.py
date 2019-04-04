@@ -49,6 +49,7 @@ class VALIDATIONToolBox:
         self.data_provider = data_provider
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.templates = self.data_provider[Data.TEMPLATES]
@@ -59,7 +60,7 @@ class VALIDATIONToolBox:
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_type = self.store_info['store_type'].iloc[0]
-        self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')[self.store_type]
+        self.rules = pd.read_excel(TEMPLATE_PATH).set_index('store_type').to_dict('index')
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.kpi_set_fk = kpi_set_fk
 
@@ -76,16 +77,17 @@ class VALIDATIONToolBox:
         """
         This function calculates the KPI results.
         """
-        score = 1
-        if sum([1 for t in self.templates['template_name'] if t in self.rules['template']]) < int(self.rules['target']):
-            score = 0
-        if int(self.scene_info.shape[0]) < int(self.rules['scene_count']):
-            score = 0
-        if self.scene_info['number_of_probes'].sum() < int(self.rules['image_count']):
-            score = 0
+        if self.store_type in STORE_TYPE_LIST:
+            self.rules = self.rules[self.store_type]
+            score = 1
+            if sum([1 for t in self.templates['template_name'] if t in self.rules['template']]) < int(self.rules['target']):
+                score = 0
+            if int(self.scene_info.shape[0]) < int(self.rules['scene_count']):
+                score = 0
+            if self.scene_info['number_of_probes'].sum() < int(self.rules['image_count']):
+                score = 0
 
-
-        self.write_to_db_result(3, name='Validation_KPI', result=score, score=score, level=self.LEVEL3)
+            self.write_to_db_result(3, name='Validation_KPI', result=score, score=score)
         return
 
 
