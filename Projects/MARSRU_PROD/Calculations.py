@@ -54,7 +54,7 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
 
         if not kpis_sheet_name:
             Log.warning("Error: Store channel is not defined for Store ID [{}] with Store type [{}]"
-                        "".format(self.data_provider.store_fk, self.data_provider.store_type))
+                        "".format(self.data_provider.store_fk, self.data_provider.store_type.encode('utf-8')))
             return
 
         jg.create_template_json(
