@@ -22,7 +22,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 if __name__ == '__main__':
     LoggerInitializer.init('GOOGLEMX calculations')
     Config.init()
-    project_name = 'GOOGLEMX'
+    project_name = 'googlemx'
     
     # all sessions still in new status
     sessions = [

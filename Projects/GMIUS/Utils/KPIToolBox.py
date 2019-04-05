@@ -1,5 +1,6 @@
 
 import pandas as pd
+import numpy as np
 from functools import reduce
 from collections import defaultdict, Counter
 
@@ -47,10 +48,10 @@ class ToolBox:
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
-                                               .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
-                                               .merge(self.templates, on='template_fk', suffixes=['', '_t'])
-        self.mpis = self.mpis[self.mpis['product_type'] != 'Irrelevant']
+        self.full_mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p'])\
+                                                    .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])\
+                                                    .merge(self.templates, on='template_fk', suffixes=['', '_t'])
+        self.mpis = self.full_mpis[self.full_mpis['product_type'] != 'Irrelevant']
         self.mpis = self.filter_df(self.mpis, Const.SOS_EXCLUDE_FILTERS, exclude=1)
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -71,8 +72,8 @@ class ToolBox:
         self.template = pd.read_excel(template_path, sheetname=None)
         self.super_cat = template_path.split('/')[-1].split(' ')[0].upper()
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
-        # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
-        # self.dependency_reorder()
+        self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
+        self.dependency_reorder()
 
         main_template = self.template[Const.KPIS]
         for i, main_line in main_template.iterrows():
@@ -90,12 +91,13 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        # dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
-        # if dependent_result and self.dependencies[kpi_name] not in dependent_result:
-        #     return
+        dependent_result = self.read_cell_from_line(main_line, Const.DEPENDENT_RESULT)
+        if dependent_result and self.dependencies[kpi_name] not in dependent_result:
+            return
 
         # if kpi_type in[Const.PRESENCE]: # Const.COUNT_SHELVES:
         if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE]: # Const.COUNT_SHELVES:
             kpi_line = self.template[kpi_type].set_index(Const.KPI_NAME).loc[kpi_name]
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
@@ -106,6 +108,7 @@ class ToolBox:
                         self.write_to_db(kpi_name, **kwargs)
                     else:
                         self.write_to_db(kpi_name, **{'score': 0, 'result': 0})
+                self.dependencies[kpi_name] = kwargs['result']
 
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
@@ -679,7 +682,7 @@ class ToolBox:
 
     def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
         mpis = self.make_mpis(kpi_line, general_filters)
-        master_mpis = self.filter_df(self.mpis.copy(), Const.IGN_STACKING)
+        master_mpis = self.filter_df(self.full_mpis.copy(), Const.IGN_STACKING)
         mm_sum = 0
         if mpis.empty:
             return {"score": None}
@@ -786,7 +789,8 @@ class ToolBox:
             result = form.format(val)
         return result
 
-    def make_mpis(self, kpi_line, general_filters, ign_stacking=1):
+    def make_mpis(self, kpi_line, general_filters, ign_stacking=1, use_full_mpis=0):
+        mpis = self.full_mpis if use_full_mpis else self.mpis
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         if ign_stacking:
@@ -1059,6 +1063,9 @@ class ToolBox:
         :param threshold: int
         """
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if not np.isnan(self.common.kpi_static_data[self.common.kpi_static_data['pk'] == kpi_fk]
+                        ['kpi_result_type_fk'].iloc[0]):
+            pass
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
                                        numerator_id=numerator_id, denominator_id=denominator_id)
