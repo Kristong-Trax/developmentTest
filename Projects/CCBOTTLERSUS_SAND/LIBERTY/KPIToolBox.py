@@ -103,6 +103,9 @@ class LIBERTYToolBox:
         else:
             result = kpi_function(kpi_line, relevant_scif, weight)
 
+        result = self.ps_data_provider.get_pks_of_result(
+            Const.PASS) if result > 0 else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+
         kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
@@ -216,7 +219,14 @@ class LIBERTYToolBox:
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
-            return number_of_passing_displays
+
+            parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                              result=number_of_passing_displays,
+                                              identifier_parent=parent_kpi_name, should_enter=True)
+            return 1 if number_of_passing_displays > 0 else 0
         else:
             return 0
 

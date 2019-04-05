@@ -103,6 +103,9 @@ class LIBERTYToolBox:
         else:
             result = kpi_function(kpi_line, relevant_scif, weight)
 
+        result = self.ps_data_provider.get_pks_of_result(
+            Const.PASS) if result > 0 else self.ps_data_provider.get_pks_of_result(Const.FAIL)
+
         kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
@@ -216,7 +219,14 @@ class LIBERTYToolBox:
 
         if self.does_exist(kpi_line, Const.MINIMUM_FACINGS_REQUIRED):
             number_of_passing_displays = self.get_number_of_passing_displays(filtered_scif)
-            return number_of_passing_displays
+
+            parent_kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
+            kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(parent_kpi_name + Const.DRILLDOWN)
+            self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
+                                              denominator_id=self.store_id, denominator_result=0, weight=weight,
+                                              result=number_of_passing_displays,
+                                              identifier_parent=parent_kpi_name, should_enter=True)
+            return 1 if number_of_passing_displays > 0 else 0
         else:
             return 0
 
@@ -237,7 +247,7 @@ class LIBERTYToolBox:
         else:
             market_share_target = 0
 
-        if self.does_exist(kpi_line[Const.INCLUDE_BODY_ARMOR]) and self.body_armor_delivered:
+        if self.does_exist(kpi_line, Const.INCLUDE_BODY_ARMOR) and self.body_armor_delivered:
             body_armor_scif = relevant_scif[relevant_scif['brand_fk'] == Const.BODY_ARMOR_BRAND_FK]
             filtered_scif = filtered_scif.append(body_armor_scif, sort=False)
 
@@ -276,7 +286,7 @@ class LIBERTYToolBox:
         return 1 if row['facings'] > minimum_facings else 0
 
     # Survey functions
-    def calculate_survey(self, kpi_line, relevant_scif):
+    def calculate_survey(self, kpi_line, relevant_scif, weight):
         return 1 if self.survey.check_survey_answer(kpi_line[Const.QUESTION_TEXT], 'Yes') else 0
 
     # helper functions
@@ -297,7 +307,7 @@ class LIBERTYToolBox:
         return relevant_template[Const.SSD_AND_STILL].iloc[0]
 
     def get_body_armor_delivery_status(self):
-        if self.store_info['additional_attribute_8'] == 'Y':
+        if self.store_info['additional_attribute_8'].iloc[0] == 'Y':
             return True
         else:
             return False
