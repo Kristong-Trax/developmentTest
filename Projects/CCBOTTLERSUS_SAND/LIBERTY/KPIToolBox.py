@@ -103,14 +103,14 @@ class LIBERTYToolBox:
         else:
             result = kpi_function(kpi_line, relevant_scif, weight)
 
-        result = self.ps_data_provider.get_pks_of_result(
+        result_type_fk = self.ps_data_provider.get_pks_of_result(
             Const.PASS) if result > 0 else self.ps_data_provider.get_pks_of_result(Const.FAIL)
 
         kpi_name = kpi_line[Const.KPI_NAME] + Const.LIBERTY
         kpi_fk = self.common_db.get_kpi_fk_by_kpi_type(kpi_name)
         self.common_db.write_to_db_result(kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=0,
                                           denominator_id=self.store_id, denominator_result=0, weight=weight,
-                                          result=result, identifier_parent=Const.RED_SCORE_PARENT,
+                                          result=result_type_fk, identifier_parent=Const.RED_SCORE_PARENT,
                                           identifier_result=kpi_name, should_enter=True)
 
         return result
