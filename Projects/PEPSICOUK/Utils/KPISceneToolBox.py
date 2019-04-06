@@ -165,17 +165,21 @@ class PEPSICOUKSceneToolBox:
 
     @staticmethod
     def get_left_edge_mm(matches):
-        left_tag = matches['x_mm'].min()
-        additional_left_margin = matches[matches['x_mm'] == left_tag][
-                                     'width_mm_advance'].max() / 2  # not sure about this field
-        left_edge = left_tag - additional_left_margin
+        matches['left_edge_mm'] = matches['x_mm'] - matches['width_mm_advance'] / 2
+        left_edge = matches['left_edge_mm'].min()
+        # left_tag = matches['x_mm'].min()
+        # additional_left_margin = matches[matches['x_mm'] == left_tag][
+        #                              'width_mm_advance'].max() / 2
+        # left_edge = left_tag - additional_left_margin
         return left_edge
 
     @staticmethod
     def get_right_edge_mm(matches):
-        right_tag = matches['x_mm'].max()
-        additional_right_margin = matches[matches['x_mm'] == right_tag]['width_mm_advance'].max() / 2
-        right_edge = right_tag + additional_right_margin
+        matches['right_edge_mm'] = matches['x_mm'] + matches['width_mm_advance'] / 2
+        right_edge = matches['right_edge_mm'].max()
+        # right_tag = matches['x_mm'].max()
+        # additional_right_margin = matches[matches['x_mm'] == right_tag]['width_mm_advance'].max() / 2
+        # right_edge = right_tag + additional_right_margin
         return right_edge
 
     def define_product_position_mm(self, matches, shelf_length, left_edge, right_edge):

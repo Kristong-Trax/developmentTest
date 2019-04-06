@@ -297,11 +297,67 @@ class Test_PEPSICOUKScene(MockingTestCase):
         expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0/1})
         scene_tb.calculate_shelf_placement_horizontal()
         kpi_results = scene_tb.kpi_results
-        print kpi_results
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 2)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_shelf_placement_vertical_mm()
+        expected_list = []
+        expected_list.append({'kpi_fk': 327, 'numerator': 1, 'result': 1.0 / 5})
+        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': 2.0 / 5})
+        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': 2.0 / 5})
+        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': 6.0 / 6})
+        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': 1.0 / 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_shelf_placement_vertical_mm_does_not_calculate_kpis_if_all_matches_excluded(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 3)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_shelf_placement_vertical_mm()
+        self.assertTrue(scene_tb.kpi_results.empty)
+
+        # grouped_matches = matches.groupby(['product_fk', 'vertical_positioning_assumption_kpi_fk'])
+
+    def test_calculate_shelf_placement_vertical_mm_in_case_excluded_matches_exist_and_different_stitch_groups(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_shelf_placement_vertical_mm()
+        kpi_results = scene_tb.kpi_results
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        expected_list = []
+        expected_list.append({'kpi_fk': 327, 'numerator': 4, 'result': round(1.0 / 6, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 4, 'result': round(2.0 / 6, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 4, 'result': round(3.0 / 6, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': round(5.0 / 7, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': round(2.0 / 7, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': round(4.0 / 6, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 2, 'result': round(2.0 / 6, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 3, 'result': round(4.0 / 8, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': round(3.0 / 8, 5)})
+        expected_list.append({'kpi_fk': 327, 'numerator': 3, 'result': round(1.0 / 8, 5)})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+        non_expected_results = []
+        non_expected_results.append({'kpi_fk': 325, 'numerator': 0})
+        non_expected_results.append({'kpi_fk': 326, 'numerator': 0})
+        non_expected_results.append({'kpi_fk': 327, 'numerator': 0})
+        test_result_list = []
+        for result in non_expected_results:
+            test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, result) == 0)
         self.assertTrue(all(test_result_list))
 
     def check_kpi_results(self, kpi_results_df, expected_results_dict):
@@ -315,4 +371,3 @@ class Test_PEPSICOUKScene(MockingTestCase):
         query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
         filtered_df = kpi_results_df.query(query)
         return len(filtered_df)
-
