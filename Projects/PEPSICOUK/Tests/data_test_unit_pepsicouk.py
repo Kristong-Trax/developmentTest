@@ -42,7 +42,8 @@ class DataTestUnitPEPSICOUK(object):
          {'pk': 318, 'type': 'Hero SKU Promo Price'}, {'pk': 319, 'type': 'Product Blocking'}, {'pk': 320, 'type': 'Product Blocking Adjacency'},
          {'pk': 321, 'type': 'Number of Facings'}, {'pk': 322, 'type': 'Total Linear Space'}, {'pk': 323, 'type': 'Number of bays'},
          {'pk': 324, 'type': 'Number of shelves'}, {'pk': 325, 'type': 'Shelf Placement Vertical_Left'},
-         {'pk': 326, 'type': 'Shelf Placement Vertical_Center'}, {'pk': 327, 'type': 'Shelf Placement Vertical_Right'}]
+         {'pk': 326, 'type': 'Shelf Placement Vertical_Center'}, {'pk': 327, 'type': 'Shelf Placement Vertical_Right'},
+         {'pk': 327, 'type': 'Brand Full Bay_90'}]
     )
 
     custom_entity = pd.DataFrame.from_records(
@@ -70,7 +71,7 @@ class DataTestUnitPEPSICOUK(object):
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
 
-    on_display_products = pd.DataFrame.from_records([{'probe_match_fk': 1, 'smart_attribute': 'additional display'},
+    on_display_products = pd.DataFrame.from_records([{'probe_match_fk': 1, 'smart_attribute': 'stock'},
                                                      {'probe_match_fk': 2, 'smart_attribute': 'additional display'},
                                                      {'probe_match_fk': 9, 'smart_attribute': 'additional display'},
                                                      {'probe_match_fk': 10, 'smart_attribute': 'additional display'}])
@@ -111,11 +112,37 @@ class DataTestUnitPEPSICOUK(object):
         {'KPI': 'All', 'Action': 'Exclude', 'Type': 'category', 'Value': 'Cat 1, Cat 2'}
     ])
 
+    test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
+                                           {'product_fk': 5,  'in_store': 0}])
+
     external_targets_columns = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'store_type',
             'additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'numerator_type', 'numerator_value',
             'denominator_type', 'denominator_value', 'additional_filter_type_1',
             'additional_filter_value_1', 'Target', 'KPI Parent',
             'Shelves From Bottom To Include (data)', 'No of Shelves in Fixture (per bay) (key)', 'type']
+
+    scene_info = pd.DataFrame([{'scene_fk': 1,  'template_fk': 1}, {'scene_fk': 2,  'template_fk': 1},
+                               {'scene_fk': 3, 'template_fk': 2}])
+
+    scene_kpi_results_test_case_1 = pd.DataFrame(
+        [{'scene_fk': 2, 'kpi_level_2_fk': 304, 'numerator_id': 1, 'numerator_result': 5, 'denominator_result': 5},
+         {'scene_fk': 2, 'kpi_level_2_fk': 305, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
+         {'scene_fk': 2, 'kpi_level_2_fk': 306, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
+         {'scene_fk': 2, 'kpi_level_2_fk': 307, 'numerator_id': 2, 'numerator_result': 2, 'denominator_result': 6},
+         {'scene_fk': 2, 'kpi_level_2_fk': 307, 'numerator_id': 3, 'numerator_result': 1, 'denominator_result': 1},
+
+         {'scene_fk': 1, 'kpi_level_2_fk': 304, 'numerator_id': 1, 'numerator_result': 2, 'denominator_result': 7},
+         {'scene_fk': 1, 'kpi_level_2_fk': 305, 'numerator_id': 1, 'numerator_result': 3, 'denominator_result': 7},
+         {'scene_fk': 1, 'kpi_level_2_fk': 307, 'numerator_id': 1, 'numerator_result': 2, 'denominator_result': 7},
+
+         {'scene_fk': 1, 'kpi_level_2_fk': 305, 'numerator_id': 2, 'numerator_result': 6, 'denominator_result': 6},
+
+         {'scene_fk': 1, 'kpi_level_2_fk': 306, 'numerator_id': 3, 'numerator_result': 3, 'denominator_result': 8},
+         {'scene_fk': 1, 'kpi_level_2_fk': 307, 'numerator_id': 3, 'numerator_result': 5, 'denominator_result': 8},
+
+         {'scene_fk': 1, 'kpi_level_2_fk': 306, 'numerator_id': 4, 'numerator_result': 3, 'denominator_result': 6},
+         {'scene_fk': 1, 'kpi_level_2_fk': 304, 'numerator_id': 4, 'numerator_result': 3, 'denominator_result': 6},
+         ])
     # required_template_tabs = [KPI_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, PLANOGRAM_TAB]
     # columns_kpi_tab = [SET_NAME, KPI_NAME, KPI_TYPE, SPLIT_SCORE, DEPENDENCY, BONUS]
     # columns_survey_tab = [KPI_NAME, ATOMIC_KPI_NAME, EXPECTED_RESULT, SURVEY_QUESTION_CODE, STORE_TYPE, ATTRIBUTE_1, ATTRIBUTE_2]

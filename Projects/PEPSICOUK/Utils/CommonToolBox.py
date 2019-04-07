@@ -36,6 +36,7 @@ class PEPSICOUKCommonToolBox:
     EXCLUSION_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                            'Inclusion_Exclusion_Template.xlsx')
     ADDITIONAL_DISPLAY = 'additional display'
+    STOCK = 'stock'
     INCLUDE_EMPTY = True
     EXCLUDE_EMPTY = False
     OPERATION_TYPES = []
@@ -214,7 +215,7 @@ class PEPSICOUKCommonToolBox:
 
     def filter_matches_for_products_with_smart_attributes(self, matches):
         matches = matches.merge(self.on_display_products, on='probe_match_fk', how='left')
-        matches = matches[~(matches['smart_attribute'] == self.ADDITIONAL_DISPLAY)]
+        matches = matches[~(matches['smart_attribute'].isin([self.ADDITIONAL_DISPLAY, self.STOCK]))]
         return matches
 
     @staticmethod

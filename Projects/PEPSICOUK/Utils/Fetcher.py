@@ -58,7 +58,7 @@ class PEPSICOUK_Queries(object):
                     FROM probedata.match_product_in_probe_state_value statevalue
                     join static.match_product_in_probe_state sstate 
                     on statevalue.match_product_in_probe_state_fk=sstate.pk
-                    where sstate.name = 'additional display'
+                    where sstate.name = 'additional display' or sstate.name = 'stock'
                     and statevalue.match_product_in_probe_fk in ({});
                     """.format(probe_match_list[0])
         else:
@@ -68,7 +68,7 @@ class PEPSICOUK_Queries(object):
                     FROM probedata.match_product_in_probe_state_value statevalue
                     join static.match_product_in_probe_state sstate 
                     on statevalue.match_product_in_probe_state_fk=sstate.pk
-                    where sstate.name = 'additional display'
+                    where sstate.name = 'additional display' or sstate.name = 'stock'
                     and statevalue.match_product_in_probe_fk in {};
                     """.format(tuple(probe_match_list))
         return query

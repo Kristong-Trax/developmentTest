@@ -15,7 +15,8 @@ if __name__ == '__main__':
     # session = '470e2eb1-9031-46c1-8699-c47e18c58b9c'
     # session = 'e6bf953a-1d8c-4dd1-b558-f88ef1cb13e5'# results in DB
     # session = 'ed42eb37-7e91-4b4b-acd6-28af30dc68ee' # for full bay
-    session = 'e6bf953a-1d8c-4dd1-b558-f88ef1cb13e5' # for block
+    # session = 'e6bf953a-1d8c-4dd1-b558-f88ef1cb13e5' # for block, results in DB scene abn session
+    session = '10ebc650-2b9c-4031-ab1d-a96ccae13032' # for stack
     data_provider.load_session_data(session)
     output = Output()
     PEPSICOUKCalculations(data_provider, output).run_project_calculations()

@@ -25,47 +25,115 @@ from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKToolBox
-from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK, DataScores, SCIFDataTestCCBZA_SAND, MatchProdSceneDataTestCCBZA_SAND
+from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK, DataScores
 from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os
 import pandas as pd
-# from Projects.CCBZA_SAND.Utils.KPIToolBox import KPI_TAB, KPI_TYPE, PLANOGRAM_TAB, PRICE_TAB, SURVEY_TAB, AVAILABILITY_TAB, SOS_TAB, COUNT_TAB, \
-#     SET_NAME, KPI_NAME, ATOMIC_KPI_NAME, SCORE, TARGET, SKU, POS, OTHER, MAX_SCORE
 
 __author__ = 'natalya'
 
 
+def get_exclusion_template_df_all_tests():
+    template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+    return template_df
+
+
 class Test_PEPSICOUK(MockingTestCase):
     # seeder = Seeder()
+    template_df_mock = get_exclusion_template_df_all_tests()
 
     @property
     def import_path(self):
         return 'Projects.PEPSICOUK.Utils.KPIToolBox'
 
     def set_up(self):
-        # super(TestCCBZA_SAND, self).setUp()
         super(Test_PEPSICOUK, self).set_up()
         self.mock_data_provider()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
+        self.mock_db_users()
+        self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
+
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
         self.static_kpi_mock = self.mock_static_kpi()
         self.session_info_mock = self.mock_session_info()
         self.full_store_data_mock = self.mock_store_data()
 
-        self.probe_groups_mock = self.mock_probe_groups()
+        # self.probe_groups_mock = self.mock_probe_groups()
         self.custom_entity_data_mock = self.mock_custom_entity_data()
+        self.on_display_products_mock = self.mock_on_display_products()
 
         self.exclusion_template_mock = self.mock_template_data()
         self.output = MagicMock()
-        self.session_info_mock = self.mock_session_info()
         self.external_targets_mock = self.mock_kpi_external_targets_data()
         self.kpi_result_values_mock = self.mock_kpi_result_value_table()
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
-        self.assortment_mock = self.mock_assortment_object()
+        # self.assortment_mock = self.mock_assortment_object()
+        self.lvl3_ass_result_mock = self.mock_lvl3_ass_result()
+        self.mock_all_products()
+        self.mock_all_templates()
+        self.mock_position_graph()
+
+    def mock_position_graph(self):
+        self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+
+    def mock_lvl3_ass_result(self):
+        probe_group = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        probe_group.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
+        return probe_group.return_value
+
+    # @classmethod
+    # def setUpClass(cls):
+    #     """ get_some_resource() is slow, to avoid calling it for each test use setUpClass()
+    #         and store the result as class variable
+    #     """
+    #     super(Test_PEPSICOUK, cls).setUpClass()
+    #     cls.template_df_mock = cls.get_exclusion_template_df_all_tests()
+    #
+    # @classmethod
+    # def get_exclusion_template_df_all_tests(cls):
+    #     template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+    #     return template_df
+
+    def mock_all_products(self):
+        self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1,
+                                                                     sheetname='all_products')
+
+    def mock_all_templates(self):
+        self.data_provider_data_mock['all_templates'] = DataTestUnitPEPSICOUK.all_templates
+
+    def mock_scene_info(self, data):
+        self.data_provider_data_mock['scenes_info'] = data.where(data.notnull(), None)
+
+    def mock_scene_item_facts(self, data):
+        self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
+
+    def mock_match_product_in_scene(self, data):
+        self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
+
+    def mock_various_project_connectors(self):
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider')
+        self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
+        self.mock_object('PSProjectConnector', path='KPIUtils_v2.Calculations.BaseCalculations')
+
+    def mock_db_users(self):
+        self.mock_object('DbUsers', path='KPIUtils_v2.DB.CommonV2'), self.mock_object('DbUsers')
+        self.mock_object('DbUsers', path='KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider'), self.mock_object('DbUsers')
+        # self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PSAssortmentProvider')
+        # self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.PsProjectConnector')
+        # self.mock_object('PSProjectConnector', path='KPIUtils_v2.Calculations.BaseCalculations')
+
+        # KPIUtils_v2 / DB / PsProjectConnector
+        # self.mock_object('DbUsers', path='KPIUtils_v2.DB.PsProjectConnector'), self.mock_object('DbUsers')
+
+    def mock_on_display_products(self):
+        on_display_products = self.mock_object('PEPSICOUKCommonToolBox.get_on_display_products',
+                                               path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        on_display_products.return_value = DataTestUnitPEPSICOUK.on_display_products
+        return on_display_products.return_value
 
     def mock_assortment_object(self):
         return self.mock_object('Assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
@@ -73,35 +141,36 @@ class Test_PEPSICOUK(MockingTestCase):
     def mock_kpi_external_targets_data(self):
         external_targets_df = pd.read_excel(DataTestUnitPEPSICOUK.external_targets)
         external_targets = self.mock_object('PEPSICOUKCommonToolBox.get_all_kpi_external_targets',
-                                            path='Projects.PEPSICOUK.Utils.CommonToolBox',
-                                            value=external_targets_df)
-        # external_targets.return_value = external_targets_df
+                                            path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        external_targets.return_value = external_targets_df
         return external_targets.return_value
 
     def mock_probe_groups(self):
         probe_groups_df = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='stitch_groups')
         probe_groups = self.mock_object('PEPSICOUKToolBox.get_probe_group',
                                         value=probe_groups_df)
-        # probe_groups.return_value = probe_groups_df
         return probe_groups.return_value
+
+    def mock_probe_group_for_particular_test_case(self, data):
+        probe_group = self.mock_object('PEPSICOUKSceneToolBox.get_probe_group')
+        probe_group.return_value = data.where(data.notnull(), None)
+        return probe_group.return_value
 
     def mock_custom_entity_data(self):
         custom_entities = self.mock_object('PEPSICOUKCommonToolBox.get_custom_entity_data',
-                                           path='Projects.PEPSICOUK.Utils.CommonToolBox',
-                                           value=DataTestUnitPEPSICOUK.custom_entity)
-        # custom_entities.return_value = DataTestUnitPEPSICOUK.custom_entity
+                                           path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        custom_entities.return_value = DataTestUnitPEPSICOUK.custom_entity
         return custom_entities.return_value
 
     def mock_common_project_connector(self):
-        return self.mock_object('ProjectConnector', path='KPIUtils_v2.DB.CommonV2')
+        return self.mock_object('PSProjectConnector', path='KPIUtils_v2.DB.CommonV2')
 
     def mock_session_info(self):
         return self.mock_object('SessionInfo', path='Trax.Algo.Calculations.Core.Shortcuts')
 
     def mock_static_kpi(self):
-        static_kpi = self.mock_object('Common.get_kpi_static_data', path='KPIUtils_v2.DB.CommonV2',
-                                      value=DataTestUnitPEPSICOUK.kpi_static_data)
-        # static_kpi.return_value = DataTestUnitPEPSICOUK.kpi_static_data
+        static_kpi = self.mock_object('Common.get_kpi_static_data', path='KPIUtils_v2.DB.CommonV2')
+        static_kpi.return_value = DataTestUnitPEPSICOUK.kpi_static_data
         return static_kpi.return_value
 
     def mock_data_provider(self):
@@ -118,7 +187,7 @@ class Test_PEPSICOUK(MockingTestCase):
         return self.mock_object('PSProjectConnector')
 
     def mock_ps_data_provider_project_connector(self):
-        return self.mock_object('PsDataProvider.rds_connection', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
+        return self.mock_object('PSProjectConnector', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
 
     # def mock_static_kpi(self):
     #     static_kpi = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_static_data',
@@ -133,11 +202,11 @@ class Test_PEPSICOUK(MockingTestCase):
         return store_data.return_value
 
     def mock_template_data(self):
-        template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+        # template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+        template_df = Test_PEPSICOUK.template_df_mock
         template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_exclusion_template_data',
-                                              path='Projects.PEPSICOUK.Utils.CommonToolBox',
-                                              value=template_df)
-        # template_data_mock.return_value = template_df
+                                              path='Projects.PEPSICOUK.Utils.CommonToolBox')
+        template_data_mock.return_value = template_df
         return template_data_mock.return_value
 
     def mock_kpi_result_value_table(self):
@@ -152,3 +221,179 @@ class Test_PEPSICOUK(MockingTestCase):
         kpi_score_value.return_value = DataTestUnitPEPSICOUK.kpi_scores_values_table
         return kpi_score_value.return_value
 
+    def mock_scene_kpi_results(self, data):
+        scene_results = self.mock_object('PsDataProvider.get_scene_results', path='KPIUtils_v2.GlobalDataProvider.PsDataProvider')
+        scene_results.return_value = data
+        return
+
+    # def create_scene_scif_matches_scene_info_data_mocks(self, test_case_file_path, datasource):
+    #     scif_test_case = pd.read_excel(test_case_file_path, sheetname='scif')
+    #     matches_test_case = pd.read_excel(test_case_file_path, sheetname='matches')
+    #     self.mock_scene_item_facts(scif_test_case)
+    #     self.mock_match_product_in_scene(matches_test_case)
+    #     self.mock_scene_info(datasource)
+    #     return scif_test_case, matches_test_case
+
+    def test_whatever(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        print tool_box.exclusion_template
+        print tool_box.lvl3_ass_result
+        print tool_box.scene_kpi_results
+        print tool_box.scene_info
+
+    def test_assortment(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        # tool_box.calculate_assortment() # complete mock data later
+        print tool_box.kpi_results
+
+    def test_calculate_hero_shelf_placement_horizontal(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_shelf_placement_hero_skus()
+        print tool_box.kpi_results
+
+    def test_calculate_brand_full_bay_if_relevant_scenes_exist_in_session(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        # self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        # self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_brand_full_bay()
+        expected_list = list()
+        expected_list.append({'kpi_fk': 316, 'numerator': 167, 'score': 0})
+        expected_list.append({'kpi_fk': 327, 'numerator': 167, 'score': 1})
+        expected_list.append({'kpi_fk': 316, 'numerator': 168, 'score': 0})
+        expected_list.append({'kpi_fk': 327, 'numerator': 168, 'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+        self.assertTrue(len(tool_box.kpi_results), 4)
+
+    def test_calculate_brand_full_bay_calculates_no_kpi_results_if_no_relevant_scenes_in_session(self):
+        matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [3])
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_brand_full_bay()
+        self.assertTrue(tool_box.kpi_results.empty)
+        self.assertFalse(tool_box.match_product_in_scene.empty)
+
+    def test_calculate_hero_sku_stacking_by_sequence_number(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_hero_sku_stacking_by_sequence_number()
+        expected_skus_in_results = [1, 2]
+        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results), 2)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_hero_sku_stacking_by_sequence_number_returns_zero_results_if_no_stacked_products(self):
+        matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [2])
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_hero_sku_stacking_by_sequence_number()
+        expected_skus_in_results = [1, 2]
+        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results), 2)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 0, 'score': 0})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_hero_sku_information_kpis_returns_correct_price_info(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_hero_sku_information_kpis()
+        expected_skus_in_results = [1, 2]
+        self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
+        self.assertEquals(len(tool_box.kpi_results), 4)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 317, 'numerator': 1, 'result': 9})
+        expected_list.append({'kpi_fk': 318, 'numerator': 1, 'result': 1})
+        expected_list.append({'kpi_fk': 317, 'numerator': 2, 'result': -1})
+        expected_list.append({'kpi_fk': 318, 'numerator': 2, 'result': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_hero_sku_stacking_width(self):
+        matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [1])
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        sku = 1
+        kpi_fk = 315
+        tool_box.calculate_hero_sku_stacking_width(sku, kpi_fk)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_stacked(self):
+        matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [1])
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        sku = 2
+        kpi_fk = 315
+        tool_box.calculate_hero_sku_stacking_layer_more_than_one(sku, kpi_fk)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    def test_calculate_hero_sku_stacking_layer_more_than_one_if_sku_not_stacked(self):
+        matches, scif = self.create_scif_matches_data_mocks_selected_scenes(DataTestUnitPEPSICOUK.test_case_1, [2])
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        sku = 2
+        kpi_fk = 315
+        tool_box.calculate_hero_sku_stacking_layer_more_than_one(sku, kpi_fk)
+        expected_list = list()
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
+
+    @staticmethod
+    def check_kpi_results(kpi_results_df, expected_results_dict):
+        column = []
+        expression = []
+        condition = []
+        for key, value in expected_results_dict.items():
+            column.append(key)
+            expression.append('==')
+            condition.append(value)
+        query = ' & '.join('{} {} {}'.format(i, j, k) for i, j, k in zip(column, expression, condition))
+        filtered_df = kpi_results_df.query(query)
+        return len(filtered_df)
+
+    def create_scif_matches_data_mocks_selected_scenes(self, test_case_file_path, scene_numbers):
+        scif_test_case = pd.read_excel(test_case_file_path, sheetname='scif')
+        matches_test_case = pd.read_excel(test_case_file_path, sheetname='matches')
+        scif_scene = scif_test_case[scif_test_case['scene_fk'].isin(scene_numbers)]
+        matches_scene = matches_test_case[matches_test_case['scene_fk'].isin(scene_numbers)]
+        self.mock_scene_item_facts(scif_scene)
+        self.mock_match_product_in_scene(matches_scene)
+        return matches_scene, scif_scene

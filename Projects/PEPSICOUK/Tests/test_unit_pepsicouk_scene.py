@@ -64,7 +64,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         self.mock_all_products()
         self.mock_all_templates()
-        self.mock_block() # maybe not mock - will need to mock connector
+        self.mock_block()
         self.mock_adjacency()
 
     def mock_block(self):
@@ -125,7 +125,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
         return template_data_mock.return_value
 
     def mock_kpi_external_targets_data(self):
-        print DataTestUnitPEPSICOUK.external_targets
+        # print DataTestUnitPEPSICOUK.external_targets
         external_targets_df = pd.read_excel(DataTestUnitPEPSICOUK.external_targets)
         external_targets = self.mock_object('PEPSICOUKCommonToolBox.get_all_kpi_external_targets',
                                             path='Projects.PEPSICOUK.Utils.CommonToolBox')
@@ -303,6 +303,20 @@ class Test_PEPSICOUKScene(MockingTestCase):
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
 
+    def test_calculate_horizontal_placement_does_not_calculate_kpis_if_irrelevant_scene(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 3)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_shelf_placement_horizontal()
+        self.assertTrue(scene_tb.kpi_results.empty)
+
+    def test_calculate_(self):
+        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
+            DataTestUnitPEPSICOUK.test_case_1, 1)
+        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
+        scene_tb.calculate_shelf_placement_horizontal()
+        print scene_tb.kpi_results
+
     def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
         probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 2)
@@ -325,8 +339,6 @@ class Test_PEPSICOUKScene(MockingTestCase):
         scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
         scene_tb.calculate_shelf_placement_vertical_mm()
         self.assertTrue(scene_tb.kpi_results.empty)
-
-        # grouped_matches = matches.groupby(['product_fk', 'vertical_positioning_assumption_kpi_fk'])
 
     def test_calculate_shelf_placement_vertical_mm_in_case_excluded_matches_exist_and_different_stitch_groups(self):
         probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(

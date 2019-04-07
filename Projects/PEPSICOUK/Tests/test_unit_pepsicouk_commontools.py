@@ -21,7 +21,6 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         return 'Projects.PEPSICOUK.Utils.CommonToolBox'
 
     def set_up(self):
-        # super(Test_PEPSICOUK, self).setUp()
         super(Test_PEPSICOUKCommon, self).set_up()
         self.mock_data_provider()
         self.data_provider_mock.project_name = 'Test_Project_1'
@@ -45,8 +44,7 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         self.mock_all_templates()
 
     def mock_db_users(self):
-        return self.mock_object('DbUsers',
-                                path='KPIUtils_v2.DB.CommonV2')
+        return self.mock_object('DbUsers', path='KPIUtils_v2.DB.CommonV2')
 
     def mock_all_products(self):
         self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1,
@@ -270,9 +268,9 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         result_fk = tool_box.get_kpi_score_value_pk_by_value('non_existing_value')
         self.assertIsNone(result_fk)
 
-    def test_whatever(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
-        print tool_box.all_templates
+    # def test_whatever(self):
+    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    #     tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+    #     print tool_box.all_templates
 
