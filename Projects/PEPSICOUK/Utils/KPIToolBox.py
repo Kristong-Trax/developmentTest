@@ -484,9 +484,15 @@ class PEPSICOUKToolBox:
         return id_dict
 
     def get_hero_results_df(self, scene_placement_results):
+        # kpi_results = scene_placement_results.groupby(['kpi_level_2_fk', 'numerator_id'], as_index=False).agg(
+        #     {'numerator_result': np.sum,
+        #      'denominator_result': np.sum})
         kpi_results = scene_placement_results.groupby(['kpi_level_2_fk', 'numerator_id'], as_index=False).agg(
-            {'numerator_result': np.sum,
-             'denominator_result': np.sum})
+            {'numerator_result': np.sum})
+        products_df = scene_placement_results.groupby(['numerator_id'], as_index=False).agg(
+            {'numerator_result': np.sum})
+        products_df.rename(columns={'numerator_result': 'denominator_result'}, inplace=True)
+        kpi_results = kpi_results.merge(products_df, on='numerator_id', how='left')
         hero_skus = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].values.tolist()
         # hero_skus = self.filtered_scif['product_fk'].unique().tolist() # uncomment after
         hero_results = kpi_results[kpi_results['numerator_id'].isin(hero_skus)]
