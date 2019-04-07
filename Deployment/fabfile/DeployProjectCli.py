@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     except Exception as e:
         print e
-        raise Exception("unable to deploy project ")
+        sys.exit(1)
         # ProjectDeploy.send_mail(project, tag, e)
 
 
