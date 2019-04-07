@@ -44,4 +44,4 @@ class INBEVNLINBEVBEGenerator:
         self.tool_box.save_custom_scene_item_facts_results()
         self.tool_box.save_linear_length_results()
         Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
-        self.tool_box.commit_results_data()
+        self.tool_box.common.commit_results_data()
