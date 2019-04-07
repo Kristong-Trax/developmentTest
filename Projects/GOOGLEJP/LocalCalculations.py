@@ -23,23 +23,20 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlejp calculations')
     Config.init()
     project_name = 'googlejp'
-    sessions = ['21df5d78-8646-45c8-ac73-dc203cd0f4cc']
+    sessions = ['a1361455-61f0-4d4e-ba6c-a69a82250ee4']
     for session in sessions:
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
-        scif = data_provider['scene_item_facts']
-        scenes = scif['scene_id'].unique().tolist()
-
-        # scenes = [392]
-
-        for scene in [49786]:
-            print('scene {}'.format(scene))
-            data_provider = KEngineDataProvider(project_name)
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            SceneCalculations(data_provider).calculate_kpis()
+        # data_provider = KEngineDataProvider(project_name)
+        # data_provider.load_session_data(session)
+        # scif = data_provider['scene_item_facts']
+        # scenes = scif['scene_id'].unique().tolist()
+        # for scene in scenes:
+        #     print('scene {}'.format(scene))
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()

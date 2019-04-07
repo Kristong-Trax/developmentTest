@@ -28,7 +28,7 @@ KPS_RESULT = 'report.kps_results'
 CATEGORIES = ['Sweets', 'Chewing Gum & Mints', 'Gum', 'Chocolate', 'Cookies & Crackers', 'Cough']
 
 MM_TO_FEET_CONVERSION = 0.0032808399
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_MONDELEZUS_V1.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', 'KENGINE_MONDELEZUS_V2.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -150,7 +150,7 @@ class MONDELEZUSToolBox:
         """
         :param threshold: The ratio for a bay to be counted as part of a category.
         :param filters: These are the parameters which the data frame is filtered by.
-        :return: The total shelf width (in mm) the relevant facings occupy.
+        :return: The tot al shelf width (in mm) the relevant facings occupy.
         """
 
         try:

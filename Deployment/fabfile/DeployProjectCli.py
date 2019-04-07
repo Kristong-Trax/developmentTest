@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
@@ -18,6 +19,13 @@ if __name__ == '__main__':
     Config.init()
     LoggerInitializer.init('Deploy')
     args = parse_arguments()
-    deploy_instance = ProjectDeploy(project=args.project)
-    deploy_instance.deploy()
-    pass
+    try:
+        deploy_instance = ProjectDeploy(project=args.project)
+        deploy_instance.deploy()
+
+    except Exception as e:
+        print e
+        raise Exception("unable to deploy project ")
+        # ProjectDeploy.send_mail(project, tag, e)
+
+

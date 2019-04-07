@@ -20,7 +20,7 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('googlejp calculations')
+    LoggerInitializer.init('batmx calculations')
     Config.init()
     project_name = 'batmx'
     sessions = ['25BB1516-642F-428F-9D07-BF79BC1B5B66']
@@ -29,15 +29,15 @@ if __name__ == '__main__':
         # data_provider.load_session_data(session)
         # scif = data_provider['scene_item_facts']
         # scenes = scif['scene_id'].unique().tolist()
-        scenes = [60, 61]
-        for scene in scenes:
-            print('scene')
-            data_provider = KEngineDataProvider(project_name)
-            data_provider.load_scene_data(session, scene)
-            output = VanillaOutput()
-            SceneVanillaCalculations(data_provider, output).run_project_calculations()
-            save_scene_item_facts_to_data_provider(data_provider, output)
-            SceneCalculations(data_provider).calculate_kpis()
+        # scenes = [60, 61]
+        # for scene in scenes:
+        #     print('scene')
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_scene_data(session, scene)
+        #     output = VanillaOutput()
+        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        #     save_scene_item_facts_to_data_provider(data_provider, output)
+        #     SceneCalculations(data_provider).calculate_kpis()
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
