@@ -22,10 +22,10 @@ if __name__ == '__main__':
     try:
         deploy_instance = ProjectDeploy(project=args.project)
         deploy_instance.deploy()
-        pass
+
     except Exception as e:
         print e
+        raise Exception("unable to deploy project ")
         # ProjectDeploy.send_mail(project, tag, e)
-        sys.exit(1)
 
-    sys.exit(0)
+
