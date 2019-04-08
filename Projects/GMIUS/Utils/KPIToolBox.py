@@ -103,9 +103,10 @@ class ToolBox:
         # print(kpi_name)
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
+        if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -121,7 +122,7 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                # Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
                 else:
@@ -789,22 +790,23 @@ class ToolBox:
         return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        threshold = self.read_cell_from_line(kpi_line, 'Threshold')
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         filters.update({'stacking_layer': 1})
         mpis = self.filter_df(self.mpis, filters)
-        if mpis.empty():
+        if mpis.empty:
             return
-        bays = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index().sort_values('scene_match_fk').iloc[-1, :]
+        bay_filter = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index()\
+                         .sort_values('scene_match_fk').iloc[-1, :].drop('scene_match_fk').to_dict()
+        shelves = self.filter_df(self.full_mpis, bay_filter)['shelf_number'].max()
 
 
         # num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
-        # potential_results = self.get_results_value(kpi_line)
-        # result = self.semi_numerical_results(num_shelves, potential_results, form='{} Shelves')
-        # kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
-        #           'target': None}
-        # return kwargs
+        potential_results = self.get_results_value(kpi_line)
+        result = self.semi_numerical_results(shelves, potential_results, form='{} Shelves')
+        kwargs = {'numerator_result': shelves, 'score': 1, 'result': result,
+                  'target': None}
+        return kwargs
 
     def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # filters = self.get_kpi_line_filters(kpi_line)
