@@ -6,6 +6,7 @@ __author__ = 'hunter'
 class Const(object):
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Liberty_bottlers_Template_Final_Final_Final.xlsx')
     LIBERTY = ' - Liberty'
+    DRILLDOWN = ' - Drilldown'
     RED_SCORE_PARENT = 'RED SCORE - Liberty'
     BODY_ARMOR_BRAND_FK = 203
     MANUFACTURER_FK = 1
@@ -42,7 +43,7 @@ class Const(object):
     MARKET_SHARE_TARGET = 'market_share_target'
 
     # Availability columns
-    BRAND = 'Brand'
+    BRAND = 'brand'
     CATEGORY = 'category'
     EXCLUDED_BRAND = 'Excluded_Brand'
     MINIMUM_NUMBER_OF_SKUS = 'number_required_SKUS'
@@ -56,6 +57,9 @@ class Const(object):
 
     # Share of Display columns
     INCLUDE_BODY_ARMOR = 'include_body_armor'
+
+    # Survey columns
+    QUESTION_TEXT = 'question_text'
 
     # minimum_facings columns
     SIZE = 'size'

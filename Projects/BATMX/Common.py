@@ -7,11 +7,10 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Queries import Queries
 
-__author__ = 'Ilan_Elyashiv_Natalya'
+__author__ = 'Ilan_Elyashiv'
 
 
 class Common(object):
-
     KPI_SESSION_RESULTS_TABLE = 'report.kpi_level_2_results'
     KPI_SCENE_RESULTS_TABLE = 'report.scene_kpi_results'
     HIERARCHY_SESSION_TABLE = "report.kpi_hierarchy"
@@ -46,7 +45,7 @@ class Common(object):
 
     def get_kpi_static_data(self):
         """
-        This function extracts the static new KPI data (new tables) and saves it into one data frame.
+        This function extracts the static new KPI data (new tables) and saves it into one global data frame.
         The data is taken from static.kpi_level_2.
         """
         query = Queries.get_new_kpi_data()
@@ -151,12 +150,10 @@ class Common(object):
                            denominator_result_after_actions=None, numerator_result_after_actions=0,
                            weight=None, kpi_level_2_target_fk=None, context_id=None, parent_fk=None, target=None,
                            identifier_parent=None, identifier_result=None, should_enter=False, by_scene=False,
-                           scene_result_fk=None, only_hierarchy=False):
+                           scene_result_fk=None, only_hierarchy=False, only_hierarchy2=False):
         """
             This function creates the result data frame of new tables KPI,
             and appends the insert SQL query into the queries' list, later to be written to the DB.
-
-
             only_heirchey: in case you need to connection between session and existing scence results
         """
         table = self.KPI_SESSION_RESULTS_TABLE
@@ -171,15 +168,16 @@ class Common(object):
                                                  context_id=context_id, parent_fk=parent_fk, target=target,
                                                  numerator_result_after_actions=numerator_result_after_actions)
         query = insert(attributes, table)
-        # the condition for fictive_fk is added not to interfere with the code that uses fictive_fk (we can transfer the relevant
-        # projects and remove this condition
-        if only_hierarchy and by_scene == True:
-            # raise FunctionUsageError('only_hierarchy and by_scene arguments cannot both be set to True')
+        # the condition for fictive_fk is added not to interfere with the code that uses fictive_fk (we can change relevant
+        # projects and remove this condition)
+        if only_hierarchy and by_scene is True:
             Log.error('only_hierarchy and by_scene arguments cannot both be set to True')
-            return
-
-        if (only_hierarchy == True and by_scene == False) or fk == self.FICTIVE_FK:
-            query = ''
+        if only_hierarchy is True and should_enter is False:
+            Log.error('only_hierarchy cannot be true and should_enter is False')
+        if (only_hierarchy is True and by_scene is False) or fk == self.FICTIVE_FK:
+            query = '' if only_hierarchy2 is False else \
+                'INSERT INTO report.scene_kpi_hierarchy (scene_kpi_results_fk) VALUES ({})'.format(
+                    scene_result_fk)
             new_result = {
                 self.SESSION_RESULT_FK: None, self.SHOULD_ENTER: should_enter,
                 self.IDENTIFIER_PARENT: identifier_parent,
@@ -235,7 +233,7 @@ class Common(object):
 
     @log_runtime('Saving to DB')
     def commit_results_data(self, result_entity=SESSION, scene_session_hierarchy=False):
-    # def commit_results_data(self, by_scene=False, scene_session_hierarchy=False):
+        # def commit_results_data(self, by_scene=False, scene_session_hierarchy=False):
         """
         We need to "save place" (transaction) for all the queries, enter the first pk to refresh_pks and
         then create queries function, and commit all those queries (in the tree, only the necessary ones)
@@ -246,13 +244,18 @@ class Common(object):
         self.refresh_parents()
         delete_queries = {'delete_old_session_specific_tree_query': ''}
         if result_entity == self.SCENE:
-            # delete_queries['delete_old_session_specific_tree_query'] = self.queries.get_delete_specific_tree_queries(self.scene_id, self.HIERARCHY_SESSION_TABLE)
-            # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_scene_queries(self.scene_id, self.HIERARCHY_SCENE_TABLE)
+            # delete_queries['delete_old_session_specific_tree_query'] = self.queries.get_delete_specific_tree_queries(
+            #     self.scene_id, self.HIERARCHY_SESSION_TABLE)
+            # delete_queries['delete_old_tree_query'] = \
+            #     self.queries.get_delete_tree_scene_queries(self.scene_id, self.HIERARCHY_SCENE_TABLE)
             delete_queries['delete_query'] = self.queries.get_delete_scene_results_query_from_new_tables(self.scene_id)
         elif result_entity == self.SESSION:
-            # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_queries(self.session_id,  self.HIERARCHY_SESSION_TABLE)
-            # delete_queries['delete_old_tree_query_part2'] = self.queries.get_delete_tree_queries_parent_fk(self.session_id,  self.HIERARCHY_SESSION_TABLE)
-            delete_queries['delete_query'] = self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
+            # delete_queries['delete_old_tree_query'] = self.queries.get_delete_tree_queries(self.session_id,
+            #  self.HIERARCHY_SESSION_TABLE)
+            # delete_queries['delete_old_tree_query_part2'] =
+            # self.queries.get_delete_tree_queries_parent_fk(self.session_id,  self.HIERARCHY_SESSION_TABLE)
+            delete_queries['delete_query'] = \
+                self.queries.get_delete_session_results_query_from_new_tables(self.session_id)
         else:
             Log.error('Cannot Calculate results per {}'.format(result_entity))
             return
@@ -268,6 +271,8 @@ class Common(object):
         # cur.execute(delete_query)
         Log.info('Start committing results')
         cur.execute(insert_queries[0] + ";")
+        if len(insert_queries) > 1:
+            cur.execute(insert_queries[1] + ";")
         cur.execute(self.queries.get_last_id())
         last_id = cur.fetchmany()
         self.refresh_pks(int(last_id[0][0]))

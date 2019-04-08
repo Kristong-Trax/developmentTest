@@ -64,6 +64,7 @@ class ToolBox:
         self.dependencies = {}
         self.dependency_lookup = {}
         self.base_measure = None
+        self.global_fail = 0
 
     # main functions:
     def main_calculation(self, template_path):
@@ -81,6 +82,7 @@ class ToolBox:
         self.res_dict = self.template[Const.RESULT].set_index('Result Key').to_dict('index')
 
         for i, main_line in main_template.iterrows():
+            self.global_fail = 0
             self.calculate_main_kpi(main_line)
 
         # self.flag_failures()
@@ -99,10 +101,10 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_type == Const.AGGREGATION:
+        if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.ORIENT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
 
 
@@ -120,11 +122,16 @@ class ToolBox:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
                 Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
-            if not isinstance(all_kwargs, list):
-                all_kwargs = [all_kwargs]
+                if self.global_fail:
+                    all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                else:
+                    all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+            finally:
+                if not isinstance(all_kwargs, list):
+                    all_kwargs = [all_kwargs]
                 for kwargs in all_kwargs:
                     if not kwargs or kwargs['score'] is None:
-                        kwargs = {'score': 0, 'result': 0, 'failed': 1}
+                        kwargs = {'score': 0, 'result': None, 'failed': 1}
                     self.write_to_db(kpi_name, **kwargs)
                     self.dependencies[kpi_name] = kwargs['result']
 
@@ -584,6 +591,7 @@ class ToolBox:
             mpis = self.filter_df(mpis, filters)
             mpis_dict[scene] = mpis
             if mpis.empty:
+                score = -1
                 continue
             result = self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={
@@ -596,7 +604,9 @@ class ToolBox:
                 score = 1
                 orientation = blocks.loc[0, 'orientation']
                 break
-
+        if score == -1:
+            self.global_fail = 1
+            raise TypeError('No Data Found fo kpi "'.format(kpi_name))
         return score, orientation, mpis_dict, blocks, result
 
     def calculate_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
@@ -615,26 +625,42 @@ class ToolBox:
             msl_mpis = mpis_dict[self.find_MSL(relevant_scif)[0]]
             all_mpis = pd.concat(list(mpis_dict.values()))
             if not msl_mpis.empty:
-                result = [x for x in potential_results if 'interspersed' in orientation.lower()][0]
+                result = [x for x in potential_results if 'interspersed' in x.lower()][0]
             elif not all_mpis.empty:
-                result = [x for x in potential_results if 'shelved' in orientation.lower()][0]
+                result = [x for x in potential_results if 'shelved' in x.lower()][0]
             else:
-                result = [x for x in potential_results if 'distribution' in orientation.lower()][0]
+                result = [x for x in potential_results if 'distribution' in x.lower()][0]
 
         # result_fk = self.result_values_dict[orientation]
-        kwargs = {'numerator_id': result, 'numerator_result': score, 'score': score, 'result': result,
-                  'target': 1}
+        kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
         return kwargs
 
     def calculate_yogurt_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
         if score:
+            if self.find_MSL(relevant_scif)[0] in blocks['scene_fk'].values:
+                result = 'Blocked'
+            else:
+                result = 'Not in MSL for Yogurt'
+        elif score == 0:
+            if not mpis_dict[self.find_MSL(relevant_scif)[0]].empty:
+                result = 'Not Blocked'
+            else:
+                result = 'Not Blocked and Not in MSL for Yogurt'
+
+        kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
+        return kwargs
+
+    def calculate_basic_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, _, _, _, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        if score:
             result = 'Blocked'
-        elif not mpis_dict[self.find_MSL(relevant_scif)[0]].empty:
-            result = 'Not Blocked'
         else:
-            result = 'Not in MSL for Yogurt'
+            result = 'Not Blocked'
+
+        kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
+        return kwargs
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this could be updated to use base_block() if we don't need to respect unique scene results
@@ -720,6 +746,10 @@ class ToolBox:
     def calculate_base_measure(self, kpi_name, kpi_line, relevant_scif, general_filters):
         mpis = self.make_mpis(kpi_line, general_filters)
         master_mpis = self.filter_df(self.full_mpis.copy(), Const.IGN_STACKING)
+        if sum([1 if 'ignore' in x else 0 for x in kpi_line.index]):
+            ign_filter = self.get_kpi_line_filters(kpi_line, 'ignore')
+            mpis = self.filter_df(mpis, ign_filter, exclude=1)
+            master_mpis = self.filter_df(master_mpis, ign_filter, exclude=1)
         mm_sum = 0
         if mpis.empty:
             return {"score": None}
@@ -1107,6 +1137,8 @@ class ToolBox:
                 return self.calculate_tub_block
             elif result.lower() == 'blocking yogurt':
                 return self.calculate_yogurt_block
+            elif result.lower() == 'basic block':
+                return self.calculate_basic_block
         elif kpi_type == Const.BASE_MEASURE:
             return self.calculate_base_measure
         elif kpi_type == Const.ORIENT:

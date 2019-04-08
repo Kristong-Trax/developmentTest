@@ -109,4 +109,3 @@ def pad_vertical_data(data, columns):
                 column_data.append(last_value)
             data[column] = column_data
     return data
-

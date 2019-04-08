@@ -74,28 +74,19 @@ class BATMXToolBox:
         for planogram_fk in exit_results['numerator_id'].unique().tolist():
             pog_exit_results = exit_results[exit_results['numerator_id'] == planogram_fk]
             pog_exit_score = self.get_average(pog_exit_results, 'score')
-            pog_exit_fks = pog_exit_results['pk'].tolist()
-            pog_exit_identifier = self.common.get_dictionary(planogram_fk=planogram_fk, entry_exit=Const.EXIT)
+            pog_exit_identifier = self.common.get_dictionary(
+                planogram_fk=planogram_fk, entry_exit=Const.EXIT, kpi_fk=pog_kpi_fk)
             self.common.write_to_db_result(
                 fk=pog_kpi_fk, numerator_id=planogram_fk, denominator_id=self.store_id,
                 score=pog_exit_score, result=pog_exit_score, identifier_result=pog_exit_identifier,
                 identifier_parent=identifier_visit, should_enter=True)
-            for scene_result_fk in pog_exit_fks:
+            pog_exit_fks = pog_exit_results['pk'].tolist()
+            pog_entry_results = entry_results[entry_results['numerator_id'] == planogram_fk]
+            pog_result_fks = pog_entry_results['pk'].tolist() + pog_exit_fks
+            for scene_result_fk in pog_result_fks:
                 self.common.write_to_db_result(
                     should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
                     denominator_id=self.store_id, identifier_parent=pog_exit_identifier, only_hierarchy=True)
-            pog_entry_results = entry_results[entry_results['numerator_id'] == planogram_fk]
-            pog_entry_score = self.get_average(pog_entry_results, 'score')
-            pog_entry_fks = pog_entry_results['pk'].tolist()
-            pog_entry_identifier = self.common.get_dictionary(planogram_fk=planogram_fk, entry_exit=Const.ENTRY)
-            self.common.write_to_db_result(
-                fk=pog_kpi_fk, numerator_id=planogram_fk, denominator_id=self.store_id,
-                score=pog_entry_score, result=pog_entry_score, identifier_result=pog_entry_identifier,
-                identifier_parent=identifier_visit, should_enter=True)
-            for scene_result_fk in pog_entry_fks:
-                self.common.write_to_db_result(
-                    should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
-                    denominator_id=self.store_id, identifier_parent=pog_entry_identifier, only_hierarchy=True)
 
     def write_score_and_delta_sos(self, kpi_names):
         visit_kpi_fk = self.common.get_kpi_fk_by_kpi_name(kpi_names[Const.VISIT_LEVEL])
@@ -112,7 +103,7 @@ class BATMXToolBox:
         for scene_result_fk in fixture_results_pk:
             self.common.write_to_db_result(
                 should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
-                denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True)
+                denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True, only_hierarchy2=True)
 
     def calculate_oos(self):
         visit_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Const.OOS_VISIT)
@@ -132,7 +123,8 @@ class BATMXToolBox:
             for scene_result_fk in fixture_results_pk:
                 self.common.write_to_db_result(
                     should_enter=True, scene_result_fk=scene_result_fk, numerator_id=self.manufacturer_fk,
-                    denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True)
+                    denominator_id=self.store_id, identifier_parent=identifier, only_hierarchy=True,
+                    only_hierarchy2=True)
 
     @staticmethod
     def get_average(df, column):
