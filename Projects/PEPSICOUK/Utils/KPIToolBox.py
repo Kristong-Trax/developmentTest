@@ -387,7 +387,8 @@ class PEPSICOUKToolBox:
 
                 self.add_kpi_result_to_kpi_results_df([stacking_kpi_fk, sku, None, score, score])
 
-    def get_stack_data(self, row):
+    @staticmethod
+    def get_stack_data(row):
         is_stack = False
         sequences_list = row['all_sequences'][0:-1].split(',')
         count_sequences = collections.Counter(sequences_list)
@@ -751,7 +752,7 @@ class PEPSICOUKToolBox:
                                                denominator_result=denominator_linear, result=result, score=score,
                                                target=row['Target'], identifier_parent=row.identifier_parent,
                                                should_enter=True)
-                self.add_kpi_result_to_kpi_results_df([result.kpi_fk_lvl2, row.numerator_id, row.denominator_id, result,
+                self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result,
                                                        score])
 
             sos_targets['count'] = 1
@@ -792,11 +793,12 @@ class PEPSICOUKToolBox:
             data_json_df = self.commontools.unpack_external_targets_json_fields_to_df(relevant_targets_df, 'data_json')
             relevant_targets_df = relevant_targets_df.merge(data_json_df, on='pk', how='left')
 
-            kpi_data = self.kpi_static_data[self.kpi_static_data['delete_time'].isnull()][['pk', 'type']].drop_duplicates() # see if I need more columns
-            relevant_targets_df = relevant_targets_df.merge(kpi_data, left_on='kpi_level_2_fk', right_on='pk', how='left')
+            kpi_data = self.kpi_static_data[['pk', 'type']].drop_duplicates()
+            kpi_data.rename(columns={'pk': 'kpi_level_2_fk'}, inplace=True)
+            relevant_targets_df = relevant_targets_df.merge(kpi_data, left_on='kpi_level_2_fk', right_on='kpi_level_2_fk', how='left')
             linear_sos_fk = self.common.get_kpi_fk_by_kpi_type(self.LINEAR_SOS_INDEX)
             if brand_vs_brand:
-                relevant_targets_df = relevant_targets_df[relevant_targets_df['KPI Parent']==linear_sos_fk]
+                relevant_targets_df = relevant_targets_df[relevant_targets_df['KPI Parent'] == linear_sos_fk]
             else:
                 relevant_targets_df = relevant_targets_df[~(relevant_targets_df['KPI Parent'] == linear_sos_fk)]
         return relevant_targets_df
@@ -813,20 +815,9 @@ class PEPSICOUKToolBox:
         try:
             if row[type_field_name].endswith("_fk"):
                 item_id = row[value_field_name]
-                # item_id = self.all_products[self.all_products[row[type_field_name]] ==
-                #                                                  row[value_field_name]][type_field_name].values[0]
             else:
+                # print row[type_field_name], ' :', row[value_field_name]
                 item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]]['pk'].values[0]
-            # fk_field = '{}_fk'.format(row[type_field_name])
-            # name_field = row[type_field_name].replace('_name', '')
-            # if fk_field in all_products_columns:
-            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]][fk_field].values[0]
-            # elif name_field in all_products_columns:
-            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]][name_field].values[0]
-            # elif row[type_field_name].contains('product'):
-            #     item_id = self.all_products[self.all_products[row[type_field_name]] == row[value_field_name]]['product_fk'].values[0]
-            # else:
-            #     item_id = self.custom_entities[self.custom_entities['name'] == row[value_field_name]].values[0]
         except KeyError as e:
             Log.error('No id found for field {}. Error: {}'.format(row[type_field_name], e))
             item_id = None
@@ -845,7 +836,7 @@ class PEPSICOUKToolBox:
     def calculate_sos(self, sos_filters, **general_filters):
         numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
         denominator_linear = self.calculate_share_space(**general_filters)
-        return numerator_linear, denominator_linear
+        return float(numerator_linear), float(denominator_linear)
 
     def calculate_share_space(self, **filters):
         filtered_scif = self.filtered_scif[self.toolbox.get_filter_condition(self.filtered_scif, **filters)]

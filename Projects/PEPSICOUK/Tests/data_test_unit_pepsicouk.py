@@ -55,7 +55,8 @@ class DataTestUnitPEPSICOUK(object):
          {'entity_type_fk': 1005, 'name': 'Pringles_FTT_Tubes', 'parent_id': nan, 'pk': 165},
          {'entity_type_fk': 1005, 'name': 'Hula Hoops_LMP_Snacks', 'parent_id': nan, 'pk': 166},
          {'entity_type_fk': 1005, 'name': 'DORITOS GROUP', 'parent_id': nan, 'pk': 167},
-         {'entity_type_fk': 1005, 'name': 'Walkers Crisps_Small MP PC', 'parent_id': nan, 'pk': 168}]
+         {'entity_type_fk': 1005, 'name': 'Walkers Crisps_Small MP PC', 'parent_id': nan, 'pk': 168},
+         {'entity_type_fk': 1002, 'name': 'EAT REAL HUMMUS LENTIL & QUINOA CHIPS', 'pk': 10}]
     )
 
     store_data = pd.DataFrame.from_records([{
