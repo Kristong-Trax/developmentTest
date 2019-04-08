@@ -107,7 +107,7 @@ class ToolBox:
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
-            print(kpi_name)
+        #     print(kpi_name)
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
