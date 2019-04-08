@@ -106,12 +106,13 @@ class Test_PEPSICOUKCommon(MockingTestCase):
 
     def mock_kpi_result_value_table(self):
         kpi_result_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
-                                            path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                            path='Projects.PEPSICOUK.Utils.CommonToolBox',
+                                           )
         kpi_result_value.return_value = DataTestUnitPEPSICOUK.kpi_results_values_table
         return kpi_result_value.return_value
 
     def mock_kpi_score_value_table(self):
-        kpi_score_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
+        kpi_score_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_score_values_df',
                                            path='Projects.PEPSICOUK.Utils.CommonToolBox',)
         kpi_score_value.return_value = DataTestUnitPEPSICOUK.kpi_scores_values_table
         return kpi_score_value.return_value
@@ -211,7 +212,7 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
         template_filters = tool_box.get_filters_dictionary(tool_box.exclusion_template)
         filters = tool_box.get_filters_for_scif_and_matches(template_filters)
-        expected_result = {'scene_fk': [1, 2], 'product_fk': [1, 2, 3, 4]}
+        expected_result = {'scene_fk': [1, 2], 'product_fk': [1, 2, 3, 4, 5]}
         self.assertDictEqual(filters, expected_result)
 
     def test_unpack_all_external_targets_forms_data_frame_with_all_relevant_columns_and_all_records(self):
@@ -220,7 +221,7 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         expected_columns_in_output_df = DataTestUnitPEPSICOUK.external_targets_columns
         validation_list = [col in columns for col in expected_columns_in_output_df]
         self.assertTrue(all(validation_list))
-        self.assertEquals(len(tool_box.all_targets_unpacked), 28)
+        self.assertEquals(len(tool_box.all_targets_unpacked), 32)
 
     def test_unpack_all_external_targets_kpi_relevant_columns_are_filled(self):
         tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
@@ -254,6 +255,7 @@ class Test_PEPSICOUKCommon(MockingTestCase):
 
     def test_get_yes_no_score_type_fk_if_score_value_zero(self):
         tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        print tool_box.kpi_score_values
         expected_res = 5
         result_fk = tool_box.get_yes_no_score(0)
         self.assertEquals(result_fk, expected_res)

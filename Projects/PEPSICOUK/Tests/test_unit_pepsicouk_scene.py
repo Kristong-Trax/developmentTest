@@ -310,13 +310,6 @@ class Test_PEPSICOUKScene(MockingTestCase):
         scene_tb.calculate_shelf_placement_horizontal()
         self.assertTrue(scene_tb.kpi_results.empty)
 
-    def test_calculate_(self):
-        probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
-            DataTestUnitPEPSICOUK.test_case_1, 1)
-        scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
-        scene_tb.calculate_shelf_placement_horizontal()
-        print scene_tb.kpi_results
-
     def test_calculate_shelf_placement_vertical_mm_correcly_places_products_if_no_excluded_matches(self):
         probe_group, matches, scif = self.create_scene_scif_matches_stitch_groups_data_mocks(
             DataTestUnitPEPSICOUK.test_case_1, 2)

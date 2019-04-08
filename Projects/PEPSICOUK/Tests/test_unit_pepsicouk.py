@@ -226,25 +226,25 @@ class Test_PEPSICOUK(MockingTestCase):
         scene_results.return_value = data
         return
 
-    def test_whatever(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-        print tool_box.exclusion_template
-        print tool_box.lvl3_ass_result
-        print tool_box.scene_kpi_results
-        print tool_box.scene_info
-
-    def test_assortment(self):
-        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-        # tool_box.calculate_assortment() # complete mock data later
-        print tool_box.kpi_results
+    # def test_whatever(self):
+    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+    #     print tool_box.exclusion_template
+    #     print tool_box.lvl3_ass_result
+    #     print tool_box.scene_kpi_results
+    #     print tool_box.scene_info
+    #
+    # def test_assortment(self):
+    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+    #     # tool_box.calculate_assortment() # complete mock data later
+    #     print tool_box.kpi_results
 
     def test_calculate_hero_shelf_placement_horizontal(self):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
