@@ -143,7 +143,7 @@ class ToolBox:
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
-            if not super_cat:
+            if not super_cat or pd.isnull(super_cat):
                 continue
             den_id = self.entity_dict[super_cat.lower()]
             levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
