@@ -6,7 +6,6 @@ from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.Queries import Queries
-from KPIUtils_v2.DB.Errors import FunctionUsageError
 
 __author__ = 'Ilan_Elyashiv'
 
@@ -173,11 +172,8 @@ class Common(object):
         # projects and remove this condition)
         if only_hierarchy and by_scene is True:
             Log.error('only_hierarchy and by_scene arguments cannot both be set to True')
-            raise FunctionUsageError('only_hierarchy and by_scene arguments cannot both be set to True')
         if only_hierarchy is True and should_enter is False:
             Log.error('only_hierarchy cannot be true and should_enter is False')
-            raise FunctionUsageError('only_hierarchy cannot be true and should_enter is False')
-        #ToDo: remove fictive fk usage from ccit and other projects and replace with current usage of the function
         if (only_hierarchy is True and by_scene is False) or fk == self.FICTIVE_FK:
             query = '' if only_hierarchy2 is False else \
                 'INSERT INTO report.scene_kpi_hierarchy (scene_kpi_results_fk) VALUES ({})'.format(
