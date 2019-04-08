@@ -100,12 +100,14 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # print(kpi_name)
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
+        if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        # if kpi_name == 'How is RTS Progresso blocked?':
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
+        #     print(kpi_name)
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -121,7 +123,7 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                # Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
                 else:
@@ -571,7 +573,8 @@ class ToolBox:
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base):
+        general_filters = dict(general_filters_base)
         score = 0
         blocks = pd.DataFrame()
         result = pd.DataFrame()
@@ -661,6 +664,20 @@ class ToolBox:
 
         kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
         return kwargs
+
+    def calculate_blocking_all_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        filters = self.get_kpi_line_filters(kpi_line)
+        result = orientation
+        if score:
+            mpis = self.filter_df(self.full_mpis, general_filters)
+            bays = mpis.groupby(['scene_fk', 'bay_number'])
+            for (scene, bay), df in bays:
+                df = self.filter_df(df, filters, exclude=1)
+                if df.empty:
+                    result = 'Block covering all shelves'
+
+        kwargs = {'score': score, 'result': result}
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this could be updated to use base_block() if we don't need to respect unique scene results
@@ -789,22 +806,23 @@ class ToolBox:
         return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        threshold = self.read_cell_from_line(kpi_line, 'Threshold')
         filters = self.get_kpi_line_filters(kpi_line)
         filters.update(general_filters)
         filters.update({'stacking_layer': 1})
         mpis = self.filter_df(self.mpis, filters)
-        if mpis.empty():
+        if mpis.empty:
             return
-        bays = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index().sort_values('scene_match_fk').iloc[-1, :]
+        bay_filter = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index()\
+                         .sort_values('scene_match_fk').iloc[-1, :].drop('scene_match_fk').to_dict()
+        shelves = self.filter_df(self.full_mpis, bay_filter)['shelf_number'].max()
 
 
         # num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
-        # potential_results = self.get_results_value(kpi_line)
-        # result = self.semi_numerical_results(num_shelves, potential_results, form='{} Shelves')
-        # kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
-        #           'target': None}
-        # return kwargs
+        potential_results = self.get_results_value(kpi_line)
+        result = self.semi_numerical_results(shelves, potential_results, form='{} Shelves')
+        kwargs = {'numerator_result': shelves, 'score': 1, 'result': result,
+                  'target': None}
+        return kwargs
 
     def calculate_product_orientation(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # filters = self.get_kpi_line_filters(kpi_line)
@@ -1147,6 +1165,8 @@ class ToolBox:
                 return self.calculate_yogurt_block
             elif result.lower() == 'basic block':
                 return self.calculate_basic_block
+            elif result.lower() == 'blocking covers':
+                return self.calculate_blocking_all_shelves
         elif kpi_type == Const.BASE_MEASURE:
             return self.calculate_base_measure
         elif kpi_type == Const.ORIENT:
