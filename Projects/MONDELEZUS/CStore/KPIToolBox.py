@@ -193,7 +193,8 @@ class CSTOREToolBox:
     def safe_divide(self, num, den):
         res = num
         if num <= den:
-            res = (float(num) / den) * 100 if num and den else 0
+            res = round((float(num) / den) * 100, 2) if num and den else 0
+            res = '{:.2f}'.format(res)
         return res
 
     @staticmethod
