@@ -85,7 +85,12 @@ class CSTOREToolBox:
                     df['denominator_id'] = self.store_id
                     df.drop('ident_parent', axis=1, inplace=True)
                 self.update_results(df)
-
+        else:
+            df = pd.DataFrame([self.store_id], columns=['denominator_id'])
+            df['numerator_id'] = self.manufacturer_fk
+            df['numerator_result'], df['result'] = 0, 0
+            df['kpi_name'] = [key for key, val in Const.SOS_HIERARCHY.items() if val == 'ihavenoparent'][0]
+            self.update_results(df)
 
     def update_results(self, df):
         results = [val for key, val in df.to_dict('index').items()]
