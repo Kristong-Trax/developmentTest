@@ -100,6 +100,9 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
+        # if not kpi_name == 'How are Cookies blocked?':
+        #     return
+
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
@@ -123,7 +126,7 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                # Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
                 else:
@@ -190,7 +193,7 @@ class ToolBox:
             # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
             #     .sort_values().index[-1]
             # locations.add(sub_map[shelf_with_most])
-            for shelf in shelves:
+            for shelf in shelves['shelf_number'].unique():
                 locations.add(sub_map[shelf])
             if len(locations) == 3:
                 break
