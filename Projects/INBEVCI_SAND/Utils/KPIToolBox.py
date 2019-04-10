@@ -233,7 +233,7 @@ class INBEVCISANDToolBox:
         """
         sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.SOS_VS_TARGET)
         # Coolers
-        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, 1)   # Const.COOLER_FK
+        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK)
         # Secondary Displays
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK)
 
