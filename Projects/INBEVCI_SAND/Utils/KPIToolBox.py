@@ -188,7 +188,7 @@ class INBEVCISANDToolBox:
         if not relevant_scenes:
             return
         numerator_res, denominator_res = self.calculate_number_of_inbev_displays(relevant_scenes)
-        total_result = numerator_res / float(denominator_res)
+        total_result = (numerator_res / float(denominator_res)) * 100
 
         # Saving to DB
         self.common.write_to_db_result_new_tables(fk=displays_count_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
