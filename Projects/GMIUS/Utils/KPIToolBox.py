@@ -30,8 +30,9 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
+
         all_products = self.data_provider._static_data_provider.all_products. \
-                            where((pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+            where((pd.notnull(self.data_provider._static_data_provider.all_products)), None)
         self.data_provider._set_all_products(all_products)
 
         self.block = Block(self.data_provider)
