@@ -222,7 +222,7 @@ class INBEVCISANDToolBox:
         """
         displays_count_set_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.MANUFACTURER_DISPLAY_COUNT)
         # Coolers:
-        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, 1)   # Const.COOLER_FK
+        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.COOLER_FK)
         # Secondary Displays:
         self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.SECONDARY_DISPLAY_FK)
 
