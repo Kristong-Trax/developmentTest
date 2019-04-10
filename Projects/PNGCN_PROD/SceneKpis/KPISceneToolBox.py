@@ -26,6 +26,7 @@ NON_BRANDED_CUBE = 'Non branded cube'
 CUBE_DISPLAYS = [CUBE, NON_BRANDED_CUBE]
 CUBE_FK = 1
 NON_BRANDED_CUBE_FK = 5
+NEW_LSOS_KPI = 'LINEAR_GROSS_NSOS_IN_SCENE'
 CUBE_TOTAL_DISPLAYS = ['Total 1 cube', 'Total 2 cubes', 'Total 3 cubes', 'Total 4 cubes', 'Total 5 cubes',
                        'Total 6 cubes', 'Total 7 cubes', 'Total 8 cubes', 'Total 9 cubes', 'Total 10 cubes',
                        'Total 11 cubes', 'Total 12 cubes', 'Total 13 cubes', 'Total 14 cubes', 'Total 15 cubes']
@@ -62,6 +63,7 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
 
 
     def process_scene(self):
@@ -73,6 +75,7 @@ class PngcnSceneKpis(object):
             if self.match_display_in_scene.empty:
                 Log.debug(self.log_prefix + ' No display tags')
                 self._delete_previous_data()
+                self.common.commit_results_data(result_entity='scene')
 
             else:
                 self.displays = self._get_displays_data()
@@ -678,7 +681,19 @@ class PngcnSceneKpis(object):
                                 'width_mm_advance']].groupby(by=['product_fk','scene_fk']).sum().reset_index()
         new_scif = pd.merge(self.scif, new_scif_gross_split, how='left',on=['scene_fk','product_fk'])
         new_scif = new_scif.fillna(0)
+        self.save_nlsos_as_kpi_results(new_scif)
         self.insert_data_into_custom_scif(new_scif)
+
+    def save_nlsos_as_kpi_results(self, new_scif):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_name(NEW_LSOS_KPI)
+        if kpi_fk is None:
+            Log.warning("There is no matching Kpi fk for kpi name: " + NEW_LSOS_KPI)
+            return
+        new_scif = new_scif[~new_scif['product_fk'].isnull()]
+        for i, row in new_scif.iterrows():
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
+                                           result=row['gross_len_split_stack_new'],
+                                           score=row['gross_len_split_stack_new'], by_scene=True)
 
     def insert_data_into_custom_scif(self, new_scif):
         session_id = self.data_provider.session_id
