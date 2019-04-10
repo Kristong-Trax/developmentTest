@@ -477,16 +477,16 @@ class PEPSICOUKToolBox:
             general_filters = {row['additional_filter_type_1']: row['additional_filter_value_1']}
             numerator_sos_filters = {row['numerator_type']: row['numerator_value']}
             num_num_linear, num_denom_linear = self.calculate_sos(numerator_sos_filters, **general_filters)
-            numerator_sos = num_num_linear/num_denom_linear if num_denom_linear else 0 # ToDO: what should it be if denom is 0
+            numerator_sos = num_num_linear/num_denom_linear if num_denom_linear else 0
 
             denominator_sos_filters = {row['denominator_type']: row['denominator_value']}
             denom_num_linear, denom_denom_linear = self.calculate_sos(denominator_sos_filters, **general_filters)
-            denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0 #TODo: what should it be if denom is 0
+            denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0
 
-            index = numerator_sos / denominator_sos if denominator_sos else 0 # TODO: what should it be if denom is 0
+            index = numerator_sos / denominator_sos if denominator_sos else 0
             self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-                                           numerator_result=numerator_sos, denominator_id=row.denominator_id,
-                                           denominator_result=denominator_sos, result=index, score=index,
+                                           numerator_result=num_num_linear, denominator_id=row.denominator_id,
+                                           denominator_result=denom_num_linear, result=index, score=index,
                                            identifier_parent=row.identifier_parent, should_enter=True)
             self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, index,
                                                    index])
@@ -595,7 +595,7 @@ class PEPSICOUKToolBox:
                 policies_df = policies_df[policies_df[column].isin([store_att_value, self.ALL])]
             kpi_targets_pks = policies_df['pk'].values.tolist()
             relevant_targets_df = sos_vs_target_kpis[sos_vs_target_kpis['pk'].isin(kpi_targets_pks)]
-            # relevant_targets_df = relevant_targets_df.merge(policies_df, on='pk', how='left') # see if i will need it in the code
+            # relevant_targets_df = relevant_targets_df.merge(policies_df, on='pk', how='left')
             data_json_df = self.commontools.unpack_external_targets_json_fields_to_df(relevant_targets_df, 'data_json')
             relevant_targets_df = relevant_targets_df.merge(data_json_df, on='pk', how='left')
 
