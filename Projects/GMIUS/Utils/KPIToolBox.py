@@ -105,7 +105,7 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if not kpi_name == 'How are Cookies blocked?':
+        # if not kpi_name == 'How is RTS Progresso blocked?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -583,7 +583,6 @@ class ToolBox:
 
     def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base):
         general_filters = dict(general_filters_base)
-        score = 0
         blocks = pd.DataFrame()
         result = pd.DataFrame()
         orientation = 'Not Blocked'
@@ -594,6 +593,7 @@ class ToolBox:
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
         for scene in scenes:
+            score = 0
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
@@ -679,6 +679,7 @@ class ToolBox:
         result = orientation
         if score:
             mpis = self.filter_df(self.full_mpis, general_filters)
+            mpis = self.filter_df(self.full_mpis, Const.IGN_STACKING)
             bays = mpis.groupby(['scene_fk', 'bay_number'])
             for (scene, bay), df in bays:
                 df = self.filter_df(df, filters, exclude=1)
