@@ -67,7 +67,7 @@ class Test_PEPSICOUK(MockingTestCase):
     def mock_lvl2_ass_base_df(self):
         ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
                                        path='KPIUtils_v2.Calculations.AssortmentCalculations')
-        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_base
         return ass_res.return_value
 
     # @classmethod
