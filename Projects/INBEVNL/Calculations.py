@@ -22,7 +22,7 @@ class INBEVNLINBEVBECalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'inbevnl'
 #     data_provider = KEngineDataProvider(project_name, monitor=MagicMock())
-#     session = 'e6969956-e600-4249-a081-e892bba1b92d'
+#     session = '231e2358-824e-4bf9-bd9d-281fc64dd093'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     INBEVNLINBEVBECalculations(data_provider, output).run_project_calculations()
