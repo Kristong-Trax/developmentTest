@@ -132,11 +132,11 @@ class PEPSICOUKCommonToolBox:
             scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
             self.filtered_scif = scif
             self.filtered_matches = matches
-            self.set_scif_and_matches_in_data_provider(scif, matches)
+            # self.set_scif_and_matches_in_data_provider(scif, matches)
 
-    def set_scif_and_matches_in_data_provider(self, scif, matches):
-        self.data_provider._set_scene_item_facts(scif)
-        self.data_provider._set_matches(matches)
+    # def set_scif_and_matches_in_data_provider(self, scif, matches):
+    #     self.data_provider._set_scene_item_facts(scif)
+    #     self.data_provider._set_matches(matches)
 
     def get_filters_dictionary(self, excl_template_all_kpis):
         filters = {}
