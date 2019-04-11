@@ -96,8 +96,149 @@ class INBEVCIINBEVCIToolBox:
             self.main_assortment_calculation()
         elif set_name == Const.TOP_BRAND_BLOCK:
             self.calculate_block_together_sets(set_name)
+        elif set_name == Const.SOS_VS_TARGET:
+            self.calculate_sos_vs_target()
+        elif set_name == Const.MANUFACTURER_DISPLAY_COUNT:
+            self.calculate_manufacturer_displays_count()
         else:
             return
+
+    def get_relevant_scenes_by_location_type(self, location_type_fk):
+        """
+        This functions gets a location_type_fk (1 = Primary Shelf, 2 = Secondary Shelf, 3 = Cooler) and returns a list
+        of the relevant scene ids (PKs).
+        :param location_type_fk: A scene's parameter that the functions uses in order to filter scif.
+        :return: A list of scene ids
+        """
+        relevant_scenes = self.scif.loc[self.scif[Const.LOCATION_TYPE_FK] == location_type_fk][
+            Const.SCENE_FK].unique().tolist()
+        return relevant_scenes
+
+    def calculate_sos_by_scif(self, **filters):
+        """
+        :param filters: These are the parameters which the data frame is filtered by.
+        :return: The total shelf width (in mm) the relevant facings occupy.
+        """
+        filtered_scif = self.scif[self.tools.get_filter_condition(self.scif, **filters)]
+        space_length = filtered_scif['gross_len_ign_stack'].sum()
+        return space_length
+
+    def check_inbev_linear_sos_majority_by_location_type(self, relevant_scenes):
+        """
+        This function gets the location type fk (and scene_fk if necessary), calculates the linear SOS per manufacturers
+        in the relevant scenes and than checks if Inbev has the majority among them.
+        :param relevant_scenes: The relevant scenes for the calculation.
+        :return: A tuple which includes Inbev score,  All of the products' score and pass / failed which depends if
+        Inbev is the majority. E.g: (1001, 2000, 100).
+        """
+        total_score_for_kpi = 100
+        manufacturer_list = self.get_all_the_manufacturers_by_filters(relevant_scenes)
+        sos_filters = {Const.MANUFACTURER_FK: Const.ABINBEV_MAN_FK}
+        general_filters = {Const.PRODUCT_TYPE: (Const.EMPTY, Const.EXCLUDE_FILTER),
+                           Const.CATEGORY_FK: Const.BEER_CATEGORY_FK, Const.SCENE_FK: relevant_scenes}
+
+        # Calculating INBEV's linear space
+        inbev_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+        if Const.ABINBEV_MAN_FK in manufacturer_list:  # Just in case..
+            manufacturer_list.remove(Const.ABINBEV_MAN_FK)
+
+        # Calculating the rest of the manufacturers' linear space
+        for manufacturer in manufacturer_list:
+            sos_filters = {Const.MANUFACTURER_FK: manufacturer}
+            manufacturer_sos_res = self.calculate_sos_by_scif(**dict(sos_filters, **general_filters))
+            # If Inbev is not the majority the KPI is failing and we can stop calculating.
+            if manufacturer_sos_res > inbev_sos_res:
+                total_score_for_kpi = 0
+                break
+
+        # Calculating the total linear space
+        total_res = self.calculate_sos_by_scif(**general_filters)
+        return inbev_sos_res, total_res, total_score_for_kpi
+
+    def calculate_number_of_inbev_displays(self, relevant_scenes):
+        """
+        This function calculates the manufacturer_displays_count for the location type it receives.
+        First, it filters the relevant scenes and calculates the SOS for all the manufacturers in it using utililty
+        function. At last, if Inbev has the majority the score is being raised by 1.
+        :param relevant_scenes: The relevant scenes for the location_type.
+        :return: A tuple = (score, total relevant scenes). Score = scenes which has majority SOS of Inbev.
+        """
+        score = 0
+        for scene_fk in relevant_scenes:
+            numer_res, denominator_res, total_score = self.check_inbev_linear_sos_majority_by_location_type([scene_fk])
+            score += 1 if total_score > 0 else 0  # Total score equals to 100 if Inbev has the majority.
+        return score, len(relevant_scenes)
+
+    def get_all_the_manufacturers_by_filters(self, relevant_scenes):
+        """
+        This function returns a list of all the manufacturers in the session per location type and scene (if relevant).
+        :return: List of manufacturers' fks.
+        """
+        filtered_scif = self.scif.loc[self.scif[Const.SCENE_FK].isin(relevant_scenes)]
+        manufacturers_list = filtered_scif[Const.MANUFACTURER_FK].unique().tolist()
+        # Removing the "General" manufacturer
+        if 0 in manufacturers_list:
+            manufacturers_list.remove(0)
+        return manufacturers_list
+
+    def calculate_manufacturer_displays_count_per_location_type(self, displays_count_set_fk, location_type_fk):
+        """
+        This function calculates manufacturer_displays_count KPI for Coolers.
+        :param location_type_fk: (1 = Primary Shelf, 2 = Secondary Shelf, 3 = Cooler).
+        :param displays_count_set_fk: The relevant kpi_level_2_fk
+        """
+        relevant_scenes = self.get_relevant_scenes_by_location_type(location_type_fk)
+        if not relevant_scenes:
+            return
+        numerator_res, denominator_res = self.calculate_number_of_inbev_displays(relevant_scenes)
+        total_result = (numerator_res / float(denominator_res)) * 100
+
+        # Saving to DB
+        self.common.write_to_db_result_new_tables(fk=displays_count_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
+                                                  numerator_result=numerator_res, denominator_id=location_type_fk,
+                                                  denominator_result=denominator_res, context_id=self.store_id,
+                                                  result=total_result,
+                                                  score=total_result)
+
+    def calculate_sos_vs_target_per_location_type(self, sos_set_fk, location_type_fk):
+        """
+        This function calculates manufacturer_displays_count KPI for Coolers.
+        :param location_type_fk: (1 = Primary Shelf, 2 = Secondary Shelf, 3 = Cooler)
+        :param sos_set_fk: The relevant kpi_level_2_fk
+        """
+        relevant_scenes = self.get_relevant_scenes_by_location_type(location_type_fk)
+        if not relevant_scenes:
+            return
+        numerator_res, denominator_res, score = self.check_inbev_linear_sos_majority_by_location_type(relevant_scenes)
+
+        # Saving to DB
+        self.common.write_to_db_result_new_tables(fk=sos_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
+                                                  numerator_result=numerator_res, denominator_id=location_type_fk,
+                                                  denominator_result=denominator_res, context_id=self.store_id,
+                                                  result=score, score=score)
+
+    def calculate_manufacturer_displays_count(self):
+        """
+        This function is the main function for this KPI. It calculates manufacturer_displays_count for Coolers
+        and Secondary Displays location types.
+        It indicates how many displays in the store belongs to Inbev out of all displays (By SOS majority on the scene).
+        """
+        displays_count_set_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.MANUFACTURER_DISPLAY_COUNT)
+        # Coolers:
+        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.COOLER_FK)
+        # Secondary Displays:
+        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.SECONDARY_DISPLAY_FK)
+
+    def calculate_sos_vs_target(self):
+        """
+        This function calculates the SOS vs Target KPI for both Coolers and Secondary Displays.
+        :return:
+        """
+        sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.SOS_VS_TARGET)
+        # Coolers
+        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK)
+        # Secondary Displays
+        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK)
 
     def calculate_kpi_level_1(self, set_name):
         sum_of_total, sum_of_passed = 0, 0
@@ -107,8 +248,21 @@ class INBEVCIINBEVCIToolBox:
             if set_name == Const.BRAND_FACING_TARGET:
                 if self.attr5 not in params[Const.ATTR5].split(', '):
                     continue
-                start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
-                end_date = '' if params["End date"] == '' else datetime.strptime(params["End date"], '%Y-%m-%d  %H:%M:%S').date()
+                # Handling date format issues:
+                try:
+                    start_date = datetime.strptime(params["Start date"], '%Y-%m-%d  %H:%M:%S').date()
+                except ValueError:
+                    start_date = datetime.strptime("{} {}".format(params["Start date"], "00:00:00"),
+                                                   '%Y-%m-%d  %H:%M:%S').date()
+                if params["End date"] == '':
+                    end_date = ''
+                else:
+                    try:
+                        end_date = datetime.strptime(params["End date"], '%Y-%m-%d  %H:%M:%S').date()
+                    except ValueError:
+                        end_date = datetime.strptime("{} {}".format(params["End date"], "00:00:00"),
+                                                     '%Y-%m-%d  %H:%M:%S').date()
+
                 if self.visit_date < start_date or (end_date != '' and self.visit_date > end_date):
                     continue
                 result_dict = self.calculate_brand_facing(params)
@@ -455,8 +609,8 @@ class INBEVCIINBEVCIToolBox:
             denominator = self.scif[self.scif[denominator_key].str.upper() == denominator_val.upper()][
                 'gross_len_ign_stack'].sum()
             if self.all_products[
-                        self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty and \
-                            numerator_val.upper() == "CCC":
+                self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty and \
+                    numerator_val.upper() == "CCC":
                 numerator_val = "ABI Inbev"
             if (self.all_products[
                         self.all_products[numerator_key].str.upper() == numerator_val.upper()].empty) or (
@@ -481,10 +635,10 @@ class INBEVCIINBEVCIToolBox:
 
     def validate_groups_exist(self):
         groups_template = self.template_sheet[Const.TOP_BRAND_BLOCK][Const.ATOMIC_NAME].unique().tolist()
-        groups_DB = self.groups_fk[Const.GROUP_NAME].unique().tolist()
+        groups_db = self.groups_fk[Const.GROUP_NAME].unique().tolist()
         groups_to_add = []
         for group in groups_template:
-            if group not in groups_DB:
+            if group not in groups_db:
                 groups_to_add.append(group)
         if len(groups_to_add) == 0:
             return
