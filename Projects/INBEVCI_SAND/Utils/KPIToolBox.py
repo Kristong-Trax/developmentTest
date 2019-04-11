@@ -188,7 +188,7 @@ class INBEVCISANDToolBox:
         if not relevant_scenes:
             return
         numerator_res, denominator_res = self.calculate_number_of_inbev_displays(relevant_scenes)
-        total_result = numerator_res / float(denominator_res)
+        total_result = (numerator_res / float(denominator_res)) * 100
 
         # Saving to DB
         self.common.write_to_db_result_new_tables(fk=displays_count_set_fk, numerator_id=Const.ABINBEV_MAN_FK,
@@ -222,7 +222,7 @@ class INBEVCISANDToolBox:
         """
         displays_count_set_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.MANUFACTURER_DISPLAY_COUNT)
         # Coolers:
-        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, 1)   # Const.COOLER_FK
+        self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.COOLER_FK)
         # Secondary Displays:
         self.calculate_manufacturer_displays_count_per_location_type(displays_count_set_fk, Const.SECONDARY_DISPLAY_FK)
 
@@ -233,7 +233,7 @@ class INBEVCISANDToolBox:
         """
         sos_vs_target_fk = self.common.get_kpi_fk_by_kpi_name_new_tables(Const.SOS_VS_TARGET)
         # Coolers
-        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, 1)   # Const.COOLER_FK
+        self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.COOLER_FK)
         # Secondary Displays
         self.calculate_sos_vs_target_per_location_type(sos_vs_target_fk, Const.SECONDARY_DISPLAY_FK)
 
