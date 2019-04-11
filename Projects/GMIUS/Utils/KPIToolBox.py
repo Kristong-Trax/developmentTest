@@ -31,9 +31,14 @@ class ToolBox:
         self.output = output
         self.data_provider = data_provider
 
-        all_products = self.data_provider._static_data_provider.all_products. \
-            where((pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
         self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
 
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
@@ -104,16 +109,16 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-
-        # if not kpi_name == 'How is RTS Progresso blocked?':
-        #     return
+        print(kpi_name)
+        if kpi_name != 'How is RTS Private Label blocked?':
+            return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
         if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
         # if kpi_name == 'How is RTS Progresso blocked?':
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
         #     print(kpi_name)
 
@@ -131,11 +136,14 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+                    Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
             finally:
                 if not isinstance(all_kwargs, list):
                     all_kwargs = [all_kwargs]
@@ -910,6 +918,8 @@ class ToolBox:
 
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
+        if isinstance(min, list):
+            min = min[0]
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
         den = 0
         result = count
