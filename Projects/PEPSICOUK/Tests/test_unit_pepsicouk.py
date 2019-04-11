@@ -51,6 +51,7 @@ class Test_PEPSICOUK(MockingTestCase):
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         # self.assortment_mock = self.mock_assortment_object()
         self.lvl3_ass_result_mock = self.mock_lvl3_ass_result()
+        self.lvl3_ass_base_mock = self.mock_lvl2_ass_base_df()
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
@@ -59,9 +60,15 @@ class Test_PEPSICOUK(MockingTestCase):
         self.mock_object('PositionGraphs', path='KPIUtils_v2.Calculations.AssortmentCalculations')
 
     def mock_lvl3_ass_result(self):
-        probe_group = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
-        probe_group.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
-        return probe_group.return_value
+        ass_res = self.mock_object('Assortment.calculate_lvl3_assortment', path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
+        return ass_res.return_value
+
+    def mock_lvl2_ass_base_df(self):
+        ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
+                                       path='KPIUtils_v2.Calculations.AssortmentCalculations')
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_result
+        return ass_res.return_value
 
     # @classmethod
     # def setUpClass(cls):
@@ -222,7 +229,7 @@ class Test_PEPSICOUK(MockingTestCase):
     #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
     #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
     #     # tool_box.calculate_assortment() # complete mock data later
-    #     print tool_box.kpi_results
+    #     print tool_box.lvl3_ass_result
 
     def test_calculate_hero_shelf_placement_horizontal(self):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
