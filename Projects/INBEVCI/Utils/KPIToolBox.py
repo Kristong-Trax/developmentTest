@@ -24,7 +24,6 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 ASSORTMENT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data/just for local calculation', 'Assortment.xlsx')
 
 
-
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
