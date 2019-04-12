@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'What best describes the stocking location of Large Size (Tub) Yogurt?':
+        # if kpi_name != 'Where are Pie Crust facings shelved?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
