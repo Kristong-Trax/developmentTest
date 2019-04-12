@@ -30,6 +30,16 @@ class ToolBox:
         self.common = common
         self.output = output
         self.data_provider = data_provider
+
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
+
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
@@ -101,11 +111,17 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        if kpi_type == Const.AGGREGATION:
+        # if kpi_name != 'How is RTS Private Label blocked?':
+        #     return
+
+        # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
-        # if kpi_type in[Const.SET_COUNT]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.PRESENCE_WITHIN_BAY]: # Const.COUNT_SHELVES:
+        if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        # if kpi_name == 'How is RTS Progresso blocked?':
+        # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
+        #     print(kpi_name)
 
 
             dependent_kpis = self.read_cell_from_line(main_line, Const.DEPENDENT)
@@ -121,11 +137,14 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+                    Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
             finally:
                 if not isinstance(all_kwargs, list):
                     all_kwargs = [all_kwargs]
@@ -143,7 +162,7 @@ class ToolBox:
     def calculate_sos(self, kpi_name, kpi_line, relevant_scif, general_filters):
         super_cats = relevant_scif['Super Category'].unique().tolist()
         for super_cat in super_cats:
-            if not super_cat:
+            if not super_cat or pd.isnull(super_cat):
                 continue
             den_id = self.entity_dict[super_cat.lower()]
             levels = self.read_cell_from_line(kpi_line, Const.AGGREGATION_LEVELS)
@@ -185,11 +204,11 @@ class ToolBox:
 
         for bay, shelves in grouped_mpis:
             sub_map = map[bay_max_shelf[bay]]
-            shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
-                .sort_values().index[-1]
-            locations.add(sub_map[shelf_with_most])
-            # for shelf in shelves:
-            #     locations.add(sub_map[shelf])
+            # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
+            #     .sort_values().index[-1]
+            # locations.add(sub_map[shelf_with_most])
+            for shelf in shelves['shelf_number'].unique():
+                locations.add(sub_map[shelf])
             if len(locations) == 3:
                 break
 
@@ -571,8 +590,8 @@ class ToolBox:
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        score = 0
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base):
+        general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
         result = pd.DataFrame()
         orientation = 'Not Blocked'
@@ -583,6 +602,7 @@ class ToolBox:
         if self.read_cell_from_line(kpi_line, 'MSL'):
             scenes = self.find_MSL(relevant_scif)
         for scene in scenes:
+            score = 0
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
@@ -661,6 +681,21 @@ class ToolBox:
 
         kwargs = {'numerator_result': score, 'score': score, 'result': result, 'target': 1}
         return kwargs
+
+    def calculate_blocking_all_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
+        score, orientation, mpis_dict, blocks, _ = self.base_block(kpi_name, kpi_line, self.scif, general_filters)
+        filters = self.get_kpi_line_filters(kpi_line)
+        result = orientation
+        if score:
+            mpis = self.filter_df(self.full_mpis, general_filters)
+            mpis = self.filter_df(self.full_mpis, Const.IGN_STACKING)
+            bays = mpis.groupby(['scene_fk', 'bay_number'])
+            for (scene, bay), df in bays:
+                df = self.filter_df(df, filters, exclude=1)
+                if df.empty:
+                    result = 'Block covering all shelves'
+
+        kwargs = {'score': score, 'result': result}
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this could be updated to use base_block() if we don't need to respect unique scene results
@@ -789,12 +824,21 @@ class ToolBox:
         return kwargs
 
     def calculate_count_of_shelves(self, kpi_name, kpi_line, relevant_scif, general_filters):
-        mpis = self.filter_df(self.full_mpis, general_filters)
-        num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
+        filters = self.get_kpi_line_filters(kpi_line)
+        filters.update(general_filters)
+        filters.update({'stacking_layer': 1})
+        mpis = self.filter_df(self.mpis, filters)
+        if mpis.empty:
+            return
+        bay_filter = mpis.groupby(['scene_fk', 'bay_number'])['scene_match_fk'].count().reset_index()\
+                         .sort_values('scene_match_fk').iloc[-1, :].drop('scene_match_fk').to_dict()
+        shelves = self.filter_df(self.full_mpis, bay_filter)['shelf_number'].max()
+
+
+        # num_shelves = int(len(mpis.groupby(['scene_fk', 'bay_number', 'shelf_number'])))
         potential_results = self.get_results_value(kpi_line)
-        result = self.semi_numerical_results(num_shelves, potential_results, form='{} Shelves')
-        # result_fk = self.result_values_dict[result]
-        kwargs = {'numerator_result': num_shelves, 'score': 1, 'result': result,
+        result = self.semi_numerical_results(shelves, potential_results, form='{} Shelves')
+        kwargs = {'numerator_result': shelves, 'score': 1, 'result': result,
                   'target': None}
         return kwargs
 
@@ -875,6 +919,8 @@ class ToolBox:
 
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
+        if isinstance(min, list):
+            min = min[0]
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
         den = 0
         result = count
@@ -1139,6 +1185,8 @@ class ToolBox:
                 return self.calculate_yogurt_block
             elif result.lower() == 'basic block':
                 return self.calculate_basic_block
+            elif result.lower() == 'blocking covers':
+                return self.calculate_blocking_all_shelves
         elif kpi_type == Const.BASE_MEASURE:
             return self.calculate_base_measure
         elif kpi_type == Const.ORIENT:
