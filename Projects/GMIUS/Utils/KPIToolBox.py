@@ -109,9 +109,10 @@ class ToolBox:
             general_filters['template_name'] = scene_types
         if relevant_scif.empty:
             return
-        print(kpi_name)
-        if kpi_name != 'How is RTS Private Label blocked?':
-            return
+
+        # print(kpi_name)
+        # if kpi_name != 'How is RTS Private Label blocked?':
+        #     return
 
         # if kpi_type == Const.AGGREGATION:
         # if kpi_type:
