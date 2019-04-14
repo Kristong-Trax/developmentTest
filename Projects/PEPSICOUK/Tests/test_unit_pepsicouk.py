@@ -239,17 +239,18 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_shelf_placement_hero_skus()
         expected_list = []
-        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1})
-        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1})
+        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1*100})
+        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1*100})
         expected_list.append({'kpi_fk': 309, 'numerator': 2, 'result': 2})
 
         kpi_results = tool_box.kpi_results
+        print kpi_results
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
         test_result_list = []
         for expected_result in expected_list:

@@ -338,6 +338,8 @@ class PEPSICOUKSceneToolBox:
         filters = {target_series['Parameter 1']: target_series['Value 1']}
         if target_series['Parameter 2']:
             filters.update({target_series['Parameter 2']: target_series['Value 2']})
+        if target_series['Parameter 3']:
+            filters.update({target_series['Parameter 3']: target_series['Value 3']})
         return filters
 
     # def adjust_filters_and_data_provider_for_calculations(self, filters, instance):
@@ -511,7 +513,7 @@ class PEPSICOUKSceneToolBox:
         return result_df
 
     def get_sku_ratio(self, row):
-        ratio = float(row['count']) / row['total_facings']
+        ratio = float(row['count']) / row['total_facings'] * 100
         return ratio
 
     def add_kpi_result_to_kpi_results_df(self, result_list):
