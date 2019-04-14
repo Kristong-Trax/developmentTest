@@ -71,6 +71,7 @@ class DataTestUnitPEPSICOUK(object):
     # exclusion_template_path ='{}/Data/Template_L&T_test_updated.xlsx'.format(os.path.dirname(os.path.realpath(__file__)))
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
+    test_case_2 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_2_empty_scene.xlsx')
 
     on_display_products = pd.DataFrame.from_records([{'probe_match_fk': 1, 'smart_attribute': 'stock'},
                                                      {'probe_match_fk': 2, 'smart_attribute': 'additional display'},
@@ -117,6 +118,19 @@ class DataTestUnitPEPSICOUK(object):
                                            {'product_fk': 5,  'in_store': 0}])
     test_case_1_ass_base = pd.DataFrame([{'product_fk': 1, 'in_store': 0}, {'product_fk': 2, 'in_store': 0},
                                            {'product_fk': 5, 'in_store': 0}])
+
+    test_case_1_ass_base_extended = pd.DataFrame(
+        [{'product_fk': 1, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan},
+         {'product_fk': 2, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan
+          },
+         {'product_fk': 5, 'in_store': 0, 'kpi_fk_lvl3': 290, 'kpi_fk_lvl2': 289, 'target': nan,
+          'assortment_group_fk': 1, 'assortment_fk': 2, 'assortment_super_group_fk': nan, 'kpi_fk_lvl1': nan,
+          'group_target_date': nan, 'super_group_target': nan, 'additional_attributes': nan}]
+    )
 
     external_targets_columns = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'store_type',
             'additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'numerator_type', 'numerator_value',
