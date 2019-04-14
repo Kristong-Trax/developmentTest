@@ -90,14 +90,12 @@ class PEPSICOUKToolBox:
         self.filtered_matches = self.commontools.filtered_matches
 
         self.scene_bay_shelf_product = self.get_facings_scene_bay_shelf_product()
-        self.ps_data = PsDataProvider(self.data_provider, self.output) # which scif and matches do I need
-        # self.store_info = self.data_provider['store_info'] # not sure i need it
-        self.full_store_info = self.get_store_data_by_store_id() # not sure i need it
-        # self.external_targets = self.get_all_kpi_external_targets()
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.full_store_info = self.get_store_data_by_store_id()
         self.external_targets = self.commontools.external_targets
-        # self.assortment = Assortment(self.data_provider, self.output, common=self.common_v1)
         self.assortment = Assortment(self.commontools.data_provider, self.output)
-        self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment() # mock assortment data
+        # self.lvl3_ass_result = self.assortment.calculate_lvl3_assortment()
+        self.lvl3_ass_result = self.get_lvl3_relevant_assortment_result()
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
 
         self.scene_kpi_results = self.get_results_of_scene_level_kpis()
@@ -146,7 +144,7 @@ class PEPSICOUKToolBox:
         This function calculates and writes to DB the KPI results.
         """
         self.calculate_external_kpis()
-        self.calculate_internal_kpis() # all on scene_level
+        self.calculate_internal_kpis()
 
     def calculate_external_kpis(self):
         self.calculate_assortment() # uses filtered scif
@@ -244,23 +242,24 @@ class PEPSICOUKToolBox:
         if not self.lvl3_ass_result.empty:
             hero_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
             # hero_list = self.filtered_scif['product_fk'].unique().tolist()
-            relevant_matches = self.filtered_matches[self.filtered_matches['product_fk'].isin(hero_list)]
-            relevant_matches = relevant_matches.reset_index(drop=True)
-            relevant_matches['facing_sequence_number'] = relevant_matches['facing_sequence_number'].astype(str)
-            relevant_matches['all_sequences'] = relevant_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk']) \
-                                                    ['facing_sequence_number'].apply(lambda x: (x + ',').cumsum().str.strip())
-            grouped_matches = relevant_matches.drop_duplicates(subset=['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
-                                                               keep='last')
-            grouped_matches['is_stack'] = grouped_matches.apply(self.get_stack_data, axis=1)
-            stacking_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_STACKING)
-            for sku in hero_list:
-                stack_info = grouped_matches[grouped_matches['product_fk'] == sku]['is_stack'].values.tolist()
-                score = 0
-                if any(stack_info):
-                    score = 1
-                self.common.write_to_db_result(fk=stacking_kpi_fk, numerator_id=sku, score=score, result=score)
+            if hero_list:
+                relevant_matches = self.filtered_matches[self.filtered_matches['product_fk'].isin(hero_list)]
+                relevant_matches = relevant_matches.reset_index(drop=True)
+                relevant_matches['facing_sequence_number'] = relevant_matches['facing_sequence_number'].astype(str)
+                relevant_matches['all_sequences'] = relevant_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk']) \
+                                                        ['facing_sequence_number'].apply(lambda x: (x + ',').cumsum().str.strip())
+                grouped_matches = relevant_matches.drop_duplicates(subset=['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
+                                                                   keep='last')
+                grouped_matches['is_stack'] = grouped_matches.apply(self.get_stack_data, axis=1)
+                stacking_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_STACKING)
+                for sku in hero_list:
+                    stack_info = grouped_matches[grouped_matches['product_fk'] == sku]['is_stack'].values.tolist()
+                    score = 0
+                    if any(stack_info):
+                        score = 1
+                    self.common.write_to_db_result(fk=stacking_kpi_fk, numerator_id=sku, score=score, result=score)
 
-                self.add_kpi_result_to_kpi_results_df([stacking_kpi_fk, sku, None, score, score])
+                    self.add_kpi_result_to_kpi_results_df([stacking_kpi_fk, sku, None, score, score])
 
     @staticmethod
     def get_stack_data(row):
@@ -499,6 +498,14 @@ class PEPSICOUKToolBox:
                                            identifier_result=row.identifier_result, should_enter=True)
             self.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.own_manuf_fk, self.store_id, None,
                                                    1])
+
+    def get_lvl3_relevant_assortment_result(self):
+        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        if assortment_result.empty:
+            return assortment_result
+        products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        return assortment_result
 
     def calculate_assortment(self):
         oos_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.HERO_SKU_OOS_SKU)

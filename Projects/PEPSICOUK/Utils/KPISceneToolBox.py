@@ -186,7 +186,9 @@ class PEPSICOUKSceneToolBox:
     def calculate_number_of_facings_and_linear_space(self):
         facing_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.NUMBER_OF_FACINGS)
         linear_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_LINEAR_SPACE)
-        for i, row in self.filtered_scif.iterrows():
+        filtered_scif = self.filtered_scif.copy()
+        filtered_scif['facings'] = filtered_scif.apply(self.update_facings_for_cardboard_boxes, axis=1)
+        for i, row in filtered_scif.iterrows():
             self.common.write_to_db_result(fk=facing_kpi_fk, numerator_id=row['product_fk'], result=row['facings'],
                                            denominator_id=self.store_id, by_scene=True)
             self.common.write_to_db_result(fk=linear_kpi_fk, numerator_id=row['product_fk'], denominator_id=self.store_id,
@@ -195,10 +197,15 @@ class PEPSICOUKSceneToolBox:
             self.add_kpi_result_to_kpi_results_df(
                 [linear_kpi_fk, row['product_fk'], self.store_id, row['gross_len_add_stack'], None])
 
+    @staticmethod
+    def update_facings_for_cardboard_boxes(row):
+        facings = row['facings'] * 3 if row['form_factor'] == 'cardboard box' else row['facings']
+        return facings
+
     def calculate_number_of_bays_and_shelves(self):
         bays_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.NUMBER_OF_BAYS)
         shelves_kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.NUMBER_OF_SHELVES)
-        matches = self.match_product_in_scene[~(self.match_product_in_scene['bay_number'] == -1)] # is it filtered or regular? # bay -1?
+        matches = self.match_product_in_scene[~(self.match_product_in_scene['bay_number'] == -1)]
 
         bays_in_scene = matches['bay_number'].unique().tolist()
         bays_num = len(bays_in_scene)

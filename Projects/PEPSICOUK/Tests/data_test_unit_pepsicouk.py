@@ -115,6 +115,8 @@ class DataTestUnitPEPSICOUK(object):
 
     test_case_1_ass_result = pd.DataFrame([{'product_fk': 1,  'in_store': 1}, {'product_fk': 2,  'in_store': 1},
                                            {'product_fk': 5,  'in_store': 0}])
+    test_case_1_ass_base = pd.DataFrame([{'product_fk': 1, 'in_store': 0}, {'product_fk': 2, 'in_store': 0},
+                                           {'product_fk': 5, 'in_store': 0}])
 
     external_targets_columns = ['kpi_operation_type_fk', 'operation_type', 'kpi_level_2_fk', 'store_type',
             'additional_attribute_1', 'additional_attribute_2', 'additional_attribute_3', 'numerator_type', 'numerator_value',
