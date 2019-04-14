@@ -31,9 +31,14 @@ class ToolBox:
         self.output = output
         self.data_provider = data_provider
 
-        all_products = self.data_provider._static_data_provider.all_products. \
-            where((pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
         self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
 
         self.block = Block(self.data_provider)
         self.project_name = self.data_provider.project_name
@@ -105,7 +110,8 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # if not kpi_name == 'How is RTS Progresso blocked?':
+        # print(kpi_name)
+        # if kpi_name != 'Where are Pie Crust facings shelved?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -113,7 +119,7 @@ class ToolBox:
         if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
         # if kpi_name == 'How is RTS Progresso blocked?':
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
-        # if kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]: # Const.COUNT_SHELVES:
+        # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BLOCKING]: # Const.COUNT_SHELVES:
         #     print(kpi_name)
 
@@ -131,11 +137,14 @@ class ToolBox:
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
             except:
-                Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
+                    Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
+                    Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+
             finally:
                 if not isinstance(all_kwargs, list):
                     all_kwargs = [all_kwargs]
@@ -194,6 +203,9 @@ class ToolBox:
         grouped_mpis = mpis.set_index('bay_number').groupby(level=0)
 
         for bay, shelves in grouped_mpis:
+            if bay_max_shelf[bay] not in map:
+                Log.warning('bay "{}" is a problem in kpi "{}" in session "{}"'.format(bay, kpi_name, self.session_uid))
+                continue
             sub_map = map[bay_max_shelf[bay]]
             # shelf_with_most = shelves.groupby('shelf_number_from_bottom')[shelves.columns[0]].count()\
             #     .sort_values().index[-1]
@@ -246,6 +258,8 @@ class ToolBox:
         filters.update(general_filters)
         full_mpis = self.filter_df(self.mpis, general_filters)
         mpis = self.filter_df(full_mpis, filters)
+        if mpis.empty:
+            return
         # mpis = self.mpis.copy()
         sections = mpis.groupby(['scene_fk', 'bay_number']).count().sort_values('product_fk', ascending=False)
         section_filters = {sections.index.names[i]: lvl for i, lvl in enumerate(sections.index[0])}
@@ -631,7 +645,7 @@ class ToolBox:
         score, orientation, mpis_dict, _, _ = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
         if score:
-            result = [x for x in potential_results if x.lower() in orientation.lower()][0]
+            result = [x for x in potential_results if orientation.lower() in x.lower()][0]
         else:
             msl_mpis = mpis_dict[self.find_MSL(relevant_scif)[0]]
             all_mpis = pd.concat(list(mpis_dict.values()))
@@ -910,6 +924,8 @@ class ToolBox:
 
     def calculate_set_count(self, kpi_name, kpi_line, relevant_scif, general_filters):
         min = self.read_cell_from_line(kpi_line, 'Min')
+        if isinstance(min, list):
+            min = min[0]
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters, min=min)
         den = 0
         result = count
@@ -1269,4 +1285,5 @@ class ToolBox:
 
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id)
+                                       numerator_id=numerator_id, denominator_id=denominator_id,
+                                       parent_fk=self.entity_dict[self.super_cat.lower()])
