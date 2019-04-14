@@ -375,10 +375,10 @@ if __name__ == '__main__':
     sessions = ['7da5fee8-06b9-4e32-8382-e8379de2ae51']
 
     sessions = [
-    # '86e142d5-31a5-469b-bd89-104f88b041b3',
-    # '064f2a01-4620-4214-9646-586ebc0a47e1',
-    # '312a2e48-e647-4216-ae30-df5a00945def',
-    # 'b8fcc7ac-da35-47e8-9ea5-383a2afbedb5',
+    '86e142d5-31a5-469b-bd89-104f88b041b3',
+    '064f2a01-4620-4214-9646-586ebc0a47e1',
+    '312a2e48-e647-4216-ae30-df5a00945def',
+    'b8fcc7ac-da35-47e8-9ea5-383a2afbedb5',
     'a46fce27-f3b9-4d2a-ae03-fc0f03da6d30',
     '39564a00-5e62-4e1e-88dc-faf06f0b4bab',
     ]
@@ -422,10 +422,12 @@ if __name__ == '__main__':
     #     '2dfd94d2-baca-4154-8c56-921e175b07fe',
     #
     # ]
-    sessions = ['0a3eba32-61b9-4b71-b3a2-692cfbf8cec9']
-    sessions = ['7da5fee8-06b9-4e32-8382-e8379de2ae51']
+    # sessions = ['0a3eba32-61b9-4b71-b3a2-692cfbf8cec9']
+    # sessions = ['7da5fee8-06b9-4e32-8382-e8379de2ae51']
+    sessions = ['224b07f0-a4e2-4375-890d-bc28855006d1']
 
     for session in sessions:
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'.format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
