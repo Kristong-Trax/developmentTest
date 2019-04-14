@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v3.1.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.3.xlsx')
 
 
 class INBEVMXToolBox:
@@ -129,7 +129,8 @@ class INBEVMXToolBox:
             result = 0 if row['facings'] > 0 else 1
             self.common_v2.write_to_db_result(fk=atomic_pk_sku, numerator_id=row['product_fk'],
                                         numerator_result=row['facings'], denominator_id=self.store_id,
-                                        result=result, score=result, identifier_parent=Const.OOS_KPI, should_enter=True)
+                                        result=result, score=result, identifier_parent=Const.OOS_KPI,
+                                        should_enter=True ,parent_fk=3)
 
         not_existing_products_len = len(products_df[products_df['facings'] == 0])
         result = not_existing_products_len / float(len(products_to_check))
@@ -141,7 +142,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
                                            denominator_result=len(products_to_check), result=result, score=result,
-                                          identifier_result=Const.OOS_KPI)
+                                          identifier_result=Const.OOS_KPI, parent_fk=3)
 
     def save_parent_kpis(self):
         for kpi in self.result_dict.keys():
@@ -153,13 +154,13 @@ class INBEVMXToolBox:
             if kpi not in self.hierarchy_dict:
                 self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk, denominator_id=self.store_id,
                                                   result=self.result_dict[kpi], score=self.result_dict[kpi],
-                                                    identifier_result=kpi)
+                                                    identifier_result=kpi, parent_fk=1)
             else:
                 self.common_v2.write_to_db_result(fk=kpi_fk, numerator_id=self.region_fk,
                                                   denominator_id=self.store_id,
                                                   result=self.result_dict[kpi], score=self.result_dict[kpi],
                                                   identifier_result=kpi, identifier_parent=self.hierarchy_dict[kpi],
-                                                  should_enter=True)
+                                                  should_enter=True, parent_fk=2)
 
     def handle_atomic(self, row):
         result = 0
@@ -239,7 +240,7 @@ class INBEVMXToolBox:
                                            numerator_result=numerator_number_of_facings, denominator_id=self.store_id,
                                            denominator_result=denominator_number_of_total_facings, result=count_result,
                                           score=count_result, identifier_result=atomic_name, identifier_parent=parent_name,
-                                          should_enter=True)
+                                          should_enter=True, parent_fk=3)
         return count_result
 
     def find_row(self, rows):
@@ -345,7 +346,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=numerator,
                                           denominator_result=denominator, denominator_id=self.store_id, result=result,
                                           score=result, identifier_result=atomic_name, identifier_parent=parent_name,
-                                          should_enter=True)
+                                          should_enter=True, parent_fk=3)
         return result
 
     def handle_survey_atomics(self, atomic_id, atomic_name, parent_name):
@@ -403,7 +404,7 @@ class INBEVMXToolBox:
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk, numerator_result=0,
                                         denominator_result=0, denominator_id=self.store_id, result=survey_result,
                                         score=final_score, identifier_result=atomic_name, identifier_parent=parent_name,
-                                        should_enter=True)
+                                        should_enter=True, parent_fk=3)
         return final_score
 
     def get_new_kpi_static_data(self):
