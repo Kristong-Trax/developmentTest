@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v3.2.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.3.xlsx')
 
 
 class INBEVMXToolBox:
