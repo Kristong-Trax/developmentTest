@@ -265,13 +265,15 @@ class PNGHKToolBox:
             scene_types = [item.strip() for item in scene_types]
             df = df[df['template_name'].isin(scene_types)]
 
+        # filter excludings
+        df = self.filter_excluding(df)
+
         # filter category
         category = kpi_df[Const.CATEGORY].strip()
         if (category != "" and category != Const.EACH):
             df = df[df['category'] == category]
 
-        # filter excludings
-        return self.filter_excluding(df)
+        return df
 
     def filter_out_osd(self, df):
         if df.empty:
@@ -299,6 +301,8 @@ class PNGHKToolBox:
             # filter df to remove shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
+                if products_to_filter != "":
+                    products_to_filter = [item.strip() for item in products_to_filter]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
                 products_df = products_df.drop_duplicates()
                 if not products_df.empty:
@@ -309,7 +313,9 @@ class PNGHKToolBox:
 
             # filter df to remove shelves with given ean code (only on the same bay)
             if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
-                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].values[0].split(",")
+                if products_to_filter != "":
+                    products_to_filter = [item.strip() for item in products_to_filter]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'bay_number',
                                                                                                'shelf_number']]
@@ -339,17 +345,6 @@ class PNGHKToolBox:
                 if shelfs_to_include != "":
                     shelfs_to_include = int(shelfs_to_include)
                     df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
-            # else:
-            #     scenes = set(scene_df['scene_fk'])
-            #     for scene in scenes:
-            #         df = scene_df[scene_df['scene_fk'] == scene]
-            #         if not self.scene_recognition_check_of_storage(scene):
-            #             if shelfs_to_include != "":
-            #                 df_list.append(df[df['shelf_number_from_bottom'] > shelfs_to_include])
-            #         else:
-            #             if shelfs_to_include != "":
-            #                 df_list.append((df[df['shelf_number_from_bottom'] > shelfs_to_include]) &
-            #                                (df[df['shelf_number'] != 1]))
 
             # if no osd rule is applied
             if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -358,6 +353,8 @@ class PNGHKToolBox:
             # filter df to have only shelves with given ean code
             if row[Const.HAS_OSD].values[0] == Const.YES:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
+                if products_to_filter != "":
+                    products_to_filter = [item.strip() for item in products_to_filter]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'shelf_number']]
                 products_df = products_df.drop_duplicates()
@@ -368,7 +365,9 @@ class PNGHKToolBox:
                         df_list.append(scene_df)
 
             if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
-                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT]
+                products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].values[0].split(",")
+                if products_to_filter != "":
+                    products_to_filter = [item.strip() for item in products_to_filter]
                 products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
                                                                                                'bay_number',
                                                                                                'shelf_number']]
@@ -410,8 +409,6 @@ class PNGHKToolBox:
             df = df[df['product_type'] != 'POS']
         if self.kpi_excluding[Const.STACKING] == Const.EXCLUDE:
             df = df[df['stacking_layer'] == 1]
-        # if self.kpi_excluding[Const.EXCLUDE_HANGER] == Const.EXCLUDE:
-        #     df = self.exclude_special_attribute_products(df, Const.DB_HANGER_NAME)
         return df
 
     def exclude_special_attribute_products(self, df, smart_attribute):
