@@ -665,6 +665,8 @@ class PngcnSceneKpis(object):
 
     def save_nlsos_to_custom_scif(self):
         matches = self.matches_from_data_provider.copy()
+        if matches.empty:
+            return
         mask = (matches.status != 2) & (matches.bay_number != -1) & (matches.shelf_number != -1) & \
                (matches.stacking_layer != -1) & (matches.facing_sequence_number != -1)
         matches_reduced = matches[mask]

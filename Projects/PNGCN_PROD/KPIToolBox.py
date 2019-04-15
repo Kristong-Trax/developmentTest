@@ -171,13 +171,13 @@ class PNGToolBox:
                 kpi_dict = {}
                 empty_spaces = self.empty_spaces[category][sub_category]
                 main_category = True
-                category_facings = relevant_facings[relevant_facings['category_local_name'].fillna("").apply(lambda row: row.encode("utf8")) == category.encode("utf8")]
+                category_facings = relevant_facings[relevant_facings['category_local_name'].str.encode("utf8") == category.encode("utf8")]
                 if sub_category != category:
                     main_category = False
                     if sub_category == '{} Other'.format(category.split('_')[0]):
                         category_facings = category_facings[~category_facings['sub_category'].apply(bool)]
                     else:
-                        category_facings = category_facings[category_facings['sub_category'].fillna("").apply(lambda row: row.encode("utf8")) == sub_category.encode("utf8")]
+                        category_facings = category_facings[category_facings['sub_category'].str.encode("utf8") == sub_category.encode("utf8")]
                 kpi_dict['PNG_Empty'] = empty_spaces['png']
                 kpi_dict['Total_Empty'] = empty_spaces['png'] + empty_spaces['other']
                 png_facings = category_facings[category_facings['manufacturer_fk'] == PNG_MANUFACTURER_FK]
@@ -195,15 +195,16 @@ class PNGToolBox:
                     kpi_dict['Category_Empty_Rate%'] = 0
 
                 if not main_category:
-                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].fillna("").apply(lambda
-                        row: row.encode("utf8")) == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
-                                                             (self.kpi_static_data['kpi_name'] == sub_category)]
+                    sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                              == (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
+                                                             (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                              == sub_category.encode("utf8"))]
                     if sub_category_data.empty:
                         self.insert_sub_category_kpi(category, sub_category)
-                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].fillna("")
-                                .apply(lambda row: row.encode("utf8")) ==
+                        sub_category_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8") ==
                                                             (category + SUB_CATEGORY_SETS_SUFFIX).encode("utf8")) &
-                                                            (self.kpi_static_data['kpi_name'] == sub_category)]
+                                                            (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                                             == sub_category.encode("utf8"))]
                     sets_to_save.add(sub_category_data['kpi_set_fk'].values[0])
                     kpi_fk = sub_category_data['kpi_fk'].values[0]
                     self.write_to_db_result(kpi_fk, 100, self.LEVEL2)
@@ -216,7 +217,8 @@ class PNGToolBox:
                         # else:
                         #     self.write_to_db_result(atomic_kpi_fk, kpi_dict[kpi], self.LEVEL3)
                 else:
-                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].fillna("").apply(lambda row: row.encode("utf8")) == category.encode("utf8")]
+                    category_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                                         == category.encode("utf8")]
                     sets_to_save.add(category_data['kpi_set_fk'].values[0])
                     for kpi in kpi_dict:
                         kpi_fk = category_data[category_data['kpi_name'] == kpi]['kpi_fk'].values[0]
