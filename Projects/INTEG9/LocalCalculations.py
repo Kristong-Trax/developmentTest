@@ -5,8 +5,8 @@ from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Projects.GOOGLEJP.Calculations import Calculations
-from Projects.GOOGLEJP.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.INTEG9.Calculations import Calculations
+from Projects.INTEG9.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -20,9 +20,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('googlejp calculations')
+    LoggerInitializer.init('integ9 - googlejp calculations')
     Config.init()
-    project_name = 'googlejp'
+    project_name = 'integ9'
     sessions = ['a1361455-61f0-4d4e-ba6c-a69a82250ee4']
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)

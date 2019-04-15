@@ -125,10 +125,6 @@ class PEPSICOUKToolBox:
                                                      as_index=False).agg({'count': np.sum})
         return aggregate_df
 
-    # def set_scif_and_matches_in_data_provider(self, scif, matches):
-    #     self.data_provider._set_scene_item_facts(scif)
-    #     self.data_provider._set_matches(matches)
-
 #------------------utility functions-------------
     @staticmethod
     def split_and_strip(value):
