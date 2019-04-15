@@ -115,8 +115,10 @@ class PEPSICOUKCommonToolBox:
 
     def get_on_display_products(self):
         probe_match_list = self.match_product_in_scene['probe_match_fk'].values.tolist()
-        query = PEPSICOUK_Queries.on_display_products_query(probe_match_list)
-        on_display_products = pd.read_sql_query(query, self.rds_conn.db)
+        on_display_products = pd.DataFrame(columns=["probe_match_fk", "smart_attribute"])
+        if probe_match_list:
+            query = PEPSICOUK_Queries.on_display_products_query(probe_match_list)
+            on_display_products = pd.read_sql_query(query, self.rds_conn.db)
         return on_display_products
 
     def get_exclusion_template_data(self):

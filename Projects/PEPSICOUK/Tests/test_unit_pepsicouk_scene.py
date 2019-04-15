@@ -1,25 +1,3 @@
-#
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Utils.Testing.Case import TestCase
-# from mock import MagicMock, mock
-# import pandas as pd
-# from Projects.PEPSICOUK.Utils.KPIToolBox import PEPSICOUKToolBox
-#
-#
-# __author__ = 'natalyak'
-#
-#
-# class TestPEPSICOUK(TestCase):
-#
-#     @mock.patch('Projects.PEPSICOUK.Utils.KPIToolBox.ProjectConnector')
-#     def setUp(self, x):
-#         Config.init('')
-#         self.data_provider_mock = MagicMock()
-#         self.data_provider_mock.project_name = 'pepsicouk'
-#         self.data_provider_mock.rds_conn = MagicMock()
-#         self.output = MagicMock()
-#         self.tool_box = PEPSICOUKToolBox(self.data_provider_mock, MagicMock())
-
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -33,6 +11,10 @@ from pandas.util.testing import assert_frame_equal
 
 
 __author__ = 'natalyak'
+
+def get_exclusion_template_df_all_tests():
+    template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
+    return template_df
 
 class Test_PEPSICOUKScene(MockingTestCase):
     seeder = Seeder()
@@ -193,7 +175,7 @@ class Test_PEPSICOUKScene(MockingTestCase):
         expected_list.append({'kpi_fk': 322, 'numerator': 2, 'result': 30})
         expected_list.append({'kpi_fk': 321, 'numerator': 3, 'result': 8})
         expected_list.append({'kpi_fk': 322, 'numerator': 3, 'result': 120})
-        expected_list.append({'kpi_fk': 321, 'numerator': 4, 'result': 6})
+        expected_list.append({'kpi_fk': 321, 'numerator': 4, 'result': 18})
         expected_list.append({'kpi_fk': 322, 'numerator': 4, 'result': 120})
         test_result_list = []
         for expected_result in expected_list:
@@ -290,11 +272,11 @@ class Test_PEPSICOUKScene(MockingTestCase):
             DataTestUnitPEPSICOUK.test_case_1, 2)
         scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
         expected_list = []
-        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5})
-        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0/1})
+        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5*100})
+        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0*100/1})
         scene_tb.calculate_shelf_placement_horizontal()
         kpi_results = scene_tb.kpi_results
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
