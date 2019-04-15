@@ -170,9 +170,15 @@ class SINGHATHToolBox:
     def write_pos_presence(self, kpi, price_sheet_data_frame):
         for each_ean in price_sheet_data_frame[POS_PRESENCE_EAN_COL]:
             presence = 1
-            product_df = self.scif.query("product_ean_code=='{each_ean}'".format(each_ean=each_ean))
+            product_df = self.scif.query("product_ean_code=='{each_ean}' and product_type=='{type}'".format(
+                each_ean=each_ean,
+                type=DUMP_DISPLAY_POS_TYPE
+            ))
             if product_df.empty:
-                product_df = self.all_products.query("product_ean_code=='{each_ean}'".format(each_ean=each_ean))
+                product_df = self.all_products.query("product_ean_code=='{each_ean}' and product_type=='{type}'".format(
+                    each_ean=each_ean,
+                    type=DUMP_DISPLAY_POS_TYPE
+                ))
                 presence = 0
                 if product_df.empty:
                     # This should not happen
