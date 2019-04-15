@@ -29,6 +29,7 @@ INTEGRATION = 'INTEGRATION'
 TOPSKU = 'TOPSKU'
 KPI_CONVERSION = 'KPI_CONVERSION'
 BENCHMARK = 'BENCHMARK'
+
 ALLOWED_POS_SETS = (
     'Pos 2018 - Canteen',
     'Pos 2018 - FT',
@@ -201,13 +202,13 @@ class CCRUProjectCalculations:
             self.tool_box.calculate_gaps_new(self.json.project_kpi_dict.get('gaps'),
                                              kpi_source[GAPS][SET])
 
-        # if kpi_source[BENCHMARK][SET]:
-        #     Log.debug('KPI calculation stage: {}'.format(kpi_source[BENCHMARK][SET]))
-        #     self.tool_box.set_kpi_set(kpi_source[BENCHMARK][SET], BENCHMARK)
-        #     self.json.create_kpi_data_json(
-        #         'benchmark', kpi_source[BENCHMARK][FILE], sheet_name=kpi_source[BENCHMARK][SHEET])
-        #     self.tool_box.calculate_benchmark(self.json.project_kpi_dict.get('benchmark'),
-        #                                       kpi_source[BENCHMARK][SET])
+        if kpi_source[BENCHMARK][SET]:
+            Log.debug('KPI calculation stage: {}'.format(kpi_source[BENCHMARK][SET]))
+            self.tool_box.set_kpi_set(kpi_source[BENCHMARK][SET], BENCHMARK)
+            self.json.create_kpi_data_json(
+                'benchmark', kpi_source[BENCHMARK][FILE], sheet_name=kpi_source[BENCHMARK][SHEET])
+            self.tool_box.calculate_benchmark(self.json.project_kpi_dict.get('benchmark'),
+                                              kpi_source[BENCHMARK][SET])
 
         if kpi_source[CONTRACT][FILE]:
             Log.debug('Importing Contract Execution template')
