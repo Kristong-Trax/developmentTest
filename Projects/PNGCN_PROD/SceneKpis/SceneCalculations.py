@@ -34,17 +34,17 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     scene_item_facts.rename(columns={Fields.PRODUCT_FK: 'item_id', Fields.SCENE_FK: 'scene_id'}, inplace=True)
     data_provider.set_scene_item_facts(scene_item_facts)
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('pngcn calculations')
-#     Config.init()
-#     project_name = 'pngcn-prod'
-#     data_provider = KEngineDataProvider(project_name)
-#     session = 'cb2cc33d-de43-4c35-a25b-ce538730037e'
-#
-#     scenes = [15140013, ]
-#     for scene in scenes:
-#         data_provider.load_scene_data(session, scene)
-#         output = VanillaOutput()
-#         SceneVanillaCalculations(data_provider, output).run_project_calculations()
-#         save_scene_item_facts_to_data_provider(data_provider, output)
-#         SceneCalculations(data_provider).calculate_kpis()
+if __name__ == '__main__':
+    LoggerInitializer.init('pngcn calculations')
+    Config.init()
+    project_name = 'pngcn-prod'
+    data_provider = KEngineDataProvider(project_name)
+    session = 'ebebc629-6b82-4be8-a872-0caa248ea248'
+
+    scenes = [16588190]
+    for scene in scenes:
+        data_provider.load_scene_data(session, scene)
+        output = VanillaOutput()
+        SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        save_scene_item_facts_to_data_provider(data_provider, output)
+        SceneCalculations(data_provider).calculate_kpis()

@@ -698,7 +698,8 @@ class PngcnSceneKpis(object):
     def insert_data_into_custom_scif(self, new_scif):
         session_id = self.data_provider.session_id
         new_scif['session_id'] = session_id
-        delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE scene_fk = {}""".format(self.scene_id)
+        delete_query = """DELETE FROM pservice.custom_scene_item_facts WHERE session_fk = {} and 
+                                                        scene_fk = {}""".format(session_id, self.scene_id)
         insert_query = """INSERT INTO pservice.custom_scene_item_facts \
                             (session_fk, scene_fk, product_fk, in_assortment_osa, length_mm_custom) VALUES """
         for i, row in new_scif.iterrows():
