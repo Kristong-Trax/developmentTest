@@ -27,12 +27,12 @@ class SANOFIKHCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
-if __name__ == '__main__':
-    LoggerInitializer.init('sanofikh calculations')
-    Config.init()
-    project_name = 'sanofikh'
-    data_provider = KEngineDataProvider(project_name)
-    session = '9733c7d4-20c7-4d57-859e-c918b6209d04'
-    data_provider.load_session_data(session)
-    output = Output()
-    SANOFIKHCalculations(data_provider, output).run_project_calculations()
+# if __name__ == '__main__':
+#     LoggerInitializer.init('sanofikh calculations')
+#     Config.init()
+#     project_name = 'sanofikh'
+#     data_provider = KEngineDataProvider(project_name)
+#     session = '9733c7d4-20c7-4d57-859e-c918b6209d04'
+#     data_provider.load_session_data(session)
+#     output = Output()
+#     SANOFIKHCalculations(data_provider, output).run_project_calculations()
