@@ -110,13 +110,13 @@ class ToolBox:
         if relevant_scif.empty:
             return
 
-        # print(kpi_name)
-        # if kpi_name != 'How is RTS Progresso blocked?':
-        #     return
+        print(kpi_name)
+        if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Adult Organic Segment?':
+            return
 
         # if kpi_type == Const.AGGREGATION:
-        # if kpi_type:
-        if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
+        if kpi_type:
+        # if (self.super_cat == 'RBG') or (kpi_type in[Const.BASE_MEASURE, Const.BLOCKING, Const.AGGREGATION]):
         # if kpi_name == 'How is RTS Progresso blocked?':
         # if kpi_type in[Const.COUNT_SHELVES]: # Const.COUNT_SHELVES:
         # if kpi_type in[Const.BASE_MEASURE, Const.SET_COUNT]: # Const.COUNT_SHELVES:
@@ -136,14 +136,14 @@ class ToolBox:
             function = self.get_kpi_function(kpi_type, kpi_line[Const.RESULT])
             try:
                all_kwargs = function(kpi_name, kpi_line, relevant_scif, general_filters)
-            except:
+            except Exception as e:
                 if self.global_fail:
                     all_kwargs = [{'score': 0, 'result': "Not Applicable", 'failed': 0}]
                     Log.warning('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
 
                 else:
                     all_kwargs = [{'score': 0, 'result': None, 'failed': 1}]
-                    Log.error('kpi "{}" failed to calculate in super category "{}"'.format(kpi_name, self.super_cat))
+                    Log.error('kpi "{}" failed in super category "{}," error: "{}"'.format(kpi_name, self.super_cat, e))
 
             finally:
                 if not isinstance(all_kwargs, list):
@@ -973,16 +973,16 @@ class ToolBox:
             filters.update(Const.IGN_STACKING)
         return self.filter_df(self.mpis, filters)
 
-    def prune_edges(self, g, allowed_edges, keep_or_cut='keep'):
+    def prune_edges(self, g, action_edges, keep_or_cut='keep'):
         for node in g.nodes():
             for edge_id, edge in g[node].items():
                 for edge_dir in edge.values():
                     if keep_or_cut == 'keep':
-                        if edge_dir not in allowed_edges:
-                            del g[node][edge_id]
+                        if edge_dir not in action_edges:
+                            g.remove_edge(node, edge_id)
                     else:
-                        if edge_dir in allowed_edges:
-                            del g[node][edge_id]
+                        if edge_dir in action_edges:
+                            g.remove_edge(node, edge_id)
         return g
 
     def find_caps(self, potential_results):
