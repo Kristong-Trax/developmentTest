@@ -125,10 +125,6 @@ class PEPSICOUKToolBox:
                                                      as_index=False).agg({'count': np.sum})
         return aggregate_df
 
-    # def set_scif_and_matches_in_data_provider(self, scif, matches):
-    #     self.data_provider._set_scene_item_facts(scif)
-    #     self.data_provider._set_matches(matches)
-
 #------------------utility functions-------------
     @staticmethod
     def split_and_strip(value):
@@ -371,7 +367,7 @@ class PEPSICOUKToolBox:
         kpi_parent = self.commontools.all_targets_unpacked.drop_duplicates(subset=['kpi_level_2_fk', 'KPI Parent'])[['kpi_level_2_fk', 'KPI Parent']]
         hero_results = hero_results.merge(kpi_parent, on='kpi_level_2_fk')
         # hero_results['ratio'] = hero_results.apply(self.get_sku_ratio, axis=1)
-        hero_results['ratio'] = hero_results['numerator_result'] / hero_results['denominator_result']
+        hero_results['ratio'] = hero_results['numerator_result'] / hero_results['denominator_result'] * 100
         return hero_results
 
     def get_kpi_type_by_pk(self, kpi_fk):
@@ -548,7 +544,7 @@ class PEPSICOUKToolBox:
                 self.common.write_to_db_result(fk=oos_fk, numerator_id=self.own_manuf_fk,
                                                numerator_result=denominator_res - result.passes,
                                                denominator_id=self.store_id, denominator_result=denominator_res,
-                                               result=1 - res, score=(1 - res), identifier_result=oos_identifier_parent,
+                                               result=100 - res, score=(100 - res), identifier_result=oos_identifier_parent,
                                                should_enter=True)
 
     def calculate_sos_vs_target_kpis(self):

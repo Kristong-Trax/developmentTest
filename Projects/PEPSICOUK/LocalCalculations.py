@@ -17,7 +17,8 @@ if __name__ == '__main__':
     # session = 'e6bf953a-1d8c-4dd1-b558-f88ef1cb13e5' # for block, results in DB scene abn session
     # session = '10ebc650-2b9c-4031-ab1d-a96ccae13032' # for stack - results in db
     # session = '58272289-5f9a-4fb6-b8e0-a7f3bfa2e07c' # session with DF error on _set_scif
-    session = '8699c793-8a71-4a18-b24c-3785146075c4'
+    # session = '8699c793-8a71-4a18-b24c-3785146075c4'
+    session = '25d0dca0-d07a-4228-8a31-4e1d3e4c3aca'
     data_provider.load_session_data(session)
     output = Output()
     PEPSICOUKCalculations(data_provider, output).run_project_calculations()
