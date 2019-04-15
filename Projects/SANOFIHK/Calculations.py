@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 import os
-from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -23,7 +23,7 @@ class SANOFIHKCalculations(BaseCalculationsScript):
 #     Config.init()
 #     project_name = 'sanofihk'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'ec2966c2-55e8-4be9-81a4-100adbaea0ce'
+#     session = '265da56b-c7f4-4960-bca2-1ff169a57916'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     SANOFIHKCalculations(data_provider, output).run_project_calculations()

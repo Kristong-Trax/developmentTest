@@ -39,9 +39,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 #     Config.init()
 #     project_name = 'pngcn-prod'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'cb2cc33d-de43-4c35-a25b-ce538730037e'
+#     session = 'ebebc629-6b82-4be8-a872-0caa248ea248'
 #
-#     scenes = [15140013, ]
+#     scenes = [16588190]
 #     for scene in scenes:
 #         data_provider.load_scene_data(session, scene)
 #         output = VanillaOutput()

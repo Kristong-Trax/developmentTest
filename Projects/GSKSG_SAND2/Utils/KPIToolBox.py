@@ -17,6 +17,8 @@ from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+
 
 __author__ = 'jasmine'
 
@@ -112,16 +114,24 @@ class GSKSGToolBox:
         self.sos = SOS(data_provider, self.output)
         self.survey = Survey(data_provider, self.output)
         self.toolbox = GENERALToolBox(self.data_provider)
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common)
 
 
     def main_calculation(self):
         """
         This function calculates the KPI results.
         """
-        template = self.get_relevant_calculations()
-        self.handle_calculation(template)
-        self.common_old_tables.commit_results_data()
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_function()
+        if linear_sos_dict is None:
+            Log.warning('Scene item facts is empty for this session')
+        self.common.save_json_to_new_tables(linear_sos_dict)
         self.common.commit_results_data()
+
+        # template = self.get_relevant_calculations()
+        # self.handle_calculation(template)
+        # self.common_old_tables.commit_results_data()
+        # self.common.commit_results_data()
 
         score = 0
         return score
