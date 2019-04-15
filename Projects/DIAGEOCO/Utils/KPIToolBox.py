@@ -29,6 +29,14 @@ class DIAGEOCOToolBox:
     def __init__(self, data_provider, output):
         self.output = output
         self.data_provider = data_provider
+        # ----------- fix for nan types in dataprovider -----------
+        all_products = self.data_provider._static_data_provider.all_products.where(
+            (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
+        self.data_provider._set_all_products(all_products)
+        self.data_provider._init_session_data(None, True)
+        self.data_provider._init_report_data(self.data_provider.session_uid)
+        self.data_provider._init_reporting_data(self.data_provider.session_id)
+        # ----------- fix for nan types in dataprovider -----------
         self.common = Common(self.data_provider)
         self.common_v2 = CommonV2(self.data_provider)
         self.project_name = self.data_provider.project_name

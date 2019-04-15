@@ -270,6 +270,15 @@ class Test_PEPSICOUKCommon(MockingTestCase):
         result_fk = tool_box.get_kpi_score_value_pk_by_value('non_existing_value')
         self.assertIsNone(result_fk)
 
+    def test_empty_scene_details(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_2, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_2, sheetname='matches'))
+        tool_box = PEPSICOUKCommonToolBox(self.data_provider_mock, self.output)
+        self.assertTrue(tool_box.scif.empty)
+        self.assertTrue(tool_box.match_product_in_scene.empty)
+        self.assertTrue(tool_box.filtered_matches.empty)
+        self.assertTrue(tool_box.filtered_scif.empty)
+
     # def test_whatever(self):
     #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
     #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))

@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Utils.Conf.Configuration import Config
 
-from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI_2.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
@@ -27,13 +27,13 @@ class BIVNCalculations(BaseCalculationsScript):
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-
+#
 # if __name__ == '__main__':
 #     LoggerInitializer.init('sanofivn calculations')
 #     Config.init()
 #     project_name = 'bivn'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = 'F4499136-47D9-4ADA-B4C4-7114BB32A2AB'
+#     session = 'B3988C35-769C-4EAE-8E25-5250AD7E4CBD'
 #     data_provider.load_session_data(session)
 #     output = Output()
 #     BIVNCalculations(data_provider, output).run_project_calculations()
