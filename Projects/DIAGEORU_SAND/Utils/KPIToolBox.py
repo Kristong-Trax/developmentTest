@@ -61,6 +61,9 @@ class DIAGEORUToolBox:
         self.kpi_static_data = self.get_kpi_static_data()
         self.kpi_results_queries = []
         self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_channel = self.store_info['store_type'].values[0]
+        if self.store_channel:
+            self.store_channel = self.store_channel.upper()
         self.store_type = self.store_info['additional_attribute_1'].values[0]
         self.set_templates_data = {}
         self.kpi_static_data = self.get_kpi_static_data()
@@ -120,6 +123,24 @@ class DIAGEORUToolBox:
                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
                 self.save_level2_and_level3(set_name, set_name, set_score)
 
+            elif set_name in ('Brand Blocking',):
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_block_together(
+                    kpi_name=set_name,
+                    set_templates_data=self.set_templates_data[set_name])
+                self.commonV2.save_json_to_new_tables(res_dict)
+
+                # Saving to old tables
+                set_score = self.calculate_block_together_sets(set_name)
+
+            elif set_name == 'Relative Position':
+                # Global function
+                res_dict = self.diageo_generator.diageo_global_relative_position_function(
+                    self.set_templates_data[set_name], location_type='template_display_name')
+
+                self.commonV2.save_json_to_new_tables(res_dict)
+                set_score = self.calculate_relative_position_sets(set_name)
+
             if set_score == 0:
                 pass
             elif set_score is False:
@@ -130,6 +151,77 @@ class DIAGEORUToolBox:
 
         # committing to new tables
         self.commonV2.commit_results_data()
+
+    def save_results_to_db(self, results_list):
+        if results_list:
+            for result in results_list:
+                if result is not None:
+                    self.commonV2.write_to_db_result(**result)
+
+    def _get_direction_for_relative_position(self, value):
+        """
+        This function converts direction data from the template (as string) to a number.
+        """
+        if value == self.tools.UNLIMITED_DISTANCE:
+            value = 1000
+        elif not value or not str(value).isdigit():
+            value = 0
+        else:
+            value = int(value)
+        return value
+
+    def calculate_relative_position_sets(self, set_name):
+        """
+        This function calculates every relative-position-typed KPI from the relevant sets, and returns the set
+        final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
+                tested_filters = {'product_ean_code': params.get(self.tools.TESTED)}
+                anchor_filters = {'product_ean_code': params.get(self.tools.ANCHOR)}
+                direction_data = {'top': self._get_direction_for_relative_position(params.get(self.tools.TOP_DISTANCE)),
+                                  'bottom': self._get_direction_for_relative_position(
+                                      params.get(self.tools.BOTTOM_DISTANCE)),
+                                  'left': self._get_direction_for_relative_position(
+                                      params.get(self.tools.LEFT_DISTANCE)),
+                                  'right': self._get_direction_for_relative_position(
+                                      params.get(self.tools.RIGHT_DISTANCE))}
+                general_filters = {'template_name': params.get(self.tools.LOCATION)}
+                result = self.tools.calculate_relative_position(tested_filters, anchor_filters, direction_data,
+                                                                **general_filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
+
+    def calculate_block_together_sets(self, set_name):
+        """
+        This function calculates every block-together-typed KPI from the relevant sets, and returns the set final score.
+        """
+        scores = []
+        for params in self.set_templates_data[set_name]:
+            if self.store_channel == params.get(self.tools.CHANNEL, '').upper():
+                filters = {'template_name': params.get(self.tools.LOCATION)}
+                if params.get(self.tools.SUB_BRAND_NAME):
+                    filters['sub_brand_name'] = params.get(self.tools.SUB_BRAND_NAME)
+                else:
+                    filters['brand_name'] = params.get(self.tools.BRAND_NAME)
+                result = self.tools.calculate_block_together(**filters)
+                score = 1 if result else 0
+                scores.append(score)
+
+                self.save_level2_and_level3(set_name, params.get(self.tools.KPI_NAME), score)
+
+        if not scores:
+            return False
+        set_score = (sum(scores) / float(len(scores))) * 100
+        return set_score
 
     def activate_ootb_kpis(self):
         # FACINGS_SOS_MANUFACTURER_IN_WHOLE_STORE - level 1
