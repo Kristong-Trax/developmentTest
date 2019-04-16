@@ -125,7 +125,8 @@ class GSKSGToolBox:
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_function()
         if linear_sos_dict is None:
             Log.warning('Scene item facts is empty for this session')
-        self.common.save_json_to_new_tables(linear_sos_dict)
+        else:
+            self.common.save_json_to_new_tables(linear_sos_dict)
         self.common.commit_results_data()
 
         # template = self.get_relevant_calculations()
