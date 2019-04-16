@@ -12,7 +12,7 @@ from Trax.Utils.Testing.Case import MockingTestCase
 
 from Tests.Data.TestData.test_data_bikr_sanity import ProjectsSanityData
 from Projects.BIKR.Calculations import BIKRCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
