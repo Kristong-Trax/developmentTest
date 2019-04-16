@@ -221,7 +221,8 @@ class PEPSICOUKToolBox:
                                           (self.filtered_matches['product_fk'] == sku)]
         if not prices_df.empty:
             price = 1
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
+        result = self.commontools.get_yes_no_result(price)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=result)
         self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
 
     def calculate_hero_sku_price(self, sku, kpi_fk):
@@ -253,9 +254,10 @@ class PEPSICOUKToolBox:
                     score = 0
                     if any(stack_info):
                         score = 1
-                    self.common.write_to_db_result(fk=stacking_kpi_fk, numerator_id=sku, score=score, result=score)
+                    result = self.commontools.get_yes_no_result(score)
+                    self.common.write_to_db_result(fk=stacking_kpi_fk, numerator_id=sku, score=score, result=result)
 
-                    self.add_kpi_result_to_kpi_results_df([stacking_kpi_fk, sku, None, score, score])
+                    self.add_kpi_result_to_kpi_results_df([stacking_kpi_fk, sku, None, result, score])
 
     @staticmethod
     def get_stack_data(row):
@@ -565,10 +567,10 @@ class PEPSICOUKToolBox:
                 score = result/row['Target'] if row['Target'] else 0 # todo: what should we have in else case???
                 self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                                numerator_result=numerator_linear, denominator_id=row.denominator_id,
-                                               denominator_result=denominator_linear, result=result, score=score,
-                                               target=row['Target'], identifier_parent=row.identifier_parent,
+                                               denominator_result=denominator_linear, result=result*100, score=score,
+                                               target=row['Target'] * 100, identifier_parent=row.identifier_parent,
                                                should_enter=True)
-                self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result,
+                self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result*100,
                                                        score])
 
             sos_targets['count'] = 1

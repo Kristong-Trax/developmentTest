@@ -300,9 +300,10 @@ class Test_PEPSICOUK(MockingTestCase):
         self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
         self.assertEquals(len(tool_box.kpi_results), 2)
         expected_list = list()
-        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 1, 'score': 1})
-        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 1, 'score': 1})
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 4, 'score': 1})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 4, 'score': 1})
         test_result_list = []
+        print tool_box.kpi_results
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
         self.assertTrue(all(test_result_list))
@@ -315,8 +316,8 @@ class Test_PEPSICOUK(MockingTestCase):
         self.assertItemsEqual(tool_box.kpi_results['numerator'].unique().tolist(), expected_skus_in_results)
         self.assertEquals(len(tool_box.kpi_results), 2)
         expected_list = list()
-        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 0, 'score': 0})
-        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 0, 'score': 0})
+        expected_list.append({'kpi_fk': 315, 'numerator': 1, 'result': 5, 'score': 0})
+        expected_list.append({'kpi_fk': 315, 'numerator': 2, 'result': 5, 'score': 0})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(tool_box.kpi_results, expected_result) == 1)
@@ -440,9 +441,9 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_sos_vs_target_kpis()
         expected_list = list()
-        expected_list.append({'kpi_fk': 296, 'numerator': 2, 'denominator': 11, 'result': round(float(135)/float(255), 5),
+        expected_list.append({'kpi_fk': 296, 'numerator': 2, 'denominator': 11, 'result': round(float(135)/float(255)*100, 5),
                               'score': round(float(135)/float(255)/0.9, 5)})
-        expected_list.append({'kpi_fk': 294, 'numerator': 10, 'denominator': 2, 'result': round(float(120)/float(435), 5), 'score':
+        expected_list.append({'kpi_fk': 294, 'numerator': 10, 'denominator': 2, 'result': round(float(120)/float(435)*100, 5), 'score':
             round(float(120) / float(435)/0.02, 5)})
         expected_list.append({'kpi_fk': 295, 'numerator': 2, 'denominator': 8, 'result': 0, 'score': 0})
         expected_list.append({'kpi_fk': 293, 'numerator': 155, 'denominator': 2, 'result': 0, 'score': 0})
