@@ -143,8 +143,8 @@ class CCRUProjectCalculations:
             Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
             self.tool_box.set_kpi_set(kpi_source[kpi_set_type][SET], kpi_set_type)
             self.json.project_kpi_dict['kpi_data'] = []
-            self.json.create_kpi_data_json(
-                'kpi_data', kpi_source[kpi_set_type][FILE], sheet_name=kpi_source[kpi_set_type][SHEET])
+            self.json.create_kpi_data_json('kpi_data', kpi_source[kpi_set_type][FILE],
+                                           sheet_name=kpi_source[kpi_set_type][SHEET])
             kpi_data = self.json.project_kpi_dict.get('kpi_data')[0]
             score = 0
             score += self.tool_box.check_availability(kpi_data)
