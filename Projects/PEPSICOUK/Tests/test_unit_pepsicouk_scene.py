@@ -272,11 +272,11 @@ class Test_PEPSICOUKScene(MockingTestCase):
             DataTestUnitPEPSICOUK.test_case_1, 2)
         scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
         expected_list = []
-        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5})
-        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6, 5)})
-        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0/1})
+        expected_list.append({'kpi_fk': 304, 'numerator': 1, 'result': 5.0/5*100})
+        expected_list.append({'kpi_fk': 307, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 306, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 305, 'numerator': 2, 'result': round(2.0/6*100, 5)})
+        expected_list.append({'kpi_fk': 307, 'numerator': 3, 'result': 1.0*100/1})
         scene_tb.calculate_shelf_placement_horizontal()
         kpi_results = scene_tb.kpi_results
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))

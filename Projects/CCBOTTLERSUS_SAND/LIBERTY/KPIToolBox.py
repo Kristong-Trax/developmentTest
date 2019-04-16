@@ -38,6 +38,7 @@ class LIBERTYToolBox:
         self.store_type = self.store_info['store_type'].iloc[0]
         self.retailer = self.store_info['retailer_name'].iloc[0]
         self.branch = self.store_info['branch_name'].iloc[0]
+        self.additional_attribute_4 = self.store_info['additional_attribute_4'].iloc[0]
         self.additional_attribute_7 = self.store_info['additional_attribute_7'].iloc[0]
         self.body_armor_delivered = self.get_body_armor_delivery_status()
 
@@ -292,18 +293,28 @@ class LIBERTYToolBox:
     # helper functions
     def get_market_share_target(self, ssd_still=None):  # need to move to external KPI targets
         template = self.templates[Const.MARKET_SHARE]
-        relevant_template = template[(template[Const.STORE_TYPE] == self.store_type) &
+        relevant_template = template[(template[Const.ADDITIONAL_ATTRIBUTE_4] == self.additional_attribute_4) &
                                      (template[Const.RETAILER] == self.retailer) &
                                      (template[Const.BRANCH] == self.branch)]
 
         if relevant_template.empty:
-            return 0
+            if ssd_still:
+                if ssd_still[0].lower() == Const.SSD.lower():
+                    return 49
+                elif ssd_still[0].lower() == Const.STILL.lower():
+                    return 16
+                else:
+                    return 0
+            else:
+                return 26
+
         if ssd_still:
             if ssd_still[0].lower() == Const.SSD.lower():
                 return relevant_template[Const.SSD].iloc[0]
             elif ssd_still[0].lower() == Const.STILL.lower():
                 return relevant_template[Const.STILL].iloc[0]
 
+        # total 26, ssd only 49, still only 16
         return relevant_template[Const.SSD_AND_STILL].iloc[0]
 
     def get_body_armor_delivery_status(self):

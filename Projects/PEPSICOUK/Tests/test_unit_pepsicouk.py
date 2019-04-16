@@ -8,6 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os
 import pandas as pd
+from pandas.util.testing import assert_frame_equal
 
 __author__ = 'natalya'
 
@@ -67,21 +68,8 @@ class Test_PEPSICOUK(MockingTestCase):
     def mock_lvl2_ass_base_df(self):
         ass_res = self.mock_object('Assortment.get_lvl3_relevant_ass',
                                        path='KPIUtils_v2.Calculations.AssortmentCalculations')
-        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_base
+        ass_res.return_value = DataTestUnitPEPSICOUK.test_case_1_ass_base_extended
         return ass_res.return_value
-
-    # @classmethod
-    # def setUpClass(cls):
-    #     """ get_some_resource() is slow, to avoid calling it for each test use setUpClass()
-    #         and store the result as class variable
-    #     """
-    #     super(Test_PEPSICOUK, cls).setUpClass()
-    #     cls.template_df_mock = cls.get_exclusion_template_df_all_tests()
-    #
-    # @classmethod
-    # def get_exclusion_template_df_all_tests(cls):
-    #     template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
-    #     return template_df
 
     def mock_all_products(self):
         self.data_provider_data_mock['all_products'] = pd.read_excel(DataTestUnitPEPSICOUK.test_case_1,
@@ -221,15 +209,37 @@ class Test_PEPSICOUK(MockingTestCase):
     #     print tool_box.lvl3_ass_result
     #     print tool_box.scene_kpi_results
     #     print tool_box.scene_info
-    #
-    # def test_assortment(self):
-    #     self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
-    #     self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
-    #     self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
-    #     self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
-    #     tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
-    #     # tool_box.calculate_assortment() # complete mock data later
-    #     print tool_box.lvl3_ass_result
+
+    def test_assortment_result_is_calculated(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        # tool_box.calculate_assortment() # complete mock data later
+        expected_result = pd.DataFrame.from_records([
+            {'in_store': 1, 'product_fk': 1}, {'in_store': 1, 'product_fk': 2}, {'in_store': 0, 'product_fk': 5}
+        ])
+        assert_frame_equal(expected_result, tool_box.lvl3_ass_result[['in_store', 'product_fk']])
+
+    def test_assortment_kpi_is_calculated_correctly(self):
+        self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
+        self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='matches'))
+        self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
+        self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
+        tool_box.calculate_assortment()
+        expected_list = []
+        expected_list.append({'kpi_fk': 290, 'numerator': 1, 'result': 4, 'score': 100})
+        expected_list.append({'kpi_fk': 290, 'numerator': 2, 'result': 4, 'score': 100})
+        expected_list.append({'kpi_fk': 290, 'numerator': 5, 'result': 5, 'score': 0})
+        expected_list.append({'kpi_fk': 289, 'numerator': 2, 'result': round(2.0 / 3 * 100, 5), 'score': 0})
+        kpi_results = tool_box.kpi_results
+        kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
+        test_result_list = []
+        for expected_result in expected_list:
+            test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
+        self.assertTrue(all(test_result_list))
 
     def test_calculate_hero_shelf_placement_horizontal(self):
         self.mock_scene_item_facts(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheetname='scif'))
@@ -239,14 +249,14 @@ class Test_PEPSICOUK(MockingTestCase):
         tool_box = PEPSICOUKToolBox(self.data_provider_mock, self.output)
         tool_box.calculate_shelf_placement_hero_skus()
         expected_list = []
-        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0 / 12, 5)})
-        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1})
-        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1})
+        expected_list.append({'kpi_fk': 311, 'numerator': 1, 'result': round(7.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 1, 'result': round(3.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 1, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 314, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 313, 'numerator': 2, 'result': round(2.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 312, 'numerator': 2, 'result': round(8.0*100 / 12, 5)})
+        expected_list.append({'kpi_fk': 310, 'numerator': 1, 'result': 1*100})
+        expected_list.append({'kpi_fk': 310, 'numerator': 2, 'result': 1*100})
         expected_list.append({'kpi_fk': 309, 'numerator': 2, 'result': 2})
 
         kpi_results = tool_box.kpi_results

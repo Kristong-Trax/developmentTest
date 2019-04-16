@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'Where are Pie Crust facings shelved?':
+        # if kpi_name != 'How is RTS Progresso blocked?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -693,7 +693,7 @@ class ToolBox:
         result = orientation
         if score:
             mpis = self.filter_df(self.full_mpis, general_filters)
-            mpis = self.filter_df(self.full_mpis, Const.IGN_STACKING)
+            mpis = self.filter_df(mpis, Const.IGN_STACKING)
             bays = mpis.groupby(['scene_fk', 'bay_number'])
             for (scene, bay), df in bays:
                 df = self.filter_df(df, filters, exclude=1)
@@ -701,6 +701,7 @@ class ToolBox:
                     result = 'Block covering all shelves'
 
         kwargs = {'score': score, 'result': result}
+        return kwargs
 
     def calculate_vertical_block_adjacencies(self, kpi_name, kpi_line, relevant_scif, general_filters):
         # this could be updated to use base_block() if we don't need to respect unique scene results
