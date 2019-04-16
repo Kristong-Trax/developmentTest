@@ -116,7 +116,7 @@ class CCRUProjectCalculations:
         kpi_source_json = self.json.project_kpi_dict.get('kpi_source')
         kpi_source = {}
         for row in kpi_source_json:
-            Log.info('SOURCE: {}'.format(row.get(SOURCE)))
+            # Log.info('SOURCE: {}'.format(row.get(SOURCE)))
             kpi_source[row.pop(SOURCE)] = row
         if kpi_source:
             pass
