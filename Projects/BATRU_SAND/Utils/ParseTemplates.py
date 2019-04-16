@@ -19,8 +19,7 @@ def parse_template(template_path, sheet_name=None, lower_headers_row_index=0, up
     :param columns_for_vertical_padding: Columns with merged cells to pad by the first value for each group.
     :return: A data frame with a unified row of headers.
     """
-    data = pd.read_excel(template_path, skiprows=lower_headers_row_index,
-                         sheetname=sheet_name, sheet_name=sheet_name)
+    data = pd.read_excel(template_path, skiprows=lower_headers_row_index, sheetname=sheet_name)
     if isinstance(data, dict):
         data = data.values()[0]
     if data_content_column_index is not None and upper_headers_row_index is not None:
@@ -29,8 +28,7 @@ def parse_template(template_path, sheet_name=None, lower_headers_row_index=0, up
             return data
         new_columns = []
         for row_index in xrange(upper_headers_row_index, lower_headers_row_index + 1):
-            header_data = pd.read_excel(template_path, skiprows=row_index,
-                                        sheetname=sheet_name, sheet_name=sheet_name)
+            header_data = pd.read_excel(template_path, skiprows=row_index, sheetname=sheet_name)
             columns = list(header_data.columns)[data_content_column_index:]
             if row_index != lower_headers_row_index:
                 columns = pad_columns(columns)
