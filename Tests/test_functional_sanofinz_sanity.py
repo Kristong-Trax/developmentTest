@@ -11,13 +11,13 @@ from Trax.Utils.Testing.Case import MockingTestCase, skip
 
 from Tests.Data.TestData.test_data_sanofinz_sanity import ProjectsSanityData
 from Projects.SANOFINZ.Calculations import SANOFINZCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 
 __author__ = 'jasmineg'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     @property
     def import_path(self):
