@@ -44,7 +44,6 @@ class PNGHKToolBox:
         self.df = pd.DataFrame()
         self.tools = GENERALToolBox(self.data_provider)
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
-        # self.merged_additional_data = self.get_additional_product_data()
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -303,7 +302,8 @@ class PNGHKToolBox:
                 products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
                 if products_to_filter != "":
                     products_to_filter = [item.strip() for item in products_to_filter]
-                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
+                products_df = scene_df[scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
+                                                                                               'shelf_number']]
                 products_df = products_df.drop_duplicates()
                 if not products_df.empty:
                     for index, p in products_df.iterrows():

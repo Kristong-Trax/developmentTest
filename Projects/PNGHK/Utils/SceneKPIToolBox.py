@@ -62,7 +62,6 @@ class SceneToolBox:
         # filter df to have only shelves with given ean code
         if row[Const.HAS_OSD].values[0] == Const.YES:
             products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
-            products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
             if products_to_filter != "":
                 products_to_filter = [item.strip() for item in products_to_filter]
             products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
