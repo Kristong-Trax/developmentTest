@@ -23,12 +23,12 @@ class MARSRU2_SANDJSONGenerator:
                 for sheetname in sheetnames:
                     self.project_kpi_dict[key][sheetname] = \
                         json.loads(pd.read_excel(os.path.join(self.base_path, file_name),
-                                                 sheetname=str(sheetname))
+                                                 sheetname=str(sheetname), sheet_name=str(sheetname))
                                    .to_json(orient='records'))
             else:
                 self.project_kpi_dict[key] = \
                     json.loads(pd.read_excel(os.path.join(self.base_path, file_name),
-                                             sheetname=str(sheetnames))
+                                             sheetname=str(sheetnames), sheet_name=str(sheetnames))
                                .to_json(orient='records'))
         else:
             self.project_kpi_dict[key] = \
