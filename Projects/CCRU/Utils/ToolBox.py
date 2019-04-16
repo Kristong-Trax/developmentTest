@@ -2738,7 +2738,7 @@ class CCRUKPIToolBox:
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') else 0
 
-            score *= param.get('K')
+            score = round(score*param.get('K'), 2)
             total_score += score
 
             # attributes_for_table3 = pd.DataFrame([(kpi_name,
