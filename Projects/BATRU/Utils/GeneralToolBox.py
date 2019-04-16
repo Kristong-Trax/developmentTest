@@ -866,8 +866,7 @@ class BATRUGENERALToolBox:
             sheet_names = xlrd.open_workbook(file_path).sheet_names()
         for sheet_name in sheet_names:
             try:
-                output = pd.read_excel(file_path, skiprows=skiprows,
-                                       sheetname=sheet_name, sheet_name=sheet_name)
+                output = pd.read_excel(file_path, skiprows=skiprows, sheetname=sheet_name)
             except xlrd.biffh.XLRDError:
                 Log.debug('Sheet name {} doesn\'t exist'.format(sheet_name))
                 return None
