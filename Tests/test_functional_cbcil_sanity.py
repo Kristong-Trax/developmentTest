@@ -10,14 +10,14 @@ from Trax.Data.Testing.TestProjects import TestProjectsNames
 
 from Tests.Data.TestData.test_data_cbcil_sanity import ProjectsSanityData
 from Projects.CBCIL.Calculations import CBCILCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()

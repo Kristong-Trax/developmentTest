@@ -14,14 +14,14 @@ from Tests.Data.Templates.paneflorar_sand.MPA import mpa
 from Tests.Data.Templates.paneflorar_sand.NewProducts import products
 from Tests.Data.TestData.test_data_penaflorar_sand_sanity import ProjectsSanityData
 from Projects.PENAFLORAR_SAND.Calculations import PENAFLORAR_SANDDIAGEOARCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
