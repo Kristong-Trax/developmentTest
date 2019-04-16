@@ -286,7 +286,7 @@ class PEPSICOUKSceneToolBox:
         all_products_df.rename(columns={'count': 'total_facings'}, inplace=True)
         result_df = filtered_matches.groupby(['product_fk', 'position'], as_index=False).agg({'count': np.sum})
         result_df = result_df.merge(all_products_df, on='product_fk', how='left')
-        result_df['ratio'] = result_df['count'] / result_df['total_facings']
+        result_df['ratio'] = result_df['count'] / result_df['total_facings'] * 100
         result_df['kpi_fk'] = result_df['position'].apply(lambda x: self.common.get_kpi_fk_by_kpi_type(x))
         return result_df
 
@@ -305,13 +305,6 @@ class PEPSICOUKSceneToolBox:
             target = row['Target'] # check case in temaplate
             additional_block_params.update({'minimum_block_ratio': float(target)/100})
 
-            # if self.excluded_matches:
-            #     self.block.data_provider._set_matches(self.match_product_in_scene)
-            #     # self.block.data_provider[Data.ALL_PRODUCTS] = self.all_products
-            #     self.block.data_provider._set_all_products(self.all_products)
-            #
-            #     filters = self.adjust_filters_and_data_provider_for_calculations(filters, self.block)
-
             result_df = self.block.network_x_block_together(filters, additional=additional_block_params)
             score = max_ratio = 0
             result = self.commontools.get_yes_no_result(0)
@@ -324,14 +317,11 @@ class PEPSICOUKSceneToolBox:
                     orientation = result_df['orientation'].values[0]
                     score = self.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.store_id,
-                                           numerator_result=max_ratio,
-                                           score=score, result=result, target=target, by_scene=True)
+                                           numerator_result=max_ratio * 100,
+                                           score=score, result=result, target=target * 100, by_scene=True)
 
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
                                                                           'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))
-            # if self.excluded_matches:
-            #     self.block.data_provider._set_matches(self.match_product_in_scene)
-            #     self.block.data_provider._set_products(self.all_products)
 
     @staticmethod
     def get_block_and_adjacency_filters(target_series):
@@ -341,53 +331,6 @@ class PEPSICOUKSceneToolBox:
         if target_series['Parameter 3']:
             filters.update({target_series['Parameter 3']: target_series['Value 3']})
         return filters
-
-    # def adjust_filters_and_data_provider_for_calculations(self, filters, instance):
-    #     # matches = matches_df.copy()
-    #     matches = self.block.data_provider[Data.MATCHES].copy() if isinstance(instance, Block) \
-    #                                             else self.adjacency.data_provider[Data.MATCHES].copy()
-    #
-    #     all_products = self.block.data_provider[Data.ALL_PRODUCTS].copy() if isinstance(instance, Block) \
-    #                                             else self.adjacency.data_provider[Data.ALL_PRODUCTS].copy()  # nissan
-    #
-    #     matches_products = pd.merge(self.filtered_matches, self.all_products, on='product_fk', how='left')
-    #     output_filters = {}
-    #     for field, value in filters.items():
-    #         add_field = '{}_add'.format(field)
-    #         new_filter = {add_field: value}
-    #         if add_field not in matches.columns.values.tolist():
-    #             matches[add_field] = 'N/A'
-    #
-    #         if add_field not in all_products.columns.values.tolist():  # nissan
-    #             all_products[add_field] = 'N/A'
-    #             # if isinstance(instance, Block):
-    #             #     self.block.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
-    #             # else:
-    #             #     self.adjacency.data_provider[Data.ALL_PRODUCTS][add_field] = 'N/A'
-    #
-    #         included_matches = set(matches_products[self.toolbox.get_filter_condition \
-    #                                                     (matches_products, **{field: value})]['probe_match_fk'].values.tolist())
-    #         matches.loc[matches['probe_match_fk'].isin(included_matches), add_field] = value
-    #         output_filters.update(new_filter)
-    #
-    #         included_products = matches[matches['probe_match_fk'].isin(included_matches)]['product_fk'].unique().tolist()  # nissan
-    #         all_products.loc[all_products['product_fk'].isin(included_products), add_field] = value
-    #         # if isinstance(instance, Block):  # nissan
-    #         #     self.block.data_provider[Data.ALL_PRODUCTS].loc[self.block.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
-    #         # else:  # nissan
-    #         #     self.adjacency.data_provider[Data.ALL_PRODUCTS].loc[
-    #         #         self.adjacency.data_provider[Data.ALL_PRODUCTS].isin(included_products), add_field] = value
-    #
-    #     if isinstance(instance, Block):
-    #         self.block.data_provider._set_matches(matches)
-    #     else:
-    #         self.adjacency.data_provider._set_matches(matches)
-    #
-    #     if isinstance(instance, Block): #nissan
-    #         self.block.data_provider._set_all_products(all_products)
-    #     else:
-    #         self.adjacency.data_provider._set_all_products(all_products)
-    #     return output_filters
 
     def calculate_adjacency(self):
         block_pairs = self.get_group_pairs()
@@ -409,10 +352,6 @@ class PEPSICOUKSceneToolBox:
 
                 group_2_targets = external_targets[external_targets['Group Name'] == pair[1]].iloc[0]
                 group_2_filters = self.get_block_and_adjacency_filters(group_2_targets)
-
-                # if self.excluded_matches:
-                #     group_1_filters = self.adjust_filters_and_data_provider_for_calculations(group_1_filters, self.adjacency)
-                #     group_2_filters = self.adjust_filters_and_data_provider_for_calculations(group_2_filters, self.adjacency)
 
                 result_df = self.adjacency.network_x_adjacency_calculation({'anchor_products': group_1_filters,
                                                                             'tested_products': group_2_filters},
@@ -439,7 +378,10 @@ class PEPSICOUKSceneToolBox:
     def get_scene_bay_max_shelves(self, shelf_placement_targets):
         scene_bay_max_shelves = self.match_product_in_scene.groupby(['bay_number'],
                                                                     as_index=False).agg({'shelf_number_from_bottom':np.max})
-        scene_bay_max_shelves.rename(columns = {'shelf_number_from_bottom': 'shelves_in_bay'}, inplace=True)
+        scene_bay_max_shelves.rename(columns={'shelf_number_from_bottom': 'shelves_in_bay'}, inplace=True)
+        min_shelf_in_template = shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN].min() #added
+        scene_bay_max_shelves = scene_bay_max_shelves[scene_bay_max_shelves['shelves_in_bay'] >= min_shelf_in_template] #added
+
         max_shelf_in_template = shelf_placement_targets[self.NUMBER_OF_SHELVES_TEMPL_COLUMN].max()
         shelf_placement_targets = self.complete_missing_target_shelves(scene_bay_max_shelves, max_shelf_in_template,
                                                                      shelf_placement_targets)
@@ -490,6 +432,7 @@ class PEPSICOUKSceneToolBox:
 
     def filter_out_irrelevant_matches(self, target_kpis_df):
         relevant_matches = self.scene_bay_shelf_product[~(self.scene_bay_shelf_product['bay_number'] == -1)]
+        relevant_matches = relevant_matches[relevant_matches['bay_number'].isin(target_kpis_df['bay_number'].unique().tolist())] # added
         for i, row in target_kpis_df.iterrows():
             all_shelves = map(lambda x: float(x), row['shelves_all_placements'].split(','))
             rows_to_remove = relevant_matches[(relevant_matches['bay_number'] == row['bay_number']) &
