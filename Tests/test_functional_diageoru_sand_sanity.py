@@ -12,14 +12,14 @@ from mock import patch
 
 from Tests.Data.TestData.test_data_diageoru_sand_sanity import ProjectsSanityData
 from Projects.DIAGEORU_SAND.Calculations import DIAGEORUCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()

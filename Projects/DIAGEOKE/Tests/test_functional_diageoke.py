@@ -3,7 +3,7 @@ import pandas as pd
 import MySQLdb
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Testing.SeedNew import Seeder
 from Trax.Data.Testing.TestProjects import TestProjectsNames
@@ -14,7 +14,7 @@ from Projects.DIAGEOKE.Utils.KPIToolBox import DIAGEOKEToolBox
 __author__ = 'yoava'
 
 
-class TestDiageoke(TestMockingFunctionalCase):
+class TestDiageoke(TestFunctionalCase):
     seeder = Seeder()
 
     def set_up(self):

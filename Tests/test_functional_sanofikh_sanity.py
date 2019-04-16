@@ -10,14 +10,14 @@ from Trax.Utils.Testing.Case import MockingTestCase, skip
 
 from Tests.Data.TestData.test_data_sanofikh_sanity import ProjectsSanityData
 from Projects.SANOFIKH.Calculations import SANOFIKHCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()
