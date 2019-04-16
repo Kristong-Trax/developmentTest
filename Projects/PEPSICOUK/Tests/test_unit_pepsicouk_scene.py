@@ -298,11 +298,11 @@ class Test_PEPSICOUKScene(MockingTestCase):
         scene_tb = PEPSICOUKSceneToolBox(self.data_provider_mock, self.output)
         scene_tb.calculate_shelf_placement_vertical_mm()
         expected_list = []
-        expected_list.append({'kpi_fk': 327, 'numerator': 1, 'result': 1.0 / 5})
-        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': 2.0 / 5})
-        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': 2.0 / 5})
-        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': 6.0 / 6})
-        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': 1.0 / 1})
+        expected_list.append({'kpi_fk': 327, 'numerator': 1, 'result': 1.0 / 5 * 100})
+        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': 2.0 / 5 * 100})
+        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': 2.0 / 5 * 100})
+        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': 6.0 / 6 * 100})
+        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': 1.0 / 1 * 100})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
@@ -323,16 +323,16 @@ class Test_PEPSICOUKScene(MockingTestCase):
         kpi_results = scene_tb.kpi_results
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
         expected_list = []
-        expected_list.append({'kpi_fk': 327, 'numerator': 4, 'result': round(1.0 / 6, 5)})
-        expected_list.append({'kpi_fk': 326, 'numerator': 4, 'result': round(2.0 / 6, 5)})
-        expected_list.append({'kpi_fk': 325, 'numerator': 4, 'result': round(3.0 / 6, 5)})
-        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': round(5.0 / 7, 5)})
-        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': round(2.0 / 7, 5)})
-        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': round(4.0 / 6, 5)})
-        expected_list.append({'kpi_fk': 326, 'numerator': 2, 'result': round(2.0 / 6, 5)})
-        expected_list.append({'kpi_fk': 325, 'numerator': 3, 'result': round(4.0 / 8, 5)})
-        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': round(3.0 / 8, 5)})
-        expected_list.append({'kpi_fk': 327, 'numerator': 3, 'result': round(1.0 / 8, 5)})
+        expected_list.append({'kpi_fk': 327, 'numerator': 4, 'result': round(1.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 4, 'result': round(2.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 4, 'result': round(3.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 1, 'result': round(5.0 / 7 * 100, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 1, 'result': round(2.0 / 7 * 100, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 2, 'result': round(4.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 2, 'result': round(2.0 / 6 * 100, 5)})
+        expected_list.append({'kpi_fk': 325, 'numerator': 3, 'result': round(4.0 / 8 * 100, 5)})
+        expected_list.append({'kpi_fk': 326, 'numerator': 3, 'result': round(3.0 / 8 * 100, 5)})
+        expected_list.append({'kpi_fk': 327, 'numerator': 3, 'result': round(1.0 / 8 * 100, 5)})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(scene_tb.kpi_results, expected_result) == 1)
