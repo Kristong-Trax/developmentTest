@@ -78,9 +78,9 @@ class MARSRU2_SANDKPIToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.own_manufacturer_id = int(self.data_provider.own_manufacturer[
-            self.data_provider.own_manufacturer['param_name'] == 'manufacturer_id'][
-            'param_value'].tolist()[0])
+        self.own_manufacturer_id = int(
+            self.data_provider[Data.OWN_MANUFACTURER][
+                self.data_provider[Data.OWN_MANUFACTURER]['param_name'] == 'manufacturer_id']['param_value'].tolist()[0])
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         try:
             self.scif['sub_brand'] = self.scif['Sub Brand']  # the sub_brand column is empty
