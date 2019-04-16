@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v3.3.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.4.xlsx')
 
 
 class INBEVMXToolBox:
@@ -108,7 +108,7 @@ class INBEVMXToolBox:
             diff_table = diff_table[diff_table[col] == att]
             all_data = all_data[all_data[col] == att]
         if len(diff_table) > 1:
-            Log.warning ("There is more than one possible match")
+            Log.warning("There is more than one possible match")
             return
         if diff_table.empty:
             return
@@ -333,7 +333,10 @@ class INBEVMXToolBox:
             if denominator != 0:
                 fraction = 100 * (float(numerator) / float(denominator))
             else:
-                fraction = 0
+                if numerator > 0:
+                    fraction = 100
+                else:
+                    fraction = 0
             result = score if fraction >= condition else 0
         else:
             return 0
