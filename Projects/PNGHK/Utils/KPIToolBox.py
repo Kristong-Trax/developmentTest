@@ -11,7 +11,7 @@ from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations impor
 
 __author__ = 'ilays'
 
-PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_08_03.xlsx')
+PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data', '06_PNGHK_template_2019_15_04.xlsx')
 
 
 class PNGHKToolBox:
@@ -341,10 +341,9 @@ class PNGHKToolBox:
 
             # filter df include OSD when needed
             shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-            if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-                if shelfs_to_include != "":
-                    shelfs_to_include = int(shelfs_to_include)
-                    df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
+            if shelfs_to_include != "":
+                shelfs_to_include = int(shelfs_to_include)
+                df_list.append(scene_df[scene_df['shelf_number_from_bottom'] >= shelfs_to_include])
 
             # if no osd rule is applied
             if row[Const.HAS_OSD].values[0] == Const.NO:
