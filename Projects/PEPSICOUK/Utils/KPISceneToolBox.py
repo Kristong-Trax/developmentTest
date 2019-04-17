@@ -318,7 +318,7 @@ class PEPSICOUKSceneToolBox:
                     score = self.commontools.get_kpi_result_value_pk_by_value(orientation.upper())
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=group_fk, denominator_id=self.store_id,
                                            numerator_result=max_ratio * 100,
-                                           score=score, result=result, target=target * 100, by_scene=True)
+                                           score=score, result=result, target=target, by_scene=True)
 
             self.block_results = self.block_results.append(pd.DataFrame([{'Group Name': row['Group Name'],
                                                                           'Score': result_df['is_block'].values[0] if not result_df.empty else False}]))
