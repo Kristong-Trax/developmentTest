@@ -50,10 +50,10 @@ class SceneToolBox:
         
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-        if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-            if shelfs_to_include != "":
-                shelfs_to_include = int(shelfs_to_include)
-                results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+        if shelfs_to_include != "":
+            shelfs_to_include = int(shelfs_to_include)
+            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
         # if no osd rule is applied
         if row[Const.HAS_OSD].values[0] == Const.NO:
