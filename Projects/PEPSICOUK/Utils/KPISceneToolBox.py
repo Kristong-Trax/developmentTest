@@ -199,7 +199,7 @@ class PEPSICOUKSceneToolBox:
 
     @staticmethod
     def update_facings_for_cardboard_boxes(row):
-        facings = row['facings'] * 3 if row['form_factor'] == 'cardboard box' else row['facings']
+        facings = row['facings'] * 3 if row['att1'] == 'display cardboard box' else row['facings']
         return facings
 
     def calculate_number_of_bays_and_shelves(self):
