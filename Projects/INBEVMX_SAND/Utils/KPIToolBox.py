@@ -21,7 +21,7 @@ __author__ = 'ilays'
 
 KPI_NEW_TABLE = 'report.kpi_level_2_results'
 PATH_SURVEY_AND_SOS_TARGET = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          '..', 'Data', 'inbevmx_template_v3.4.xlsx')
+                                          '..', 'Data', 'inbevmx_template_v3.5.xlsx')
 
 
 class INBEVMXToolBox:
@@ -72,6 +72,7 @@ class INBEVMXToolBox:
             PATH_SURVEY_AND_SOS_TARGET, Const.SOS_TARGET).fillna("")
         self.survey_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY).fillna("")
         self.survey_combo_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.SURVEY_COMBO).fillna("")
+        self.oos_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.OOS_KPI).fillna("")
 
     def get_policies(self):
         query = INBEVMXQueries.get_policies()
@@ -83,7 +84,6 @@ class INBEVMXToolBox:
         This function calculates the KPI results.
         """
         kpis_sheet = pd.read_excel(PATH_SURVEY_AND_SOS_TARGET, Const.KPIS).fillna("")
-        self.calculate_oos_target()
         for index, row in kpis_sheet.iterrows():
             self.handle_atomic(row)
         self.save_parent_kpis()
@@ -91,9 +91,16 @@ class INBEVMXToolBox:
 
 
     def calculate_oos_target(self):
+        temp = self.oos_sheet[Const.TEMPLATE_STORE_TYPE]
+        rows_stores_filter = self.oos_sheet[
+            temp.apply(lambda r: self.store_type_filter in [item.strip() for item in r.split(",")])]
+        if rows_stores_filter.empty:
+            weight = 15
+        else:
+            weight = rows_stores_filter[Const.TEMPLATE_SCORE].values[0]
         all_data = pd.merge(self.scif[["store_id","product_fk","facings","template_name"]], self.store_info, left_on="store_id",right_on="store_fk")
         if all_data.empty:
-            return
+            return 0
         json_policies = self.oos_policies.copy()
         json_policies[Const.POLICY] = self.oos_policies[Const.POLICY].apply(lambda line: json.loads(line))
         diff_policies = json_policies[Const.POLICY].drop_duplicates().reset_index()
@@ -104,14 +111,14 @@ class INBEVMXToolBox:
         for col in diff_table.columns:
             att = all_data.iloc[0][col]
             if att is None:
-                return
+                return 0
             diff_table = diff_table[diff_table[col] == att]
             all_data = all_data[all_data[col] == att]
         if len(diff_table) > 1:
             Log.warning("There is more than one possible match")
-            return
+            return 0
         if diff_table.empty:
-            return
+            return 0
         selected_row = diff_policies.iloc[diff_table.index[0]][Const.POLICY]
         json_policies = json_policies[json_policies[Const.POLICY] == selected_row]
         products_to_check = json_policies['product_fk'].tolist()
@@ -121,7 +128,7 @@ class INBEVMXToolBox:
             atomic_pk_sku = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_SKU_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_SKU_KPI)
-            return
+            return 0
         for product in products_to_check:
             if product not in products_df['product_fk'].values:
                 products_df = products_df.append({'product_fk': product, 'facings': 0.0}, ignore_index=True)
@@ -136,13 +143,20 @@ class INBEVMXToolBox:
         result = not_existing_products_len / float(len(products_to_check))
         try:
             atomic_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_KPI)
+            result_oos_pk = self.common_v2.get_kpi_fk_by_kpi_name(Const.OOS_RESULT_KPI)
         except IndexError:
             Log.warning("There is no matching Kpi fk for kpi name: " + Const.OOS_KPI)
-            return
+            return 0
+        score = result * weight
         self.common_v2.write_to_db_result(fk=atomic_pk, numerator_id=self.region_fk,
                                            numerator_result=not_existing_products_len, denominator_id=self.store_id,
-                                           denominator_result=len(products_to_check), result=result, score=result,
+                                           denominator_result=len(products_to_check), result=result, score=score,
                                           identifier_result=Const.OOS_KPI, parent_fk=3)
+        self.common_v2.write_to_db_result(fk=result_oos_pk, numerator_id=self.region_fk,
+                                          numerator_result=not_existing_products_len, denominator_id=self.store_id,
+                                          denominator_result=len(products_to_check), result=result, score=result,
+                                          parent_fk=3)
+        return score
 
     def save_parent_kpis(self):
         for kpi in self.result_dict.keys():
@@ -180,6 +194,8 @@ class INBEVMXToolBox:
             result = self.handle_survey_atomics(atomic_id, atomic_name, parent_name)
         elif kpi_type == Const.SURVEY_COMBO:
             result = self.handle_survey_combo(atomic_id, atomic_name, parent_name)
+        elif kpi_type == Const.OOS_KPI:
+            result = self.calculate_oos_target()
 
         # Update kpi results
         if atomic_name != kpi_name:
