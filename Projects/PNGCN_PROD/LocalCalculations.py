@@ -6,8 +6,7 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.PNGCN_PROD.Calculations import PngCNEmptyCalculations
 from Projects.PNGCN_PROD.SceneKpis.SceneCalculations import save_scene_item_facts_to_data_provider
-from Projects.PNGHK.Calculations import Calculations
-from Projects.PNGHK.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.PNGCN_PROD.SceneKpis.SceneCalculations import SceneCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 import pandas as pd
@@ -20,13 +19,19 @@ if __name__ == '__main__':
     project_name = 'pngcn-prod'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
-    sessions = ['adcda92e-87d9-496f-8472-8a6502711aab',
-                '2e71d146-b867-464d-abac-84c3e99efae2']
+    sessions = ['b8d2cc45-59c5-44c6-a69d-cbf813aec6fd',
+                ]
+                # '786d8a10-8016-4c2c-ade6-72385bd62782',
+                # 'a98bc243-564b-4894-840f-e5ac980a1dd3',
+                # '43b7b7db-9215-46f5-9797-be81e7cc76d4',
+                # '448E6DA8-DFEC-4D4B-AC6D-FBBB2843192F',
+                # 'a9b28c80-deab-44d9-a036-9d4238e26edb']
                 # 'ebebc629-6b82-4be8-a872-0caa248ea248',
                 # 'cb2cc33d-de43-4c35-a25b-ce538730037e']
     for session in sessions:
         print "Running for {}".format(session)
-        # for scene in [16588190]:
+        # for scene in [16578486,16578489,16578490,16578492,16578493,16578496,16578497,16578498,16578501
+        #               ,16578503,16578504,16578510]:
         #     print('Calculating scene id: ' + str(scene))
         #     data_provider = KEngineDataProvider(project_name)
         #     data_provider.load_scene_data(session, scene)
