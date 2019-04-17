@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from Trax.Utils.Logging.Logger import Log
 
