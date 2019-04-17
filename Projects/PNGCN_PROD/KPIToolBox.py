@@ -72,12 +72,6 @@ class PNGToolBox:
                              if self.check_validation_of_category(category)}
         self.irrelevant_empties = 0
         self.common = Common(self.data_provider)
-        # all_products = self.data_provider._static_data_provider.all_products.where(
-        #     (pd.notnull(self.data_provider._static_data_provider.all_products)), None)
-        # self.data_provider._set_all_products(all_products)
-        # self.data_provider._init_session_data(None, True)
-        # self.data_provider._init_report_data(self.data_provider.session_uid)
-        # self.data_provider._init_reporting_data(self.data_provider.session_id)
 
     def get_category_name(self, category_fk):
         return self.all_products[self.all_products['category_fk'] == category_fk]['category_local_name'].values[0]
