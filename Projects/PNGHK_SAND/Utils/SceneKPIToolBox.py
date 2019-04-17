@@ -42,6 +42,7 @@ class SceneToolBox:
         if df.empty:
             return
         scene_type = df['template_name'].values[0]
+        const_scene_df = df.copy()
         row = self.find_row_osd(scene_type)
         if row.empty:
             return
@@ -49,10 +50,10 @@ class SceneToolBox:
         
         # filter df include OSD when needed
         shelfs_to_include = row[Const.OSD_NUMBER_OF_SHELVES].values[0]
-        if row[Const.STORAGE_EXCLUSION_PRICE_TAG].values[0] == Const.NO:
-            if shelfs_to_include != "":
-                shelfs_to_include = int(shelfs_to_include)
-                results_list.append(df[df['shelf_number_from_bottom'] > shelfs_to_include])
+        if shelfs_to_include != "":
+            shelfs_to_include = int(shelfs_to_include)
+            results_list.append(df[df['shelf_number_from_bottom'] >= shelfs_to_include])
+            df = df[df['shelf_number_from_bottom'] < shelfs_to_include]
 
         # if no osd rule is applied
         if row[Const.HAS_OSD].values[0] == Const.NO:
@@ -61,15 +62,29 @@ class SceneToolBox:
         # filter df to have only shelves with given ean code
         if row[Const.HAS_OSD].values[0] == Const.YES:
             products_to_filter = row[Const.POSM_EAN_CODE].values[0].split(",")
-            products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk',
-                                                                                           'bay_number',
-                                                                                           'shelf_number']]
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
+            products_df = df[df['product_ean_code'].isin(products_to_filter)][['scene_fk', 'shelf_number']]
             products_df = products_df.drop_duplicates()
-            const_scene_df = df.copy()
             if not products_df.empty:
                 for index, p in products_df.iterrows():
                     scene_df = const_scene_df[((const_scene_df['scene_fk'] == p['scene_fk']) &
                                                (const_scene_df['shelf_number'] == p['shelf_number']))]
+                    results_list.append(scene_df)
+
+        if row[Const.HAS_HOTSPOT].values[0] == Const.YES:
+            products_to_filter = row[Const.POSM_EAN_CODE_HOTSPOT].values[0].split(",")
+            if products_to_filter != "":
+                products_to_filter = [item.strip() for item in products_to_filter]
+            products_df = const_scene_df[const_scene_df['product_ean_code'].isin(products_to_filter)][['scene_fk',
+                                                                                           'bay_number',
+                                                                                           'shelf_number']]
+            products_df = products_df.drop_duplicates()
+            if not products_df.empty:
+                for index, p in products_df.iterrows():
+                    scene_df = const_scene_df[~((const_scene_df['scene_fk'] == p['scene_fk']) &
+                                          (const_scene_df['bay_number'] == p['bay_number']) &
+                                          (const_scene_df['shelf_number'] == p['shelf_number']))]
                     results_list.append(scene_df)
         if len(results_list) == 0:
             return
