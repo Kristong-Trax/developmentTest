@@ -164,10 +164,12 @@ class PNGToolBox:
                                      (self.scif['rlv_sos_sc'] == 1) &
                                      (self.scif['location_type'] == PRIMARY_SHELF) &
                                      (self.scif['facings'] > 0)]
-
+        relevant_facings = relevant_facings.fillna("")
         sets_to_save = set()
-        for category in self.empty_spaces.keys():
-            for sub_category in self.empty_spaces[category].keys():
+        categories = [x for x in self.empty_spaces.keys() if type(x)!=float]
+        for category in categories:
+            sub_categories = [x for x in self.empty_spaces[category].keys() if type(x)!=float]
+            for sub_category in sub_categories:
                 kpi_dict = {}
                 empty_spaces = self.empty_spaces[category][sub_category]
                 main_category = True
