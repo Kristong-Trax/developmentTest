@@ -67,7 +67,7 @@ class JRIJPToolBox:
                 match_prod_scene_data = self.match_product_in_scene.merge(
                     self.products, how='left', on='product_fk', suffixes=('', '_prod'))
                 grouped_data = match_prod_scene_data.query(
-                    '(stacking_layer==1 and product_type=="SKU") or (product_type=="POS")'
+                    '(stacking_layer==1) or (product_type=="POS")'
                 ).groupby(
                     ['scene_fk', 'bay_number', 'shelf_number', 'product_fk']
                 )
