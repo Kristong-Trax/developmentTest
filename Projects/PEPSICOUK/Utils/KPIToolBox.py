@@ -563,45 +563,18 @@ class PEPSICOUKToolBox:
                                                           'type'], keep='first')
         sos_targets = sos_targets.drop(['key_json', 'data_json', 'start_date', 'end_date'], axis=1)
         if not sos_targets.empty:
-            # all_products_columns = self.all_products.columns.values.tolist()
             sos_targets['numerator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
                                                             args=('numerator_type', 'numerator_value'))
             sos_targets['denominator_id'] = sos_targets.apply(self.retrieve_relevant_item_pks, axis=1,
                                                               args=('denominator_type', 'denominator_value'))
             sos_targets['identifier_parent'] = sos_targets['KPI Parent'].apply(lambda x:
                                                                 self.common.get_dictionary(kpi_fk=int(float(x))))
-            ## separate_kpis
+
             self.calculate_hero_sku_sos_vs_target(sos_targets)
             self.calculate_brand_out_of_category_sos_vs_target(sos_targets)
             self.calculate_sub_brand_sos_vs_target(sos_targets)
             self.calculate_pepsico_segment_space_sos_vs_target(sos_targets)
             self.calculate_pepsico_sub_segment_space_sos_vs_target(sos_targets)
-
-            # for i, row in sos_targets.iterrows():
-            #     general_filters = {row['denominator_type']: row['denominator_value']}
-            #     sos_filters = {row['numerator_type']: row['numerator_value']}
-            #     numerator_linear, denominator_linear = self.calculate_sos(sos_filters, **general_filters)
-            #
-            #     result = numerator_linear/denominator_linear if denominator_linear != 0 else 0
-            #     score = result/row['Target'] if row['Target'] else 0
-            #     self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-            #                                        numerator_result=numerator_linear, denominator_id=row.denominator_id,
-            #                                        denominator_result=denominator_linear, result=result*100, score=score,
-            #                                        target=row['Target'] * 100, identifier_parent=row.identifier_parent,
-            #                                        should_enter=True)
-            #     self.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result*100,
-            #                                                score])
-            #
-            # sos_targets['count'] = 1
-            # parent_kpis_df = sos_targets.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
-            # parent_kpis_df['identifier_parent'] = parent_kpis_df['KPI Parent'].apply(lambda x:
-            #                                                     self.common.get_dictionary(kpi_fk=int(float(x))))
-            # for i, row in parent_kpis_df.iterrows():
-            #     self.common.write_to_db_result(fk=row['KPI Parent'], score=row['count'], should_enter=True,
-            #                                    numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-            #                                    identifier_result=row['identifier_parent'])
-            #     self.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.own_manuf_fk, self.store_id, None,
-            #                                            row['count']])
 
     def calculate_hero_sku_sos_vs_target(self, sos_targets):
         hero_list = self.lvl3_ass_result[self.lvl3_ass_result['in_store'] == 1]['product_fk'].unique().tolist()
@@ -620,45 +593,9 @@ class PEPSICOUKToolBox:
             additional_rows.append(values_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
         sos_targets = sos_targets.append(df_to_append)
-            # row_to_append = pd.DataFrame(values_to_append)
-            # sos_targets = sos_targets.append(row_to_append)
 
         sos_targets = sos_targets[sos_targets['numerator_value'].isin(hero_list)]
         self.calculate_and_write_to_db_sos_vs_target_kpi_results(sos_targets)
-
-        # for i, row in sos_targets.iterrows():
-        #     general_filters = {row['denominator_type']: row['denominator_value']}
-        #     sos_filters = {row['numerator_type']: row['numerator_value']}
-        #     numerator_linear, denominator_linear = self.calculate_sos(sos_filters, **general_filters)
-        #
-        #     result = numerator_linear / denominator_linear if denominator_linear != 0 else 0
-        #     score = result / row['Target'] if row['Target'] else 0
-        #     if row['Target']:
-        #         self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-        #                                        numerator_result=numerator_linear, denominator_id=row.denominator_id,
-        #                                        denominator_result=denominator_linear, result=result * 100, score=score,
-        #                                        target=row['Target'] * 100, identifier_parent=row.identifier_parent,
-        #                                        should_enter=True)
-        #     else:
-        #         self.common.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
-        #                                        numerator_result=numerator_linear, denominator_id=row.denominator_id,
-        #                                        denominator_result=denominator_linear, result=result * 100,
-        #                                        identifier_parent=row.identifier_parent, should_enter=True)
-        #     self.add_kpi_result_to_kpi_results_df(
-        #         [row.kpi_level_2_fk, row.numerator_id, row.denominator_id, result * 100,
-        #          score])
-        #
-        # sos_targets['count'] = 1
-        # parent_kpis_df = sos_targets.groupby(['KPI Parent'], as_index=False).agg({'count': np.sum})
-        # parent_kpis_df['identifier_parent'] = parent_kpis_df['KPI Parent'].apply(lambda x:
-        #                                                                          self.common.get_dictionary(
-        #                                                                              kpi_fk=int(float(x))))
-        # for i, row in parent_kpis_df.iterrows():
-        #     self.common.write_to_db_result(fk=row['KPI Parent'], score=row['count'], should_enter=True,
-        #                                    numerator_id=self.own_manuf_fk, denominator_id=self.store_id,
-        #                                    identifier_result=row['identifier_parent'])
-        #     self.add_kpi_result_to_kpi_results_df([row['KPI Parent'], self.own_manuf_fk, self.store_id, None,
-        #                                            row['count']])
 
     def calculate_and_write_to_db_sos_vs_target_kpi_results(self, sos_targets):
         for i, row in sos_targets.iterrows():
@@ -712,8 +649,6 @@ class PEPSICOUKToolBox:
                                 'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
-            # row_to_append = pd.DataFrame(values_to_append)
-            # sos_targets = sos_targets.append(row_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
         sos_targets = sos_targets.append(df_to_append)
 
@@ -767,8 +702,6 @@ class PEPSICOUKToolBox:
                                 'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
                                 'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
             additional_rows.append(values_to_append)
-            # row_to_append = pd.DataFrame(values_to_append)
-            # sos_targets = sos_targets.append(row_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
         sos_targets = sos_targets.append(df_to_append)
 
@@ -797,8 +730,6 @@ class PEPSICOUKToolBox:
                                     'kpi_level_2_fk': kpi_fk, 'KPI Parent': kpi_parent,
                                     'identifier_parent': self.common.get_dictionary(kpi_fk=int(float(kpi_parent)))}
                 additional_rows.append(values_to_append)
-            # row_to_append = pd.DataFrame(values_to_append)
-            # sos_targets = sos_targets.append(row_to_append)
         df_to_append = pd.DataFrame.from_records(additional_rows)
         sos_targets = sos_targets.append(df_to_append)
 
