@@ -385,7 +385,7 @@ class PNGHKToolBox:
         return final_df
 
     def find_row_osd(self, s):
-        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE] == s]
+        rows = self.osd_rules_sheet[self.osd_rules_sheet[Const.SCENE_TYPE].str.encode("utf8") == s.encode("utf8")]
         row = rows[rows[Const.RETAILER] == self.store_info['retailer_name'].values[0]]
         return row
 
