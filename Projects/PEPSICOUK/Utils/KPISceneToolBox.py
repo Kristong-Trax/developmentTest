@@ -209,8 +209,9 @@ class PEPSICOUKSceneToolBox:
 
         bays_in_scene = matches['bay_number'].unique().tolist()
         bays_num = len(bays_in_scene)
-        bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
-        shelf_num = len(bay_shelf)
+        # bay_shelf = matches.drop_duplicates(subset=['bay_number', 'shelf_number'])
+        # shelf_num = len(bay_shelf)
+        shelf_num = matches['shelf_number'].max()
         self.common.write_to_db_result(fk=bays_kpi_fk, numerator_id=self.own_manuf_fk, result=bays_num,
                                        denominator_id=self.store_id, by_scene=True)
         self.common.write_to_db_result(fk=shelves_kpi_fk, numerator_id=self.own_manuf_fk, result=shelf_num,
