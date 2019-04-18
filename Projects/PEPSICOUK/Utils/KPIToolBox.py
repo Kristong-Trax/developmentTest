@@ -244,8 +244,8 @@ class PEPSICOUKToolBox:
             prices_list.extend(prices_df['promotion_price'].values.tolist())
             prices_list = filter(lambda v: v == v, prices_list)
             prices_list = filter(lambda v: v is not None, prices_list)
-            price = max(prices_list)
-            # price = prices_df['price'].max()
+            if prices_list:
+                price = max(prices_list)
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
         self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
 
