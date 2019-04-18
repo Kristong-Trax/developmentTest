@@ -244,8 +244,10 @@ class DIAGEOCOToolBox:
         """
         Given KPI data and a score, this functions writes the score for both KPI level 2 and 3 in the DB.
         """
-        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'] == set_name) &
-                                        (self.kpi_static_data['kpi_name'] == kpi_name)]
+        kpi_data = self.kpi_static_data[(self.kpi_static_data['kpi_set_name'].str.encode("utf8")
+                                         == set_name.encode("utf8")) &
+                                        (self.kpi_static_data['kpi_name'].str.encode("utf8")
+                                         == kpi_name.encode("utf8"))]
         kpi_fk = kpi_data['kpi_fk'].values[0]
         atomic_kpi_fk = kpi_data['atomic_kpi_fk'].values[0]
         self.write_to_db_result(kpi_fk, score, self.LEVEL2)
