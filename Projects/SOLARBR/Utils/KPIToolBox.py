@@ -81,13 +81,13 @@ class SOLARBRToolBox:
     def get_templates(self):
 
         for sheet in Const.SHEETS_MAIN:
-            self.templates[sheet] = pd.read_excel(MAIN_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"),
+            self.templates[sheet] = pd.read_excel(MAIN_TEMPLATE_PATH, sheetname=sheet.decode('utf8'),
                                                   keep_default_na=False)
 
     def get_score_template(self):
         for sheet in Const.SHEETS_SCORE:
-            self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode("utf-8"),
-                                                        keep_default_na=False, encoding="utf-8")
+            self.score_templates[sheet] = pd.read_excel(SCORE_TEMPLATE_PATH, sheetname=sheet.decode('utf8'),
+                                                        keep_default_na=False, encoding='utf8')
 
     def main_calculation(self, *args, **kwargs):
         main_template = self.templates[Const.KPIS]
@@ -180,7 +180,7 @@ class SOLARBRToolBox:
         manufacturer_fk = manufacturer_products["manufacturer_fk"]
 
         filtered_kpi_list = self.kpi_static_data[
-            self.kpi_static_data['type'].str.encode('utf-8') == kpi_name.encode('utf-8')]
+            self.kpi_static_data['type'].str.encode('utf8') == kpi_name.encode('utf8')]
         kpi_fk = filtered_kpi_list['pk'].iloc[0]
 
         numerator_res, denominator_res = self.get_numerator_and_denominator(
@@ -229,10 +229,10 @@ class SOLARBRToolBox:
         return sos_value, score
 
     def get_score_from_range(self, kpi_name, sos_value):
-        store_type = str(self.store_info["store_type"].iloc[0].encode("utf-8"))
+        store_type = str(self.store_info["store_type"].iloc[0].encode('utf8'))
         self.score_templates[store_type] = self.score_templates[store_type].replace(kpi_name,
-                                                                                    kpi_name.encode("utf-8").rstrip())
-        score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode("utf-8")) +
+                                                                                    kpi_name.encode('utf8').rstrip())
+        score_range = self.score_templates[store_type].query('Kpi == "' + str(kpi_name.encode('utf8')) +
                                                              '" & Low <= ' + str(sos_value) +
                                                              ' & High >= ' + str(sos_value) + '')
         try:
@@ -240,7 +240,7 @@ class SOLARBRToolBox:
         except IndexError:
             try:
                 Log.error('No score data found for KPI name {} in store type {}'.format(
-                    kpi_name.encode("utf-8"), store_type))
+                    kpi_name.encode('utf8'), store_type))
                 return 0
             except UnicodeDecodeError:
                 Log.error('Unable to generate error for KPI name or store type with weird characters')

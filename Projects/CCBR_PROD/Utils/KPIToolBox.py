@@ -145,7 +145,7 @@ class CCBRToolBox:
         :return: only if the survey filters aren't satisfied
         """
         row = self.survey_sheet.loc[
-            self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
+            self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf8') == atomic_name.encode('utf8')]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -199,7 +199,7 @@ class CCBRToolBox:
         target = 0
         count_result = 0
         row = self.count_sheet.loc[
-            self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
+            self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf8') == atomic_name.encode('utf8')]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -224,7 +224,7 @@ class CCBRToolBox:
         :param atomic_name: the name of the kpi to calculate
         """
         rows = self.group_count_sheet.loc[
-            self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
+            self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode('utf8') == atomic_name.encode('utf8')]
         group_weight = 0
         group_result = 0
         group_target = 0
