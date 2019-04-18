@@ -116,8 +116,8 @@ class SOLARBRToolBox:
                         general_filters['template_group'] = template_groups
                     if kpi_type == Const.SOVI:
                         relevant_template = self.templates[kpi_type]
-                        relevant_template = relevant_template[relevant_template[Const.KPI_NAME] == kpi_name]
-
+                        relevant_template = relevant_template[
+                            relevant_template[Const.KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')]
                         if relevant_template["numerator param 1"].all() and relevant_template[
                                 "denominator param 1"].all():
                             function = self.get_kpi_function(kpi_type)
@@ -179,7 +179,8 @@ class SOLARBRToolBox:
 
         manufacturer_fk = manufacturer_products["manufacturer_fk"]
 
-        filtered_kpi_list = self.kpi_static_data[self.kpi_static_data['type'] == kpi_name]
+        filtered_kpi_list = self.kpi_static_data[
+            self.kpi_static_data['type'].str.encode('utf-8') == kpi_name.encode('utf-8')]
         kpi_fk = filtered_kpi_list['pk'].iloc[0]
 
         numerator_res, denominator_res = self.get_numerator_and_denominator(
