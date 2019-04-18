@@ -144,7 +144,8 @@ class CCBRToolBox:
         :param atomic_name: the name of the kpi
         :return: only if the survey filters aren't satisfied
         """
-        row = self.survey_sheet.loc[self.survey_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
+        row = self.survey_sheet.loc[
+            self.survey_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -197,7 +198,8 @@ class CCBRToolBox:
         sum_of_count = 0
         target = 0
         count_result = 0
-        row = self.count_sheet.loc[self.count_sheet[Const.ENGLISH_KPI_NAME] == atomic_name]
+        row = self.count_sheet.loc[
+            self.count_sheet[Const.ENGLISH_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
         if row.empty:
             Log.warning("Dataframe is empty, wrong kpi name: " + atomic_name)
             return
@@ -221,7 +223,8 @@ class CCBRToolBox:
         handle group count kpis (different from count in or and and conditions), used in consolidada report
         :param atomic_name: the name of the kpi to calculate
         """
-        rows = self.group_count_sheet.loc[self.group_count_sheet[Const.GROUP_KPI_NAME] == atomic_name]
+        rows = self.group_count_sheet.loc[
+            self.group_count_sheet[Const.GROUP_KPI_NAME].str.encode('utf-8') == atomic_name.encode('utf-8')]
         group_weight = 0
         group_result = 0
         group_target = 0
