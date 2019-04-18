@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to Kite Hill?':
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Greek Segment?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -483,7 +483,7 @@ class ToolBox:
         found_results = []
         raw_results = self.get_results_value(kpi_line)
         for res in raw_results:
-            filters = self.att_dict[res]
+            filters = self.att_dict[res.lower()]
             sub_df = self.filter_df(df, filters)
             if not sub_df.empty:
                 found_results.append(res)
@@ -666,8 +666,8 @@ class ToolBox:
                 continue
             result = self.block.network_x_block_together(filters, location=scene_filter,
                                                          additional={
-                                                                     'allowed_products_filters': Const.ALLOWED_FILTERS,
-                                                                     # 'allowed_products_filters': {'product_type': 'Empty'},
+                                                                     # 'allowed_products_filters': Const.ALLOWED_FILTERS,
+                                                                     'allowed_products_filters': {'product_type': 'Empty'},
                                                                      'include_stacking': False,
                                                                      'check_vertical_horizontal': True})
             blocks = result[result['is_block'] == True]
@@ -1295,7 +1295,7 @@ class ToolBox:
         elif kpi_type == Const.COUNT_SHELVES:
             return self.calculate_count_of_shelves
         elif kpi_type == Const.COUNT:
-            if result.lower() == 'count':
+            if result.lower() == 'count of':
                 return self.calculate_count_of
             if result.lower() == 'format':
                 return self.calculate_count_of_format
@@ -1322,7 +1322,7 @@ class ToolBox:
     def make_att_dict(self):
         df = pd.read_excel(Const.DICTIONARY_PATH)
         df = df[(df['unknown'] != 'Y') & (df['not_final'] != 'Y')].set_index('Name')
-        params = {key: self.get_kpi_line_filters(row) for key, row in df.iterrows()}
+        params = {key.lower(): self.get_kpi_line_filters(row) for key, row in df.iterrows()}
         return params
 
     def create_special_scif(self, scif, fake_cat=0):
