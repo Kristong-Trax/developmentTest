@@ -236,10 +236,16 @@ class PEPSICOUKToolBox:
     def calculate_hero_sku_price(self, sku, kpi_fk):
         # what should we write if there is no price at all?
         price = -1
-        prices_df = self.filtered_matches[(~(self.filtered_matches['price'].isnull())) &
+        prices_df = self.filtered_matches[((~(self.filtered_matches['price'].isnull())) |
+                                          (~(self.filtered_matches['promotion_price'].isnull())))&
                                           (self.filtered_matches['product_fk'] == sku)]
         if not prices_df.empty:
-            price = prices_df['price'].max()
+            prices_list = prices_df['price'].values.tolist()
+            prices_list.extend(prices_df['promotion_price'].values.tolist())
+            prices_list = filter(lambda v: v == v, prices_list)
+            prices_list = filter(lambda v: v is not None, prices_list)
+            price = max(prices_list)
+            # price = prices_df['price'].max()
         self.common.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
         self.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None])
 
@@ -636,6 +642,7 @@ class PEPSICOUKToolBox:
         sos_targets = sos_targets[sos_targets['type'] == self.BRAND_SPACE_TO_SALES_INDEX]
         session_brands_list = self.filtered_scif['brand_fk'].unique().tolist()
         session_brands_list = filter(lambda v: v == v, session_brands_list)
+        session_brands_list = filter(lambda v: v is not None, session_brands_list)
         targets_brand_list = sos_targets['numerator_value'].values.tolist()
         additional_brands = list(set(session_brands_list) - set(targets_brand_list))
         category_fk = self.all_products[self.all_products['category'] == 'CSN']['category_fk'].values[0]
@@ -659,6 +666,7 @@ class PEPSICOUKToolBox:
         sos_targets = sos_targets[sos_targets['type'] == self.SUB_BRAND_SPACE_TO_SALES_INDEX]
         session_sub_brands = self.filtered_scif['sub_brand'].unique().tolist()
         session_sub_brands = filter(lambda v: v == v, session_sub_brands)
+        session_sub_brands = filter(lambda v: v is not None, session_sub_brands)
         targets_sub_brands = sos_targets['numerator_value'].values.tolist()
         additional_sub_brands = list(set(session_sub_brands) - set(targets_sub_brands))
         category_fk = self.all_products[self.all_products['category'] == 'CSN']['category_fk'].values[0]
@@ -689,6 +697,7 @@ class PEPSICOUKToolBox:
         sos_targets = sos_targets[sos_targets['type'] == self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX]
         session_sub_category_list = self.filtered_scif['sub_category_fk'].unique().tolist()
         session_sub_category_list = filter(lambda v: v == v, session_sub_category_list)
+        session_sub_category_list = filter(lambda v: v is not None, session_sub_category_list)
         targets_sub_category_list = sos_targets['denominator_value'].values.tolist()
         additional_sub_categories = list(set(session_sub_category_list) - set(targets_sub_category_list))
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PEPSICO_SEGMENT_SPACE_TO_SALES_INDEX)
@@ -712,6 +721,7 @@ class PEPSICOUKToolBox:
         sos_targets = sos_targets[sos_targets['type'] == self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX]
         session_sub_segments = self.filtered_scif['PDH Sub-segment'].unique().tolist()
         session_sub_segments = filter(lambda v: v == v, session_sub_segments)
+        session_sub_segments = filter(lambda v: v is not None, session_sub_segments)
         targets_sub_segments = sos_targets['denominator_value'].values.tolist()
         additional_sub_segments = list(set(session_sub_segments) - set(targets_sub_segments))
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(self.PEPSICO_SUB_SEGMENT_SPACE_TO_SALES_INDEX)
