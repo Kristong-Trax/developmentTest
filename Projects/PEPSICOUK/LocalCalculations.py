@@ -21,13 +21,13 @@ if __name__ == '__main__':
     # session = 'aa9d2ad8-61d5-4167-a4f1-e753ef366b39'
     session = '00ee13bb-19c5-4dc8-a7b5-6e9c7fb3fd2a'
     data_provider.load_session_data(session)
-    output = Output()
-    PEPSICOUKCalculations(data_provider, output).run_project_calculations()
-    # # scenes = data_provider.scenes_info.scene_fk.tolist()
+    # output = Output()
+    # PEPSICOUKCalculations(data_provider, output).run_project_calculations()
+    scenes = data_provider.scenes_info.scene_fk.tolist()
     # scenes = [12460]
-    # for scene in scenes:
-    #     data_provider.load_scene_data(session, scene)
-    #     # output = VanillaOutput()
-    #     # SceneVanillaCalculations(data_provider, output).run_project_calculations()
-    #     # save_scene_item_facts_to_data_provider(data_provider, output)
-    #     PEPSICOUKSceneCalculations(data_provider).calculate_kpis()
+    for scene in scenes:
+        data_provider.load_scene_data(session, scene)
+        # output = VanillaOutput()
+        # SceneVanillaCalculations(data_provider, output).run_project_calculations()
+        # save_scene_item_facts_to_data_provider(data_provider, output)
+        PEPSICOUKSceneCalculations(data_provider).calculate_kpis()
