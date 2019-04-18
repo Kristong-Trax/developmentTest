@@ -16,14 +16,14 @@ from Tests.Data.Templates.diageouk.POSM import POSM
 from Tests.Data.Templates.diageouk.RelativePosition import Position
 from Tests.Data.TestData.test_data_diageouk_sanity import ProjectsSanityData
 from Projects.DIAGEOUK.Calculations import DIAGEOUKCalculations
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 
 from Tests.TestUtils import remove_cache_and_storage
 
 __author__ = 'yoava'
 
 
-class TestKEngineOutOfTheBox(TestMockingFunctionalCase):
+class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def set_up(self):
         super(TestKEngineOutOfTheBox, self).set_up()

@@ -1,5 +1,5 @@
 from Trax.Algo.Calculations.Core.DataProvider import Output, KEngineDataProvider
-from Trax.Apps.Core.Testing.BaseCase import TestMockingFunctionalCase
+from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Utils.Testing.Case import TestCase, MockingTestCase
 from mock import MagicMock
