@@ -13,7 +13,12 @@ __author__ = 'Shani'
 class BIKRCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BIKR', 'Data', 'Template.xlsx')
+        if str(self.data_provider.visit_date) >= '2019-01-01' and str(self.data_provider.visit_date) <= '2019-03-31':
+            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BIKR', 'Data',
+                                         'Template_Q1_2019.xlsx')
+        else:
+            TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'BIKR', 'Data',
+                                         'Template.xlsx')
         SANOFIGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
