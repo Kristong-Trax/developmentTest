@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Greek Segment?':
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Adult Organic Segment?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
