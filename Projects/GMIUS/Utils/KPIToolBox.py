@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Adult Organic Segment?':
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Probiotic Segment?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -657,10 +657,10 @@ class ToolBox:
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
-            filters.update({'stacking_layer': 1})
             # mpis is only here for debugging purposes
             mpis = self.filter_df(self.mpis, scene_filter)
             mpis = self.filter_df(mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
             mpis_dict[scene] = mpis
             if mpis.empty:
                 score = -1
