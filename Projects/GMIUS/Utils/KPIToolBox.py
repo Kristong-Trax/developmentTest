@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'What format variety exists in within the Kid Segment?':
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Adult Organic Segment?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -657,6 +657,7 @@ class ToolBox:
             scene_filter = {'scene_fk': scene}
             filters = self.get_kpi_line_filters(kpi_line)
             filters.update(general_filters)
+            filters.update({'stacking_layer': 1})
             # mpis is only here for debugging purposes
             mpis = self.filter_df(self.mpis, scene_filter)
             mpis = self.filter_df(mpis, filters)
@@ -669,7 +670,8 @@ class ToolBox:
                                                                      # 'allowed_products_filters': Const.ALLOWED_FILTERS,
                                                                      'allowed_products_filters': {'product_type': 'Empty'},
                                                                      'include_stacking': False,
-                                                                     'check_vertical_horizontal': check_orient})
+                                                                     'check_vertical_horizontal': check_orient,
+                                                                     'minimum_facing_for_block': 1})
             blocks = result[result['is_block'] == True]
             if not blocks.empty:
                 score = 1
