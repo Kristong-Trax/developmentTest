@@ -111,7 +111,7 @@ class ToolBox:
             return
 
         # print(kpi_name)
-        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Adult Organic Segment?':
+        # if kpi_name != 'In the MSL for Yogurt, which of the following is adjacent to the Probiotic Segment?':
         #     return
 
         # if kpi_type == Const.AGGREGATION:
@@ -495,7 +495,7 @@ class ToolBox:
         item_filters = {}
 
         if max_block:
-            _, _, _, _, blocks = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters)
+            _, _, _, _, blocks = self.base_block(kpi_name, kpi_line, relevant_scif, general_filters, check_orient=False)
             block = blocks.sort_values('facing_percentage').reset_index().iloc[-1, :]['cluster']
             ids = sum([node['group_attributes']['match_fk_list'] for i, node in block.node(data=True)], [])
             item_filters = {'scene_match_fk': ids}
@@ -549,7 +549,7 @@ class ToolBox:
             total = sum(res_dict.values())
             if total == 2:
                 result = 'YES both Kid and ASH anchor'
-            elif res_dict['TTL VS PROBIOTICS'] == 1:
+            elif 'TTL VS PROBIOTICS' in res_dict and res_dict['TTL VS PROBIOTICS'] == 1:
                 result = 'Only ASH Anchors'
             elif total == 1:
                 result = 'Only Kid Anchors'
@@ -641,7 +641,7 @@ class ToolBox:
         return score
 
 
-    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base):
+    def base_block(self, kpi_name, kpi_line, relevant_scif, general_filters_base, check_orient=True):
         general_filters = dict(general_filters_base)
         blocks = pd.DataFrame()
         result = pd.DataFrame()
@@ -660,6 +660,7 @@ class ToolBox:
             # mpis is only here for debugging purposes
             mpis = self.filter_df(self.mpis, scene_filter)
             mpis = self.filter_df(mpis, filters)
+            mpis = self.filter_df(mpis, {'stacking_layer': 1})
             mpis_dict[scene] = mpis
             if mpis.empty:
                 score = -1
@@ -669,7 +670,8 @@ class ToolBox:
                                                                      # 'allowed_products_filters': Const.ALLOWED_FILTERS,
                                                                      'allowed_products_filters': {'product_type': 'Empty'},
                                                                      'include_stacking': False,
-                                                                     'check_vertical_horizontal': True})
+                                                                     'check_vertical_horizontal': check_orient,
+                                                                     'minimum_facing_for_block': 1})
             blocks = result[result['is_block'] == True]
             if not blocks.empty:
                 score = 1
@@ -973,9 +975,9 @@ class ToolBox:
     def calculate_count_of_format(self, kpi_name, kpi_line, relevant_scif, general_filters):
         count = self.base_count(kpi_name, kpi_line, relevant_scif, general_filters)
         potential_results = self.get_results_value(kpi_line)
-        num_results = [res.split('format')[0].strip() for res in potential_results]
-        base = potential_results[0].split('format')[-1].strip()
-        result = '{} {} {}'.format(self.semi_numerical_results(count, num_results), 'format', base)
+        num_results = [res.split('format(s)')[0].strip() for res in potential_results]
+        base = potential_results[0].split('format(s)')[-1].strip()
+        result = '{} {} {}'.format(self.semi_numerical_results(count, num_results), 'format(s)', base)
         kwargs = {'numerator_result': count, 'score': 1, 'result': result, 'target': 0}
         return kwargs
 
