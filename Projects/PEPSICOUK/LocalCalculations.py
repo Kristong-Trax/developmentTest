@@ -23,8 +23,8 @@ if __name__ == '__main__':
     data_provider.load_session_data(session)
     # output = Output()
     # PEPSICOUKCalculations(data_provider, output).run_project_calculations()
-    scenes = data_provider.scenes_info.scene_fk.tolist()
-    # scenes = [12460]
+    # scenes = data_provider.scenes_info.scene_fk.tolist()
+    scenes = [4449]
     for scene in scenes:
         data_provider.load_scene_data(session, scene)
         # output = VanillaOutput()
