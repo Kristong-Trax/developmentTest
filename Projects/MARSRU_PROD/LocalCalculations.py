@@ -8,7 +8,7 @@ if __name__ == '__main__':
     LoggerInitializer.init('MARSRU calculations')
     Config.init()
     project_name = 'marsru-prod'
-    session_uids = ['2178daba-8dc4-4aa1-936a-fc5cae7c08b9']
+    session_uids = ['64969fa2-284e-4a96-a8c6-4cebea5f3ca7']
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     for session in session_uids:
