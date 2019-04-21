@@ -101,8 +101,8 @@ class PEPSICOUKSceneToolBox:
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.external_targets = self.commontools.external_targets
         self.own_manuf_fk = self.all_products[self.all_products['manufacturer_name'] == self.PEPSICO]['manufacturer_fk'].values[0]
-        self.block = Block(self.data_provider)
-        self.adjacency = Adjancency(self.data_provider)
+        self.block = Block(self.data_provider, custom_scif=self.filtered_scif, custom_matches=self.filtered_matches)
+        self.adjacency = Adjancency(self.data_provider, custom_scif=self.filtered_scif, custom_matches=self.filtered_matches)
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
         self.kpi_results = pd.DataFrame(columns=['kpi_fk', 'numerator', 'denominator', 'result', 'score'])
 
@@ -409,6 +409,8 @@ class PEPSICOUKSceneToolBox:
             ['bay_number', self.RELEVANT_SHELVES_TEMPL_COLUMN]].drop_duplicates()
         bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves.groupby('bay_number') \
             [self.RELEVANT_SHELVES_TEMPL_COLUMN].apply(lambda x: (x + ',').cumsum().str.strip())
+        if 'bay_number' in bay_all_relevant_shelves.index.names:
+            bay_all_relevant_shelves.index.names = ['custom_ind']
         bay_all_relevant_shelves = bay_all_relevant_shelves.drop_duplicates(subset=['bay_number'], keep='last') \
             [['bay_number', 'shelves_all_placements']]
         bay_all_relevant_shelves['shelves_all_placements'] = bay_all_relevant_shelves['shelves_all_placements']. \
