@@ -88,7 +88,8 @@ class CCKRToolBox:
 
     def kpi_res(self, level, score, row, result=None, result_final=None):
 
-        kpi_fks = self.kpi_static_data[self.kpi_static_data['atomic_kpi_name'] == row[1]['Atomic Kpi Name']]
+        kpi_fks = self.kpi_static_data[
+            self.kpi_static_data['atomic_kpi_name'].str.encode('utf8') == row[1]['Atomic Kpi Name'].encode('utf8')]
         if kpi_fks.empty:
             print(row[1]['Atomic Kpi Name'])
             Log.error("differences between kpi template and kpi static table in DB")
